@@ -1,0 +1,13 @@
+@page
+@model PortalSaas.Host.Pages.Home.IndexModel
+@{
+    ViewData["Title"] = "Inicio";
+}
+
+<h1 class="h3">Hola, @Model.Email</h1>
+<p class="text-muted">Organización: @Model.OrganizationSlug</p>
+
+<p>
+    Sesión iniciada correctamente. Este es el shell mínimo del Host --
+    <a asp-page="/Home/Preferences">tus preferencias personales</a> viven en otra página.
+</p>

@@ -1,0 +1,44 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Subscriptions.IndexModel
+@{
+    ViewData["Title"] = $"Suscripción · {Model.Organization.LegalName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Suscripción de @Model.Organization.LegalName</h1>
+        <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
+    </div>
+    <a asp-page="/Admin/Organizations/Subscriptions/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Asignar plan</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Plan</th>
+            <th>Estado</th>
+            <th>Inicio</th>
+            <th>Fin</th>
+            <th>Proveedor de pago</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var sub in Model.Subscriptions)
+        {
+            <tr>
+                <td>@sub.Plan.Name (@sub.Plan.Code)</td>
+                <td>@sub.Status</td>
+                <td>@sub.StartedAt.ToString("yyyy-MM-dd")</td>
+                <td>@(sub.EndedAt?.ToString("yyyy-MM-dd") ?? "—")</td>
+                <td>@(sub.PaymentProvider ?? "—")</td>
+                <td><a asp-page="/Admin/Organizations/Subscriptions/Edit" asp-route-id="@sub.Id">Editar</a></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Subscriptions.Count == 0)
+{
+    <p class="text-muted">Esta organización todavía no tiene ningún plan asignado.</p>
+}

@@ -1,0 +1,20 @@
+# Postgres de desarrollo local -- ver docs/02-ARQUITECTURA-BASE-DE-DATOS.md §2.
+# Uso: docker compose up -d
+# Nombre de base según docs/01-CONVENCION-NOMBRES-BD.md §13: portalsaas_<scope>_<environment>.
+# Las credenciales acá son SOLO para desarrollo local -- nunca usar estas mismas en
+# staging/producción.
+services:
+  postgres:
+    image: postgres:16
+    container_name: portalsaas-saas-dev-db
+    environment:
+      POSTGRES_DB: portalsaas_saas_dev
+      POSTGRES_USER: portalsaas
+      POSTGRES_PASSWORD: portalsaas_dev_only
+    ports:
+      - "5432:5432"
+    volumes:
+      - portalsaas_saas_dev_data:/var/lib/postgresql/data
+
+volumes:
+  portalsaas_saas_dev_data:

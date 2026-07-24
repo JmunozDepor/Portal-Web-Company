@@ -1,0 +1,47 @@
+@page "{id:long}"
+@model PortalSaas.Host.Pages.Admin.Profiles.EditModel
+@{
+    ViewData["Title"] = "Editar perfil";
+}
+
+<h1 class="h3 mb-3">Editar perfil</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Input.Id" />
+
+            <div class="mb-3">
+                <label asp-for="Input.Name" class="form-label"></label>
+                <input asp-for="Input.Name" class="form-control" autofocus />
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Description" class="form-label"></label>
+                <input asp-for="Input.Description" class="form-control" />
+                <span asp-validation-for="Input.Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Acciones incluidas</label>
+                @foreach (var action in Model.AllActions)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="Input.SelectedActionIds" value="@action.Id"
+                               id="action-@action.Id" checked="@Model.Input.SelectedActionIds.Contains(action.Id)" />
+                        <label class="form-check-label" for="action-@action.Id">@action.Name (@action.Code)</label>
+                    </div>
+                }
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a asp-page="/Admin/Profiles/Index" class="btn btn-link">Cancelar</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

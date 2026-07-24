@@ -1,0 +1,51 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Instances.IndexModel
+@{
+    ViewData["Title"] = $"Instancias · {Model.Organization.LegalName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Instancias de @Model.Organization.LegalName</h1>
+        <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
+    </div>
+    <a asp-page="/Admin/Organizations/Instances/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Nueva instancia</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Host</th>
+            <th>Puerto</th>
+            <th>Motor</th>
+            <th>Usuario técnico</th>
+            <th>Estado</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var instance in Model.Instances)
+        {
+            <tr>
+                <td>@instance.Name</td>
+                <td>@instance.Host</td>
+                <td>@instance.Port</td>
+                <td>@instance.EngineType</td>
+                <td>@instance.TechnicalUsername</td>
+                <td>@(instance.IsActive ? "Activa" : "Inactiva")</td>
+                <td><a asp-page="/Admin/Organizations/Instances/Edit" asp-route-id="@instance.Id">Editar</a></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Instances.Count == 0)
+{
+    <p class="text-muted">Todavía no hay instancias para esta organización.</p>
+}
+
+<p class="text-muted mt-3">
+    Compañías (schemas SAP) cuelgan de una instancia — crea al menos una acá antes de
+    <a asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@Model.Organization.Id">agregar compañías</a>.
+</p>

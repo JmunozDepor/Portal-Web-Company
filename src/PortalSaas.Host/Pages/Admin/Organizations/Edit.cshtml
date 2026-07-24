@@ -1,0 +1,59 @@
+@page "{id:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.EditModel
+@{
+    ViewData["Title"] = "Editar organización";
+}
+
+<h1 class="h3 mb-3">Editar organización</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <form method="post">
+            <input type="hidden" asp-for="Input.Id" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Input.LegalName" class="form-label"></label>
+                <input asp-for="Input.LegalName" class="form-control" autofocus />
+                <span asp-validation-for="Input.LegalName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Slug" class="form-label"></label>
+                <input asp-for="Input.Slug" class="form-control" />
+                <span asp-validation-for="Input.Slug" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.TaxId" class="form-label"></label>
+                <input asp-for="Input.TaxId" class="form-control" />
+                <span asp-validation-for="Input.TaxId" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Country" class="form-label"></label>
+                <input asp-for="Input.Country" class="form-control" />
+                <span asp-validation-for="Input.Country" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Mode" class="form-label"></label>
+                <select asp-for="Input.Mode" class="form-select" asp-items="Model.Modes.Select(m => new SelectListItem(m, m))"></select>
+                <span asp-validation-for="Input.Mode" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Status" class="form-label"></label>
+                <select asp-for="Input.Status" class="form-select" asp-items="Model.Statuses.Select(s => new SelectListItem(s, s))"></select>
+                <span asp-validation-for="Input.Status" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a asp-page="/Admin/Organizations/Index" class="btn btn-link">Cancelar</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

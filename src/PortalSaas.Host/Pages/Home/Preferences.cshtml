@@ -1,0 +1,46 @@
+@page
+@model PortalSaas.Host.Pages.Home.PreferencesModel
+@using PortalSaas.Data.Entities
+@{
+    ViewData["Title"] = "Mis preferencias";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <h1 class="h3 mb-3">Mis preferencias</h1>
+
+        @if (Model.Saved)
+        {
+            <div class="alert alert-success">Preferencias guardadas.</div>
+        }
+
+        <form method="post">
+            <div class="mb-3">
+                <label asp-for="Input.Locale" class="form-label"></label>
+                <input asp-for="Input.Locale" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Timezone" class="form-label"></label>
+                <input asp-for="Input.Timezone" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Theme" class="form-label"></label>
+                <select asp-for="Input.Theme" class="form-select">
+                    <option value="@UserThemePreference.System">Según el sistema</option>
+                    <option value="@UserThemePreference.Light">Claro</option>
+                    <option value="@UserThemePreference.Dark">Oscuro</option>
+                </select>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input asp-for="Input.EmailNotificationsEnabled" class="form-check-input" />
+                <label asp-for="Input.EmailNotificationsEnabled" class="form-check-label"></label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a asp-page="/Home/Index" class="btn btn-link">Volver</a>
+        </form>
+    </div>
+</div>

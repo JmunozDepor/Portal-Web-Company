@@ -1,0 +1,45 @@
+@page "{id:long}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Subscriptions.EditModel
+@{
+    ViewData["Title"] = $"Editar suscripción · {Model.Organization.LegalName}";
+}
+
+<h1 class="h3 mb-3">Editar suscripción de @Model.Organization.LegalName</h1>
+<p class="text-muted">Plan: @Model.PlanLabel (el plan asignado no se cambia acá -- crea una nueva suscripción para cambiar de plan).</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <form method="post">
+            <input type="hidden" asp-for="Input.Id" />
+            <input type="hidden" asp-for="Input.OrganizationId" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Status" class="form-label"></label>
+                <select asp-for="Input.Status" class="form-select" asp-items="PortalSaas.Data.Entities.SubscriptionStatus.All.Select(s => new SelectListItem(s, s))"></select>
+                <span asp-validation-for="Input.Status" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.EndedAt" class="form-label"></label>
+                <input asp-for="Input.EndedAt" type="date" class="form-control" />
+                <span asp-validation-for="Input.EndedAt" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.PaymentProvider" class="form-label"></label>
+                <input asp-for="Input.PaymentProvider" class="form-control" placeholder="stripe / flow / transbank" />
+                <span asp-validation-for="Input.PaymentProvider" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.ExternalPaymentReference" class="form-label"></label>
+                <input asp-for="Input.ExternalPaymentReference" class="form-control" />
+                <span asp-validation-for="Input.ExternalPaymentReference" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a asp-page="/Admin/Organizations/Subscriptions/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-link">Cancelar</a>
+        </form>
+    </div>
+</div>

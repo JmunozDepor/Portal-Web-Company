@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Necesario para ApplicationPartManager/AssemblyPart/CompiledRazorAssemblyPart
+         (PluginManager), parte del framework compartido ASP.NET Core, no un paquete
+         NuGet separado. Mismo criterio que PortalSAP_v2 (todos sus .csproj con
+         FrameworkReference). -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+    <ProjectReference Include="..\PortalSaas.Data\PortalSaas.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Los builders puros de Correo/ (payload/JWT) son internal, se testean
+         directo desde PortalSaas.Core.Tests sin exponerlos como API pública. -->
+    <InternalsVisibleTo Include="PortalSaas.Core.Tests" />
+  </ItemGroup>
+
+</Project>

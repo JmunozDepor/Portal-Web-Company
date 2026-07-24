@@ -1,0 +1,17 @@
+bin/
+obj/
+*.user
+.vs/
+
+# appsettings.Development.json SÍ se versiona -- solo trae credenciales de
+# docker-compose.yml (desarrollo local, no secretos reales). appsettings.Production.json
+# y cualquier override personal *.local.json nunca se versionan.
+appsettings.Production.json
+appsettings.*.local.json
+
+# Copia de solo lectura de PortalSAP_v2/WMS_Suite para consulta al portar código
+# (ver CLAUDE.md) -- no es código de este producto, no se versiona acá.
+referencia-original/
+
+# Caché local de extracción semántica de graphify -- regenerable, no se versiona.
+graphify-out/cache/

@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(sqlcmd -S \"localhost\" -U sa -P \"123456\" -d portalsaas_onpremise_dev -Q \"SELECT name FROM sys.tables;\" 2>&1)",
+      "PowerShell(sqlcmd -S \"localhost\" -U sa -P \"123456\" -Q \"DROP DATABASE portalsaas_onpremise_dev;\" 2>&1)",
+      "PowerShell(sqlcmd -S \"localhost\" -U sa -P \"123456\" -Q \"CREATE DATABASE portalsaas_onpremise_dev;\" 2>&1)",
+      "PowerShell(sqlcmd -S \"localhost\" -U sa -P \"123456\" -d portalsaas_onpremise_dev -Q \"IF NOT EXISTS \\(SELECT 1 FROM sys.database_principals WHERE name = 'portalsaas'\\) CREATE USER portalsaas FOR LOGIN portalsaas; EXEC sp_addrolemember 'db_owner', 'portalsaas';\" 2>&1)",
+      "PowerShell(sqlcmd -S \"localhost\" -U sa -P \"123456\" -Q \"ALTER DATABASE portalsaas_onpremise_dev SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE portalsaas_onpremise_dev;\" 2>&1)",
+      "PowerShell(sqlcmd -S \"localhost\" -U sa -P \"123456\" -d portalsaas_onpremise_dev -Q \"SELECT name FROM sys.tables ORDER BY name;\" 2>&1)",
+      "Bash(docker exec *)",
+      "Bash(curl -s -o /dev/null -w \"Admin/Login: %{http_code}\\\\n\" http://127.0.0.1:5299/Admin/Login)",
+      "Bash(curl -s -o /dev/null -w \"Account/Login: %{http_code}\\\\n\" http://127.0.0.1:5299/Account/Login)",
+      "Bash(curl -s -o /dev/null -w \"ForgotPassword GET: %{http_code}\\\\n\" http://127.0.0.1:5299/Account/ForgotPassword)",
+      "Bash(curl -s -D - -o /dev/null http://127.0.0.1:5299/Admin/Organizations/Users/Index/__CMDSUB_OUTPUT__)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\users\\jorge\\.local\\bin\\graphify.EXE hook-guard search"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\users\\jorge\\.local\\bin\\graphify.EXE hook-guard read"
+          }
+        ]
+      }
+    ]
+  }
+}

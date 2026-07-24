@@ -1,0 +1,65 @@
+@page "{id:long}"
+@model PortalSaas.Host.Pages.Admin.MenuGroups.EditModel
+@{
+    ViewData["Title"] = "Editar grupo de menú";
+}
+
+<h1 class="h3 mb-3">Editar grupo de menú</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Input.Id" />
+
+            <div class="mb-3">
+                <label asp-for="Input.Name" class="form-label"></label>
+                <input asp-for="Input.Name" class="form-control" autofocus />
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Description" class="form-label"></label>
+                <input asp-for="Input.Description" class="form-control" />
+                <span asp-validation-for="Input.Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input asp-for="Input.IsActive" class="form-check-input" />
+                <label asp-for="Input.IsActive" class="form-check-label"></label>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Nodos de menú incluidos</label>
+                @if (Model.AllMenus.Count == 0)
+                {
+                    <p class="text-muted">Todavía no hay nodos de menú (no hay plugins cargados).</p>
+                }
+                else
+                {
+                    @foreach (var menu in Model.AllMenus)
+                    {
+                        <div class="form-check" style="margin-left: @(menu.Level * 20)px;">
+                            <input class="form-check-input" type="checkbox" name="Input.SelectedMenuIds" value="@menu.Id"
+                                   id="menu-@menu.Id" checked="@Model.Input.SelectedMenuIds.Contains(menu.Id)" />
+                            <label class="form-check-label" for="menu-@menu.Id">
+                                @menu.Name <span class="text-muted">(@($"{menu.OriginModule}.{menu.Code}"))</span>
+                                @if (!menu.IsActive)
+                                {
+                                    <span class="badge bg-secondary">inactivo</span>
+                                }
+                            </label>
+                        </div>
+                    }
+                }
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a asp-page="/Admin/MenuGroups/Index" class="btn btn-link">Cancelar</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

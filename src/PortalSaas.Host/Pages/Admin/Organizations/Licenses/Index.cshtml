@@ -1,0 +1,44 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Licenses.IndexModel
+@{
+    ViewData["Title"] = $"Licencia · {Model.Organization.LegalName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Licencia de @Model.Organization.LegalName</h1>
+        <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
+    </div>
+    <a asp-page="/Admin/Organizations/Licenses/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Emitir licencia</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Clave de activación</th>
+            <th>Estado</th>
+            <th>Emitida</th>
+            <th>Vence</th>
+            <th>Huella de instalación</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var license in Model.Licenses)
+        {
+            <tr>
+                <td><code>@license.ActivationKey</code></td>
+                <td>@license.Status</td>
+                <td>@license.IssuedAt.ToString("yyyy-MM-dd")</td>
+                <td>@license.ExpiresAt.ToString("yyyy-MM-dd")</td>
+                <td>@(license.InstallationFingerprint ?? "—")</td>
+                <td><a asp-page="/Admin/Organizations/Licenses/Edit" asp-route-id="@license.Id">Editar</a></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Licenses.Count == 0)
+{
+    <p class="text-muted">Esta organización todavía no tiene ninguna licencia emitida.</p>
+}

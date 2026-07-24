@@ -1,0 +1,56 @@
+@page
+@model PortalSaas.Host.Pages.Admin.Organizations.IndexModel
+@{
+    ViewData["Title"] = "Organizaciones";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Organizaciones</h1>
+    <a asp-page="/Admin/Organizations/Create" class="btn btn-primary">Nueva organización</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Nombre legal</th>
+            <th>Slug</th>
+            <th>País</th>
+            <th>Modo</th>
+            <th>Estado</th>
+            <th>Creada</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var org in Model.Organizations)
+        {
+            <tr>
+                <td>@org.LegalName</td>
+                <td>@org.Slug</td>
+                <td>@org.Country</td>
+                <td>@org.Mode</td>
+                <td>@org.Status</td>
+                <td>@org.CreatedAt.ToString("yyyy-MM-dd")</td>
+                <td>
+                    <a asp-page="/Admin/Organizations/Edit" asp-route-id="@org.Id">Editar</a>
+                    ·
+                    <a asp-page="/Admin/Organizations/Users/Index" asp-route-organizationId="@org.Id">Usuarios</a>
+                    ·
+                    @if (org.Mode == PortalSaas.Data.Entities.OrganizationMode.OnPremise)
+                    {
+                        <a asp-page="/Admin/Organizations/Licenses/Index" asp-route-organizationId="@org.Id">Licencia</a>
+                    }
+                    else
+                    {
+                        <a asp-page="/Admin/Organizations/Subscriptions/Index" asp-route-organizationId="@org.Id">Suscripción</a>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Organizations.Count == 0)
+{
+    <p class="text-muted">Todavía no hay organizaciones.</p>
+}

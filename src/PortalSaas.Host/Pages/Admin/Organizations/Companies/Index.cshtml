@@ -1,0 +1,58 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Companies.IndexModel
+@{
+    ViewData["Title"] = $"Compañías · {Model.Organization.LegalName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Compañías de @Model.Organization.LegalName</h1>
+        <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
+    </div>
+    @if (Model.TieneInstancias)
+    {
+        <a asp-page="/Admin/Organizations/Companies/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Nueva compañía</a>
+    }
+</div>
+
+@if (!Model.TieneInstancias)
+{
+    <p class="text-warning">
+        Esta organización todavía no tiene ninguna instancia. Crea una
+        <a asp-page="/Admin/Organizations/Instances/Index" asp-route-organizationId="@Model.Organization.Id">acá</a>
+        antes de poder agregar una compañía.
+    </p>
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Instancia</th>
+            <th>Base de datos</th>
+            <th>País</th>
+            <th>Estado</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var company in Model.Companies)
+        {
+            <tr>
+                <td>@company.Code</td>
+                <td>@company.Name</td>
+                <td>@company.Instance.Name</td>
+                <td>@company.DatabaseName</td>
+                <td>@company.Country</td>
+                <td>@(company.IsActive ? "Activa" : "Inactiva")</td>
+                <td><a asp-page="/Admin/Organizations/Companies/Edit" asp-route-id="@company.Id">Editar</a></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Companies.Count == 0)
+{
+    <p class="text-muted">Todavía no hay compañías para esta organización.</p>
+}

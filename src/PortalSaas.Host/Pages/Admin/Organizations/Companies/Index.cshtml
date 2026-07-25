@@ -46,8 +46,45 @@
                 <td>@company.DatabaseName</td>
                 <td>@company.Country</td>
                 <td>@(company.IsActive ? "Activa" : "Inactiva")</td>
-                <td><a asp-page="/Admin/Organizations/Companies/Edit" asp-route-id="@company.Id">Editar</a></td>
+                <td>
+                    <a asp-page="/Admin/Organizations/Companies/Edit" asp-route-id="@company.Id">Editar</a>
+                    ·
+                    <form method="post" asp-page-handler="TestConnection" asp-route-organizationId="@Model.Organization.Id" asp-route-companyId="@company.Id" class="d-inline">
+                        <button type="submit" class="btn btn-link p-0 align-baseline">Probar conexión</button>
+                    </form>
+                </td>
             </tr>
+            @if (Model.TestedCompanyId == company.Id && Model.TestResult is not null)
+            {
+                <tr>
+                    <td colspan="7">
+                        <div class="alert @(Model.TestResult.DatabaseSuccess && Model.TestResult.ServiceLayerSuccess ? "alert-success" : "alert-warning") mb-0">
+                            <div>
+                                Base de datos (@company.Instance.EngineType):
+                                @if (Model.TestResult.DatabaseSuccess)
+                                {
+                                    <strong class="text-success">OK</strong>
+                                }
+                                else
+                                {
+                                    <strong class="text-danger">FALLÓ</strong> <span>&mdash;</span> <code>@Model.TestResult.DatabaseError</code>
+                                }
+                            </div>
+                            <div>
+                                Service Layer:
+                                @if (Model.TestResult.ServiceLayerSuccess)
+                                {
+                                    <strong class="text-success">OK</strong>
+                                }
+                                else
+                                {
+                                    <strong class="text-danger">FALLÓ</strong> <span>&mdash;</span> <code>@Model.TestResult.ServiceLayerError</code>
+                                }
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            }
         }
     </tbody>
 </table>

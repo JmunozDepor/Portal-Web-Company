@@ -1,0 +1,48 @@
+@page
+@model PortalSaas.Host.Pages.Account.SelectCompanyModel
+@{
+    ViewData["Title"] = "Selecciona una compañía";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <h1 class="h3 mb-3">Selecciona una compañía</h1>
+        <p class="text-muted">
+            La compañía queda fija para toda la sesión -- para cambiarla, cierra sesión y
+            vuelve a entrar.
+        </p>
+
+        @if (Model.ErrorMessage is not null)
+        {
+            <div class="alert alert-danger">@Model.ErrorMessage</div>
+        }
+
+        @* asp-antiforgery="true" explícito -- un <form method="post"> sin NINGÚN otro
+           atributo asp-* no dispara la inyección automática del token del
+           FormTagHelper (solo se activa junto con asp-page/asp-route-*/etc.), así que
+           sin esto cualquier envío real devuelve 400 "antiforgery token no encontrado"
+           -- bug real encontrado en la verificación E2E de esta entrega. *@
+        <form method="post" asp-antiforgery="true">
+            <input type="hidden" asp-for="Input.ReturnUrl" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Input.CompanyId" class="form-label"></label>
+                <select asp-for="Input.CompanyId" class="form-select" asp-items="Model.Companies">
+                    <option value="">Seleccionar…</option>
+                </select>
+                <span asp-validation-for="Input.CompanyId" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Continuar</button>
+        </form>
+
+        <form method="post" asp-page="/Account/Logout" class="mt-3">
+            <button type="submit" class="btn btn-link p-0">Cerrar sesión</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

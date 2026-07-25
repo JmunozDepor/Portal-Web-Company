@@ -5,6 +5,7 @@ using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Core.Comercial;
 using PortalSaas.Core.Correo;
 using PortalSaas.Core.Infraestructura;
+using PortalSaas.Core.Sap;
 using PortalSaas.Core.Seguridad;
 using PortalSaas.Core.Usuarios;
 using PortalSaas.Data;
@@ -41,6 +42,7 @@ builder.Services.AddDbContext<PortalSaasDbContext>(options =>
 });
 
 builder.Services.AddHttpClient();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ISecretoCifradoService, SecretoCifradoService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IPlatformAdminAuthenticationService, PlatformAdminAuthenticationService>();
@@ -49,6 +51,22 @@ builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<IContractLimitService, ContractLimitService>();
 builder.Services.AddScoped<IOrganizationAccessGateService, OrganizationAccessGateService>();
+
+// Conector SAP -- ver ARCHITECTURE.md §6 paso 5, portado de PortalSAP_v2. Scoped salvo
+// ISapSessionCache (Singleton, cachea la sesión de Service Layer por Company.Id, ver su
+// doc-comment). HanaService/SapConnectionProvider dependen de ICurrentCompanyAccessor
+// (claims fijados en el login de tenant, ver Pages/Account/Login.cshtml.cs) -- NUNCA
+// Singleton, congelaría la conexión a la primera compañía resuelta (bug real que ya tuvo
+// PortalSAP_v2 con el servicio equivalente).
+builder.Services.AddScoped<ICurrentCompanyAccessor, CurrentCompanyAccessor>();
+builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
+builder.Services.AddScoped<IHanaService, HanaService>();
+builder.Services.AddScoped<ISapConnectionProvider, SapConnectionProvider>();
+builder.Services.AddSingleton<ISapSessionCache, SapSessionCache>();
+// A diferencia de los tres de arriba, no depende de ICurrentCompanyAccessor -- lo usa
+// el backoffice de administrador de plataforma (botón "Probar conexión" en Companies),
+// que no tiene sesión de tenant.
+builder.Services.AddScoped<ISapConnectionTestService, SapConnectionTestService>();
 
 // Esquema default = tenant (sin cambios de comportamiento en /Account, /Home). El
 // esquema "PlatformAdmin" es una sesión totalmente aparte -- ver

@@ -88,12 +88,31 @@ public class LoginModel : PageModel
             new(ClaimTypes.Email, user.Email),
             new("OrganizationId", user.OrganizationId.ToString()),
             new("OrganizationSlug", organization.Slug),
+            // Necesario para ICurrentUserContext.IsAdmin (ver PortalSaas.Core.Seguridad) --
+            // no depende de que haya compañía seleccionada.
+            new("IsAdmin", user.IsAdmin.ToString()),
         };
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
-        return LocalRedirect(Url.IsLocalUrl(Input.ReturnUrl) && Input.ReturnUrl is not null ? Input.ReturnUrl : "/Home/Index");
+        var returnUrl = Url.IsLocalUrl(Input.ReturnUrl) && Input.ReturnUrl is not null ? Input.ReturnUrl : "/Home/Index";
+
+        // La compañía SAP activa (ver ICurrentCompanyAccessor) se fija en el login y no
+        // cambia sin logout -- si la organización tiene compañías, un segundo paso la
+        // pide antes de dejar entrar al portal (mismo criterio que PortalSAP_v2, ahora en
+        // dos requests porque acá la organización recién se conoce después de validar
+        // credenciales, a diferencia del selector único del proyecto original). Si la
+        // organización no tiene ninguna compañía todavía, no hay nada que elegir -- se
+        // entra directo, sin claim de compañía (las funciones que dependen de SAP
+        // simplemente no están disponibles).
+        var tieneCompanias = await _db.Companies.AnyAsync(c => c.OrganizationId == organization.Id && c.IsActive);
+        if (tieneCompanias)
+        {
+            return RedirectToPage("/Account/SelectCompany", new { returnUrl });
+        }
+
+        return LocalRedirect(returnUrl);
     }
 
     public sealed class InputModel

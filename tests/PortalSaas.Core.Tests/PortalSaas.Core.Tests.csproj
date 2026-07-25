@@ -7,6 +7,10 @@
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- Se propaga de PortalSaas.Core (cliente nativo de HANA, x64-only), ver el
+         comentario en PortalSaas.Core.csproj. -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>

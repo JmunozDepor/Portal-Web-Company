@@ -19,6 +19,10 @@
     <!-- Permite "dotnet user-secrets set Security:MasterSecretKey ...", nunca en
          appsettings.json (ver CLAUDE.md, regla dura). -->
     <UserSecretsId>portalsaas-host-dev</UserSecretsId>
+    <!-- Se propaga de PortalSaas.Core (cliente nativo de HANA, x64-only), ver el
+         comentario en PortalSaas.Core.csproj. -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
 </Project>

@@ -1,0 +1,310 @@
+/* Shell del tenant: sidebar izquierdo + topbar + contenido -- estructura adaptada de
+   PortalSAP_v2 (theme.css .app-shell/.sidebar/.topbar/.user-menu*), pero sobre
+   variables de Bootstrap 5 (--bs-*) en vez de un sistema de temas propio -- ver
+   CLAUDE.md, decisión de alcance de esta entrega. El árbol colapsable usa el
+   componente `collapse` nativo de Bootstrap (clases .collapse/.show que
+   bootstrap.bundle.min.js ya trae) -- este archivo solo aporta layout/color, sidebar.js
+   solo aporta persistencia en localStorage. */
+
+html[data-sidebar="collapsed"] .app-shell {
+    grid-template-columns: 64px 1fr;
+}
+
+.app-shell {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    grid-template-rows: 56px 1fr;
+    grid-template-areas: "sidebar topbar" "sidebar content";
+    min-height: 100vh;
+    background: var(--bs-body-bg);
+}
+
+.sidebar {
+    grid-area: sidebar;
+    background: var(--bs-tertiary-bg);
+    border-right: 1px solid var(--bs-border-color);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--bs-border-color);
+    height: 56px;
+}
+
+.sidebar-toggle {
+    background: transparent;
+    border: none;
+    color: var(--bs-secondary-color);
+    font-size: 16px;
+    padding: 6px;
+    border-radius: var(--bs-border-radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar-toggle:hover {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+
+.sidebar-brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--bs-border-radius-sm);
+    background: var(--bs-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.sidebar-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    overflow: hidden;
+}
+
+.sidebar-brand-text strong {
+    font-size: 13px;
+}
+
+.sidebar-brand-text span {
+    font-size: 10.5px;
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-nav {
+    list-style: none;
+    margin: 0;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sidebar-nav-sub {
+    padding: 2px 0 2px 14px;
+}
+
+.sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--bs-border-radius-sm);
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: inset 3px 0 0 transparent;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sidebar-nav a:hover {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+
+.sidebar-nav a.active {
+    background: var(--bs-primary-bg-subtle, var(--bs-secondary-bg));
+    color: var(--bs-primary);
+    font-weight: 700;
+    box-shadow: inset 3px 0 0 var(--bs-primary);
+}
+
+.sidebar-nav .nav-icon {
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.sidebar-nav-grupo {
+    cursor: pointer;
+    user-select: none;
+}
+
+.sidebar-nav-grupo .nav-texto {
+    flex: 1;
+}
+
+.sidebar-grupo-chevron {
+    font-size: 11px;
+    transition: transform 0.15s ease;
+}
+
+/* Bootstrap gestiona aria-expanded solo en el toggle -- el chevron rota según ese
+   atributo, sin ninguna clase propia que sidebar.js tenga que mantener sincronizada. */
+.sidebar-nav-grupo[aria-expanded="true"] .sidebar-grupo-chevron {
+    transform: rotate(0deg);
+}
+
+.sidebar-nav-grupo:not([aria-expanded="true"]) .sidebar-grupo-chevron {
+    transform: rotate(-90deg);
+}
+
+/* ---- Sidebar contraído: solo iconos ---- */
+html[data-sidebar="collapsed"] .sidebar-brand-text,
+html[data-sidebar="collapsed"] .nav-texto,
+html[data-sidebar="collapsed"] .sidebar-grupo-chevron {
+    display: none;
+}
+
+html[data-sidebar="collapsed"] .sidebar-nav a,
+html[data-sidebar="collapsed"] .sidebar-nav-grupo {
+    justify-content: center;
+    padding-left: 10px;
+}
+
+html[data-sidebar="collapsed"] .sidebar-nav-sub {
+    padding-left: 0;
+}
+
+html[data-sidebar="collapsed"] .sidebar-brand {
+    justify-content: center;
+    padding: 12px 6px;
+}
+
+html[data-sidebar="collapsed"] .sidebar-brand-mark {
+    display: none;
+}
+
+.topbar {
+    grid-area: topbar;
+    background: var(--bs-body-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+}
+
+.topbar-title {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.user-menu {
+    position: relative;
+}
+
+.user-menu summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--bs-border-radius-sm);
+}
+
+.user-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.user-menu summary:hover {
+    background: var(--bs-secondary-bg);
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bs-primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.user-menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    box-shadow: var(--bs-box-shadow);
+    width: 200px;
+    padding: 10px;
+    z-index: 1030;
+}
+
+.user-menu-panel .user-menu-org {
+    font-size: 11.5px;
+    color: var(--bs-secondary-color);
+    padding: 4px 8px 10px;
+    border-bottom: 1px solid var(--bs-border-color);
+    margin-bottom: 8px;
+}
+
+.user-menu-panel form {
+    margin: 0;
+}
+
+.user-menu-panel .user-menu-link {
+    display: block;
+    text-align: left;
+    color: var(--bs-body-color);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 8px;
+    border-radius: var(--bs-border-radius-sm);
+    text-decoration: none;
+}
+
+.user-menu-panel .user-menu-link:hover {
+    background: var(--bs-secondary-bg);
+}
+
+.user-menu-panel .btn-logout {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: var(--bs-danger);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 8px;
+    border-radius: var(--bs-border-radius-sm);
+    cursor: pointer;
+}
+
+.user-menu-panel .btn-logout:hover {
+    background: var(--bs-danger-bg-subtle, var(--bs-secondary-bg));
+}
+
+.content {
+    grid-area: content;
+    padding: 24px;
+}

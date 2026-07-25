@@ -27,6 +27,7 @@ graphify-out/cache/
 **/wwwroot/lib/jquery/
 **/wwwroot/lib/jquery-validation/
 **/wwwroot/lib/jquery-validation-unobtrusive/
+**/wwwroot/lib/bootstrap-icons/
 
 # Estado interno de Claude Code (lock de sesión, tareas programadas) -- efímero, nunca
 # se versiona.

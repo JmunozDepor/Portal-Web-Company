@@ -1,47 +1,102 @@
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var username = User.Identity?.Name ?? "Usuario";
+    var organizationSlug = User.FindFirst("OrganizationSlug")?.Value;
+    var initials = username.Length > 0 ? char.ToUpperInvariant(username[0]).ToString() : "?";
+}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] — Portal SaaS</title>
+    @* Aplica el modo "solo iconos" del sidebar ANTES de pintar, en <html>, para que el
+       CSS (html[data-sidebar="collapsed"] .app-shell) lo tenga disponible sin parpadeo
+       -- mismo truco que usaba PortalSAP_v2 para su selector de temas. *@
+    <script>
+        if (localStorage.getItem('portalsaas-sidebar-collapsed') === 'collapsed') {
+            document.documentElement.setAttribute('data-sidebar', 'collapsed');
+        }
+    </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @if (isAuthenticated)
+    {
+        <link rel="stylesheet" href="~/css/sidebar.css" asp-append-version="true" />
+    }
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom mb-4">
-            <div class="container">
-                <a class="navbar-brand" asp-page="/Index">Portal SaaS</a>
-                @if (User.Identity?.IsAuthenticated == true)
-                {
-                    <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                        <ul class="navbar-nav flex-grow-1">
-                            <li class="nav-item"><a class="nav-link" asp-page="/Home/Index">Inicio</a></li>
-                            <li class="nav-item"><a class="nav-link" asp-page="/Home/Preferences">Mis preferencias</a></li>
-                        </ul>
-                        <ul class="navbar-nav">
-                            <li class="nav-item">
-                                <span class="nav-link text-muted">@User.Identity.Name</span>
-                            </li>
-                            <li class="nav-item">
-                                <form method="post" asp-page="/Account/Logout">
-                                    <button type="submit" class="btn btn-link nav-link">Cerrar sesión</button>
-                                </form>
-                            </li>
-                        </ul>
+    @if (isAuthenticated)
+    {
+        <div class="app-shell">
+            <aside class="sidebar">
+                <div class="sidebar-brand">
+                    <button type="button" id="btn-collapse-sidebar" class="sidebar-toggle" title="Contraer/expandir menú" aria-label="Contraer/expandir menú">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div class="sidebar-brand-mark">PS</div>
+                    <div class="sidebar-brand-text">
+                        <strong>Portal SaaS</strong>
+                        @if (!string.IsNullOrEmpty(organizationSlug))
+                        {
+                            <span>@organizationSlug</span>
+                        }
                     </div>
-                }
-            </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
+                </div>
+                <ul class="sidebar-nav">
+                    <li><a asp-page="/Home/Index"><span class="nav-icon"><i class="bi bi-house"></i></span><span class="nav-texto">Inicio</span></a></li>
+                    @await Component.InvokeAsync("SidebarMenu")
+                </ul>
+            </aside>
+            <header class="topbar">
+                <span class="topbar-title">@ViewData["Title"]</span>
+                <div class="topbar-right">
+                    <details class="user-menu">
+                        <summary>
+                            <span class="user-avatar">@initials</span>
+                            <span class="user-name">@username</span>
+                        </summary>
+                        <div class="user-menu-panel">
+                            @if (!string.IsNullOrEmpty(organizationSlug))
+                            {
+                                <div class="user-menu-org">@organizationSlug</div>
+                            }
+                            <a asp-page="/Home/Preferences" class="user-menu-link"><i class="bi bi-gear"></i> Mis preferencias</a>
+                            <form method="post" asp-page="/Account/Logout">
+                                <button type="submit" class="btn-logout">Cerrar sesión</button>
+                            </form>
+                        </div>
+                    </details>
+                </div>
+            </header>
+            <main class="content">
+                @RenderBody()
+            </main>
+        </div>
+    }
+    else
+    {
+        <header>
+            <nav class="navbar navbar-light bg-white border-bottom mb-4">
+                <div class="container">
+                    <a class="navbar-brand" asp-page="/Index">Portal SaaS</a>
+                </div>
+            </nav>
+        </header>
+        <div class="container">
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
+        </div>
+    }
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @if (isAuthenticated)
+    {
+        <script src="~/js/sidebar.js" asp-append-version="true"></script>
+    }
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

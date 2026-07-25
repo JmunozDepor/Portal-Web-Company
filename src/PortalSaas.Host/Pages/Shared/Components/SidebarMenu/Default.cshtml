@@ -1,0 +1,13 @@
+@model IReadOnlyList<PortalSaas.Abstractions.Modelos.MenuNodeDto>
+@* Raíces del árbol ya filtrado (ver IMenuNavigationService) -- cada nodo se recorre
+   recursivamente en _MenuNode.cshtml, que arma el anidado real que necesita el
+   componente `collapse` de Bootstrap 5 (cada contenedor envuelve exactamente a sus
+   hijos, no una lista plana indentada). *@
+@foreach (var node in Model)
+{
+    @* Ruta app-relativa explícita -- name="_MenuNode" (sin ruta) resuelve relativo a la
+       página que invocó el ViewComponent, no a esta carpeta, y tira
+       "The partial view '_MenuNode' was not found" apenas se llama desde una página
+       fuera de Pages/Shared/ (bug real encontrado en la verificación E2E). *@
+    <partial name="~/Pages/Shared/Components/SidebarMenu/_MenuNode.cshtml" model="node" />
+}

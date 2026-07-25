@@ -57,6 +57,10 @@ builder.Services.AddScoped<IOrganizationAccessGateService, OrganizationAccessGat
 // propia organización, ver ITenantUserAdminService.
 builder.Services.AddScoped<ITenantUserAdminService, TenantUserAdminService>();
 
+// Árbol de menús visible del sidebar (Pages/Shared/_Layout.cshtml vía
+// SidebarMenuViewComponent) -- ver IMenuNavigationService.
+builder.Services.AddScoped<IMenuNavigationService, MenuNavigationService>();
+
 // Conector SAP -- ver ARCHITECTURE.md §6 paso 5, portado de PortalSAP_v2. Scoped salvo
 // ISapSessionCache (Singleton, cachea la sesión de Service Layer por Company.Id, ver su
 // doc-comment). HanaService/SapConnectionProvider dependen de ICurrentCompanyAccessor

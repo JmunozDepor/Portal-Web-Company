@@ -1,0 +1,35 @@
+@model PortalSaas.Abstractions.Modelos.MenuNodeDto
+@{
+    var isFolder = Model.PagePath is null;
+    var currentPath = Context.Request.Path.Value ?? "/";
+}
+@if (isFolder)
+{
+    var collapseId = $"menu-node-{Model.Id}";
+    <li class="sidebar-nav-item">
+        <a class="sidebar-nav-grupo" data-bs-toggle="collapse" href="#@collapseId" role="button"
+           aria-expanded="false" aria-controls="@collapseId">
+            <span class="nav-icon"><i class="@(Model.Icon ?? "bi bi-folder")"></i></span>
+            <span class="nav-texto">@Model.Name</span>
+            <i class="bi bi-chevron-down sidebar-grupo-chevron"></i>
+        </a>
+        <div class="collapse" id="@collapseId">
+            <ul class="sidebar-nav sidebar-nav-sub">
+                @foreach (var child in Model.Children)
+                {
+                    <partial name="~/Pages/Shared/Components/SidebarMenu/_MenuNode.cshtml" model="child" />
+                }
+            </ul>
+        </div>
+    </li>
+}
+else
+{
+    var href = Url.Content("~" + Model.PagePath);
+    <li>
+        <a href="@href" class="@(currentPath == Model.PagePath ? "active" : "")">
+            <span class="nav-icon"><i class="@(Model.Icon ?? "bi bi-circle")"></i></span>
+            <span class="nav-texto">@Model.Name</span>
+        </a>
+    </li>
+}

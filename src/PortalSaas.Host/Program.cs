@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Core.Administracion;
 using PortalSaas.Core.Comercial;
 using PortalSaas.Core.Correo;
 using PortalSaas.Core.Infraestructura;
@@ -51,6 +52,10 @@ builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<IContractLimitService, ContractLimitService>();
 builder.Services.AddScoped<IOrganizationAccessGateService, OrganizationAccessGateService>();
+
+// Consumido por Modulo.Administracion (plugin) -- self-service de usuarios de la
+// propia organización, ver ITenantUserAdminService.
+builder.Services.AddScoped<ITenantUserAdminService, TenantUserAdminService>();
 
 // Conector SAP -- ver ARCHITECTURE.md §6 paso 5, portado de PortalSAP_v2. Scoped salvo
 // ISapSessionCache (Singleton, cachea la sesión de Service Layer por Company.Id, ver su

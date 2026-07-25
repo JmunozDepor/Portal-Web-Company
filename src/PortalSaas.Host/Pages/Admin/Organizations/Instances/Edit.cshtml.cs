@@ -71,7 +71,7 @@ public class EditModel : PageModel
         var nombreEnUso = await _db.Instances.AnyAsync(i => i.OrganizationId == instance.OrganizationId && i.Name == name && i.Id != Input.Id);
         if (nombreEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Name), "Ya existe otra instancia con ese nombre en esta organización.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Name)}", "Ya existe otra instancia con ese nombre en esta organización.");
             return Page();
         }
 

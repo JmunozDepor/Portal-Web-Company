@@ -32,7 +32,7 @@ public class CreateModel : PageModel
         var nombreEnUso = await _db.Profiles.AnyAsync(p => p.Name == name);
         if (nombreEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Name), "Ya existe un perfil con ese nombre.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Name)}", "Ya existe un perfil con ese nombre.");
             return Page();
         }
 

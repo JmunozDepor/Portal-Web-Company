@@ -63,7 +63,7 @@ public class EditModel : PageModel
         var slugEnUso = await _db.Organizations.AnyAsync(o => o.Slug == slug && o.Id != Input.Id);
         if (slugEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Slug), "Ya existe otra organización con ese slug.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Slug)}", "Ya existe otra organización con ese slug.");
             return Page();
         }
 

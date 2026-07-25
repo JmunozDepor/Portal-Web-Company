@@ -33,7 +33,7 @@ public class ResetPasswordModel : PageModel
 
         if (Input.NewPassword != Input.ConfirmPassword)
         {
-            ModelState.AddModelError(nameof(Input.ConfirmPassword), "Las contraseñas no coinciden.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.ConfirmPassword)}", "Las contraseñas no coinciden.");
             return Page();
         }
 

@@ -61,7 +61,7 @@ public class EditModel : PageModel
         var codeEnUso = await _db.Plans.AnyAsync(p => p.Code == code && p.Id != Input.Id);
         if (codeEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Code), "Ya existe otro plan con ese código.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Code)}", "Ya existe otro plan con ese código.");
             return Page();
         }
 

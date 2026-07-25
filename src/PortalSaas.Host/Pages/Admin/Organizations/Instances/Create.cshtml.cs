@@ -59,7 +59,7 @@ public class CreateModel : PageModel
         var nombreEnUso = await _db.Instances.AnyAsync(i => i.OrganizationId == organizationId && i.Name == name);
         if (nombreEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Name), "Ya existe una instancia con ese nombre en esta organización.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Name)}", "Ya existe una instancia con ese nombre en esta organización.");
             return Page();
         }
 

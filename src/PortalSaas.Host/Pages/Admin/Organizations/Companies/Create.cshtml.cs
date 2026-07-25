@@ -67,7 +67,7 @@ public class CreateModel : PageModel
         var instanciaValida = await _db.Instances.AnyAsync(i => i.Id == Input.InstanceId && i.OrganizationId == organizationId);
         if (!instanciaValida)
         {
-            ModelState.AddModelError(nameof(Input.InstanceId), "Instancia inválida.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.InstanceId)}", "Instancia inválida.");
             return Page();
         }
 
@@ -75,7 +75,7 @@ public class CreateModel : PageModel
         var codigoEnUso = await _db.Companies.AnyAsync(c => c.Code == code);
         if (codigoEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Code), "Ya existe una compañía con ese código.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Code)}", "Ya existe una compañía con ese código.");
             return Page();
         }
 

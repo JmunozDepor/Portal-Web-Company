@@ -32,7 +32,7 @@ public class CreateModel : PageModel
         var nombreEnUso = await _db.MenuGroups.AnyAsync(g => g.Name == name);
         if (nombreEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Name), "Ya existe un grupo de menú con ese nombre.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Name)}", "Ya existe un grupo de menú con ese nombre.");
             return Page();
         }
 

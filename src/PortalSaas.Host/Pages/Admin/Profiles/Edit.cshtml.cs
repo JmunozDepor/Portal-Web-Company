@@ -67,7 +67,7 @@ public class EditModel : PageModel
         var nombreEnUso = await _db.Profiles.AnyAsync(p => p.Name == name && p.Id != Input.Id);
         if (nombreEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Name), "Ya existe otro perfil con ese nombre.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Name)}", "Ya existe otro perfil con ese nombre.");
             return Page();
         }
 

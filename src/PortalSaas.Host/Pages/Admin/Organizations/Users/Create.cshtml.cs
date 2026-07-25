@@ -70,13 +70,13 @@ public class CreateModel : PageModel
         var usernameEnUso = await _db.Users.AnyAsync(u => u.OrganizationId == organizationId && u.Username.ToLower() == username.ToLower());
         if (usernameEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Username), "Ya existe un usuario con ese nombre en esta organización.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Username)}", "Ya existe un usuario con ese nombre en esta organización.");
         }
 
         var emailEnUso = await _db.Users.AnyAsync(u => u.OrganizationId == organizationId && u.Email.ToLower() == email);
         if (emailEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Email), "Ya existe un usuario con ese correo en esta organización.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Email)}", "Ya existe un usuario con ese correo en esta organización.");
         }
 
         if (!ModelState.IsValid)

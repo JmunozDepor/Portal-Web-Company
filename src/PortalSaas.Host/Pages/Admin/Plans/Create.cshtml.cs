@@ -32,7 +32,7 @@ public class CreateModel : PageModel
         var codeEnUso = await _db.Plans.AnyAsync(p => p.Code == code);
         if (codeEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Code), "Ya existe un plan con ese código.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Code)}", "Ya existe un plan con ese código.");
             return Page();
         }
 

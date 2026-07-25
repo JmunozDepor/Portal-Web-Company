@@ -34,7 +34,7 @@ public class CreateModel : PageModel
         var slugEnUso = await _db.Organizations.AnyAsync(o => o.Slug == slug);
         if (slugEnUso)
         {
-            ModelState.AddModelError(nameof(Input.Slug), "Ya existe una organización con ese slug.");
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Slug)}", "Ya existe una organización con ese slug.");
             return Page();
         }
 

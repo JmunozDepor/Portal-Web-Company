@@ -1,0 +1,79 @@
+@page "/organizacion/usuarios"
+@model Modulo.Administracion.Pages.Usuarios.IndexModel
+@{
+    ViewData["Title"] = "Usuarios";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Usuarios de tu organización</h1>
+    <a href="~/organizacion/usuarios/editar" class="btn btn-primary">Nuevo usuario</a>
+</div>
+
+@if (Model.MensajeExito is not null)
+{
+    <div class="alert alert-success">@Model.MensajeExito</div>
+}
+@if (Model.MensajeError is not null)
+{
+    <div class="alert alert-danger">@Model.MensajeError</div>
+}
+
+<form method="get" class="d-flex gap-2 mb-3" style="max-width:420px;">
+    <input type="text" name="Texto" value="@Model.Texto" class="form-control" placeholder="Buscar por usuario o correo..." />
+    <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+    @if (!string.IsNullOrWhiteSpace(Model.Texto))
+    {
+        <a href="~/organizacion/usuarios" class="btn btn-outline-secondary">Limpiar</a>
+    }
+</form>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Usuario</th>
+            <th>Correo</th>
+            <th>Admin</th>
+            <th>Estado</th>
+            <th>Último acceso</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var u in Model.Usuarios)
+        {
+            <tr>
+                <td>@u.Username</td>
+                <td>@u.Email</td>
+                <td>@(u.IsAdmin ? "Sí" : "No")</td>
+                <td>
+                    @if (!u.IsActive)
+                    {
+                        <span class="text-muted">Inactivo</span>
+                    }
+                    else if (u.IsLocked)
+                    {
+                        <span class="text-danger">Bloqueado</span>
+                    }
+                    else
+                    {
+                        <span class="text-success">Activo</span>
+                    }
+                </td>
+                <td>@(u.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Nunca")</td>
+                <td>
+                    <a href="~/organizacion/usuarios/editar/@u.Id">Editar</a>
+                    ·
+                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@u.Id" method="post" class="d-inline"
+                          onsubmit="return confirm('¿Eliminar a @u.Username definitivamente?');">
+                        <button type="submit" class="btn btn-link p-0 text-danger align-baseline">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Usuarios.Count == 0)
+{
+    <p class="text-muted">Todavía no hay usuarios en tu organización.</p>
+}

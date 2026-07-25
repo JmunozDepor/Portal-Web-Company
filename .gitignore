@@ -4,6 +4,10 @@ obj/
 .vs/
 **/TestResults/
 
+# Output de build de plugins (target PublicarComoPlugin, ver plugins/*/*.csproj) --
+# regenerable con `dotnet build`, no es código fuente.
+artifacts/
+
 # appsettings.Development.json SÍ se versiona -- solo trae credenciales de
 # docker-compose.yml (desarrollo local, no secretos reales). appsettings.Production.json
 # y cualquier override personal *.local.json nunca se versionan.

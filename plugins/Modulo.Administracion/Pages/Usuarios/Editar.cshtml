@@ -1,0 +1,159 @@
+@page "/organizacion/usuarios/editar/{id:guid?}"
+@model Modulo.Administracion.Pages.Usuarios.EditarModel
+@{
+    ViewData["Title"] = Model.EsNuevo ? "Nuevo usuario" : $"Editar · {Model.Detalle?.Username}";
+}
+
+<div class="mb-3">
+    <h1 class="h3 mb-0">@(Model.EsNuevo ? "Nuevo usuario" : $"Editar usuario: {Model.Detalle?.Username}")</h1>
+    <a href="~/organizacion/usuarios">Volver a usuarios</a>
+</div>
+
+@if (Model.MensajeExito is not null)
+{
+    <div class="alert alert-success">@Model.MensajeExito</div>
+}
+@if (Model.MensajeError is not null)
+{
+    <div class="alert alert-danger">@Model.MensajeError</div>
+}
+
+<form method="post" asp-page-handler="Guardar">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Username" class="form-label"></label>
+        <input asp-for="Input.Username" class="form-control" />
+        <span asp-validation-for="Input.Username" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Email" class="form-label"></label>
+        <input asp-for="Input.Email" class="form-control" />
+        <span asp-validation-for="Input.Email" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Password" class="form-label"></label>
+        <input asp-for="Input.Password" class="form-control" />
+        <span asp-validation-for="Input.Password" class="text-danger"></span>
+        @if (!Model.EsNuevo)
+        {
+            <div class="form-text">Dejar en blanco para no cambiar la contraseña actual.</div>
+        }
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.ConfirmPassword" class="form-label"></label>
+        <input asp-for="Input.ConfirmPassword" class="form-control" />
+        <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+    </div>
+
+    <div class="form-check mb-2">
+        <input asp-for="Input.IsAdmin" class="form-check-input" />
+        <label asp-for="Input.IsAdmin" class="form-check-label"></label>
+    </div>
+
+    @if (!Model.EsNuevo)
+    {
+        <div class="form-check mb-2">
+            <input asp-for="Input.IsActive" class="form-check-input" />
+            <label asp-for="Input.IsActive" class="form-check-label"></label>
+        </div>
+        <div class="form-check mb-3">
+            <input asp-for="Input.IsLocked" class="form-check-input" />
+            <label asp-for="Input.IsLocked" class="form-check-label"></label>
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+</form>
+
+@if (!Model.EsNuevo)
+{
+    <hr class="my-4" />
+
+    <h2 class="h4">Permisos</h2>
+
+    @if (!Model.TieneCompanies)
+    {
+        <p class="text-warning">Tu organización todavía no tiene ninguna compañía configurada.</p>
+    }
+    else
+    {
+        <form method="get" class="row g-2 align-items-end mb-3">
+            <input type="hidden" name="id" value="@Model.Detalle!.Id" />
+            <div class="col-auto">
+                <label class="form-label">Compañía</label>
+                <select name="companyId" class="form-select" onchange="this.form.submit()">
+                    @foreach (var company in Model.Companies)
+                    {
+                        <option value="@company.Value" selected="@(company.Value == Model.SelectedCompanyId.ToString())">@company.Text</option>
+                    }
+                </select>
+            </div>
+        </form>
+
+        <form method="post" asp-page-handler="GuardarPermisos" asp-route-id="@Model.Detalle!.Id">
+            <input type="hidden" asp-for="Permissions.CompanyId" />
+
+            <h3 class="h6">Grupos de menú</h3>
+            @if (Model.AllMenuGroups.Count == 0)
+            {
+                <p class="text-muted">Todavía no hay grupos de menú creados (los crea el operador de plataforma).</p>
+            }
+            else
+            {
+                @foreach (var group in Model.AllMenuGroups)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="Permissions.SelectedMenuGroupIds" value="@group.Id"
+                               id="group-@group.Id" checked="@Model.Permissions.SelectedMenuGroupIds.Contains(group.Id)" />
+                        <label class="form-check-label" for="group-@group.Id">@group.Name</label>
+                    </div>
+                }
+            }
+
+            <h3 class="h6 mt-4">Perfil por nodo de menú</h3>
+            @if (Model.LeafMenus.Count == 0)
+            {
+                <p class="text-muted">Todavía no hay nodos de menú finales.</p>
+            }
+            else
+            {
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Menú</th>
+                            <th>Perfil</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var menu in Model.LeafMenus)
+                        {
+                            var actual = Model.Permissions.ProfileByMenu.GetValueOrDefault(menu.Id);
+                            <tr>
+                                <td>@menu.Name <span class="text-muted">(@($"{menu.OriginModule}.{menu.Code}"))</span></td>
+                                <td>
+                                    <select name="Permissions.ProfileByMenu[@menu.Id]" class="form-select form-select-sm">
+                                        <option value="" selected="@(actual is null or 0)">Sin asignar</option>
+                                        @foreach (var profile in Model.ProfileOptions)
+                                        {
+                                            <option value="@profile.Value" selected="@(profile.Value == actual?.ToString())">@profile.Text</option>
+                                        }
+                                    </select>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <button type="submit" class="btn btn-primary">Guardar permisos</button>
+        </form>
+    }
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

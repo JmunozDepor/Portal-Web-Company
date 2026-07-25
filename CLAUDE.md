@@ -1005,11 +1005,18 @@ en blanco; editar solo `SenderDisplayName` (dejando los campos de Google en blan
 `encrypted_provider_config` bit a bit intacto (mismo largo/prefijo). **96/96 tests siguen
 en verde** -- sin tests xUnit nuevos dedicados (mismo criterio que otras entregas de
 CRUD sin lógica de negocio computada, ya cubierto por los tests existentes de
-`SecretoCifradoService` para el cifrado en sí). **Pendiente**: cargar las credenciales
-reales de Google Workspace de Comercial Depor (esperando que el dueño del proyecto las
-provea) para verificar el envío real de un correo de recuperación de contraseña de
-punta a punta -- hasta entonces, `ForgotPassword` sigue fallando en silencio para esa
-organización.
+`SecretoCifradoService` para el cifrado en sí).
+
+**Comercial Depor configurado con credenciales reales de Google Workspace y VERIFICADO
+de punta a punta (25 jul 2026)** -- cuenta de servicio real (`no-repli@portalweb-
+503418.iam.gserviceaccount.com`, delegación de dominio para `no-reply@comercialdepor.cl`)
+cargada vía la UI nueva. `/Account/ForgotPassword` real para un usuario real de la
+organización: el log del Host confirma `POST oauth2.googleapis.com/token` → 200 (JWT de
+la cuenta de servicio aceptado) y `POST gmail.googleapis.com/.../messages/send` → 200 --
+el correo de recuperación llegó de verdad a la bandeja real (confirmado por el dueño del
+proyecto, contenido exacto del template). **Ya no queda ninguna organización sin
+recuperación de contraseña funcional** -- cierra el hueco detectado al reactivar el
+usuario `ti` con un reset manual por SQL al principio de esta sesión.
 
 **Todavía no existe** (ver `ARCHITECTURE.md` §6, pasos 6-7): los motores genéricos de
 documento (`GenericoVenta`/`Compra`/`Inventario`) y el motor de aprobación -- son

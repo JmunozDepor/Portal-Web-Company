@@ -156,6 +156,19 @@ src/
 │                                               ganó HasCompany (evita depender de una
 │                                               excepción para saber si hay compañía
 │                                               activa en la sesión).
+│                                               ISalesOrderService+DTOs,
+│                                               ICustomerCatalogService,
+│                                               IItemCatalogService,
+│                                               IWarehouseCatalogService,
+│                                               ISalesEmployeeCatalogService (25 jul
+│                                               2026, nuevo) -- consumidos por
+│                                               plugins/Modulo.Ventas, primer plugin
+│                                               que habla con el SAP de la
+│                                               organización. Nuevo namespace
+│                                               Componentes/: DocumentListViewModel,
+│                                               DocumentFormViewModel -- chrome
+│                                               compartido "listado + documento con
+│                                               tabs", portado de PortalSAP_v2.
 ├── PortalSaas.Data/                         # Entities/ + PortalSaasDbContext.
 │                                               Agnóstico de proveedor -- SIN paquetes
 │                                               de Npgsql/SqlServer/Design.
@@ -239,9 +252,24 @@ src/
     │              OrganizationAccessGateService.cs #   IContractLimitService.
     │                                             Nuevo -- gate subscriptions (saas) /
     │                                             on_premise_licenses (on_premise).
-    └── Administracion/TenantUserAdminService.cs #  25 jul 2026, nuevo -- self-service
-                                                   de usuarios de la propia organización,
-                                                   consumido por plugins/Modulo.Administracion.
+    ├── Administracion/TenantUserAdminService.cs #  25 jul 2026, nuevo -- self-service
+    │                                             de usuarios de la propia organización,
+    │                                             consumido por plugins/Modulo.Administracion.
+    ├── Catalogos/                              #   25 jul 2026, nuevo -- Customer/Item/
+    │              CustomerCatalogService.cs     #   Warehouse/SalesEmployeeCatalogService,
+    │              ItemCatalogService.cs         #   consumidos por Modulo.Ventas. Item solo
+    │              WarehouseCatalogService.cs    #   busca (SearchAsync), nunca lista completo
+    │              SalesEmployeeCatalogService.cs #  (OITM real con decenas de miles de filas).
+    └── Ventas/                                 #   25 jul 2026, nuevo -- primer plugin de
+           SalesOrderService.cs                  #   negocio real (habla con el SAP de la
+           SapSalesOrderModels.cs                #   organización). Tabla HANA "ORDR" +
+                                                    recurso Service Layer "Orders" fijos (un
+                                                    solo tipo de documento, no el motor
+                                                    multi-tipo GenericoVenta de la
+                                                    referencia). SapSalesOrderHeader/Line
+                                                    (wire model, internal, nunca expuesto
+                                                    fuera de Core) fija U_PortalUser (UDF de
+                                                    trazabilidad) al crear.
 
 tests/
 └── PortalSaas.Core.Tests/                    # xUnit + EF Core InMemory. AHORA x64
@@ -1018,22 +1046,112 @@ proyecto, contenido exacto del template). **Ya no queda ninguna organización si
 recuperación de contraseña funcional** -- cierra el hueco detectado al reactivar el
 usuario `ti` con un reset manual por SQL al principio de esta sesión.
 
-**Todavía no existe** (ver `ARCHITECTURE.md` §6, pasos 6-7): los motores genéricos de
-documento (`GenericoVenta`/`Compra`/`Inventario`) y el motor de aprobación -- son
-SAP-específicos y no tienen todavía un consumidor real en este proyecto (`Modulo.Administracion`
-es el único plugin real cargado hasta ahora, y no los necesita); portarlos ahora sería
-especular sin necesidad concreta. El
-conector SAP que los va a sostener (`HanaService`/`SapConnectionProvider`/
-`CurrentCompanyAccessor`/`CurrentUserContext`) SÍ está listo (ver más arriba). Las
-tablas núcleo (`menus`/`profiles`/`actions`/...), su sincronización, y la UI completa
-de administración (`Profiles`/`MenuGroups`/asignación a usuarios,
-`Instances`/`Companies`) también SÍ están listas -- lo que falta ahí es el filtrado del
-árbol de menú por módulos contratados (`organization_modules`), no la base ni la UI.
-Todas las migraciones (comercial + núcleo) ya se probaron contra un motor real de
-desarrollo (Postgres 16 en Docker, SQL Server 2022 Express local) -- lo que falta es
-correrlas contra `sqlsap.cdepor.cl` en producción, ver
-`docs/05-RUNBOOK-PRODUCCION.md` para el procedimiento completo cuando se decida
-desplegar ahí.
+**`Modulo.Ventas` — primer plugin de negocio real, habla de verdad con el SAP de una
+organización (25 jul 2026).** Hasta esta entrega, todo lo construido operaba solo
+contra la base propia de la plataforma (`Modulo.Administracion` incluido) -- el
+conector SAP estaba verificado en aislamiento (botón "Probar conexión") pero ningún
+plugin lo usaba todavía para una operación de negocio real. Se portó **Órdenes de
+Venta (digitación directa)** desde `PortalSAP_v2` (`plugins/Modulo.Ventas` +
+`GenericoVentaService`), con el alcance **deliberadamente recortado** respecto al
+original (motor `GenericoVenta` con 7 tipos de documento):
+
+- **Un solo tipo de documento** (`SalesOrder`) -- nada de la abstracción multi-tipo con
+  diccionario de configuración por tipo; con un solo documento real esa capa no compra
+  nada todavía (se generaliza cuando haya un segundo documento real, mismo criterio
+  YAGNI que rige el resto del proyecto).
+- **Solo líneas de Artículo** (sin Servicio) y **solo tabs General + Contenido** (sin
+  Logística/Finanzas) -- evita portar 6 catálogos SAP más
+  (`ICuentaContableCatalogoService`/`IDimensionCatalogoService`/`IEmpleadoCatalogoService`/
+  `IShippingMethodCatalogService`/`IPaymentTermsCatalogService`/`IPriceListService`) que
+  no hacen falta todavía. `DocumentFormViewModel.LogisticsView`/`AccountingView` en
+  `null` oculta la tab -- es el mecanismo previsto, no un hack.
+- **Sin importador CSV de líneas, sin toggle runtime de "permite crear"** -- ninguno de
+  los dos existía tampoco como pantalla de administración en este proyecto.
+- **Catálogos mínimos reales portados**: `ICustomerCatalogService` (OCRD),
+  `IItemCatalogService` (OITM, **solo búsqueda en vivo, nunca listado completo** -- la
+  tabla real de un cliente confirmó tener decenas de miles de artículos),
+  `IWarehouseCatalogService` (OWHS), `ISalesEmployeeCatalogService` (OSLP).
+
+**Convención de nombres**: inglés para todo el vocabulario de negocio nuevo
+(`SalesOrder`, `Customer`, `Item`...), confirmado con el dueño del proyecto -- mismo
+criterio que ya aplicó el resto de este proyecto. El nombre del plugin (`Modulo.Ventas`)
+mantiene el patrón `Modulo.` + área en español, igual que `Modulo.Administracion` (es
+convención de carpeta/proyecto, no vocabulario de negocio).
+
+- **`PortalSaas.Abstractions/Componentes/`** (nuevo) -- `DocumentListViewModel`/
+  `DocumentFormViewModel`, port directo del chrome compartido "SAP B1 Web Client"
+  (listado con filtros+paginación, documento con tabs) de la referencia. Reusable por
+  cualquier plugin futuro que necesite esta UI.
+- **`SidebarMenuViewComponent`/`DocumentListViewComponent`/`DocumentFormViewComponent`**
+  (`PortalSaas.Host.ViewComponents`) -- wrappers de 2 líneas, mismo patrón. Vistas en
+  `Pages/Shared/Components/DocumentList|DocumentForm/Default.cshtml`, **sin ninguna
+  clase de `theme.css`** (no existe en este proyecto) -- Bootstrap puro, mismo criterio
+  que el sidebar dinámico.
+- **`ISalesOrderService`/`SalesOrderService`** (`PortalSaas.Core.Ventas`) -- tabla HANA
+  `"ORDR"` y recurso Service Layer `"Orders"` fijos (no diccionario de configuración).
+  `SapSalesOrderHeader`/`SapSalesOrderLine` (wire model interno, nunca expuesto fuera de
+  Core) fija `U_PortalUser` (UDF de trazabilidad) al crear.
+- **`plugins/Modulo.Ventas/`** -- mismo patrón exacto que `Modulo.Administracion`
+  (`.csproj` x64, única `ProjectReference` a Abstractions, target `PublicarComoPlugin`).
+  `Pages/SalesOrders/Index` (listado) + `Detail` (crear/ver, sin `UpdateAsync` todavía --
+  digitación directa, una vez creada la orden es de solo lectura vía el portal, editarla
+  de verdad se hace directo en SAP). Búsqueda en vivo de artículos vía un handler AJAX
+  (`OnGetSearchItemsAsync`) + `<datalist>` nativo, sin librería externa.
+
+**Dos bugs reales encontrados y corregidos en la verificación, ninguno visible
+compilando ni en `dotnet test`:**
+1. `@for (var page = 1; page <= ...)` en `DocumentList/Default.cshtml` -- Razor
+   interpreta el token literal `@page` como la **directiva** de página apenas lo ve en
+   modo expresión dentro de markup, aunque sea solo el nombre de una variable de un
+   `for`, no una referencia real a la directiva. Corregido renombrando la variable a
+   `pageNumber` (y el helper `PageUrl` a `BuildPageUrl`, por consistencia).
+2. Ninguno nuevo de antiforgery/resolución de partials en esta entrega -- las lecciones
+   de las dos entregas anteriores (`~/Pages/...` explícito para partials cruzando
+   ensamblados, `asp-antiforgery="true"` explícito en formularios sin otro atributo
+   `asp-*`) ya se aplicaron desde el primer intento.
+
+**Verificado de punta a punta contra los 2 ambientes demo reales, no solo compilando**:
+- **Comercial GE2 (SQL Server, compañía BLOCK_QA)**: listado real -- muestra órdenes
+  reales existentes en el SAP del cliente (clientes reales, totales reales en formato
+  local, estado Abierto/Cerrado real, `LEFT JOIN "OSLP"` para el vendedor). Búsqueda en
+  vivo de artículos contra el catálogo real (decenas de miles de SKU reales, ej.
+  zapatillas Vans). **Creación real de una Orden de Venta nueva** (cliente real,
+  artículo real, almacén real) -- `POST` a Service Layer devolvió un `DocEntry` real
+  (611, siguiente al último existente), la orden se pudo releer (`GET Orders(611)`,
+  status "Abierto", cliente/artículo/N° referencia correctos) y aparece en el listado.
+  El UDF `U_PortalUser` no bloqueó la creación (ya existía en el ambiente o SAP lo
+  ignoró en silencio por no ser un campo reconocido -- de cualquier modo, no hubo que
+  crearlo a mano para esta prueba). **Queda una Orden de Venta real (DocEntry 611,
+  N° referencia "TEST-CLAUDE-E2E") en el ambiente demo BLOCK_QA** -- no se intentó
+  borrar (no hay flujo seguro de cancelación construido todavía); si se quiere limpiar,
+  hacerlo directo en SAP.
+- **Comercial Depor (HANA, compañía DEPOR_QA)**: `HanaConnection.Open()` falló con
+  timeout de red real (`hw-depor-hdb:30015` no respondió) -- confirma que el código
+  llega correctamente hasta el intento de conexión real (mismo camino que ya prueba
+  `SapConnectionTestService`), pero el servidor demo HANA no estaba alcanzable en el
+  momento de la prueba (VPN/red, no un bug de este plugin) -- pendiente reintentar.
+- **Autorización**: un usuario admin (`IsAdmin`) ve/crea sin necesitar ninguna fila de
+  `UserMenuProfile` (bypass, mismo criterio de siempre). Un usuario no-admin con acceso
+  a la compañía pero SIN perfil para el menú `Ventas.ordenes` fue bloqueado
+  (`HasActionAsync` en falso → `Forbid()` → redirect a `/Account/Login`, mismo
+  comportamiento ya usado por `Modulo.Administracion`).
+
+**96/96 tests siguen en verde** -- sin tests xUnit nuevos dedicados (mismo criterio que
+otras entregas de esta sesión: la lógica nueva es CRUD/mapeo sin condicionales de
+negocio complejos, ya verificado manualmente end-to-end contra los 2 SAP reales).
+
+**Todavía no existe** (ver `ARCHITECTURE.md` §6, pasos 6-7): el resto del motor
+`GenericoVenta` (Nota de Crédito/Facturas/Devoluciones -- de solo lectura en la
+referencia), `GenericoCompra`/`GenericoInventario`, y el motor de aprobación -- ninguno
+tiene todavía un consumidor real en este proyecto; generalizarlos ahora sería especular
+sin necesidad concreta (mismo criterio que ya cerró el alcance de `Modulo.Ventas`). El
+filtrado del árbol de menú por módulos contratados (`organization_modules`) tampoco
+existe -- hoy el árbol de menú es el mismo para todas las organizaciones sin relación
+con qué módulos tiene contratados cada una. Todas las migraciones (comercial + núcleo)
+ya se probaron contra un motor real de desarrollo (Postgres 16 en Docker, SQL Server
+2022 Express local) -- lo que falta es correrlas contra `sqlsap.cdepor.cl` en
+producción, ver `docs/05-RUNBOOK-PRODUCCION.md` para el procedimiento completo cuando
+se decida desplegar ahí.
 
 ## Estilo de código
 

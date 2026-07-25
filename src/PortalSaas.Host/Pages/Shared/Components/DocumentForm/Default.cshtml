@@ -1,0 +1,69 @@
+@model PortalSaas.Abstractions.Componentes.DocumentFormViewModel
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">@Model.Title</h1>
+        @if (Model.BackUrl is not null)
+        {
+            <a href="@Model.BackUrl">Volver</a>
+        }
+    </div>
+    @if (Model.StatusText is not null)
+    {
+        <span class="badge @(Model.StatusClass ?? "bg-secondary")">@Model.StatusText</span>
+    }
+</div>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">General</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-content" type="button" role="tab">Contenido</button>
+    </li>
+    @if (Model.LogisticsView is not null)
+    {
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-logistics" type="button" role="tab">Logística</button>
+        </li>
+    }
+    @if (Model.AccountingView is not null)
+    {
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-accounting" type="button" role="tab">@Model.AccountingTitle</button>
+        </li>
+    }
+    @if (Model.UserFieldsView is not null)
+    {
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-userfields" type="button" role="tab">Campos de usuario</button>
+        </li>
+    }
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="tab-general" role="tabpanel">
+        @await Html.PartialAsync(Model.GeneralView, Model.Model)
+    </div>
+    <div class="tab-pane fade" id="tab-content" role="tabpanel">
+        @await Html.PartialAsync(Model.ContentView, Model.Model)
+    </div>
+    @if (Model.LogisticsView is not null)
+    {
+        <div class="tab-pane fade" id="tab-logistics" role="tabpanel">
+            @await Html.PartialAsync(Model.LogisticsView, Model.Model)
+        </div>
+    }
+    @if (Model.AccountingView is not null)
+    {
+        <div class="tab-pane fade" id="tab-accounting" role="tabpanel">
+            @await Html.PartialAsync(Model.AccountingView, Model.Model)
+        </div>
+    }
+    @if (Model.UserFieldsView is not null)
+    {
+        <div class="tab-pane fade" id="tab-userfields" role="tabpanel">
+            @await Html.PartialAsync(Model.UserFieldsView, Model.Model)
+        </div>
+    }
+</div>

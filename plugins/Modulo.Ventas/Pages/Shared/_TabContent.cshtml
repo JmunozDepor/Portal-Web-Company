@@ -1,0 +1,90 @@
+@model Modulo.Ventas.Pages.SalesOrders.DetailModel
+@{
+    var readOnly = Model.Document.ReadOnly;
+    // Al crear, se muestran las líneas ya cargadas (normalmente 1 en blanco) más un
+    // puñado de filas vacías extra para no necesitar un botón "Agregar línea" con JS
+    // -- las filas sin ItemCode se descartan solas en el POST (ver DetailModel.OnPostAsync).
+    var rowCount = readOnly ? Model.Input.Lines.Count : Math.Max(Model.Input.Lines.Count, 1) + 9;
+}
+
+<table class="table table-sm" id="sales-order-lines">
+    <thead>
+        <tr>
+            <th>Artículo</th>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+            <th>Precio unitario</th>
+            <th>% Desc.</th>
+            <th>Almacén</th>
+        </tr>
+    </thead>
+    <tbody>
+        @for (var i = 0; i < rowCount; i++)
+        {
+            var line = i < Model.Input.Lines.Count ? Model.Input.Lines[i] : new Modulo.Ventas.Pages.SalesOrders.DetailModel.LineInput();
+            <tr>
+                <td>
+                    <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm sales-order-item-code" list="sales-order-items-datalist" disabled="@readOnly" />
+                </td>
+                <td>
+                    <input name="Input.Lines[@i].Description" value="@line.Description" class="form-control form-control-sm" disabled="@readOnly" />
+                </td>
+                <td style="max-width:100px">
+                    <input name="Input.Lines[@i].Quantity" type="number" step="0.01" value="@(line.Quantity == 0 ? "" : line.Quantity.ToString())" class="form-control form-control-sm" disabled="@readOnly" />
+                </td>
+                <td style="max-width:120px">
+                    <input name="Input.Lines[@i].UnitPrice" type="number" step="0.01" value="@line.UnitPrice" class="form-control form-control-sm" placeholder="Lista de precio" disabled="@readOnly" />
+                </td>
+                <td style="max-width:90px">
+                    <input name="Input.Lines[@i].DiscountPercent" type="number" step="0.01" value="@(line.DiscountPercent == 0 ? "" : line.DiscountPercent.ToString())" class="form-control form-control-sm" disabled="@readOnly" />
+                </td>
+                <td>
+                    <select name="Input.Lines[@i].WarehouseCode" class="form-select form-select-sm" disabled="@readOnly">
+                        <option value="">Seleccionar…</option>
+                        @foreach (var warehouse in Model.Warehouses)
+                        {
+                            <option value="@warehouse.Value" selected="@(warehouse.Value == line.WarehouseCode)">@warehouse.Text</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<datalist id="sales-order-items-datalist"></datalist>
+
+@if (!readOnly)
+{
+    <script>
+        // Búsqueda en vivo de artículos vía OnGetSearchItemsAsync -- sin librería
+        // externa, un <datalist> nativo alcanza para esta primera entrega.
+        (function () {
+            var datalist = document.getElementById('sales-order-items-datalist');
+            var timer = null;
+
+            document.querySelectorAll('.sales-order-item-code').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    var text = input.value.trim();
+                    if (text.length < 2) {
+                        return;
+                    }
+                    clearTimeout(timer);
+                    timer = setTimeout(function () {
+                        fetch('?handler=SearchItems&text=' + encodeURIComponent(text))
+                            .then(function (r) { return r.json(); })
+                            .then(function (items) {
+                                datalist.innerHTML = '';
+                                items.forEach(function (item) {
+                                    var option = document.createElement('option');
+                                    option.value = item.itemCode;
+                                    option.label = item.itemCode + ' — ' + item.itemName;
+                                    datalist.appendChild(option);
+                                });
+                            });
+                    }, 300);
+                });
+            });
+        })();
+    </script>
+}

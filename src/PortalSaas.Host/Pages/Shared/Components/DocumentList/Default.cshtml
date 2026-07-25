@@ -1,0 +1,122 @@
+@model PortalSaas.Abstractions.Componentes.DocumentListViewModel
+@using PortalSaas.Abstractions.Componentes
+@{
+    // "pageNumber", no "page" -- Razor interpreta @page como la directiva de página
+    // apenas ve ese token literal en modo expresión dentro de markup, aunque sea solo
+    // el nombre de una variable (bug real encontrado al compilar esta vista).
+    string BuildPageUrl(int pageNumber)
+    {
+        var query = Context.Request.Query
+            .Where(kv => !string.Equals(kv.Key, "page", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(kv => kv.Value.Select(v => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(v ?? string.Empty)}"))
+            .ToList();
+        query.Add($"page={pageNumber}");
+        return Context.Request.Path + "?" + string.Join("&", query);
+    }
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">@Model.Title</h1>
+    @if (Model.CreateUrl is not null)
+    {
+        <a href="@Model.CreateUrl" class="btn btn-primary">Nuevo</a>
+    }
+    else if (Model.CreateDisabledTitle is not null)
+    {
+        <button type="button" class="btn btn-secondary" disabled title="@Model.CreateDisabledTitle">@Model.CreateDisabledTitle</button>
+    }
+</div>
+
+@if (Model.ShowFreeTextSearch || Model.Filters.Count > 0)
+{
+    <form method="get" class="row g-2 mb-3 align-items-end">
+        @if (Model.ShowFreeTextSearch)
+        {
+            <div class="col-auto">
+                <label class="form-label">Buscar</label>
+                <input type="text" name="q" value="@Model.SearchText" class="form-control" />
+            </div>
+        }
+        @foreach (var filter in Model.Filters)
+        {
+            <div class="col-auto">
+                <label class="form-label">@filter.Label</label>
+                @switch (filter.FieldType)
+                {
+                    case FilterFieldType.Date:
+                        <input type="date" name="@filter.Name" value="@filter.Value" class="form-control" />
+                        break;
+                    case FilterFieldType.Number:
+                        <input type="number" name="@filter.Name" value="@filter.Value" class="form-control" />
+                        break;
+                    case FilterFieldType.Select:
+                        <select name="@filter.Name" class="form-select">
+                            <option value="">Todos</option>
+                            @foreach (var option in filter.Options ?? [])
+                            {
+                                <option value="@option.Value" selected="@(option.Value == filter.Value)">@option.Label</option>
+                            }
+                        </select>
+                        break;
+                    default:
+                        <input type="text" name="@filter.Name" value="@filter.Value" class="form-control" />
+                        break;
+                }
+            </div>
+        }
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-secondary">Filtrar</button>
+        </div>
+    </form>
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            @foreach (var column in Model.Columns)
+            {
+                <th class="@(column.AlignRight ? "text-end" : "")">@column.Title</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr>
+                @for (var i = 0; i < row.Cells.Count; i++)
+                {
+                    var alignRight = i < Model.Columns.Count && Model.Columns[i].AlignRight;
+                    <td class="@(alignRight ? "text-end" : "")">
+                        @if (i == 0)
+                        {
+                            <a href="@row.DetailUrl">@row.Cells[i]</a>
+                        }
+                        else
+                        {
+                            @row.Cells[i]
+                        }
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Rows.Count == 0)
+{
+    <p class="text-muted">No hay documentos para mostrar.</p>
+}
+
+@if (Model.ShowPaging && Model.TotalPages > 1)
+{
+    <nav>
+        <ul class="pagination">
+            @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
+            {
+                <li class="page-item @(pageNumber == Model.CurrentPage ? "active" : "")">
+                    <a class="page-link" href="@BuildPageUrl(pageNumber)">@pageNumber</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

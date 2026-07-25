@@ -1,0 +1,22 @@
+@page "/ventas/ordenes/{id}"
+@model Modulo.Ventas.Pages.SalesOrders.DetailModel
+@{
+    ViewData["Title"] = Model.IsNew ? "Nueva Orden de Venta" : $"Orden de Venta N° {Model.DocNum}";
+}
+
+@if (Model.IsNew)
+{
+    <form method="post">
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+        @await Component.InvokeAsync("DocumentForm", Model.Document)
+        <button type="submit" class="btn btn-primary mt-3">Crear Orden de Venta</button>
+    </form>
+}
+else
+{
+    @await Component.InvokeAsync("DocumentForm", Model.Document)
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,15 @@
+# graphify indexa referencia-original/ aunque .gitignore la excluya del repo real --
+# es una copia de solo lectura de PortalSAP_v2/WMS_Suite (ver CLAUDE.md), útil para
+# consultar decisiones/código de referencia al portar, pero no debe versionarse en git.
+!referencia-original/
+!referencia-original/**
+
+# Los binarios/artefactos de terceros dentro no aportan al grafo -- se excluyen de nuevo
+# después de la re-inclusión de arriba (gitignore last-match-wins).
+referencia-original/**/bin/
+referencia-original/**/obj/
+referencia-original/**/*.dll
+referencia-original/**/*.pdb
+referencia-original/**/*.pack
+referencia-original/**/*.idx
+referencia-original/**/*.rev

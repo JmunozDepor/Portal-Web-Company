@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Core.Administracion;
+using PortalSaas.Core.Catalogos;
 using PortalSaas.Core.Comercial;
 using PortalSaas.Core.Correo;
 using PortalSaas.Core.Infraestructura;
 using PortalSaas.Core.Sap;
 using PortalSaas.Core.Seguridad;
 using PortalSaas.Core.Usuarios;
+using PortalSaas.Core.Ventas;
 using PortalSaas.Data;
 using PortalSaas.Host.Comandos;
 
@@ -76,6 +78,14 @@ builder.Services.AddSingleton<ISapSessionCache, SapSessionCache>();
 // el backoffice de administrador de plataforma (botón "Probar conexión" en Companies),
 // que no tiene sesión de tenant.
 builder.Services.AddScoped<ISapConnectionTestService, SapConnectionTestService>();
+
+// Consumido por Modulo.Ventas (plugin) -- primer plugin de negocio real, ver
+// ISalesOrderService y CLAUDE.md para el alcance recortado de esta primera entrega.
+builder.Services.AddScoped<ICustomerCatalogService, CustomerCatalogService>();
+builder.Services.AddScoped<IItemCatalogService, ItemCatalogService>();
+builder.Services.AddScoped<IWarehouseCatalogService, WarehouseCatalogService>();
+builder.Services.AddScoped<ISalesEmployeeCatalogService, SalesEmployeeCatalogService>();
+builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
 
 // Esquema default = tenant (sin cambios de comportamiento en /Account, /Home). El
 // esquema "PlatformAdmin" es una sesión totalmente aparte -- ver

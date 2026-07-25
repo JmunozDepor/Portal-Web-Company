@@ -29,6 +29,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plugins", "plugins", "{B2EA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Modulo.Administracion", "plugins\Modulo.Administracion\Modulo.Administracion.csproj", "{739FE20A-F511-499F-970D-D77DBA457948}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Modulo.Ventas", "plugins\Modulo.Ventas\Modulo.Ventas.csproj", "{45D81145-0CB7-4270-89D9-BCAB457BAFBE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -147,6 +149,18 @@ Global
 		{739FE20A-F511-499F-970D-D77DBA457948}.Release|x64.Build.0 = Release|x64
 		{739FE20A-F511-499F-970D-D77DBA457948}.Release|x86.ActiveCfg = Release|x64
 		{739FE20A-F511-499F-970D-D77DBA457948}.Release|x86.Build.0 = Release|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Debug|Any CPU.Build.0 = Debug|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Debug|x64.ActiveCfg = Debug|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Debug|x64.Build.0 = Debug|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Debug|x86.ActiveCfg = Debug|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Debug|x86.Build.0 = Debug|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Release|Any CPU.ActiveCfg = Release|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Release|Any CPU.Build.0 = Release|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Release|x64.ActiveCfg = Release|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Release|x64.Build.0 = Release|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Release|x86.ActiveCfg = Release|x64
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -161,5 +175,6 @@ Global
 		{5149F22B-ACEC-4CC8-B99E-05D58F6EEDBF} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 		{97392CBD-3C68-483D-98D0-559BE361DC4F} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{739FE20A-F511-499F-970D-D77DBA457948} = {B2EA6032-B763-4A40-A880-56454B391DA1}
+		{45D81145-0CB7-4270-89D9-BCAB457BAFBE} = {B2EA6032-B763-4A40-A880-56454B391DA1}
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,61 @@
+@model Modulo.Ventas.Pages.SalesOrders.DetailModel
+@{
+    var readOnly = Model.Document.ReadOnly;
+}
+
+@if (!Model.IsNew)
+{
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label class="form-label">N° documento</label>
+            <input class="form-control" value="@Model.DocNum" disabled />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Total</label>
+            <input class="form-control" value="@Model.DocTotal?.ToString("N2")" disabled />
+        </div>
+    </div>
+}
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <label asp-for="Input.CustomerCardCode" class="form-label"></label>
+        <select asp-for="Input.CustomerCardCode" asp-items="Model.Customers" class="form-select" disabled="@readOnly">
+            <option value="">Seleccionar…</option>
+        </select>
+        <span asp-validation-for="Input.CustomerCardCode" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Input.SalesEmployeeCode" class="form-label"></label>
+        <select asp-for="Input.SalesEmployeeCode" asp-items="Model.SalesEmployees" class="form-select" disabled="@readOnly">
+            <option value="">Sin asignar</option>
+        </select>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label asp-for="Input.DocDate" class="form-label"></label>
+        <input asp-for="Input.DocDate" type="date" class="form-control" disabled="@readOnly" />
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Input.DocDueDate" class="form-label"></label>
+        <input asp-for="Input.DocDueDate" type="date" class="form-control" disabled="@readOnly" />
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Input.TaxDate" class="form-label"></label>
+        <input asp-for="Input.TaxDate" type="date" class="form-control" disabled="@readOnly" />
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <label asp-for="Input.CustomerReferenceNumber" class="form-label"></label>
+        <input asp-for="Input.CustomerReferenceNumber" class="form-control" disabled="@readOnly" />
+    </div>
+</div>
+
+<div class="mb-3">
+    <label asp-for="Input.Comments" class="form-label"></label>
+    <textarea asp-for="Input.Comments" class="form-control" rows="3" disabled="@readOnly"></textarea>
+</div>

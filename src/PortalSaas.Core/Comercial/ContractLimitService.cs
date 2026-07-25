@@ -8,9 +8,11 @@ namespace PortalSaas.Core.Comercial;
 
 /// <summary>
 /// Implementación real de IContractLimitService -- ver docs/03-MODELO-CORE-COMERCIAL.md
-/// §5 para las reglas de negocio. Consulta la suscripción activa más reciente de la
-/// organización (trial o active) y su plan; si no hay ninguna, deniega siempre (falla
-/// hacia lo más estricto, nunca asume "sin límite").
+/// §5 para las reglas de negocio. Según Organization.Mode, consulta la suscripción
+/// activa más reciente (saas) o la licencia on-premise vigente (on_premise) y su plan
+/// -- mismo criterio de "por modo" que ya usa IOrganizationAccessGateService para el
+/// gate de acceso. Si no hay ninguna, deniega siempre (falla hacia lo más estricto,
+/// nunca asume "sin límite").
 /// </summary>
 public sealed class ContractLimitService : IContractLimitService
 {
@@ -26,7 +28,7 @@ public sealed class ContractLimitService : IContractLimitService
         var plan = await GetActivePlanAsync(organizationId, ct);
         if (plan is null)
         {
-            return LimitCheckResult.Denied("La organización no tiene una suscripción activa -- no se puede verificar el límite de usuarios.");
+            return LimitCheckResult.Denied("La organización no tiene un plan vigente (suscripción o licencia) -- no se puede verificar el límite de usuarios.");
         }
 
         if (plan.UserLimit is null)
@@ -48,7 +50,7 @@ public sealed class ContractLimitService : IContractLimitService
         var plan = await GetActivePlanAsync(organizationId, ct);
         if (plan is null)
         {
-            return LimitCheckResult.Denied("La organización no tiene una suscripción activa -- no se puede verificar el límite de compañías.");
+            return LimitCheckResult.Denied("La organización no tiene un plan vigente (suscripción o licencia) -- no se puede verificar el límite de compañías.");
         }
 
         if (plan.CompanyLimit is null)
@@ -70,7 +72,7 @@ public sealed class ContractLimitService : IContractLimitService
         var plan = await GetActivePlanAsync(organizationId, ct);
         if (plan is null)
         {
-            return LimitCheckResult.Denied("La organización no tiene una suscripción activa -- no se puede verificar el límite de transacciones.");
+            return LimitCheckResult.Denied("La organización no tiene un plan vigente (suscripción o licencia) -- no se puede verificar el límite de transacciones.");
         }
 
         if (plan.MonthlyTransactionLimit is null)
@@ -89,6 +91,19 @@ public sealed class ContractLimitService : IContractLimitService
 
     private async Task<Plan?> GetActivePlanAsync(Guid organizationId, CancellationToken ct)
     {
+        var organization = await _db.Organizations.FindAsync([organizationId], ct);
+        if (organization is null)
+        {
+            return null;
+        }
+
+        return organization.Mode == OrganizationMode.OnPremise
+            ? await GetPlanFromLicenseAsync(organizationId, ct)
+            : await GetPlanFromSubscriptionAsync(organizationId, ct);
+    }
+
+    private async Task<Plan?> GetPlanFromSubscriptionAsync(Guid organizationId, CancellationToken ct)
+    {
         var subscription = await _db.Subscriptions
             .Include(s => s.Plan)
             .Where(s => s.OrganizationId == organizationId
@@ -97,5 +112,19 @@ public sealed class ContractLimitService : IContractLimitService
             .FirstOrDefaultAsync(ct);
 
         return subscription?.Plan;
+    }
+
+    private async Task<Plan?> GetPlanFromLicenseAsync(Guid organizationId, CancellationToken ct)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var license = await _db.OnPremiseLicenses
+            .Include(l => l.Plan)
+            .Where(l => l.OrganizationId == organizationId
+                && l.Status == OnPremiseLicenseStatus.Active
+                && l.ExpiresAt > now)
+            .OrderByDescending(l => l.IssuedAt)
+            .FirstOrDefaultAsync(ct);
+
+        return license?.Plan;
     }
 }

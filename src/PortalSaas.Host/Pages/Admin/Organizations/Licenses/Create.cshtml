@@ -13,6 +13,12 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <div class="mb-3">
+                <label asp-for="Input.PlanId" class="form-label"></label>
+                <select asp-for="Input.PlanId" class="form-select" asp-items="Model.Plans"></select>
+                <span asp-validation-for="Input.PlanId" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
                 <label asp-for="Input.ExpiresAt" class="form-label"></label>
                 <input asp-for="Input.ExpiresAt" type="date" class="form-control" />
                 <span asp-validation-for="Input.ExpiresAt" class="text-danger"></span>

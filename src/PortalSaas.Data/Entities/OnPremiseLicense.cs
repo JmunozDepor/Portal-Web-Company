@@ -8,6 +8,15 @@ public sealed class OnPremiseLicense
     public Guid OrganizationId { get; set; }
     public Organization Organization { get; set; } = null!;
 
+    /// <summary>
+    /// Plan que gobierna los límites de esta instalación on-premise -- sin esto
+    /// ContractLimitService no tenía de dónde sacar el límite de usuarios/compañías
+    /// para una organización on_premise bien configurada (con licencia, sin
+    /// Subscription), y siempre denegaba (ver CLAUDE.md, "Hueco real detectado").
+    /// </summary>
+    public long PlanId { get; set; }
+    public Plan Plan { get; set; } = null!;
+
     public string ActivationKey { get; set; } = null!;
     public string? InstallationFingerprint { get; set; }
 

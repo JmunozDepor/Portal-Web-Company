@@ -406,6 +406,10 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("organization_id");
 
+                    b.Property<long>("PlanId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("plan_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -421,6 +425,9 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
                     b.HasIndex("OrganizationId")
                         .HasDatabaseName("ix_on_premise_licenses_organization_id");
+
+                    b.HasIndex("PlanId")
+                        .HasDatabaseName("ix_on_premise_licenses_plan_id");
 
                     b.ToTable("on_premise_licenses", null, t =>
                         {
@@ -1232,7 +1239,16 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_on_premise_licenses_organizations_organization_id");
 
+                    b.HasOne("PortalSaas.Data.Entities.Plan", "Plan")
+                        .WithMany("OnPremiseLicenses")
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_on_premise_licenses_plans_plan_id");
+
                     b.Navigation("Organization");
+
+                    b.Navigation("Plan");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationModule", b =>
@@ -1480,6 +1496,8 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
             modelBuilder.Entity("PortalSaas.Data.Entities.Plan", b =>
                 {
+                    b.Navigation("OnPremiseLicenses");
+
                     b.Navigation("PlanModules");
 
                     b.Navigation("Subscriptions");

@@ -138,6 +138,7 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.InstallationFingerprint).HasMaxLength(200);
             entity.Property(e => e.Status).HasMaxLength(20);
             entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+            entity.HasOne(e => e.Plan).WithMany(p => p.OnPremiseLicenses).HasForeignKey(e => e.PlanId);
         });
 
         modelBuilder.Entity<Instance>(entity =>

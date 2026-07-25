@@ -30,6 +30,7 @@ public class IndexModel : PageModel
 
         Organization = organization;
         Licenses = await _db.OnPremiseLicenses
+            .Include(l => l.Plan)
             .Where(l => l.OrganizationId == organizationId)
             .OrderByDescending(l => l.IssuedAt)
             .ToListAsync();

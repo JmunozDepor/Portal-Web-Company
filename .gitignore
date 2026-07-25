@@ -2,6 +2,7 @@ bin/
 obj/
 *.user
 .vs/
+**/TestResults/
 
 # appsettings.Development.json SÍ se versiona -- solo trae credenciales de
 # docker-compose.yml (desarrollo local, no secretos reales). appsettings.Production.json
@@ -15,3 +16,14 @@ referencia-original/
 
 # Caché local de extracción semántica de graphify -- regenerable, no se versiona.
 graphify-out/cache/
+
+# --- OPTIMIZACIÓN DE TOKENS PARA CLAUDE CODE ---
+# Bloquea las librerías estáticas locales de PortalSaas.Host para que Claude no las lea en cada consulta
+**/wwwroot/lib/bootstrap/
+**/wwwroot/lib/jquery/
+**/wwwroot/lib/jquery-validation/
+**/wwwroot/lib/jquery-validation-unobtrusive/
+
+# Estado interno de Claude Code (lock de sesión, tareas programadas) -- efímero, nunca
+# se versiona.
+.claude/*.lock

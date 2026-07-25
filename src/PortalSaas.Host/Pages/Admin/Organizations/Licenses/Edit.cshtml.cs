@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Data;
@@ -20,6 +21,7 @@ public class EditModel : PageModel
 
     public Organization Organization { get; private set; } = null!;
     public string ActivationKey { get; private set; } = string.Empty;
+    public List<SelectListItem> Plans { get; private set; } = [];
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
@@ -37,10 +39,12 @@ public class EditModel : PageModel
 
         Organization = license.Organization;
         ActivationKey = license.ActivationKey;
+        await CargarPlanesAsync();
         Input = new InputModel
         {
             Id = license.Id,
             OrganizationId = license.OrganizationId,
+            PlanId = license.PlanId,
             Status = license.Status,
             ExpiresAt = DateOnly.FromDateTime(license.ExpiresAt.UtcDateTime).ToString("yyyy-MM-dd"),
             InstallationFingerprint = license.InstallationFingerprint,
@@ -62,12 +66,21 @@ public class EditModel : PageModel
 
         Organization = license.Organization;
         ActivationKey = license.ActivationKey;
+        await CargarPlanesAsync();
 
         if (!ModelState.IsValid)
         {
             return Page();
         }
 
+        var planValido = await _db.Plans.AnyAsync(p => p.Id == Input.PlanId && p.IsActive);
+        if (!planValido)
+        {
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.PlanId)}", "Plan inválido.");
+            return Page();
+        }
+
+        license.PlanId = Input.PlanId;
         license.Status = Input.Status;
         license.ExpiresAt = new DateTimeOffset(DateOnly.Parse(Input.ExpiresAt).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
         license.InstallationFingerprint = string.IsNullOrWhiteSpace(Input.InstallationFingerprint) ? null : Input.InstallationFingerprint.Trim();
@@ -77,10 +90,23 @@ public class EditModel : PageModel
         return RedirectToPage("/Admin/Organizations/Licenses/Index", new { organizationId = Input.OrganizationId });
     }
 
+    private async Task CargarPlanesAsync()
+    {
+        Plans = await _db.Plans
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.Name)
+            .Select(p => new SelectListItem(p.Name, p.Id.ToString()))
+            .ToListAsync();
+    }
+
     public sealed class InputModel
     {
         public long Id { get; set; }
         public Guid OrganizationId { get; set; }
+
+        [Required(ErrorMessage = "Selecciona el plan.")]
+        [Display(Name = "Plan")]
+        public long PlanId { get; set; }
 
         [Required]
         [Display(Name = "Estado")]

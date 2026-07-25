@@ -18,4 +18,5 @@ public sealed class Plan
 
     public ICollection<PlanModule> PlanModules { get; set; } = new List<PlanModule>();
     public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
+    public ICollection<OnPremiseLicense> OnPremiseLicenses { get; set; } = new List<OnPremiseLicense>();
 }

@@ -49,6 +49,95 @@ public class ContractLimitServiceTests
         return (db, org, plan);
     }
 
+    private static async Task<(PortalSaasDbContext Db, Organization Org, Plan Plan)> CrearOrganizacionOnPremiseConLicenciaAsync(
+        int? userLimit = null, string licenseStatus = OnPremiseLicenseStatus.Active, DateTimeOffset? expiresAt = null)
+    {
+        var db = CrearContexto();
+
+        var org = new Organization { LegalName = "Cliente on-premise", Slug = "cliente-on-premise", Country = "CL", Mode = OrganizationMode.OnPremise };
+        var plan = new Plan { Code = "TEST-PLAN-OP", Name = "Plan de prueba on-premise", UserLimit = userLimit };
+
+        db.Organizations.Add(org);
+        db.Plans.Add(plan);
+        await db.SaveChangesAsync();
+
+        db.OnPremiseLicenses.Add(new OnPremiseLicense
+        {
+            OrganizationId = org.Id,
+            PlanId = plan.Id,
+            ActivationKey = Guid.NewGuid().ToString(),
+            Status = licenseStatus,
+            ExpiresAt = expiresAt ?? DateTimeOffset.UtcNow.AddYears(1),
+        });
+        await db.SaveChangesAsync();
+
+        return (db, org, plan);
+    }
+
+    [Fact]
+    public async Task CheckUserLimit_OnPremiseSinLicencia_SiempreDeniega()
+    {
+        var db = CrearContexto();
+        var org = new Organization { LegalName = "Sin licencia", Slug = "sin-licencia", Country = "CL", Mode = OrganizationMode.OnPremise };
+        db.Organizations.Add(org);
+        await db.SaveChangesAsync();
+
+        var servicio = new ContractLimitService(db);
+        var resultado = await servicio.CheckUserLimitAsync(org.Id);
+
+        Assert.False(resultado.IsAllowed);
+    }
+
+    [Fact]
+    public async Task CheckUserLimit_OnPremiseConLicenciaActiva_UsaElPlanDeLaLicencia()
+    {
+        var (db, org, _) = await CrearOrganizacionOnPremiseConLicenciaAsync(userLimit: 2);
+        db.Users.Add(new User { OrganizationId = org.Id, Username = "u1", Email = "u1@test.cl", PasswordHash = "x", PasswordSalt = "x" });
+        await db.SaveChangesAsync();
+
+        var servicio = new ContractLimitService(db);
+        var resultado = await servicio.CheckUserLimitAsync(org.Id);
+
+        Assert.True(resultado.IsAllowed);
+    }
+
+    [Fact]
+    public async Task CheckUserLimit_OnPremiseLimiteAlcanzado_Deniega()
+    {
+        var (db, org, _) = await CrearOrganizacionOnPremiseConLicenciaAsync(userLimit: 1);
+        db.Users.Add(new User { OrganizationId = org.Id, Username = "u1", Email = "u1@test.cl", PasswordHash = "x", PasswordSalt = "x" });
+        await db.SaveChangesAsync();
+
+        var servicio = new ContractLimitService(db);
+        var resultado = await servicio.CheckUserLimitAsync(org.Id);
+
+        Assert.False(resultado.IsAllowed);
+    }
+
+    [Theory]
+    [InlineData(OnPremiseLicenseStatus.Revoked)]
+    [InlineData(OnPremiseLicenseStatus.Expired)]
+    public async Task CheckUserLimit_OnPremiseLicenciaNoActiva_Deniega(string status)
+    {
+        var (db, org, _) = await CrearOrganizacionOnPremiseConLicenciaAsync(licenseStatus: status);
+
+        var servicio = new ContractLimitService(db);
+        var resultado = await servicio.CheckUserLimitAsync(org.Id);
+
+        Assert.False(resultado.IsAllowed);
+    }
+
+    [Fact]
+    public async Task CheckUserLimit_OnPremiseLicenciaVencida_Deniega()
+    {
+        var (db, org, _) = await CrearOrganizacionOnPremiseConLicenciaAsync(expiresAt: DateTimeOffset.UtcNow.AddDays(-1));
+
+        var servicio = new ContractLimitService(db);
+        var resultado = await servicio.CheckUserLimitAsync(org.Id);
+
+        Assert.False(resultado.IsAllowed);
+    }
+
     [Fact]
     public async Task CheckUserLimit_SinSuscripcionActiva_SiempreDeniega()
     {
@@ -61,7 +150,7 @@ public class ContractLimitServiceTests
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.False(resultado.IsAllowed);
-        Assert.Contains("suscripción activa", resultado.Reason);
+        Assert.Contains("plan vigente", resultado.Reason);
     }
 
     [Fact]

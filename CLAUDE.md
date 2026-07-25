@@ -351,10 +351,15 @@ src/PortalSaas.Host/                          # Primer ejecutable real del proye
 │       │   │   ├── Index.cshtml(.cs)           #   organización (historial de
 │       │   │   ├── Create.cshtml(.cs)          #   subscriptions, no solo la
 │       │   │   └── Edit.cshtml(.cs)            #   vigente) -- solo orgs modo "saas".
-│       │   └── Licenses/                       # Emitir licencia on-premise (nuevo,
-│       │       ├── Index.cshtml(.cs)           #   24 jul 2026) -- solo orgs modo
-│       │       ├── Create.cshtml(.cs)          #   "on_premise". Clave de activación
-│       │       └── Edit.cshtml(.cs)            #   generada en servidor, nunca a mano.
+│       │   ├── Licenses/                       # Emitir licencia on-premise (nuevo,
+│       │   │   ├── Index.cshtml(.cs)           #   24 jul 2026) -- solo orgs modo
+│       │   │   ├── Create.cshtml(.cs)          #   "on_premise". Clave de activación
+│       │   │   └── Edit.cshtml(.cs)            #   generada en servidor, nunca a mano.
+│       │   └── EmailSettings/Index.cshtml(.cs) # Nuevo (25 jul 2026) -- 1:1 con
+│       │                                          Organization, una sola página upsert
+│       │                                          (no Create/Edit separadas). Secreto
+│       │                                          del proveedor write-only, mismo
+│       │                                          patrón que Instances/Companies.
 │       ├── Plans/                              # Catálogo de planes (nuevo, 24 jul
 │       │   ├── Index.cshtml(.cs)               #   2026) -- código, límites,
 │       │   ├── Create.cshtml(.cs)              #   precio. Independiente de
@@ -954,6 +959,57 @@ temas) -- alcance acotado a estructura + comportamiento, sobre Bootstrap 5 (vari
   criterio que otras entregas de solo-rendering: la lógica de filtrado/expansión de
   `MenuNavigationService` no tiene condicionales de negocio nuevos que ameriten cobertura
   aparte de lo ya verificado manualmente end-to-end).
+
+**UI de administración de `email_settings` — nuevo (25 jul 2026).** Hueco real
+detectado al intentar recuperar la contraseña de un usuario real de "Comercial Depor":
+el flujo de `/Account/ForgotPassword` fallaba en silencio (por diseño anti-enumeración)
+porque no existía NINGUNA forma de cargar `email_settings` salvo SQL directo -- no
+había pantalla de administración, pese a que `EmailSenderService`/`IEmailSenderService`
+ya estaban completos y probados desde antes. Se agregó
+`/Admin/Organizations/EmailSettings/Index` (`PortalSaas.Host.Pages.Admin.Organizations.EmailSettings`)
+-- **una sola página que hace upsert**, no Create/Edit separadas como el resto del
+backoffice, porque `email_settings` es 1:1 con `Organization` (no hay historial). Mismo
+patrón write-only que `Instances`/`Companies` para el secreto: los campos de
+credenciales del proveedor (Google Workspace: `ClientEmail`/`PrivateKeyPem`; Microsoft
+365: `TenantId`/`ClientId`/`ClientSecret`) nunca se vuelven a mostrar una vez guardados
+-- dejarlos en blanco al editar no toca la configuración cifrada existente; completar
+CUALQUIER campo del proveedor seleccionado exige completar TODOS los de ese proveedor
+(no se puede actualizar un campo suelto sin poder descifrar el resto del JSON). Cambiar
+de proveedor siempre exige cargar la config nueva completa. El JSON armado usa records
+locales (`GoogleWorkspaceConfigInput`/`Microsoft365ConfigInput`, con los mismos
+`[JsonPropertyName]` camelCase exactos que ya esperan `GoogleWorkspaceEmailSender`/
+`Microsoft365EmailSender` al descifrar) en vez de referenciar los tipos `internal` de
+`PortalSaas.Core.Correo` -- evita agregar `InternalsVisibleTo("PortalSaas.Host")` solo
+para esto. Link "Correo" agregado a `Organizations/Index.cshtml` junto a
+Usuarios/Instancias/Compañías/Licencia-Suscripción.
+
+**Dos bugs reales encontrados en la verificación E2E, ninguno visible compilando ni en
+`dotnet test`:** (1) mismo problema que `SelectCompany.cshtml` (ver "Sidebar dinámico"
+más arriba) -- el `<form method="post">` sin ningún otro atributo `asp-*` no dispara la
+inyección automática del token antiforgery del `FormTagHelper`; corregido con
+`asp-antiforgery="true"` explícito. (2) La carpeta de la página (`Pages/Admin/
+Organizations/EmailSettings/`) coincide EXACTAMENTE con el nombre de la entidad
+`PortalSaas.Data.Entities.EmailSettings` -- dentro del namespace generado
+`...Organizations.EmailSettings`, una referencia sin calificar a `EmailSettings` como
+tipo (ej. `new EmailSettings { ... }`) es ambigua con el namespace propio y no compila
+(`CS0118`). Resuelto calificando esa única construcción con
+`global::PortalSaas.Data.Entities.EmailSettings`.
+
+**Verificado de punta a punta contra Postgres real** (admin de plataforma de prueba +
+"Comercial Depor", credenciales de Google Workspace de prueba, creados y borrados solo
+para esto): página vacía muestra "todavía no tiene un proveedor configurado"; guardar
+con los campos de Google Workspace incompletos bloquea con los 2 mensajes reales;
+guardando completo, `email_settings.encrypted_provider_config` queda cifrado (no
+legible, no JSON plano) en la base; reabrir la página muestra los campos de credenciales
+en blanco; editar solo `SenderDisplayName` (dejando los campos de Google en blanco) deja
+`encrypted_provider_config` bit a bit intacto (mismo largo/prefijo). **96/96 tests siguen
+en verde** -- sin tests xUnit nuevos dedicados (mismo criterio que otras entregas de
+CRUD sin lógica de negocio computada, ya cubierto por los tests existentes de
+`SecretoCifradoService` para el cifrado en sí). **Pendiente**: cargar las credenciales
+reales de Google Workspace de Comercial Depor (esperando que el dueño del proyecto las
+provea) para verificar el envío real de un correo de recuperación de contraseña de
+punta a punta -- hasta entonces, `ForgotPassword` sigue fallando en silencio para esa
+organización.
 
 **Todavía no existe** (ver `ARCHITECTURE.md` §6, pasos 6-7): los motores genéricos de
 documento (`GenericoVenta`/`Compra`/`Inventario`) y el motor de aprobación -- son

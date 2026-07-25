@@ -40,6 +40,8 @@
                     ·
                     <a asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@org.Id">Compañías</a>
                     ·
+                    <a asp-page="/Admin/Organizations/EmailSettings/Index" asp-route-organizationId="@org.Id">Correo</a>
+                    ·
                     @if (org.Mode == PortalSaas.Data.Entities.OrganizationMode.OnPremise)
                     {
                         <a asp-page="/Admin/Organizations/Licenses/Index" asp-route-organizationId="@org.Id">Licencia</a>

@@ -1,0 +1,94 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.EmailSettings.IndexModel
+@{
+    ViewData["Title"] = $"Correo · {Model.Organization.LegalName}";
+}
+
+<div class="mb-3">
+    <h1 class="h3 mb-0">Correo de @Model.Organization.LegalName</h1>
+    <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
+</div>
+
+@if (!Model.EsNuevo)
+{
+    <p class="text-muted">
+        Ya hay un proveedor configurado. Los campos de credenciales quedan en blanco
+        a propósito (write-only) -- dejarlos en blanco no cambia la configuración
+        existente; completarlos exige completar TODOS los del proveedor elegido.
+    </p>
+}
+else
+{
+    <p class="text-muted">Esta organización todavía no tiene un proveedor de correo configurado.</p>
+}
+
+@* asp-antiforgery="true" explícito -- un <form method="post"> sin ningún otro
+   atributo asp-* no dispara la inyección automática del token del
+   FormTagHelper (mismo bug encontrado y corregido en SelectCompany.cshtml,
+   ver CLAUDE.md "sidebar dinámico"). *@
+<form method="post" asp-antiforgery="true" style="max-width: 640px;">
+    <div class="mb-3">
+        <label asp-for="Input.Provider" class="form-label"></label>
+        <select asp-for="Input.Provider" class="form-select">
+            @foreach (var provider in Model.Providers)
+            {
+                <option value="@provider">@provider</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.SenderEmail" class="form-label"></label>
+        <input asp-for="Input.SenderEmail" class="form-control" />
+        <span asp-validation-for="Input.SenderEmail" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.SenderDisplayName" class="form-label"></label>
+        <input asp-for="Input.SenderDisplayName" class="form-control" />
+    </div>
+
+    <div class="form-check mb-4">
+        <input asp-for="Input.IsActive" class="form-check-input" />
+        <label asp-for="Input.IsActive" class="form-check-label"></label>
+    </div>
+
+    <fieldset class="border rounded p-3 mb-3">
+        <legend class="h6">Google Workspace</legend>
+        <div class="mb-3">
+            <label asp-for="Input.ClientEmail" class="form-label"></label>
+            <input asp-for="Input.ClientEmail" class="form-control" placeholder="ej. portalsaas@mi-proyecto.iam.gserviceaccount.com" />
+            <span asp-validation-for="Input.ClientEmail" class="text-danger"></span>
+        </div>
+        <div class="mb-1">
+            <label asp-for="Input.PrivateKeyPem" class="form-label"></label>
+            <textarea asp-for="Input.PrivateKeyPem" class="form-control" rows="6" placeholder="-----BEGIN PRIVATE KEY-----..."></textarea>
+            <span asp-validation-for="Input.PrivateKeyPem" class="text-danger"></span>
+        </div>
+    </fieldset>
+
+    <fieldset class="border rounded p-3 mb-4">
+        <legend class="h6">Microsoft 365</legend>
+        <div class="mb-3">
+            <label asp-for="Input.TenantId" class="form-label"></label>
+            <input asp-for="Input.TenantId" class="form-control" />
+            <span asp-validation-for="Input.TenantId" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Input.ClientId" class="form-label"></label>
+            <input asp-for="Input.ClientId" class="form-control" />
+            <span asp-validation-for="Input.ClientId" class="text-danger"></span>
+        </div>
+        <div class="mb-1">
+            <label asp-for="Input.ClientSecret" class="form-label"></label>
+            <input asp-for="Input.ClientSecret" class="form-control" />
+            <span asp-validation-for="Input.ClientSecret" class="text-danger"></span>
+        </div>
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -36,6 +36,10 @@
                     ·
                     <a asp-page="/Admin/Organizations/Users/Index" asp-route-organizationId="@org.Id">Usuarios</a>
                     ·
+                    <a asp-page="/Admin/Organizations/Instances/Index" asp-route-organizationId="@org.Id">Instancias</a>
+                    ·
+                    <a asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@org.Id">Compañías</a>
+                    ·
                     @if (org.Mode == PortalSaas.Data.Entities.OrganizationMode.OnPremise)
                     {
                         <a asp-page="/Admin/Organizations/Licenses/Index" asp-route-organizationId="@org.Id">Licencia</a>

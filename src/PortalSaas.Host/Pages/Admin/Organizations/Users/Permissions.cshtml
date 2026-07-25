@@ -1,0 +1,97 @@
+@page "{organizationId:guid}/{userId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Users.PermissionsModel
+@{
+    ViewData["Title"] = $"Permisos · {Model.TargetUser.Username}";
+}
+
+<div class="mb-3">
+    <h1 class="h3 mb-0">Permisos de @Model.TargetUser.Username</h1>
+    <a asp-page="/Admin/Organizations/Users/Index" asp-route-organizationId="@Model.Organization.Id">Volver a usuarios</a>
+</div>
+
+@if (!Model.TieneCompanies)
+{
+    <p class="text-warning">
+        Esta organización todavía no tiene ninguna compañía. Crea una
+        <a asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@Model.Organization.Id">acá</a>
+        antes de poder asignar permisos (UserMenuGroup/UserMenuProfile son siempre por compañía).
+    </p>
+    return;
+}
+
+<form method="get" class="row g-2 align-items-end mb-4">
+    <div class="col-auto">
+        <label class="form-label">Compañía</label>
+        <select name="companyId" class="form-select" onchange="this.form.submit()">
+            @foreach (var company in Model.Companies)
+            {
+                <option value="@company.Value" selected="@(company.Value == Model.SelectedCompanyId.ToString())">@company.Text</option>
+            }
+        </select>
+    </div>
+</form>
+
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <input type="hidden" asp-for="Input.CompanyId" />
+
+    <h2 class="h5">Grupos de menú</h2>
+    @if (Model.AllMenuGroups.Count == 0)
+    {
+        <p class="text-muted">Todavía no hay grupos de menú creados.</p>
+    }
+    else
+    {
+        @foreach (var group in Model.AllMenuGroups)
+        {
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="Input.SelectedMenuGroupIds" value="@group.Id"
+                       id="group-@group.Id" checked="@Model.Input.SelectedMenuGroupIds.Contains(group.Id)" />
+                <label class="form-check-label" for="group-@group.Id">
+                    @group.Name
+                    @if (!group.IsActive)
+                    {
+                        <span class="badge bg-secondary">inactivo</span>
+                    }
+                </label>
+            </div>
+        }
+    }
+
+    <h2 class="h5 mt-4">Perfil por nodo de menú</h2>
+    @if (Model.LeafMenus.Count == 0)
+    {
+        <p class="text-muted">Todavía no hay nodos de menú finales (no hay plugins cargados).</p>
+    }
+    else
+    {
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Menú</th>
+                    <th>Perfil</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var menu in Model.LeafMenus)
+                {
+                    var actual = Model.Input.ProfileByMenu.GetValueOrDefault(menu.Id);
+                    <tr>
+                        <td>@menu.Name <span class="text-muted">(@($"{menu.OriginModule}.{menu.Code}"))</span></td>
+                        <td>
+                            <select name="Input.ProfileByMenu[@menu.Id]" class="form-select form-select-sm">
+                                <option value="" selected="@(actual is null or 0)">Sin asignar</option>
+                                @foreach (var profile in Model.ProfileOptions)
+                                {
+                                    <option value="@profile.Value" selected="@(profile.Value == actual?.ToString())">@profile.Text</option>
+                                }
+                            </select>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+</form>

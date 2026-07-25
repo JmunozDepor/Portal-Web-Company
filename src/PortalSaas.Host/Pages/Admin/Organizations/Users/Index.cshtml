@@ -20,6 +20,7 @@
             <th>Admin de la organización</th>
             <th>Estado</th>
             <th>Último acceso</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
@@ -44,6 +45,9 @@
                     }
                 </td>
                 <td>@(user.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Nunca")</td>
+                <td>
+                    <a asp-page="/Admin/Organizations/Users/Permissions" asp-route-organizationId="@Model.Organization.Id" asp-route-userId="@user.Id">Permisos</a>
+                </td>
             </tr>
         }
     </tbody>

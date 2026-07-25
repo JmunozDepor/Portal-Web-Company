@@ -109,6 +109,16 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
 - `referencia-original/PortalSAP_v2/`, `referencia-original/WMS_Suite/` — copia de solo
   lectura de los repos reales (sin `bin`/`obj`/`.vs`/`artifacts`/`graphify-out`/publish),
   para portar código sin tocar los sistemas en producción.
+- `Lib/` — binarios de terceros que no son NuGet (25 jul 2026:
+  `Sap.Data.Hana.Net.v8.0.dll`, cliente nativo de HANA para `PortalSaas.Core`,
+  referenciado por `HintPath`, no lo resuelve `dotnet restore`).
+- `plugins/Modulo.Administracion/` — primer plugin real cargado en runtime (25 jul
+  2026), self-service de usuarios de la propia organización. Solo referencia
+  `PortalSaas.Abstractions` (regla dura de plugins) — `ModuloAdministracion.cs`
+  (`IModuloPortal`), `Pages/AdminPageModelBase.cs` (gate `IsAdmin`),
+  `Pages/Usuarios/Index.cshtml(.cs)` + `Editar.cshtml(.cs)`. Build vía `dotnet build
+  PortalSaas.sln` publica a `artifacts/plugins/Modulo.Administracion/1.0.0/` (target
+  `PublicarComoPlugin` en su `.csproj`) — ver "Estado actual" para el detalle completo.
 
 ## Estructura de código real (24 jul 2026)
 
@@ -127,6 +137,25 @@ src/
 │                                               IPasswordResetService,
 │                                               IUserPreferenceService+UserPreferenceDto,
 │                                               IEmailSenderService+EmailMessage.
+│                                               Conector SAP (25 jul 2026, portado):
+│                                               IHanaService, ISapConnectionProvider+
+│                                               ISapSession, ICurrentCompanyAccessor,
+│                                               ICurrentUserContext, SapEngineType.
+│                                               ISapConnectionTestService+
+│                                               SapConnectionTestResult -- nuevo, no
+│                                               portado (no existía en PortalSAP_v2).
+│                                               ITenantUserAdminService+DTOs (25 jul
+│                                               2026, nuevo) -- self-service de usuarios
+│                                               por organización, consumido por
+│                                               plugins/Modulo.Administracion.
+│                                               ICurrentUserContext ganó OrganizationId.
+│                                               IMenuNavigationService+MenuNodeDto (25
+│                                               jul 2026, nuevo) -- árbol de `menus` ya
+│                                               filtrado/anidado para el sidebar del
+│                                               shell de tenant. ICurrentCompanyAccessor
+│                                               ganó HasCompany (evita depender de una
+│                                               excepción para saber si hay compañía
+│                                               activa en la sesión).
 ├── PortalSaas.Data/                         # Entities/ + PortalSaasDbContext.
 │                                               Agnóstico de proveedor -- SIN paquetes
 │                                               de Npgsql/SqlServer/Design.
@@ -137,7 +166,8 @@ src/
 │                                               AddPlatformAdmins,
 │                                               FixCompanyOrganizationCascade,
 │                                               AddCoreMenuAndPermissions,
-│                                               SeedFixedActions) + su propio
+│                                               SeedFixedActions,
+│                                               AddPlanToOnPremiseLicense) + su propio
 │                                               appsettings.Development.json.
 ├── PortalSaas.Data.Migrations.SqlServer/    # ídem, UseSqlServer. InitialCreate
 │                                               consolidado (24 jul 2026) -- las 5
@@ -147,15 +177,21 @@ src/
 │                                               igual que Postgres (mismo nombre en
 │                                               los dos: FixCompanyOrganizationCascade,
 │                                               AddCoreMenuAndPermissions,
-│                                               SeedFixedActions).
-└── PortalSaas.Core/                         # Implementación real.
+│                                               SeedFixedActions,
+│                                               AddPlanToOnPremiseLicense).
+└── PortalSaas.Core/                         # Implementación real. AHORA x64 (ver
+    │                                           "Cambio de plataforma de build" abajo).
     ├── Seguridad/
     │   ├── SecretoCifradoService.cs          #   AES-256-GCM, portado tal cual.
     │   ├── PasswordHasher.cs                 #   PBKDF2-SHA256, portado tal cual.
     │   ├── AuthenticationService.cs          #   Nuevo -- login + bloqueo por intentos.
     │   ├── PlatformAdminAuthenticationService.cs #   Nuevo -- login del administrador
     │   │                                            de plataforma (sin organización).
-    │   └── PasswordResetService.cs           #   Nuevo -- recuperación por correo.
+    │   ├── PasswordResetService.cs           #   Nuevo -- recuperación por correo.
+    │   ├── CurrentCompanyAccessor.cs         #   25 jul 2026, portado de PortalSAP_v2
+    │   │                                            (CurrentEmpresaAccessor).
+    │   └── CurrentUserContext.cs             #   25 jul 2026, portado -- HasActionAsync
+    │                                                reescrito contra PortalSaasDbContext.
     ├── Usuarios/UserPreferenceService.cs      #   Nuevo -- preferencias personales.
     ├── Correo/                                #   Nuevo -- envío de correo dual
     │   ├── EmailSenderService.cs              #     (Google Workspace/Microsoft 365).
@@ -165,6 +201,15 @@ src/
     │   ├── MicrosoftGraphPayloadBuilder.cs    #     Puro, sin HTTP (testeable).
     │   ├── GmailMessageBuilder.cs             #     Puro, sin HTTP (testeable).
     │   └── GoogleServiceAccountJwtBuilder.cs  #     Puro, sin HTTP (testeable).
+    ├── Sap/                                   #   Nuevo (25 jul 2026), portado de
+    │   ├── HanaService.cs                     #     PortalSAP_v2 -- ver la entrada
+    │   ├── SapConnectionProvider.cs           #     "Conector SAP" en Estado actual
+    │   ├── SapSession.cs                      #     para el detalle completo de qué
+    │   ├── HanaToSqlServerTranslator.cs       #     se portó/adaptó/difirió.
+    │   ├── SapConnectionStringFactory.cs      #     Extraído de HanaService, compartido
+    │   │                                            con SapConnectionTestService.
+    │   └── SapConnectionTestService.cs        #     Nuevo, no portado -- botón "Probar
+    │                                                conexión" en Companies/Index.
     ├── Infraestructura/PluginLoadContext.cs   #   AssemblyLoadContext aislado, portado
     │              PluginManager.cs            #   tal cual (bug de orden de versión ya
     │                                            corregido); AHORA cableado en
@@ -172,13 +217,35 @@ src/
     │              MenuSyncService.cs          #   Nuevo -- upsert de `menus` desde
     │                                            IModuloPortal.GetMenu(), con la fase
     │                                            de desactivación de huérfanos.
-    └── Comercial/ContractLimitService.cs      #   Implementación real de
-                   OrganizationAccessGateService.cs #   IContractLimitService.
-                                                  Nuevo -- gate subscriptions (saas) /
-                                                  on_premise_licenses (on_premise).
+    │              SapSessionCache.cs          #   25 jul 2026, portado -- Singleton,
+    │                                            cachea sesión SL por Company.Id.
+    │              RowReflectionMapper.cs      #   25 jul 2026, portado tal cual
+    │                                            (MapeadorFilaReflection).
+    │              MenuTreeHelper.cs           #   25 jul 2026, nuevo -- anida una
+    │                                            lista plana de MenuNodeDto en árbol
+    │                                            real vía ParentMenuId (no lista plana
+    │                                            + Nivel como PortalSAP_v2 -- acá el
+    │                                            sidebar usa `collapse` nativo de
+    │                                            Bootstrap 5, cada contenedor debe
+    │                                            envolver exactamente a sus hijos).
+    │              MenuNavigationService.cs    #   25 jul 2026, nuevo -- implementa
+    │                                            IMenuNavigationService, reescrito
+    │                                            contra PortalSaasDbContext (no HANA).
+    │                                            Máximo 2 queries reales (menús activos
+    │                                            + ids asignados vía un join), el resto
+    │                                            (expansión de ancestros, armado del
+    │                                            árbol) corre en memoria -- sin N+1.
+    ├── Comercial/ContractLimitService.cs       #   Implementación real de
+    │              OrganizationAccessGateService.cs #   IContractLimitService.
+    │                                             Nuevo -- gate subscriptions (saas) /
+    │                                             on_premise_licenses (on_premise).
+    └── Administracion/TenantUserAdminService.cs #  25 jul 2026, nuevo -- self-service
+                                                   de usuarios de la propia organización,
+                                                   consumido por plugins/Modulo.Administracion.
 
 tests/
-└── PortalSaas.Core.Tests/                    # xUnit + EF Core InMemory. **62 tests,
+└── PortalSaas.Core.Tests/                    # xUnit + EF Core InMemory. AHORA x64
+                                                 (referencia PortalSaas.Core). **96 tests,
                                                  todos en verde.** Incluye: builders
                                                  puros de correo (payload de Graph,
                                                  MIME de Gmail, JWT de cuenta de
@@ -216,10 +283,28 @@ src/PortalSaas.Host/                          # Primer ejecutable real del proye
 │   │   ├── Logout.cshtml.cs
 │   │   ├── ForgotPassword.cshtml(.cs)         # Junta IPasswordResetService +
 │   │   │                                        IEmailSenderService -- flujo real.
-│   │   └── ResetPassword.cshtml(.cs)
+│   │   ├── ResetPassword.cshtml(.cs)
+│   │   └── SelectCompany.cshtml(.cs)          # Nuevo (25 jul 2026) -- segundo paso
+│   │                                            del login, fija ICurrentCompanyAccessor
+│   │                                            (claim CompanyId), solo si la
+│   │                                            organización tiene compañías.
+│   │                                            asp-antiforgery="true" agregado
+│   │                                            (25 jul 2026, sidebar dinámico) -- el
+│   │                                            <form method="post"> sin NINGÚN otro
+│   │                                            atributo asp-* nunca tuvo el token
+│   │                                            antiforgery inyectado (el FormTagHelper
+│   │                                            solo lo agrega junto con asp-page/
+│   │                                            asp-route-*/etc.) -- bug real, todo
+│   │                                            envío devolvía 400, encontrado recién
+│   │                                            al verificar el sidebar de punta a
+│   │                                            punta con un usuario real.
 │   ├── Home/
 │   │   ├── Index.cshtml(.cs)                  # [Authorize] (esquema tenant).
 │   │   └── Preferences.cshtml(.cs)            # [Authorize] IUserPreferenceService.
+│   ├── Shared/Components/SidebarMenu/          # Nuevo (25 jul 2026) -- ViewComponent
+│   │   ├── Default.cshtml                      #   del sidebar, ver ViewComponents/
+│   │   └── _MenuNode.cshtml                     #   más abajo y "Sidebar dinámico" en
+│   │                                              Estado actual para el detalle.
 │   └── Admin/                                  # Backoffice del administrador de
 │       │                                        plataforma -- actor nuevo, NO
 │       │                                        pertenece a ninguna organización
@@ -237,9 +322,31 @@ src/PortalSaas.Host/                          # Primer ejecutable real del proye
 │       │   ├── Edit.cshtml(.cs)                #   users por organización (nuevo,
 │       │   ├── Users/                          #   24 jul 2026) -- el admin de
 │       │   │   ├── Index.cshtml(.cs)           #   plataforma crea el primer
-│       │   │   └── Create.cshtml(.cs)          #   usuario de cada cliente, no hay
-│       │   │                                     autoregistro ni self-service
-│       │   │                                     todavía.
+│       │   │   ├── Create.cshtml(.cs)          #   usuario de cada cliente, no hay
+│       │   │   │                                 autoregistro ni self-service
+│       │   │   │                                 todavía.
+│       │   │   └── Permissions.cshtml(.cs)     #   Nuevo (24 jul 2026) -- asigna
+│       │   │                                     MenuGroups + Profile por nodo de
+│       │   │                                     menú a un usuario, SIEMPRE por
+│       │   │                                     Company (selector propio, la org
+│       │   │                                     puede tener varias).
+│       │   ├── Instances/                      # Nuevo (24 jul 2026) -- conexión
+│       │   │   ├── Index.cshtml(.cs)           #   HANA/SQL Server del cliente
+│       │   │   ├── Create.cshtml(.cs)          #   (Host/Port/EngineType/usuario
+│       │   │   └── Edit.cshtml(.cs)            #   técnico). Clave cifrada
+│       │   │                                     (ISecretoCifradoService),
+│       │   │                                     write-only -- Edit la deja en
+│       │   │                                     blanco para no cambiarla.
+│       │   ├── Companies/                      # Nuevo (24 jul 2026) -- compañía/
+│       │   │   ├── Index.cshtml(.cs)           #   schema SAP, cuelga de una
+│       │   │   ├── Create.cshtml(.cs)          #   Instance de la misma org. Code
+│       │   │   └── Edit.cshtml(.cs)            #   único GLOBAL (no por org, ver
+│       │   │                                     PortalSaasDbContext). Mismo
+│       │   │                                     patrón write-only de secreto.
+│       │   │                                     Index tiene además (25 jul 2026)
+│       │   │                                     el handler OnPostTestConnectionAsync
+│       │   │                                     -- botón "Probar conexión" por fila,
+│       │   │                                     ver ISapConnectionTestService.
 │       │   ├── Subscriptions/                  # Asignar un plan a una
 │       │   │   ├── Index.cshtml(.cs)           #   organización (historial de
 │       │   │   ├── Create.cshtml(.cs)          #   subscriptions, no solo la
@@ -248,11 +355,26 @@ src/PortalSaas.Host/                          # Primer ejecutable real del proye
 │       │       ├── Index.cshtml(.cs)           #   24 jul 2026) -- solo orgs modo
 │       │       ├── Create.cshtml(.cs)          #   "on_premise". Clave de activación
 │       │       └── Edit.cshtml(.cs)            #   generada en servidor, nunca a mano.
-│       └── Plans/                              # Catálogo de planes (nuevo, 24 jul
-│           ├── Index.cshtml(.cs)               #   2026) -- código, límites,
-│           ├── Create.cshtml(.cs)              #   precio. Independiente de
-│           └── Edit.cshtml(.cs)                #   organizations, referenciado
-│                                                  desde Subscriptions.
+│       ├── Plans/                              # Catálogo de planes (nuevo, 24 jul
+│       │   ├── Index.cshtml(.cs)               #   2026) -- código, límites,
+│       │   ├── Create.cshtml(.cs)              #   precio. Independiente de
+│       │   └── Edit.cshtml(.cs)                #   organizations, referenciado
+│       │                                         desde Subscriptions.
+│       ├── Profiles/                            # Nuevo (24 jul 2026) -- CRUD de
+│       │   ├── Index.cshtml(.cs)               #   Profile (GLOBAL a la
+│       │   ├── Create.cshtml(.cs)              #   plataforma) + asignación de
+│       │   └── Edit.cshtml(.cs)                #   PermissionAction (checkboxes,
+│       │                                         catálogo fijo de 6) directo en
+│       │                                         Edit -- sin página separada.
+│       └── MenuGroups/                          # Nuevo (24 jul 2026) -- CRUD de
+│           ├── Index.cshtml(.cs)               #   MenuGroup (GLOBAL) + asignación
+│           ├── Create.cshtml(.cs)              #   de nodos Menu (checkboxes,
+│           └── Edit.cshtml(.cs)                #   indentados por Level) directo
+│                                                  en Edit. Vacío hasta que haya un
+│                                                  plugin real cargado (`menus` sin
+│                                                  filas todavía) -- estado vacío
+│                                                  manejado explícitamente, no es
+│                                                  un error.
 └── appsettings.Development.json               # Database:Provider + ConnectionStrings,
                                                   igual criterio que los otros (dev-only,
                                                   versionado). Security:MasterSecretKey
@@ -434,11 +556,95 @@ después de cargar los plugins. **Probado de punta a punta**: con
 todavía), el Host arranca limpio, loguea la advertencia esperada, corre una
 consulta SQL real contra `menus` (confirmado en el log), y el resto de la app
 sigue sin regresión. **Alcance explícitamente NO cerrado en esta entrega** (para
-no sobre-construir sin un plugin real que lo ejercite): UI de administración de
-`menu_groups`/`profiles`/`actions` (asignar perfiles/grupos a usuarios), y el
-filtrado de visibilidad de menú por módulos contratados de la organización
+no sobre-construir sin un plugin real que lo ejercite): el filtrado de
+visibilidad de menú por módulos contratados de la organización
 (`organization_modules`) -- hoy el árbol de menú es el mismo para todas las
 organizaciones, sin relación todavía con qué módulos tiene contratados cada una.
+La UI de administración de `menu_groups`/`profiles`/`actions` (asignar
+perfiles/grupos a usuarios) se cerró en la entrega siguiente, ver abajo.
+
+**UI de perfiles/permisos de menú + Instance/Company — nuevo (24 jul 2026).**
+Cierra el hueco que dejó abierto la entrega anterior: hasta acá las tablas
+núcleo (`profiles`/`actions`/`menu_groups`/`menus`) existían y se sincronizaban,
+pero no había ninguna pantalla para asignarlas. Se agregó:
+- `/Admin/Profiles` (CRUD de `Profile`, GLOBAL a la plataforma) con asignación de
+  `PermissionAction` (checkboxes del catálogo fijo de 6) directo en `Edit` --
+  sin página separada, mismo criterio que `MenuGroups`.
+- `/Admin/MenuGroups` (CRUD de `MenuGroup`, GLOBAL) con asignación de nodos
+  `Menu` (checkboxes indentados por `Level`) directo en `Edit`. Con `menus`
+  todavía vacío (sin plugins reales cargados) muestra un estado vacío explícito
+  en vez de una lista en blanco sin explicación.
+- `/Admin/Organizations/Users/Permissions` -- asigna `UserMenuGroup` y
+  `UserMenuProfile` (perfil por nodo de menú final) a un usuario. Ambas tablas
+  llevan `CompanyId` (el acceso varía por compañía dentro de la misma
+  organización), así que la página exige elegir una `Company` primero.
+
+**Eso reveló que no existía NINGUNA UI para `instances`/`companies`** (la
+conexión al SAP de cada organización) -- sin al menos una `Company` no hay
+`CompanyId` que asignarle a un usuario. Se agregó también, mismo alcance:
+- `/Admin/Organizations/Instances` (CRUD de `Instance` -- host/puerto/motor
+  HANA o SQL Server/usuario técnico). Clave cifrada con
+  `ISecretoCifradoService` (ya usado por `EmailSenderService`), patrón
+  write-only: el campo de clave en `Edit` se deja en blanco para no cambiarla,
+  igual que ya hacía `Licenses` con la clave de activación.
+- `/Admin/Organizations/Companies` (CRUD de `Company`, cuelga de una
+  `Instance` de la misma organización). `Code` es único GLOBAL, no por
+  organización (así lo define `PortalSaasDbContext` desde el modelo original).
+  Mismo patrón write-only para `IntegrationSecretKey`.
+
+**Bug real encontrado y corregido en las 17 validaciones de nombre/código
+duplicado de todo el backoffice** (14 archivos, 6 de entregas anteriores a
+hoy): `ModelState.AddModelError(nameof(Input.X), mensaje)` usa como clave
+solo `"X"`, no `"Input.X"` -- `nameof` de un acceso a miembro devuelve
+únicamente el último identificador, nunca la ruta calificada. Como
+`asp-validation-for="Input.X"` busca la clave `"Input.X"`, el mensaje nunca se
+mostraba -- el duplicado SÍ se bloqueaba (`ModelState.IsValid` es `false` sin
+importar la clave), pero el usuario no veía ningún motivo, solo el formulario
+recargado en silencio. Nadie lo había notado porque las pruebas manuales de
+sesiones anteriores probaron sobre todo el camino feliz. Corregido en los 14
+archivos con `$"{nameof(Input)}.{nameof(Input.X)}"`. **Verificado de punta a
+punta contra Postgres real**: antes del fix, crear una `Instance` duplicada
+devolvía `field-validation-valid` (mensaje vacío); después del fix,
+`field-validation-error` con el mensaje real.
+
+**Hueco de `ContractLimitService` para organizaciones `on_premise` --
+CORREGIDO (25 jul 2026).** El hueco detectado en la entrega anterior
+(`Check*LimitAsync` solo miraba `Subscriptions`, así que una organización
+`on_premise` bien configurada -- licencia, sin suscripción -- quedaba
+bloqueada para siempre en `Users/Create` y cualquier otra operación con
+límite) se cerró agregando `PlanId`/`Plan` a `OnPremiseLicense` (mismo patrón
+que `Subscription.PlanId`, FK a `plans`). `ContractLimitService.GetActivePlanAsync`
+ahora rama por `Organization.Mode` -- `saas` sigue mirando `Subscriptions`,
+`on_premise` mira la licencia `Active` vigente (`ExpiresAt` futuro) más
+reciente -- mismo criterio "por modo" que ya usaba
+`IOrganizationAccessGateService` para el gate de acceso. `/Admin/Organizations/Licenses`
+(`Create`/`Edit`) ahora exige elegir un `Plan` al emitir/editar una licencia
+(antes no lo pedía). **Migración con backfill real**: la única licencia
+existente (`Comercial Depor`) no tenía `plan_id` -- la migración
+(`AddPlanToOnPremiseLicense`, los dos motores) agrega la columna NOT NULL y
+hace `UPDATE ... SET plan_id = (plan más antiguo existente)` para las filas
+previas a la migración misma, antes de crear el FK -- sin esto la migración
+fallaba contra Postgres real (violación NOT NULL/FK) apenas se aplicaba
+contra una base con datos, otro caso de "generar la migración no prueba
+nada". Aplicada con éxito contra Postgres y SQL Server reales. 6 tests nuevos
+(`ContractLimitServiceTests`, rama `on_premise`: sin licencia, licencia
+vigente, límite alcanzado, revocada, expirada) -- **68/68 tests en verde**.
+**Verificado de punta a punta contra Postgres real**: organización
+`on_premise` de prueba + plan con `UserLimit=1` + licencia -- el primer
+usuario se creó (antes esto SIEMPRE fallaba), el segundo se bloqueó con el
+mensaje real del límite ("Límite de usuarios del plan 'e2e-op-1user'
+alcanzado (1/1)."), datos de prueba borrados al terminar.
+
+**Verificado de punta a punta contra Postgres real** (organización, instancia,
+compañía y usuario de prueba, creados y borrados solo para esta verificación,
+sin tocar datos reales): secretos cifrados en la base (no en texto plano),
+patrón write-only confirmado (dejar la clave en blanco en `Edit` no la
+cambia), asignación de `UserMenuGroup` persiste y se puede revertir
+(desmarcar la casilla borra la fila), asignación de `ProfileAction` persiste.
+**62/62 tests siguen en verde** -- sin tests xUnit nuevos dedicados (mismo
+criterio que `Plans`/`Subscriptions`: es CRUD sin lógica de negocio computada,
+la única lógica real -- cifrado de secretos -- ya la cubren los tests
+existentes de `SecretoCifradoService`).
 
 **Cómo generar/aplicar migraciones** (después de cambiar algo en
 `src/PortalSaas.Data/Entities/` o `PortalSaasDbContext.cs`, regenerar **las dos**):
@@ -479,19 +685,292 @@ en `sqlsap.cdepor.cl` — cero infraestructura nueva. Postgres es para la vía S
 Host, abre el navegador en `/Account/Login` cuando el puerto queda listo), siguiendo
 el mismo patrón que `referencia-original/PortalSAP_v2/.vscode/launch.json`.
 
-**Todavía no existe** (ver `ARCHITECTURE.md` §6, paso 6): el conector SAP
-(`HanaService`/`SapConnectionProvider`/traductor) y los motores genéricos de
-documento (`GenericoVenta`/`Compra`/`Inventario`) — son SAP-específicos y no
-tienen todavía un consumidor real en este proyecto (ningún plugin real cargado
-todavía); portarlos ahora sería especular sin necesidad concreta. Las tablas
-núcleo (`menus`/`profiles`/`actions`/...) y su sincronización SÍ están listas
-(ver más arriba) — lo que falta ahí es la UI de administración
-(`menu_groups`/`profiles`/asignación a usuarios) y el filtrado por módulos
-contratados, no la base. Todas las migraciones (comercial + núcleo) ya se
-probaron contra un motor real de desarrollo (Postgres 16 en Docker, SQL Server
-2022 Express local, 24 jul 2026) — lo que falta es correrlas contra
-`sqlsap.cdepor.cl` en producción, ver `docs/05-RUNBOOK-PRODUCCION.md` para el
-procedimiento completo cuando se decida desplegar ahí.
+**Conector SAP (`HanaService`/`SapConnectionProvider`/`CurrentCompanyAccessor`/
+`CurrentUserContext`) — nuevo (25 jul 2026), portado de `PortalSAP_v2`.** Cierra
+`ARCHITECTURE.md` §6 paso 5. Portado casi tal cual, ver el detalle de qué se portó, qué
+se adaptó y qué se difirió a propósito (`ISqlServerService`) en el reporte de esta
+entrega -- resumen:
+- `IHanaService`/`HanaService` (`PortalSaas.Core.Sap`): wrapper multi-motor de SQL
+  directo contra la compañía SAP activa -- HANA nativo (`Sap.Data.Hana`) o, si la
+  `Instance` de la compañía es `sqlserver`, el mismo SQL en dialecto HANA traducido con
+  `HanaToSqlServerTranslator` (portado tal cual de `TraductorSqlHanaASqlServer`, 5
+  patrones exactos, con sus tests) y ejecutado con `Microsoft.Data.SqlClient`. A
+  diferencia de `PortalSAP_v2` (resolvía `Company`/`Instance` con SQL crudo contra
+  `PORTALWEB.EMPRESA`/`INSTANCIA` en HANA vía `EmpresaRepositorio`), acá esas dos tablas
+  ya viven en la base propia de la plataforma -- se resuelven con una consulta EF Core
+  directa contra `PortalSaasDbContext`, sin repositorio intermedio.
+- `ISapConnectionProvider`/`SapConnectionProvider` + `ISapSession`/`SapSession`
+  (adaptador de `B1SLayer.SLConnection`) + `ISapSessionCache`/`SapSessionCache`
+  (`Singleton`, cachea la sesión de Service Layer por `Company.Id`): portados tal cual.
+- `ICurrentCompanyAccessor`/`CurrentCompanyAccessor` (`PortalSaas.Core.Seguridad`):
+  portado, renombrado "Empresa" -> "Company". Lee claims fijados en el login, compañía
+  fija por sesión (cambiarla exige logout/login, igual que `PortalSAP_v2`).
+- `ICurrentUserContext`/`CurrentUserContext`: contrato portado tal cual;
+  `HasActionAsync` se **reescribió contra `PortalSaasDbContext`**
+  (`UserMenuProfile`+`ProfileAction`+`Menu`+`PermissionAction`, ya modelados) en vez de
+  SQL crudo a HANA -- la autorización del portal no debería depender de que el SAP del
+  cliente esté disponible. `IsAdmin` bypasea todo, mismo criterio que
+  `ES_ADMINISTRADOR` en el original.
+- **Diferido a propósito (YAGNI)**: `ISqlServerService`/`SqlServerService` (bases SQL
+  Server externas *no-SAP* de un plugin) -- no existe todavía el equivalente de
+  `MODULO_INSTANCIA_EXTERNA` en este esquema ni un plugin real que lo necesite.
+
+**Hueco real encontrado y cerrado en el camino: el login de tenant nunca seleccionaba
+compañía.** `Pages/Account/Login.cshtml.cs` resolvía `Organization`+`User` y entraba
+directo -- sin esto `ICurrentCompanyAccessor` no tenía nada que resolver. Se agregó
+`Pages/Account/SelectCompany.cshtml(.cs)`, segundo paso del login (solo si la
+organización tiene 1+ `Companies` activas; si tiene 0, se entra directo, sin claim de
+compañía -- las funciones que dependen de SAP simplemente no están disponibles). Fija
+los claims `CompanyId`/`CompanyCode`/`CompanyDatabase`/`CompanyServiceLayerUrl`/
+`CompanyCountry` recién ahí (no en `Login.cshtml.cs`, que ya firmó el `SignInAsync` con
+`IsAdmin` pero sin compañía) -- si el usuario ya tiene el claim `CompanyId`, la página
+redirige directo a `/Home/Index` sin dejar re-elegir, mismo criterio de
+"cambiar de compañía exige logout/login" que `PortalSAP_v2`. Chequeo de acceso portado
+tal cual: `User.IsAdmin` bypasea; si no, exige al menos una fila en `UserMenuGroup` o
+`UserMenuProfile` para `(UserId, CompanyId)`, si no hay ninguna se rechaza.
+
+**Cambio de plataforma de build a x64 (`PortalSaas.Core`/`Host`/`Core.Tests`).** El
+cliente nativo de HANA (`Sap.Data.Hana.Net.v8.0.dll`, copiado a un `Lib/` nuevo en la
+raíz del repo, referenciado por `HintPath` -- **no es NuGet**, requiere el cliente HANA
+instalado en la máquina para conectar en runtime, ver
+`C:\Program Files\sap\hdbclient\dotnetcore\v8.0\`) es x64-only, mismo criterio que
+`PortalSAP_v2` (todos sus `.csproj` con dependencia nativa fijan
+`PlatformTarget=x64`). Se fijó en los 3 `.csproj` + se actualizó `PortalSaas.sln`
+(`ProjectConfigurationPlatforms`) para que **todas** las configuraciones de solución
+(`Any CPU`/`x64`/`x86`) mapeen esos 3 proyectos a `x64` -- así `dotnet build`/`dotnet
+test` sin flags extra siguen funcionando igual que antes. `Abstractions`/`Data`/
+`Data.Migrations.*` quedan en `Any CPU`, no tocan HANA. **Verificado**: `dotnet build`
+(0 warnings/errores, outputs en `bin\x64\Debug\net8.0\` para los 3 proyectos afectados)
+y el Host arranca y sirve normal contra Postgres real con la referencia nativa cargada.
+
+**`ISapConnectionTestService` — nuevo (25 jul 2026), agregado sobre la marcha.**
+Sugerencia del dueño del proyecto al configurar 2 organizaciones demo reales
+("Comercial Depor" contra un HANA real, "Comercial GE2" contra un SQL Server real):
+un botón "Probar conexión" directo en `/Admin/Organizations/Companies` (`Index`), en
+vez de una herramienta de consola aparte. `ISapConnectionTestService`/
+`SapConnectionTestService` (`PortalSaas.Core.Sap`) prueba las dos rutas por
+separado -- base directa (mismo camino que `HanaService`, factorizado en
+`SapConnectionStringFactory` para no duplicarlo) y Service Layer (mismo camino que
+`SapConnectionProvider`, sin pasar por el cache) -- **sin depender de
+`ICurrentCompanyAccessor`** (recibe `companyId` explícito), porque el backoffice de
+plataforma no tiene sesión de tenant. A diferencia de `HanaService`/
+`SapConnectionProvider` (uso interno, nunca deben filtrar el detalle de una excepción a
+un usuario final), acá el mensaje de error real SÍ se muestra tal cual -- es
+exactamente lo que un administrador necesita para diagnosticar una compañía mal
+configurada, y la pantalla es admin-only.
+
+**Verificado de punta a punta contra los 2 ambientes demo reales que configuró el
+dueño del proyecto, los dos motores -- ya no aplica el límite de "no hay HANA/SQL
+Server de un SAP real disponible" (25 jul 2026):**
+- **Comercial Depor (HANA real, `HW-DEPOR-HDB:30015`, compañía `DEPOR_QA`)**: base de
+  datos **OK** y Service Layer **OK** desde el primer intento -- confirma que el
+  cliente nativo de HANA (`Sap.Data.Hana.Net.v8.0.dll`) carga y conecta de verdad en
+  runtime, no solo que compila.
+- **Comercial GE2 (SQL Server real, compañía `BLOCK_QA`/`TEST_GE2`)**: primer intento
+  -- Service Layer **OK**, base de datos **FALLÓ** (`Login failed for user
+  'app_suc'`, el usuario técnico de la `Instance` sin acceso otorgado a `TEST_GE2` --
+  exactamente el tipo de error de configuración que este botón está pensado para
+  exponer, no un bug del conector). Corregidos los permisos SQL del lado del
+  servidor demo, **re-verificado con éxito**: base de datos **OK** y Service Layer
+  **OK**.
+
+**Los dos ambientes demo reales (HANA y SQL Server) quedan confirmados end-to-end.**
+
+**18 tests nuevos** (`HanaToSqlServerTranslatorTests`, portados de
+`TraductorSqlHanaASqlServerTests`; `CurrentCompanyAccessorTests`;
+`CurrentUserContextTests`, incluye que el acceso en una compañía no se filtra a otra
+compañía de la misma organización) -- **86/86 tests en verde**. **Verificado de punta a
+punta contra Postgres real** (organización, instancia, 2 compañías y 2 usuarios de
+prueba -- uno sin acceso, uno admin -- creados y borrados solo para esto): login sin
+compañías asignadas entra directo; con compañías, redirige a `SelectCompany`; usuario
+sin `UserMenuGroup`/`UserMenuProfile` se rechaza con "No tienes acceso a esa
+compañía."; con una fila de acceso real, funciona y el claim `CompanyId` queda fijo
+(revisitar `SelectCompany` redirige derecho, no deja re-elegir); usuario `IsAdmin`
+funciona sin necesitar ninguna fila de acceso.
+
+**`Modulo.Administracion` -- primer plugin real cargado en runtime, nuevo (25 jul
+2026).** Cierra `ARCHITECTURE.md` §6 paso 6 en la parte que faltaba probar: hasta acá
+`PluginManager`/`PluginLoadContext`/`MenuSyncService` solo se habían verificado con
+`artifacts/plugins/` vacío -- era la única pieza de la arquitectura de plugins que
+seguía siendo solo teoría. `plugins/Modulo.Administracion/` (`ModuleCode =
+"Administracion"`) es un self-service de **usuarios de la propia organización** para el
+admin de un tenant (`ICurrentUserContext.IsAdmin`, esquema de cookie default/tenant, NO
+`"PlatformAdmin"`) -- alcance deliberadamente reducido, decisión confirmada con el dueño
+del proyecto vía pregunta explícita antes de portar nada: en `PortalSAP_v2` (mono-tenant)
+este módulo cubría Usuarios/Grupos/Perfiles/Menús/Instancias/Empresas, pero acá
+`Menu`/`MenuGroup`/`Profile` son catálogos **globales** de la plataforma (docs/03 §3) y
+`Instance`/`Company` llevan credenciales técnicas de conexión SAP -- darle ese alcance
+completo a cualquier admin de organización cliente permitiría editar catálogos
+compartidos por TODAS las organizaciones o ver/rotar credenciales SAP ajenas. Grupos/
+Perfiles/Instancias/Empresas siguen siendo exclusivos de `/Admin/*` (operador de
+plataforma); este plugin solo LEE esos catálogos globales (para poder asignarlos a un
+usuario por compañía vía `UserMenuGroup`/`UserMenuProfile`), nunca los escribe.
+
+- **`ITenantUserAdminService`** (`PortalSaas.Abstractions.Contratos`, implementado en
+  `PortalSaas.Core.Administracion.TenantUserAdminService` contra `PortalSaasDbContext`,
+  registrado en el Host) -- mirror acotado a la organización actual
+  (`ICurrentUserContext.OrganizationId`, propiedad nueva agregada a ese contrato,
+  lee el claim `"OrganizationId"` ya fijado en el login) de la lógica ya probada en
+  `/Admin/Organizations/Users/Create.cshtml.cs` y `Permissions.cshtml.cs` -- mismas
+  reglas (límite de plan vía `IContractLimitService.CheckUserLimitAsync`, unicidad de
+  username/email DENTRO de la organización) más una nueva, propia de self-service:
+  **auto-bloqueo** -- un admin de organización no puede quitarse a sí mismo `IsAdmin`/
+  `IsActive` ni eliminarse, para no dejar la organización sin ningún admin funcional.
+  `SavePermissionsAsync`/`GetPermissionsAsync` validan que `userId`/`companyId`
+  pertenezcan a la organización actual antes de tocar nada -- nunca confían en un id
+  recibido de la UI.
+- **Rutas bajo `/organizacion/usuarios`, NO `/admin/usuarios`** (a diferencia de la
+  referencia) -- evita mezclar conceptualmente esta superficie de self-service de
+  tenant con `/Admin/*` (backoffice del operador de plataforma), aunque el routing de
+  ASP.NET Core sea case-insensitive. Al cerrar esta entrega no existía sidebar dinámico
+  todavía (`_Layout.cshtml` era un navbar estático) -- se agregó a mano un link
+  condicional "Administración" (`User.HasClaim("IsAdmin", "True")`) como único punto
+  de entrada. **Ese link se eliminó en la entrega "Sidebar dinámico" (ver más abajo)**
+  -- ahora aparece solo, vía el árbol real de `menus`.
+- **Empaquetado de plugin verificado de punta a punta, no solo en teoría**: el target
+  `PublicarComoPlugin` (`AfterTargets="Build"`, mismo patrón que `PortalSAP_v2`) copia
+  el output del build a `artifacts/plugins/Modulo.Administracion/1.0.0/` -- la carpeta
+  + nombre de DLL (`Modulo.Administracion.dll`) ES el manifiesto que `PluginManager`
+  espera, sin archivo de manifiesto aparte. **Hueco real encontrado y cerrado**: sin
+  configurar nada más, `Program.cs` busca por defecto en
+  `AppContext.BaseDirectory/artifacts/plugins` (dentro de `bin\x64\Debug\net8.0\` del
+  Host), una carpeta que nunca existe -- a diferencia de `PortalSAP_v2` (sube buscando
+  el `.sln`), este proyecto simplificó esa resolución a propósito. Se fijó
+  `Plugins:ArtifactsFolder` explícito en `appsettings.Development.json` del Host (dev-
+  only, versionado, mismo criterio ya usado para `ConnectionStrings`) apuntando a
+  `artifacts/plugins` en la raíz del repo.
+- **Segundo hueco real encontrado durante la verificación E2E, no de diseño sino de
+  comando de build**: `dotnet run --no-build` sobre `PortalSaas.Host.csproj` sin pasar
+  por el `.sln` resuelve por defecto a `bin\Debug\net8.0\PortalSaas.Host.exe` (carpeta
+  AnyCPU), NO a `bin\x64\Debug\net8.0\` -- con un `.exe` viejo todavía presente ahí de
+  antes del cambio a x64, el Host arrancó cargando una copia **obsolesa** de
+  `PortalSaas.Abstractions.dll` (sin los DTOs nuevos), y crasheó con
+  `ReflectionTypeLoadException`/`TypeLoadException` al mapear las Razor Pages del
+  plugin. Bin/obj limpiados por completo y reconstruidos vía `dotnet build
+  PortalSaas.sln`; para levantar el Host manualmente contra el build x64 hay que
+  ejecutar el `.dll` de esa carpeta directo (`dotnet
+  bin/x64/Debug/net8.0/PortalSaas.Host.dll`), no `dotnet run --no-build` a secas.
+- **Verificado de punta a punta contra Postgres real** (organización + plan + usuario
+  admin de prueba, creados y borrados solo para esto, contraseña hasheada con el mismo
+  PBKDF2-SHA256 de `PasswordHasher`): Host arrancó, logueó "Módulo Administracion
+  v1.0.0 cargado (2 entradas de menú)" y sincronizó las 2 filas en `menus`
+  (`origin_module = 'Administracion'`); login de tenant por slug funcionó, el link
+  "Administración" apareció en el navbar; `/organizacion/usuarios` listó el usuario
+  real; crear un segundo usuario con `plans.user_limit = 1` se bloqueó con el mensaje
+  real del servicio ("...alcanzado (1/1)."); subiendo el límite a 2, la creación
+  funcionó (redirect a la página de edición del usuario nuevo); el intento de
+  auto-bloqueo (el propio admin tratando de sacarse `IsAdmin`) se rechazó con el
+  mensaje real ("No podés quitarte a vos mismo el acceso de administrador ni
+  desactivarte."). Aislamiento entre organizaciones verificado con **10 tests xUnit
+  nuevos** (`TenantUserAdminServiceTests`, EF Core InMemory) en vez de manualmente --
+  **96/96 tests en verde**: mismo username en dos organizaciones distintas no
+  colisiona, `ListAsync` nunca devuelve usuarios de otra organización,
+  `GetPermissionsAsync`/`SavePermissionsAsync` rechazan un `userId`/`companyId` que no
+  pertenezca a la organización actual.
+
+**Sidebar dinámico del shell de tenant — nuevo (25 jul 2026).** Cierra el hueco dejado
+por `Modulo.Administracion`: `Pages/Shared/_Layout.cshtml` (shell de tenant, esquema de
+cookie default -- `_AdminLayout.cshtml`/`/Admin/*` NO se tocó) pasó de un navbar
+horizontal estático a un sidebar izquierdo + topbar real, con el árbol de `menus`
+sincronizado renderizado de verdad -- cualquier plugin nuevo aparece solo, sin volver a
+tocar `_Layout.cshtml`. Confirmado con el dueño del proyecto que el modelo de sidebar
+de `PortalSAP_v2` (`referencia-original/`) no se debía perder, pero **sin** portar su
+sistema completo de temas (`theme.css` de 1800 líneas + FontAwesome + selector de 5
+temas) -- alcance acotado a estructura + comportamiento, sobre Bootstrap 5 (variables
+`--bs-*`, ya usado en todo el proyecto) y **Bootstrap Icons** (vendored nuevo en
+`wwwroot/lib/bootstrap-icons/`, mismo criterio manual que `bootstrap`/`jquery`, sin
+`libman.json` en este repo) en vez de FontAwesome.
+
+- **`IMenuNavigationService`/`MenuNavigationService`** (`PortalSaas.Core.Infraestructura`)
+  -- árbol de `menus` ya filtrado y ANIDADO (no una lista plana con `Nivel` para
+  indentar, como el `MenuNodoDto` original de `PortalSAP_v2`) para el usuario del
+  request actual: administradores ven el árbol activo completo (mismo bypass que
+  `HasActionAsync`); el resto, solo los nodos que su `MenuGroup` tenga asignado
+  (`UserMenuGroup` por compañía) más sus carpetas ancestro (expandidas en memoria, para
+  que la carpeta contenedora aparezca aunque no esté asignada ella misma). Sin compañía
+  activa (`ICurrentCompanyAccessor.HasCompany`, propiedad nueva agregada al contrato),
+  un usuario no-admin no puede tener ninguna fila de `UserMenuGroup` (siempre lleva
+  `CompanyId`) -- el árbol queda vacío, mismo criterio ya establecido de "sin compañía,
+  las funciones que dependen de eso simplemente no están disponibles". **Sin N+1**: como
+  máximo 2 consultas reales sin importar el tamaño del árbol (menús activos + ids
+  asignados vía un solo join) -- expansión de ancestros y armado del árbol
+  (`MenuTreeHelper.BuildTree`) corren enteramente en memoria sobre la lista ya cargada.
+- **Árbol anidado, no plano** -- decisión tomada explícitamente para esta entrega: el
+  sidebar usa el componente `collapse` **nativo** de Bootstrap 5
+  (`data-bs-toggle="collapse"` + `bootstrap.Collapse` de `bootstrap.bundle.min.js`, ya
+  vendored), donde cada `<div class="collapse">` debe envolver exactamente a sus hijos
+  -- no alcanza con una lista plana indentada por nivel (el truco de
+  `data-grupos`/`[data-grupos~="id"]` de `sidebar.js` original, pensado para mostrar/
+  ocultar con `style.display`, no aplica a un componente Bootstrap real). `MenuNodeDto`
+  lleva `Children` (lista mutable, poblada por `MenuTreeHelper.BuildTree`) en vez de
+  `Nivel`; `Pages/Shared/Components/SidebarMenu/_MenuNode.cshtml` se recorre a sí misma
+  recursivamente (vía `<partial>`) para cualquier profundidad de árbol, sin límite de
+  niveles.
+- **`SidebarMenuViewComponent`** (`PortalSaas.Host.ViewComponents`, primer
+  ViewComponent de este proyecto) -- inyecta `IMenuNavigationService`, expone la vista
+  en `Pages/Shared/Components/SidebarMenu/Default.cshtml`, invocado desde
+  `_Layout.cshtml` vía `@await Component.InvokeAsync("SidebarMenu")`.
+- **`sidebar.js`** (nuevo, `wwwroot/js/`) -- NO oculta/muestra nada a mano: usa
+  `bootstrap.Collapse.getOrCreateInstance(...).show()/hide()` y escucha
+  `shown.bs.collapse`/`hidden.bs.collapse` solo para persistir en `localStorage` qué
+  grupos quedaron expandidos (recarga de página los restaura). El chevron que rota
+  no tiene clase propia -- CSS puro sobre `[aria-expanded="true"]`, que Bootstrap ya
+  gestiona automáticamente en el toggle. Aparte, modo "solo iconos" del sidebar
+  completo (`data-sidebar="collapsed"` en `<html>`, aplicado antes de pintar para evitar
+  parpadeo, mismo truco que el selector de temas de `PortalSAP_v2` pero sin temas).
+- **`sidebar.css`** (nuevo) -- adaptación de las ~430 líneas de `.app-shell`/`.sidebar`/
+  `.topbar`/`.user-menu*` de `theme.css` (referencia) a variables de Bootstrap
+  (`--bs-border-color`, `--bs-secondary-bg`, `--bs-primary`, etc.) en vez de las propias
+  del sistema de temas original.
+- **Dos bugs reales encontrados y corregidos en la verificación E2E, ninguno visible
+  compilando ni en `dotnet test`:**
+  1. `<partial name="_MenuNode" model="child" />` (sin ruta) tiraba
+     `InvalidOperationException: The partial view '_MenuNode' was not found` apenas se
+     invocaba el sidebar desde una página FUERA de `Pages/Shared/` (ej.
+     `/Account/SelectCompany`) -- la búsqueda por nombre simple de `<partial>` dentro de
+     la vista de un `ViewComponent` resuelve relativo a la página que lo invocó, no a la
+     carpeta del `ViewComponent`. Corregido con ruta app-relativa explícita
+     (`~/Pages/Shared/Components/SidebarMenu/_MenuNode.cshtml`) en los dos lugares que
+     la referencian (`Default.cshtml` y la propia `_MenuNode.cshtml`, para su
+     recursión).
+  2. `Pages/Account/SelectCompany.cshtml` -- el `<form method="post">` del selector de
+     compañía nunca tuvo NINGÚN atributo `asp-*`, así que el `FormTagHelper` nunca le
+     inyectó el token antiforgery (solo lo hace junto con `asp-page`/`asp-route-*`/etc.)
+     -- **cualquier envío real de ese formulario, con o sin este cambio de sidebar,
+     devolvía 400** ("antiforgery token no encontrado"). Bug preexistente, no introducido
+     por esta entrega, pero recién visible al hacer un POST real de punta a punta.
+     Corregido agregando `asp-antiforgery="true"` explícito.
+- **Verificado de punta a punta contra Postgres real** (organización "Comercial Depor",
+  usuario admin real + un usuario no-admin de prueba creado/borrado solo para esto,
+  mismo patrón de toda la sesión): login completo (incluido el paso `SelectCompany`, ya
+  con el fix de antiforgery) muestra el árbol completo para el admin (bypass, sin
+  necesitar ninguna fila de `UserMenuGroup`); un usuario no-admin con un `MenuGroup`
+  vacío asignado entra pero ve el sidebar sin "Administración" (solo "Inicio"); agregando
+  el nodo hoja "Usuarios" a ese mismo grupo (sin volver a loguear) el nodo aparece de
+  inmediato junto con su carpeta "Administración" (expansión de ancestros, sin estar
+  asignada ella misma). `id`/`href` de los `collapse` de Bootstrap coinciden 1:1 entre el
+  toggle y su contenedor. `/Admin/Login` (`_AdminLayout.cshtml`) confirmado sin
+  regresión. **96/96 tests siguen en verde** -- sin tests xUnit nuevos dedicados (mismo
+  criterio que otras entregas de solo-rendering: la lógica de filtrado/expansión de
+  `MenuNavigationService` no tiene condicionales de negocio nuevos que ameriten cobertura
+  aparte de lo ya verificado manualmente end-to-end).
+
+**Todavía no existe** (ver `ARCHITECTURE.md` §6, pasos 6-7): los motores genéricos de
+documento (`GenericoVenta`/`Compra`/`Inventario`) y el motor de aprobación -- son
+SAP-específicos y no tienen todavía un consumidor real en este proyecto (`Modulo.Administracion`
+es el único plugin real cargado hasta ahora, y no los necesita); portarlos ahora sería
+especular sin necesidad concreta. El
+conector SAP que los va a sostener (`HanaService`/`SapConnectionProvider`/
+`CurrentCompanyAccessor`/`CurrentUserContext`) SÍ está listo (ver más arriba). Las
+tablas núcleo (`menus`/`profiles`/`actions`/...), su sincronización, y la UI completa
+de administración (`Profiles`/`MenuGroups`/asignación a usuarios,
+`Instances`/`Companies`) también SÍ están listas -- lo que falta ahí es el filtrado del
+árbol de menú por módulos contratados (`organization_modules`), no la base ni la UI.
+Todas las migraciones (comercial + núcleo) ya se probaron contra un motor real de
+desarrollo (Postgres 16 en Docker, SQL Server 2022 Express local) -- lo que falta es
+correrlas contra `sqlsap.cdepor.cl` en producción, ver
+`docs/05-RUNBOOK-PRODUCCION.md` para el procedimiento completo cuando se decida
+desplegar ahí.
 
 ## Estilo de código
 

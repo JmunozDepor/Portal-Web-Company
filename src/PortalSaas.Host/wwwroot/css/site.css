@@ -20,3 +20,14 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+/* Bootstrap fija .table a width:100% -- con pocas columnas de contenido corto (ej.
+   Inventario: N° documento/Fecha/Estado) eso reparte todo el ancho sobrante del
+   contenedor como separación entre celdas, dejando la tabla ilegible en pantallas
+   anchas. auto-layout + width:auto hace que la tabla mida solo lo que su contenido
+   necesita -- .table-responsive (ver DocumentList/Default.cshtml) sigue cubriendo el
+   caso real de contenido más ancho que el viewport. */
+.document-list-table {
+  width: auto;
+  min-width: 50%;
+}

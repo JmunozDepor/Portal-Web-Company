@@ -15,6 +15,11 @@ namespace Modulo.Ventas.Pages;
 /// IndexGenericoVentaModelBase en referencia-original/PortalSAP_v2: cada subtipo
 /// concreto (SalesOrders/IndexModel, CreditNotes/IndexModel, ...) solo declara Type/
 /// MenuCode/DocumentName/DocumentNamePlural/RouteBase, toda la lógica vive acá.
+///
+/// REGLA DURA (ver CLAUDE.md): todo nace del documento padre. OnGetAsync NO es
+/// virtual a propósito -- ningún subtipo puede modificar cómo se lista un documento,
+/// solo puede identificarse. Cualquier tipo de documento de venta nuevo se agrega acá
+/// (SalesDocumentTypeCatalog + este subtipo), nunca reimplementando esta clase.
 /// </summary>
 [Authorize]
 public abstract class IndexGenericSalesDocumentModelBase : PageModel

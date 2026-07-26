@@ -13,6 +13,12 @@ namespace Modulo.Inventario.Pages;
 /// Mismo patrón que IndexGenericSalesDocumentModelBase (Modulo.Ventas) -- copia
 /// deliberada, no una base compartida entre plugins (regla dura: un plugin nunca
 /// referencia a otro).
+///
+/// REGLA DURA (ver CLAUDE.md): todo nace del documento padre. OnGetAsync NO es
+/// virtual a propósito -- ningún subtipo puede modificar cómo se lista un documento,
+/// solo puede identificarse. Cualquier tipo de documento de inventario nuevo se
+/// agrega acá (InventoryDocumentTypeCatalog + este subtipo), nunca reimplementando
+/// esta clase.
 /// </summary>
 [Authorize]
 public abstract class IndexGenericInventoryDocumentModelBase : PageModel

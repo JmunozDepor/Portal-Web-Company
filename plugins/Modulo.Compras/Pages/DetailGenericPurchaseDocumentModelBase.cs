@@ -15,6 +15,12 @@ namespace Modulo.Compras.Pages;
 /// después es de solo lectura vía el portal). Mismo patrón que
 /// DetailGenericSalesDocumentModelBase (Modulo.Ventas) -- copia deliberada, no una base
 /// compartida entre plugins.
+///
+/// REGLA DURA (ver CLAUDE.md): todo nace del documento padre. OnGetAsync/OnPostAsync/
+/// OnGetSearchItemsAsync NO son virtual a propósito -- ningún subtipo puede modificar
+/// cómo se crea/valida/lee un documento, solo puede identificarse. Cualquier tipo de
+/// documento de compra nuevo se agrega acá (PurchaseDocumentTypeCatalog + este
+/// subtipo), nunca reimplementando esta clase.
 /// </summary>
 [Authorize]
 public abstract class DetailGenericPurchaseDocumentModelBase : PageModel

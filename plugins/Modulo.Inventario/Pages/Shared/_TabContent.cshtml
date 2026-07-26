@@ -4,7 +4,10 @@
     // Al crear, se muestran las líneas ya cargadas (normalmente 1 en blanco) más un
     // puñado de filas vacías extra para no necesitar un botón "Agregar línea" con JS
     // -- las filas sin ItemCode se descartan solas en el POST (ver
-    // DetailGenericInventoryDocumentModelBase.OnPostAsync).
+    // DetailGenericInventoryDocumentModelBase.OnPostAsync). Almacén origen/destino es
+    // POR LÍNEA a propósito -- confirmado contra referencia-original/PortalSAP_v2
+    // (CLAUDE.md): OWTQ/OWTR no tienen columna de almacén a nivel de cabecera, y un
+    // mismo documento puede mover artículos entre distintos pares de almacenes.
     var rowCount = readOnly ? Model.Input.Lines.Count : Math.Max(Model.Input.Lines.Count, 1) + 9;
 }
 
@@ -14,6 +17,8 @@
             <th>Artículo</th>
             <th>Descripción</th>
             <th>Cantidad</th>
+            <th>Almacén origen</th>
+            <th>Almacén destino</th>
         </tr>
     </thead>
     <tbody>
@@ -29,6 +34,24 @@
                 </td>
                 <td style="max-width:100px">
                     <input name="Input.Lines[@i].Quantity" type="number" step="0.01" value="@(line.Quantity == 0 ? "" : line.Quantity.ToString())" class="form-control form-control-sm" disabled="@readOnly" />
+                </td>
+                <td>
+                    <select name="Input.Lines[@i].FromWarehouseCode" class="form-select form-select-sm" disabled="@readOnly">
+                        <option value="">Seleccionar…</option>
+                        @foreach (var warehouse in Model.Warehouses)
+                        {
+                            <option value="@warehouse.Value" selected="@(warehouse.Value == line.FromWarehouseCode)">@warehouse.Text</option>
+                        }
+                    </select>
+                </td>
+                <td>
+                    <select name="Input.Lines[@i].ToWarehouseCode" class="form-select form-select-sm" disabled="@readOnly">
+                        <option value="">Seleccionar…</option>
+                        @foreach (var warehouse in Model.Warehouses)
+                        {
+                            <option value="@warehouse.Value" selected="@(warehouse.Value == line.ToWarehouseCode)">@warehouse.Text</option>
+                        }
+                    </select>
                 </td>
             </tr>
         }

@@ -32,19 +32,14 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
         var header = new SapInventoryDocumentHeader
         {
             DocDate = document.DocDate.ToDateTime(TimeOnly.MinValue),
-            DocDueDate = document.DocDueDate.ToDateTime(TimeOnly.MinValue),
             Comments = document.Comments,
-            FromWarehouse = document.FromWarehouseCode,
-            ToWarehouse = document.ToWarehouseCode,
             U_PortalUser = portalUsername,
-            // SAP exige el par de almacenes POR LÍNEA -- se copian acá los defaults del
-            // encabezado, el formulario solo los pide una vez (ver InventoryDocumentDto).
-            DocumentLines = document.Lines.Select(line => new SapInventoryDocumentLine
+            StockTransferLines = document.Lines.Select(line => new SapInventoryDocumentLine
             {
                 ItemCode = line.ItemCode,
                 Quantity = line.Quantity,
-                WarehouseCode = document.ToWarehouseCode,
-                FromWarehouseCode = document.FromWarehouseCode,
+                WarehouseCode = line.ToWarehouseCode,
+                FromWarehouseCode = line.FromWarehouseCode,
             }).ToList(),
         };
 
@@ -65,18 +60,15 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
             return null;
         }
 
-        var firstLine = sap.DocumentLines.FirstOrDefault();
-
         return new InventoryDocumentDto(
-            FromWarehouseCode: sap.FromWarehouse ?? firstLine?.FromWarehouseCode ?? string.Empty,
-            ToWarehouseCode: sap.ToWarehouse ?? firstLine?.WarehouseCode ?? string.Empty,
             DocDate: DateOnly.FromDateTime(sap.DocDate ?? DateTime.Today),
-            DocDueDate: DateOnly.FromDateTime(sap.DocDueDate ?? DateTime.Today),
             Comments: sap.Comments,
-            Lines: sap.DocumentLines.Select(line => new InventoryDocumentLineDto(
+            Lines: sap.StockTransferLines.Select(line => new InventoryDocumentLineDto(
                 ItemCode: line.ItemCode,
                 Description: null,
-                Quantity: line.Quantity)).ToList(),
+                Quantity: line.Quantity,
+                FromWarehouseCode: line.FromWarehouseCode,
+                ToWarehouseCode: line.WarehouseCode)).ToList(),
             DocEntry: sap.DocEntry,
             DocNum: sap.DocNum,
             Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto");

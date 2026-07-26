@@ -70,37 +70,39 @@
     </form>
 }
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            @foreach (var column in Model.Columns)
-            {
-                <th class="@(column.AlignRight ? "text-end" : "")">@column.Title</th>
-            }
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var row in Model.Rows)
-        {
+<div class="table-responsive">
+    <table class="table table-striped document-list-table">
+        <thead>
             <tr>
-                @for (var i = 0; i < row.Cells.Count; i++)
+                @foreach (var column in Model.Columns)
                 {
-                    var alignRight = i < Model.Columns.Count && Model.Columns[i].AlignRight;
-                    <td class="@(alignRight ? "text-end" : "")">
-                        @if (i == 0)
-                        {
-                            <a href="@row.DetailUrl">@row.Cells[i]</a>
-                        }
-                        else
-                        {
-                            @row.Cells[i]
-                        }
-                    </td>
+                    <th class="@(column.AlignRight ? "text-end" : "")">@column.Title</th>
                 }
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    @for (var i = 0; i < row.Cells.Count; i++)
+                    {
+                        var alignRight = i < Model.Columns.Count && Model.Columns[i].AlignRight;
+                        <td class="@(alignRight ? "text-end" : "")">
+                            @if (i == 0)
+                            {
+                                <a href="@row.DetailUrl">@row.Cells[i]</a>
+                            }
+                            else
+                            {
+                                @row.Cells[i]
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 @if (Model.Rows.Count == 0)
 {

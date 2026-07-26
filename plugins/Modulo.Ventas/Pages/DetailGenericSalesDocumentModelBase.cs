@@ -17,6 +17,12 @@ namespace Modulo.Ventas.Pages;
 /// hardcodeada a un solo tipo) -- portado de DetalleGenericoVentaModelBase en
 /// referencia-original/PortalSAP_v2: cada subtipo concreto (SalesOrders/DetailModel,
 /// CreditNotes/DetailModel, ...) solo declara Type/DocumentName/RouteBase.
+///
+/// REGLA DURA (ver CLAUDE.md): todo nace del documento padre. OnGetAsync/OnPostAsync/
+/// OnGetSearchItemsAsync NO son virtual a propósito -- ningún subtipo puede modificar
+/// cómo se crea/valida/lee un documento, solo puede identificarse. Cualquier tipo de
+/// documento de venta nuevo se agrega acá (SalesDocumentTypeCatalog + este subtipo),
+/// nunca reimplementando esta clase.
 /// </summary>
 [Authorize]
 public abstract class DetailGenericSalesDocumentModelBase : PageModel

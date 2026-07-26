@@ -81,6 +81,42 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
   referencian todos, solo `Host` referencia `Core`, nadie referencia `Host`, un plugin
   nunca referencia a otro plugin. Si esto se va a romper, detenerse y avisar antes de
   continuar.
+- **Todo nace del documento padre — los documentos hijo no se modifican.** Los tres
+  motores genéricos de documento (`SalesDocumentService`/`PurchaseDocumentService`/
+  `InventoryDocumentService`, y cualquier motor genérico futuro) comparten el mismo
+  patrón a propósito, portado tal cual de `PortalSAP_v2` (`GenericoVenta`/
+  `GenericoCompra`/`GenericoInventario`): un catálogo estático por tipo
+  (`SalesDocumentTypeCatalog`/etc.) + un par de PageModel base por plugin
+  (`IndexGeneric*ModelBase`/`DetailGeneric*ModelBase`, **sin métodos `virtual`, a
+  propósito** — un subtipo concreto no puede sobreescribir `OnGetAsync`/`OnPostAsync`,
+  solo puede declarar `Type`/`MenuCode`/`DocumentName`/`RouteBase`) + tabs compartidas
+  en `Pages/Shared/` del mismo plugin, reusadas tal cual entre todos los subtipos. Un
+  documento hijo nuevo (ej. un octavo tipo de Venta, o una tercera pantalla de
+  Compras) se agrega con una línea al catálogo estático + una subclase de ~20 líneas —
+  **nunca** copiando/reimplementando la lógica de listado/creación/validación.
+- **Paridad entre los motores genéricos de documento** (Venta/Compra/Inventario, y
+  cualquier motor genérico futuro) — regla explícita del dueño del proyecto,
+  formulada igual en `referencia-original/PortalSAP_v2/CLAUDE.md` §"Paridad entre los
+  motores genéricos de documento": **toda funcionalidad aplicada en cualquiera de los
+  tres se debe considerar para los otros dos** — son la misma familia de formulario,
+  no implementaciones independientes que coincidieron en parecerse. Lo único que los
+  diferencia es la particularidad de cada uno (Inventario no tiene cliente/vendedor,
+  Compras no tiene tabs Logística/Finanzas, Venta tiene 7 tipos contra 2 de los otros
+  dos) — "considerar" no significa "aplicar literal sin pensar", significa **nunca
+  dar un cambio por terminado sin preguntar explícitamente si corresponde también a
+  los otros dos**, y si la respuesta es que no aplica, decir por qué (la
+  particularidad concreta que lo justifica), no asumirlo en silencio. Esto rige en
+  los dos sentidos:
+  - **Hacia adelante**: cualquier pedido de cambio sobre uno de los tres motores (fix
+    de bug, ajuste de UX, catálogo nuevo, campo nuevo) — preguntar antes de cerrar el
+    cambio si corresponde replicarlo en los otros dos.
+  - **Hacia atrás, contra el original**: cualquier funcionalidad que exista en
+    `GenericoVenta`/`GenericoCompra`/`GenericoInventario` (`referencia-original/
+    PortalSAP_v2`) y todavía no esté portada acá — el inventario vivo de esas
+    brechas, motor por motor, está en `docs/08-BRECHA-FUNCIONAL-VS-PORTALSAP-V2.md`
+    §1. Si se agrega algo ahí que hoy solo se investigó/portó para un motor,
+    actualizar ese documento para reflejar el estado real en los tres, no dejarlo
+    desactualizado.
 
 ## Dónde está cada cosa
 
@@ -106,6 +142,20 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
   bloqueo por intentos, recuperación de contraseña, preferencias personales, envío de
   correo dual (Google Workspace/Microsoft 365, `IEmailSenderService`), y qué falta a
   propósito (2FA real, verificación de correo, sesión, UI de administración).
+- `docs/08-BRECHA-FUNCIONAL-VS-PORTALSAP-V2.md` — auditoría (25/26 jul 2026) de qué le
+  falta a este proyecto para tener paridad funcional con `PortalSAP_v2`: brechas
+  puntuales en los 3 motores genéricos (tabs Logística/Finanzas, catálogos, líneas de
+  Servicio, `CamposAdicionales`), los 3 importadores distintos del original (líneas
+  CSV del formulario compartido Venta/Compra, versión propia de Inventario, y el
+  `Modulo.ImportacionGenerica` masivo completo -- 0% portado, ≈5.760 líneas estimadas
+  incluyendo 6-7 catálogos ausentes que bloquea), el `Modulo.Rendiciones`/"RindeGastos"
+  (hallazgo: es plataforma genuina, no desarrollo a medida, pese a no estar
+  documentado en el `CLAUDE.md` del original), el árbol de menús personalizable del
+  original (`IMenuAdminService`, ≈1.255 líneas -- acá el menú ya es dinámico pero sin
+  ninguna pantalla de personalización: no se puede renombrar/ocultar/reordenar un nodo
+  de módulo ni crear una carpeta/página manual), y el requerimiento nuevo de
+  importador de plugins (sin precedente en el original, converge con la brecha ya
+  conocida de `organization_modules`).
 - `referencia-original/PortalSAP_v2/`, `referencia-original/WMS_Suite/` — copia de solo
   lectura de los repos reales (sin `bin`/`obj`/`.vs`/`artifacts`/`graphify-out`/publish),
   para portar código sin tocar los sistemas en producción.

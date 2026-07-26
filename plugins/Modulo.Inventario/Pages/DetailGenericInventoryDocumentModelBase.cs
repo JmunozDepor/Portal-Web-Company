@@ -15,6 +15,12 @@ namespace Modulo.Inventario.Pages;
 /// después es de solo lectura vía el portal). Mismo patrón que
 /// DetailGenericSalesDocumentModelBase (Modulo.Ventas) -- copia deliberada, no una base
 /// compartida entre plugins.
+///
+/// REGLA DURA (ver CLAUDE.md): todo nace del documento padre. OnGetAsync/OnPostAsync/
+/// OnGetSearchItemsAsync NO son virtual a propósito -- ningún subtipo puede modificar
+/// cómo se crea/valida/lee un documento, solo puede identificarse. Cualquier tipo de
+/// documento de inventario nuevo se agrega acá (InventoryDocumentTypeCatalog + este
+/// subtipo), nunca reimplementando esta clase.
 /// </summary>
 [Authorize]
 public abstract class DetailGenericInventoryDocumentModelBase : PageModel
@@ -75,7 +81,6 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
             Input = new InputModel
             {
                 DocDate = DateOnly.FromDateTime(DateTime.Today),
-                DocDueDate = DateOnly.FromDateTime(DateTime.Today),
             };
         }
         else
@@ -97,16 +102,15 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
 
             Input = new InputModel
             {
-                FromWarehouseCode = document.FromWarehouseCode,
-                ToWarehouseCode = document.ToWarehouseCode,
                 Comments = document.Comments,
                 DocDate = document.DocDate,
-                DocDueDate = document.DocDueDate,
                 Lines = document.Lines.Select(line => new LineInput
                 {
                     ItemCode = line.ItemCode,
                     Description = line.Description,
                     Quantity = line.Quantity,
+                    FromWarehouseCode = line.FromWarehouseCode,
+                    ToWarehouseCode = line.ToWarehouseCode,
                 }).ToList(),
             };
         }
@@ -132,17 +136,26 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
             ModelState.AddModelError(string.Empty, $"Agregá al menos una línea antes de crear {DocumentName.ToLowerInvariant()}.");
         }
 
-        if (!string.IsNullOrWhiteSpace(Input.FromWarehouseCode) && Input.FromWarehouseCode == Input.ToWarehouseCode)
-        {
-            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.ToWarehouseCode)}", "El almacén destino debe ser distinto del origen.");
-        }
-
         for (var i = 0; i < Input.Lines.Count; i++)
         {
             var line = Input.Lines[i];
             if (line.Quantity is null or <= 0)
             {
                 ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Lines)}[{i}].{nameof(LineInput.Quantity)}", "La cantidad debe ser mayor a 0.");
+            }
+
+            if (string.IsNullOrWhiteSpace(line.FromWarehouseCode))
+            {
+                ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Lines)}[{i}].{nameof(LineInput.FromWarehouseCode)}", "Elegí un almacén origen para esta línea.");
+            }
+
+            if (string.IsNullOrWhiteSpace(line.ToWarehouseCode))
+            {
+                ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Lines)}[{i}].{nameof(LineInput.ToWarehouseCode)}", "Elegí un almacén destino para esta línea.");
+            }
+            else if (line.ToWarehouseCode == line.FromWarehouseCode)
+            {
+                ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Lines)}[{i}].{nameof(LineInput.ToWarehouseCode)}", "El almacén destino debe ser distinto del origen.");
             }
         }
 
@@ -154,15 +167,14 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         }
 
         var document = new InventoryDocumentDto(
-            FromWarehouseCode: Input.FromWarehouseCode,
-            ToWarehouseCode: Input.ToWarehouseCode,
             DocDate: Input.DocDate,
-            DocDueDate: Input.DocDueDate,
             Comments: Input.Comments,
             Lines: Input.Lines.Select(line => new InventoryDocumentLineDto(
                 ItemCode: line.ItemCode!,
                 Description: line.Description,
-                Quantity: line.Quantity ?? 0)).ToList());
+                Quantity: line.Quantity ?? 0,
+                FromWarehouseCode: line.FromWarehouseCode!,
+                ToWarehouseCode: line.ToWarehouseCode!)).ToList());
 
         try
         {
@@ -208,22 +220,11 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
 
     public sealed class InputModel
     {
-        [Required(ErrorMessage = "Elegí el almacén origen.")]
-        [Display(Name = "Almacén origen")]
-        public string FromWarehouseCode { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Elegí el almacén destino.")]
-        [Display(Name = "Almacén destino")]
-        public string ToWarehouseCode { get; set; } = string.Empty;
-
         [Display(Name = "Comentarios")]
         public string? Comments { get; set; }
 
         [Display(Name = "Fecha de documento")]
         public DateOnly DocDate { get; set; }
-
-        [Display(Name = "Fecha de vencimiento")]
-        public DateOnly DocDueDate { get; set; }
 
         public List<LineInput> Lines { get; set; } = [new()];
     }
@@ -233,5 +234,7 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         public string? ItemCode { get; set; }
         public string? Description { get; set; }
         public decimal? Quantity { get; set; }
+        public string? FromWarehouseCode { get; set; }
+        public string? ToWarehouseCode { get; set; }
     }
 }

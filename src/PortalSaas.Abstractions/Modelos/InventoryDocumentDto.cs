@@ -2,18 +2,17 @@ namespace PortalSaas.Abstractions.Modelos;
 
 /// <summary>
 /// Documento de inventario genérico (SAP OWTQ/OWTR, ver InventoryDocumentType) --
-/// digitación directa, traslado de mercadería entre 2 almacenes. FromWarehouseCode/
-/// ToWarehouseCode son el DEFAULT a nivel de documento -- se copian a cada línea al
-/// crear (SAP exige WarehouseCode/FromWarehouseCode por línea en el wire real, ver
-/// SapInventoryDocumentModels), pero el formulario solo pide el par de almacenes una
-/// vez para no complicar la digitación (mismo criterio de simplicidad que Venta/Compra
-/// en esta primera entrega).
+/// digitación directa, traslado de mercadería entre almacenes. Almacén origen/destino
+/// es POR LÍNEA (ver InventoryDocumentLineDto), no de cabecera -- confirmado contra
+/// referencia-original/PortalSAP_v2 (CLAUDE.md, "Modulo.Inventario"): OWTQ/OWTR no
+/// tienen columna de almacén de origen a nivel de cabecera (solo WTQ1/WTR1), y el
+/// almacén destino de cabecera se sacó del formulario a pedido del cliente porque
+/// igual se vuelve a digitar por línea. Sin DocDueDate a propósito -- Service Layer la
+/// rechaza para StockTransfer ("Property 'DocDueDate' of 'StockTransfer' is invalid"),
+/// mismo motivo documentado en el original.
 /// </summary>
 public sealed record InventoryDocumentDto(
-    string FromWarehouseCode,
-    string ToWarehouseCode,
     DateOnly DocDate,
-    DateOnly DocDueDate,
     string? Comments,
     IReadOnlyList<InventoryDocumentLineDto> Lines,
     int? DocEntry = null,
@@ -23,7 +22,9 @@ public sealed record InventoryDocumentDto(
 public sealed record InventoryDocumentLineDto(
     string ItemCode,
     string? Description,
-    decimal Quantity);
+    decimal Quantity,
+    string FromWarehouseCode,
+    string ToWarehouseCode);
 
 public sealed record InventoryDocumentFilter(
     DateOnly? DateFrom = null,
@@ -34,10 +35,10 @@ public sealed record InventoryDocumentListResult(IReadOnlyList<InventoryDocument
 
 /// <summary>
 /// Fila de listado -- non-positional, se mapea vía IHanaService.QueryAsync (ver
-/// CustomerDto). Sin almacén origen/destino acá a propósito: los nombres de columna
-/// físicos de OWTQ/OWTR para eso no están confirmados contra un ambiente real todavía
-/// (a diferencia de los nombres de Service Layer -- "FromWarehouse"/"ToWarehouse" --
-/// que sí se usan en GetAsync/CreateAsync). El detalle del documento sí los muestra.
+/// CustomerDto). Sin almacén origen/destino acá a propósito: es un dato por línea, no
+/// de cabecera (ver el doc-comment de InventoryDocumentDto) -- mostrarlo en el listado
+/// exigiría un JOIN contra WTQ1/WTR1 que no se justifica todavía. El detalle del
+/// documento sí los muestra, línea por línea.
 /// </summary>
 public sealed record InventoryDocumentSummaryDto
 {

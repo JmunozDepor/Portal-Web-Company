@@ -5,8 +5,10 @@ using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Core.Administracion;
 using PortalSaas.Core.Catalogos;
 using PortalSaas.Core.Comercial;
+using PortalSaas.Core.Compras;
 using PortalSaas.Core.Correo;
 using PortalSaas.Core.Infraestructura;
+using PortalSaas.Core.Inventario;
 using PortalSaas.Core.Sap;
 using PortalSaas.Core.Seguridad;
 using PortalSaas.Core.Usuarios;
@@ -79,13 +81,25 @@ builder.Services.AddSingleton<ISapSessionCache, SapSessionCache>();
 // que no tiene sesión de tenant.
 builder.Services.AddScoped<ISapConnectionTestService, SapConnectionTestService>();
 
-// Consumido por Modulo.Ventas (plugin) -- primer plugin de negocio real, ver
-// ISalesOrderService y CLAUDE.md para el alcance recortado de esta primera entrega.
+// Consumido por Modulo.Ventas (plugin) -- motor genérico de documentos de venta, ver
+// ISalesDocumentService/SalesDocumentTypeCatalog y CLAUDE.md para el alcance de esta
+// entrega (Fase 1 del motor genérico Venta/Compra/Inventario).
 builder.Services.AddScoped<ICustomerCatalogService, CustomerCatalogService>();
 builder.Services.AddScoped<IItemCatalogService, ItemCatalogService>();
 builder.Services.AddScoped<IWarehouseCatalogService, WarehouseCatalogService>();
 builder.Services.AddScoped<ISalesEmployeeCatalogService, SalesEmployeeCatalogService>();
-builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
+builder.Services.AddScoped<ISalesDocumentService, SalesDocumentService>();
+
+// Consumido por Modulo.Inventario (plugin) -- motor genérico de documentos de
+// inventario, ver IInventoryDocumentService/InventoryDocumentTypeCatalog. Reusa los
+// catálogos de Artículo/Almacén ya registrados arriba, no trae catálogos propios.
+builder.Services.AddScoped<IInventoryDocumentService, InventoryDocumentService>();
+
+// Consumido por Modulo.Compras (plugin) -- motor genérico de documentos de compra, ver
+// IPurchaseDocumentService/PurchaseDocumentTypeCatalog. Reusa Artículo/Almacén ya
+// registrados arriba, solo agrega el catálogo de Proveedor (lado OCRD que no usa Venta).
+builder.Services.AddScoped<ISupplierCatalogService, SupplierCatalogService>();
+builder.Services.AddScoped<IPurchaseDocumentService, PurchaseDocumentService>();
 
 // Esquema default = tenant (sin cambios de comportamiento en /Account, /Home). El
 // esquema "PlatformAdmin" es una sesión totalmente aparte -- ver

@@ -1,0 +1,7 @@
+@page "/inventario/traslados"
+@model Modulo.Inventario.Pages.StockTransfers.IndexModel
+@{
+    ViewData["Title"] = "Traslados";
+}
+
+@await Component.InvokeAsync("DocumentList", Model.Listado)

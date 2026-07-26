@@ -1140,18 +1140,80 @@ compilando ni en `dotnet test`:**
 otras entregas de esta sesión: la lógica nueva es CRUD/mapeo sin condicionales de
 negocio complejos, ya verificado manualmente end-to-end contra los 2 SAP reales).
 
+**Bug real encontrado y corregido probando `Modulo.Ventas` con el dueño del proyecto en
+vivo (25 jul 2026) -- crash en TODO submit del formulario de Orden de Venta.**
+`DetailModel.LineInput.Quantity`/`DiscountPercent` (`plugins/Modulo.Ventas/Pages/SalesOrders/Detail.cshtml.cs`)
+eran `decimal` no-nullable, pero `_TabContent.cshtml` siempre renderiza `Lines.Count + 9`
+filas en blanco (para no necesitar un botón "Agregar línea" con JS, ver el comentario en
+ese archivo) -- esas filas mandan `""` para esos dos campos. El model binding de
+ASP.NET Core rechaza un string vacío contra un `decimal` no-nullable con el mensaje
+genérico `"The value '' is invalid."`, **antes** de que corra el código de
+`OnPostAsync` que descarta las líneas sin `ItemCode` -- por eso aparecía un error por
+cada campo numérico vacío de las filas extra, sin importar que las líneas reales
+estuvieran bien cargadas. Corregido: los dos campos pasan a `decimal?` (mismo criterio
+que ya tenía `UnitPrice`), con `?? 0` al construir el `SalesOrderLineDto` y
+`line.Quantity is null or <= 0` en la validación. **Verificado de punta a punta contra
+Comercial GE2 (SQL Server, BLOCK_QA) real**: con el fix, la búsqueda en vivo de
+artículos funcionó (catálogo real) y se creó la **Orden de Venta N° 612** de verdad en
+SAP -- confirma que el resto del flujo (catálogos, `SalesOrderService.CreateAsync`,
+autorización) seguía intacto, el único problema era este bug de binding.
+
+**Segundo hallazgo, no es un bug de código sino del comando usado para levantar el
+Host manualmente**: `dotnet <ruta>/PortalSaas.Host.dll` ejecutado desde la raíz del
+repo (en vez de `dotnet run`/F5) crashea con `"Falta ConnectionStrings:Default en la
+configuración"` aunque `appsettings.Development.json` exista y esté completo --
+`WebApplicationBuilder` resuelve el content root contra el **directorio de trabajo
+actual**, no contra la carpeta del ensamblado, así que busca `appsettings.Development.json`
+en la raíz del repo (donde no existe) en vez de en `bin/x64/Debug/net8.0/`. Solución:
+pararse **dentro** de esa carpeta antes de ejecutar (`cd
+src/PortalSaas.Host/bin/x64/Debug/net8.0 && dotnet ./PortalSaas.Host.dll`) con
+`ASPNETCORE_ENVIRONMENT=Development` seteado -- ahí sí carga el archivo correcto. Ya
+documentado acá para no repetir el diagnóstico la próxima vez que haga falta levantar
+el Host fuera de `dotnet run`/F5.
+
+**Pendiente real, NO portado a propósito en esta entrega: líneas de tipo Servicio.**
+El dueño del proyecto pidió confirmar primero cómo lo resolvía `PortalSAP_v2` antes de
+decidir si portarlo ahora -- investigado contra `referencia-original/PortalSAP_v2`
+(nunca el repo real). Hallazgo clave: **el toggle Artículo/Servicio NO es por línea, es
+por documento completo** -- SAP B1 no permite mezclar líneas de Artículo y Servicio en
+la misma Orden de Venta (`DocType` es un campo de **encabezado**:
+`dDocument_Items`/`dDocument_Service`, resuelto en el original por
+`GenericoVentaService.ResolverDocType` mirando el `Tipo` de la primera línea, con el
+comentario "el portal siempre digita documentos homogéneos"). El selector real vive en
+el tab General (`_TabGeneral.cshtml` del original, un `<select>` a nivel de
+documento), no en cada fila -- cada fila del original solo lleva un
+`<input type="hidden" class="tipo-linea-valor">` sincronizado con ese selector global
+(hay un bug ya corregido ahí documentado: si ese input queda deshabilitado o fuera del
+POST, una línea de Servicio se guarda en silencio como Artículo).
+Campos SAP reales por tipo (`GenericoVentaService.ArmarLineasNuevas`): Artículo ->
+`ItemCode`+`WarehouseCode`; Servicio -> `AccountCode` (Cuenta Mayor) +
+`CostingCode`/`CostingCode2`/`CostingCode3` (Centro de Costos obligatorio,
+Dimensión2/3 opcionales), sin almacén. Dos catálogos SAP nuevos que haría falta portar:
+`ICuentaContableCatalogoService` (`SELECT "AcctCode","AcctName" FROM "OACT"`) e
+`IDimensionCatalogoService` (`SELECT "PrcCode","PrcName" FROM "OPRC" WHERE "DimCode" =
+:dimCode AND "Locked" = 'N'` -- el mapeo de `DimCode` es específico del ambiente
+original, 1=Centro de Costo/2=Marca/5=Tipo de Gasto, habría que reconfirmarlo contra
+Comercial Depor/GE2 antes de portar, no asumirlo). Validación condicional también
+documentada en el original (`DetalleGenericoVentaModelBase.ValidarLinea`): Servicio no
+pide Almacén pero sí Descripción+Cuenta Mayor+Centro de Costos; Artículo exige
+Artículo+Almacén. Se deja acá el diseño completo para no tener que
+re-investigarlo cuando se decida portarlo -- decisión explícita del dueño del proyecto
+de cerrar esta entrega solo con líneas de Artículo (mismo criterio YAGNI del resto del
+proyecto).
+
 **Todavía no existe** (ver `ARCHITECTURE.md` §6, pasos 6-7): el resto del motor
 `GenericoVenta` (Nota de Crédito/Facturas/Devoluciones -- de solo lectura en la
 referencia), `GenericoCompra`/`GenericoInventario`, y el motor de aprobación -- ninguno
 tiene todavía un consumidor real en este proyecto; generalizarlos ahora sería especular
-sin necesidad concreta (mismo criterio que ya cerró el alcance de `Modulo.Ventas`). El
-filtrado del árbol de menú por módulos contratados (`organization_modules`) tampoco
-existe -- hoy el árbol de menú es el mismo para todas las organizaciones sin relación
-con qué módulos tiene contratados cada una. Todas las migraciones (comercial + núcleo)
-ya se probaron contra un motor real de desarrollo (Postgres 16 en Docker, SQL Server
-2022 Express local) -- lo que falta es correrlas contra `sqlsap.cdepor.cl` en
-producción, ver `docs/05-RUNBOOK-PRODUCCION.md` para el procedimiento completo cuando
-se decida desplegar ahí.
+sin necesidad concreta (mismo criterio que ya cerró el alcance de `Modulo.Ventas`).
+Líneas de tipo Servicio en `Modulo.Ventas` tampoco existen todavía (ver el hallazgo de
+diseño documentado arriba). El filtrado del árbol de menú por módulos contratados
+(`organization_modules`) tampoco existe -- hoy el árbol de menú es el mismo para todas
+las organizaciones sin relación con qué módulos tiene contratados cada una. Todas las
+migraciones (comercial + núcleo) ya se probaron contra un motor real de desarrollo
+(Postgres 16 en Docker, SQL Server 2022 Express local) -- lo que falta es correrlas
+contra `sqlsap.cdepor.cl` en producción, ver `docs/05-RUNBOOK-PRODUCCION.md` para el
+procedimiento completo cuando se decida desplegar ahí.
 
 ## Estilo de código
 

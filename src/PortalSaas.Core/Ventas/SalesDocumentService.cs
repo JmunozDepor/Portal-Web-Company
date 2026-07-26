@@ -1,30 +1,35 @@
+using System.Text.Json;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
 namespace PortalSaas.Core.Ventas;
 
 /// <summary>
-/// Órdenes de Venta (SAP ORDR/Orders) de la compañía activa -- digitación directa.
-/// Tabla HANA y recurso de Service Layer fijos (un solo valor, no un diccionario de
-/// configuración por tipo como GenericoVentaService en la referencia) porque esta
-/// primera entrega solo soporta un tipo de documento -- ver CLAUDE.md "Qué se corta".
+/// Motor genérico de documentos de venta -- generaliza el antiguo SalesOrderService
+/// (una Orden de Venta es hoy solo SalesDocumentType.SalesOrder). Tabla HANA/recurso
+/// Service Layer/filtros extra resueltos vía SalesDocumentTypeCatalog, portado de
+/// GenericoVentaService en referencia-original/PortalSAP_v2 -- ver el doc-comment del
+/// catálogo para el porqué de los filtros extra (tipos que comparten tabla/recurso SAP).
 /// </summary>
-public sealed class SalesOrderService : ISalesOrderService
+public sealed class SalesDocumentService : ISalesDocumentService
 {
     private readonly IHanaService _hana;
     private readonly ISapConnectionProvider _connectionProvider;
 
-    public SalesOrderService(IHanaService hana, ISapConnectionProvider connectionProvider)
+    public SalesDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider)
     {
         _hana = hana;
         _connectionProvider = connectionProvider;
     }
 
-    public Task<bool> CanCreateAsync(CancellationToken ct = default) => Task.FromResult(true);
+    public Task<bool> CanCreateAsync(SalesDocumentType type, CancellationToken ct = default) =>
+        Task.FromResult(SalesDocumentTypeCatalog.Resolve(type).DefaultCanCreate);
 
-    public async Task<int> CreateAsync(string portalUsername, SalesOrderDto document, CancellationToken ct = default)
+    public async Task<int> CreateAsync(SalesDocumentType type, string portalUsername, SalesDocumentDto document, CancellationToken ct = default)
     {
-        var header = new SapSalesOrderHeader
+        var entry = SalesDocumentTypeCatalog.Resolve(type);
+
+        var header = new SapSalesDocumentHeader
         {
             CardCode = document.CustomerCardCode,
             CardName = document.CustomerName,
@@ -35,7 +40,7 @@ public sealed class SalesOrderService : ISalesOrderService
             TaxDate = document.TaxDate.ToDateTime(TimeOnly.MinValue),
             NumAtCard = document.CustomerReferenceNumber,
             U_PortalUser = portalUsername,
-            DocumentLines = document.Lines.Select(line => new SapSalesOrderLine
+            DocumentLines = document.Lines.Select(line => new SapSalesDocumentLine
             {
                 ItemCode = line.ItemCode,
                 ItemDescription = line.Description,
@@ -47,22 +52,23 @@ public sealed class SalesOrderService : ISalesOrderService
         };
 
         var session = await _connectionProvider.GetConnectionAsync(ct);
-        var created = await session.PostAsync<SapSalesOrderHeader>("Orders", header, ct)
+        var created = await session.PostAsync<SapSalesDocumentHeader>(entry.Resource, BuildRequestBody(header, entry), ct)
             ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
 
         return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
     }
 
-    public async Task<SalesOrderDto?> GetAsync(int docEntry, CancellationToken ct = default)
+    public async Task<SalesDocumentDto?> GetAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default)
     {
+        var entry = SalesDocumentTypeCatalog.Resolve(type);
         var session = await _connectionProvider.GetConnectionAsync(ct);
-        var sap = await session.GetAsync<SapSalesOrderHeader>($"Orders({docEntry})", ct: ct);
+        var sap = await session.GetAsync<SapSalesDocumentHeader>($"{entry.Resource}({docEntry})", ct: ct);
         if (sap is null)
         {
             return null;
         }
 
-        return new SalesOrderDto(
+        return new SalesDocumentDto(
             CustomerCardCode: sap.CardCode,
             CustomerName: sap.CardName,
             SalesEmployeeCode: sap.SalesPersonCode,
@@ -71,7 +77,7 @@ public sealed class SalesOrderService : ISalesOrderService
             DocDueDate: DateOnly.FromDateTime(sap.DocDueDate ?? DateTime.Today),
             TaxDate: DateOnly.FromDateTime(sap.TaxDate ?? DateTime.Today),
             CustomerReferenceNumber: sap.NumAtCard,
-            Lines: sap.DocumentLines.Select(line => new SalesOrderLineDto(
+            Lines: sap.DocumentLines.Select(line => new SalesDocumentLineDto(
                 ItemCode: line.ItemCode,
                 Description: line.ItemDescription,
                 Quantity: line.Quantity,
@@ -84,14 +90,15 @@ public sealed class SalesOrderService : ISalesOrderService
             Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto");
     }
 
-    public async Task<SalesOrderListResult> ListAsync(SalesOrderFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
+    public async Task<SalesDocumentListResult> ListAsync(SalesDocumentType type, SalesDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
     {
+        var entry = SalesDocumentTypeCatalog.Resolve(type);
         var clampedPageSize = pageSize switch { 50 => 50, 100 => 100, _ => 25 };
         var offset = Math.Max(0, page - 1) * clampedPageSize;
 
-        var (whereClause, parameters) = BuildWhereClause(filter);
+        var (whereClause, parameters) = BuildWhereClause(filter, entry.ExtraFilters);
 
-        var countSql = $"""SELECT COUNT(*) FROM "ORDR" o {whereClause}""";
+        var countSql = $"""SELECT COUNT(*) FROM "{entry.Table}" o {whereClause}""";
         var totalRecords = (await _hana.QueryAsync<int>(countSql, parameters, ct)).FirstOrDefault();
 
         var listSql = $"""
@@ -99,24 +106,52 @@ public sealed class SalesOrderService : ISalesOrderService
                    o."CardName" AS "CustomerName", o."DocDate", o."DocTotal",
                    o."NumAtCard" AS "CustomerReferenceNumber", s."SlpName" AS "SalesEmployeeName",
                    CASE WHEN o."DocStatus" = 'O' THEN 'Abierto' ELSE 'Cerrado' END AS "Status"
-            FROM "ORDR" o
+            FROM "{entry.Table}" o
             LEFT JOIN "OSLP" s ON s."SlpCode" = o."SlpCode"
             {whereClause}
             ORDER BY o."DocEntry" DESC
             LIMIT {clampedPageSize} OFFSET {offset}
             """;
 
-        var items = await _hana.QueryAsync<SalesOrderSummaryDto>(listSql, parameters, ct);
-        return new SalesOrderListResult(items, totalRecords);
+        var items = await _hana.QueryAsync<SalesDocumentSummaryDto>(listSql, parameters, ct);
+        return new SalesDocumentListResult(items, totalRecords);
+    }
+
+    /// <summary>
+    /// Tipos que comparten tabla/recurso SAP (ej. Factura Deudores/Reserva/Recibo, las
+    /// tres "OINV"/"Invoices") necesitan fijar en el POST la misma columna que ListAsync
+    /// usa para distinguirlas al leer -- si no, Service Layer crea el documento con el
+    /// valor por defecto (ej. una Factura Reserva quedaría como Factura Deudores común,
+    /// silenciosamente mal). Solo los filtros de igualdad se fijan -- portado de
+    /// GenericoVentaService.CrearAsync en la referencia.
+    /// </summary>
+    private static object BuildRequestBody(SapSalesDocumentHeader header, SalesDocumentTypeCatalog.Entry entry)
+    {
+        var equalFilters = entry.ExtraFilters.Where(f => f.IsEqual).ToList();
+        if (equalFilters.Count == 0)
+        {
+            return header;
+        }
+
+        var flattened = JsonSerializer.Deserialize<Dictionary<string, object?>>(JsonSerializer.Serialize(header))!;
+        foreach (var filter in equalFilters)
+        {
+            flattened[filter.Column] = filter.Value;
+        }
+
+        return flattened;
     }
 
     /// <summary>
     /// Arma el WHERE dinámicamente según qué filtros vinieron -- todos opcionales, así
     /// que se reusa el mismo WHERE (y el mismo diccionario de parámetros) para el
     /// COUNT(*) y el SELECT paginado, nunca concatenando el valor del usuario, solo los
-    /// nombres de los parámetros (que son fijos, no vienen del usuario).
+    /// nombres de los parámetros (que son fijos, no vienen del usuario). extraFilters
+    /// del catálogo (no del usuario) se agregan siempre, con "=" o "&lt;&gt;" según
+    /// IsEqual -- portado de GenericoVentaService.ListarAsync.
     /// </summary>
-    private static (string WhereClause, IReadOnlyDictionary<string, object?> Parameters) BuildWhereClause(SalesOrderFilter? filter)
+    private static (string WhereClause, IReadOnlyDictionary<string, object?> Parameters) BuildWhereClause(
+        SalesDocumentFilter? filter, IReadOnlyList<SalesDocumentTypeCatalog.ExtraFilter> extraFilters)
     {
         var clauses = new List<string>();
         var parameters = new Dictionary<string, object?>();
@@ -152,6 +187,15 @@ public sealed class SalesOrderService : ISalesOrderService
                 clauses.Add("""o."DocNum" = :docNum""");
                 parameters["docNum"] = docNum;
             }
+        }
+
+        for (var i = 0; i < extraFilters.Count; i++)
+        {
+            var extraFilter = extraFilters[i];
+            var paramName = $"extraFilter{i}";
+            var op = extraFilter.IsEqual ? "=" : "<>";
+            clauses.Add($"""o."{extraFilter.Column}" {op} :{paramName}""");
+            parameters[paramName] = extraFilter.Value;
         }
 
         var whereClause = clauses.Count == 0 ? string.Empty : "WHERE " + string.Join(" AND ", clauses);

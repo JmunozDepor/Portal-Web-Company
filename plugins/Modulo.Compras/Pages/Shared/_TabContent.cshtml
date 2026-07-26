@@ -1,13 +1,14 @@
-@model Modulo.Ventas.Pages.DetailGenericSalesDocumentModelBase
+@model Modulo.Compras.Pages.DetailGenericPurchaseDocumentModelBase
 @{
     var readOnly = Model.Document.ReadOnly;
     // Al crear, se muestran las líneas ya cargadas (normalmente 1 en blanco) más un
     // puñado de filas vacías extra para no necesitar un botón "Agregar línea" con JS
-    // -- las filas sin ItemCode se descartan solas en el POST (ver DetailModel.OnPostAsync).
+    // -- las filas sin ItemCode se descartan solas en el POST (ver
+    // DetailGenericPurchaseDocumentModelBase.OnPostAsync).
     var rowCount = readOnly ? Model.Input.Lines.Count : Math.Max(Model.Input.Lines.Count, 1) + 9;
 }
 
-<table class="table table-sm" id="sales-order-lines">
+<table class="table table-sm" id="purchase-document-lines">
     <thead>
         <tr>
             <th>Artículo</th>
@@ -21,10 +22,10 @@
     <tbody>
         @for (var i = 0; i < rowCount; i++)
         {
-            var line = i < Model.Input.Lines.Count ? Model.Input.Lines[i] : new Modulo.Ventas.Pages.DetailGenericSalesDocumentModelBase.LineInput();
+            var line = i < Model.Input.Lines.Count ? Model.Input.Lines[i] : new Modulo.Compras.Pages.DetailGenericPurchaseDocumentModelBase.LineInput();
             <tr>
                 <td>
-                    <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm sales-order-item-code" list="sales-order-items-datalist" disabled="@readOnly" />
+                    <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm purchase-document-item-code" list="purchase-document-items-datalist" disabled="@readOnly" />
                 </td>
                 <td>
                     <input name="Input.Lines[@i].Description" value="@line.Description" class="form-control form-control-sm" disabled="@readOnly" />
@@ -52,15 +53,15 @@
     </tbody>
 </table>
 
-<datalist id="sales-order-items-datalist"></datalist>
+<datalist id="purchase-document-items-datalist"></datalist>
 
 @if (!readOnly)
 {
     <script src="~/js/catalog-search.js"></script>
     <script>
         wireCatalogSearch({
-            inputSelector: '.sales-order-item-code',
-            datalistId: 'sales-order-items-datalist',
+            inputSelector: '.purchase-document-item-code',
+            datalistId: 'purchase-document-items-datalist',
             handlerName: 'SearchItems',
             getValue: function (item) { return item.itemCode; },
             getLabel: function (item) { return item.itemCode + ' — ' + item.itemName; },

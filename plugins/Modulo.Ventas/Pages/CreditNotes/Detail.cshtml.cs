@@ -1,9 +1,9 @@
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
-namespace Modulo.Ventas.Pages.SalesOrders;
+namespace Modulo.Ventas.Pages.CreditNotes;
 
-/// <summary>Crear/ver una Orden de Venta -- primer inquilino del documento base genérico (ver DetailGenericSalesDocumentModelBase).</summary>
+/// <summary>Crear/ver una Nota de Crédito -- segundo inquilino del documento base genérico (ver DetailGenericSalesDocumentModelBase).</summary>
 public sealed class DetailModel : DetailGenericSalesDocumentModelBase
 {
     public DetailModel(
@@ -17,8 +17,8 @@ public sealed class DetailModel : DetailGenericSalesDocumentModelBase
     {
     }
 
-    protected override SalesDocumentType Type => SalesDocumentType.SalesOrder;
-    protected override string MenuCode => "Ventas.ordenes";
-    public override string DocumentName => "Orden de Venta";
-    public override string RouteBase => "/ventas/ordenes";
+    protected override SalesDocumentType Type => SalesDocumentType.CreditNote;
+    protected override string MenuCode => "Ventas.notascredito";
+    public override string DocumentName => "Nota de Crédito";
+    public override string RouteBase => "/ventas/notas-credito";
 }

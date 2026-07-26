@@ -1,0 +1,52 @@
+@model Modulo.Inventario.Pages.DetailGenericInventoryDocumentModelBase
+@{
+    var readOnly = Model.Document.ReadOnly;
+    // Al crear, se muestran las líneas ya cargadas (normalmente 1 en blanco) más un
+    // puñado de filas vacías extra para no necesitar un botón "Agregar línea" con JS
+    // -- las filas sin ItemCode se descartan solas en el POST (ver
+    // DetailGenericInventoryDocumentModelBase.OnPostAsync).
+    var rowCount = readOnly ? Model.Input.Lines.Count : Math.Max(Model.Input.Lines.Count, 1) + 9;
+}
+
+<table class="table table-sm" id="inventory-document-lines">
+    <thead>
+        <tr>
+            <th>Artículo</th>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+        </tr>
+    </thead>
+    <tbody>
+        @for (var i = 0; i < rowCount; i++)
+        {
+            var line = i < Model.Input.Lines.Count ? Model.Input.Lines[i] : new Modulo.Inventario.Pages.DetailGenericInventoryDocumentModelBase.LineInput();
+            <tr>
+                <td>
+                    <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm inventory-document-item-code" list="inventory-document-items-datalist" disabled="@readOnly" />
+                </td>
+                <td>
+                    <input name="Input.Lines[@i].Description" value="@line.Description" class="form-control form-control-sm" disabled="@readOnly" />
+                </td>
+                <td style="max-width:100px">
+                    <input name="Input.Lines[@i].Quantity" type="number" step="0.01" value="@(line.Quantity == 0 ? "" : line.Quantity.ToString())" class="form-control form-control-sm" disabled="@readOnly" />
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<datalist id="inventory-document-items-datalist"></datalist>
+
+@if (!readOnly)
+{
+    <script src="~/js/catalog-search.js"></script>
+    <script>
+        wireCatalogSearch({
+            inputSelector: '.inventory-document-item-code',
+            datalistId: 'inventory-document-items-datalist',
+            handlerName: 'SearchItems',
+            getValue: function (item) { return item.itemCode; },
+            getLabel: function (item) { return item.itemCode + ' — ' + item.itemName; },
+        });
+    </script>
+}

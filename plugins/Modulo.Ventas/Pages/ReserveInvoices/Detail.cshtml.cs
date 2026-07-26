@@ -1,9 +1,9 @@
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
-namespace Modulo.Ventas.Pages.SalesOrders;
+namespace Modulo.Ventas.Pages.ReserveInvoices;
 
-/// <summary>Crear/ver una Orden de Venta -- primer inquilino del documento base genérico (ver DetailGenericSalesDocumentModelBase).</summary>
+/// <summary>Crear/ver una Factura de Reserva -- mismo diccionario base "OINV"/"Invoices" que Facturas, se distingue por el filtro isIns=Y del catálogo.</summary>
 public sealed class DetailModel : DetailGenericSalesDocumentModelBase
 {
     public DetailModel(
@@ -17,8 +17,8 @@ public sealed class DetailModel : DetailGenericSalesDocumentModelBase
     {
     }
 
-    protected override SalesDocumentType Type => SalesDocumentType.SalesOrder;
-    protected override string MenuCode => "Ventas.ordenes";
-    public override string DocumentName => "Orden de Venta";
-    public override string RouteBase => "/ventas/ordenes";
+    protected override SalesDocumentType Type => SalesDocumentType.ReserveInvoice;
+    protected override string MenuCode => "Ventas.facturasreserva";
+    public override string DocumentName => "Factura de Reserva";
+    public override string RouteBase => "/ventas/facturas-reserva";
 }

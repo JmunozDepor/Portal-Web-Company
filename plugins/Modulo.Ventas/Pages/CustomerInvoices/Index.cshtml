@@ -1,0 +1,7 @@
+@page "/ventas/facturas"
+@model Modulo.Ventas.Pages.CustomerInvoices.IndexModel
+@{
+    ViewData["Title"] = "Facturas";
+}
+
+@await Component.InvokeAsync("DocumentList", Model.Listado)

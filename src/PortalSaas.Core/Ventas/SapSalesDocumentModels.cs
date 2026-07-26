@@ -1,13 +1,15 @@
 namespace PortalSaas.Core.Ventas;
 
 /// <summary>
-/// Forma exacta que espera/devuelve el recurso "Orders" de Service Layer -- nunca
-/// expuesto fuera de Core (SalesOrderService lo mapea desde/hacia SalesOrderDto, ver
-/// PortalSaas.Abstractions.Modelos.SalesOrderDto). Nombres de propiedad en PascalCase
-/// tal cual los define SAP -- no son "vocabulario de negocio" a traducir, son el
-/// contrato de red del proveedor.
+/// Forma exacta que espera/devuelve el recurso de Service Layer de cada tipo de
+/// documento de venta (ver SalesDocumentTypeCatalog) -- nunca expuesto fuera de Core
+/// (SalesDocumentService lo mapea desde/hacia SalesDocumentDto, ver
+/// PortalSaas.Abstractions.Modelos.SalesDocumentDto). Nombres de propiedad en
+/// PascalCase tal cual los define SAP -- no son "vocabulario de negocio" a traducir,
+/// son el contrato de red del proveedor. Generaliza el antiguo SapSalesOrderHeader/Line
+/// (mismo shape, ahora compartido por los 7 tipos).
 /// </summary>
-internal sealed class SapSalesOrderHeader
+internal sealed class SapSalesDocumentHeader
 {
     public int? DocEntry { get; set; }
     public int? DocNum { get; set; }
@@ -29,11 +31,11 @@ internal sealed class SapSalesOrderHeader
     public string? NumAtCard { get; set; }
     public decimal? DocTotal { get; set; }
     public string? DocumentStatus { get; set; }
-    public List<SapSalesOrderLine> DocumentLines { get; set; } = [];
+    public List<SapSalesDocumentLine> DocumentLines { get; set; } = [];
     public string? U_PortalUser { get; set; }
 }
 
-internal sealed class SapSalesOrderLine
+internal sealed class SapSalesDocumentLine
 {
     public int? LineNum { get; set; }
     public string ItemCode { get; set; } = null!;

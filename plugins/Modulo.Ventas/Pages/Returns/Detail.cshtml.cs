@@ -1,9 +1,9 @@
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
-namespace Modulo.Ventas.Pages.SalesOrders;
+namespace Modulo.Ventas.Pages.Returns;
 
-/// <summary>Crear/ver una Orden de Venta -- primer inquilino del documento base genérico (ver DetailGenericSalesDocumentModelBase).</summary>
+/// <summary>Ver una Devolución -- de solo lectura (CanCreate=false en SalesDocumentTypeCatalog, mismo criterio que la referencia).</summary>
 public sealed class DetailModel : DetailGenericSalesDocumentModelBase
 {
     public DetailModel(
@@ -17,8 +17,8 @@ public sealed class DetailModel : DetailGenericSalesDocumentModelBase
     {
     }
 
-    protected override SalesDocumentType Type => SalesDocumentType.SalesOrder;
-    protected override string MenuCode => "Ventas.ordenes";
-    public override string DocumentName => "Orden de Venta";
-    public override string RouteBase => "/ventas/ordenes";
+    protected override SalesDocumentType Type => SalesDocumentType.Return;
+    protected override string MenuCode => "Ventas.devoluciones";
+    public override string DocumentName => "Devolución";
+    public override string RouteBase => "/ventas/devoluciones";
 }

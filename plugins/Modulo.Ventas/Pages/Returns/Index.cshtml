@@ -1,0 +1,7 @@
+@page "/ventas/devoluciones"
+@model Modulo.Ventas.Pages.Returns.IndexModel
+@{
+    ViewData["Title"] = "Devoluciones";
+}
+
+@await Component.InvokeAsync("DocumentList", Model.Listado)

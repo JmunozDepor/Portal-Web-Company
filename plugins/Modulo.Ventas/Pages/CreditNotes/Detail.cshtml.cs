@@ -12,8 +12,13 @@ public sealed class DetailModel : DetailGenericSalesDocumentModelBase
         ICustomerCatalogService customers,
         IWarehouseCatalogService warehouses,
         ISalesEmployeeCatalogService salesEmployees,
-        IItemCatalogService items)
-        : base(documents, currentUser, customers, warehouses, salesEmployees, items)
+        IItemCatalogService items,
+        IGeneralLedgerAccountCatalogService accounts,
+        ICostCenterCatalogService costCenters,
+        ISeriesCatalogService series,
+        IShippingMethodCatalogService shippingMethods,
+        IPaymentTermsCatalogService paymentTerms)
+        : base(documents, currentUser, customers, warehouses, salesEmployees, items, accounts, costCenters, series, shippingMethods, paymentTerms)
     {
     }
 

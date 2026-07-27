@@ -11,4 +11,5 @@ public sealed record SupplierDto
     public string CardName { get; init; } = null!;
 }
 
-public sealed record SupplierFilter(string? SearchText = null);
+/// <summary>Ver el doc-comment de CustomerFilter.Limit -- mismo criterio, lado proveedor.</summary>
+public sealed record SupplierFilter(string? SearchText = null, int? Limit = null);

@@ -4,10 +4,73 @@
     ViewData["Title"] = "Inicio";
 }
 
-<h1 class="h3">Hola, @Model.Email</h1>
-<p class="text-muted">Organización: @Model.OrganizationSlug</p>
+<div class="card-ps" style="padding: 20px;">
+    <h2 style="margin: 0 0 6px;">Hola, @Model.Email</h2>
+    <p style="color: var(--bs-secondary-color); margin: 0;">
+        Organización: <strong>@Model.OrganizationSlug</strong>. Elegí un módulo para empezar.
+    </p>
 
-<p>
-    Sesión iniciada correctamente. Este es el shell mínimo del Host --
-    <a asp-page="/Home/Preferences">tus preferencias personales</a> viven en otra página.
-</p>
+    <div class="inicio-accesos">
+        @foreach (var acceso in Model.Shortcuts)
+        {
+            <div class="inicio-acceso-wrap">
+                <a href="@Url.Content("~" + acceso.PagePath)" class="inicio-acceso-card" style="--icon-color:var(--menu-color-@acceso.ColorIndex)">
+                    <span class="inicio-acceso-icono"><i class="@(acceso.Icon ?? "bi bi-folder")"></i></span>
+                    <span class="inicio-acceso-nombre">@acceso.Name</span>
+                </a>
+                @if (Model.IsCustomized)
+                {
+                    <form asp-page="./Index" asp-page-handler="RemoveShortcut" asp-antiforgery="true" method="post" class="inicio-acceso-quitar">
+                        <input type="hidden" name="menuId" value="@acceso.MenuId" />
+                        <button type="submit" title="Quitar de Inicio" aria-label="Quitar de Inicio">&times;</button>
+                    </form>
+                }
+            </div>
+        }
+        <button type="button" class="inicio-acceso-card inicio-acceso-agregar" onclick="toggleAccesoInicioPicker()">
+            <span class="inicio-acceso-icono"><i class="bi bi-plus-lg"></i></span>
+            <span class="inicio-acceso-nombre">Agregar</span>
+        </button>
+    </div>
+
+    <div id="acceso-inicio-picker" class="inicio-picker" style="display:none">
+        <div class="form-group">
+            <input type="text" id="acceso-inicio-filtro" class="form-control" placeholder="Buscar página para agregar a Inicio..."
+                   oninput="filtrarAccesoInicioPicker(this.value)" />
+        </div>
+        <div class="inicio-picker-lista" id="acceso-inicio-lista">
+            @foreach (var pagina in Model.AvailablePages)
+            {
+                <form asp-page="./Index" asp-page-handler="AddShortcut" asp-antiforgery="true" method="post" class="inicio-picker-item"
+                      data-filtro="@pagina.Name.ToLowerInvariant()">
+                    <input type="hidden" name="menuId" value="@pagina.Id" />
+                    <span><i class="@(pagina.Icon ?? "bi bi-circle")"></i> @pagina.Name</span>
+                    <button type="submit" class="btn-module-action">Agregar</button>
+                </form>
+            }
+            @if (Model.AvailablePages.Count == 0)
+            {
+                <p class="text-muted mb-0">No quedan páginas disponibles para agregar.</p>
+            }
+        </div>
+    </div>
+
+    <p class="mt-3">
+        <a asp-page="/Home/Preferences">Tus preferencias personales</a> viven en otra página.
+    </p>
+</div>
+
+<script>
+    function toggleAccesoInicioPicker() {
+        var picker = document.getElementById('acceso-inicio-picker');
+        picker.style.display = picker.style.display === 'none' ? '' : 'none';
+    }
+
+    function filtrarAccesoInicioPicker(texto) {
+        var q = texto.trim().toLowerCase();
+        document.querySelectorAll('#acceso-inicio-lista .inicio-picker-item').forEach(function (fila) {
+            var contenido = fila.getAttribute('data-filtro') || '';
+            fila.style.display = (!q || contenido.indexOf(q) !== -1) ? '' : 'none';
+        });
+    }
+</script>

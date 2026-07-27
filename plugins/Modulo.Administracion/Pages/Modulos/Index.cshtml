@@ -1,0 +1,57 @@
+@page "/organizacion/modulos"
+@model Modulo.Administracion.Pages.Modulos.IndexModel
+@{
+    ViewData["Title"] = "Módulos";
+}
+
+<h1 class="h3 mb-3">Módulos de tu organización</h1>
+<p class="text-muted">
+    Estos son los módulos que tu organización tiene contratados. Ocultar un módulo no
+    cambia lo que contrataste -- solo lo saca del menú para que no distraiga si no lo usás.
+</p>
+
+@if (Model.MensajeExito is not null)
+{
+    <div class="alert alert-success">@Model.MensajeExito</div>
+}
+@if (Model.MensajeError is not null)
+{
+    <div class="alert alert-danger">@Model.MensajeError</div>
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Núcleo de plataforma</th>
+            <th>Estado</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var module in Model.Modules)
+        {
+            <tr>
+                <td>@module.Code</td>
+                <td>@module.Name</td>
+                <td>@(module.IsCore ? "Sí" : "No")</td>
+                <td>@(module.IsHidden ? "Oculto" : "Visible")</td>
+                <td>
+                    <form method="post" asp-page-handler="Toggle" asp-antiforgery="true">
+                        <input type="hidden" name="moduleId" value="@module.ModuleId" />
+                        <input type="hidden" name="isHidden" value="@(!module.IsHidden)" />
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                            @(module.IsHidden ? "Mostrar" : "Ocultar")
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Modules.Count == 0)
+{
+    <p class="text-muted">Tu organización todavía no tiene módulos contratados en el catálogo comercial.</p>
+}

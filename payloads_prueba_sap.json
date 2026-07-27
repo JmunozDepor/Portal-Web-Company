@@ -1,0 +1,84 @@
+{
+  "_nota": "Payloads de referencia para probar manualmente (Postman/curl) contra Service Layer, generados al auditar PurchaseDocumentService/InventoryDocumentService (26 jul 2026). Reflejan el mapeo YA corregido en el código -- no son datos reales, ajustar CardCode/ItemCode/WarehouseCode a valores existentes en el ambiente demo (Comercial GE2/BLOCK_QA o Comercial Depor/DEPOR_QA) antes de enviarlos. UnitPrice se omite a propósito cuando no se especifica -- si la propiedad JSON está presente con null, Service Layer la toma como precio 0 en vez de calcular el de la lista del proveedor.",
+
+  "compra_oferta_PurchaseQuotations_POST": {
+    "_recurso": "POST {ServiceLayerUrl}/b1s/v1/PurchaseQuotations",
+    "_tipo": "PurchaseDocumentType.PurchaseQuotation -- OPQT",
+    "_advertencia": "Sin RequriedDate (cabecera) + RequiredDate (por línea) este POST falla con 'Specify the required date [OINV.ReqDate]' -- bug real encontrado y corregido en esta auditoría (ver SapPurchaseDocumentModels.cs).",
+    "CardCode": "CL0001",
+    "Comments": "Prueba generada por auditoría de código (payloads_prueba_sap.json)",
+    "DocDate": "2026-07-26",
+    "DocDueDate": "2026-08-05",
+    "RequriedDate": "2026-08-05",
+    "TaxDate": "2026-07-26",
+    "NumAtCard": "TEST-CLAUDE-AUDIT",
+    "U_PortalUser": "admin",
+    "DocumentLines": [
+      {
+        "ItemCode": "A00001",
+        "ItemDescription": "Artículo de prueba",
+        "Quantity": 10,
+        "DiscountPercent": 0,
+        "WarehouseCode": "01",
+        "RequiredDate": "2026-08-05"
+      }
+    ]
+  },
+
+  "compra_pedido_PurchaseOrders_POST": {
+    "_recurso": "POST {ServiceLayerUrl}/b1s/v1/PurchaseOrders",
+    "_tipo": "PurchaseDocumentType.PurchaseOrder -- OPOR",
+    "_advertencia_diseño": "En referencia-original/PortalSAP_v2 este tipo tiene PermiteCrear=false (nace SIEMPRE de un Copy-From de una Oferta aprobada, con un Transaction Notification en SAP que lo bloquea si no viene de ese Copy-From). En esta entrega el catálogo (PurchaseDocumentTypeCatalog) lo dejó en true -- digitación directa por ausencia del motor de aprobación -- decisión ya documentada en el código, no un bug. Si el SAP del cliente tiene ese Transaction Notification instalado, este POST será RECHAZADO por SAP aunque el JSON esté bien formado -- confirmarlo antes de la verificación E2E contra un ambiente con aprobación real configurada.",
+    "CardCode": "CL0001",
+    "Comments": "Prueba generada por auditoría de código (payloads_prueba_sap.json)",
+    "DocDate": "2026-07-26",
+    "DocDueDate": "2026-08-05",
+    "RequriedDate": "2026-08-05",
+    "TaxDate": "2026-07-26",
+    "NumAtCard": "TEST-CLAUDE-AUDIT",
+    "U_PortalUser": "admin",
+    "DocumentLines": [
+      {
+        "ItemCode": "A00001",
+        "ItemDescription": "Artículo de prueba",
+        "Quantity": 5,
+        "DiscountPercent": 0,
+        "WarehouseCode": "01",
+        "RequiredDate": "2026-08-05"
+      }
+    ]
+  },
+
+  "inventario_solicitud_traslado_InventoryTransferRequests_POST": {
+    "_recurso": "POST {ServiceLayerUrl}/b1s/v1/InventoryTransferRequests",
+    "_tipo": "InventoryDocumentType.InventoryTransferRequest -- OWTQ",
+    "DocDate": "2026-07-26",
+    "Comments": "Prueba generada por auditoría de código (payloads_prueba_sap.json)",
+    "U_PortalUser": "admin",
+    "StockTransferLines": [
+      {
+        "ItemCode": "A00001",
+        "Quantity": 5,
+        "WarehouseCode": "02",
+        "FromWarehouseCode": "01"
+      }
+    ]
+  },
+
+  "inventario_traslado_StockTransfers_POST": {
+    "_recurso": "POST {ServiceLayerUrl}/b1s/v1/StockTransfers",
+    "_tipo": "InventoryDocumentType.StockTransfer -- OWTR",
+    "_advertencia": "Sin DocDueDate -- Service Layer la rechaza para StockTransfer ('Property DocDueDate of StockTransfer is invalid'), confirmado contra la referencia y ya reflejado en el wire model (SapInventoryDocumentModels.cs no tiene esa propiedad). Recurso en plural 'StockTransfers', NO 'InventoryTransfers' (bug real documentado en el original, ya evitado acá).",
+    "DocDate": "2026-07-26",
+    "Comments": "Prueba generada por auditoría de código (payloads_prueba_sap.json)",
+    "U_PortalUser": "admin",
+    "StockTransferLines": [
+      {
+        "ItemCode": "A00001",
+        "Quantity": 5,
+        "WarehouseCode": "02",
+        "FromWarehouseCode": "01"
+      }
+    ]
+  }
+}

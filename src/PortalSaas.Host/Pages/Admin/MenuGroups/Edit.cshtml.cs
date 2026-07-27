@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Data;
@@ -22,6 +23,7 @@ public class EditModel : PageModel
     public InputModel Input { get; set; } = new();
 
     public List<Menu> AllMenus { get; private set; } = [];
+    public List<SelectListItem> ProfileOptions { get; private set; } = [];
 
     public async Task<IActionResult> OnGetAsync(long id)
     {
@@ -42,6 +44,7 @@ public class EditModel : PageModel
             Description = menuGroup.Description,
             IsActive = menuGroup.IsActive,
             SelectedMenuIds = menuGroup.MenuGroupItems.Select(i => i.MenuId).ToList(),
+            DefaultProfileByMenu = menuGroup.MenuGroupItems.ToDictionary(i => i.MenuId, i => i.DefaultProfileId),
         };
 
         return Page();
@@ -77,16 +80,34 @@ public class EditModel : PageModel
         menuGroup.IsActive = Input.IsActive;
 
         var seleccionados = (Input.SelectedMenuIds ?? []).ToHashSet();
+        var perfilPorDefectoPorMenu = Input.DefaultProfileByMenu ?? [];
 
         foreach (var item in menuGroup.MenuGroupItems.Where(i => !seleccionados.Contains(i.MenuId)).ToList())
         {
             menuGroup.MenuGroupItems.Remove(item);
         }
 
-        var yaAsignados = menuGroup.MenuGroupItems.Select(i => i.MenuId).ToHashSet();
-        foreach (var menuId in seleccionados.Where(menuId => !yaAsignados.Contains(menuId)))
+        var yaAsignados = menuGroup.MenuGroupItems.ToDictionary(i => i.MenuId);
+        foreach (var menuId in seleccionados)
         {
-            menuGroup.MenuGroupItems.Add(new MenuGroupItem { MenuGroupId = menuGroup.Id, MenuId = menuId });
+            var defaultProfileId = perfilPorDefectoPorMenu.GetValueOrDefault(menuId);
+            var defaultProfileIdNormalizado = defaultProfileId is null or 0 ? null : defaultProfileId;
+
+            if (yaAsignados.TryGetValue(menuId, out var existente))
+            {
+                // Ya estaba en el grupo -- solo actualiza el Profile por defecto (el
+                // checkbox seguía tildado, esto no es un alta nueva).
+                existente.DefaultProfileId = defaultProfileIdNormalizado;
+            }
+            else
+            {
+                menuGroup.MenuGroupItems.Add(new MenuGroupItem
+                {
+                    MenuGroupId = menuGroup.Id,
+                    MenuId = menuId,
+                    DefaultProfileId = defaultProfileIdNormalizado,
+                });
+            }
         }
 
         await _db.SaveChangesAsync();
@@ -98,6 +119,11 @@ public class EditModel : PageModel
     {
         AllMenus = await _db.Menus
             .OrderBy(m => m.OriginModule).ThenBy(m => m.Level).ThenBy(m => m.Order)
+            .ToListAsync();
+
+        ProfileOptions = await _db.Profiles
+            .OrderBy(p => p.Name)
+            .Select(p => new SelectListItem(p.Name, p.Id.ToString()))
             .ToListAsync();
     }
 
@@ -116,5 +142,8 @@ public class EditModel : PageModel
         public bool IsActive { get; set; } = true;
 
         public List<long> SelectedMenuIds { get; set; } = [];
+
+        /// <summary>Profile por defecto que hereda cualquier usuario de este grupo para ese nodo -- ver MenuGroupItem.DefaultProfileId.</summary>
+        public Dictionary<long, long?> DefaultProfileByMenu { get; set; } = [];
     }
 }

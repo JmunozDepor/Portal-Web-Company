@@ -16,12 +16,18 @@ namespace PortalSaas.Core.Inventario;
 /// </summary>
 public static class InventoryDocumentTypeCatalog
 {
-    public sealed record Entry(string Table, string Resource, bool DefaultCanCreate);
+    public sealed record Entry(string Table, string Resource, bool DefaultCanCreate, int ObjectCode);
 
+    // ObjectCode: los 2 confirmados EMPÍRICAMENTE contra Comercial GE2 real (26 jul
+    // 2026, mismo criterio que SalesDocumentTypeCatalog/PurchaseDocumentTypeCatalog --
+    // se cruzó el Series de documentos reales de OWTQ/OWTR contra NNM1).
+    // InventoryTransferRequest (1250000001) es un objeto tipo UDO/adicional, no un
+    // código de 2 dígitos como el resto -- documentado acá porque no es obvio. Ver
+    // ISeriesCatalogService.
     public static readonly IReadOnlyDictionary<InventoryDocumentType, Entry> Entries = new Dictionary<InventoryDocumentType, Entry>
     {
-        [InventoryDocumentType.InventoryTransferRequest] = new("OWTQ", "InventoryTransferRequests", true),
-        [InventoryDocumentType.StockTransfer] = new("OWTR", "StockTransfers", true),
+        [InventoryDocumentType.InventoryTransferRequest] = new("OWTQ", "InventoryTransferRequests", true, ObjectCode: 1250000001),
+        [InventoryDocumentType.StockTransfer] = new("OWTR", "StockTransfers", true, ObjectCode: 67),
     };
 
     public static Entry Resolve(InventoryDocumentType type) => Entries[type];

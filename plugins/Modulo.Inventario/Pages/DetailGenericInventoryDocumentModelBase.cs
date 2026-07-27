@@ -31,17 +31,20 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
     private readonly ICurrentUserContext _currentUser;
     private readonly IWarehouseCatalogService _warehouses;
     private readonly IItemCatalogService _items;
+    private readonly ISeriesCatalogService _series;
 
     protected DetailGenericInventoryDocumentModelBase(
         IInventoryDocumentService documents,
         ICurrentUserContext currentUser,
         IWarehouseCatalogService warehouses,
-        IItemCatalogService items)
+        IItemCatalogService items,
+        ISeriesCatalogService series)
     {
         _documents = documents;
         _currentUser = currentUser;
         _warehouses = warehouses;
         _items = items;
+        _series = series;
     }
 
     protected abstract InventoryDocumentType Type { get; }
@@ -52,12 +55,22 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
+    /// <summary>
+    /// URL del listado que llevó acá (con su página/filtros actuales) -- IndexGeneric*ModelBase
+    /// la arma al construir cada DetailUrl, para que "Volver" no resetee la paginación
+    /// (bug real reportado: "Volver" desde la página 3 del listado volvía siempre a la
+    /// página 1, porque BackUrl era RouteBase fijo, sin querystring). Url.IsLocalUrl,
+    /// mismo criterio anti-open-redirect que Account/Login.cshtml.cs.
+    /// </summary>
+    [BindProperty(SupportsGet = true, Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
     public bool IsNew { get; private set; }
     public int? DocEntry { get; private set; }
     public int? DocNum { get; private set; }
     public string? Status { get; private set; }
 
-    public List<SelectListItem> Warehouses { get; private set; } = [];
+    public List<SelectListItem> Series { get; private set; } = [];
 
     public DocumentFormViewModel Document { get; private set; } = null!;
 
@@ -81,6 +94,7 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
             Input = new InputModel
             {
                 DocDate = DateOnly.FromDateTime(DateTime.Today),
+                Series = null,
             };
         }
         else
@@ -104,6 +118,7 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
             {
                 Comments = document.Comments,
                 DocDate = document.DocDate,
+                Series = document.Series,
                 Lines = document.Lines.Select(line => new LineInput
                 {
                     ItemCode = line.ItemCode,
@@ -174,7 +189,8 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
                 Description: line.Description,
                 Quantity: line.Quantity ?? 0,
                 FromWarehouseCode: line.FromWarehouseCode!,
-                ToWarehouseCode: line.ToWarehouseCode!)).ToList());
+                ToWarehouseCode: line.ToWarehouseCode!)).ToList(),
+            Series: Input.Series);
 
         try
         {
@@ -197,10 +213,17 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         return new JsonResult(items.Select(i => new { i.ItemCode, i.ItemName }));
     }
 
+    /// <summary>Ver el comentario completo en OnGetSearchWarehousesAsync (DetailGenericSalesDocumentModelBase, Modulo.Ventas), mismo criterio.</summary>
+    public async Task<JsonResult> OnGetSearchWarehousesAsync(string text, CancellationToken ct)
+    {
+        var warehouses = await _warehouses.ListAsync(text, 30, ct);
+        return new JsonResult(warehouses.Select(w => new { w.WarehouseCode, w.WarehouseName }));
+    }
+
     private async Task LoadCatalogsAsync(CancellationToken ct)
     {
-        var warehouses = await _warehouses.ListAsync(ct);
-        Warehouses = warehouses.Select(w => new SelectListItem($"{w.WarehouseCode} — {w.WarehouseName}", w.WarehouseCode)).ToList();
+        var series = await _series.ListAsync(_documents.GetSapObjectCode(Type).ToString(), ct: ct);
+        Series = series.Select(s => new SelectListItem(s.SeriesName, s.SeriesCode.ToString())).ToList();
     }
 
     private void BuildDocumentViewModel()
@@ -209,12 +232,12 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         {
             Title = IsNew ? $"Nuevo/a {DocumentName}" : $"{DocumentName} N° {DocNum}",
             ReadOnly = !IsNew,
-            BackUrl = RouteBase,
+            BackUrl = Url.IsLocalUrl(ReturnUrl) && ReturnUrl is not null ? ReturnUrl : RouteBase,
             StatusText = Status,
             StatusClass = Status == "Abierto" ? "bg-success" : "bg-secondary",
             Model = this,
-            GeneralView = "~/Pages/Shared/_TabGeneral.cshtml",
-            ContentView = "~/Pages/Shared/_TabContent.cshtml",
+            GeneralView = "~/Pages/Shared/_TabGeneralInventario.cshtml",
+            ContentView = "~/Pages/Shared/_TabContentInventario.cshtml",
         };
     }
 
@@ -225,6 +248,9 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
 
         [Display(Name = "Fecha de documento")]
         public DateOnly DocDate { get; set; }
+
+        [Display(Name = "Serie")]
+        public int? Series { get; set; }
 
         public List<LineInput> Lines { get; set; } = [new()];
     }

@@ -15,20 +15,20 @@ public sealed class CustomerCatalogService : ICustomerCatalogService
 
     public async Task<IReadOnlyList<CustomerDto>> ListAsync(CustomerFilter? filter = null, CancellationToken ct = default)
     {
-        var searchText = filter?.SearchText?.Trim();
+        // Sin SearchText: listado completo (ej. precarga de un <select> chico). Con
+        // SearchText: buscador en vivo, SIEMPRE topado -- mismo criterio que
+        // ItemCatalogService.SearchAsync, ver CatalogSqlHelper.
+        var (whereSql, limitSql, parameters) = CatalogSqlHelper.BuildSearchFilter(
+            filter?.SearchText, ["\"CardCode\"", "\"CardName\""], filter?.Limit, fixedWhere: "\"CardType\" = 'C'");
 
-        const string baseSql = """
+        var sql = $"""
             SELECT "CardCode", "CardName", "ListNum" AS "PriceListCode", "GroupNum" AS "PaymentTermsCode"
-            FROM "OCRD" WHERE "CardType" = 'C'
+            FROM "OCRD" WHERE {whereSql}
+            ORDER BY "CardName"
+            {limitSql}
             """;
 
-        if (string.IsNullOrWhiteSpace(searchText))
-        {
-            return await _hana.QueryAsync<CustomerDto>(baseSql + " ORDER BY \"CardName\"", ct: ct);
-        }
-
-        var sql = baseSql + " AND (\"CardCode\" LIKE :texto OR \"CardName\" LIKE :texto) ORDER BY \"CardName\"";
-        return await _hana.QueryAsync<CustomerDto>(sql, new { texto = $"%{searchText}%" }, ct);
+        return await _hana.QueryAsync<CustomerDto>(sql, parameters, ct);
     }
 
     public async Task<CustomerDto?> GetAsync(string cardCode, CancellationToken ct = default)

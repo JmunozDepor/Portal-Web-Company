@@ -1,13 +1,31 @@
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
 @model IReadOnlyList<PortalSaas.Abstractions.Modelos.MenuNodeDto>
-@* Raíces del árbol ya filtrado (ver IMenuNavigationService) -- cada nodo se recorre
-   recursivamente en _MenuNode.cshtml, que arma el anidado real que necesita el
-   componente `collapse` de Bootstrap 5 (cada contenedor envuelve exactamente a sus
-   hijos, no una lista plana indentada). *@
+@{
+    // Cicla --menu-color-1..6 (site.css) por cada CARPETA de nivel raíz -- portado de
+    // _Layout.cshtml de referencia-original/PortalSAP_v2 (indiceColorGrupo). Este
+    // componente solo ve nodos raíz (Default.cshtml es la entrada del árbol), así que
+    // cualquier nodo acá "es" nivel 0 por definición -- no hace falta un Level/Nivel
+    // en MenuNodeDto. Un nodo raíz que fuera hoja (sin hijos) no se colorea -- la
+    // referencia solo colorea carpetas, nunca páginas sueltas.
+    var colorIndex = 0;
+}
 @foreach (var node in Model)
 {
+    string? rootIconStyle = null;
+    if (node.PagePath is null)
+    {
+        colorIndex++;
+        rootIconStyle = $"--icon-color:var(--menu-color-{((colorIndex - 1) % 6) + 1})";
+    }
+    // ParentContainerId -- acota el accordion de Bootstrap (data-bs-parent, ver
+    // _MenuNode.cshtml) al <ul id="sidebar-nav-root"> real del sidebar
+    // (Pages/Shared/_Layout.cshtml) -- así los módulos raíz (Ventas/Compras/
+    // Rendiciones/...) también se abren de a uno, mismo criterio que los subgrupos
+    // anidados de abajo.
+    var viewData = new ViewDataDictionary(ViewData) { ["RootIconStyle"] = rootIconStyle, ["ParentContainerId"] = "sidebar-nav-root" };
     @* Ruta app-relativa explícita -- name="_MenuNode" (sin ruta) resuelve relativo a la
        página que invocó el ViewComponent, no a esta carpeta, y tira
        "The partial view '_MenuNode' was not found" apenas se llama desde una página
        fuera de Pages/Shared/ (bug real encontrado en la verificación E2E). *@
-    <partial name="~/Pages/Shared/Components/SidebarMenu/_MenuNode.cshtml" model="node" />
+    <partial name="~/Pages/Shared/Components/SidebarMenu/_MenuNode.cshtml" model="node" view-data="viewData" />
 }

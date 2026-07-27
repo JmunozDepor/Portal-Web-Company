@@ -1,0 +1,29 @@
+Estos son los comandos que uso en esta sesión para verificar que compila y corre de verdad — en PowerShell (tu shell primario):
+
+1. Compilar todo el solution
+
+
+dotnet build PortalSaas.sln
+Busca Compilación correcta. 0 Advertencia(s) 0 Errores al final. Esto también publica los 3 plugins a artifacts/plugins/ (target PublicarComoPlugin).
+
+2. Correr los tests
+
+
+dotnet test tests/PortalSaas.Core.Tests/PortalSaas.Core.Tests.csproj
+Busca Superado: 107, Total: 107 (o el número que corresponda).
+
+3. Antes de levantar el Host a mano — chequear que no quede un proceso viejo corriendo (la causa real del bug de paginación de recién: un Host viejo sirviendo la carpeta AnyCPU, no x64):
+
+
+Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.CommandLine -match 'PortalSaas' } | Select-Object ProcessId, CommandLine
+Si aparece algo apuntando a bin\Debug\net8.0\PortalSaas.Host.dll (sin x64), es viejo — matarlo:
+
+
+Stop-Process -Id <ProcessId> -Force
+4. Levantar el Host correctamente (esto resuelve x64 solo, no hay forma de errarle):
+
+
+dotnet run --project src/PortalSaas.Host --launch-profile https
+Espera a ver Now listening on: https://localhost:7207 antes de probar en el navegador. Ctrl+C para pararlo.
+
+Regla de oro para no repetir el bug de hoy: nunca ejecutes el .dll a mano salvo que sea explícitamente el de bin\x64\Debug\net8.0\ — cualquier otro camino (bin\Debug\net8.0\, dotnet run --no-build desde una carpeta distinta) puede terminar sirviendo un build viejo sin que se note en la consola.

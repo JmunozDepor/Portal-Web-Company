@@ -9,6 +9,11 @@
     <a asp-page="/Admin/Profiles/Create" class="btn btn-primary">Nuevo perfil</a>
 </div>
 
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
 <table class="table table-striped">
     <thead>
         <tr>
@@ -25,7 +30,14 @@
                 <td>@profile.Name</td>
                 <td>@profile.Description</td>
                 <td>@profile.ProfileActions.Count</td>
-                <td><a asp-page="/Admin/Profiles/Edit" asp-route-id="@profile.Id">Editar</a></td>
+                <td>
+                    <a asp-page="/Admin/Profiles/Edit" asp-route-id="@profile.Id">Editar</a>
+                    ·
+                    <form asp-page="./Index" asp-page-handler="Delete" asp-route-id="@profile.Id" method="post" style="display:inline"
+                          onsubmit="return confirm('¿Eliminar el perfil @profile.Name?');">
+                        <button type="submit" class="btn btn-link text-danger p-0">Eliminar</button>
+                    </form>
+                </td>
             </tr>
         }
     </tbody>

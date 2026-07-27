@@ -30,4 +30,12 @@ public interface ISalesDocumentService
     Task<SalesDocumentDto?> GetAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default);
 
     Task<SalesDocumentListResult> ListAsync(SalesDocumentType type, SalesDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default);
+
+    /// <summary>
+    /// Código de objeto SAP (NNM1.ObjectCode) del tipo de documento -- lo necesita el
+    /// plugin para pedirle a ISeriesCatalogService la lista de series aplicables, sin
+    /// que el plugin tenga que conocer SalesDocumentTypeCatalog (vive en
+    /// PortalSaas.Core, un plugin nunca lo referencia directo).
+    /// </summary>
+    int GetSapObjectCode(SalesDocumentType type);
 }

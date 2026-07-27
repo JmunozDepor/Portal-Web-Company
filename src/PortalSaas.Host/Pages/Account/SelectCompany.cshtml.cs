@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 
@@ -22,10 +23,12 @@ namespace PortalSaas.Host.Pages.Account;
 public class SelectCompanyModel : PageModel
 {
     private readonly PortalSaasDbContext _db;
+    private readonly IUserSessionService _sessions;
 
-    public SelectCompanyModel(PortalSaasDbContext db)
+    public SelectCompanyModel(PortalSaasDbContext db, IUserSessionService sessions)
     {
         _db = db;
+        _sessions = sessions;
     }
 
     [BindProperty]
@@ -84,6 +87,12 @@ public class SelectCompanyModel : PageModel
                 ErrorMessage = "No tienes acceso a esa compañía.";
                 return Page();
             }
+        }
+
+        var sessionToken = User.FindFirstValue("SessionToken");
+        if (sessionToken is not null)
+        {
+            await _sessions.SetCompanyAsync(sessionToken, company.Id);
         }
 
         var claims = User.Claims.ToList();

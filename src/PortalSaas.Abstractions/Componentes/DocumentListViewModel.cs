@@ -26,6 +26,14 @@ public sealed class DocumentListViewModel
     /// <summary>No-null = muestra un botón "Nuevo" deshabilitado con este título (PermiteCrear=false).</summary>
     public string? CreateDisabledTitle { get; init; }
 
+    /// <summary>
+    /// False = todavía no se ejecutó ninguna búsqueda contra SAP (primera carga del
+    /// módulo, sin querystring) -- Rows/TotalRecords quedan vacíos a propósito, el
+    /// listado no debe pagar el costo de una consulta remota (HANA/SQL Server del
+    /// cliente) hasta que el usuario apriete "Filtrar" explícitamente.
+    /// </summary>
+    public bool HasSearched { get; init; } = true;
+
     public bool ShowPaging { get; init; }
 
     public int CurrentPage { get; init; } = 1;

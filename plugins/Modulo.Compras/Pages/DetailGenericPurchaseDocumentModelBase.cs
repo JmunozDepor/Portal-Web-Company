@@ -32,19 +32,28 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
     private readonly ISupplierCatalogService _suppliers;
     private readonly IWarehouseCatalogService _warehouses;
     private readonly IItemCatalogService _items;
+    private readonly IGeneralLedgerAccountCatalogService _accounts;
+    private readonly ICostCenterCatalogService _costCenters;
+    private readonly ISeriesCatalogService _series;
 
     protected DetailGenericPurchaseDocumentModelBase(
         IPurchaseDocumentService documents,
         ICurrentUserContext currentUser,
         ISupplierCatalogService suppliers,
         IWarehouseCatalogService warehouses,
-        IItemCatalogService items)
+        IItemCatalogService items,
+        IGeneralLedgerAccountCatalogService accounts,
+        ICostCenterCatalogService costCenters,
+        ISeriesCatalogService series)
     {
         _documents = documents;
         _currentUser = currentUser;
         _suppliers = suppliers;
         _warehouses = warehouses;
         _items = items;
+        _accounts = accounts;
+        _costCenters = costCenters;
+        _series = series;
     }
 
     protected abstract PurchaseDocumentType Type { get; }
@@ -55,14 +64,38 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
+    /// <summary>
+    /// URL del listado que llevó acá (con su página/filtros actuales) -- IndexGeneric*ModelBase
+    /// la arma al construir cada DetailUrl, para que "Volver" no resetee la paginación
+    /// (bug real reportado: "Volver" desde la página 3 del listado volvía siempre a la
+    /// página 1, porque BackUrl era RouteBase fijo, sin querystring). Url.IsLocalUrl,
+    /// mismo criterio anti-open-redirect que Account/Login.cshtml.cs.
+    /// </summary>
+    [BindProperty(SupportsGet = true, Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
     public bool IsNew { get; private set; }
     public int? DocEntry { get; private set; }
     public int? DocNum { get; private set; }
     public decimal? DocTotal { get; private set; }
     public string? Status { get; private set; }
 
-    public List<SelectListItem> Suppliers { get; private set; } = [];
-    public List<SelectListItem> Warehouses { get; private set; } = [];
+    /// <summary>Ver el doc-comment de CustomerName en DetailGenericSalesDocumentModelBase (Modulo.Ventas) -- mismo criterio, lado proveedor.</summary>
+    public string? SupplierName { get; private set; }
+
+    public List<SelectListItem> Series { get; private set; } = [];
+
+    /// <summary>
+    /// "Resumen total" del tab Contenido -- mismo cálculo que
+    /// DetailGenericSalesDocumentModelBase (Modulo.Ventas), portado ahí primero de
+    /// DetalleGenericoVentaModelBase (referencia-original/PortalSAP_v2), replicado
+    /// acá por la regla de paridad: Compras también tiene precio/descuento por línea.
+    /// </summary>
+    public decimal TotalBeforeDiscount => Input.Lines.Sum(l => (l.Quantity ?? 0) * (l.UnitPrice ?? 0));
+    public decimal Discount => Input.Lines.Sum(l => (l.Quantity ?? 0) * (l.UnitPrice ?? 0) * (l.DiscountPercent ?? 0) / 100m);
+    public decimal AdditionalExpenses => 0m;
+    public decimal DocumentTotal => DocTotal ?? (TotalBeforeDiscount - Discount);
+    public decimal Tax => DocumentTotal - (TotalBeforeDiscount - Discount) - AdditionalExpenses;
 
     public DocumentFormViewModel Document { get; private set; } = null!;
 
@@ -87,6 +120,9 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             {
                 DocDate = DateOnly.FromDateTime(DateTime.Today),
                 DocDueDate = DateOnly.FromDateTime(DateTime.Today),
+                TaxDate = DateOnly.FromDateTime(DateTime.Today),
+                LineType = DocumentLineType.Item,
+                Series = null,
             };
         }
         else
@@ -106,6 +142,7 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             DocNum = document.DocNum;
             DocTotal = document.DocTotal;
             Status = document.Status;
+            SupplierName = document.SupplierName;
 
             Input = new InputModel
             {
@@ -113,7 +150,10 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
                 Comments = document.Comments,
                 DocDate = document.DocDate,
                 DocDueDate = document.DocDueDate,
+                TaxDate = document.TaxDate,
                 SupplierReferenceNumber = document.SupplierReferenceNumber,
+                LineType = document.Lines.Count > 0 ? document.Lines[0].Type : DocumentLineType.Item,
+                Series = document.Series,
                 Lines = document.Lines.Select(line => new LineInput
                 {
                     ItemCode = line.ItemCode,
@@ -122,6 +162,10 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
                     UnitPrice = line.UnitPrice,
                     DiscountPercent = line.DiscountPercent,
                     WarehouseCode = line.WarehouseCode,
+                    AccountCode = line.AccountCode,
+                    CostCenterCode = line.CostCenterCode,
+                    CostCenterCode2 = line.CostCenterCode2,
+                    CostCenterCode3 = line.CostCenterCode3,
                 }).ToList(),
             };
         }
@@ -140,7 +184,11 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             return Forbid();
         }
 
-        Input.Lines = Input.Lines.Where(line => !string.IsNullOrWhiteSpace(line.ItemCode)).ToList();
+        var isService = Input.LineType == DocumentLineType.Service;
+
+        Input.Lines = Input.Lines
+            .Where(line => isService ? !string.IsNullOrWhiteSpace(line.Description) : !string.IsNullOrWhiteSpace(line.ItemCode))
+            .ToList();
 
         if (Input.Lines.Count == 0)
         {
@@ -150,7 +198,20 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         for (var i = 0; i < Input.Lines.Count; i++)
         {
             var line = Input.Lines[i];
-            if (string.IsNullOrWhiteSpace(line.WarehouseCode))
+
+            if (isService)
+            {
+                if (string.IsNullOrWhiteSpace(line.AccountCode))
+                {
+                    ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Lines)}[{i}].{nameof(LineInput.AccountCode)}", "Elegí una cuenta mayor para esta línea.");
+                }
+
+                if (string.IsNullOrWhiteSpace(line.CostCenterCode))
+                {
+                    ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Lines)}[{i}].{nameof(LineInput.CostCenterCode)}", "Elegí un centro de costos para esta línea.");
+                }
+            }
+            else if (string.IsNullOrWhiteSpace(line.WarehouseCode))
             {
                 ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Lines)}[{i}].{nameof(LineInput.WarehouseCode)}", "Elegí un almacén para esta línea.");
             }
@@ -174,14 +235,21 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             Comments: Input.Comments,
             DocDate: Input.DocDate,
             DocDueDate: Input.DocDueDate,
+            TaxDate: Input.TaxDate,
             SupplierReferenceNumber: Input.SupplierReferenceNumber,
             Lines: Input.Lines.Select(line => new PurchaseDocumentLineDto(
-                ItemCode: line.ItemCode!,
+                Type: Input.LineType,
+                ItemCode: isService ? null : line.ItemCode,
                 Description: line.Description,
                 Quantity: line.Quantity ?? 0,
                 UnitPrice: line.UnitPrice,
                 DiscountPercent: line.DiscountPercent ?? 0,
-                WarehouseCode: line.WarehouseCode!)).ToList());
+                WarehouseCode: isService ? null : line.WarehouseCode,
+                AccountCode: isService ? line.AccountCode : null,
+                CostCenterCode: isService ? line.CostCenterCode : null,
+                CostCenterCode2: isService ? line.CostCenterCode2 : null,
+                CostCenterCode3: isService ? line.CostCenterCode3 : null)).ToList(),
+            Series: Input.Series);
 
         try
         {
@@ -204,13 +272,53 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         return new JsonResult(items.Select(i => new { i.ItemCode, i.ItemName }));
     }
 
+    /// <summary>Búsqueda en vivo del proveedor -- ver el comentario completo en OnGetSearchCustomersAsync (DetailGenericSalesDocumentModelBase, Modulo.Ventas), mismo criterio lado proveedor.</summary>
+    public async Task<JsonResult> OnGetSearchSuppliersAsync(string text, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return new JsonResult(Array.Empty<object>());
+        }
+
+        var suppliers = await _suppliers.ListAsync(new SupplierFilter(text, Limit: 30), ct);
+        return new JsonResult(suppliers.Select(s => new { s.CardCode, s.CardName }));
+    }
+
+    /// <summary>Ver el comentario completo en OnGetSearchWarehousesAsync (DetailGenericSalesDocumentModelBase, Modulo.Ventas) -- catálogo chico, sin guard de texto vacío.</summary>
+    public async Task<JsonResult> OnGetSearchWarehousesAsync(string text, CancellationToken ct)
+    {
+        var warehouses = await _warehouses.ListAsync(text, 30, ct);
+        return new JsonResult(warehouses.Select(w => new { w.WarehouseCode, w.WarehouseName }));
+    }
+
+    public async Task<JsonResult> OnGetSearchAccountsAsync(string text, CancellationToken ct)
+    {
+        var accounts = await _accounts.ListAsync(text, 30, ct);
+        return new JsonResult(accounts.Select(a => new { a.AccountCode, a.AccountName }));
+    }
+
+    public async Task<JsonResult> OnGetSearchCostCentersAsync(string text, CancellationToken ct)
+    {
+        var costCenters = await _costCenters.ListAsync(text, 30, ct);
+        return new JsonResult(costCenters.Select(c => new { c.Code, c.Name }));
+    }
+
+    public async Task<JsonResult> OnGetSearchCostCenters2Async(string text, CancellationToken ct)
+    {
+        var costCenters = await _costCenters.ListByDimensionAsync(2, text, 30, ct);
+        return new JsonResult(costCenters.Select(c => new { c.Code, c.Name }));
+    }
+
+    public async Task<JsonResult> OnGetSearchCostCenters3Async(string text, CancellationToken ct)
+    {
+        var costCenters = await _costCenters.ListByDimensionAsync(5, text, 30, ct);
+        return new JsonResult(costCenters.Select(c => new { c.Code, c.Name }));
+    }
+
     private async Task LoadCatalogsAsync(CancellationToken ct)
     {
-        var suppliers = await _suppliers.ListAsync(ct: ct);
-        Suppliers = suppliers.Select(s => new SelectListItem($"{s.CardCode} — {s.CardName}", s.CardCode)).ToList();
-
-        var warehouses = await _warehouses.ListAsync(ct);
-        Warehouses = warehouses.Select(w => new SelectListItem($"{w.WarehouseCode} — {w.WarehouseName}", w.WarehouseCode)).ToList();
+        var series = await _series.ListAsync(_documents.GetSapObjectCode(Type).ToString(), ct: ct);
+        Series = series.Select(s => new SelectListItem(s.SeriesName, s.SeriesCode.ToString())).ToList();
     }
 
     private void BuildDocumentViewModel()
@@ -219,12 +327,12 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         {
             Title = IsNew ? $"Nuevo/a {DocumentName}" : $"{DocumentName} N° {DocNum}",
             ReadOnly = !IsNew,
-            BackUrl = RouteBase,
+            BackUrl = Url.IsLocalUrl(ReturnUrl) && ReturnUrl is not null ? ReturnUrl : RouteBase,
             StatusText = Status,
             StatusClass = Status == "Abierto" ? "bg-success" : "bg-secondary",
             Model = this,
-            GeneralView = "~/Pages/Shared/_TabGeneral.cshtml",
-            ContentView = "~/Pages/Shared/_TabContent.cshtml",
+            GeneralView = "~/Pages/Shared/_TabGeneralCompras.cshtml",
+            ContentView = "~/Pages/Shared/_TabContentCompras.cshtml",
         };
     }
 
@@ -243,8 +351,17 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         [Display(Name = "Fecha de vencimiento")]
         public DateOnly DocDueDate { get; set; }
 
+        [Display(Name = "Fecha de contabilización")]
+        public DateOnly TaxDate { get; set; }
+
         [Display(Name = "N° referencia proveedor")]
         public string? SupplierReferenceNumber { get; set; }
+
+        [Display(Name = "Serie")]
+        public int? Series { get; set; }
+
+        [Display(Name = "Tipo de línea")]
+        public DocumentLineType LineType { get; set; } = DocumentLineType.Item;
 
         public List<LineInput> Lines { get; set; } = [new()];
     }
@@ -257,5 +374,9 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         public decimal? UnitPrice { get; set; }
         public decimal? DiscountPercent { get; set; }
         public string? WarehouseCode { get; set; }
+        public string? AccountCode { get; set; }
+        public string? CostCenterCode { get; set; }
+        public string? CostCenterCode2 { get; set; }
+        public string? CostCenterCode3 { get; set; }
     }
 }

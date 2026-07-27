@@ -10,6 +10,9 @@
     <PackageReference Include="EFCore.NamingConventions" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+    <!-- ManifestEmbeddedFileProvider: sirve el wwwroot embebido de un plugin con
+         ServesOwnWwwRoot=true (ej. Modulo.Rendiciones), ver Program.cs. -->
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.8" />
   </ItemGroup>
 
   <PropertyGroup>

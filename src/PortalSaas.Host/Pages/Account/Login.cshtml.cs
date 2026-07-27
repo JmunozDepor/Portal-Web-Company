@@ -19,15 +19,18 @@ public class LoginModel : PageModel
     private readonly PortalSaasDbContext _db;
     private readonly IAuthenticationService _authenticationService;
     private readonly IOrganizationAccessGateService _accessGateService;
+    private readonly IUserSessionService _sessions;
 
     public LoginModel(
         PortalSaasDbContext db,
         IAuthenticationService authenticationService,
-        IOrganizationAccessGateService accessGateService)
+        IOrganizationAccessGateService accessGateService,
+        IUserSessionService sessions)
     {
         _db = db;
         _authenticationService = authenticationService;
         _accessGateService = accessGateService;
+        _sessions = sessions;
     }
 
     [BindProperty]
@@ -81,6 +84,15 @@ public class LoginModel : PageModel
 
         var user = await _db.Users.FirstAsync(u => u.Id == result.UserId);
 
+        // "Clientes conectados" (ver IUserSessionService/Admin/Sessions) -- una fila por
+        // login exitoso, con el token en texto plano guardado SOLO como claim de la
+        // cookie (nunca en la base, ver UserSession.TokenHash). Permite al admin de
+        // plataforma ver quién está logueado y forzar el cierre de una sesión puntual.
+        var sessionToken = await _sessions.CreateAsync(
+            user.Id, user.OrganizationId,
+            ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+            userAgent: Request.Headers.UserAgent.ToString());
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -91,6 +103,7 @@ public class LoginModel : PageModel
             // Necesario para ICurrentUserContext.IsAdmin (ver PortalSaas.Core.Seguridad) --
             // no depende de que haya compañía seleccionada.
             new("IsAdmin", user.IsAdmin.ToString()),
+            new("SessionToken", sessionToken),
         };
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));

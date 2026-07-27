@@ -9,6 +9,11 @@
     <a asp-page="/Admin/MenuGroups/Create" class="btn btn-primary">Nuevo grupo</a>
 </div>
 
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
 <table class="table table-striped">
     <thead>
         <tr>
@@ -27,7 +32,14 @@
                 <td>@group.Description</td>
                 <td>@group.MenuGroupItems.Count</td>
                 <td>@(group.IsActive ? "Activo" : "Inactivo")</td>
-                <td><a asp-page="/Admin/MenuGroups/Edit" asp-route-id="@group.Id">Editar</a></td>
+                <td>
+                    <a asp-page="/Admin/MenuGroups/Edit" asp-route-id="@group.Id">Editar</a>
+                    ·
+                    <form asp-page="./Index" asp-page-handler="Delete" asp-route-id="@group.Id" method="post" style="display:inline"
+                          onsubmit="return confirm('¿Eliminar el grupo @group.Name?');">
+                        <button type="submit" class="btn btn-link text-danger p-0">Eliminar</button>
+                    </form>
+                </td>
             </tr>
         }
     </tbody>

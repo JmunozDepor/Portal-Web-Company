@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Data;
+using PortalSaas.Data.Entities;
 
 namespace PortalSaas.Host.Pages.Admin.Plans;
 
@@ -20,13 +21,19 @@ public class EditModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
+    public List<PlatformModule> AllModules { get; private set; } = [];
+
     public async Task<IActionResult> OnGetAsync(long id)
     {
-        var plan = await _db.Plans.FindAsync(id);
+        var plan = await _db.Plans
+            .Include(p => p.PlanModules)
+            .FirstOrDefaultAsync(p => p.Id == id);
         if (plan is null)
         {
             return NotFound();
         }
+
+        await LoadModulesAsync();
 
         Input = new InputModel
         {
@@ -39,6 +46,7 @@ public class EditModel : PageModel
             MonthlyPrice = plan.MonthlyPrice,
             Currency = plan.Currency,
             IsActive = plan.IsActive,
+            SelectedModuleIds = plan.PlanModules.Select(pm => pm.ModuleId).ToList(),
         };
 
         return Page();
@@ -46,12 +54,16 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        await LoadModulesAsync();
+
         if (!ModelState.IsValid)
         {
             return Page();
         }
 
-        var plan = await _db.Plans.FindAsync(Input.Id);
+        var plan = await _db.Plans
+            .Include(p => p.PlanModules)
+            .FirstOrDefaultAsync(p => p.Id == Input.Id);
         if (plan is null)
         {
             return NotFound();
@@ -74,9 +86,27 @@ public class EditModel : PageModel
         plan.Currency = Input.Currency.Trim().ToUpperInvariant();
         plan.IsActive = Input.IsActive;
 
+        var seleccionados = (Input.SelectedModuleIds ?? []).ToHashSet();
+
+        foreach (var pm in plan.PlanModules.Where(pm => !seleccionados.Contains(pm.ModuleId)).ToList())
+        {
+            plan.PlanModules.Remove(pm);
+        }
+
+        var yaAsignados = plan.PlanModules.Select(pm => pm.ModuleId).ToHashSet();
+        foreach (var moduleId in seleccionados.Where(moduleId => !yaAsignados.Contains(moduleId)))
+        {
+            plan.PlanModules.Add(new PlanModule { PlanId = plan.Id, ModuleId = moduleId });
+        }
+
         await _db.SaveChangesAsync();
 
         return RedirectToPage("/Admin/Plans/Index");
+    }
+
+    private async Task LoadModulesAsync()
+    {
+        AllModules = await _db.PlatformModules.OrderBy(m => m.Code).ToListAsync();
     }
 
     public sealed class InputModel
@@ -110,5 +140,7 @@ public class EditModel : PageModel
 
         [Display(Name = "Activo")]
         public bool IsActive { get; set; } = true;
+
+        public List<long> SelectedModuleIds { get; set; } = [];
     }
 }

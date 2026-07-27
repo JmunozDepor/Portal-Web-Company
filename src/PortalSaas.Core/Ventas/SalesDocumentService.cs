@@ -1,4 +1,3 @@
-using System.Text.Json;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
@@ -15,15 +14,19 @@ public sealed class SalesDocumentService : ISalesDocumentService
 {
     private readonly IHanaService _hana;
     private readonly ISapConnectionProvider _connectionProvider;
+    private readonly IOrganizationDocumentPermissionService _permissions;
 
-    public SalesDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider)
+    public SalesDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider, IOrganizationDocumentPermissionService permissions)
     {
         _hana = hana;
         _connectionProvider = connectionProvider;
+        _permissions = permissions;
     }
 
+    public int GetSapObjectCode(SalesDocumentType type) => SalesDocumentTypeCatalog.Resolve(type).ObjectCode;
+
     public Task<bool> CanCreateAsync(SalesDocumentType type, CancellationToken ct = default) =>
-        Task.FromResult(SalesDocumentTypeCatalog.Resolve(type).DefaultCanCreate);
+        _permissions.IsCreateAllowedAsync("Sales", type.ToString(), SalesDocumentTypeCatalog.Resolve(type).DefaultCanCreate, ct);
 
     public async Task<int> CreateAsync(SalesDocumentType type, string portalUsername, SalesDocumentDto document, CancellationToken ct = default)
     {
@@ -31,23 +34,34 @@ public sealed class SalesDocumentService : ISalesDocumentService
 
         var header = new SapSalesDocumentHeader
         {
+            DocType = ResolveDocType(document.Lines),
             CardCode = document.CustomerCardCode,
             CardName = document.CustomerName,
             SalesPersonCode = document.SalesEmployeeCode,
+            Series = document.Series,
+            TransportationCode = document.ShippingMethodCode,
+            GroupNumber = document.PaymentTermsGroupCode,
             Comments = document.Comments,
             DocDate = document.DocDate.ToDateTime(TimeOnly.MinValue),
             DocDueDate = document.DocDueDate.ToDateTime(TimeOnly.MinValue),
             TaxDate = document.TaxDate.ToDateTime(TimeOnly.MinValue),
             NumAtCard = document.CustomerReferenceNumber,
             U_PortalUser = portalUsername,
+            AdditionalFields = document.AdditionalFields,
             DocumentLines = document.Lines.Select(line => new SapSalesDocumentLine
             {
-                ItemCode = line.ItemCode,
+                ItemType = line.Type == DocumentLineType.Service ? "itService" : "itItems",
+                ItemCode = line.Type == DocumentLineType.Item ? line.ItemCode : null,
                 ItemDescription = line.Description,
                 Quantity = line.Quantity,
                 UnitPrice = line.UnitPrice,
                 DiscountPercent = line.DiscountPercent,
-                WarehouseCode = line.WarehouseCode,
+                WarehouseCode = line.Type == DocumentLineType.Item ? line.WarehouseCode : null,
+                AccountCode = line.Type == DocumentLineType.Service ? line.AccountCode : null,
+                CostingCode = line.Type == DocumentLineType.Service ? line.CostCenterCode : null,
+                CostingCode2 = line.Type == DocumentLineType.Service ? line.CostCenterCode2 : null,
+                CostingCode3 = line.Type == DocumentLineType.Service ? line.CostCenterCode3 : null,
+                AdditionalFields = line.AdditionalFields,
             }).ToList(),
         };
 
@@ -78,16 +92,27 @@ public sealed class SalesDocumentService : ISalesDocumentService
             TaxDate: DateOnly.FromDateTime(sap.TaxDate ?? DateTime.Today),
             CustomerReferenceNumber: sap.NumAtCard,
             Lines: sap.DocumentLines.Select(line => new SalesDocumentLineDto(
+                // ItemType no es confiable en documentos preexistentes (a veces vuelve
+                // vacío) -- ItemCode poblado es la señal fuerte de línea de Artículo,
+                // mismo criterio que la referencia.
+                Type: !string.IsNullOrWhiteSpace(line.ItemCode) ? DocumentLineType.Item : DocumentLineType.Service,
                 ItemCode: line.ItemCode,
                 Description: line.ItemDescription,
                 Quantity: line.Quantity,
                 UnitPrice: line.UnitPrice,
                 DiscountPercent: line.DiscountPercent,
-                WarehouseCode: line.WarehouseCode)).ToList(),
+                WarehouseCode: line.WarehouseCode,
+                AccountCode: line.AccountCode,
+                CostCenterCode: line.CostingCode,
+                CostCenterCode2: line.CostingCode2,
+                CostCenterCode3: line.CostingCode3)).ToList(),
             DocEntry: sap.DocEntry,
             DocNum: sap.DocNum,
             DocTotal: sap.DocTotal,
-            Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto");
+            Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto",
+            Series: sap.Series,
+            ShippingMethodCode: sap.TransportationCode,
+            PaymentTermsGroupCode: sap.GroupNumber);
     }
 
     public async Task<SalesDocumentListResult> ListAsync(SalesDocumentType type, SalesDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
@@ -98,12 +123,20 @@ public sealed class SalesDocumentService : ISalesDocumentService
 
         var (whereClause, parameters) = BuildWhereClause(filter, entry.ExtraFilters);
 
-        var countSql = $"""SELECT COUNT(*) FROM "{entry.Table}" o {whereClause}""";
+        // El filtro de Vendedor (s."SlpName") exige el mismo LEFT JOIN "OSLP" en el
+        // COUNT que en el SELECT -- sin esto, "invalid column" apenas se usa ese filtro
+        // (el alias "s" no existiría en esa consulta).
+        var countSql = $"""
+            SELECT COUNT(*) FROM "{entry.Table}" o
+            LEFT JOIN "OSLP" s ON s."SlpCode" = o."SlpCode"
+            {whereClause}
+            """;
         var totalRecords = (await _hana.QueryAsync<int>(countSql, parameters, ct)).FirstOrDefault();
 
         var listSql = $"""
             SELECT o."DocEntry", o."DocNum", o."CardCode" AS "CustomerCardCode",
-                   o."CardName" AS "CustomerName", o."DocDate", o."DocTotal",
+                   o."CardName" AS "CustomerName", o."Address2" AS "DeliveryAddress",
+                   o."DocDate", o."DocTotal",
                    o."NumAtCard" AS "CustomerReferenceNumber", s."SlpName" AS "SalesEmployeeName",
                    CASE WHEN o."DocStatus" = 'O' THEN 'Abierto' ELSE 'Cerrado' END AS "Status"
             FROM "{entry.Table}" o
@@ -128,12 +161,16 @@ public sealed class SalesDocumentService : ISalesDocumentService
     private static object BuildRequestBody(SapSalesDocumentHeader header, SalesDocumentTypeCatalog.Entry entry)
     {
         var equalFilters = entry.ExtraFilters.Where(f => f.IsEqual).ToList();
-        if (equalFilters.Count == 0)
+        var hasAdditionalFields = header.AdditionalFields is not null || header.DocumentLines.Any(l => l.AdditionalFields is not null);
+        if (equalFilters.Count == 0 && !hasAdditionalFields)
         {
             return header;
         }
 
-        var flattened = JsonSerializer.Deserialize<Dictionary<string, object?>>(JsonSerializer.Serialize(header))!;
+        // SapAdditionalFieldsHelper.Flatten ya aplana AdditionalFields (cabecera + cada
+        // línea) -- se reusa acá en vez de un JSON round-trip aparte, para no tener 2
+        // mecanismos de aplanado distintos conviviendo en el mismo servicio.
+        var flattened = PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten(header);
         foreach (var filter in equalFilters)
         {
             flattened[filter.Column] = filter.Value;
@@ -148,7 +185,11 @@ public sealed class SalesDocumentService : ISalesDocumentService
     /// COUNT(*) y el SELECT paginado, nunca concatenando el valor del usuario, solo los
     /// nombres de los parámetros (que son fijos, no vienen del usuario). extraFilters
     /// del catálogo (no del usuario) se agregan siempre, con "=" o "&lt;&gt;" según
-    /// IsEqual -- portado de GenericoVentaService.ListarAsync.
+    /// IsEqual -- portado de GenericoVentaService.ListarAsync, MISMO comportamiento de
+    /// filtro (no una aproximación): todo texto es LIKE parcial case-insensitive
+    /// (UPPER(...) LIKE UPPER(:x), incluido DocNum -- buscar "123" encuentra "51230"),
+    /// FechaHasta es límite EXCLUSIVO del día siguiente (así incluye todo el día
+    /// "hasta", no solo su medianoche 00:00:00).
     /// </summary>
     private static (string WhereClause, IReadOnlyDictionary<string, object?> Parameters) BuildWhereClause(
         SalesDocumentFilter? filter, IReadOnlyList<SalesDocumentTypeCatalog.ExtraFilter> extraFilters)
@@ -166,26 +207,38 @@ public sealed class SalesDocumentService : ISalesDocumentService
 
             if (filter.DateTo is { } dateTo)
             {
-                clauses.Add("""o."DocDate" <= :dateTo""");
-                parameters["dateTo"] = dateTo.ToDateTime(TimeOnly.MinValue);
+                clauses.Add("""o."DocDate" < :dateTo""");
+                parameters["dateTo"] = dateTo.ToDateTime(TimeOnly.MinValue).AddDays(1);
             }
 
             if (!string.IsNullOrWhiteSpace(filter.CustomerCardCode))
             {
-                clauses.Add("""o."CardCode" = :customerCardCode""");
-                parameters["customerCardCode"] = filter.CustomerCardCode.Trim();
+                clauses.Add("""UPPER(o."CardCode") LIKE UPPER(:customerCardCode)""");
+                parameters["customerCardCode"] = $"%{filter.CustomerCardCode.Trim()}%";
             }
 
             if (!string.IsNullOrWhiteSpace(filter.CustomerName))
             {
-                clauses.Add("""o."CardName" LIKE :customerName""");
+                clauses.Add("""UPPER(o."CardName") LIKE UPPER(:customerName)""");
                 parameters["customerName"] = $"%{filter.CustomerName.Trim()}%";
             }
 
-            if (filter.DocNum is { } docNum)
+            if (!string.IsNullOrWhiteSpace(filter.CustomerReferenceNumber))
             {
-                clauses.Add("""o."DocNum" = :docNum""");
-                parameters["docNum"] = docNum;
+                clauses.Add("""UPPER(o."NumAtCard") LIKE UPPER(:customerReferenceNumber)""");
+                parameters["customerReferenceNumber"] = $"%{filter.CustomerReferenceNumber.Trim()}%";
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.SalesEmployeeName))
+            {
+                clauses.Add("""UPPER(s."SlpName") LIKE UPPER(:salesEmployeeName)""");
+                parameters["salesEmployeeName"] = $"%{filter.SalesEmployeeName.Trim()}%";
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.DocNum))
+            {
+                clauses.Add("""TO_VARCHAR(o."DocNum") LIKE :docNum""");
+                parameters["docNum"] = $"%{filter.DocNum.Trim()}%";
             }
         }
 
@@ -201,4 +254,14 @@ public sealed class SalesDocumentService : ISalesDocumentService
         var whereClause = clauses.Count == 0 ? string.Empty : "WHERE " + string.Join(" AND ", clauses);
         return (whereClause, parameters);
     }
+
+    /// <summary>
+    /// DocType es del documento entero, no por línea -- SAP no permite mezclar
+    /// Artículo/Servicio en el mismo documento, así que alcanza con mirar la primera
+    /// línea (el portal siempre digita documentos homogéneos, ver DocumentLineType).
+    /// </summary>
+    private static string ResolveDocType(IReadOnlyList<SalesDocumentLineDto> lines) =>
+        lines.Count > 0 && lines[0].Type == DocumentLineType.Service
+            ? "dDocument_Service"
+            : "dDocument_Items";
 }

@@ -192,6 +192,186 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Alias")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("alias");
+
+                    b.Property<string>("BusinessPartnerCardCode")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("business_partner_card_code");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("document_type");
+
+                    b.Property<string>("GroupingColumn")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("grouping_column");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("LineType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("line_type");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("module");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("PriceSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("price_source");
+
+                    b.Property<bool>("SkuIsCustomerOwn")
+                        .HasColumnType("boolean")
+                        .HasColumnName("sku_is_customer_own");
+
+                    b.Property<int?>("SystemPriceListCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("system_price_list_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_generic_import_configs");
+
+                    b.HasIndex("OrganizationId", "Module", "DocumentType", "LineType", "BusinessPartnerCardCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_generic_import_configs_organization_id_module_document_type");
+
+                    b.ToTable("generic_import_configs", (string)null);
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportConfigField", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ConfigId")
+                        .HasColumnType("integer")
+                        .HasColumnName("config_id");
+
+                    b.Property<string>("ExcelColumn")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("excel_column");
+
+                    b.Property<string>("FixedValue")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("fixed_value");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_required");
+
+                    b.Property<string>("LogicalField")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("logical_field");
+
+                    b.Property<int?>("UserFieldId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_field_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_generic_import_config_fields");
+
+                    b.HasIndex("ConfigId")
+                        .HasDatabaseName("ix_generic_import_config_fields_config_id");
+
+                    b.HasIndex("UserFieldId")
+                        .HasDatabaseName("ix_generic_import_config_fields_user_field_id");
+
+                    b.ToTable("generic_import_config_fields", (string)null);
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportUserField", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DataType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("data_type");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("level");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("module");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("SapFieldName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("sap_field_name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_generic_import_user_fields");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_generic_import_user_fields_organization_id");
+
+                    b.ToTable("generic_import_user_fields", (string)null);
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.Instance", b =>
                 {
                     b.Property<long>("Id")
@@ -334,6 +514,10 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
                     b.Property<string>("Description")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)")
@@ -349,8 +533,18 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.HasKey("Id")
                         .HasName("pk_menu_groups");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_menu_groups_company_id");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_menu_groups_organization_id");
 
                     b.ToTable("menu_groups", (string)null);
                 });
@@ -365,13 +559,105 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("menu_id");
 
+                    b.Property<long?>("DefaultProfileId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("default_profile_id");
+
                     b.HasKey("MenuGroupId", "MenuId")
                         .HasName("pk_menu_group_items");
+
+                    b.HasIndex("DefaultProfileId")
+                        .HasDatabaseName("ix_menu_group_items_default_profile_id");
 
                     b.HasIndex("MenuId")
                         .HasDatabaseName("ix_menu_group_items_menu_id");
 
                     b.ToTable("menu_group_items", (string)null);
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.ModuleExternalConnection", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DatabaseName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("database_name");
+
+                    b.Property<string>("EngineType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("engine_type");
+
+                    b.Property<string>("Host")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("host");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("ModuleCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("module_code");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("Port")
+                        .HasColumnType("integer")
+                        .HasColumnName("port");
+
+                    b.Property<string>("TechnicalSecretKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("technical_secret_key");
+
+                    b.Property<string>("TechnicalUsername")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("technical_username");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_module_external_connections");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_module_external_connections_company_id");
+
+                    b.HasIndex("OrganizationId", "CompanyId", "ModuleCode")
+                        .IsUnique()
+                        .HasDatabaseName("uq_module_external_connections_org_company_module");
+
+                    b.ToTable("module_external_connections", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_module_external_connections_engine_type", "engine_type in ('postgres', 'sqlserver')");
+                        });
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.OnPremiseLicense", b =>
@@ -496,6 +782,47 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationDocumentPermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("CanCreate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_create");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("document_type");
+
+                    b.Property<string>("Engine")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("engine");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organization_document_permissions");
+
+                    b.HasIndex("OrganizationId", "Engine", "DocumentType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organization_document_permissions_organization_id_engine_do");
+
+                    b.ToTable("organization_document_permissions", (string)null);
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationModule", b =>
                 {
                     b.Property<Guid>("OrganizationId")
@@ -517,6 +844,29 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasDatabaseName("ix_organization_modules_module_id");
 
                     b.ToTable("organization_modules", (string)null);
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationModuleVisibility", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<long>("ModuleId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("module_id");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_hidden");
+
+                    b.HasKey("OrganizationId", "ModuleId")
+                        .HasName("pk_organization_module_visibilities");
+
+                    b.HasIndex("ModuleId")
+                        .HasDatabaseName("ix_organization_module_visibilities_module_id");
+
+                    b.ToTable("organization_module_visibilities", (string)null);
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.PasswordResetToken", b =>
@@ -777,6 +1127,10 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("code");
 
+                    b.Property<Guid?>("ExclusiveOrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exclusive_organization_id");
+
                     b.Property<bool>("IsCore")
                         .HasColumnType("boolean")
                         .HasColumnName("is_core");
@@ -793,6 +1147,9 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.HasIndex("Code")
                         .IsUnique()
                         .HasDatabaseName("ix_platform_modules_code");
+
+                    b.HasIndex("ExclusiveOrganizationId")
+                        .HasDatabaseName("ix_platform_modules_exclusive_organization_id");
 
                     b.ToTable("platform_modules", (string)null);
                 });
@@ -817,8 +1174,15 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.HasKey("Id")
                         .HasName("pk_profiles");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_profiles_organization_id");
 
                     b.ToTable("profiles", (string)null);
                 });
@@ -1040,6 +1404,40 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.UserHomeShortcut", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("MenuId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("menu_id");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer")
+                        .HasColumnName("order");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_home_shortcuts");
+
+                    b.HasIndex("MenuId")
+                        .HasDatabaseName("ix_user_home_shortcuts_menu_id");
+
+                    b.HasIndex("UserId", "MenuId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_home_shortcuts_user_id_menu_id");
+
+                    b.ToTable("user_home_shortcuts", (string)null);
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.UserMenuGroup", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -1136,6 +1534,72 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ip_address");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_revoked");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("user_agent");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_sessions");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_user_sessions_company_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_sessions_token_hash");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_sessions_user_id");
+
+                    b.HasIndex("OrganizationId", "IsRevoked")
+                        .HasDatabaseName("ix_user_sessions_organization_id_is_revoked");
+
+                    b.ToTable("user_sessions", (string)null);
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.AuditLog", b =>
                 {
                     b.HasOne("PortalSaas.Data.Entities.Company", "Company")
@@ -1186,6 +1650,50 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Navigation("Organization");
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportConfig", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_generic_import_configs_organizations_organization_id");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportConfigField", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.GenericImportConfig", "Config")
+                        .WithMany("Fields")
+                        .HasForeignKey("ConfigId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_generic_import_config_fields_generic_import_configs_config_");
+
+                    b.HasOne("PortalSaas.Data.Entities.GenericImportUserField", "UserField")
+                        .WithMany()
+                        .HasForeignKey("UserFieldId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_generic_import_config_fields_generic_import_user_fields_use");
+
+                    b.Navigation("Config");
+
+                    b.Navigation("UserField");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportUserField", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_generic_import_user_fields_organizations_organization_id");
+
+                    b.Navigation("Organization");
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.Instance", b =>
                 {
                     b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
@@ -1209,8 +1717,32 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Navigation("ParentMenu");
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.MenuGroup", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_menu_groups_companies_company_id");
+
+                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .HasConstraintName("fk_menu_groups_organizations_organization_id");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Organization");
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.MenuGroupItem", b =>
                 {
+                    b.HasOne("PortalSaas.Data.Entities.Profile", "DefaultProfile")
+                        .WithMany()
+                        .HasForeignKey("DefaultProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_menu_group_items_profiles_default_profile_id");
+
                     b.HasOne("PortalSaas.Data.Entities.MenuGroup", "MenuGroup")
                         .WithMany("MenuGroupItems")
                         .HasForeignKey("MenuGroupId")
@@ -1225,9 +1757,31 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_menu_group_items_menus_menu_id");
 
+                    b.Navigation("DefaultProfile");
+
                     b.Navigation("Menu");
 
                     b.Navigation("MenuGroup");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.ModuleExternalConnection", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_module_external_connections_company_company_id");
+
+                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_module_external_connections_organizations_organization_id");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.OnPremiseLicense", b =>
@@ -1251,6 +1805,18 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Navigation("Plan");
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationDocumentPermission", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_document_permissions_organizations_organizatio");
+
+                    b.Navigation("Organization");
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationModule", b =>
                 {
                     b.HasOne("PortalSaas.Data.Entities.PlatformModule", "Module")
@@ -1266,6 +1832,27 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_organization_modules_organizations_organization_id");
+
+                    b.Navigation("Module");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationModuleVisibility", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.PlatformModule", "Module")
+                        .WithMany()
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_module_visibilities_platform_modules_module_id");
+
+                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_module_visibilities_organizations_organization");
 
                     b.Navigation("Module");
 
@@ -1303,6 +1890,27 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Navigation("Module");
 
                     b.Navigation("Plan");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.PlatformModule", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Organization", "ExclusiveOrganization")
+                        .WithMany()
+                        .HasForeignKey("ExclusiveOrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_platform_modules_organizations_exclusive_organization_id");
+
+                    b.Navigation("ExclusiveOrganization");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.Profile", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .HasConstraintName("fk_profiles_organizations_organization_id");
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.ProfileAction", b =>
@@ -1376,6 +1984,27 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasConstraintName("fk_users_organizations_organization_id");
 
                     b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.UserHomeShortcut", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Menu", "Menu")
+                        .WithMany()
+                        .HasForeignKey("MenuId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_home_shortcuts_menus_menu_id");
+
+                    b.HasOne("PortalSaas.Data.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_home_shortcuts_users_user_id");
+
+                    b.Navigation("Menu");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.UserMenuGroup", b =>
@@ -1457,6 +2086,40 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasConstraintName("fk_user_preferences_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.UserSession", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_user_sessions_companies_company_id");
+
+                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_sessions_organizations_organization_id");
+
+                    b.HasOne("PortalSaas.Data.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_sessions_users_user_id");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportConfig", b =>
+                {
+                    b.Navigation("Fields");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.Instance", b =>

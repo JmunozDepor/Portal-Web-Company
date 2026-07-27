@@ -1,13 +1,16 @@
 @model Modulo.Ventas.Pages.DetailGenericSalesDocumentModelBase
+@using System.Globalization
 @{
     var readOnly = Model.Document.ReadOnly;
-    // Al crear, se muestran las líneas ya cargadas (normalmente 1 en blanco) más un
-    // puñado de filas vacías extra para no necesitar un botón "Agregar línea" con JS
-    // -- las filas sin ItemCode se descartan solas en el POST (ver DetailModel.OnPostAsync).
-    var rowCount = readOnly ? Model.Input.Lines.Count : Math.Max(Model.Input.Lines.Count, 1) + 9;
+    // Ya NO se pre-renderizan filas extra en blanco -- reemplazado por "+ Agregar
+    // línea" real (JS, clona <template id="sales-order-line-template">), igual
+    // criterio que la referencia (_TabContenido.cshtml de PortalSAP_v2). Mínimo 1 fila
+    // al crear para que el formulario no arranque completamente vacío.
+    var rowCount = readOnly ? Model.Input.Lines.Count : Math.Max(Model.Input.Lines.Count, 1);
 }
 
-<table class="table table-sm" id="sales-order-lines">
+<div style="overflow-x:auto;">
+<table class="table table-sm line-items-table" id="sales-order-lines">
     <thead>
         <tr>
             <th>Artículo</th>
@@ -15,55 +18,224 @@
             <th>Cantidad</th>
             <th>Precio unitario</th>
             <th>% Desc.</th>
-            <th>Almacén</th>
+            <th>Almacén <small class="text-muted">(Artículo)</small></th>
+            <th>Cuenta mayor <small class="text-muted">(Servicio)</small></th>
+            <th>Centro de costos <small class="text-muted">(Servicio)</small></th>
+            <th>Marca <small class="text-muted">(Servicio, opcional)</small></th>
+            <th>Tipo de gasto <small class="text-muted">(Servicio, opcional)</small></th>
+            @if (!readOnly)
+            {
+                <th></th>
+            }
         </tr>
     </thead>
-    <tbody>
+    <tbody id="sales-order-lines-body">
         @for (var i = 0; i < rowCount; i++)
         {
             var line = i < Model.Input.Lines.Count ? Model.Input.Lines[i] : new Modulo.Ventas.Pages.DetailGenericSalesDocumentModelBase.LineInput();
             <tr>
-                <td>
+                <td class="line-item-only">
                     <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm sales-order-item-code" list="sales-order-items-datalist" disabled="@readOnly" />
                 </td>
-                <td>
+                <td class="line-service-only">
                     <input name="Input.Lines[@i].Description" value="@line.Description" class="form-control form-control-sm" disabled="@readOnly" />
                 </td>
                 <td style="max-width:100px">
-                    <input name="Input.Lines[@i].Quantity" type="number" step="0.01" value="@(line.Quantity == 0 ? "" : line.Quantity.ToString())" class="form-control form-control-sm" disabled="@readOnly" />
+                    <input name="Input.Lines[@i].Quantity" type="number" step="0.01" value="@(line.Quantity is null or 0 ? "" : line.Quantity.Value.ToString(CultureInfo.InvariantCulture))" class="form-control form-control-sm line-qty" disabled="@readOnly" />
                 </td>
                 <td style="max-width:120px">
-                    <input name="Input.Lines[@i].UnitPrice" type="number" step="0.01" value="@line.UnitPrice" class="form-control form-control-sm" placeholder="Lista de precio" disabled="@readOnly" />
+                    <input name="Input.Lines[@i].UnitPrice" type="number" step="0.01" value="@line.UnitPrice?.ToString(CultureInfo.InvariantCulture)" class="form-control form-control-sm line-price" placeholder="Lista de precio" disabled="@readOnly" />
                 </td>
                 <td style="max-width:90px">
-                    <input name="Input.Lines[@i].DiscountPercent" type="number" step="0.01" value="@(line.DiscountPercent == 0 ? "" : line.DiscountPercent.ToString())" class="form-control form-control-sm" disabled="@readOnly" />
+                    <input name="Input.Lines[@i].DiscountPercent" type="number" step="0.01" value="@(line.DiscountPercent is null or 0 ? "" : line.DiscountPercent.Value.ToString(CultureInfo.InvariantCulture))" class="form-control form-control-sm line-discount" disabled="@readOnly" />
                 </td>
-                <td>
-                    <select name="Input.Lines[@i].WarehouseCode" class="form-select form-select-sm" disabled="@readOnly">
-                        <option value="">Seleccionar…</option>
-                        @foreach (var warehouse in Model.Warehouses)
-                        {
-                            <option value="@warehouse.Value" selected="@(warehouse.Value == line.WarehouseCode)">@warehouse.Text</option>
-                        }
-                    </select>
+                <td class="line-item-only">
+                    <input name="Input.Lines[@i].WarehouseCode" value="@line.WarehouseCode" class="form-control form-control-sm sales-order-warehouse-code" list="sales-order-warehouses-datalist" placeholder="Buscar…" disabled="@readOnly" />
                 </td>
+                <td class="line-service-only">
+                    <input name="Input.Lines[@i].AccountCode" value="@line.AccountCode" class="form-control form-control-sm sales-order-account-code" list="sales-order-accounts-datalist" placeholder="Buscar…" disabled="@readOnly" />
+                </td>
+                <td class="line-service-only">
+                    <input name="Input.Lines[@i].CostCenterCode" value="@line.CostCenterCode" class="form-control form-control-sm sales-order-cost-center-code" list="sales-order-cost-centers-datalist" placeholder="Buscar…" disabled="@readOnly" />
+                </td>
+                <td class="line-service-only">
+                    <input name="Input.Lines[@i].CostCenterCode2" value="@line.CostCenterCode2" class="form-control form-control-sm sales-order-cost-center2-code" list="sales-order-cost-centers2-datalist" placeholder="Buscar…" disabled="@readOnly" />
+                </td>
+                <td class="line-service-only">
+                    <input name="Input.Lines[@i].CostCenterCode3" value="@line.CostCenterCode3" class="form-control form-control-sm sales-order-cost-center3-code" list="sales-order-cost-centers3-datalist" placeholder="Buscar…" disabled="@readOnly" />
+                </td>
+                @if (!readOnly)
+                {
+                    <td><button type="button" class="btn btn-sm btn-outline-danger sales-order-remove-line">Quitar</button></td>
+                }
             </tr>
         }
     </tbody>
 </table>
+</div>
+
+@* Resumen total -- portado tal cual de _TabContenido.cshtml (referencia-original/
+   PortalSAP_v2): mismas 5 filas/etiquetas/orden, mismo cálculo (ver las propiedades
+   en DetailGenericSalesDocumentModelBase). Los spans con id se recalculan en vivo por
+   JS al tipear Cantidad/Precio/%Dto, agregar o quitar líneas -- mismo comportamiento
+   que la referencia (Gastos adicionales/Impuesto no se recalculan en vivo a propósito,
+   ver el comentario del script). *@
+<div class="doc-resumen-total">
+    <span class="doc-resumen-total-titulo">Resumen total</span>
+    <div class="doc-resumen-total-fila">
+        <label>Total antes del descuento</label>
+        <span id="sales-order-total-before-discount">@Model.TotalBeforeDiscount.ToString("N2")</span>
+    </div>
+    <div class="doc-resumen-total-fila">
+        <label>Descuento</label>
+        <span id="sales-order-discount">@Model.Discount.ToString("N2")</span>
+    </div>
+    <div class="doc-resumen-total-fila">
+        <label>Gastos adicionales</label>
+        <span>@Model.AdditionalExpenses.ToString("N2")</span>
+    </div>
+    <div class="doc-resumen-total-fila">
+        <label>Impuesto</label>
+        <span>@Model.Tax.ToString("N2")</span>
+    </div>
+    <div class="doc-resumen-total-fila doc-resumen-total-final">
+        <label>Total del documento</label>
+        <span id="sales-order-document-total">@Model.DocumentTotal.ToString("N2")</span>
+    </div>
+</div>
 
 <datalist id="sales-order-items-datalist"></datalist>
+<datalist id="sales-order-warehouses-datalist"></datalist>
+<datalist id="sales-order-accounts-datalist"></datalist>
+<datalist id="sales-order-cost-centers-datalist"></datalist>
+<datalist id="sales-order-cost-centers2-datalist"></datalist>
+<datalist id="sales-order-cost-centers3-datalist"></datalist>
 
 @if (!readOnly)
 {
+    <div class="admin-row-actions mb-2 mt-2">
+        <button type="button" id="sales-order-add-line" class="btn btn-sm btn-outline-secondary">+ Agregar línea</button>
+        <button type="button" id="sales-order-download-template" class="btn btn-sm btn-outline-secondary">Descargar plantilla CSV</button>
+        <button type="button" id="sales-order-import-csv" class="btn btn-sm btn-outline-secondary">Importar CSV</button>
+        <button type="button" id="sales-order-clear-lines" class="btn btn-sm btn-outline-danger">Vaciar todas las líneas</button>
+        <input type="file" id="sales-order-csv-file" accept=".csv" style="display:none" />
+    </div>
+    <div id="sales-order-csv-result"></div>
+
+    <template id="sales-order-line-template">
+        <tr>
+            <td class="line-item-only"><input name="Input.Lines[__INDEX__].ItemCode" class="form-control form-control-sm sales-order-item-code" list="sales-order-items-datalist" /></td>
+            <td class="line-service-only"><input name="Input.Lines[__INDEX__].Description" class="form-control form-control-sm" /></td>
+            <td style="max-width:100px"><input name="Input.Lines[__INDEX__].Quantity" type="number" step="0.01" class="form-control form-control-sm line-qty" /></td>
+            <td style="max-width:120px"><input name="Input.Lines[__INDEX__].UnitPrice" type="number" step="0.01" class="form-control form-control-sm line-price" placeholder="Lista de precio" /></td>
+            <td style="max-width:90px"><input name="Input.Lines[__INDEX__].DiscountPercent" type="number" step="0.01" class="form-control form-control-sm line-discount" /></td>
+            <td class="line-item-only">
+                <input name="Input.Lines[__INDEX__].WarehouseCode" class="form-control form-control-sm sales-order-warehouse-code" list="sales-order-warehouses-datalist" placeholder="Buscar…" />
+            </td>
+            <td class="line-service-only">
+                <input name="Input.Lines[__INDEX__].AccountCode" class="form-control form-control-sm sales-order-account-code" list="sales-order-accounts-datalist" placeholder="Buscar…" />
+            </td>
+            <td class="line-service-only">
+                <input name="Input.Lines[__INDEX__].CostCenterCode" class="form-control form-control-sm sales-order-cost-center-code" list="sales-order-cost-centers-datalist" placeholder="Buscar…" />
+            </td>
+            <td class="line-service-only">
+                <input name="Input.Lines[__INDEX__].CostCenterCode2" class="form-control form-control-sm sales-order-cost-center2-code" list="sales-order-cost-centers2-datalist" placeholder="Buscar…" />
+            </td>
+            <td class="line-service-only">
+                <input name="Input.Lines[__INDEX__].CostCenterCode3" class="form-control form-control-sm sales-order-cost-center3-code" list="sales-order-cost-centers3-datalist" placeholder="Buscar…" />
+            </td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger sales-order-remove-line">Quitar</button></td>
+        </tr>
+    </template>
+
     <script src="~/js/catalog-search.js"></script>
+    <script src="~/js/document-lines-editor.js"></script>
     <script>
         wireCatalogSearch({
             inputSelector: '.sales-order-item-code',
             datalistId: 'sales-order-items-datalist',
             handlerName: 'SearchItems',
+            minChars: 2,
             getValue: function (item) { return item.itemCode; },
             getLabel: function (item) { return item.itemCode + ' — ' + item.itemName; },
+        });
+
+        // Catálogos chicos (Almacén/Cuenta Mayor/Centro de Costos) -- minChars: 0,
+        // muestran el listado completo apenas se hace click/foco (ver catalog-search.js)
+        // y siguen filtrando en vivo (LIKE) a medida que se tipea.
+        wireCatalogSearch({
+            inputSelector: '.sales-order-warehouse-code',
+            datalistId: 'sales-order-warehouses-datalist',
+            handlerName: 'SearchWarehouses',
+            minChars: 0,
+            getValue: function (item) { return item.warehouseCode; },
+            getLabel: function (item) { return item.warehouseCode + ' — ' + item.warehouseName; },
+        });
+
+        wireCatalogSearch({
+            inputSelector: '.sales-order-account-code',
+            datalistId: 'sales-order-accounts-datalist',
+            handlerName: 'SearchAccounts',
+            minChars: 0,
+            getValue: function (item) { return item.accountCode; },
+            getLabel: function (item) { return item.accountCode + ' — ' + item.accountName; },
+        });
+
+        wireCatalogSearch({
+            inputSelector: '.sales-order-cost-center-code',
+            datalistId: 'sales-order-cost-centers-datalist',
+            handlerName: 'SearchCostCenters',
+            minChars: 0,
+            getValue: function (item) { return item.code; },
+            getLabel: function (item) { return item.code + ' — ' + item.name; },
+        });
+
+        wireCatalogSearch({
+            inputSelector: '.sales-order-cost-center2-code',
+            datalistId: 'sales-order-cost-centers2-datalist',
+            handlerName: 'SearchCostCenters2',
+            minChars: 0,
+            getValue: function (item) { return item.code; },
+            getLabel: function (item) { return item.code + ' — ' + item.name; },
+        });
+
+        wireCatalogSearch({
+            inputSelector: '.sales-order-cost-center3-code',
+            datalistId: 'sales-order-cost-centers3-datalist',
+            handlerName: 'SearchCostCenters3',
+            minChars: 0,
+            getValue: function (item) { return item.code; },
+            getLabel: function (item) { return item.code + ' — ' + item.name; },
+        });
+
+        wireDocumentLinesEditor({
+            tableBodyId: 'sales-order-lines-body',
+            templateId: 'sales-order-line-template',
+            addButtonId: 'sales-order-add-line',
+            clearButtonId: 'sales-order-clear-lines',
+            removeButtonSelector: '.sales-order-remove-line',
+            startIndex: @Model.Input.Lines.Count,
+            itemCodeSelector: '.sales-order-item-code',
+            datalistId: 'sales-order-items-datalist',
+            csvColumns: ['ItemCode', 'Description', 'Quantity', 'UnitPrice', 'DiscountPercent', 'WarehouseCode', 'AccountCode', 'CostCenterCode', 'CostCenterCode2', 'CostCenterCode3'],
+            downloadTemplateButtonId: 'sales-order-download-template',
+            importCsvButtonId: 'sales-order-import-csv',
+            csvFileInputId: 'sales-order-csv-file',
+            csvResultId: 'sales-order-csv-result',
+            lineType: {
+                selectId: 'Input_LineType',
+                itemValue: '@PortalSaas.Abstractions.Modelos.DocumentLineType.Item',
+                itemOnlySelector: '.line-item-only',
+                serviceOnlySelector: '.line-service-only',
+            },
+            totals: {
+                qtySelector: '.line-qty',
+                priceSelector: '.line-price',
+                discountSelector: '.line-discount',
+                totalBeforeDiscountId: 'sales-order-total-before-discount',
+                discountId: 'sales-order-discount',
+                documentTotalId: 'sales-order-document-total',
+            },
         });
     </script>
 }

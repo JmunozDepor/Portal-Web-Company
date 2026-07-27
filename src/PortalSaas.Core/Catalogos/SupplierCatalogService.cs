@@ -15,20 +15,18 @@ public sealed class SupplierCatalogService : ISupplierCatalogService
 
     public async Task<IReadOnlyList<SupplierDto>> ListAsync(SupplierFilter? filter = null, CancellationToken ct = default)
     {
-        var searchText = filter?.SearchText?.Trim();
+        // Ver el comentario equivalente en CustomerCatalogService.ListAsync.
+        var (whereSql, limitSql, parameters) = CatalogSqlHelper.BuildSearchFilter(
+            filter?.SearchText, ["\"CardCode\"", "\"CardName\""], filter?.Limit, fixedWhere: "\"CardType\" = 'S'");
 
-        const string baseSql = """
+        var sql = $"""
             SELECT "CardCode", "CardName"
-            FROM "OCRD" WHERE "CardType" = 'S'
+            FROM "OCRD" WHERE {whereSql}
+            ORDER BY "CardName"
+            {limitSql}
             """;
 
-        if (string.IsNullOrWhiteSpace(searchText))
-        {
-            return await _hana.QueryAsync<SupplierDto>(baseSql + " ORDER BY \"CardName\"", ct: ct);
-        }
-
-        var sql = baseSql + " AND (\"CardCode\" LIKE :texto OR \"CardName\" LIKE :texto) ORDER BY \"CardName\"";
-        return await _hana.QueryAsync<SupplierDto>(sql, new { texto = $"%{searchText}%" }, ct);
+        return await _hana.QueryAsync<SupplierDto>(sql, parameters, ct);
     }
 
     public async Task<SupplierDto?> GetAsync(string cardCode, CancellationToken ct = default)

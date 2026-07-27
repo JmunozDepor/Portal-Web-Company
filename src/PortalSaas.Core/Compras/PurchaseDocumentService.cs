@@ -15,42 +15,63 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
 {
     private readonly IHanaService _hana;
     private readonly ISapConnectionProvider _connectionProvider;
+    private readonly IOrganizationDocumentPermissionService _permissions;
 
-    public PurchaseDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider)
+    public PurchaseDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider, IOrganizationDocumentPermissionService permissions)
     {
         _hana = hana;
         _connectionProvider = connectionProvider;
+        _permissions = permissions;
     }
 
+    public int GetSapObjectCode(PurchaseDocumentType type) => PurchaseDocumentTypeCatalog.Resolve(type).ObjectCode;
+
     public Task<bool> CanCreateAsync(PurchaseDocumentType type, CancellationToken ct = default) =>
-        Task.FromResult(PurchaseDocumentTypeCatalog.Resolve(type).DefaultCanCreate);
+        _permissions.IsCreateAllowedAsync("Purchase", type.ToString(), PurchaseDocumentTypeCatalog.Resolve(type).DefaultCanCreate, ct);
 
     public async Task<int> CreateAsync(PurchaseDocumentType type, string portalUsername, PurchaseDocumentDto document, CancellationToken ct = default)
     {
         var entry = PurchaseDocumentTypeCatalog.Resolve(type);
 
+        var requiredDate = document.DocDueDate.ToDateTime(TimeOnly.MinValue);
+
         var header = new SapPurchaseDocumentHeader
         {
+            DocType = ResolveDocType(document.Lines),
             CardCode = document.SupplierCardCode,
             CardName = document.SupplierName,
+            Series = document.Series,
             Comments = document.Comments,
             DocDate = document.DocDate.ToDateTime(TimeOnly.MinValue),
-            DocDueDate = document.DocDueDate.ToDateTime(TimeOnly.MinValue),
+            DocDueDate = requiredDate,
+            RequriedDate = requiredDate,
+            TaxDate = document.TaxDate.ToDateTime(TimeOnly.MinValue),
             NumAtCard = document.SupplierReferenceNumber,
             U_PortalUser = portalUsername,
+            AdditionalFields = document.AdditionalFields,
             DocumentLines = document.Lines.Select(line => new SapPurchaseDocumentLine
             {
-                ItemCode = line.ItemCode,
+                ItemType = line.Type == DocumentLineType.Service ? "itService" : "itItems",
+                ItemCode = line.Type == DocumentLineType.Item ? line.ItemCode : null,
                 ItemDescription = line.Description,
                 Quantity = line.Quantity,
                 UnitPrice = line.UnitPrice,
                 DiscountPercent = line.DiscountPercent,
-                WarehouseCode = line.WarehouseCode,
+                WarehouseCode = line.Type == DocumentLineType.Item ? line.WarehouseCode : null,
+                AccountCode = line.Type == DocumentLineType.Service ? line.AccountCode : null,
+                CostingCode = line.Type == DocumentLineType.Service ? line.CostCenterCode : null,
+                CostingCode2 = line.Type == DocumentLineType.Service ? line.CostCenterCode2 : null,
+                CostingCode3 = line.Type == DocumentLineType.Service ? line.CostCenterCode3 : null,
+                RequiredDate = requiredDate,
+                AdditionalFields = line.AdditionalFields,
             }).ToList(),
         };
 
+        var hasAdditionalFields = header.AdditionalFields is not null || header.DocumentLines.Any(l => l.AdditionalFields is not null);
+        object requestBody = hasAdditionalFields ? PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten(header) : header;
+
         var session = await _connectionProvider.GetConnectionAsync(ct);
-        var created = await session.PostAsync<SapPurchaseDocumentHeader>(entry.Resource, header, ct)
+        var created = await session.PostAsync<SapPurchaseDocumentHeader>(entry.Resource, requestBody, ct)
             ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
 
         return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
@@ -72,18 +93,28 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
             Comments: sap.Comments,
             DocDate: DateOnly.FromDateTime(sap.DocDate ?? DateTime.Today),
             DocDueDate: DateOnly.FromDateTime(sap.DocDueDate ?? DateTime.Today),
+            TaxDate: DateOnly.FromDateTime(sap.TaxDate ?? DateTime.Today),
             SupplierReferenceNumber: sap.NumAtCard,
             Lines: sap.DocumentLines.Select(line => new PurchaseDocumentLineDto(
+                // ItemType no es confiable en documentos preexistentes -- ItemCode
+                // poblado es la señal fuerte de línea de Artículo, mismo criterio que
+                // SalesDocumentService.GetAsync.
+                Type: !string.IsNullOrWhiteSpace(line.ItemCode) ? DocumentLineType.Item : DocumentLineType.Service,
                 ItemCode: line.ItemCode,
                 Description: line.ItemDescription,
                 Quantity: line.Quantity,
                 UnitPrice: line.UnitPrice,
                 DiscountPercent: line.DiscountPercent,
-                WarehouseCode: line.WarehouseCode)).ToList(),
+                WarehouseCode: line.WarehouseCode,
+                AccountCode: line.AccountCode,
+                CostCenterCode: line.CostingCode,
+                CostCenterCode2: line.CostingCode2,
+                CostCenterCode3: line.CostingCode3)).ToList(),
             DocEntry: sap.DocEntry,
             DocNum: sap.DocNum,
             DocTotal: sap.DocTotal,
-            Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto");
+            Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto",
+            Series: sap.Series);
     }
 
     public async Task<PurchaseDocumentListResult> ListAsync(PurchaseDocumentType type, PurchaseDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
@@ -112,6 +143,15 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
         return new PurchaseDocumentListResult(items, totalRecords);
     }
 
+    /// <summary>
+    /// Mismo criterio de filtro que SalesDocumentService.BuildWhereClause (regla de
+    /// paridad entre motores, ver CLAUDE.md -- bug real encontrado ahí primero, portado
+    /// acá): todo texto es LIKE parcial case-insensitive (incluido DocNum -- buscar "123"
+    /// encuentra "51230"), DateTo es límite EXCLUSIVO del día siguiente (así incluye todo
+    /// el día "hasta", no solo su medianoche 00:00:00). Sin filtro de "Vendedor"/
+    /// "Sucursal entrega" acá -- el original (`FiltroGenericoCompra`) tampoco los tiene
+    /// para Compra, solo Venta/Inventario.
+    /// </summary>
     private static (string WhereClause, IReadOnlyDictionary<string, object?> Parameters) BuildWhereClause(PurchaseDocumentFilter? filter)
     {
         var clauses = new List<string>();
@@ -127,24 +167,42 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
 
             if (filter.DateTo is { } dateTo)
             {
-                clauses.Add("""o."DocDate" <= :dateTo""");
-                parameters["dateTo"] = dateTo.ToDateTime(TimeOnly.MinValue);
+                clauses.Add("""o."DocDate" < :dateTo""");
+                parameters["dateTo"] = dateTo.ToDateTime(TimeOnly.MinValue).AddDays(1);
             }
 
             if (!string.IsNullOrWhiteSpace(filter.SupplierCardCode))
             {
-                clauses.Add("""o."CardCode" = :supplierCardCode""");
-                parameters["supplierCardCode"] = filter.SupplierCardCode.Trim();
+                clauses.Add("""UPPER(o."CardCode") LIKE UPPER(:supplierCardCode)""");
+                parameters["supplierCardCode"] = $"%{filter.SupplierCardCode.Trim()}%";
             }
 
-            if (filter.DocNum is { } docNum)
+            if (!string.IsNullOrWhiteSpace(filter.SupplierName))
             {
-                clauses.Add("""o."DocNum" = :docNum""");
-                parameters["docNum"] = docNum;
+                clauses.Add("""UPPER(o."CardName") LIKE UPPER(:supplierName)""");
+                parameters["supplierName"] = $"%{filter.SupplierName.Trim()}%";
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.SupplierReferenceNumber))
+            {
+                clauses.Add("""UPPER(o."NumAtCard") LIKE UPPER(:supplierReferenceNumber)""");
+                parameters["supplierReferenceNumber"] = $"%{filter.SupplierReferenceNumber.Trim()}%";
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.DocNum))
+            {
+                clauses.Add("""TO_VARCHAR(o."DocNum") LIKE :docNum""");
+                parameters["docNum"] = $"%{filter.DocNum.Trim()}%";
             }
         }
 
         var whereClause = clauses.Count == 0 ? string.Empty : "WHERE " + string.Join(" AND ", clauses);
         return (whereClause, parameters);
     }
+
+    /// <summary>DocType es del documento entero, no por línea -- ver el doc-comment equivalente en SalesDocumentService.</summary>
+    private static string ResolveDocType(IReadOnlyList<PurchaseDocumentLineDto> lines) =>
+        lines.Count > 0 && lines[0].Type == DocumentLineType.Service
+            ? "dDocument_Service"
+            : "dDocument_Items";
 }

@@ -37,6 +37,18 @@
          PortalSaas.Data.Migrations.SqlServer para la base propia de la plataforma, son
          dos motores dual completamente independientes (ver docs/02-...md §1). -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <!-- Driver base (no el provider de EF Core, ese vive solo en
+         PortalSaas.Data.Migrations.PostgreSql), necesario para armar el connection
+         string de bases externas motor Postgres en ExternalDatabaseConnectionService
+         (ver Infraestructura/), mismo criterio dual que Microsoft.Data.SqlClient de
+         arriba. -->
+    <PackageReference Include="Npgsql" Version="8.0.5" />
+    <!-- Modulo.ImportacionGenerica: leer el archivo subido (.xlsx/.xls) y generar la
+         plantilla de "Descargar formato", mismas 2 librerias del original
+         (referencia original PortalSAP_v2), ambas MIT. -->
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
+    <PackageReference Include="ClosedXML" Version="0.104.1" />
   </ItemGroup>
 
   <ItemGroup>

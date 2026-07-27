@@ -58,7 +58,14 @@
         }
     }
 
-    <h2 class="h5 mt-4">Perfil por nodo de menú</h2>
+    <h2 class="h5 mt-4">Perfil por nodo de menú (asignación manual)</h2>
+    <p class="text-muted" style="font-size: 12.5px;">
+        Dejalo en "Heredar del grupo de menú" para que el usuario tome el Perfil por
+        defecto de los grupos a los que pertenece (ver arriba) -- elegí un Perfil acá
+        solo para darle a este usuario un acceso puntual DISTINTO del de su grupo. Para
+        deshacer una asignación manual anterior, volvé a poner "Heredar del grupo de
+        menú" y guardá -- borra la excepción, no le quita el grupo.
+    </p>
     @if (Model.LeafMenus.Count == 0)
     {
         <p class="text-muted">Todavía no hay nodos de menú finales (no hay plugins cargados).</p>
@@ -80,7 +87,7 @@
                         <td>@menu.Name <span class="text-muted">(@($"{menu.OriginModule}.{menu.Code}"))</span></td>
                         <td>
                             <select name="Input.ProfileByMenu[@menu.Id]" class="form-select form-select-sm">
-                                <option value="" selected="@(actual is null or 0)">Sin asignar</option>
+                                <option value="" selected="@(actual is null or 0)">Heredar del grupo de menú</option>
                                 @foreach (var profile in Model.ProfileOptions)
                                 {
                                     <option value="@profile.Value" selected="@(profile.Value == actual?.ToString())">@profile.Text</option>

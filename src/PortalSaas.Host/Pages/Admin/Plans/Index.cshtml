@@ -9,6 +9,11 @@
     <a asp-page="/Admin/Plans/Create" class="btn btn-primary">Nuevo plan</a>
 </div>
 
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
 <table class="table table-striped">
     <thead>
         <tr>
@@ -33,7 +38,14 @@
                 <td>@(plan.MonthlyTransactionLimit?.ToString() ?? "Ilimitado")</td>
                 <td>@(plan.MonthlyPrice is null ? "—" : $"{plan.MonthlyPrice:N0} {plan.Currency}")</td>
                 <td>@(plan.IsActive ? "Sí" : "No")</td>
-                <td><a asp-page="/Admin/Plans/Edit" asp-route-id="@plan.Id">Editar</a></td>
+                <td>
+                    <a asp-page="/Admin/Plans/Edit" asp-route-id="@plan.Id">Editar</a>
+                    ·
+                    <form asp-page="./Index" asp-page-handler="Delete" asp-route-id="@plan.Id" method="post" style="display:inline"
+                          onsubmit="return confirm('¿Eliminar el plan @plan.Code?');">
+                        <button type="submit" class="btn btn-link text-danger p-0">Eliminar</button>
+                    </form>
+                </td>
             </tr>
         }
     </tbody>

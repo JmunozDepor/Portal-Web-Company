@@ -1,0 +1,67 @@
+@page
+@model PortalSaas.Host.Pages.Admin.PlatformModules.ImportModel
+@{
+    ViewData["Title"] = "Importar plugin";
+}
+
+<h1 class="h3 mb-3">Importar plugin</h1>
+<p class="text-muted">
+    Subí el .zip generado por el target <code>PublicarComoPlugin</code> del plugin (o armado a mano
+    con el mismo contenido de <code>artifacts/plugins/{Codigo}/{Version}/</code>) -- se extrae directo
+    a esa carpeta. El módulo queda activo recién al reiniciar el Host (los plugins solo se cargan al
+    arrancar).
+</p>
+
+@if (Model.MensajeExito is not null)
+{
+    <div class="alert alert-success">@Model.MensajeExito</div>
+}
+@if (Model.MensajeError is not null)
+{
+    <div class="alert alert-danger">@Model.MensajeError</div>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <form method="post" enctype="multipart/form-data" asp-antiforgery="true">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Code" class="form-label"></label>
+                <input asp-for="Input.Code" class="form-control" autofocus />
+                <span asp-validation-for="Input.Code" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Name" class="form-label"></label>
+                <input asp-for="Input.Name" class="form-control" />
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Version" class="form-label"></label>
+                <input asp-for="Input.Version" class="form-control" value="1.0.0" />
+                <span asp-validation-for="Input.Version" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Package" class="form-label"></label>
+                <input asp-for="Input.Package" type="file" accept=".zip" class="form-control" />
+                <span asp-validation-for="Input.Package" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input asp-for="Input.Overwrite" class="form-check-input" />
+                <label asp-for="Input.Overwrite" class="form-check-label"></label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Importar</button>
+            <a asp-page="/Admin/Sistema/Index" class="btn btn-outline-secondary">Ir a reiniciar servidor</a>
+            <a asp-page="/Admin/PlatformModules/Index" class="btn btn-link">Volver</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

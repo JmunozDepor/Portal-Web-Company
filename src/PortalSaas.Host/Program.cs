@@ -1,12 +1,15 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Core.Administracion;
 using PortalSaas.Core.Catalogos;
 using PortalSaas.Core.Comercial;
 using PortalSaas.Core.Compras;
 using PortalSaas.Core.Correo;
+using PortalSaas.Core.ImportacionGenerica;
 using PortalSaas.Core.Infraestructura;
 using PortalSaas.Core.Inventario;
 using PortalSaas.Core.Sap;
@@ -49,21 +52,38 @@ builder.Services.AddDbContext<PortalSaasDbContext>(options =>
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ISecretoCifradoService, SecretoCifradoService>();
-builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+builder.Services.AddScoped<PortalSaas.Abstractions.Contratos.IAuthenticationService, PortalSaas.Core.Seguridad.AuthenticationService>();
 builder.Services.AddScoped<IPlatformAdminAuthenticationService, PlatformAdminAuthenticationService>();
 builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+builder.Services.AddScoped<IUserSessionService, UserSessionService>();
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<IContractLimitService, ContractLimitService>();
 builder.Services.AddScoped<IOrganizationAccessGateService, OrganizationAccessGateService>();
 
+// Consumido por MenuNavigationService -- qué módulos comerciales tiene contratados una
+// organización, para filtrar el árbol de menú (ver IModuleAccessService).
+builder.Services.AddScoped<IModuleAccessService, ModuleAccessService>();
+
 // Consumido por Modulo.Administracion (plugin) -- self-service de usuarios de la
 // propia organización, ver ITenantUserAdminService.
 builder.Services.AddScoped<ITenantUserAdminService, TenantUserAdminService>();
 
+// Self-service de Modulo.Administracion -- qué módulos oculta la organización del
+// menú (sin cambiar lo contratado), y CRUD de sus propios grupos de menú/perfiles
+// (ver CLAUDE.md, "Grupos de Menú + Perfiles", 27 jul 2026).
+builder.Services.AddScoped<IOrganizationModuleVisibilityService, OrganizationModuleVisibilityService>();
+builder.Services.AddScoped<IOrganizationMenuGroupService, OrganizationMenuGroupService>();
+builder.Services.AddScoped<IOrganizationProfileService, OrganizationProfileService>();
+
 // Árbol de menús visible del sidebar (Pages/Shared/_Layout.cshtml vía
 // SidebarMenuViewComponent) -- ver IMenuNavigationService.
 builder.Services.AddScoped<IMenuNavigationService, MenuNavigationService>();
+
+// Reinicio real del proceso del Host desde /Admin/Sistema -- ver ApplicationRestartService.
+builder.Services.AddSingleton<PortalSaas.Host.Infraestructura.IApplicationRestartService, PortalSaas.Host.Infraestructura.ApplicationRestartService>();
+// Accesos directos personalizados de Inicio -- ver Pages/Home/Index.cshtml.cs.
+builder.Services.AddScoped<IUserHomeShortcutService, UserHomeShortcutService>();
 
 // Conector SAP -- ver ARCHITECTURE.md §6 paso 5, portado de PortalSAP_v2. Scoped salvo
 // ISapSessionCache (Singleton, cachea la sesión de Service Layer por Company.Id, ver su
@@ -90,9 +110,31 @@ builder.Services.AddScoped<IWarehouseCatalogService, WarehouseCatalogService>();
 builder.Services.AddScoped<ISalesEmployeeCatalogService, SalesEmployeeCatalogService>();
 builder.Services.AddScoped<ISalesDocumentService, SalesDocumentService>();
 
+// Consumido por Modulo.Ventas/Modulo.Compras -- catálogos de líneas de tipo Servicio
+// (Cuenta Mayor/Centro de Costos), ver DocumentLineType.
+builder.Services.AddScoped<IGeneralLedgerAccountCatalogService, GeneralLedgerAccountCatalogService>();
+builder.Services.AddScoped<ICostCenterCatalogService, CostCenterCatalogService>();
+
+// Catálogos prerrequisito del futuro Módulo Importador Genérico (ver
+// docs/08-BRECHA-FUNCIONAL-VS-PORTALSAP-V2.md §2.3) -- sin consumidor propio todavía
+// (ningún plugin los usa aún), pero ya listos para cuando se porte el importador.
+builder.Services.AddScoped<IItemCrossReferenceService, ItemCrossReferenceService>();
+builder.Services.AddScoped<IPriceListService, PriceListService>();
+builder.Services.AddScoped<IBusinessPartnerDefaultsService, BusinessPartnerDefaultsService>();
+
+// Consumido por los 3 motores genéricos de documento (CanCreateAsync) -- override por
+// organización de "permite crear documento", ver OrganizationDocumentPermission.
+builder.Services.AddScoped<IOrganizationDocumentPermissionService, OrganizationDocumentPermissionService>();
+
+// Resuelve la conexión a bases de datos EXTERNAS propias de un plugin (ajenas al SAP
+// de la organización), motor dual -- primer consumidor real: Modulo.Rendiciones
+// (repo externo, ver docs/09-GUIA-DESARROLLO-PLUGINS.md §1).
+builder.Services.AddScoped<IExternalDatabaseConnectionService, ExternalDatabaseConnectionService>();
+
 // Consumido por Modulo.Inventario (plugin) -- motor genérico de documentos de
 // inventario, ver IInventoryDocumentService/InventoryDocumentTypeCatalog. Reusa los
-// catálogos de Artículo/Almacén ya registrados arriba, no trae catálogos propios.
+// catálogos de Artículo/Almacén ya registrados arriba, no trae catálogos propios --
+// sin líneas de Servicio (OWTQ/OWTR no tienen ese concepto, ver DocumentLineType).
 builder.Services.AddScoped<IInventoryDocumentService, InventoryDocumentService>();
 
 // Consumido por Modulo.Compras (plugin) -- motor genérico de documentos de compra, ver
@@ -100,6 +142,31 @@ builder.Services.AddScoped<IInventoryDocumentService, InventoryDocumentService>(
 // registrados arriba, solo agrega el catálogo de Proveedor (lado OCRD que no usa Venta).
 builder.Services.AddScoped<ISupplierCatalogService, SupplierCatalogService>();
 builder.Services.AddScoped<IPurchaseDocumentService, PurchaseDocumentService>();
+
+// Consumido por Modulo.ImportacionGenerica (plugin) -- importador masivo de
+// documentos Venta/Compra/Inventario desde Excel, ver IGenericImportService. Config +
+// campos de usuario viven en la base propia de la plataforma (organization_id), no en
+// el SAP del cliente -- ver CLAUDE.md, "Persistencia config" 26 jul 2026.
+builder.Services.AddScoped<IGenericImportUserFieldService, GenericImportUserFieldService>();
+builder.Services.AddScoped<IGenericImportConfigService, GenericImportConfigService>();
+builder.Services.AddSingleton<IGenericImportProgressStore, GenericImportProgressStore>();
+builder.Services.AddScoped<IGenericImportService, GenericImportService>();
+
+// Catálogos nuevos, sin consumidor propio todavía (ningún plugin los usa aún) --
+// identificados como necesarios para que Sucursales/Series/Impuestos/Dimensión2-3/
+// Logística-Finanzas/Rendiciones/Importador no bloqueen esas entregas cuando se
+// encaren (ver conversación de planificación de catálogos, 26 jul 2026). Mismo
+// criterio que ItemCrossReferenceService/PriceListService de arriba.
+builder.Services.AddScoped<IBranchCatalogService, BranchCatalogService>();
+builder.Services.AddScoped<ISeriesCatalogService, SeriesCatalogService>();
+builder.Services.AddScoped<ITaxCodeCatalogService, TaxCodeCatalogService>();
+builder.Services.AddScoped<IShippingMethodCatalogService, ShippingMethodCatalogService>();
+builder.Services.AddScoped<IPaymentTermsCatalogService, PaymentTermsCatalogService>();
+builder.Services.AddScoped<IEmployeeCatalogService, EmployeeCatalogService>();
+builder.Services.AddScoped<IItemGroupCatalogService, ItemGroupCatalogService>();
+builder.Services.AddScoped<IBusinessPartnerGroupCatalogService, BusinessPartnerGroupCatalogService>();
+builder.Services.AddScoped<IUnitOfMeasureCatalogService, UnitOfMeasureCatalogService>();
+builder.Services.AddScoped<ICurrencyCatalogService, CurrencyCatalogService>();
 
 // Esquema default = tenant (sin cambios de comportamiento en /Account, /Home). El
 // esquema "PlatformAdmin" es una sesión totalmente aparte -- ver
@@ -112,6 +179,31 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Account/Login";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
+        // "Desconectar" desde /Admin/Sessions (ver IUserSessionService.RevokeAsync) no
+        // invalida la cookie por sí solo -- una cookie de Identity es autocontenida, sin
+        // estado del lado del servidor. Este evento corre en cada request autenticada:
+        // si la sesión (claim "SessionToken") fue revocada o no existe, se hace
+        // RejectPrincipal, forzando el próximo request a caer al login -- sin esto, el
+        // botón "Desconectar" del backoffice no tendría ningún efecto real hasta que la
+        // cookie expire sola (hasta 8h).
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnValidatePrincipal = async context =>
+            {
+                var sessionToken = context.Principal?.FindFirst("SessionToken")?.Value;
+                if (sessionToken is null)
+                {
+                    return;
+                }
+
+                var sessions = context.HttpContext.RequestServices.GetRequiredService<IUserSessionService>();
+                if (!await sessions.IsActiveAsync(sessionToken))
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                }
+            },
+        };
     })
     .AddCookie("PlatformAdmin", options =>
     {
@@ -189,6 +281,32 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Sirve el wwwroot embebido de cada plugin con ServesOwnWwwRoot=true (ej.
+// Modulo.Rendiciones, wwwroot/css/rendiciones.css) -- IModuloPortal.ServesOwnWwwRoot
+// existía como propiedad desde el portado inicial, pero nada la usaba de verdad hasta
+// ahora: bug real encontrado al verificar Modulo.Rendiciones en el Host real (el CSS
+// del plugin nunca se servía, `~/css/rendiciones.css` devolvía 404 en silencio, sin
+// que el <link> fallido diera ningún error visible más allá de que el diseño no
+// cambiaba). ManifestEmbeddedFileProvider requiere GenerateEmbeddedFilesManifest=true
+// en el .csproj del plugin (ya lo tienen todos, ver PublicarComoPlugin) para resolver
+// rutas tipo "/css/x.css" desde el manifiesto embebido, en vez de nombres de recurso
+// planos. Sin prefijo de ruta (RequestPath vacío) -- mismo espacio de nombres que el
+// wwwroot del Host, ver PluginManager.AssembliesConWwwRootPropio.
+foreach (var assembly in pluginManager.AssembliesConWwwRootPropio.Values)
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        // El manifiesto embebido conserva "wwwroot" como carpeta raíz real (ej.
+        // "wwwroot/css/rendiciones.css") -- a diferencia del wwwroot físico del Host
+        // (donde esa carpeta nunca aparece en la URL porque es la raíz que se le pasa
+        // al file provider por fuera). El segundo parámetro acota el provider a esa
+        // subcarpeta para que "~/css/rendiciones.css" resuelva -- sin esto, 404
+        // silencioso (bug real ya encontrado una vez, ver el comentario de arriba).
+        FileProvider = new ManifestEmbeddedFileProvider(assembly, "wwwroot"),
+    });
+}
+
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

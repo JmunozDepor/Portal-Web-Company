@@ -28,16 +28,23 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<PlatformModule> PlatformModules => Set<PlatformModule>();
     public DbSet<PlanModule> PlanModules => Set<PlanModule>();
     public DbSet<OrganizationModule> OrganizationModules => Set<OrganizationModule>();
+    public DbSet<OrganizationDocumentPermission> OrganizationDocumentPermissions => Set<OrganizationDocumentPermission>();
+    public DbSet<GenericImportUserField> GenericImportUserFields => Set<GenericImportUserField>();
+    public DbSet<GenericImportConfig> GenericImportConfigs => Set<GenericImportConfig>();
+    public DbSet<GenericImportConfigField> GenericImportConfigFields => Set<GenericImportConfigField>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<OnPremiseLicense> OnPremiseLicenses => Set<OnPremiseLicense>();
     public DbSet<Instance> Instances => Set<Instance>();
+    public DbSet<ModuleExternalConnection> ModuleExternalConnections => Set<ModuleExternalConnection>();
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<User> Users => Set<User>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
     public DbSet<EmailSettings> EmailSettings => Set<EmailSettings>();
     public DbSet<UsageMetric> UsageMetrics => Set<UsageMetric>();
     public DbSet<MenuGroup> MenuGroups => Set<MenuGroup>();
+    public DbSet<OrganizationModuleVisibility> OrganizationModuleVisibilities => Set<OrganizationModuleVisibility>();
     public DbSet<Menu> Menus => Set<Menu>();
     public DbSet<Profile> Profiles => Set<Profile>();
     public DbSet<PermissionAction> Actions => Set<PermissionAction>();
@@ -46,6 +53,7 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<UserMenuGroup> UserMenuGroups => Set<UserMenuGroup>();
     public DbSet<UserMenuProfile> UserMenuProfiles => Set<UserMenuProfile>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<UserHomeShortcut> UserHomeShortcuts => Set<UserHomeShortcut>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -100,6 +108,8 @@ public sealed class PortalSaasDbContext : DbContext
             entity.HasIndex(e => e.Code).IsUnique();
             entity.Property(e => e.Code).HasMaxLength(50);
             entity.Property(e => e.Name).HasMaxLength(100);
+            entity.HasOne(e => e.ExclusiveOrganization).WithMany().HasForeignKey(e => e.ExclusiveOrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<PlanModule>(entity =>
@@ -116,6 +126,50 @@ public sealed class PortalSaasDbContext : DbContext
             entity.HasKey(e => new { e.OrganizationId, e.ModuleId });
             entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
             entity.HasOne(e => e.Module).WithMany(m => m.OrganizationModules).HasForeignKey(e => e.ModuleId);
+        });
+
+        modelBuilder.Entity<OrganizationDocumentPermission>(entity =>
+        {
+            entity.ToTable("organization_document_permissions");
+            entity.HasIndex(e => new { e.OrganizationId, e.Engine, e.DocumentType }).IsUnique();
+            entity.Property(e => e.Engine).HasMaxLength(20);
+            entity.Property(e => e.DocumentType).HasMaxLength(50);
+            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+        });
+
+        modelBuilder.Entity<GenericImportUserField>(entity =>
+        {
+            entity.ToTable("generic_import_user_fields");
+            entity.Property(e => e.Module).HasMaxLength(20);
+            entity.Property(e => e.Level).HasMaxLength(10);
+            entity.Property(e => e.Label).HasMaxLength(100);
+            entity.Property(e => e.SapFieldName).HasMaxLength(100);
+            entity.Property(e => e.DataType).HasMaxLength(10);
+            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+        });
+
+        modelBuilder.Entity<GenericImportConfig>(entity =>
+        {
+            entity.ToTable("generic_import_configs");
+            entity.HasIndex(e => new { e.OrganizationId, e.Module, e.DocumentType, e.LineType, e.BusinessPartnerCardCode }).IsUnique();
+            entity.Property(e => e.Module).HasMaxLength(20);
+            entity.Property(e => e.DocumentType).HasMaxLength(50);
+            entity.Property(e => e.LineType).HasMaxLength(10);
+            entity.Property(e => e.BusinessPartnerCardCode).HasMaxLength(15);
+            entity.Property(e => e.GroupingColumn).HasMaxLength(10);
+            entity.Property(e => e.Alias).HasMaxLength(100);
+            entity.Property(e => e.PriceSource).HasMaxLength(20);
+            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+        });
+
+        modelBuilder.Entity<GenericImportConfigField>(entity =>
+        {
+            entity.ToTable("generic_import_config_fields");
+            entity.Property(e => e.LogicalField).HasMaxLength(30);
+            entity.Property(e => e.ExcelColumn).HasMaxLength(10);
+            entity.Property(e => e.FixedValue).HasMaxLength(200);
+            entity.HasOne(e => e.Config).WithMany(c => c.Fields).HasForeignKey(e => e.ConfigId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.UserField).WithMany().HasForeignKey(e => e.UserFieldId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Subscription>(entity =>
@@ -152,6 +206,38 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.TechnicalUsername).HasMaxLength(100);
             entity.Property(e => e.TechnicalSecretKey).HasMaxLength(200);
             entity.HasOne(e => e.Organization).WithMany(o => o.Instances).HasForeignKey(e => e.OrganizationId);
+        });
+
+        modelBuilder.Entity<ModuleExternalConnection>(entity =>
+        {
+            entity.ToTable("module_external_connections", t => t.HasCheckConstraint(
+                "ck_module_external_connections_engine_type",
+                $"engine_type in ('{ModuleExternalConnectionEngineType.Postgres}', '{ModuleExternalConnectionEngineType.SqlServer}')"));
+            // Sin CompanyId (fila global de la organización para el módulo) o con
+            // CompanyId puntual -- las dos formas conviven, la resolución en Core
+            // prueba primero la fila puntual y cae a la global (ver
+            // IExternalDatabaseConnectionService). Único índice real: no puede haber
+            // dos filas para la misma (OrganizationId, CompanyId, ModuleCode) --
+            // CompanyId nullable no rompe esto porque SQL trata NULL como distinto en
+            // ambos motores, así que dos filas globales del mismo módulo para la
+            // misma organización igual colisionarían solo si CompanyId es el mismo
+            // valor no nulo; el caso "dos filas globales" se valida en código, no acá.
+            entity.HasIndex(e => new { e.OrganizationId, e.CompanyId, e.ModuleCode })
+                .IsUnique()
+                .HasDatabaseName("uq_module_external_connections_org_company_module");
+            entity.Property(e => e.ModuleCode).HasMaxLength(50);
+            entity.Property(e => e.EngineType).HasMaxLength(20);
+            entity.Property(e => e.Host).HasMaxLength(200);
+            entity.Property(e => e.DatabaseName).HasMaxLength(100);
+            entity.Property(e => e.TechnicalUsername).HasMaxLength(100);
+            entity.Property(e => e.TechnicalSecretKey).HasMaxLength(200);
+            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+            // Restrict, no Cascade -- mismo motivo que Company.Organization: ya es
+            // alcanzable en cascada vía Organization -> Company directo, un segundo
+            // camino en cascada acá (Organization -> Company -> esta tabla) crea un
+            // ciclo que SQL Server rechaza (error 1785) aunque Postgres lo permita.
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Company>(entity =>
@@ -196,6 +282,25 @@ public sealed class PortalSaasDbContext : DbContext
             entity.ToTable("password_reset_tokens");
             entity.Property(e => e.TokenHash).HasMaxLength(300);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<UserSession>(entity =>
+        {
+            entity.ToTable("user_sessions");
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasIndex(e => new { e.OrganizationId, e.IsRevoked });
+            entity.Property(e => e.TokenHash).HasMaxLength(300);
+            entity.Property(e => e.IpAddress).HasMaxLength(64);
+            entity.Property(e => e.UserAgent).HasMaxLength(300);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+            // Restrict, no Cascade -- mismo motivo exacto que Company.Organization más
+            // arriba: UserSession ya es alcanzable en cascada vía User (Organization ->
+            // User -> UserSession), un segundo camino directo acá crea el mismo ciclo
+            // que SQL Server rechaza (error 1785).
+            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<UserPreference>(entity =>
@@ -247,6 +352,13 @@ public sealed class PortalSaasDbContext : DbContext
             entity.ToTable("menu_groups");
             entity.Property(e => e.Name).HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(300);
+            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+            // Restrict -- Organization ya alcanza esta tabla en cascada vía OrganizationId
+            // directo; un segundo camino en cascada vía CompanyId (Organization ->
+            // Instance -> Company) es el mismo conflicto de rutas múltiples que
+            // Company.Organization/UserMenuGroup.Company, ver ahí.
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Menu>(entity =>
@@ -271,6 +383,15 @@ public sealed class PortalSaasDbContext : DbContext
             entity.ToTable("profiles");
             entity.Property(e => e.Name).HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(300);
+            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+        });
+
+        modelBuilder.Entity<OrganizationModuleVisibility>(entity =>
+        {
+            entity.ToTable("organization_module_visibilities");
+            entity.HasKey(e => new { e.OrganizationId, e.ModuleId });
+            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+            entity.HasOne(e => e.Module).WithMany().HasForeignKey(e => e.ModuleId);
         });
 
         modelBuilder.Entity<PermissionAction>(entity =>
@@ -307,6 +428,11 @@ public sealed class PortalSaasDbContext : DbContext
             entity.HasKey(e => new { e.MenuGroupId, e.MenuId });
             entity.HasOne(e => e.MenuGroup).WithMany(g => g.MenuGroupItems).HasForeignKey(e => e.MenuGroupId);
             entity.HasOne(e => e.Menu).WithMany(m => m.MenuGroupItems).HasForeignKey(e => e.MenuId);
+            // Restrict, no Cascade -- un Profile no debería poder desaparecer en
+            // silencio arrastrando el default de un grupo; borrar un Profile en uso
+            // como default de grupo debe fallar explícito, no vaciar la columna solo.
+            entity.HasOne(e => e.DefaultProfile).WithMany().HasForeignKey(e => e.DefaultProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<UserMenuGroup>(entity =>
@@ -333,6 +459,14 @@ public sealed class PortalSaasDbContext : DbContext
             // Restrict -- mismo motivo que UserMenuGroup.Company.
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserHomeShortcut>(entity =>
+        {
+            entity.ToTable("user_home_shortcuts");
+            entity.HasIndex(e => new { e.UserId, e.MenuId }).IsUnique();
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
+            entity.HasOne(e => e.Menu).WithMany().HasForeignKey(e => e.MenuId);
         });
 
         modelBuilder.Entity<AuditLog>(entity =>

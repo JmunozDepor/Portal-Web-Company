@@ -28,6 +28,9 @@ public class IndexModel : PageModel
     public Guid? TestedCompanyId { get; private set; }
     public SapConnectionTestResult? TestResult { get; private set; }
 
+    [TempData]
+    public string? ErrorMessage { get; set; }
+
     public async Task<IActionResult> OnGetAsync(Guid organizationId)
     {
         var organization = await _db.Organizations.FindAsync(organizationId);
@@ -64,5 +67,29 @@ public class IndexModel : PageModel
         TestResult = await _connectionTestService.TestAsync(companyId);
 
         return Page();
+    }
+
+    // Bloquea el borrado si la compañía ya tiene acceso/permisos asignados a algún
+    // usuario, o una conexión externa de plugin configurada -- borrarla ahí dejaría
+    // esas filas huérfanas en silencio.
+    public async Task<IActionResult> OnPostDeleteAsync(Guid organizationId, Guid id)
+    {
+        var inUse = await _db.UserMenuGroups.AnyAsync(g => g.CompanyId == id)
+            || await _db.UserMenuProfiles.AnyAsync(p => p.CompanyId == id)
+            || await _db.ModuleExternalConnections.AnyAsync(c => c.CompanyId == id);
+        if (inUse)
+        {
+            ErrorMessage = "No se puede eliminar: la compañía tiene usuarios con acceso asignado o conexiones de plugin configuradas.";
+            return RedirectToPage(new { organizationId });
+        }
+
+        var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == organizationId);
+        if (company is not null)
+        {
+            _db.Companies.Remove(company);
+            await _db.SaveChangesAsync();
+        }
+
+        return RedirectToPage(new { organizationId });
     }
 }

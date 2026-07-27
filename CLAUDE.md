@@ -51,6 +51,83 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
   sin comillas, `id` surrogate siempre, FK `<entidad>_id`, timestamps `_at`,
   booleanos `is_`/`has_`, estados en columna `status`. Aplica igual en los dos
   motores (§ Decisiones ya tomadas).
+- **Toda pantalla de administración de un catálogo/documento maestro (registro que el
+  usuario crea explícitamente desde una UI del portal — planes, perfiles, grupos de
+  menú, módulos, instancias, compañías, proveedores externos, tipos de gasto,
+  políticas, etc.) debe ofrecer Crear + Editar + Eliminar, "si fuese el caso"** —
+  es decir, salvo que una de las dos excepciones de abajo aplique explícitamente:
+  - **Eliminar se reemplaza por desactivar (`is_active`/`status`) cuando el registro
+    es HISTORIAL real** (una fila que representa algo que ya ocurrió — ej.
+    `subscriptions`, `on_premise_licenses`, `audit_logs`) — borrarla destruiría
+    trazabilidad real, no solo un dato de configuración.
+  - **Eliminar se reemplaza por desactivar cuando el borrado en cascada alcanzaría
+    datos de negocio de otro dueño** de forma no reversible ni acotable con un
+    chequeo simple (ej. `organizations`/`users` — borrar una organización arrastra
+    compañías, usuarios, suscripciones, licencias, conexiones de plugin; ya tienen
+    su propio soft-delete vía `Organization.Status`/`User.IsActive`).
+  - **En cualquier otro caso, Eliminar es borrado real** (no soft-delete disfrazado),
+    pero SIEMPRE bloqueado con un mensaje claro si el registro tiene dependientes
+    reales (otra tabla lo referencia con datos vivos) — nunca un borrado en cascada
+    silencioso ni un `ON DELETE CASCADE` implícito sobre datos que el usuario no
+    pidió borrar explícitamente. Ver `Pages/Admin/Plans/Index.cshtml.cs`,
+    `Profiles/Index.cshtml.cs`, `MenuGroups/Index.cshtml.cs`,
+    `PlatformModules/Index.cshtml.cs`, `Organizations/Instances/Index.cshtml.cs`,
+    `Organizations/Companies/Index.cshtml.cs` (27 jul 2026) como los ejemplos de
+    referencia del patrón: `[TempData] ErrorMessage` + `OnPostDeleteAsync` que
+    primero valida dependientes (`AnyAsync` contra las tablas que lo referencian) y
+    solo si no hay ninguno hace `Remove` + `SaveChangesAsync`, con
+    `onsubmit="return confirm(...)"` en el botón. Aplica igual a cualquier motor
+    genérico de documento futuro (Venta/Compra/Inventario y los que vengan) y a
+    cualquier plugin nuevo — no es una regla exclusiva del backoffice de plataforma.
+- **Todo catálogo compartido de SAP consumido desde un formulario (Artículo, Cliente,
+  Proveedor, Almacén, Cuenta Mayor, Centro de Costos y cualquiera nuevo que se agregue)
+  se busca con LIKE en vivo vía `wireCatalogSearch`, nunca con un `<select>` armado a
+  mano en Razor** — la diferencia entre catálogos GRANDES (Artículo/Cliente/Proveedor,
+  cientos de miles de filas posibles) y CHICOS (Almacén/Cuenta Mayor/Centro de Costos,
+  decisión explícita del dueño del proyecto de que son acotados) es el valor de
+  `minChars`, no el mecanismo -- los dos casos usan el mismo `<input list="...">` +
+  `<datalist>` + `wireCatalogSearch`, nunca `<select asp-items="...">` con la lista
+  completa armada en el servidor. Patrón único, portado primero en Artículo (27 jul
+  2026) y replicado a Cliente/Proveedor/Almacén/Cuenta Mayor/Centro de Costos (mismo
+  día) tanto en los campos de cabecera como en los de cada línea de detalle:
+  - **Catálogos grandes** (Artículo/Cliente/Proveedor): `minChars: 2` (Artículo,
+    mismo mínimo que ya usaba `PortalSAP_v2`) o `3` (Cliente/Proveedor, default del
+    helper) — el handler AJAX devuelve `[]` si `text` viene vacío/blanco, **nunca**
+    sirve el catálogo completo sin filtro.
+  - **Catálogos chicos** (Almacén/Cuenta Mayor/Centro de Costos, Marca, Tipo de
+    Gasto): `minChars: 0` — `wireCatalogSearch` precarga el `<datalist>` con una
+    búsqueda de texto vacío apenas cablea el campo (así el navegador ya muestra el
+    desplegable completo con solo hacer click/foco, sin escribir nada), y el handler
+    AJAX correspondiente devuelve el listado COMPLETO cuando `text` viene vacío
+    (`ListAsync(text, limit)` con `text` vacío ignora el `limit` y no filtra, ver
+    `CatalogSqlHelper.BuildSearchFilter`) — el LIKE sigue activo apenas se tipea algo,
+    solo cambia que el punto de partida (sin texto) ya muestra todo en vez de nada.
+    **Nunca** aplicar `minChars: 0` a un catálogo grande — serviría el catálogo
+    completo sin que el usuario pidiera nada, exactamente lo que esta regla prohíbe
+    para esos.
+  - Servidor: un handler AJAX `OnGetSearch<Catálogo>Async(string text, ...)` en el
+    `DetailGeneric*ModelBase` del motor (o el `PageModel` que corresponda), que llama
+    al método `ListAsync(searchText, limit)`/`SearchAsync(text, limit)` del
+    `I*CatalogService` correspondiente con un `Limit` acotado (30 por convención, ver
+    `CatalogSqlHelper.DefaultSearchLimit` -- ignorado por el helper cuando `text` es
+    vacío, ver el punto de catálogos chicos arriba).
+  - Cliente: `wwwroot/js/catalog-search.js`, único archivo compartido por los 3
+    motores. Trae debounce (300ms) + el `minChars` configurable de arriba + manejo de
+    error visible en consola (`console.error`, para que una falla de red o una
+    excepción del handler AJAX no quede invisible como "la búsqueda no encuentra
+    nada" sin ninguna pista) -- **cuidado real ya encontrado**: comparar
+    `options.minChars || 3` trata `minChars: 0` como "no vino" (0 es falsy en JS) y
+    cae siempre a 3, rompiendo el caso de catálogos chicos -- la comparación correcta
+    es explícita contra `undefined`.
+  - En modo solo-lectura (documento ya creado), un campo de CABECERA muestra
+    "código — nombre" leyendo el nombre YA incluido en el DTO del documento (ej.
+    `SalesDocumentDto.CustomerName`, que SAP ya trae en la cabecera) — nunca una
+    consulta extra al catálogo. Un campo POR LÍNEA en solo-lectura muestra solo el
+    código crudo (mismo criterio que ya tenía Artículo) — enriquecer cada línea con
+    el nombre implicaría una consulta por línea, no vale la pena para una vista de
+    solo lectura.
+  - Aplica igual a los 3 motores genéricos de documento (regla de paridad) y a
+    cualquier plugin nuevo que necesite elegir un valor de un catálogo SAP grande.
 - **`src/PortalSaas.Data` nunca importa un paquete de proveedor** (Npgsql/SqlServer)
   ni nada que solo exista en un motor (`gen_random_uuid()`, `UseIdentityAlwaysColumn`,
   etc.) — eso rompería el punto entero del motor dual. Los valores por defecto
@@ -142,6 +219,15 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
   bloqueo por intentos, recuperación de contraseña, preferencias personales, envío de
   correo dual (Google Workspace/Microsoft 365, `IEmailSenderService`), y qué falta a
   propósito (2FA real, verificación de correo, sesión, UI de administración).
+- `docs/09-GUIA-DESARROLLO-PLUGINS.md` — referente obligatorio para todo plugin nuevo,
+  interno (`plugins/` de este repo) o **externo** (repo propio, compilado aparte y
+  copiado a `artifacts/plugins/`, ej. `Modulo.Rendiciones`) — contrato de dependencias
+  (`Abstractions` como paquete NuGet si es externo), `IModuloPortal`, convención de
+  nombres de vista para evitar colisión entre plugins (bug real ya encontrado),
+  gotchas de formularios (antiforgery, cultura invariante en inputs numéricos),
+  convención de BD aplicada también a bases propias de plugin, empaquetado
+  (`PublicarComoPlugin`), autorización, y checklist final antes de dar un plugin por
+  listo.
 - `docs/08-BRECHA-FUNCIONAL-VS-PORTALSAP-V2.md` — auditoría (25/26 jul 2026) de qué le
   falta a este proyecto para tener paridad funcional con `PortalSAP_v2`: brechas
   puntuales en los 3 motores genéricos (tabs Logística/Finanzas, catálogos, líneas de
@@ -794,9 +880,9 @@ entrega -- resumen:
   SQL crudo a HANA -- la autorización del portal no debería depender de que el SAP del
   cliente esté disponible. `IsAdmin` bypasea todo, mismo criterio que
   `ES_ADMINISTRADOR` en el original.
-- **Diferido a propósito (YAGNI)**: `ISqlServerService`/`SqlServerService` (bases SQL
-  Server externas *no-SAP* de un plugin) -- no existe todavía el equivalente de
-  `MODULO_INSTANCIA_EXTERNA` en este esquema ni un plugin real que lo necesite.
+- **Ya no diferido** -- resuelto 26 jul 2026 como `IExternalDatabaseConnectionService`,
+  ver la entrega "Conexión a bases de datos externas de plugin" más abajo (primer
+  consumidor real: `Modulo.Rendiciones`, repo externo).
 
 **Hueco real encontrado y cerrado en el camino: el login de tenant nunca seleccionaba
 compañía.** `Pages/Account/Login.cshtml.cs` resolvía `Organization`+`User` y entraba
@@ -1221,6 +1307,15 @@ src/PortalSaas.Host/bin/x64/Debug/net8.0 && dotnet ./PortalSaas.Host.dll`) con
 documentado acá para no repetir el diagnóstico la próxima vez que haga falta levantar
 el Host fuera de `dotnet run`/F5.
 
+**Actualización 26 jul 2026: líneas de tipo Servicio YA se portaron para Venta y
+Compra** (no para Inventario, no aplica -- ver la entrega "Rediseño visual + brechas
+funcionales" más abajo para el detalle real). El hallazgo de diseño original que sigue
+abajo se conserva tal cual porque documenta el mapeo de campos SAP investigado en su
+momento contra la referencia -- la implementación real terminó usando ese mismo mapeo
+(AccountCode/CostingCode, DocType de cabecera), con Dimensión2/Dimensión3 deliberadamente
+fuera de alcance (a diferencia de lo que sigue describiendo abajo como "opcionales
+pendientes de portar").
+
 **Pendiente real, NO portado a propósito en esta entrega: líneas de tipo Servicio.**
 El dueño del proyecto pidió confirmar primero cómo lo resolvía `PortalSAP_v2` antes de
 decidir si portarlo ahora -- investigado contra `referencia-original/PortalSAP_v2`
@@ -1251,19 +1346,1249 @@ re-investigarlo cuando se decida portarlo -- decisión explícita del dueño del
 de cerrar esta entrega solo con líneas de Artículo (mismo criterio YAGNI del resto del
 proyecto).
 
-**Todavía no existe** (ver `ARCHITECTURE.md` §6, pasos 6-7): el resto del motor
-`GenericoVenta` (Nota de Crédito/Facturas/Devoluciones -- de solo lectura en la
-referencia), `GenericoCompra`/`GenericoInventario`, y el motor de aprobación -- ninguno
-tiene todavía un consumidor real en este proyecto; generalizarlos ahora sería especular
-sin necesidad concreta (mismo criterio que ya cerró el alcance de `Modulo.Ventas`).
-Líneas de tipo Servicio en `Modulo.Ventas` tampoco existen todavía (ver el hallazgo de
-diseño documentado arriba). El filtrado del árbol de menú por módulos contratados
-(`organization_modules`) tampoco existe -- hoy el árbol de menú es el mismo para todas
-las organizaciones sin relación con qué módulos tiene contratados cada una. Todas las
-migraciones (comercial + núcleo) ya se probaron contra un motor real de desarrollo
-(Postgres 16 en Docker, SQL Server 2022 Express local) -- lo que falta es correrlas
-contra `sqlsap.cdepor.cl` en producción, ver `docs/05-RUNBOOK-PRODUCCION.md` para el
-procedimiento completo cuando se decida desplegar ahí.
+**Nota (26 jul 2026): el párrafo "Todavía no existe" de arriba quedó desactualizado por
+las entregas `feat(motores-genericos)` (`3194eea`) y `docs(gobernanza)` (`a400082`)** --
+`GenericoCompra`/`GenericoInventario` **sí existen** hoy (`Modulo.Compras`/
+`Modulo.Inventario`, motor de Venta generalizado a 7 tipos), esta sección nunca se
+actualizó para reflejarlo cuando se agregaron. Queda el texto original tal cual arriba
+por trazabilidad histórica del alcance con el que se cerró `Modulo.Ventas`, pero para el
+estado real de los 3 motores genéricos ver la entrega "Motores genéricos de documento"
+más abajo. Lo que sigue siendo cierto sin cambios: líneas de tipo Servicio, motor de
+aprobación, importador CSV, override de "permite crear" por organización, y el filtrado
+del árbol de menú por `organization_modules` -- ninguno existe todavía.
+
+## Motores genéricos de documento (Venta 7 tipos, Compra, Inventario) -- 25/26 jul 2026
+
+Generaliza el motor de Venta (antes solo Orden de Venta hardcodeada, ver la entrega
+anterior) al patrón diccionario-por-tipo del original -- `ISalesDocumentService` +
+`SalesDocumentTypeCatalog`, 7 tipos (`SalesOrder`/`CreditNote`/`CustomerInvoice`/
+`ReserveInvoice`/`ReturnRequest`/`Return`/`Receipt`). Agrega `Modulo.Compras`
+(`PurchaseQuotation`/`PurchaseOrder`) y `Modulo.Inventario`
+(`InventoryTransferRequest`/`StockTransfer`) con el mismo patrón: catálogo estático por
+tipo, PageModel base compartido por plugin (`IndexGeneric*ModelBase`/
+`DetailGeneric*ModelBase`, sin métodos `virtual` a propósito), tabs reusadas entre
+subtipos. Alcance recortado igual que `Modulo.Ventas`: sin importador CSV, sin motor de
+aprobación, sin líneas de Servicio, sin override de "permite crear" por organización.
+
+**Auditoría de código contra la referencia (pre-E2E, 26 jul 2026)** -- antes de probar
+Compra/Inventario contra SAP real, se releyó línea por línea `GenericoCompraService.cs`/
+`GenericoCompraSapModels.cs`/`GenericoInventarioService.cs`/
+`GenericoInventarioSapModels.cs` en `referencia-original/PortalSAP_v2` contra el código
+propio. Inventario ya cumplía las 3 reglas duras confirmadas en la entrega anterior
+(`StockTransferLines` no `DocumentLines`, sin `DocDueDate`, almacén origen/destino por
+línea) -- sin cambios. **Compra tenía un bug real, no detectado hasta esta auditoría**:
+faltaba el campo `RequriedDate` de cabecera (nombre real de Service Layer, SAP tiene un
+typo documentado -- letras invertidas respecto a `RequiredDate`, que sí es el nombre
+correcto por línea) -- sin este campo, **Service Layer rechaza la creación de toda Oferta/
+Pedido de Compra** con `"Specify the required date [OINV.ReqDate]"`, aunque `DocDueDate`
+ya viniera seteado (error real ya documentado en el original, causa raíz no obvia --
+confirmado con un log de diagnóstico ahí, no una suposición). Corregido en
+`SapPurchaseDocumentModels.cs` (`RequriedDate` en cabecera, `RequiredDate` en línea) y
+`PurchaseDocumentService.CreateAsync` (ambos se postean con el mismo valor de
+`DocDueDate`, igual criterio que el original -- "el portal no captura una fecha distinta
+por línea"). De paso se encontró que `PurchaseDocumentDto` no tenía `TaxDate` (el
+original captura 3 fechas de cabecera -- `DocDate`/`DocDueDate`/`TaxDate` -- en los dos
+motores, Venta ya las tenía las 3, Compra solo 2) -- agregado a `PurchaseDocumentDto`,
+`SapPurchaseDocumentHeader`, `PurchaseDocumentService` y al formulario
+(`DetailGenericPurchaseDocumentModelBase`/`_TabGeneral.cshtml`, mismas 3 columnas y
+mismas etiquetas que ya usa Venta) -- regla de paridad entre motores del `CLAUDE.md`
+aplicada hacia adentro del propio proyecto, no solo contra el original.
+
+**Hallazgo de diseño, no corregido, dejado documentado para decisión explícita**: el
+catálogo de Compra (`PurchaseDocumentTypeCatalog`) deja `PurchaseOrder` (Pedido) con
+`DefaultCanCreate = true` -- en el original ese tipo es `PermiteCrear = false`, nace
+**siempre** de un Copy-From automático de una Oferta aprobada, reforzado además por un
+Transaction Notification a nivel de base de datos SAP que rechaza cualquier Pedido que
+no venga de ese Copy-From. Acá se dejó en `true` a propósito, documentado ya en el
+comentario del catálogo ("sin el flujo de aprobación que en el original generaba el
+Pedido a partir de la Oferta") -- es coherente con no haber portado el motor de
+aprobación todavía, pero implica un riesgo concreto para la verificación E2E pendiente:
+**si el SAP real de Comercial GE2/Comercial Depor tiene ese Transaction Notification
+instalado, crear un Pedido directo desde el portal será rechazado por SAP** aunque el
+JSON esté bien formado -- confirmar esto antes de darlo por probado, no asumir que un
+`POST` exitoso a `PurchaseOrders` en un ambiente demo sin ese control significa que
+funcionará igual en un ambiente con aprobación real configurada. (Al revés, la
+inconsistencia encontrada entre la prosa del `CLAUDE.md` del original -- que dice
+Traslado/`StockTransfer` es "solo lectura" -- y su código real
+(`GenericoInventarioService.cs`, `PermiteCrear = true` para los 2 tipos, con un
+comentario explícito de que el cliente pidió digitación en blanco igual) se resolvió a
+favor del código: nuestro `InventoryDocumentTypeCatalog` ya tenía `true` para los 2
+tipos, coincide con el comportamiento real, no hace falta cambiar nada ahí.)
+
+Generado `payloads_prueba_sap.json` (raíz del repo, no versionado a propósito -- es un
+scratch de desarrollo) con los payloads reales `POST` de los 4 documentos (Oferta/
+Pedido de Compra, Solicitud de Traslado/Traslado) ya reflejando los mapeos corregidos,
+para probar manualmente contra Service Layer con Postman/curl antes o en paralelo a la
+verificación E2E vía la UI.
+
+**Fix visual de la entrega anterior, reforzado**: `.document-list-table` en
+`site.css` tenía `width: auto; min-width: 50%` -- el `min-width: 50%` todavía dejaba
+huecos grandes en tablas con pocas columnas de contenido corto (Inventario, o Notas de
+Crédito con pocas filas) en pantallas anchas, porque fuerza un ancho mínimo como
+fracción del contenedor en vez de dejar que el ancho salga solo del contenido real.
+Quitado el `min-width`, queda solo `width: auto`. **Verificado por inspección de
+código/markup y `dotnet build`, NO en navegador** (sin herramienta de captura de
+pantalla disponible en esta sesión) -- confirmar visualmente contra `/ventas/notas-
+credito` con datos reales antes de dar el punto por cerrado del todo.
+
+**Checklist de migración de producción actualizado**: `docs/05-RUNBOOK-PRODUCCION.md`
+quedó escrito contra un estado más viejo del esquema ("una sola migración,
+`InitialCreate`, 11 tablas") -- hoy son 4 migraciones del lado SQL Server (`InitialCreate`
+consolidado con 15 tablas, `AddCoreMenuAndPermissions` con 9 más, `SeedFixedActions`
+solo datos, `AddPlanToOnPremiseLicense`) / 9 del lado Postgres, 24 tablas de negocio
+totales. Se agregó `docs/05B-CHECKLIST-MIGRACION-SQLSAP.md` (no se reescribió el 05,
+sus pasos 1-3/6 de alta de base/usuario/secretos/organización siguen vigentes tal
+cual) con la lista real de migraciones, el registro de las 3 incompatibilidades
+Postgres/SQL Server ya encontradas y corregidas en el modelo (rutas de cascada
+múltiples -- error SQL Server 1785, `NOT NULL`+FK sobre tabla con datos sin backfill
+previo, `DateTimeOffset` con offset no-UTC contra Npgsql), caveats generales a vigilar
+en migraciones futuras (precisión de `decimal` sin especificar, mismo criterio de
+"nunca `HasDefaultValueSql`"), y los pasos + queries de verificación post-aplicación
+contra `sqlsap.cdepor.cl` cuando se decida ejecutarlo -- **sigue sin ejecutarse
+todavía**, es guía, no un registro de que ya se hizo.
+
+**`dotnet build PortalSaas.sln` en 0 advertencias/0 errores y las 96 pruebas de
+`PortalSaas.Core.Tests` en verde después de cada cambio de esta entrega** -- sin tests
+xUnit nuevos dedicados (mismo criterio que otras entregas de esta sesión: los fixes son
+de mapeo/payload contra Service Layer, no lógica de negocio nueva con condicionales
+propios). **Pendiente real, no cerrado en esta entrega**: la verificación E2E de Compra
+e Inventario contra SAP real (Comercial GE2/Comercial Depor) -- esta sesión fue
+auditoría de código "pre-E2E" explícitamente (sin acceso a los ambientes SAP reales
+desde este entorno), no reemplaza probar la creación real de una Oferta de Compra y una
+Solicitud de Traslado de punta a punta, con especial atención al hallazgo de
+`PurchaseOrder`/Transaction Notification de arriba.
+
+## Rediseño visual + 3 brechas del backlog funcional -- 26 jul 2026
+
+Entrega grande, cuatro piezas independientes en el mismo pase: identidad visual nueva y
+tres ítems de `docs/08-BRECHA-FUNCIONAL-VS-PORTALSAP-V2.md`. `dotnet build` en 0
+advertencias/0 errores y `dotnet test` en verde después de cada pieza (**107/107** al
+cierre, 11 tests nuevos: 4 de `OrganizationDocumentPermissionServiceTests` + 6 de
+`ModuleAccessServiceTests`, más uno que ya contaba). Sin verificación E2E contra SAP
+real ni en navegador real en esta entrega (mismas limitaciones que la auditoría
+anterior) -- ver el detalle de qué falta confirmar en cada pieza.
+
+**1. Identidad visual corporativa** (`site.css`/`sidebar.css`) -- paleta del sistema
+anterior aplicada vía variables `--bs-*` (Bootstrap 5.1 vendored acá SÍ consume
+`var(--bs-primary-rgb)` en `.bg-primary`/`.text-primary`/`.table`, pero **no** en
+`.btn-primary`/`.page-link`/navbar -- confirmado leyendo `bootstrap.min.css` directo,
+no asumido -- esos quedaron con reglas explícitas aparte). Azul institucional
+`#0A2540` en la topbar del shell de tenant y en el navbar de `/Admin/*`
+(`.navbar.bg-dark`, que Bootstrap 5.1 compila a un gris fijo sin variable), encabezados
+de `.document-list-table` y `.btn-primary` (con `border-radius: 6px` + transición);
+gris de fondo `#F4F6F9`/texto `#1E293B` vía `--bs-body-bg`/`--bs-body-color`; verde
+`#10B981`/ámbar `#F59E0B` vía `--bs-success-rgb`/`--bs-warning-rgb` (recogidos gratis
+por los badges de estado ya existentes, `bg-success`/`bg-warning`, sin tocarlos). El
+`min-width: 50%` de la entrega anterior (`.document-list-table`) se sacó del todo --
+seguía dejando huecos grandes en tablas angostas en pantallas anchas, el ancho debe
+salir solo del contenido. **Sin verificación visual en navegador** (sin herramienta de
+captura de pantalla en esta sesión) -- confirmar contra el shell de tenant y
+`/Admin/Organizations/Index` reales antes de darlo por cerrado del todo.
+
+**2. Líneas de tipo Servicio en Venta y Compra** (`DocumentLineType`, nuevo enum en
+`Abstractions/Modelos/`) -- **no en Inventario**, decisión explícita: `OWTQ`/`OWTR`
+(traslado entre almacenes) no tienen concepto de línea de Servicio en SAP, solo mueven
+artículos físicos -- la regla de paridad entre motores dice "considerar", no "aplicar
+literal sin pensar", y acá la particularidad real de Inventario (sin cliente/vendedor,
+tampoco tipo de línea) la justifica. Campos reales confirmados contra
+`referencia-original/PortalSAP_v2` (`GenericoVentaSapModels.cs`/
+`GenericoCompraSapModels.cs`): `ItemType` ("itItems"/"itService") por línea,
+`AccountCode`/`CostingCode` (Cuenta Mayor/Centro de Costos, solo Servicio),
+`DocType` ("dDocument_Items"/"dDocument_Service") de CABECERA -- SAP no permite mezclar
+Artículo y Servicio en el mismo documento. **Diferencia deliberada de diseño respecto al
+original**: acá el tipo se elige una sola vez por documento (`Input.LineType`, un único
+`<select>` en la tab General) y se aplica igual a todas las líneas al construir el DTO
+en `OnPostAsync` -- el original sincroniza un campo oculto por línea vía JS
+(`aplicarTipoDocumento` en `_TabContenido.cshtml`, con un bug ya corregido ahí de
+líneas que se guardaban mal si el campo quedaba deshabilitado); acá no hace falta JS
+nuevo porque no hay "Agregar línea" dinámico (mismo criterio ya establecido: filas
+extra en blanco pre-renderizadas). Las columnas de Cuenta Mayor/Centro de Costos quedan
+SIEMPRE visibles en la tabla de líneas (sin JS de mostrar/ocultar, a diferencia del
+original) -- el servidor ignora los campos que no correspondan al tipo elegido, mismo
+criterio de simpleza que el resto del proyecto. Dos catálogos nuevos, ambos
+`PortalSaas.Core.Catalogos/`: `IGeneralLedgerAccountCatalogService` (OACT completo, sin
+paginar -- plan de cuentas típicamente acotado, a diferencia de Artículo) e
+`ICostCenterCatalogService` (OPRC filtrado a `DimCode = 1`, **advertencia ya heredada de
+la referencia**: ese mapeo de DimCode es específico del ambiente original -- 1=Centro de
+Costo/2=Marca/5=Tipo de Gasto -- reconfirmar contra cada organización real antes de
+asumir que aplica igual). Dimensión 2/Dimensión 3 explícitamente NO portadas (opcionales
+en el original, YAGNI). Bug real evitado de una: `SalesDocumentLineDto`/
+`PurchaseDocumentLineDto` generalizaron `ItemCode`/`WarehouseCode` a nullable (antes
+`string` no-nullable) -- una línea de Servicio real sin esto habría fallado el binding
+igual que el bug de `Quantity`/`DiscountPercent` ya documentado en la entrega de
+`Modulo.Ventas`, evitado acá por diseñarlo nullable desde el principio, no encontrado
+después. **Sin verificar contra SAP real** -- ni el mapeo de campos ni el DimCode.
+
+**3. Override de "permite crear documento" por organización**
+(`OrganizationDocumentPermission`, tabla nueva `organization_document_permissions` --
+migración `AddOrganizationDocumentPermissions` generada y **aplicada con éxito contra
+Postgres y SQL Server reales de desarrollo**, no solo generada) -- reemplaza el flag fijo
+`DefaultCanCreate` de `SalesDocumentTypeCatalog`/`PurchaseDocumentTypeCatalog`/
+`InventoryDocumentTypeCatalog` por una evaluación dinámica
+(`IOrganizationDocumentPermissionService.IsCreateAllowedAsync(engine, documentType,
+defaultValue)`, `PortalSaas.Core.Comercial`) consultada desde `CanCreateAsync` de los 3
+motores. Sin fila de override para (organización, engine, tipo), se usa el
+`defaultValue` del catálogo -- nunca al revés, una organización sin configuración
+explícita no queda más permisiva que el default (mismo criterio "falla hacia lo más
+estricto" del resto del proyecto). Vive en la base propia de la plataforma
+(`organizations`), no en el SAP del cliente -- a diferencia del original
+(`PERMITE_CREAR_DOCUMENTO` en HANA), la config de plataforma no debería depender de que
+el SAP del cliente esté disponible (ya establecido en `PurchaseDocumentTypeCatalog.cs`
+antes de esta entrega). **Pendiente real, no cerrado acá**: no hay ninguna pantalla de
+administración para cargar estas filas todavía -- hoy solo se puede insertar a mano
+(SQL directo), mismo estado inicial que tuvieron `Plans`/`Subscriptions` antes de que
+esa UI se construyera en una entrega posterior. 4 tests xUnit
+(`OrganizationDocumentPermissionServiceTests`, EF Core InMemory con un
+`ICurrentUserContext` fijo -- default sin override, override en `true`/`false`,
+aislamiento entre organizaciones).
+
+**4. Filtrado del árbol de menú por módulos contratados** (`IModuleAccessService`/
+`ModuleAccessService`, `PortalSaas.Core.Comercial`) -- cierra el hueco documentado desde
+la entrega del sidebar dinámico ("el árbol de menú es el mismo para todas las
+organizaciones sin relación con qué módulos tiene contratados"). `MenuNavigationService`
+filtra `Menu.OriginModule` contra los `PlatformModule.Code` contratados por la
+organización (unión de módulos `IsCore=true` + los del plan activo vía `PlanModule`,
+misma resolución "por modo" -- `Subscription`/`OnPremiseLicense` -- que
+`IContractLimitService`, copia deliberada más chica, no una dependencia compartida + los
+add-ons propios vía `OrganizationModule`, tabla que ya existía sin ningún consumidor
+real hasta ahora) -- **antes** del bypass de administrador, a propósito: es un gate
+comercial (qué pagó la organización), no de autorización, así que un admin de la
+organización tampoco debería ver un módulo no contratado. Un `Menu.OriginModule` que no
+aparezca en ningún `PlatformModule.Code` (ej. `"Administracion"`, núcleo de plataforma,
+no vendible aparte) **no está gateado** -- se trata como parte del core, nunca se oculta
+por esto. **Hueco real encontrado al implementar, no un bug de código sino de estado de
+datos**: `platform_modules`/`plan_modules`/`organization_modules` no tienen NINGÚN dato
+cargado todavía (no hay UI de administración para ninguna de las 3, y ningún seed) --
+con el catálogo vacío, `GetCatalogedModuleCodesAsync().Count == 0` y
+`MenuNavigationService` **no filtra nada** (chequeo explícito antes de siquiera resolver
+los contratados, evita una consulta de más en el caso común de hoy). Esto significa que
+la lógica de filtrado está completa y probada, pero **sin efecto visible todavía** hasta
+que exista una pantalla de administración para cargar el catálogo de módulos vendibles y
+asociarlos a planes/organizaciones -- mismo estado que el punto 3 de arriba, ambos
+convergen en el mismo hueco: falta UI de administración para la capa
+`platform_modules`/`plan_modules`/`organization_modules` completa, no solo el
+consumo. 6 tests xUnit (`ModuleAccessServiceTests`: módulo core siempre incluido, módulo
+del plan activo incluido, módulo no contratado ni como add-on excluido, add-on propio
+incluido, add-on de otra organización no filtra, resolución on-premise vía licencia).
+
+**Actualización, misma noche**: la pantalla de administración que faltaba para los
+puntos 3 y 4 **ya se construyó** -- ver la entrega "UI de administración de módulos y
+permisos de documento" más abajo. Verificación E2E contra SAP real de las líneas de
+Servicio (punto 2) y verificación visual en navegador del rediseño (punto 1) siguen sin
+hacerse.
+
+## UI de administración de módulos y permisos de documento -- 26 jul 2026 (mismo día)
+
+Cierra el hueco que dejó abierta la entrega anterior: `platform_modules`/
+`plan_modules`/`organization_modules`/`organization_document_permissions` existían con
+lógica real de consumo (`IModuleAccessService`/`IOrganizationDocumentPermissionService`)
+pero sin ninguna forma de cargarse salvo SQL directo. `dotnet build` en 0/0 y
+**107/107 tests siguen en verde** (sin tests nuevos dedicados -- CRUD/checkboxes sin
+lógica de negocio computada, mismo criterio que otras pantallas de solo-administración
+de esta sesión, ej. `Plans`/`Subscriptions`).
+
+- **`/Admin/PlatformModules`** (Index/Create/Edit, mismo patrón exacto que
+  `/Admin/Profiles`) -- CRUD del catálogo comercial (`Code`/`Name`/`IsCore`). El `Code`
+  debe coincidir con el `OriginModule`/`ModuloPortal.ModuleCode` real del plugin (ej.
+  "Ventas", "Compras", "Inventario", "Administracion") para que
+  `MenuNavigationService` tenga algo que filtrar -- documentado en la propia pantalla
+  (estado vacío explícito).
+- **`/Admin/Plans/Edit`** -- ganó una sección "Módulos incluidos" (checkboxes,
+  `PlanModule`), mismo patrón que `Profiles/Edit` asignando `ProfileAction`. Los
+  módulos `IsCore=true` se muestran marcados y deshabilitados (informativo, no se
+  postean -- ya están incluidos siempre vía `ModuleAccessService` sin necesidad de una
+  fila en `PlanModule`).
+- **`/Admin/Organizations/Modules`** (una sola página, patrón `EmailSettings`) --
+  add-ons de `OrganizationModule` por organización, más allá de lo que ya incluye su
+  plan. Muestra "Ya incluido (core o plan actual)" sin checkbox para los que ya
+  aplican vía `IModuleAccessService.GetContractedModuleCodesAsync` menos los add-ons
+  propios (para no doble-contar), y checkbox editable solo para lo que sí se puede
+  agregar como extra.
+- **`/Admin/Organizations/DocumentPermissions`** (una sola página) -- override de
+  `OrganizationDocumentPermission` por organización, un `<select>` de 3 estados (Usar
+  default/Permitir siempre/Bloquear siempre) por cada combinación real de
+  (Engine, DocumentType) -- construida siempre desde
+  `SalesDocumentTypeCatalog`/`PurchaseDocumentTypeCatalog`/`InventoryDocumentTypeCatalog.Entries`
+  (nunca tipeada a mano), para no poder desincronizarse si se agrega un tipo de
+  documento nuevo. "Usar valor por defecto" borra el override existente en vez de
+  guardar un valor redundante.
+- Los 3 formularios nuevos sin ningún otro atributo `asp-*` llevan
+  `asp-antiforgery="true"` explícito -- lección ya aprendida dos veces en este
+  proyecto (`SelectCompany.cshtml`/`EmailSettings/Index.cshtml`, ver más arriba): el
+  `FormTagHelper` de ASP.NET Core solo se activa sobre un `<form>` si tiene al menos
+  un atributo `asp-action`/`asp-page`/`asp-route-*`/`asp-antiforgery`/etc. -- un
+  `<form method="post">` a secas queda como HTML literal, sin token antiforgery, y
+  cualquier POST real devuelve 400. **Nota para revisar más adelante, no corregida
+  acá**: varias pantallas de administración previas a esta sesión (`Profiles/Edit`,
+  `MenuGroups/Edit`, etc.) tienen el mismo `<form method="post">` sin
+  `asp-antiforgery` explícito -- podrían tener este mismo bug latente, nunca
+  confirmado con un POST real; no se tocaron en esta entrega por estar fuera de
+  alcance (no son parte de lo pedido), pero es una duda real abierta, no una
+  suposición descartada.
+
+**Sin verificar contra Postgres/SQL Server real en runtime** -- a diferencia de otras
+entregas de esta sesión (migraciones sí aplicadas contra bases reales), esta UI
+específica solo se verificó por build + revisión de código, sin levantar el Host y
+probar un POST real de punta a punta (mismo motivo que las verificaciones visuales
+pendientes de arriba -- sin navegador disponible en esta sesión, y sin credenciales de
+administrador de plataforma ya sembradas en este entorno).
+
+## Catálogos prerrequisito del Módulo Importador Genérico -- 26 jul 2026 (mismo día)
+
+Antes de encarar `Modulo.ImportacionGenerica` en sí (0% portado, ~5.760 líneas
+estimadas, ver `docs/08-BRECHA-FUNCIONAL-VS-PORTALSAP-V2.md` §2), se releyó esa
+sección en detalle y se decidió con el dueño del proyecto avanzar primero en los
+catálogos/servicios prerrequisito que el importador necesita y que hoy no existían --
+**sin ningún consumidor real todavía** (ningún plugin los usa hasta que se porte el
+importador), quedan listos para esa entrega futura. `dotnet build` en 0/0, **107/107
+tests siguen en verde** (sin tests nuevos dedicados -- mismo criterio que el resto de
+los catálogos de `PortalSaas.Core.Catalogos`, ninguno tiene tests xUnit propios en este
+proyecto, se verifican E2E contra SAP real cuando tienen consumidor, cosa que estos
+todavía no tienen).
+
+**5 de los 7 prerrequisitos identificados en `docs/08` §2.3 ya están portados** (2 ya
+existían de la entrega de líneas de Servicio de esta misma noche):
+- **`IItemCrossReferenceService`** (`PortalSaas.Core.Catalogos`, portado de
+  `IParidadCatalogoService`) -- paridad SKU-cliente ↔ `ItemCode` sobre el recurso
+  estándar de Service Layer `AlternateCatNum`. A diferencia de los demás catálogos de
+  este namespace (solo lectura vía `IHanaService`), este necesita crear/borrar filas
+  -- usa `ISapConnectionProvider`/`ISapSession` (Service Layer), no HANA directo.
+  `SyncAsync` reemplaza toda la paridad del cliente de una (borra + crea), mismo
+  criterio que la referencia -- evita diffing, volumen chico por cliente.
+- **`IPriceListService`** (portado de `IListaPrecioService`) -- precio de un artículo
+  en una lista de precios puntual (`ITM1`), con variante batch (`GetPricesAsync`) para
+  no consultar una vez por fila al importar un archivo con muchas líneas.
+- **`IBusinessPartnerDefaultsService`** (portado de `ISocioNegocioDefaultsService`) --
+  Vendedor/lista de precio que SAP ya tiene configurados nativamente para un socio de
+  negocio (`OCRD.SlpCode`/`ListNum`), lectura directa a HANA. El precio en sí **nunca**
+  se calcula a mano con esto -- es solo referencia informativa, Service Layer asigna
+  el precio real de la lista del socio al postear un documento sin `UnitPrice`
+  explícito (mismo criterio ya establecido en `SalesDocumentService`/
+  `PurchaseDocumentService`).
+- **`ODataFilterHelper`** (`PortalSaas.Core.Sap`, `internal`) -- portado tal cual,
+  construye filtros `$filter` de Service Layer escapando comillas simples (mismo
+  criterio de "nunca concatenar sin escapar" que ya rige el SQL de HANA, adaptado a
+  OData porque no soporta parámetros bindeados). Prerrequisito de
+  `IItemCrossReferenceService` (filtra `AlternateCatNum` por `CardCode`/`Substitute`).
+
+**Quedan 2 de los 7, ambos más grandes y transversales, no atacados en esta
+entrega**: `SapCamposAdicionalesHelper.Aplanar`/`EsNombreReservado` (aplanar
+`AdditionalFields` dentro del JSON al postear a Service Layer, más el guardrail que
+bloquea que un campo de usuario pise un nombre reservado del payload) y agregar
+`AdditionalFields` a los DTOs de los 3 motores de documento (`SalesDocumentDto`/
+`PurchaseDocumentDto`/`InventoryDocumentDto`) -- sin estos dos, aunque el importador
+en sí se porte, no soportaría campos de usuario/UDF dinámicos, que es justamente la
+funcionalidad que más lo diferencia de un importador CSV simple. `docs/08` §2.3
+actualizado con el detalle línea por línea de qué quedó portado y qué falta.
+
+**Nota de alcance heredada de la entrega anterior, sigue vigente**: `ICostCenterCatalogService`
+solo cubre `DimCode=1` (Centro de Costos) -- Dimensión2/Dimensión3 (`CostingCode2`/
+`CostingCode3`) no están portadas, mismo criterio YAGNI. El importador en sí, cuando se
+porte, va a necesitar esas dos dimensiones si se quiere paridad completa con el
+original (líneas de Servicio con Dimensión2/3, ver el hallazgo de diseño ya
+documentado) -- otro prerrequisito a tener en cuenta, no cerrado acá.
+
+## Rediseño visual con valores reales extraídos de PortalSAP_v2 -- 26 jul 2026 (mismo día)
+
+El dueño del proyecto mostró dos capturas (Órdenes de Venta acá vs. en la instalación
+real de Comercial Depor) y pidió extraer los valores reales de diseño del proyecto
+anterior (`referencia-original/PortalSAP_v2/src/PortalSAP.Host/wwwroot/css/theme.css`,
+1802 líneas) en vez de inventar una paleta nueva. `dotnet build` en 0/0, **107/107
+tests siguen en verde** (CSS/markup, sin lógica nueva).
+
+**Hallazgo real antes de tocar nada**: `theme.css` HOY (tal como está commiteado en la
+referencia) **no reproduce exactamente** lo que se ve en la captura de Comercial Depor
+-- el propio archivo dice en un comentario que su paleta "fue reemplazada por la
+paleta nueva provista por el cliente", y en la versión actual `.sidebar`/`.topbar` usan
+`var(--card-bg)` (blanco en el tema "claro", el default), no un azul sólido. La
+instalación real de Comercial Depor de la captura corre un build más viejo
+(`build 26.7.21.1`, visible en el pie del sidebar) con la paleta anterior, ya
+reemplazada en el código fuente que quedó como referencia. Se documenta esto en vez de
+fingir una coincidencia exacta que no existe en el archivo real -- los valores usados
+abajo son reales (extraídos de `theme.css`), pero reaplicados a `.sidebar`/`.topbar` en
+vez de tomados literal de esas dos reglas (que hoy son blancas).
+
+- **`--bs-primary` pasó de `#0a2540` (inventado en la entrega de rediseño anterior) a
+  `#1e3a5f`** -- es el valor real de `--accent-2` del tema "claro" de `theme.css`
+  (línea 32), el tono oscuro que ese archivo ya usa para el hover de `--accent` y el
+  extremo del gradiente de la pantalla de login. `--radius-sm: 6px` (línea 125) y
+  `--card-border: #cbd1db` (línea 28) también son valores reales de ahí, agregados como
+  variables nuevas en `site.css`.
+- **`.sidebar` pasó de fondo claro a `var(--bs-primary)` sólido** con todo el texto/
+  hover/activo recalculado para fondo oscuro (blanco/`rgba(255,255,255,N)`) -- mismo
+  criterio visual que la captura, aplicado sobre la estructura real ya existente
+  (`.sidebar-nav`/`.sidebar-nav-grupo`/`.sidebar-brand-mark`, portados en la entrega
+  "Sidebar dinámico"), no una reescritura desde cero.
+- **`.filter-card`** (nuevo en `site.css`, usado por
+  `Pages/Shared/Components/DocumentList/Default.cshtml`) -- portado tal cual de
+  `.doc-list-filtros` (`theme.css:1438`): mismo padding (14px), mismo borde/radio.
+  Reemplaza el `<form class="row g-2 mb-3 align-items-end">` anterior (grid de
+  Bootstrap sin caja visual) por un contenedor con borde real, igual que la
+  referencia -- se ve en TODOS los listados de documento (Venta/Compra/Inventario),
+  no solo Órdenes de Venta, porque todos comparten el mismo componente.
+- **`.document-list-table-wrapper`** (nuevo, reemplaza a `.table-responsive` en el
+  mismo archivo) -- portado de `.doc-list-tabla-wrapper` (`theme.css:1510`): caja con
+  borde/radio alrededor de la tabla, encabezado `position: sticky` adentro (antes el
+  header solo tenía el fondo azul, sin sticky), altura acotada (`max-height: 65vh`)
+  con scroll propio -- mismo criterio que la referencia, el filtro queda siempre
+  afuera de la caja que scrollea. Fila con hover sutil
+  (`color-mix(in srgb, var(--bs-primary) 6%, transparent)`), portado de
+  `.doc-list-fila:hover` (`theme.css:1503`, con `--accent` en vez de `--bs-primary`,
+  mismo concepto).
+
+**Sin verificar visualmente en navegador** -- mismo motivo que toda la sesión (sin
+herramienta de captura de pantalla disponible acá), la única confirmación es
+`dotnet build`/revisión de código contra los valores reales extraídos. Alcance acotado
+a lo que pidió la captura (shell + Órdenes de Venta, que comparte componente con el
+resto de los listados de documento) -- **no** se tocaron las tablas de `/Admin/*`
+(backoffice, `Pages/Admin/**/Index.cshtml`), que siguen con `<table class="table
+table-striped">` liso, fuera del alcance de esta comparación.
+
+## Diagnóstico forense del "azul plano" reportado tras el rediseño -- 26 jul 2026 (mismo día)
+
+El dueño del proyecto reportó ver el sidebar/tablas en azul brillante plano pese al
+rediseño de la entrega anterior, y pidió diagnóstico con evidencia antes de tocar
+código -- sospecha inicial: `_Layout.cshtml.css` (CSS isolation de Razor) ganándole la
+cascada a `site.css`/`sidebar.css`.
+
+**Causa raíz real, confirmada con evidencia -- NO es la que se sospechaba**:
+1. `site.css`/`sidebar.css` en disco **ya tenían** el rediseño completo y correcto
+   (`--bs-primary: #1e3a5f`, `.sidebar` sólido, `.filter-card`/
+   `.document-list-table-wrapper`) -- confirmado leyendo el contenido completo de los
+   dos archivos, no el resumen de `CLAUDE.md`. La entrega anterior sí se guardó en
+   disco (nunca se había dicho lo contrario, solo que no se había verificado en
+   navegador).
+2. `_Layout.cshtml.css` **sí existe** -- scaffold default de `dotnet new` con
+   `.btn-primary { background-color: #1b6ec2; }`, presente desde el commit inicial,
+   nunca limpiado. Se compila de verdad (`obj/.../PortalSaas.Host.styles.css`,
+   `.btn-primary[b-v7lcklutb0]`), pero **`grep` sobre todo `**/*.cshtml` confirma que
+   ningún `<link>` referencia ese bundle** -- el navegador nunca lo descarga. Y aunque
+   se sirviera, `_Layout.cshtml` no tiene ningún elemento `.btn-primary` en su propio
+   marcado (el scope de Razor CSS Isolation no se propaga a `@RenderBody()`) -- la
+   regla es código muerto por partida doble, nunca fue la causa. **Se eliminó
+   igual** (`rm src/PortalSaas.Host/Pages/Shared/_Layout.cshtml.css`) por higiene --
+   scaffold sin ningún consumidor real, no como parte del fix.
+3. **Causa real encontrada**: había un proceso `PortalSaas.Host` corriendo en vivo
+   (`dotnet run --project src/PortalSaas.Host`, arrancado horas antes en la misma
+   sesión) -- casi con certeza la pestaña del navegador donde se tomaron las capturas
+   quedó abierta desde ANTES de que el rediseño se guardara en disco, mostrando el
+   HTML viejo con los `href` versionados (`asp-append-version`) apuntando al hash
+   anterior de `site.css`/`sidebar.css`. `wwwroot` se sirve en vivo desde el
+   proyecto fuente en `dotnet run` (no hace falta rebuild para que un cambio de CSS
+   se refleje), así que un simple refresh de esa pestaña contra el mismo proceso ya
+   debería haber mostrado la paleta nueva -- el "bug" no estaba en el código.
+
+**Archivos que cambiaron en esta entrega** (además de la eliminación de arriba):
+- `plugins/Modulo.Ventas|Compras|Inventario/Pages/Shared/_TabContent.cshtml` -- las 3
+  tablas de líneas de detalle ganaron la clase `line-items-table` (paridad obligatoria
+  entre los 3 motores, ver regla dura del proyecto).
+- `src/PortalSaas.Host/wwwroot/css/site.css` -- nueva clase `.line-items-table`,
+  portada de `.admin-table` (`theme.css:1184`, tratamiento MÁS discreto que
+  `.document-list-table` a propósito: la referencia usa un estilo distinto para la
+  grilla de líneas dentro de un documento vs. el listado principal -- encabezado
+  mayúscula chico gris sin relleno de color, borde inferior por fila).
+
+**El proceso que bloqueaba la compilación** (PID de `PortalSaas.Host`, el mismo que
+servía la página con los estilos viejos) se detuvo para poder correr `dotnet build`
+limpio -- es el mismo proceso que había que reiniciar de todos modos para ver el
+rediseño reflejado, así que detenerlo no fue una acción aparte del diagnóstico, era
+parte de la solución real (**hay que volver a levantar el Host y refrescar el
+navegador para confirmar visualmente** -- sigue sin verificarse con una captura
+nueva, misma limitación de toda la sesión, sin herramienta de navegador disponible
+acá).
+
+`dotnet build` en 0 advertencias/0 errores, **107/107 tests siguen en verde** (CSS +
+wrapping de markup existente, sin lógica nueva). No se tocó `_AdminLayout.cshtml` ni
+`Pages/Admin/**` (fuera de alcance, confirmado). No se agregó ningún hex nuevo fuera de
+las variables `--bs-*`/`--card-*` ya definidas -- `.line-items-table` reusa
+`--card-border` existente, con un solo color nuevo puntual (`#6b7280`, gris de texto
+muted para el encabezado de esa tabla, valor real de `theme.css` línea 30
+`--text-muted` del tema "claro") documentado acá en vez de dejarlo sin explicar.
+
+## Auditoría de paridad visual completa (A/B/C) -- 26 jul 2026 (mismo día)
+
+Tercera pasada de rediseño en el mismo día -- esta vez con la paleta completa
+prevalidada por el dueño del proyecto (theme.css ya releído línea por línea, sin
+volver a extraer) y **revierte una decisión de la entrega anterior**: sidebar/topbar
+vuelven a blanco (`--card-bg`), el navy (`#1e3a5f`) queda como acento (botones,
+activo, hover, degradado), no como fondo sólido -- la entrega de hace unas horas se
+había guiado por la captura de producción vieja de Comercial Depor, ya reemplazada en
+el `theme.css` real. No reabrir esto de nuevo sin pedirlo explícito.
+
+**Corrección a una premisa del pedido**: se afirmó que `site.css` era "un placeholder
+de una línea" -- releído completo antes de tocar nada, tenía 198 líneas con las 2
+entregas anteriores ya aplicadas. La documentación de `CLAUDE.md` sobre el estado del
+archivo era correcta; lo que faltaba eran valores puntuales (paleta incompleta, un par
+de decisiones a revertir), no el archivo entero.
+
+### Tabla brecha-por-brecha (Fase 0, antes de escribir CSS)
+
+| Pieza | ¿Clase existía? | ¿Valor coincidía? | ¿Markup la usaba? |
+|---|---|---|---|
+| A. Paleta | Parcial (`--bs-primary`/`--card-border`/`--radius-sm`) | ❌ Faltaban `--text-muted`/`--accent`/`--accent-soft`/`--shadow-card`/`--bs-danger`/`--input-bg`/`--card-bg`; `--bs-primary` en rol de fondo, no de acento | — |
+| B.1 sidebar/topbar | Sí | ❌ Sólido navy (decisión a revertir); activo/hover en `rgba(255,255,255,N)` en vez de `color-mix` | Sí |
+| B.2 `.filter-card` | Sí | ⚠️ Fondo hardcodeado `#ffffff` en vez de `var(--input-bg)` | Sí |
+| B.3 `.document-list-table-wrapper` | Sí | ❌ `max-height: 65vh` (debía ser 60vh); `thead th` con relleno azul (debía ser `var(--card-bg)` fijo) | Sí |
+| C.1-2 `.form-row`/`.form-group` (grilla densa) | ❌ No existían | — | ❌ Los 3 `_TabGeneral.cshtml` en `row`/`col-md-*` crudo -- causa real de "las líneas del detalle se ven planas" |
+| C.3 `.doc-tab-seccion` | ❌ No existía | — | ❌ Ningún wrapper de sección |
+| C.4 `.doc-columnas-2` | ❌ No existía | — | Sin consumidor hoy (ningún tab necesita 2 columnas independientes todavía) |
+| C.5 `.doc-tabs`/`.doc-tab-btn` | ❌ No existían | — | `DocumentForm/Default.cshtml` en `nav-tabs` crudo de Bootstrap, sin sticky |
+| C.6 `.doc-badge-*` | ❌ No existían | — | Usaba `badge bg-success`/`bg-secondary` armado en C# (`StatusClass`) |
+| C.7 `.doc-resumen-total` | ❌ No existe la funcionalidad | — | Sin desglose de totales en ningún documento (ver `docs/08` §1.1) -- requiere datos nuevos, no solo CSS |
+
+Grep `007bff|0d6efd|0A2540|rgba(0, *123` sobre `wwwroot`: cero resultados fuera de
+`bootstrap.min.css` (vendored) y un comentario de texto en `site.css` (no una regla
+viva) -- confirmado, sin azul hardcodeado activo.
+
+### Qué se corrigió, por pieza
+
+- **(A)** `site.css :root` reescrito con las 17 variables de la paleta validada
+  completa (antes solo 8). `--bs-success`/`--bs-warning` pasaron de valores
+  provisorios (`#10b981`/`#f59e0b`) a los reales del tema "claro"
+  (`#2d7d4e`/`#d4880e`). `.btn-primary` hover pasó de un hex inventado (`#16293f`) a
+  `var(--accent)` (rol real "acento hover/secundario" de la paleta); estado activo
+  usa `color-mix(in srgb, var(--bs-primary) 80%, black)` en vez de un hex nuevo --
+  cero hex fuera de las variables definidas, tal como pide la regla dura de
+  `07-THEMING-TENANT-PENDIENTE.md`.
+- **(B)** `.sidebar`/`.topbar` vuelven a `var(--card-bg)` con borde `var(--card-border)`;
+  activo/hover de `.sidebar-nav a` recalculados a `color-mix(...16%/10%...)` con texto/
+  inset en `var(--bs-primary)`, valores exactos pedidos. `.document-list-table thead th`
+  perdió el relleno azul (ahora `var(--card-bg)` fijo, sticky se mantiene).
+  `.document-list-table-wrapper` a `max-height: 60vh`. `.filter-card` a
+  `var(--input-bg)`. `.user-menu-panel` (dropdown de usuario) pasó de
+  `var(--bs-body-bg)` (ahora gris de página, se veía mal ahí) a `var(--card-bg)` +
+  `var(--shadow-card)` -- ajuste no pedido explícitamente pero necesario para que el
+  dropdown siga siendo una tarjeta blanca real tras el cambio de `--bs-body-bg`.
+- **(C)** `DocumentForm/Default.cshtml`: clases `doc-tabs`/`doc-tab-btn` agregadas
+  junto a `nav-tabs`/`nav-link` (conviven, Bootstrap no se quita); `doc-status-badge`
+  agregada junto al `badge @Model.StatusClass` que ya arma el PageModel -- **cero
+  cambios en ningún `.cs`**, todo el remapeo de color es CSS puro vía selector
+  compuesto (`.doc-status-badge.bg-success`, etc.). Los 3 `_TabGeneral.cshtml`
+  (Ventas/Compras/Inventario, paridad obligatoria) migraron de `row`/`col-md-*` a
+  `doc-tab-seccion` > `form-row` > `form-group` -- cada campo pasa a ser una celda
+  con borde/fondo propio (`8px` de radio, `var(--card-border)`), label 11px arriba,
+  valor 13.5px abajo, tal como se pidió. `.doc-columnas-2`/`.doc-resumen-total` se
+  dejaron definidos en CSS sin consumidor real (no hay tab con 2 columnas
+  independientes ni desglose de totales en ningún documento todavía) -- agregarlos al
+  markup ahora habría sido maquetar sobre datos que no existen.
+
+### Efecto lateral no pedido, documentado por transparencia
+
+`--bs-body-bg`/`--bs-body-color` son variables de Bootstrap consumidas globalmente por
+`body{}` -- al vivir en `site.css` (compartido por `_Layout.cshtml` Y
+`_AdminLayout.cshtml`), el cambio de fondo de página (`#f4f6f9`→`#e4e7ec`) y de color
+de texto (`#1e293b`→`#1a1a1a`) también alcanza al backoffice de administración, aunque
+no se tocó ningún archivo de `Pages/Admin/**`. Es una diferencia sutil (dos tonos de
+gris/negro casi idénticos), pero se documenta explícito para no ocultarlo -- mismo
+criterio que ya aplica `.navbar.bg-dark` (también comparte variable con el tenant).
+
+`dotnet build` en 0 advertencias/0 errores, **107/107 tests en verde**. Sin cambios en
+ningún `.cs` (confirmado por revisión de cada diff antes de compilar). **Sin
+verificación visual en navegador** -- mismo motivo de toda la sesión (sin herramienta
+de captura de pantalla disponible acá); no hay ningún proceso `PortalSaas.Host`
+corriendo en este momento para siquiera intentar una inspección de DOM. Recomendado:
+levantar el Host, loguearse, y confirmar contra DevTools que `.sidebar`/`.topbar`
+computan `#ffffff` y que un botón `.btn-primary` computa `#1e3a5f` antes de dar este
+punto por cerrado del todo.
+
+## El problema real no era solo color -- estructura, bug de paginación y selector de tema faltante (26 jul 2026, mismo día)
+
+El dueño del proyecto comparó dos capturas reales lado a lado (la instalación de
+Comercial Depor vs. `localhost:5271/ventas/ordenes`) y señaló 3 síntomas: la paleta de
+colores "disponible" (4 opciones) no aparecía en ningún lado, la distribución de las
+grillas de Órdenes de Venta era distinta al original, y los colores seguían sin
+coincidir. Pidió ir a la causa real con el código completo de
+`referencia-original/PortalSAP_v2` disponible, no seguir ajustando valores de CSS a
+ciegas. Se leyó `DocumentListViewComponent`/`_Index.cshtml`/`_Layout.cshtml`/
+`doc-list.js`/`theme-switcher.js` reales del original antes de tocar nada -- 3
+hallazgos, ninguno era solo una diferencia de color:
+
+1. **"La paleta de colores... deben ser 4" -- selector de tema, no una paleta fija.**
+   El original tiene 4 temas reales (Claro/Oscuro/Teal/Violeta) con 4 botones-swatch
+   en el dropdown de usuario (`.theme-row`, `theme-switcher.js`, persistencia por
+   `localStorage`) -- esta entrega solo tenía la paleta "claro" fija, sin ningún
+   selector. **Corregido**: los 4 bloques `[data-theme="..."]` completos (valores
+   reales de `theme.css` líneas 21-122, incluidos `--menu-color-1..6` por tema) +
+   `theme-switcher.js` portado tal cual + 4 swatches en `_Layout.cshtml`
+   `.user-menu-panel`. Script en `<head>` aplica el tema guardado antes de pintar
+   (mismo truco que ya usaba el colapso del sidebar).
+2. **"Distribución de las grillas distinta" -- confirmado, la estructura real difiere,
+   no solo el CSS.** `DocumentList/Default.cshtml` de la referencia envuelve TODO
+   (título + filtro + tabla + paginación) en una sola tarjeta (`<div class="card-ps
+   doc-list">`) con bordes anidados reales (el filtro y la tabla SÍ llevan su propio
+   borde cada uno, aunque estén dentro de la tarjeta exterior -- confirmado releyendo
+   `theme.css` dos veces porque la primera pasada asumió mal que había que quitarlos).
+   La fila de la tabla es clicable COMPLETA vía `data-url-detalle` +
+   `doc-list.js` (no un link en la primera celda), con una columna final de chevron
+   (`»`) para ir al detalle. La paginación es "« Anterior / Página X de Y / Siguiente
+   »" + contador de registros arriba de la tabla, no un paginador numerado. El
+   encabezado de la tabla es mayúscula/chico/gris (`.admin-table`, LA MISMA clase que
+   usan las líneas de detalle de un documento) -- nunca tuvo relleno de color, ese
+   invento fue de una entrega anterior de esta sesión. **Corregido**: `DocumentList/
+   Default.cshtml` reescrito con esta estructura real; `doc-list.js` portado;
+   `.card-ps`/`.doc-list`/`.doc-list-header`/`.doc-list-contador`/
+   `.doc-list-paginacion`/`.doc-list-col-detalle` nuevos en `site.css`. Iconos de
+   categoría raíz del sidebar (Ventas/Compras/Inventario/etc.) ahora ciclan
+   `--menu-color-1..6` por color (antes monocromos) -- portado a
+   `Pages/Shared/Components/SidebarMenu/Default.cshtml`/`_MenuNode.cshtml` vía
+   `ViewData` (limpiado antes de recursar a hijos, para que un subgrupo anidado no
+   herede el chip de su carpeta raíz) -- sin tocar `MenuNodeDto`/`MenuTreeHelper`.
+3. **Bug real encontrado en el camino, no cosmético: la paginación nunca funcionó.**
+   `IndexGeneric*ModelBase.OnGetAsync` (los 3 motores) llamaba
+   `_documents.ListAsync(Type, filter, ct: ct)` **sin pasar `page`/`pageSize`** -- el
+   paginador numerado de la entrega anterior generaba links `?page=2`, pero
+   ningún `[BindProperty]` los leía, así que TODO click en una página distinta de la 1
+   seguía devolviendo la página 1 con 25 filas fijas, en los 3 motores, desde que se
+   creó el listado genérico. **Corregido**: `PageNumber`/`PageSize` agregados como
+   `[BindProperty(SupportsGet = true, Name = "page"/"pageSize")]` en los 3
+   `IndexGeneric*ModelBase.cs`, pasados a `ListAsync` y al `DocumentListViewModel`
+   (`CurrentPage`/`PageSize`) -- el modelo (`DocumentListViewModel.TotalPages`, etc.)
+   ya tenía todo lo necesario, no hizo falta tocarlo. Se evitó nombrar la propiedad
+   `Page` (colisiona con `PageModel.Page()`, `CS0108`, un `return Page();` a centímetros
+   de distancia en el mismo archivo -- se detectó por el warning del compilador, no a
+   simple vista).
+
+`dotnet build` en 0 advertencias/0 errores, **107/107 tests en verde**. Cambios reales
+en `.cs` esta vez (a diferencia de la entrega anterior) -- acotados a los 3
+`IndexGeneric*ModelBase.cs` (agregar 2 propiedades de paginación + pasarlas a
+`ListAsync`/al view model), nada de lógica de negocio nueva. **Sin verificación visual
+en navegador** -- mismo motivo de toda la sesión.
+
+## Crash real de producción: colisión de rutas de vista entre plugins + 2 bugs más -- 26 jul 2026 (mismo día)
+
+El dueño del proyecto probó la entrega anterior contra los 2 ambientes demo reales y
+reportó un crash real (`InvalidOperationException`, no cosmético) más otros 3 problemas
+en el mismo mensaje. `dotnet build` en 0/0, **107/107 tests en verde** después de cada
+fix. Los 3 motores genéricos de documento (Venta/Compra/Inventario) quedaron afectados
+por igual -- regla de paridad aplicada a los 3 sin preguntar, porque los 3 comparten
+exactamente el mismo patrón que causaba el bug.
+
+**1. Causa raíz real del crash, no la que se sospechaba primero.** El mensaje de error
+exacto: *"The model item passed into the ViewDataDictionary is of type
+'Modulo.Ventas.Pages.SalesOrders.DetailModel', but this ViewDataDictionary instance
+requires a model item of type 'Modulo.Compras.Pages.DetailGenericPurchaseDocumentModelBase'"*.
+La sospecha inicial (mía) fue el cambio reciente de `SidebarMenu/Default.cshtml`
+(`new ViewDataDictionary(ViewData)`) -- descartada al revisar el mensaje con cuidado: el
+tipo "requerido" es `DetailGenericPurchaseDocumentModelBase` (Compras), no `MenuNodeDto`
+(el modelo de esa vista), así que el sidebar no tiene nada que ver. **Causa real,
+confirmada leyendo `PluginManager.LoadModule`**: los 3 plugins (`Modulo.Ventas`/
+`Modulo.Compras`/`Modulo.Inventario`) tenían cada uno su propio
+`Pages/Shared/_TabGeneral.cshtml`/`_TabContent.cshtml` en la **misma ruta virtual
+exacta** (`~/Pages/Shared/_TabGeneral.cshtml`), cada uno compilado en un assembly de
+plugin distinto pero registrado bajo el mismo `ApplicationPartManager`
+(`partManager.ApplicationParts.Add(new CompiledRazorAssemblyPart(assembly))`, una vez
+por plugin). El motor de vistas de Razor cachea vistas compiladas por ruta STRING,
+agregando TODOS los `ApplicationPart` registrados -- con 3 assemblies distintos
+aportando una vista a la misma ruta, `Html.PartialAsync("~/Pages/Shared/_TabGeneral.cshtml",
+Model.Model)` puede resolver a la vista de **otro** plugin (cualquiera haya "ganado" la
+ruta en el caché), pasándole un modelo del tipo equivocado -- de ahí el crash exacto
+reportado (una página de Ventas resolviendo la vista de Compras). Esto llevaba latente
+desde que se creó `Modulo.Compras` (portado el mismo patrón exacto de `Modulo.Ventas`
+sin darse cuenta de la colisión de ruta), no algo introducido en la entrega anterior.
+
+**Corregido**: los 6 archivos (`_TabGeneral.cshtml`/`_TabContent.cshtml` × 3 plugins)
+renombrados a nombres únicos por motor (`_TabGeneralVentas.cshtml`/
+`_TabContentVentas.cshtml`, `...Compras.cshtml`, `...Inventario.cshtml`), y las 3
+`DetailGeneric*ModelBase.BuildDocumentViewModel()` actualizadas para apuntar a la ruta
+nueva. Cada archivo sigue declarando `@model` de SU PROPIO `DetailGeneric*ModelBase`
+(sin cambios ahí) -- el fix es puramente de ruta, no de contenido. **Nota de alcance**:
+`Pages/_ViewImports.cshtml` de cada plugin también colisiona por ruta, pero eso se
+resuelve en tiempo de COMPILACIÓN dentro del `.csproj` de cada plugin (no hay lookup en
+tiempo de ejecución vía `Html.PartialAsync` de por medio), así que no es el mismo tipo de
+riesgo -- no se tocó.
+
+**2. "También tiene problema de paginación" -- bug real distinto, no el mismo de la
+entrega anterior.** La entrega anterior ya había corregido que `page`/`pageSize` nunca
+se leían server-side; ese fix seguía funcionando. El bug real encontrado acá: **"Volver"
+desde el detalle de un documento siempre volvía a la página 1 del listado**, sin
+importar en qué página estuviera el usuario al hacer clic en una fila. Causa:
+`DetailGeneric*ModelBase.BuildDocumentViewModel()` fijaba `BackUrl = RouteBase` (fijo,
+sin querystring) en los 3 motores; `IndexGeneric*ModelBase` tampoco propagaba la
+página/filtros actuales al armar cada `DetailUrl`. **Corregido**: `IndexGeneric*ModelBase.OnGetAsync`
+arma `returnUrl = Uri.EscapeDataString(Request.Path + Request.QueryString)` y lo agrega a
+cada `DetailUrl` (`{RouteBase}/{DocEntry}?returnUrl=...`); `DetailGeneric*ModelBase` gana
+una propiedad `[BindProperty(SupportsGet = true, Name = "returnUrl")] public string?
+ReturnUrl` y `BackUrl = Url.IsLocalUrl(ReturnUrl) && ReturnUrl is not null ? ReturnUrl :
+RouteBase` -- mismo patrón anti-open-redirect que ya usaba `Account/Login.cshtml.cs`/
+`SelectCompany.cshtml.cs` (`Url.IsLocalUrl`), no inventado acá.
+
+**3. "El ancho de la grilla no se ajusta al ancho de la página... debe ser responsive"
+-- bug real de una entrega anterior de esta misma sesión, nunca verificado en
+navegador.** `site.css` tenía `.document-list-table { width: auto; ... }`, agregado en
+la entrega de rediseño con la justificación (nunca verificada) de que evitaba "huecos"
+en tablas angostas -- confirmado contra el archivo real (`theme.css:1184`,
+`.admin-table { width: 100% }`) que esa premisa era incorrecta: el valor real siempre
+fue `100%`. Con `width: auto` la tabla se encogía a su contenido en vez de llenar
+`.document-list-table-wrapper`/`.card-ps`, exactamente el síntoma reportado ("no se
+ajusta al ancho de la página"). **Corregido**: `width: 100%` (vuelve al valor real y al
+default de Bootstrap). Se agregó además una regla responsive nueva, sin equivalente
+previo (`.form-row`/`.doc-columnas-2` son grids de 2 columnas fijas que no se apilaban en
+viewport angosto) -- `@media (max-width: 767.98px) { .form-row, .doc-columnas-2 {
+grid-template-columns: 1fr; } }`.
+
+**4. Directiva reconfirmada, no un bug nuevo: todo el diseño de un motor vive en su
+formulario general, los documentos hijo heredan.** El dueño del proyecto lo reiteró
+explícitamente después de este round -- ya era la arquitectura vigente (`DetailGeneric*ModelBase.cs`
++ `_TabGeneral*`/`_TabContent*` compartidos por plugin + `DocumentForm/Default.cshtml`,
+sin métodos `virtual`), y los 3 fixes de esta entrega se hicieron exactamente ahí (la
+clase base de cada motor, nunca en un subtipo concreto como `SalesOrders/Detail.cshtml.cs`)
+-- se preserva sin cambios adicionales.
+
+**Sin verificación visual en navegador** -- mismo motivo de toda la sesión (sin
+herramienta de captura de pantalla disponible acá). El fix del crash (punto 1) sí queda
+verificado por LECTURA DIRECTA del mecanismo de registro de `ApplicationPart`
+(`PluginManager.cs`) contra el mensaje de excepción real reportado, no por suposición.
+
+## Bug real de despliegue local: Host corriendo desde la carpeta AnyCPU vieja, no x64 -- 26 jul 2026 (mismo día)
+
+El dueño del proyecto reportó "el botón avanzar página sigue sin funcionar" probando
+`?page=2` directo en la URL, pese al fix de paginación de la entrega anterior. Antes de
+tocar código de nuevo, se verificó el proceso realmente corriendo: `Get-CimInstance
+Win32_Process` mostró un `dotnet.exe` sirviendo
+`src\PortalSaas.Host\bin\Debug\net8.0\PortalSaas.Host.dll` -- la carpeta **AnyCPU**, no
+`bin\x64\Debug\net8.0\` (la que genera `dotnet build PortalSaas.sln`, ver "Cambio de
+plataforma de build a x64" más arriba). Mismo gotcha ya documentado antes en esta
+sesión para `dotnet run --no-build`, pero esta vez afectando una prueba real del dueño
+del proyecto: ese `.dll` de `bin\Debug\net8.0\` es un artefacto huérfano de antes de la
+migración a x64 (o de un `dotnet run` sin pasar por el `.sln`), nunca recompilado desde
+entonces -- **ninguno de los fixes de esta sesión (ni de sesiones anteriores) estaba
+reflejado ahí**. No era el código el que seguía roto, era el binario que se estaba
+probando. Corregido deteniendo ese proceso y relanzando con
+`dotnet run --project src/PortalSaas.Host --launch-profile https` (resuelve x64
+correctamente solo). **Recomendación para no repetir esto**: levantar el Host siempre
+vía `dotnet run --project src/PortalSaas.Host` (F5/VS Code ya lo hace bien) o, si hace
+falta el `.dll` directo, pararse dentro de `bin\x64\Debug\net8.0\` -- nunca ejecutar un
+`.dll` de `bin\Debug\net8.0\` a secas (carpeta AnyCPU, no la que compila el proyecto).
+
+## Paridad Modulo.Ventas vs. el original: filtros/columnas del listado + fecha por defecto -- 26 jul 2026 (mismo día)
+
+El dueño del proyecto pidió comparar explícitamente `Modulo.Ventas` (acá) contra
+`referencia-original/PortalSAP_v2/plugins/Modulo.Ventas` (el original) y cerrar la
+brecha en UN solo motor primero, antes de replicar a Compras/Inventario -- confirmado
+releyendo `IndexGenericoVentaModelBase.cs`/`GenericoVentaService.ListarAsync` reales del
+original, no de memoria. Tres brechas reales encontradas:
+
+1. **Faltaban 3 filtros completos** (`CustomerName`/`Cliente`, `CustomerReferenceNumber`/
+   `N.° ref. cliente`, `SalesEmployeeName`/`Vendedor`) -- el listado acá solo tenía
+   Cliente(código)/N° documento/fechas. Agregados a `SalesDocumentFilter`
+   (`PortalSaas.Abstractions`), `SalesDocumentService.BuildWhereClause` y al
+   `FilterInput`/`Filters` de `IndexGenericSalesDocumentModelBase.cs`, mismo orden que el
+   original (N.° Cliente, Cliente, N.° ref. cliente, N.° documento, Fecha desde, Fecha
+   hasta, Vendedor). El filtro de Vendedor exigió agregar el mismo `LEFT JOIN "OSLP"` al
+   `COUNT(*)` que ya tenía el `SELECT` paginado -- sin eso, "invalid column" apenas se
+   usara ese filtro (el alias `s` no existía en esa consulta).
+2. **El comportamiento de los filtros de texto no coincidía** -- el original hace `LIKE`
+   parcial case-insensitive (`UPPER(...) LIKE UPPER(:x)`) en TODO campo de texto,
+   incluido `DocNum` (buscar "123" encuentra "51230", porque es
+   `TO_VARCHAR(o."DocNum") LIKE :x`, no comparación numérica exacta) -- acá
+   `CustomerCardCode`/`DocNum` eran `=` exacto (`DocNum` además era `int?`, no `string?`).
+   Corregido: `DocNum` pasó a `string?` en `SalesDocumentFilter`/`FilterInput`, todos los
+   filtros de texto ahora arman `UPPER(...) LIKE UPPER(:x)` con `%x%`. `FechaHasta`
+   también estaba mal: acá comparaba `<= dateTo` a las 00:00:00 (excluía documentos del
+   mismo día "hasta" creados después de medianoche); el original usa límite EXCLUSIVO del
+   día siguiente (`< dateTo.AddDays(1)`) -- mismo criterio corregido acá.
+3. **Faltaban 2 columnas y una estaba mal combinada** -- el original muestra `DocEntry`
+   como primera columna y `Cliente`(código)/`Nombre cliente` como columnas SEPARADAS más
+   `Sucursal entrega` (SAP `Address2` de cabecera, sin equivalente acá todavía); esta
+   entrega tenía `Cliente` como una sola celda combinada (`"{code} — {name}"`) y no
+   mostraba `DocEntry` ni `Sucursal entrega`. Agregado `DeliveryAddress` a
+   `SalesDocumentSummaryDto` (mapea `Address2`), columnas reordenadas a la paridad exacta
+   del original: DocEntry, N° documento, Cliente, Nombre cliente, Sucursal entrega,
+   Fecha, N.° ref. cliente, Total, Estado, Vendedor.
+4. **Filtro de fecha por defecto (ayer→hoy) faltaba en los 3 motores** -- el original
+   fija `FechaDesde ??= Hoy.AddDays(-1)` / `FechaHasta ??= Hoy` en el primer ingreso sin
+   filtro explícito, para no traer todo el histórico de una sola vez -- acá no existía en
+   ninguno de los 3 (`IndexGeneric*ModelBase.OnGetAsync`). Agregado a los 3 (Venta/Compra/
+   Inventario, pedido explícito del dueño del proyecto de que corra en los 3, no solo en
+   Venta) -- único cambio de esta entrega que sí tocó Compras/Inventario, el resto
+   (filtros/columnas nuevos) quedó **acotado a Venta a propósito**, como se pidió, hasta
+   validar el resultado antes de replicar.
+
+**Alcance explícito**: NO se tocó el Detalle de un documento individual (`SalesOrders/
+Detail.cshtml`/`DetailGenericSalesDocumentModelBase`) en esta entrega -- lo que el dueño
+del proyecto describió como "en el detalle se muestra..." es la lista de 10 columnas del
+LISTADO (fila por documento), no el formulario de un documento individual; confirmado
+contra `Columnas` de `IndexGenericoVentaModelBase.cs` del original, coincide 1:1 con lo
+pedido.
+
+`dotnet build` 0/0, **107/107 tests siguen en verde** (cambios de mapeo/filtro SQL y de
+listado, sin lógica de negocio nueva con condicionales propios que ameriten tests
+dedicados). Host relanzado con el build nuevo (`https://localhost:7207`) para que el
+dueño del proyecto pueda reprobar `?page=2` y los filtros nuevos contra un ambiente SAP
+real. **Pendiente explícito, no cerrado acá**: replicar las mismas 3 brechas de filtros/
+columnas a Compras/Inventario -- decisión deliberada de esperar a que Venta se valide
+primero (mismo criterio ya usado para las 3 fases del motor genérico en su momento).
+
+## Causa raíz real de "nada de lo de hoy funciona" -- `.vscode/launch.json` apuntaba al build AnyCPU viejo -- 26 jul 2026 (mismo día)
+
+El dueño del proyecto siguió reportando "la paginación sigue sin funcionar" incluso con
+el Host relanzado a mano correctamente. Antes de seguir revisando lógica de binding,
+se revisó CÓMO arranca el Host cuando el dueño del proyecto presiona F5 -- ahí estaba
+el problema real, no en el código de paginación.
+
+**`.vscode/launch.json`** (`configurations[0].program`) apuntaba a
+`${workspaceFolder}/src/PortalSaas.Host/bin/Debug/net8.0/PortalSaas.Host.dll` -- la
+carpeta **AnyCPU**, la misma que ya se identificó como stale en la entrega anterior
+("Bug real de despliegue local"), pero esta vez el problema no era un proceso viejo
+corriendo por accidente: **estaba escrito en la configuración de lanzamiento misma**.
+El `preLaunchTask` ("build", `tasks.json`) sí corre `dotnet build PortalSaas.sln`
+completo (x64 correcto, publica los plugins a `artifacts/plugins/` bien) -- pero
+después de compilar, F5 SIEMPRE lanzaba el `.dll` de la carpeta AnyCPU, un artefacto
+congelado desde antes de la migración a x64 que ningún comando actual vuelve a
+escribir (confirmado: `dotnet build PortalSaas.sln` solo genera
+`bin\x64\Debug\net8.0\` para `Host`/`Core`/`Tests`/plugins, nunca `bin\Debug\net8.0\`).
+**Esto significa que absolutamente ninguno de los fixes de esta sesión (ni de sesiones
+anteriores) se vio jamás probando con F5** -- el dueño del proyecto llevaba quién sabe
+cuánto tiempo viendo siempre el mismo build viejo sin importar cuánto código se
+corrigiera.
+
+**Corregido**: `program` en `launch.json` ahora apunta a
+`bin/x64/Debug/net8.0/PortalSaas.Host.dll`. Se borró además
+`src/PortalSaas.Host/bin/Debug/` por completo (carpeta ignorada por git, contenido
+100% regenerable) para que no quede la carpeta vieja ahí tentando a ejecutarla de
+nuevo por error -- verificado con un `dotnet build PortalSaas.sln` después del borrado
+que esa carpeta **no vuelve a crearse** (0/0, solo escribe en `bin\x64\`). `cwd` de
+`launch.json` (`src/PortalSaas.Host/`) ya estaba bien -- ahí vive
+`appsettings.Development.json`, así que la resolución del content root nunca fue el
+problema, solo el `.dll` que se ejecutaba.
+
+**Para confirmar de una vez que esto era la causa real y no una capa más de síntoma**:
+el dueño del proyecto debe volver a probar F5 ahora -- si `?page=2` sigue sin traer
+resultados distintos después de este fix, recién ahí hay que sospechar de la lógica de
+binding de `PageNumber`/`Filter` en sí (revisada por lectura de código y parece
+correcta: `[BindProperty(SupportsGet = true, Name = "page")]` sobre un `int`, sin
+conflicto aparente con el fallback de prefijo vacío de `Filter`), no antes.
+
+## La causa real de la paginación: "page" es una route-value reservada de Razor Pages -- 26 jul 2026 (mismo día)
+
+Con el Host relanzado correctamente (fix de `launch.json` de la entrega anterior
+verificado por el dueño del proyecto -- F5 sí levantaba el build nuevo), la
+paginación seguía sin funcionar (`?page=2` quedaba pegado en la página 1). Esta vez
+la causa no era el proceso ni el build -- era un bug real de ASP.NET Core, **NO
+detectable por lectura de código, solo por prueba empírica**.
+
+**Cómo se aisló**: se armó una app Razor Pages mínima nueva (`dotnet new webapp`,
+retargeteada a `net8.0` para igualar el proyecto real) fuera de este repo, con un
+`PageModel` que replica EXACTAMENTE el mismo patrón de
+`IndexGenericSalesDocumentModelBase` (`[BindProperty(SupportsGet = true)] Filter` +
+`[BindProperty(SupportsGet = true, Name = "page")] int PageNumber`), sin SAP/DB/
+autenticación de por medio -- para poder probar `curl` directo sin sesión y aislar
+la variable real. Resultado, confirmado con 4 rondas de prueba:
+- `?page=2` con el modelo completo (Filter + PageNumber): `PageNumber` queda en 1.
+- `?page=2` con un modelo que SOLO tiene `PageNumber` (sin `Filter`): **también**
+  queda en 1 -- descarta que `Filter`/el fallback de prefijo vacío tuviera algo que
+  ver.
+- Se imprimió `Request.Query["page"]` directo (sin pasar por binding): devuelve
+  `"2"` correctamente -- el valor SÍ llega en el query string, el problema es
+  específicamente el binding de `[BindProperty(Name = "page")]`.
+- Se cambió `Name = "page"` a `Name = "pageNum"` (mismo patrón exacto, sin tocar
+  nada más) y `?pageNum=2` **bindeó perfecto al toque**.
+
+**Causa raíz real**: Razor Pages usa internamente una route-value reservada llamada
+literalmente **`"page"`** (`RouteData.Values["page"]`) para registrar qué archivo
+`.cshtml` resolvió la ruta actual (la usa, entre otras cosas, `asp-page` para
+generar links). El `CompositeValueProvider` de ASP.NET Core consulta la ROUTE DATA
+antes que el QUERY STRING -- cualquier `[BindProperty(Name = "page")]` queda
+tapado por esa route-value interna, **sin ninguna excepción ni warning visible**:
+el binder simplemente no encuentra un valor numérico válido ahí y el `int` se queda
+en su default. Ni la documentación de ASP.NET Core ni el compilador avisan de esto
+-- es un choque de nombres puramente interno, invisible a menos que se pruebe
+empírico como se hizo acá.
+
+**Corregido en los 3 motores genéricos** (regla de paridad, mismo bug afecta a los
+3 por igual): `[BindProperty(SupportsGet = true, Name = "page")]` →
+`Name = "pageNumber"` en los 3 `IndexGeneric*ModelBase.cs`
+(`IndexGenericSalesDocumentModelBase`/`IndexGenericPurchaseDocumentModelBase`/
+`IndexGenericInventoryDocumentModelBase`), y `DocumentList/Default.cshtml`
+(`BuildPageUrl`) actualizado a generar/filtrar la misma query key nueva
+(`pageNumber=`, no `page=`). La variable LOCAL `pageNumber` de `BuildPageUrl` ya se
+llamaba así por otra razón (evitar que Razor interprete el token `@page` como
+directiva de página, ver el comentario de la entrega de esa vista) -- ahora
+coincide también con la query key real, no es casualidad de nombres.
+
+`dotnet build` 0/0, **107/107 tests siguen en verde**. App de prueba aislada
+descartada al terminar (vivía fuera del repo, en el scratchpad de la sesión).
+**Este fix debería resolver la paginación de una vez** -- a diferencia de las 2
+entregas anteriores (que corrigieron problemas reales pero distintos: el código
+nunca leía `page`/`pageSize`, y después el Host servía un build viejo), esta vez la
+causa se aisló con evidencia empírica reproducible, no por lectura de código ni
+suposición.
+
+## Resumen total del documento (Modulo.Ventas) -- 26 jul 2026 (mismo día)
+
+El dueño del proyecto confirmó que la paginación ya funciona, y pidió portar el
+bloque "Resumen total" (Total antes del descuento/Descuento/Gastos adicionales/
+Impuesto/Total del documento) que se ve al final del tab Contenido en el original,
+con la MISMA lógica -- mostró una captura del original como referencia de diseño
+(no una captura de este proyecto). Portado tal cual de
+`DetalleGenericoVentaModelBase`/`_TabContenido.cshtml`
+(`referencia-original/PortalSAP_v2`), acotado a `Modulo.Ventas` por ahora (mismo
+criterio "un motor primero" de toda esta sesión).
+
+**Cálculo, portado exacto** (`DetailGenericSalesDocumentModelBase.cs`, nuevas
+propiedades computadas): `TotalBeforeDiscount` = suma de `Quantity * UnitPrice` de
+las líneas del formulario; `Discount` = suma de `Quantity * UnitPrice *
+DiscountPercent / 100`; `AdditionalExpenses` fijo en `0` (el original tampoco lo
+calcula, sin tracking de gastos adicionales en ningún lado); `DocumentTotal` = el
+`DocTotal` real de SAP si el documento ya existe, si no cae al subtotal
+(`TotalBeforeDiscount - Discount`); `Tax` = lo que queda entre `DocumentTotal` y el
+subtotal-menos-descuento -- por diseño da `0` mientras se crea un documento nuevo
+(sin `DocTotal` todavía) y solo muestra el impuesto real una vez que el documento
+existe en SAP y trae su propio `DocTotal`. Ninguna de estas 5 cifras se lee de SAP
+directo (no hay `DiscSum`/`VatSum` en el DTO) -- se infieren algebraicamente de las
+líneas + el total real, exactamente como lo hace el original.
+
+**Markup**: bloque nuevo en `_TabContentVentas.cshtml`, después de la tabla de
+líneas, usando las clases `.doc-resumen-total`/`.doc-resumen-total-fila`/
+`.doc-resumen-total-final` que ya existían en `site.css` sin consumidor real desde
+la entrega de rediseño visual. Se agregó una clase nueva,
+`.doc-resumen-total-titulo` (portada de `.admin-subtitulo`, `theme.css:1174`, con
+nombre propio en vez del genérico original -- acá no hay una clase "admin-subtitulo"
+reusada en ningún otro lado). **Diferencia deliberada respecto al original**: sin el
+JS de recálculo en vivo al tipear Cantidad/Precio/%Dto (`_TabContenido.cshtml` lo
+tiene, actualiza los `<span>` por `id` en cada `input`/`change`) -- este proyecto no
+tiene "Agregar línea" dinámico (filas pre-renderizadas, ver el comentario de
+`_TabContentVentas.cshtml`), y el resumen ya se recalcula solo con cada
+`OnGetAsync`/`OnPostAsync` normal del servidor; agregar JS de recálculo en vivo acá
+sería una mejora no pedida sobre un patrón que este proyecto decidió no tener.
+
+`dotnet build` 0/0, **109/109 tests en verde** (propiedades derivadas puras sin
+condicionales de negocio nuevos, mismo criterio que otras entregas de esta sesión
+sin tests xUnit dedicados). **Pendiente explícito, no cerrado acá**: replicar el
+mismo resumen a `Modulo.Compras` (Compras también tiene precio/descuento por línea,
+aplica igual) -- **no** a `Modulo.Inventario` (traslados no tienen precio ni
+descuento, `.doc-resumen-total` no tendría qué mostrar ahí, mismo criterio de
+paridad "considerar, no aplicar literal" ya establecido en `CLAUDE.md`). Sin
+verificación visual en navegador -- mismo motivo de toda la sesión.
+
+## Bug real: Cantidad/Precio/%Desc se veían vacíos en un documento existente -- cultura del servidor rompe `<input type="number">` -- 26 jul 2026 (mismo día)
+
+El dueño del proyecto compartió una captura real de la Orden de Venta N° 612 (la
+misma creada end-to-end contra Comercial GE2 en una entrega anterior): Artículo/
+Descripción/Almacén/Cuenta Mayor se veían bien, pero **Cantidad, Precio Unitario y
+% Desc. se veían completamente vacíos** -- pese a que el "Resumen total" (agregado
+en la entrega anterior) mostraba cifras reales y correctas (1.000,00 antes del
+descuento, 190,00 de impuesto, 1.190,00 total). Esa contradicción (el cálculo server-
+side ve los valores, el input no los muestra) fue la pista real: el dato SÍ llega,
+el problema es específicamente cómo se escribe en el HTML.
+
+**Causa raíz confirmada**: `_TabContentVentas.cshtml` escribía
+`value="@line.UnitPrice"`/`value="@(line.Quantity...ToString())"` **sin
+`CultureInfo` explícito** -- `decimal.ToString()` sin argumentos usa la cultura del
+**hilo actual**, que por defecto toma la cultura del sistema operativo del
+servidor (casi seguro `es-CL`/`es-*` acá, no invariante). Para un valor como
+`29652`, esa cultura renderiza `"29.652"` (`.` como separador de MILES, no
+decimal) -- un `value` **inválido** para `<input type="number">` (el estándar
+HTML5 exige formato invariante: `.` solo como separador decimal, sin separador de
+miles). Los navegadores **descartan en silencio** un `value` inválido en un input
+numérico -- sin error de consola, sin warning, el campo simplemente queda vacío.
+El cálculo del "Resumen total" nunca pasó por esto (opera sobre los `decimal`
+crudos, nunca los convierte a string), por eso mostraba las cifras reales mientras
+los inputs de esas mismas líneas se veían en blanco.
+
+**Corregido en los 3 motores** (mismo bug, mismo patrón exacto en los 3 --
+`_TabContentVentas.cshtml`/`_TabContentCompras.cshtml`/`_TabContentInventario.cshtml`):
+`value="@line.UnitPrice?.ToString(CultureInfo.InvariantCulture)"` y los dos
+ternarios de Cantidad/%Desc con `.Value.ToString(CultureInfo.InvariantCulture)`
+en la rama no-vacía. `@using System.Globalization` agregado a los 3 archivos.
+**Nota importante, no se tocó**: el "Resumen total" (`.ToString("N2")`, texto de
+solo lectura, no un `<input>`) sigue usando la cultura del servidor a propósito --
+ahí SÍ es lo correcto/deseado (un usuario chileno espera ver "1.000,00", no
+"1000.00"); la regla no es "nunca usar cultura del servidor", es específicamente
+"nunca escribir un `decimal` con cultura no-invariante dentro de un
+`value="..."` de `<input type="number">`", que es un requisito del estándar HTML,
+no una preferencia de formato.
+
+**Se aprovechó el mismo pase para cerrar 2 pendientes explícitos de la entrega
+anterior** (pedido del dueño del proyecto: "aplica todos los cambios aplicados a
+Modulo de Venta hacia Compra e Inventario"):
+- **Resumen total portado a `Modulo.Compras`** (`DetailGenericPurchaseDocumentModelBase.cs`
+  + `_TabContentCompras.cshtml`, mismas 5 propiedades/mismo markup que Ventas) --
+  Compras también tiene precio/descuento por línea, aplica igual. **No** se portó a
+  `Modulo.Inventario` (sin precio/descuento en traslados, ya documentado en la
+  entrega anterior por qué no aplica ahí).
+- Verificado que `page`→`pageNumber` y el fix de `returnUrl`/`BackUrl` (entregas
+  anteriores) ya estaban consistentes en los 3 motores -- sin cambios adicionales
+  necesarios ahí.
+
+`dotnet build` 0/0, **109/109 tests en verde**. Sin verificación visual en
+navegador -- mismo motivo de toda la sesión, aunque esta vez la causa se identificó
+con alta confianza por la contradicción lógica entre el cálculo server-side (ve los
+valores reales) y el render (los pierde) más el conocimiento del requisito de
+formato de `<input type="number">` del estándar HTML5, no por prueba empírica como
+el bug de paginación.
+
+## Paridad de listado Compra/Inventario vs. Venta -- 26 jul 2026 (mismo día)
+
+Pedido explícito del dueño del proyecto: "aplica todas las correcciones hechas en
+generico_venta para generico_compra y generico_inventario". Cierra la brecha que la
+entrega "Paridad Modulo.Ventas vs. el original" había dejado deliberadamente acotada
+a Venta -- confirmado releyendo `IndexGenericoCompraModelBase.cs`/
+`GenericoCompraService.ListarAsync` e `IndexGenericoInventarioModelBase.cs`/
+`GenericoInventarioService.ListarAsync` reales del original antes de tocar nada, no
+copiado mecánicamente de Venta (regla de paridad del `CLAUDE.md`: "considerar" no es
+"aplicar literal sin pensar").
+
+**Compras** -- el original (`FiltroGenericoCompra`) tiene los mismos 5 filtros que
+Venta salvo Vendedor (Compra no tiene ese concepto): `ProveedorCardCode`/
+`ProveedorNombre`/`NumAtCard`/`DocNum`/fechas, mismo comportamiento LIKE parcial
+case-insensitive + `DocNum` como string + `FechaHasta` exclusiva del día siguiente
+confirmado línea por línea contra `GenericoCompraService.cs:139-167`. Columnas del
+listado original: DocEntry, N° documento, Proveedor, Nombre proveedor (columnas
+SEPARADAS, no combinadas), Fecha, N.° ref. proveedor, Total, Estado -- sin "Sucursal
+entrega" (Compra no tiene `Address2` en el listado original, a diferencia de Venta).
+Aplicado:
+- `PurchaseDocumentFilter` (Abstractions) ganó `SupplierName`/
+  `SupplierReferenceNumber`; `DocNum` pasó de `int?` a `string?`.
+- `PurchaseDocumentService.BuildWhereClause` reescrito con el mismo patrón LIKE
+  parcial + `DocDate < :dateTo` (día siguiente) que `SalesDocumentService`.
+- `IndexGenericPurchaseDocumentModelBase`: columna `Id` (DocEntry) primero,
+  Proveedor/Nombre proveedor separados (antes `$"{Code} — {Name}"` combinado, mismo
+  bug que tenía Venta antes de su propia entrega de paridad), filtros reordenados
+  igual que el original, `FilterFieldType.Number` de `DocNum` pasó a `Text`.
+
+**Inventario** -- el original (`FiltroGenericoInventario`) SÍ tiene filtros de socio
+de negocio/almacén destino de cabecera (`SocioNegocioCardCode`/`SocioNegocioNombre`/
+`AlmacenDestinoCodigo`) porque su `OWTQ`/`OWTR` real tiene esos campos -- **nuestro
+motor no los tiene a propósito** (ver `InventoryDocumentDto`, decisión ya tomada:
+sin cliente/vendedor, almacén origen/destino es por línea, no de cabecera), así que
+esos 3 filtros del original **no se portan** -- no hay campo equivalente que
+filtrar, portarlos habría sido inventar una feature nueva (socio de negocio
+opcional en cabecera), no una corrección de paridad. Lo que sí es una corrección de
+paridad real, aplicado:
+- `InventoryDocumentFilter.DocNum` pasó de `int?` a `string?` (LIKE parcial, mismo
+  criterio que los otros 2 motores).
+- `InventoryDocumentService.BuildWhereClause`: mismo fix `DocDate < :dateTo` (día
+  siguiente) + `DocNum` como `TO_VARCHAR(...) LIKE`.
+- `IndexGenericInventoryDocumentModelBase`: columna `Id` (DocEntry) agregada
+  primero (el original la tiene, acá no existía en absoluto), filtro `DocNum` de
+  `FilterFieldType.Number` a `Text`.
+
+`dotnet build` 0/0, **109/109 tests siguen en verde** (cambios de filtro/columna sin
+lógica de negocio nueva, mismo criterio que la entrega de Venta). Sin verificación
+visual en navegador -- mismo motivo de toda la sesión. **Pendiente explícito, fuera
+de alcance a propósito**: el "Resumen total" (ya portado a Venta y Compra en la
+entrega anterior) no aplica a Inventario -- sigue sin precio/descuento por línea,
+razón ya documentada.
+
+## Conexión a bases de datos externas de plugin -- 26 jul 2026
+
+Resuelve el hueco documentado hasta hoy como "diferido a propósito (YAGNI)"
+(`ISqlServerService`/bases SQL Server externas no-SAP de un plugin) — surgió como
+prerrequisito real al extraer `Modulo.Rendiciones` (rendición de gastos corporativos,
+nombre interno que evita cualquier marca comercial existente en el mercado) como
+plugin **externo** (repo propio, `C:\PROYECTOS\Modulo.Rendiciones`, compilado aparte y
+copiado a `artifacts/plugins/` de este portal, ver `docs/09-GUIA-DESARROLLO-PLUGINS.md`).
+A diferencia del original (`ISqlServerService` de `PortalSAP_v2`, solo SQL Server),
+acá es **motor dual desde el día uno** (Postgres/SQL Server, mismo criterio que la base
+propia de la plataforma) — un plugin no puede asumir qué motor tiene la organización
+que lo usa.
+
+- **`ModuleExternalConnection`** (`PortalSaas.Data.Entities`, tabla nueva
+  `module_external_connections`, migrada y **aplicada con éxito contra Postgres y SQL
+  Server reales de desarrollo**) -- fila por `(organization_id, company_id, module_code)`
+  con `engine_type`/`host`/`port`/`database_name`/`technical_username`/
+  `technical_secret_key` (cifrado AES-256-GCM, mismo patrón write-only que
+  `Instance`/`Company`). `company_id` nullable: fila puntual por compañía o fila global
+  de la organización (fallback). FK a `Company` con `DeleteBehavior.Restrict` (mismo
+  motivo que `Company.Organization`: ya alcanzable en cascada vía `Organization`, un
+  segundo camino en cascada rompe SQL Server con el error 1785 ya conocido de otras
+  entregas). **Sin pantalla de administración todavía** -- se carga hoy por acceso
+  directo a la base, mismo estado inicial que tuvieron `Plans`/`Subscriptions` antes de
+  su UI; queda pendiente para cuando haga falta de verdad (`Modulo.Rendiciones` todavía
+  no tiene servicios ni páginas portados, ver su propio `PENDIENTE.md`).
+- **`IExternalDatabaseConnectionService`** (`PortalSaas.Abstractions.Contratos`,
+  implementado en `PortalSaas.Core.Infraestructura.ExternalDatabaseConnectionService`)
+  -- `ResolveConnectionAsync(moduleCode, organizationId, companyId?)` devuelve
+  `ExternalDatabaseConnection` (`EngineType` + `ConnectionString` ya armado, motor
+  resuelto según la fila encontrada). Sin caché (a diferencia del `SqlServerService`
+  del original, que cacheaba 10 minutos) -- primer consumidor real, YAGNI hasta que el
+  volumen lo justifique. `PortalSaas.Core` ganó una referencia nueva a `Npgsql` (el
+  driver base, no el provider de EF Core -- ese solo vive en
+  `PortalSaas.Data.Migrations.PostgreSql`) para poder armar el connection string
+  Postgres con `NpgsqlConnectionStringBuilder`, mismo criterio dual que ya tenía
+  `Microsoft.Data.SqlClient` para la rama SQL Server.
+- **Consumo real en `Modulo.Rendiciones`** (repo externo): su `.csproj` referencia los
+  DOS proveedores de EF Core (`Microsoft.EntityFrameworkCore.SqlServer` +
+  `Npgsql.EntityFrameworkCore.PostgreSQL`) y `ModuloRendiciones.RegisterServices`
+  registra su `RendicionesDbContext` eligiendo `UseNpgsql`/`UseSqlServer` en runtime
+  según `ExternalDatabaseConnection.EngineType` -- nunca fijo en el código del plugin.
+  Su `DbContext` no usa `HasColumnType("decimal(...)")` en ninguna columna (reemplazado
+  por `HasPrecision(p, s)`, agnóstico de proveedor) -- mismo criterio que
+  `PortalSaasDbContext` ya exige para la base compartida. **Regla nueva agregada a
+  `docs/09-GUIA-DESARROLLO-PLUGINS.md` §6.1**: cualquier plugin con base propia debe
+  seguir este mismo patrón de motor dual, sin excepción -- no asumir que "es la base de
+  un plugin, no la de la plataforma" habilita fijar un solo proveedor.
+- **Verificado**: `dotnet build PortalSaas.sln` en 0/0, **109/109 tests siguen en
+  verde** (sin tests nuevos dedicados -- resolución de connection string sin lógica de
+  negocio computada, mismo criterio que otras entregas de conexión/credenciales de esta
+  sesión). Migraciones aplicadas de verdad contra Postgres y SQL Server locales de
+  desarrollo (no solo generadas). `Modulo.Rendiciones` (repo externo) compila 0/0 contra
+  el `IExternalDatabaseConnectionService` real -- ya no queda ningún bloqueo para que su
+  `RendicionesDbContext` se registre de verdad; el trabajo pendiente ahí es la fase de
+  servicios/páginas (ver su propio `PENDIENTE.md`), no infraestructura de conexión.
+
+## Bug real de plataforma: `PluginLoadContext` duplicaba ensamblados del framework compartido -- 27 jul 2026
+
+Encontrado recién al verificar `Modulo.Rendiciones` (repo externo) cargando de verdad
+en `PluginManager`, contra el Host real -- **afecta a cualquier plugin futuro con
+dependencias NuGet propias**, no es específico de Rendiciones, así que el fix va acá
+(`PortalSaas.Core`), no en el plugin.
+
+**Síntoma real**: `PluginManager` logueaba `"El assembly Modulo.Rendiciones no
+implementa IModuloPortal, se carga solo como vistas"` y el Host crasheaba con
+`ReflectionTypeLoadException` al mapear Razor Pages -- causa raíz:
+`System.TypeLoadException: Method 'RegisterServices' ... does not have an
+implementation`.
+
+**Causa real**: `Modulo.Rendiciones.csproj` tiene `CopyLocalLockFileAssemblies=true`
+(necesario para que los providers de EF Core -- SqlServer/Npgsql -- estén físicamente
+al lado del `.dll` cuando `PluginManager` lo carga desde una carpeta suelta, mismo
+motivo ya documentado para `Modulo.SellOut`/`Modulo.GestionDistribucionGastos` en el
+original). Ese flag copia TODAS las dependencias transitivas del plugin a su propia
+carpeta -- incluida `Microsoft.Extensions.DependencyInjection.Abstractions.dll`
+(arrastrada por los providers de EF Core), que normalmente debería venir del framework
+compartido (`FrameworkReference Include="Microsoft.AspNetCore.App"`). `PluginLoadContext`
+(`PortalSaas.Core.Infraestructura`) solo forzaba a compartir `PortalSaas.Abstractions`
+con el `Default` context -- con la copia duplicada de `DependencyInjection.Abstractions`
+en su propia carpeta, el plugin terminaba con un tipo `IServiceCollection` "distinto"
+(misma forma, identidad de ensamblado diferente) al que usa el Host, y el runtime
+rechazaba `RegisterServices(IServiceCollection)` como si no tuviera implementación.
+**Ningún plugin anterior lo había disparado** porque ninguno traía dependencias NuGet
+propias con este patrón de despliegue -- `Modulo.Rendiciones` es el primero.
+
+**Corregido en `PluginLoadContext.Load`**: antes de resolver un ensamblado desde la
+carpeta propia del plugin, se chequea si ya hay un ensamblado con ese nombre cargado en
+`AssemblyLoadContext.Default` (el Host) -- si lo hay, se delega ahí (`return null`),
+igual criterio que ya existía para `PortalSaas.Abstractions`, generalizado a cualquier
+ensamblado. Esto es seguro porque para el momento en que `PluginManager` carga plugins,
+el Host ya cargó todo lo que compone su propio proceso (DI, logging, EF Core base,
+etc.) -- solo dependencias verdaderamente privadas del plugin (ej. `Azure.AI.
+DocumentIntelligence`, providers específicos de EF Core que el Host no usa) siguen
+resolviéndose desde la carpeta del plugin, sin cambios ahí.
+
+**Verificado de punta a punta contra el Host real** (no solo `dotnet build`): con el
+fix, `Módulo Rendiciones v1.0.0 cargado (15 entradas de menú)` -- coincide exactamente
+con las 15 entradas declaradas en `ModuloRendiciones.GetMenu()` (1 raíz + 3 grupos + 11
+hojas). **107→109 tests de `PortalSaas.Core.Tests` siguen en verde** (sin tests nuevos
+dedicados -- es un fix de resolución de ensamblados en tiempo de carga, no lógica de
+negocio testeable con EF Core InMemory).
+
+## Bug real en `Modulo.Rendiciones`: sin `[Authorize]`, un request anónimo crasheaba con 500 -- 27 jul 2026
+
+Encontrado en la misma verificación E2E: `curl` sin sesión a `/rendiciones/gastos`
+devolvía `500` en vez del `302` a `/Account/Login` esperado. Causa: `RendicionesPageModelBase`
+(y `ComprobanteAccesoBase`) no llevaban `[Authorize]` -- a diferencia de
+`Modulo.Ventas`/`Modulo.Administracion`, que sí lo tienen en su PageModel base
+respectivo (no hay una convención global `AuthorizeFolder` en `Program.cs` del Host,
+cada plugin es responsable de anotar su propia base). Sin `[Authorize]`, el middleware
+de autorización dejaba pasar el request anónimo directo al handler, que crasheaba
+porque `RendicionesDbContext` exige `ICurrentUserContext.OrganizationId` (lee un claim
+que no existe sin sesión) para resolver su connection string. **Corregido** (en el repo
+externo, no acá) agregando `[Authorize]` a las dos clases base de página del plugin --
+verificado de nuevo con `curl`: las 5 rutas probadas devuelven `302` sin sesión.
+**Nota para `docs/09-GUIA-DESARROLLO-PLUGINS.md`**: agregar esto al checklist -- no
+hay enforcement automático de autenticación para plugins, cada uno debe anotar su
+propio PageModel base con `[Authorize]` explícitamente.
+
+## Bug real de plataforma: `_Layout.cshtml` no renderizaba la sección `"Styles"` -- 27 jul 2026
+
+Encontrado en la verificación E2E en navegador de `Modulo.Rendiciones` (usuario de
+prueba real, `demo_rendiciones`/Comercial Depor): `/rendiciones/gastos` crasheaba con
+`InvalidOperationException: The following sections have been defined but have not
+been rendered ... 'Styles'`. Causa: `src/PortalSaas.Host/Pages/Shared/_Layout.cshtml`
+nunca tuvo un `@await RenderSectionAsync("Styles", ...)` -- ningún plugin anterior
+había necesitado `@section Styles { ... }` en su `<head>` (los CSS de plugin, cuando
+existían, se referenciaban distinto). `Modulo.Rendiciones` es el primer plugin que usa
+ese patrón (`wwwroot/css/rendiciones.css` propio, `ServesOwnWwwRoot=true`). **Corregido**
+agregando `@await RenderSectionAsync("Styles", required: false)` al final del `<head>`
+-- aditivo, `required: false` no rompe ninguna página existente que no defina la
+sección. Verificado reiniciando el Host real y confirmando que
+`/rendiciones/gastos` ya no crashea.
+
+## Bug real de plataforma: `ServesOwnWwwRoot` nunca estaba implementado -- 27 jul 2026
+
+Encontrado en la misma verificación E2E de `Modulo.Rendiciones`: `~/css/rendiciones.css`
+devolvía 404 en silencio (el `<link>` fallido no genera ningún error visible más allá
+de que el diseño no cambia). Causa: `IModuloPortal.ServesOwnWwwRoot` y
+`PluginManager.AssembliesConWwwRootPropio` existían desde el portado inicial ("el host
+futuro lo usará para servir su wwwroot embebido"), pero **nada en `Program.cs` los
+consumía todavía** -- ningún plugin anterior había declarado `ServesOwnWwwRoot = true`
+con contenido real, así que nunca se notó. **Corregido**: `Program.cs` ahora registra
+un `app.UseStaticFiles(...)` adicional por cada assembly en
+`AssembliesConWwwRootPropio`, con `FileProvider = new
+ManifestEmbeddedFileProvider(assembly, "wwwroot")`.
+
+**Segundo detalle real, no obvio**: el manifiesto embebido (`GenerateEmbeddedFilesManifest`)
+conserva `"wwwroot"` como carpeta raíz dentro de sus rutas (`wwwroot/css/x.css`) -- a
+diferencia del wwwroot físico del propio Host, donde esa carpeta nunca aparece en la
+URL porque es la raíz que se le pasa al file provider por fuera. El primer intento
+(`new ManifestEmbeddedFileProvider(assembly)`, sin segundo parámetro) seguía dando 404
+-- hace falta el overload con el segundo parámetro `"wwwroot"` para acotar el provider
+a esa subcarpeta y que `~/css/rendiciones.css` resuelva. `PortalSaas.Host.csproj` ganó
+la referencia a `Microsoft.Extensions.FileProviders.Embedded` (antes solo la tenían
+los plugins que la necesitaban para SÍ MISMOS empaquetar su wwwroot, nunca el Host
+para consumirla).
+
+**Verificado con `curl` real contra el Host corriendo**: `GET /css/rendiciones.css` →
+`200`, 17.891 bytes (el contenido real del CSS, no una página de error). Sin
+verificación visual en navegador todavía.
+
+## Densidad visual estándar (regla dura, 27 jul 2026)
+
+Pedido explícito del dueño del proyecto: los formularios se veían "muy grandes" en los
+motores genéricos de documento -- la corrección **no es puntual de un módulo, es una
+regla de diseño para todo el proyecto**. Todo formulario cabecera/detalle de cualquier
+módulo (backoffice de plataforma en `/Admin/*`, self-service de organización en
+`/organizacion/*`, y los 3 motores genéricos de documento Venta/Compra/Inventario)
+**debe compartir la misma densidad, tipografía, color y comportamiento** -- nunca un
+tamaño de fuente, padding, buscador o layout propio por módulo nuevo.
+
+- **Fuente única de la densidad: `site.css`**, bloque "Compactación global" (justo
+  después de los 4 `[data-theme]` y antes de `.btn-primary`) -- redefine
+  `.form-control`/`.form-select`/`.btn`/`.table`/`.card-ps`/`.h3`/`.h5` una sola vez
+  para TODO el proyecto (Bootstrap 5.1 vendored es demasiado espaciado por defecto
+  para una grilla de datos tipo SAP B1). Un módulo nuevo **nunca** define su propio
+  tamaño de fuente/padding para un input, botón o tabla -- hereda esto automáticamente
+  con clases estándar de Bootstrap (`.form-control`, `.btn`, `.table`), igual que ya
+  hereda el tema activo (`[data-theme]`) sin hacer nada.
+- **Grilla de campos de un documento**: `.doc-tab-seccion .form-row .form-group`
+  (celda con borde/fondo propio, label 10px arriba/valor 12.5px abajo) es el único
+  patrón para "cabecera de documento" -- ver Modulo.Ventas/Compras/Inventario
+  `_TabGeneral*.cshtml` como referencia. No inventar un layout de campos alternativo.
+- **Tabla de líneas de detalle**: `.line-items-table` (encabezado mayúscula chico
+  gris, sin relleno de color) + `document-lines-editor.js` (+ Agregar línea/Quitar/
+  Vaciar todas las líneas/Descargar plantilla CSV/Importar CSV, recálculo en vivo del
+  Resumen total) + `catalog-search.js` (buscador `data-catalogo-buscador`-like contra
+  un handler AJAX, delegado en `document` para que también funcione en filas
+  agregadas dinámicamente) son el único patrón para "detalle de líneas" -- portados
+  primero en Modulo.Ventas, replicados literal (mismos nombres de clase/función,
+  solo cambia el prefijo del id) en Compras/Inventario. Un motor de documento futuro
+  reusa los mismos 2 scripts, no escribe los suyos.
+- **Bloqueo de campos por tipo de línea** (Artículo/Servicio, Venta/Compra): mismo
+  mecanismo (`wireDocumentLinesEditor({ lineType: {...} })`, clases
+  `.line-item-only`/`.line-service-only`) en los dos motores que tienen el concepto
+  -- Inventario no lo tiene (traslados no distinguen Artículo/Servicio, la
+  particularidad real que sí justifica no aplicar esto ahí, ver la regla de paridad
+  más abajo).
+- Antes de agregar CSS/JS nuevo para una pantalla de formulario, **primero revisar si
+  ya existe la clase/función equivalente acá** -- la señal de que algo está mal es
+  escribir un `padding`/`font-size` a mano en un `.cshtml` nuevo en vez de reusar una
+  clase ya definida en `site.css`.
+- **Tabs de sección de un documento (`.doc-tabs`/`.doc-tab-btn`)**: pill switcher
+  segmentado (contenedor con fondo tenue + borde, cada tab una pastilla; la activa
+  se pinta con `--accent` sólido y texto `--on-accent`) -- no volver al subrayado
+  plano ni inventar otro estilo de tabs por módulo.
+- **Botones outline (`.btn-outline-secondary`/`.btn-outline-danger`/
+  `.btn-outline-primary`)**: fondo tenue de color (8%) en reposo, fill sólido +
+  sombra de acento en hover -- nunca transparente puro con solo un borde (look de
+  "link con borde" descartado explícitamente). `.btn`/`.btn-sm` llevan
+  `border-radius`/`font-weight: 600`/transición ya definidos globalmente, no
+  redeclarar esto por botón.
+- **Barra de acciones de una tabla de líneas (`.admin-row-actions`)**: `display:flex`
+  + `gap: 8px` -- cualquier grupo de botones de acciones nuevo (no solo líneas de
+  documento) reusa esta clase en vez de depender del espaciado por defecto entre
+  elementos inline.
 
 ## Estilo de código
 

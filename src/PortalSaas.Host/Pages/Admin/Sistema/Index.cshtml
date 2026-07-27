@@ -1,0 +1,27 @@
+@page
+@model PortalSaas.Host.Pages.Admin.Sistema.IndexModel
+@{
+    ViewData["Title"] = "Sistema";
+}
+
+<h1 class="h3 mb-3">Sistema</h1>
+
+@if (TempData["Mensaje"] is string mensaje)
+{
+    <div class="alert alert-warning">@mensaje</div>
+}
+
+<div class="card-ps doc-tab-seccion">
+    <span class="doc-resumen-total-titulo">Reiniciar servidor</span>
+    <p class="text-muted">
+        Proceso actual: PID @Model.ProcessId. Un plugin recién importado desde
+        <a asp-page="/Admin/PlatformModules/Import">Importar plugin</a> no queda activo hasta reiniciar
+        (PluginManager solo carga plugins al arrancar el Host). Este botón detiene el proceso actual y
+        lo vuelve a levantar solo, con los mismos argumentos y directorio de trabajo -- no hace falta
+        acceso al servidor.
+    </p>
+    <form method="post" asp-page-handler="Restart" asp-antiforgery="true"
+          onsubmit="return confirm('¿Reiniciar el servidor ahora? El sitio queda inaccesible unos segundos.');">
+        <button type="submit" class="btn btn-danger">Reiniciar servidor</button>
+    </form>
+</div>

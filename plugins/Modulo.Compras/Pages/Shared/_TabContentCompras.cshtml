@@ -1,14 +1,15 @@
 @model Modulo.Compras.Pages.DetailGenericPurchaseDocumentModelBase
+@using System.Globalization
 @{
     var readOnly = Model.Document.ReadOnly;
-    // Al crear, se muestran las líneas ya cargadas (normalmente 1 en blanco) más un
-    // puñado de filas vacías extra para no necesitar un botón "Agregar línea" con JS
-    // -- las filas sin ItemCode se descartan solas en el POST (ver
-    // DetailGenericPurchaseDocumentModelBase.OnPostAsync).
-    var rowCount = readOnly ? Model.Input.Lines.Count : Math.Max(Model.Input.Lines.Count, 1) + 9;
+    // Ya NO se pre-renderizan filas extra en blanco -- "+ Agregar línea" real (JS,
+    // ver document-lines-editor.js), mismo criterio aplicado primero en
+    // Modulo.Ventas/_TabContentVentas.cshtml (regla de paridad entre motores).
+    var rowCount = readOnly ? Model.Input.Lines.Count : Math.Max(Model.Input.Lines.Count, 1);
 }
 
-<table class="table table-sm" id="purchase-document-lines">
+<div style="overflow-x:auto;">
+<table class="table table-sm line-items-table" id="purchase-document-lines">
     <thead>
         <tr>
             <th>Artículo</th>
@@ -16,55 +17,218 @@
             <th>Cantidad</th>
             <th>Precio unitario</th>
             <th>% Desc.</th>
-            <th>Almacén</th>
+            <th>Almacén <small class="text-muted">(Artículo)</small></th>
+            <th>Cuenta mayor <small class="text-muted">(Servicio)</small></th>
+            <th>Centro de costos <small class="text-muted">(Servicio)</small></th>
+            <th>Marca <small class="text-muted">(Servicio, opcional)</small></th>
+            <th>Tipo de gasto <small class="text-muted">(Servicio, opcional)</small></th>
+            @if (!readOnly)
+            {
+                <th></th>
+            }
         </tr>
     </thead>
-    <tbody>
+    <tbody id="purchase-document-lines-body">
         @for (var i = 0; i < rowCount; i++)
         {
             var line = i < Model.Input.Lines.Count ? Model.Input.Lines[i] : new Modulo.Compras.Pages.DetailGenericPurchaseDocumentModelBase.LineInput();
             <tr>
-                <td>
+                <td class="line-item-only">
                     <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm purchase-document-item-code" list="purchase-document-items-datalist" disabled="@readOnly" />
                 </td>
-                <td>
+                <td class="line-service-only">
                     <input name="Input.Lines[@i].Description" value="@line.Description" class="form-control form-control-sm" disabled="@readOnly" />
                 </td>
                 <td style="max-width:100px">
-                    <input name="Input.Lines[@i].Quantity" type="number" step="0.01" value="@(line.Quantity == 0 ? "" : line.Quantity.ToString())" class="form-control form-control-sm" disabled="@readOnly" />
+                    <input name="Input.Lines[@i].Quantity" type="number" step="0.01" value="@(line.Quantity is null or 0 ? "" : line.Quantity.Value.ToString(CultureInfo.InvariantCulture))" class="form-control form-control-sm line-qty" disabled="@readOnly" />
                 </td>
                 <td style="max-width:120px">
-                    <input name="Input.Lines[@i].UnitPrice" type="number" step="0.01" value="@line.UnitPrice" class="form-control form-control-sm" placeholder="Lista de precio" disabled="@readOnly" />
+                    <input name="Input.Lines[@i].UnitPrice" type="number" step="0.01" value="@line.UnitPrice?.ToString(CultureInfo.InvariantCulture)" class="form-control form-control-sm line-price" placeholder="Lista de precio" disabled="@readOnly" />
                 </td>
                 <td style="max-width:90px">
-                    <input name="Input.Lines[@i].DiscountPercent" type="number" step="0.01" value="@(line.DiscountPercent == 0 ? "" : line.DiscountPercent.ToString())" class="form-control form-control-sm" disabled="@readOnly" />
+                    <input name="Input.Lines[@i].DiscountPercent" type="number" step="0.01" value="@(line.DiscountPercent is null or 0 ? "" : line.DiscountPercent.Value.ToString(CultureInfo.InvariantCulture))" class="form-control form-control-sm line-discount" disabled="@readOnly" />
                 </td>
-                <td>
-                    <select name="Input.Lines[@i].WarehouseCode" class="form-select form-select-sm" disabled="@readOnly">
-                        <option value="">Seleccionar…</option>
-                        @foreach (var warehouse in Model.Warehouses)
-                        {
-                            <option value="@warehouse.Value" selected="@(warehouse.Value == line.WarehouseCode)">@warehouse.Text</option>
-                        }
-                    </select>
+                <td class="line-item-only">
+                    <input name="Input.Lines[@i].WarehouseCode" value="@line.WarehouseCode" class="form-control form-control-sm purchase-document-warehouse-code" list="purchase-document-warehouses-datalist" placeholder="Buscar…" disabled="@readOnly" />
                 </td>
+                <td class="line-service-only">
+                    <input name="Input.Lines[@i].AccountCode" value="@line.AccountCode" class="form-control form-control-sm purchase-document-account-code" list="purchase-document-accounts-datalist" placeholder="Buscar…" disabled="@readOnly" />
+                </td>
+                <td class="line-service-only">
+                    <input name="Input.Lines[@i].CostCenterCode" value="@line.CostCenterCode" class="form-control form-control-sm purchase-document-cost-center-code" list="purchase-document-cost-centers-datalist" placeholder="Buscar…" disabled="@readOnly" />
+                </td>
+                <td class="line-service-only">
+                    <input name="Input.Lines[@i].CostCenterCode2" value="@line.CostCenterCode2" class="form-control form-control-sm purchase-document-cost-center2-code" list="purchase-document-cost-centers2-datalist" placeholder="Buscar…" disabled="@readOnly" />
+                </td>
+                <td class="line-service-only">
+                    <input name="Input.Lines[@i].CostCenterCode3" value="@line.CostCenterCode3" class="form-control form-control-sm purchase-document-cost-center3-code" list="purchase-document-cost-centers3-datalist" placeholder="Buscar…" disabled="@readOnly" />
+                </td>
+                @if (!readOnly)
+                {
+                    <td><button type="button" class="btn btn-sm btn-outline-danger purchase-document-remove-line">Quitar</button></td>
+                }
             </tr>
         }
     </tbody>
 </table>
+</div>
+
+@* Resumen total -- mismo bloque que Modulo.Ventas/_TabContentVentas.cshtml, con
+   recálculo en vivo (regla de paridad). *@
+<div class="doc-resumen-total">
+    <span class="doc-resumen-total-titulo">Resumen total</span>
+    <div class="doc-resumen-total-fila">
+        <label>Total antes del descuento</label>
+        <span id="purchase-document-total-before-discount">@Model.TotalBeforeDiscount.ToString("N2")</span>
+    </div>
+    <div class="doc-resumen-total-fila">
+        <label>Descuento</label>
+        <span id="purchase-document-discount">@Model.Discount.ToString("N2")</span>
+    </div>
+    <div class="doc-resumen-total-fila">
+        <label>Gastos adicionales</label>
+        <span>@Model.AdditionalExpenses.ToString("N2")</span>
+    </div>
+    <div class="doc-resumen-total-fila">
+        <label>Impuesto</label>
+        <span>@Model.Tax.ToString("N2")</span>
+    </div>
+    <div class="doc-resumen-total-fila doc-resumen-total-final">
+        <label>Total del documento</label>
+        <span id="purchase-document-document-total">@Model.DocumentTotal.ToString("N2")</span>
+    </div>
+</div>
 
 <datalist id="purchase-document-items-datalist"></datalist>
+<datalist id="purchase-document-warehouses-datalist"></datalist>
+<datalist id="purchase-document-accounts-datalist"></datalist>
+<datalist id="purchase-document-cost-centers-datalist"></datalist>
+<datalist id="purchase-document-cost-centers2-datalist"></datalist>
+<datalist id="purchase-document-cost-centers3-datalist"></datalist>
 
 @if (!readOnly)
 {
+    <div class="admin-row-actions mb-2 mt-2">
+        <button type="button" id="purchase-document-add-line" class="btn btn-sm btn-outline-secondary">+ Agregar línea</button>
+        <button type="button" id="purchase-document-download-template" class="btn btn-sm btn-outline-secondary">Descargar plantilla CSV</button>
+        <button type="button" id="purchase-document-import-csv" class="btn btn-sm btn-outline-secondary">Importar CSV</button>
+        <button type="button" id="purchase-document-clear-lines" class="btn btn-sm btn-outline-danger">Vaciar todas las líneas</button>
+        <input type="file" id="purchase-document-csv-file" accept=".csv" style="display:none" />
+    </div>
+    <div id="purchase-document-csv-result"></div>
+
+    <template id="purchase-document-line-template">
+        <tr>
+            <td class="line-item-only"><input name="Input.Lines[__INDEX__].ItemCode" class="form-control form-control-sm purchase-document-item-code" list="purchase-document-items-datalist" /></td>
+            <td class="line-service-only"><input name="Input.Lines[__INDEX__].Description" class="form-control form-control-sm" /></td>
+            <td style="max-width:100px"><input name="Input.Lines[__INDEX__].Quantity" type="number" step="0.01" class="form-control form-control-sm line-qty" /></td>
+            <td style="max-width:120px"><input name="Input.Lines[__INDEX__].UnitPrice" type="number" step="0.01" class="form-control form-control-sm line-price" placeholder="Lista de precio" /></td>
+            <td style="max-width:90px"><input name="Input.Lines[__INDEX__].DiscountPercent" type="number" step="0.01" class="form-control form-control-sm line-discount" /></td>
+            <td class="line-item-only">
+                <input name="Input.Lines[__INDEX__].WarehouseCode" class="form-control form-control-sm purchase-document-warehouse-code" list="purchase-document-warehouses-datalist" placeholder="Buscar…" />
+            </td>
+            <td class="line-service-only">
+                <input name="Input.Lines[__INDEX__].AccountCode" class="form-control form-control-sm purchase-document-account-code" list="purchase-document-accounts-datalist" placeholder="Buscar…" />
+            </td>
+            <td class="line-service-only">
+                <input name="Input.Lines[__INDEX__].CostCenterCode" class="form-control form-control-sm purchase-document-cost-center-code" list="purchase-document-cost-centers-datalist" placeholder="Buscar…" />
+            </td>
+            <td class="line-service-only">
+                <input name="Input.Lines[__INDEX__].CostCenterCode2" class="form-control form-control-sm purchase-document-cost-center2-code" list="purchase-document-cost-centers2-datalist" placeholder="Buscar…" />
+            </td>
+            <td class="line-service-only">
+                <input name="Input.Lines[__INDEX__].CostCenterCode3" class="form-control form-control-sm purchase-document-cost-center3-code" list="purchase-document-cost-centers3-datalist" placeholder="Buscar…" />
+            </td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger purchase-document-remove-line">Quitar</button></td>
+        </tr>
+    </template>
+
     <script src="~/js/catalog-search.js"></script>
+    <script src="~/js/document-lines-editor.js"></script>
     <script>
         wireCatalogSearch({
             inputSelector: '.purchase-document-item-code',
             datalistId: 'purchase-document-items-datalist',
             handlerName: 'SearchItems',
+            minChars: 2,
             getValue: function (item) { return item.itemCode; },
             getLabel: function (item) { return item.itemCode + ' — ' + item.itemName; },
+        });
+
+        // Catálogos chicos (Almacén/Cuenta Mayor/Centro de Costos) -- minChars: 0.
+        wireCatalogSearch({
+            inputSelector: '.purchase-document-warehouse-code',
+            datalistId: 'purchase-document-warehouses-datalist',
+            handlerName: 'SearchWarehouses',
+            minChars: 0,
+            getValue: function (item) { return item.warehouseCode; },
+            getLabel: function (item) { return item.warehouseCode + ' — ' + item.warehouseName; },
+        });
+
+        wireCatalogSearch({
+            inputSelector: '.purchase-document-account-code',
+            datalistId: 'purchase-document-accounts-datalist',
+            handlerName: 'SearchAccounts',
+            minChars: 0,
+            getValue: function (item) { return item.accountCode; },
+            getLabel: function (item) { return item.accountCode + ' — ' + item.accountName; },
+        });
+
+        wireCatalogSearch({
+            inputSelector: '.purchase-document-cost-center-code',
+            datalistId: 'purchase-document-cost-centers-datalist',
+            handlerName: 'SearchCostCenters',
+            minChars: 0,
+            getValue: function (item) { return item.code; },
+            getLabel: function (item) { return item.code + ' — ' + item.name; },
+        });
+
+        wireCatalogSearch({
+            inputSelector: '.purchase-document-cost-center2-code',
+            datalistId: 'purchase-document-cost-centers2-datalist',
+            handlerName: 'SearchCostCenters2',
+            minChars: 0,
+            getValue: function (item) { return item.code; },
+            getLabel: function (item) { return item.code + ' — ' + item.name; },
+        });
+
+        wireCatalogSearch({
+            inputSelector: '.purchase-document-cost-center3-code',
+            datalistId: 'purchase-document-cost-centers3-datalist',
+            handlerName: 'SearchCostCenters3',
+            minChars: 0,
+            getValue: function (item) { return item.code; },
+            getLabel: function (item) { return item.code + ' — ' + item.name; },
+        });
+
+        wireDocumentLinesEditor({
+            tableBodyId: 'purchase-document-lines-body',
+            templateId: 'purchase-document-line-template',
+            addButtonId: 'purchase-document-add-line',
+            clearButtonId: 'purchase-document-clear-lines',
+            removeButtonSelector: '.purchase-document-remove-line',
+            startIndex: @Model.Input.Lines.Count,
+            itemCodeSelector: '.purchase-document-item-code',
+            datalistId: 'purchase-document-items-datalist',
+            csvColumns: ['ItemCode', 'Description', 'Quantity', 'UnitPrice', 'DiscountPercent', 'WarehouseCode', 'AccountCode', 'CostCenterCode', 'CostCenterCode2', 'CostCenterCode3'],
+            downloadTemplateButtonId: 'purchase-document-download-template',
+            importCsvButtonId: 'purchase-document-import-csv',
+            csvFileInputId: 'purchase-document-csv-file',
+            csvResultId: 'purchase-document-csv-result',
+            lineType: {
+                selectId: 'Input_LineType',
+                itemValue: '@PortalSaas.Abstractions.Modelos.DocumentLineType.Item',
+                itemOnlySelector: '.line-item-only',
+                serviceOnlySelector: '.line-service-only',
+            },
+            totals: {
+                qtySelector: '.line-qty',
+                priceSelector: '.line-price',
+                discountSelector: '.line-discount',
+                totalBeforeDiscountId: 'purchase-document-total-before-discount',
+                discountId: 'purchase-document-discount',
+                documentTotalId: 'purchase-document-document-total',
+            },
         });
     </script>
 }

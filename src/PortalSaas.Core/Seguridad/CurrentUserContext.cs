@@ -47,13 +47,31 @@ public sealed class CurrentUserContext : ICurrentUserContext
         var companyId = _currentCompany.CompanyId;
         var userId = UserId;
 
-        var count = await _db.UserMenuProfiles
+        // Asignación MANUAL (UserMenuProfile) -- si existe una fila para este nodo,
+        // GANA por sobre lo heredado del grupo (nunca se mezclan): define el acceso
+        // real ella sola. "Resetear" una asignación manual (borrar esa fila desde
+        // /Admin/Organizations/Users/Permissions) hace que el usuario vuelva a
+        // heredar el default de sus MenuGroups, ver más abajo.
+        var overrideProfileId = await _db.UserMenuProfiles
             .Where(ump => ump.UserId == userId && ump.CompanyId == companyId
-                && ump.Menu.OriginModule == originModule && ump.Menu.Code == code
-                && ump.Profile.ProfileActions.Any(pa => pa.Action.Code == actionCode))
-            .CountAsync(ct);
+                && ump.Menu.OriginModule == originModule && ump.Menu.Code == code)
+            .Select(ump => (long?)ump.ProfileId)
+            .FirstOrDefaultAsync(ct);
 
-        return count > 0;
+        if (overrideProfileId is { } profileId)
+        {
+            return await _db.ProfileActions.AnyAsync(pa => pa.ProfileId == profileId && pa.Action.Code == actionCode, ct);
+        }
+
+        // Sin asignación manual -- hereda de cualquier MenuGroup del usuario (en esta
+        // compañía) que incluya este nodo con un Profile por defecto (ver
+        // MenuGroupItem.DefaultProfileId). Un usuario puede pertenecer a varios
+        // grupos: alcanza con que UNO otorgue la acción pedida.
+        return await _db.UserMenuGroups
+            .Where(ug => ug.UserId == userId && ug.CompanyId == companyId)
+            .SelectMany(ug => ug.MenuGroup.MenuGroupItems)
+            .Where(item => item.Menu.OriginModule == originModule && item.Menu.Code == code && item.DefaultProfileId != null)
+            .AnyAsync(item => item.DefaultProfile!.ProfileActions.Any(pa => pa.Action.Code == actionCode), ct);
     }
 
     /// <summary>menuCode es "OriginModule.Code" -- Menu.Code es único solo dentro de OriginModule.</summary>

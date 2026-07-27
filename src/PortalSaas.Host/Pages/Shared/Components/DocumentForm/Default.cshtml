@@ -1,69 +1,72 @@
 @model PortalSaas.Abstractions.Componentes.DocumentFormViewModel
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h1 class="h3 mb-0">@Model.Title</h1>
-        @if (Model.BackUrl is not null)
+@* Tabs como anclas de scroll, NUNCA como toggles que ocultan secciones -- portado tal
+   cual de referencia-original/PortalSAP_v2 (DocumentForm/Default.cshtml): el documento
+   completo se ve de una sola vez hacia abajo, doc-tabs.js hace el scroll suave al click
+   y resalta la pestaña activa por scrollspy (IntersectionObserver). La entrega anterior
+   había usado tabs reales de Bootstrap (data-bs-toggle="tab", ocultando el resto) --
+   corregido acá, mismo componente compartido por los 3 motores genéricos (Venta/Compra/
+   Inventario), así que el fix alcanza a los 3 sin tocar nada más. *@
+
+<div class="card-ps doc-form">
+    @if (Model.BackUrl is not null)
+    {
+        <a href="@Model.BackUrl" class="doc-form-volver"><i class="bi bi-arrow-left"></i> Volver</a>
+    }
+    <div class="doc-form-header">
+        <h2>@Model.Title</h2>
+        @if (Model.StatusText is not null)
         {
-            <a href="@Model.BackUrl">Volver</a>
+            <span class="badge doc-status-badge @(Model.StatusClass ?? "bg-secondary")">@Model.StatusText</span>
         }
     </div>
-    @if (Model.StatusText is not null)
-    {
-        <span class="badge @(Model.StatusClass ?? "bg-secondary")">@Model.StatusText</span>
-    }
-</div>
 
-<ul class="nav nav-tabs mb-3" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">General</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-content" type="button" role="tab">Contenido</button>
-    </li>
-    @if (Model.LogisticsView is not null)
-    {
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-logistics" type="button" role="tab">Logística</button>
-        </li>
-    }
-    @if (Model.AccountingView is not null)
-    {
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-accounting" type="button" role="tab">@Model.AccountingTitle</button>
-        </li>
-    }
-    @if (Model.UserFieldsView is not null)
-    {
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-userfields" type="button" role="tab">Campos de usuario</button>
-        </li>
-    }
-</ul>
+    <div class="doc-tabs">
+        <a href="#doc-tab-general" class="doc-tab-btn active" data-tab-anchor="doc-tab-general">General</a>
+        <a href="#doc-tab-content" class="doc-tab-btn" data-tab-anchor="doc-tab-content">Contenido</a>
+        @if (Model.LogisticsView is not null)
+        {
+            <a href="#doc-tab-logistics" class="doc-tab-btn" data-tab-anchor="doc-tab-logistics">Logística</a>
+        }
+        @if (Model.AccountingView is not null)
+        {
+            <a href="#doc-tab-accounting" class="doc-tab-btn" data-tab-anchor="doc-tab-accounting">@Model.AccountingTitle</a>
+        }
+        @if (Model.UserFieldsView is not null)
+        {
+            <a href="#doc-tab-userfields" class="doc-tab-btn" data-tab-anchor="doc-tab-userfields">Campos de usuario</a>
+        }
+    </div>
 
-<div class="tab-content">
-    <div class="tab-pane fade show active" id="tab-general" role="tabpanel">
+    <section id="doc-tab-general" class="doc-tab-seccion">
+        <span class="doc-resumen-total-titulo">General</span>
         @await Html.PartialAsync(Model.GeneralView, Model.Model)
-    </div>
-    <div class="tab-pane fade" id="tab-content" role="tabpanel">
+    </section>
+
+    <section id="doc-tab-content" class="doc-tab-seccion">
+        <span class="doc-resumen-total-titulo">Contenido</span>
         @await Html.PartialAsync(Model.ContentView, Model.Model)
-    </div>
+    </section>
+
     @if (Model.LogisticsView is not null)
     {
-        <div class="tab-pane fade" id="tab-logistics" role="tabpanel">
+        <section id="doc-tab-logistics" class="doc-tab-seccion">
+            <span class="doc-resumen-total-titulo">Logística</span>
             @await Html.PartialAsync(Model.LogisticsView, Model.Model)
-        </div>
+        </section>
     }
     @if (Model.AccountingView is not null)
     {
-        <div class="tab-pane fade" id="tab-accounting" role="tabpanel">
+        <section id="doc-tab-accounting" class="doc-tab-seccion">
+            <span class="doc-resumen-total-titulo">@Model.AccountingTitle</span>
             @await Html.PartialAsync(Model.AccountingView, Model.Model)
-        </div>
+        </section>
     }
     @if (Model.UserFieldsView is not null)
     {
-        <div class="tab-pane fade" id="tab-userfields" role="tabpanel">
+        <section id="doc-tab-userfields" class="doc-tab-seccion">
+            <span class="doc-resumen-total-titulo">Campos de usuario</span>
             @await Html.PartialAsync(Model.UserFieldsView, Model.Model)
-        </div>
+        </section>
     }
 </div>

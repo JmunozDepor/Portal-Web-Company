@@ -1,0 +1,104 @@
+@page "/importacion-generica/campos-usuario"
+@model Modulo.ImportacionGenerica.Pages.CamposUsuario.IndexModel
+@{
+    ViewData["Title"] = "Campos de usuario";
+}
+
+<h1 class="h3 mb-3">Campos de usuario</h1>
+<p class="text-muted">
+    Catálogo de campos de usuario (UDF dinámicos) disponibles para mapear en la Configuración
+    de Importación Genérica -- un campo de usuario viaja tal cual hacia Service Layer, sin
+    ninguna lógica de resolución contra SAP.
+</p>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="card-ps doc-tab-seccion mb-4">
+    <span class="doc-resumen-total-titulo">@(Model.EditId is null ? "Nuevo campo" : "Editar campo")</span>
+    <form method="post" asp-page-handler="Save" asp-route-editId="@Model.EditId" asp-antiforgery="true">
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="Input.Module" class="form-label"></label>
+                <select asp-for="Input.Module" asp-items="Model.Modules" class="form-select" disabled="@(Model.EditId is not null)"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.Level" class="form-label"></label>
+                <select asp-for="Input.Level" asp-items="Model.Levels" class="form-select" disabled="@(Model.EditId is not null)"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.DataType" class="form-label"></label>
+                <select asp-for="Input.DataType" asp-items="Model.DataTypes" class="form-select"></select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="Input.Label" class="form-label"></label>
+                <input asp-for="Input.Label" class="form-control" />
+                <span asp-validation-for="Input.Label" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.SapFieldName" class="form-label"></label>
+                <input asp-for="Input.SapFieldName" class="form-control" placeholder="ej. U_MiCampoPersonalizado" />
+                <span asp-validation-for="Input.SapFieldName" class="text-danger"></span>
+            </div>
+            @if (Model.EditId is not null)
+            {
+                <div class="form-group form-check">
+                    <input asp-for="Input.IsActive" class="form-check-input" />
+                    <label asp-for="Input.IsActive" class="form-check-label"></label>
+                </div>
+            }
+        </div>
+        <button type="submit" class="btn btn-primary">@(Model.EditId is null ? "Crear" : "Guardar")</button>
+        @if (Model.EditId is not null)
+        {
+            <a asp-page="/CamposUsuario/Index" class="btn btn-outline-secondary">Cancelar</a>
+        }
+    </form>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Módulo</th>
+            <th>Nivel</th>
+            <th>Etiqueta</th>
+            <th>Nombre (Service Layer)</th>
+            <th>Tipo de dato</th>
+            <th>Activo</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var field in Model.Fields)
+        {
+            <tr>
+                <td>@field.Module</td>
+                <td>@field.Level</td>
+                <td>@field.Label</td>
+                <td>@field.SapFieldName</td>
+                <td>@field.DataType</td>
+                <td>@(field.IsActive ? "Sí" : "No")</td>
+                <td>
+                    <a asp-page="/CamposUsuario/Index" asp-route-editId="@field.Id">Editar</a>
+                    <form method="post" asp-page-handler="Delete" asp-antiforgery="true" style="display:inline" onsubmit="return confirm('¿Eliminar este campo de usuario?');">
+                        <input type="hidden" name="id" value="@field.Id" />
+                        <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Fields.Count == 0)
+{
+    <p class="text-muted">Todavía no hay campos de usuario configurados.</p>
+}

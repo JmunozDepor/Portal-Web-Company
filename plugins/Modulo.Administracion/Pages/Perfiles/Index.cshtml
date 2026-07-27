@@ -1,0 +1,98 @@
+@page "/organizacion/perfiles"
+@model Modulo.Administracion.Pages.Perfiles.IndexModel
+@{
+    ViewData["Title"] = "Perfiles";
+}
+
+<h1 class="h3 mb-3">Perfiles de tu organización</h1>
+<p class="text-muted">
+    Un perfil agrupa acciones (Ver/Crear/Editar/Eliminar/Aprobar/Exportar) -- después lo
+    asignás a un usuario para una pantalla puntual desde su ficha. Las plantillas de
+    plataforma (sin organización) son de solo lectura.
+</p>
+
+@if (Model.MensajeExito is not null)
+{
+    <div class="alert alert-success">@Model.MensajeExito</div>
+}
+@if (Model.MensajeError is not null)
+{
+    <div class="alert alert-danger">@Model.MensajeError</div>
+}
+
+<div class="card-ps doc-tab-seccion mb-4">
+    <span class="doc-resumen-total-titulo">
+        @(Model.EditId is null ? "Nuevo perfil" : Model.IsEditingGlobalTemplate ? "Plantilla de plataforma (solo lectura)" : "Editar perfil")
+    </span>
+
+    @if (Model.EditId is not null && Model.IsEditingGlobalTemplate)
+    {
+        <p class="text-muted">Esta es una plantilla global de plataforma -- no se puede editar desde acá. Creá un perfil propio si necesitás algo distinto.</p>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Save" asp-route-editId="@Model.EditId" asp-antiforgery="true">
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Input.Name" class="form-label"></label>
+                    <input asp-for="Input.Name" class="form-control" />
+                    <span asp-validation-for="Input.Name" class="text-danger"></span>
+                </div>
+                <div class="form-group form-group-ancho-completo">
+                    <label asp-for="Input.Description" class="form-label"></label>
+                    <input asp-for="Input.Description" class="form-control" />
+                </div>
+            </div>
+
+            <h5 class="mt-3">Acciones incluidas</h5>
+            @foreach (var action in Model.AllActions)
+            {
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" name="Input.SelectedActionIds" value="@action.Id"
+                           checked="@Model.Input.SelectedActionIds.Contains(action.Id)" id="action-@action.Id" />
+                    <label class="form-check-label" for="action-@action.Id">@action.Name</label>
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary mt-3">@(Model.EditId is null ? "Crear" : "Guardar")</button>
+            @if (Model.EditId is not null)
+            {
+                <a asp-page="/Perfiles/Index" class="btn btn-outline-secondary mt-3">Cancelar</a>
+            }
+        </form>
+    }
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Origen</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var profile in Model.Profiles)
+        {
+            <tr>
+                <td>@profile.Name</td>
+                <td>@(profile.IsGlobalTemplate ? "Plantilla de plataforma" : "Propio")</td>
+                <td>
+                    <a asp-page="/Perfiles/Index" asp-route-editId="@profile.Id">@(profile.IsGlobalTemplate ? "Ver" : "Editar")</a>
+                    @if (!profile.IsGlobalTemplate)
+                    {
+                        <form method="post" asp-page-handler="Delete" asp-antiforgery="true" style="display:inline" onsubmit="return confirm('¿Eliminar este perfil?');">
+                            <input type="hidden" name="id" value="@profile.Id" />
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2">Eliminar</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Profiles.Count == 0)
+{
+    <p class="text-muted">Todavía no hay perfiles.</p>
+}

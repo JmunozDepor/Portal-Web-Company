@@ -12,6 +12,11 @@
     <a asp-page="/Admin/Organizations/Instances/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Nueva instancia</a>
 </div>
 
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
 <table class="table table-striped">
     <thead>
         <tr>
@@ -34,7 +39,14 @@
                 <td>@instance.EngineType</td>
                 <td>@instance.TechnicalUsername</td>
                 <td>@(instance.IsActive ? "Activa" : "Inactiva")</td>
-                <td><a asp-page="/Admin/Organizations/Instances/Edit" asp-route-id="@instance.Id">Editar</a></td>
+                <td>
+                    <a asp-page="/Admin/Organizations/Instances/Edit" asp-route-id="@instance.Id">Editar</a>
+                    ·
+                    <form asp-page="./Index" asp-page-handler="Delete" asp-route-organizationId="@Model.Organization.Id" asp-route-id="@instance.Id" method="post" style="display:inline"
+                          onsubmit="return confirm('¿Eliminar la instancia @instance.Name?');">
+                        <button type="submit" class="btn btn-link text-danger p-0">Eliminar</button>
+                    </form>
+                </td>
             </tr>
         }
     </tbody>

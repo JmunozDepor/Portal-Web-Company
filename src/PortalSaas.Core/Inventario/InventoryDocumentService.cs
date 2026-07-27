@@ -15,15 +15,19 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
 {
     private readonly IHanaService _hana;
     private readonly ISapConnectionProvider _connectionProvider;
+    private readonly IOrganizationDocumentPermissionService _permissions;
 
-    public InventoryDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider)
+    public InventoryDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider, IOrganizationDocumentPermissionService permissions)
     {
         _hana = hana;
         _connectionProvider = connectionProvider;
+        _permissions = permissions;
     }
 
+    public int GetSapObjectCode(InventoryDocumentType type) => InventoryDocumentTypeCatalog.Resolve(type).ObjectCode;
+
     public Task<bool> CanCreateAsync(InventoryDocumentType type, CancellationToken ct = default) =>
-        Task.FromResult(InventoryDocumentTypeCatalog.Resolve(type).DefaultCanCreate);
+        _permissions.IsCreateAllowedAsync("Inventory", type.ToString(), InventoryDocumentTypeCatalog.Resolve(type).DefaultCanCreate, ct);
 
     public async Task<int> CreateAsync(InventoryDocumentType type, string portalUsername, InventoryDocumentDto document, CancellationToken ct = default)
     {
@@ -32,19 +36,25 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
         var header = new SapInventoryDocumentHeader
         {
             DocDate = document.DocDate.ToDateTime(TimeOnly.MinValue),
+            Series = document.Series,
             Comments = document.Comments,
             U_PortalUser = portalUsername,
+            AdditionalFields = document.AdditionalFields,
             StockTransferLines = document.Lines.Select(line => new SapInventoryDocumentLine
             {
                 ItemCode = line.ItemCode,
                 Quantity = line.Quantity,
                 WarehouseCode = line.ToWarehouseCode,
                 FromWarehouseCode = line.FromWarehouseCode,
+                AdditionalFields = line.AdditionalFields,
             }).ToList(),
         };
 
+        var hasAdditionalFields = header.AdditionalFields is not null || header.StockTransferLines.Any(l => l.AdditionalFields is not null);
+        object requestBody = hasAdditionalFields ? PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten(header) : header;
+
         var session = await _connectionProvider.GetConnectionAsync(ct);
-        var created = await session.PostAsync<SapInventoryDocumentHeader>(entry.Resource, header, ct)
+        var created = await session.PostAsync<SapInventoryDocumentHeader>(entry.Resource, requestBody, ct)
             ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
 
         return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
@@ -71,7 +81,8 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
                 ToWarehouseCode: line.WarehouseCode)).ToList(),
             DocEntry: sap.DocEntry,
             DocNum: sap.DocNum,
-            Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto");
+            Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto",
+            Series: sap.Series);
     }
 
     public async Task<InventoryDocumentListResult> ListAsync(InventoryDocumentType type, InventoryDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
@@ -85,10 +96,15 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
         var countSql = $"""SELECT COUNT(*) FROM "{entry.Table}" o {whereClause}""";
         var totalRecords = (await _hana.QueryAsync<int>(countSql, parameters, ct)).FirstOrDefault();
 
-        // Sin almacén origen/destino acá a propósito -- ver el doc-comment de
-        // InventoryDocumentSummaryDto.
+        // Paridad con GenericoInventarioService.ListarAsync del original -- socio de
+        // negocios/nombre/dirección de destino/almacén destino de cabecera/N.° ref.
+        // (ver el doc-comment de InventoryDocumentSummaryDto). Sin almacén origen/
+        // destino DE LÍNEA acá a propósito -- eso sigue sin equivalente en el listado.
         var listSql = $"""
-            SELECT o."DocEntry", o."DocNum", o."DocDate",
+            SELECT o."DocEntry", o."DocNum", o."CardCode" AS "BusinessPartnerCardCode",
+                   o."CardName" AS "BusinessPartnerName", o."DocDate",
+                   o."Address2" AS "DeliveryAddress", o."U_NumAtCard" AS "CustomerReferenceNumber",
+                   TO_VARCHAR(o."ToWhsCode") AS "WarehouseDestinationCode",
                    CASE WHEN o."DocStatus" = 'O' THEN 'Abierto' ELSE 'Cerrado' END AS "Status"
             FROM "{entry.Table}" o
             {whereClause}
@@ -100,6 +116,13 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
         return new InventoryDocumentListResult(items, totalRecords);
     }
 
+    /// <summary>
+    /// Mismo criterio de filtro que SalesDocumentService/PurchaseDocumentService.
+    /// BuildWhereClause (regla de paridad entre motores, ver CLAUDE.md): DocNum es LIKE
+    /// parcial (buscar "123" encuentra "51230"), DateTo es límite EXCLUSIVO del día
+    /// siguiente. CardCode/CardName/ToWhsCode -- paridad con FiltroGenericoInventario del
+    /// original, mismo LIKE parcial case-insensitive que los otros dos motores.
+    /// </summary>
     private static (string WhereClause, IReadOnlyDictionary<string, object?> Parameters) BuildWhereClause(InventoryDocumentFilter? filter)
     {
         var clauses = new List<string>();
@@ -115,14 +138,32 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
 
             if (filter.DateTo is { } dateTo)
             {
-                clauses.Add("""o."DocDate" <= :dateTo""");
-                parameters["dateTo"] = dateTo.ToDateTime(TimeOnly.MinValue);
+                clauses.Add("""o."DocDate" < :dateTo""");
+                parameters["dateTo"] = dateTo.ToDateTime(TimeOnly.MinValue).AddDays(1);
             }
 
-            if (filter.DocNum is { } docNum)
+            if (!string.IsNullOrWhiteSpace(filter.DocNum))
             {
-                clauses.Add("""o."DocNum" = :docNum""");
-                parameters["docNum"] = docNum;
+                clauses.Add("""TO_VARCHAR(o."DocNum") LIKE :docNum""");
+                parameters["docNum"] = $"%{filter.DocNum.Trim()}%";
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.BusinessPartnerCardCode))
+            {
+                clauses.Add("""UPPER(o."CardCode") LIKE UPPER(:cardCode)""");
+                parameters["cardCode"] = $"%{filter.BusinessPartnerCardCode.Trim()}%";
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.BusinessPartnerName))
+            {
+                clauses.Add("""UPPER(o."CardName") LIKE UPPER(:cardName)""");
+                parameters["cardName"] = $"%{filter.BusinessPartnerName.Trim()}%";
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.WarehouseDestinationCode))
+            {
+                clauses.Add("""UPPER(o."ToWhsCode") LIKE UPPER(:warehouseDestination)""");
+                parameters["warehouseDestination"] = $"%{filter.WarehouseDestinationCode.Trim()}%";
             }
         }
 

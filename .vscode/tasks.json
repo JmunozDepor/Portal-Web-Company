@@ -2,6 +2,23 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "detener PortalSaas.Host en ejecución",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/.vscode/stop-host.ps1"
+            ],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "build",
             "type": "process",
             "command": "dotnet",
@@ -10,6 +27,8 @@
                 "${workspaceFolder}/PortalSaas.sln"
             ],
             "problemMatcher": "$msCompile",
+            "dependsOn": ["detener PortalSaas.Host en ejecución"],
+            "dependsOrder": "sequence",
             "group": {
                 "kind": "build",
                 "isDefault": true

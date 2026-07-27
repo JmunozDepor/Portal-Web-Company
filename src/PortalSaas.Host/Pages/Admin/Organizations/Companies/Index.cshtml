@@ -15,6 +15,11 @@
     }
 </div>
 
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
 @if (!Model.TieneInstancias)
 {
     <p class="text-warning">
@@ -51,6 +56,11 @@
                     ·
                     <form method="post" asp-page-handler="TestConnection" asp-route-organizationId="@Model.Organization.Id" asp-route-companyId="@company.Id" class="d-inline">
                         <button type="submit" class="btn btn-link p-0 align-baseline">Probar conexión</button>
+                    </form>
+                    ·
+                    <form asp-page="./Index" asp-page-handler="Delete" asp-route-organizationId="@Model.Organization.Id" asp-route-id="@company.Id" method="post" class="d-inline"
+                          onsubmit="return confirm('¿Eliminar la compañía @company.Code?');">
+                        <button type="submit" class="btn btn-link text-danger p-0 align-baseline">Eliminar</button>
                     </form>
                 </td>
             </tr>

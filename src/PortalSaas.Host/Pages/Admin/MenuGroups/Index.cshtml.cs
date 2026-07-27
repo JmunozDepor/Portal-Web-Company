@@ -19,11 +19,36 @@ public class IndexModel : PageModel
 
     public List<MenuGroup> MenuGroups { get; private set; } = [];
 
+    [TempData]
+    public string? ErrorMessage { get; set; }
+
     public async Task OnGetAsync()
     {
         MenuGroups = await _db.MenuGroups
             .Include(g => g.MenuGroupItems)
             .OrderBy(g => g.Name)
             .ToListAsync();
+    }
+
+    // Bloquea el borrado si algún usuario ya tiene este grupo asignado (UserMenuGroup)
+    // -- borrarlo ahí lo dejaría sin acceso en silencio. MenuGroupItem se cascadea
+    // sola, no bloquea.
+    public async Task<IActionResult> OnPostDeleteAsync(long id)
+    {
+        var inUse = await _db.UserMenuGroups.AnyAsync(g => g.MenuGroupId == id);
+        if (inUse)
+        {
+            ErrorMessage = "No se puede eliminar: el grupo está asignado a al menos un usuario.";
+            return RedirectToPage();
+        }
+
+        var group = await _db.MenuGroups.Include(g => g.MenuGroupItems).FirstOrDefaultAsync(g => g.Id == id);
+        if (group is not null)
+        {
+            _db.MenuGroups.Remove(group);
+            await _db.SaveChangesAsync();
+        }
+
+        return RedirectToPage();
     }
 }

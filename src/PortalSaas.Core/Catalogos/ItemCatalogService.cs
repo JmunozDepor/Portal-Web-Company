@@ -28,12 +28,40 @@ public sealed class ItemCatalogService : IItemCatalogService
         // el resto del Core (nunca un valor externo directo en el LIMIT).
         var clampedLimit = Math.Clamp(limit, 1, 100);
 
+        // UPPER(...) LIKE UPPER(:texto) -- SAP guarda ItemCode/ItemName en mayúsculas,
+        // y un LIKE sin normalizar en HANA es case-sensitive por defecto (bug real: un
+        // usuario tipeando en minúscula, ej. "m91", no encontraba nada).
         var sql = $"""
             SELECT "ItemCode", "ItemName" FROM "OITM"
-            WHERE "ItemCode" LIKE :texto OR "ItemName" LIKE :texto
+            WHERE UPPER("ItemCode") LIKE UPPER(:texto) OR UPPER("ItemName") LIKE UPPER(:texto)
             ORDER BY "ItemName" LIMIT {clampedLimit}
             """;
 
         return await _hana.QueryAsync<ItemDto>(sql, new { texto = $"%{searchText}%" }, ct);
+    }
+
+    public async Task<IReadOnlyList<ItemDto>> GetByCodesAsync(IReadOnlyCollection<string> itemCodes, CancellationToken ct = default)
+    {
+        if (itemCodes.Count == 0)
+        {
+            return [];
+        }
+
+        var parameters = new Dictionary<string, object?>();
+        var placeholders = new List<string>();
+        var i = 0;
+        foreach (var itemCode in itemCodes)
+        {
+            var name = $"itemCode{i++}";
+            placeholders.Add($":{name}");
+            parameters[name] = itemCode;
+        }
+
+        var sql = $"""
+            SELECT "ItemCode", "ItemName" FROM "OITM"
+            WHERE "ItemCode" IN ({string.Join(",", placeholders)})
+            """;
+
+        return await _hana.QueryAsync<ItemDto>(sql, parameters, ct);
     }
 }

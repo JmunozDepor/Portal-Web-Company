@@ -22,6 +22,9 @@ public sealed class ModuloAdministracion : IModuloPortal
     {
         yield return new MenuItemDefinition { Code = "raiz", ParentCode = null, Name = "Administración", Icon = "bi bi-gear", PageRoute = null, Order = 900 };
         yield return new MenuItemDefinition { Code = "usuarios", ParentCode = "raiz", Name = "Usuarios", Icon = "bi bi-people", PageRoute = "/organizacion/usuarios", Order = 1 };
+        yield return new MenuItemDefinition { Code = "modulos", ParentCode = "raiz", Name = "Módulos", Icon = "bi bi-puzzle", PageRoute = "/organizacion/modulos", Order = 2 };
+        yield return new MenuItemDefinition { Code = "grupos-menu", ParentCode = "raiz", Name = "Grupos de menú", Icon = "bi bi-diagram-3", PageRoute = "/organizacion/grupos-menu", Order = 3 };
+        yield return new MenuItemDefinition { Code = "perfiles", ParentCode = "raiz", Name = "Perfiles", Icon = "bi bi-person-badge", PageRoute = "/organizacion/perfiles", Order = 4 };
     }
 
     public void RegisterServices(IServiceCollection services)

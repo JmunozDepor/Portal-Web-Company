@@ -14,12 +14,18 @@ namespace PortalSaas.Core.Compras;
 /// </summary>
 public static class PurchaseDocumentTypeCatalog
 {
-    public sealed record Entry(string Table, string Resource, bool DefaultCanCreate);
+    public sealed record Entry(string Table, string Resource, bool DefaultCanCreate, int ObjectCode);
 
+    // ObjectCode: PurchaseOrder (22) confirmado EMPÍRICAMENTE contra Comercial GE2 real
+    // (26 jul 2026, mismo criterio que SalesDocumentTypeCatalog -- se cruzó el Series de
+    // Pedidos de Compra reales contra NNM1). PurchaseQuotation (23) NO tiene documentos
+    // reales en GE2 para confirmar (tabla OPQT vacía en ese ambiente) -- es el código
+    // estándar SAP (oPurchaseQuotations), sin confirmar empíricamente todavía. Ver
+    // ISeriesCatalogService.
     public static readonly IReadOnlyDictionary<PurchaseDocumentType, Entry> Entries = new Dictionary<PurchaseDocumentType, Entry>
     {
-        [PurchaseDocumentType.PurchaseQuotation] = new("OPQT", "PurchaseQuotations", true),
-        [PurchaseDocumentType.PurchaseOrder] = new("OPOR", "PurchaseOrders", true),
+        [PurchaseDocumentType.PurchaseQuotation] = new("OPQT", "PurchaseQuotations", true, ObjectCode: 23),
+        [PurchaseDocumentType.PurchaseOrder] = new("OPOR", "PurchaseOrders", true, ObjectCode: 22),
     };
 
     public static Entry Resolve(PurchaseDocumentType type) => Entries[type];

@@ -3,24 +3,34 @@
     var readOnly = Model.Document.ReadOnly;
 }
 
-@if (!Model.IsNew)
-{
-    <div class="row mb-3">
-        <div class="col-md-3">
-            <label class="form-label">N° documento</label>
-            <input class="form-control" value="@Model.DocNum" disabled />
+<div class="doc-tab-seccion">
+    @if (!Model.IsNew)
+    {
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">N° documento</label>
+                <input class="form-control" value="@Model.DocNum" disabled />
+            </div>
+        </div>
+    }
+
+    <div class="form-row">
+        <div class="form-group">
+            <label asp-for="Input.DocDate" class="form-label"></label>
+            <input asp-for="Input.DocDate" type="date" class="form-control" disabled="@readOnly" />
+        </div>
+        <div class="form-group">
+            <label asp-for="Input.Series" class="form-label"></label>
+            <select asp-for="Input.Series" asp-items="Model.Series" class="form-select" disabled="@readOnly">
+                <option value="">Serie por defecto de SAP</option>
+            </select>
         </div>
     </div>
-}
 
-<div class="row mb-3">
-    <div class="col-md-4">
-        <label asp-for="Input.DocDate" class="form-label"></label>
-        <input asp-for="Input.DocDate" type="date" class="form-control" disabled="@readOnly" />
+    <div class="form-row">
+        <div class="form-group form-group-ancho-completo">
+            <label asp-for="Input.Comments" class="form-label"></label>
+            <textarea asp-for="Input.Comments" class="form-control" rows="3" disabled="@readOnly"></textarea>
+        </div>
     </div>
-</div>
-
-<div class="mb-3">
-    <label asp-for="Input.Comments" class="form-label"></label>
-    <textarea asp-for="Input.Comments" class="form-control" rows="3" disabled="@readOnly"></textarea>
 </div>

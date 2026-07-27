@@ -170,7 +170,12 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
     // escriben desde este servicio.
     public async Task<IReadOnlyList<MenuGroupOptionDto>> ListMenuGroupsAsync(CancellationToken ct = default)
     {
+        var organizationId = _currentUser.OrganizationId;
+
+        // Grupos propios de la organización + plantillas globales de plataforma
+        // (OrganizationId null) -- ver MenuGroup.cs, decisión revisada 26 jul 2026.
         return await _db.MenuGroups
+            .Where(g => g.IsActive && (g.OrganizationId == null || g.OrganizationId == organizationId))
             .OrderBy(g => g.Name)
             .Select(g => new MenuGroupOptionDto { Id = g.Id, Name = g.Name })
             .ToListAsync(ct);
@@ -178,7 +183,10 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
 
     public async Task<IReadOnlyList<ProfileOptionDto>> ListProfilesAsync(CancellationToken ct = default)
     {
+        var organizationId = _currentUser.OrganizationId;
+
         return await _db.Profiles
+            .Where(p => p.OrganizationId == null || p.OrganizationId == organizationId)
             .OrderBy(p => p.Name)
             .Select(p => new ProfileOptionDto { Id = p.Id, Name = p.Name })
             .ToListAsync(ct);

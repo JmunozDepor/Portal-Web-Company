@@ -1,48 +1,96 @@
 @page
 @model PortalSaas.Host.Pages.Account.SelectCompanyModel
 @{
-    ViewData["Title"] = "Selecciona una compañía";
+    // Layout = null -- mismo criterio que Login.cshtml: elegir compañía es el segundo
+    // paso del login, NO una página del shell operativo ya en uso. Antes usaba
+    // _Layout.cshtml completo (sidebar + topbar) -- eso mostraba el árbol de menú
+    // COMPLETO para un admin (bypass de MenuNavigationService, ver
+    // IsAdmin en GetMenuTreeAsync) aunque el usuario todavía no tuviera compañía
+    // elegida, dando la falsa impresión de que el portal ya estaba operativo cuando en
+    // realidad cualquier click ahí no llevaba a ningún lado real (sin CompanyId no hay
+    // conexión SAP posible). Reusa la estructura visual de Login.cshtml (split-screen)
+    // para que el flujo se sienta continuo.
+    Layout = null;
 }
-
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <h1 class="h3 mb-3">Selecciona una compañía</h1>
-        <p class="text-muted">
-            La compañía queda fija para toda la sesión -- para cambiarla, cierra sesión y
-            vuelve a entrar.
-        </p>
-
-        @if (Model.ErrorMessage is not null)
-        {
-            <div class="alert alert-danger">@Model.ErrorMessage</div>
-        }
-
-        @* asp-antiforgery="true" explícito -- un <form method="post"> sin NINGÚN otro
-           atributo asp-* no dispara la inyección automática del token del
-           FormTagHelper (solo se activa junto con asp-page/asp-route-*/etc.), así que
-           sin esto cualquier envío real devuelve 400 "antiforgery token no encontrado"
-           -- bug real encontrado en la verificación E2E de esta entrega. *@
-        <form method="post" asp-antiforgery="true">
-            <input type="hidden" asp-for="Input.ReturnUrl" />
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-            <div class="mb-3">
-                <label asp-for="Input.CompanyId" class="form-label"></label>
-                <select asp-for="Input.CompanyId" class="form-select" asp-items="Model.Companies">
-                    <option value="">Seleccionar…</option>
-                </select>
-                <span asp-validation-for="Input.CompanyId" class="text-danger"></span>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Selecciona una compañía — Portal SaaS</title>
+    <script>
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('ps-theme') || 'claro');
+    </script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="login-bg">
+    <div class="login-brand-panel">
+        <div class="login-brand">
+            <div class="login-brand-mark">PS</div>
+            <div class="login-brand-text">
+                <h1>Portal SaaS</h1>
+                <p>Plataforma multiempresa para SAP Business One</p>
             </div>
+        </div>
 
-            <button type="submit" class="btn btn-primary w-100">Continuar</button>
-        </form>
+        <div class="login-pitch">
+            <h2>Un último paso antes de entrar</h2>
+            <p>Tu organización tiene más de una compañía conectada a SAP -- elegí con cuál vas a trabajar en esta sesión.</p>
+        </div>
 
-        <form method="post" asp-page="/Account/Logout" class="mt-3">
-            <button type="submit" class="btn btn-link p-0">Cerrar sesión</button>
-        </form>
+        <p class="login-footer">&copy; @DateTime.Now.Year Portal SaaS — Acceso restringido a usuarios autorizados.</p>
     </div>
-</div>
 
-@section Scripts {
+    <div class="login-form-panel">
+        <div class="login-shell">
+            <div class="login-card">
+                <h2>Selecciona una compañía</h2>
+                <p class="login-subtitle">La compañía queda fija para toda la sesión -- para cambiarla, cerrá sesión y volvé a entrar.</p>
+
+                @if (Model.ErrorMessage is not null)
+                {
+                    <div class="text-danger validation-summary-errors" style="display:block; color: var(--bs-danger); font-size: 12.5px; background: color-mix(in srgb, var(--bs-danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--bs-danger) 35%, transparent); border-radius: var(--radius-sm); padding: 9px 11px; margin: -6px 0 16px;">
+                        @Model.ErrorMessage
+                    </div>
+                }
+
+                @* asp-antiforgery="true" explícito -- un <form method="post"> sin NINGÚN
+                   otro atributo asp-* no dispara la inyección automática del token del
+                   FormTagHelper, ver el comentario histórico de esta página (ya
+                   corregido antes, se preserva acá). *@
+                <form method="post" asp-antiforgery="true">
+                    <input type="hidden" asp-for="Input.ReturnUrl" />
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Input.CompanyId" class="form-label">Compañía</label>
+                        <select asp-for="Input.CompanyId" class="form-control form-select" asp-items="Model.Companies">
+                            <option value="">Seleccionar…</option>
+                        </select>
+                        <span asp-validation-for="Input.CompanyId" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="login-submit">Continuar</button>
+                </form>
+
+                <form method="post" asp-page="/Account/Logout" class="text-center mt-3 mb-0">
+                    <button type="submit" class="btn btn-link p-0" style="font-size: 12.5px;">Cerrar sesión</button>
+                </form>
+
+                <div class="theme-row justify-content-center">
+                    <button type="button" data-theme-switch="claro" title="Claro"></button>
+                    <button type="button" data-theme-switch="oscuro" title="Oscuro"></button>
+                    <button type="button" data-theme-switch="teal" title="Teal"></button>
+                    <button type="button" data-theme-switch="violeta" title="Violeta"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <partial name="_ValidationScriptsPartial" />
-}
+    <script src="~/js/theme-switcher.js" asp-append-version="true"></script>
+</body>
+</html>

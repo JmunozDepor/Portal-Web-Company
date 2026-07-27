@@ -1,0 +1,143 @@
+@page "/organizacion/grupos-menu"
+@model Modulo.Administracion.Pages.GruposMenu.IndexModel
+@{
+    ViewData["Title"] = "Grupos de menú";
+}
+
+<h1 class="h3 mb-3">Grupos de menú de tu organización</h1>
+<p class="text-muted">
+    Un grupo de menú define qué pantallas ve un usuario -- después le asignás perfil por
+    cada una (Ver/Crear/Editar/etc.) desde la ficha del usuario. Las plantillas de
+    plataforma (sin organización) son de solo lectura, pero podés crear una propia
+    inspirándote en ellas.
+</p>
+
+@if (Model.MensajeExito is not null)
+{
+    <div class="alert alert-success">@Model.MensajeExito</div>
+}
+@if (Model.MensajeError is not null)
+{
+    <div class="alert alert-danger">@Model.MensajeError</div>
+}
+
+<div class="card-ps doc-tab-seccion mb-4">
+    <span class="doc-resumen-total-titulo">
+        @(Model.EditId is null ? "Nuevo grupo" : Model.IsEditingGlobalTemplate ? "Plantilla de plataforma (solo lectura)" : "Editar grupo")
+    </span>
+
+    @if (Model.EditId is not null && Model.IsEditingGlobalTemplate)
+    {
+        <p class="text-muted">Esta es una plantilla global de plataforma -- no se puede editar desde acá. Creá un grupo propio si necesitás algo distinto.</p>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Save" asp-route-editId="@Model.EditId" asp-antiforgery="true">
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Input.Name" class="form-label"></label>
+                    <input asp-for="Input.Name" class="form-control" />
+                    <span asp-validation-for="Input.Name" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Input.CompanyId" class="form-label"></label>
+                    <select asp-for="Input.CompanyId" class="form-select">
+                        <option value="">Todas las compañías</option>
+                        @foreach (var company in Model.Companies)
+                        {
+                            <option value="@company.Value" selected="@(company.Value == Model.Input.CompanyId?.ToString())">@company.Text</option>
+                        }
+                    </select>
+                </div>
+                @if (Model.EditId is not null)
+                {
+                    <div class="form-group form-check">
+                        <input asp-for="Input.IsActive" class="form-check-input" />
+                        <label asp-for="Input.IsActive" class="form-check-label"></label>
+                    </div>
+                }
+            </div>
+            <div class="form-row">
+                <div class="form-group form-group-ancho-completo">
+                    <label asp-for="Input.Description" class="form-label"></label>
+                    <input asp-for="Input.Description" class="form-control" />
+                </div>
+            </div>
+
+            <h5 class="mt-3">Pantallas incluidas</h5>
+            <p class="text-muted" style="font-size: 12.5px;">
+                Elegí además el Perfil que van a HEREDAR todos los usuarios asignados a
+                este grupo para esa pantalla -- sin perfil, el nodo queda solo como
+                navegación, sin ningún permiso real. Podés dar a un usuario puntual un
+                acceso distinto desde su ficha (Usuarios → Permisos); eso tiene
+                prioridad sobre lo que herede acá.
+            </p>
+            <div style="max-height:400px; overflow-y:auto" class="border rounded p-2">
+                <div class="menu-perfil-grid">
+                    @foreach (var menu in Model.LeafMenus)
+                    {
+                        var perfilActual = Model.Input.DefaultProfileByMenu.GetValueOrDefault(menu.Id);
+                        <div class="menu-perfil-fila">
+                            <div class="form-check text-truncate">
+                                <input type="checkbox" class="form-check-input" name="Input.SelectedMenuIds" value="@menu.Id"
+                                       checked="@Model.Input.SelectedMenuIds.Contains(menu.Id)" id="menu-@menu.Id" />
+                                <label class="form-check-label" for="menu-@menu.Id" title="[@menu.OriginModule] @menu.Name">[@menu.OriginModule] @menu.Name</label>
+                            </div>
+                            <select name="Input.DefaultProfileByMenu[@menu.Id]" class="form-select form-select-sm">
+                                <option value="" selected="@(perfilActual is null or 0)">Sin perfil por defecto</option>
+                                @foreach (var profile in Model.ProfileOptions)
+                                {
+                                    <option value="@profile.Value" selected="@(profile.Value == perfilActual?.ToString())">@profile.Text</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary mt-3">@(Model.EditId is null ? "Crear" : "Guardar")</button>
+            @if (Model.EditId is not null)
+            {
+                <a asp-page="/GruposMenu/Index" class="btn btn-outline-secondary mt-3">Cancelar</a>
+            }
+        </form>
+    }
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Compañía</th>
+            <th>Origen</th>
+            <th>Activo</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var group in Model.Groups)
+        {
+            <tr>
+                <td>@group.Name</td>
+                <td>@(group.CompanyId is null ? "Todas" : Model.Companies.FirstOrDefault(c => c.Value == group.CompanyId.ToString())?.Text ?? group.CompanyId.ToString())</td>
+                <td>@(group.IsGlobalTemplate ? "Plantilla de plataforma" : "Propio")</td>
+                <td>@(group.IsActive ? "Sí" : "No")</td>
+                <td>
+                    <a asp-page="/GruposMenu/Index" asp-route-editId="@group.Id">@(group.IsGlobalTemplate ? "Ver" : "Editar")</a>
+                    @if (!group.IsGlobalTemplate)
+                    {
+                        <form method="post" asp-page-handler="Delete" asp-antiforgery="true" style="display:inline" onsubmit="return confirm('¿Eliminar este grupo de menú?');">
+                            <input type="hidden" name="id" value="@group.Id" />
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2">Eliminar</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Groups.Count == 0)
+{
+    <p class="text-muted">Todavía no hay grupos de menú.</p>
+}

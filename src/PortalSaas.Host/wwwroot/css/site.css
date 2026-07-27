@@ -1,3 +1,341 @@
+/* Identidad visual corporativa -- 4 paletas reales, portadas de
+   referencia-original/PortalSAP_v2/src/PortalSAP.Host/wwwroot/css/theme.css (líneas
+   21-122: claro/marino-oscuro/teal/violeta), no solo la de "claro". El selector de
+   tema (theme-switcher.js + los 4 botones de .theme-row en _Layout.cshtml) es lo que
+   el dueño del proyecto señaló como faltante ("la paleta de colores disponible que
+   deben ser 4") -- hasta esta entrega solo existía la paleta fija "claro", sin forma
+   de elegir ninguna otra.
+   --bs-primary mapea al --accent-2 de la referencia (el tono "acento fuerte" de cada
+   tema, más oscuro que --accent) -- botones/activo/hover/degradado lo usan, nunca
+   como fondo sólido de sidebar/topbar (esos son --card-bg, ver sidebar.css). El
+   selector [data-theme] se fija en <html> (ver _Layout.cshtml, script antes de pintar
+   + theme-switcher.js) -- cualquier módulo nuevo hereda el tema activo sin hacer nada
+   porque solo consume estas variables, nunca un color literal.
+   Bootstrap 5.1.0 vendored en este proyecto NO genera sus componentes desde variables
+   CSS en tiempo de ejecución salvo excepciones puntuales (confirmado leyendo
+   bootstrap.min.css: body/.table/.bg-* /.text-* SÍ consumen var(--bs-*), pero
+   .btn-primary/.page-link/.form-check-input tienen el color de Bootstrap Blue
+   (#0d6efd) compilado a fuego en la regla) -- por eso acá hay dos tipos de reglas:
+   redefinir las variables --bs-* (cubre body, bg-primary/text-primary, tablas) y
+   sobreescribir explícitamente los componentes que Bootstrap no parametrizó con
+   variables (.btn-primary, paginación). */
+
+/* "claro" (Light) -- tema por defecto, valores reales de theme.css líneas 21-49.
+   También en :root (mismos valores) para que la página no se vea sin estilo en el
+   instante entre el primer paint y que el script de _Layout.cshtml fije data-theme
+   (solo pasa en la primera visita jamás, sin nada todavía en localStorage). */
+:root,
+[data-theme="claro"] {
+  --bs-body-bg: #e4e7ec;
+  --bs-body-color: #1a1a1a;
+  --card-bg: #ffffff;
+  --card-border: #cbd1db;
+  --text-main: #1a1a1a;
+  --text-muted: #6b7280;
+  --bs-primary: #2c5282;
+  --bs-primary-rgb: 44, 82, 130;
+  --accent: #2c5282;
+  --accent-rgb: 44, 82, 130;
+  --accent-2: #1e3a5f;
+  --accent-soft: #e8f0fb;
+  --bs-success: #2d7d4e;
+  --bs-success-rgb: 45, 125, 78;
+  --bs-danger: #c0392b;
+  --bs-danger-rgb: 192, 57, 43;
+  --bs-warning: #d4880e;
+  --bs-warning-rgb: 212, 136, 14;
+  --input-bg: #ffffff;
+  --shadow-card: 0 24px 60px -28px rgba(30, 58, 95, 0.25);
+  /* Texto sobre una superficie pintada con --accent/--bs-primary (botón primario,
+     avatar de usuario, ícono de categoría raíz del sidebar) -- antes hardcodeado a
+     "#fff"/"color:#fff" directo en cada regla (site.css/sidebar.css), sin variable
+     propia. Blanco en los 4 temas porque los 4 acentos son medio-oscuros, pero queda
+     como configuración del tema (cambia acá, no en cada regla que lo consume). */
+  --on-accent: #ffffff;
+  /* Focus ring de Bootstrap (.btn:focus/.form-control:focus, ver más abajo) -- estaba
+     hardcodeado a "white"/"#258cfb" sin relación con el tema activo. */
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #0f9b8e;
+  --menu-color-3: #7c3aed;
+  --menu-color-4: #d97706;
+  --menu-color-5: #db2777;
+  --menu-color-6: #16a34a;
+}
+
+/* "oscuro" (Dark) -- theme.css líneas 51-74 ("marino"/"oscuro" comparten paleta ahí,
+   acá solo se porta "oscuro" -- "marino" no es un botón real del selector). */
+[data-theme="oscuro"] {
+  --bs-body-bg: #111827;
+  --bs-body-color: #f3f4f6;
+  --card-bg: #1f2937;
+  --card-border: #4b5563;
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --bs-primary: #3b82f6;
+  --bs-primary-rgb: 59, 130, 246;
+  --accent: #3b82f6;
+  --accent-rgb: 59, 130, 246;
+  --accent-2: #2563eb;
+  --accent-soft: #93c5fd;
+  --bs-success: #34d399;
+  --bs-success-rgb: 52, 211, 153;
+  --bs-danger: #f87171;
+  --bs-danger-rgb: 248, 113, 113;
+  --bs-warning: #fbbf24;
+  --bs-warning-rgb: 251, 191, 36;
+  --input-bg: #374151;
+  --shadow-card: 0 24px 70px -24px rgba(0, 0, 0, 0.75);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #2dd4bf;
+  --menu-color-3: #a78bfa;
+  --menu-color-4: #fbbf24;
+  --menu-color-5: #f472b6;
+  --menu-color-6: #4ade80;
+}
+
+/* "teal" (Ocean) -- theme.css líneas 76-98. */
+[data-theme="teal"] {
+  --bs-body-bg: #ddeef8;
+  --bs-body-color: #0a2a3c;
+  --card-bg: #f4f9fd;
+  --card-border: #a8d4e8;
+  --text-main: #0a2a3c;
+  --text-muted: #5c7a8a;
+  --bs-primary: #0096c7;
+  --bs-primary-rgb: 0, 150, 199;
+  --accent: #0096c7;
+  --accent-rgb: 0, 150, 199;
+  --accent-2: #0077b6;
+  --accent-soft: #caf0f8;
+  --bs-success: #2a9d8f;
+  --bs-success-rgb: 42, 157, 143;
+  --bs-danger: #c0392b;
+  --bs-danger-rgb: 192, 57, 43;
+  --bs-warning: #e76f51;
+  --bs-warning-rgb: 231, 111, 81;
+  --input-bg: #ffffff;
+  --shadow-card: 0 24px 60px -28px rgba(10, 74, 110, 0.2);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #2a9d8f;
+  --menu-color-3: #7c3aed;
+  --menu-color-4: #e76f51;
+  --menu-color-5: #e63946;
+  --menu-color-6: #3a86ff;
+}
+
+/* "violeta" (Violet) -- theme.css líneas 100-122. */
+[data-theme="violeta"] {
+  --bs-body-bg: #ede9fe;
+  --bs-body-color: #1e1b4b;
+  --card-bg: #ffffff;
+  --card-border: #ddd6fe;
+  --text-main: #1e1b4b;
+  --text-muted: #7c70a0;
+  --bs-primary: #7c3aed;
+  --bs-primary-rgb: 124, 58, 237;
+  --accent: #7c3aed;
+  --accent-rgb: 124, 58, 237;
+  --accent-2: #6d28d9;
+  --accent-soft: #ede9fe;
+  --bs-success: #059669;
+  --bs-success-rgb: 5, 150, 105;
+  --bs-danger: #dc2626;
+  --bs-danger-rgb: 220, 38, 38;
+  --bs-warning: #d97706;
+  --bs-warning-rgb: 217, 119, 6;
+  --input-bg: #faf8ff;
+  --shadow-card: 0 24px 60px -28px rgba(30, 27, 75, 0.2);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #0891b2;
+  --menu-color-3: #db2777;
+  --menu-color-4: #d97706;
+  --menu-color-5: #059669;
+  --menu-color-6: #4f46e5;
+}
+
+:root {
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  /* Swatches del selector de tema (.theme-row en _Layout.cshtml) -- antes cada botón
+     tenía su color hardcodeado en un atributo style="background:#..." en el cshtml,
+     duplicando (y pudiendo desincronizarse de) el --accent real de cada tema definido
+     arriba. Un swatch representa un tema que NO es necesariamente el activo, así que
+     no puede leer var(--accent) (esa siempre refleja el tema actual) -- necesita su
+     propio token siempre disponible en :root, uno por tema, con el MISMO valor que su
+     --accent respectivo. Única config de estos 4 colores; _Layout.cshtml ya no tiene
+     ningún color propio, solo la clase .theme-swatch-{tema}. */
+  --theme-preview-claro: #2c5282;
+  /* "Oscuro" muestra su --bs-body-bg (#111827), no su --accent (#3b82f6) -- a
+     propósito, mismo criterio que ya traía el markup original: un swatch azul ahí se
+     confundiría con "claro"/"teal" (los 3 tienen acento azulado), mientras que el
+     fondo oscuro es lo que distingue a este tema de un vistazo. */
+  --theme-preview-oscuro: #111827;
+  --theme-preview-teal: #0096c7;
+  --theme-preview-violeta: #7c3aed;
+}
+
+/* ==========================================================================
+   Compactación global -- regla de diseño del proyecto (ver CLAUDE.md "Densidad
+   visual estándar"): todo formulario cabecera/detalle de cualquier módulo
+   (backoffice de plataforma en /Admin/*, self-service de organización en
+   /organizacion/*, y los 3 motores genéricos de documento) comparte la MISMA
+   densidad, tipografía, color y comportamiento -- nunca un tamaño de fuente o
+   padding propio por módulo. Bootstrap por defecto es demasiado espaciado para
+   una grilla de datos tipo SAP B1 -- se reduce acá una sola vez, para TODO el
+   proyecto (no hay override puntual por página). */
+.form-control,
+.form-select,
+.form-check-input {
+  font-size: 13px;
+}
+
+.form-control,
+.form-select {
+  padding: 4px 8px;
+  min-height: 32px;
+}
+
+.form-select-sm,
+.form-control-sm {
+  padding: 2px 6px;
+  min-height: 28px;
+  font-size: 12.5px;
+}
+
+.form-label {
+  font-size: 12.5px;
+  margin-bottom: 2px;
+}
+
+.btn {
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring-color) 25%, transparent);
+}
+
+.btn-sm {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+/* Botones outline -- Bootstrap 5.1 compila el color a fuego sin variable (mismo
+   motivo que .btn-primary/.btn-outline-danger más arriba), y por defecto son
+   rectangulares/planos. Rediseño (27 jul 2026, regla dura de todo el proyecto):
+   fondo tenue de color (10%) en vez de transparente puro -- se lee como botón
+   secundario real, no como un link con borde, y el hover pasa a fill sólido con
+   una leve sombra de acento (mismo lenguaje que .btn-primary). */
+.btn-outline-secondary {
+  color: var(--text-main);
+  border-color: var(--card-border);
+  background-color: var(--input-bg);
+}
+
+.btn-outline-secondary:hover {
+  color: var(--on-accent);
+  background-color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.btn-outline-primary {
+  color: var(--accent);
+  border-color: var(--accent);
+  background-color: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.btn-outline-primary:hover {
+  color: var(--on-accent);
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.card-ps {
+  padding: 16px;
+}
+
+.table {
+  font-size: 13px;
+}
+
+.table > :not(caption) > * > * {
+  padding: 6px 10px;
+}
+
+h1.h3, .h3 { font-size: 1.4rem; }
+h2.h5, .h5 { font-size: 1rem; }
+
+.btn-primary {
+  color: var(--on-accent);
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Hover con --accent-2 (tono oscuro) -- mismo criterio exacto que .btn-erp-primary
+   del original (base --accent, hover --accent-2). --bs-primary ahora vale lo mismo
+   que --accent (bug real corregido: antes --bs-primary apuntaba a --accent-2 y el
+   botón nacía oscuro, con el hover aclarando -- justo al revés que el original). */
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+.btn-primary:active,
+.btn-primary:active:focus {
+  background-color: color-mix(in srgb, var(--bs-primary) 80%, black) !important;
+  border-color: color-mix(in srgb, var(--bs-primary) 80%, black) !important;
+}
+
+/* .btn-outline-danger de Bootstrap tiene el rojo (#dc3545) compilado a fuego, sin
+   variable -- mismo motivo que .btn-primary/.pagination más arriba. Primer consumidor
+   real: botón "Desconectar" de /Admin/Sessions (clientes conectados). */
+.btn-outline-danger {
+  color: var(--bs-danger);
+  border-color: var(--bs-danger);
+  background-color: color-mix(in srgb, var(--bs-danger) 8%, transparent);
+}
+
+.btn-outline-danger:hover {
+  color: var(--on-accent);
+  background-color: var(--bs-danger);
+  border-color: var(--bs-danger);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--bs-danger) 35%, transparent);
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.pagination .page-link {
+  color: var(--bs-primary);
+}
+
+/* Navbar del backoffice de administración (_AdminLayout.cshtml) -- Bootstrap 5.1
+   compila .bg-dark a un gris/negro fijo sin variable, así que no alcanza con
+   redefinir --bs-primary acá; se sobreescribe el selector puntual que arma ese
+   navbar (navbar-dark ya deja el texto/enlaces en blanco, solo hace falta el fondo). */
+.navbar.bg-dark {
+  background-color: var(--bs-primary) !important;
+}
+
 html {
   font-size: 14px;
 }
@@ -8,8 +346,13 @@ html {
   }
 }
 
+/* Anillo de foco -- estaba hardcodeado a "white"/"#258cfb" (azul de Bootstrap fijo),
+   sin relación con el tema activo ni con --card-bg en tema oscuro (un halo blanco
+   sobre fondo oscuro se ve como un recuadro roto). var(--card-bg) simula el "espacio"
+   entre el control y el anillo (mismo truco que Bootstrap usa con --bs-body-bg, pero
+   theme-aware), var(--focus-ring-color) es el aro real (= --accent del tema). */
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem var(--card-bg), 0 0 0 0.25rem var(--focus-ring-color);
 }
 
 html {
@@ -21,13 +364,922 @@ body {
   margin-bottom: 60px;
 }
 
-/* Bootstrap fija .table a width:100% -- con pocas columnas de contenido corto (ej.
-   Inventario: N° documento/Fecha/Estado) eso reparte todo el ancho sobrante del
-   contenedor como separación entre celdas, dejando la tabla ilegible en pantallas
-   anchas. auto-layout + width:auto hace que la tabla mida solo lo que su contenido
-   necesita -- .table-responsive (ver DocumentList/Default.cshtml) sigue cubriendo el
-   caso real de contenido más ancho que el viewport. */
+/* width:100% -- valor real de .admin-table (theme.css:1185), la tabla debe llenar el
+   ancho de .document-list-table-wrapper/.card-ps, no encogerse a su contenido. Una
+   entrega anterior de esta sesión había puesto width:auto asumiendo (sin verificar
+   contra un navegador real) que eso evitaba "huecos" en tablas angostas -- el efecto
+   real, confirmado por el dueño del proyecto contra una captura real, era el
+   contrario: la grilla quedaba angosta y descentrada, sin ocupar el ancho de la
+   página, y sin adaptarse al viewport. .document-list-table-wrapper (overflow:auto)
+   sigue cubriendo el caso de contenido más ancho que el viewport -- scroll horizontal
+   ahí, nunca la tabla encogiéndose. */
+/* --bs-table-striped-bg estaba hardcodeado a #fafafa (claro fijo) -- en tema oscuro
+   eso pintaba filas alternadas casi blancas con texto claro encima (--bs-body-color
+   también claro en ese tema), perdiendo el contraste por completo (bug real
+   reportado: "las letras no se visualizan"/"líneas oscuras y blancas"). Con
+   color-mix(...,transparent) el navegador compone el tinte sobre el fondo real de la
+   fila (card-bg), aclarando/oscureciendo según el tema en vez de un valor fijo. */
 .document-list-table {
-  width: auto;
-  min-width: 50%;
+  width: 100%;
+  --bs-table-striped-bg: color-mix(in srgb, var(--text-main) 6%, transparent);
+  --bs-table-color: var(--text-main);
+  --bs-table-striped-color: var(--text-main);
+  border: 1px solid var(--card-border);
+}
+
+/* Solo lo estructural acá -- el color/tipografía del header lo pone
+   .line-items-table thead th (la referencia usa LA MISMA clase .admin-table para el
+   listado principal Y las líneas de detalle de un documento, ver DocumentList/
+   Default.cshtml que ya combina "document-list-table line-items-table" en el mismo
+   <table>) -- no duplicar la regla acá. */
+.document-list-table thead th {
+  background-color: var(--card-bg);
+  white-space: nowrap;
+  /* Sticky real -- mismo criterio que .doc-list-tabla thead th (theme.css:1517): el
+     encabezado no se pierde al scrollear una tabla larga dentro de .document-list-
+     table-wrapper. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.document-list-table td,
+.document-list-table th {
+  border-color: var(--card-border);
+}
+
+.document-list-table tbody tr:hover {
+  background-color: color-mix(in srgb, var(--bs-primary) 6%, transparent);
+}
+
+/* Caja con borde/radio alrededor de la tabla, encabezado sticky adentro -- portado de
+   .doc-list-tabla-wrapper (theme.css:1510, max-height real: 60vh). El filtro/buscador
+   queda siempre AFUERA de esta caja (igual que la referencia), nunca se va con el
+   scroll. */
+.document-list-table-wrapper {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  overflow: auto;
+  max-height: 60vh;
+}
+
+.document-list-table-wrapper .document-list-table {
+  border: none;
+  margin-bottom: 0;
+}
+
+/* Card de filtros -- portado de .doc-list-filtros (theme.css:1438), mismo valor real
+   de padding/borde/radio. Filas cortas y compactas (align-items:flex-end) como en la
+   referencia, para que el botón "Filtrar" quede a la altura de los inputs. */
+.filter-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+}
+
+.filter-card .col-auto {
+  min-width: 160px;
+}
+
+.filter-card .form-control,
+.filter-card .form-select {
+  background: var(--card-bg);
+}
+
+/* Bootstrap 5.1 fija color:#212529 (oscuro) a fuego en .form-control/.form-select --
+   sin variable propia, a diferencia de .table/.bg-* /.text-* (ver el comentario grande
+   al principio de este archivo). En tema oscuro el fondo de estos campos ya se pinta
+   oscuro (var(--card-bg)/var(--input-bg)) pero el TEXTO se quedaba en ese mismo gris
+   oscuro fijo -- texto invisible sobre fondo oscuro (bug real reportado: "las letras
+   no se visualizan" en los filtros de Órdenes de Venta con tema oscuro). Global, no
+   acotado a .filter-card -- el mismo problema existe en cualquier input del portal
+   (login, formularios de documento, backoffice), no solo en los filtros de listado. */
+.form-control,
+.form-select {
+  color: var(--text-main);
+  background-color: var(--input-bg);
+  border-color: var(--card-border);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--input-bg);
+  color: var(--text-main);
+}
+
+.form-control:disabled,
+.form-control:read-only,
+.form-select:disabled {
+  color: var(--text-muted);
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Tabla de líneas de detalle (tab Contenido de Orden de Venta/Oferta/Pedido/
+   Traslado, etc.) Y tabla del listado principal (DocumentList/Default.cshtml,
+   combinada con .document-list-table en el mismo <table>) -- portada de
+   .admin-table (theme.css:1184). Encabezado mayúscula chico gris, sin relleno de
+   color -- la referencia usa la MISMA clase para las dos, no dos tratamientos
+   visuales distintos (corrección 26 jul 2026: la entrega anterior le había puesto un
+   relleno azul solo al listado principal, que no existe en el archivo real). */
+.line-items-table {
+  font-size: 13px;
+}
+
+.line-items-table thead th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--card-border);
+  font-weight: 600;
+  background: transparent;
+}
+
+.line-items-table td {
+  border-bottom: 1px solid var(--card-border);
+  vertical-align: middle;
+}
+
+.line-items-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ==========================================================================
+   Listado de documentos como UNA sola tarjeta -- portado de referencia-original/
+   PortalSAP_v2 (<div class="card-ps doc-list">, theme.css:143/1419-1638). La entrega
+   anterior tenía el filtro y la tabla como piezas separadas flotando sobre el fondo
+   de página -- acá van dentro del mismo contenedor con borde/radio.
+   ========================================================================== */
+
+.card-ps {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+}
+
+.doc-list {
+  padding: 16px;
+}
+
+/* Formulario de documento -- portado de .doc-form/.doc-form-volver/.doc-form-header
+   (theme.css:1524-1554), faltaban por completo: la entrega anterior armaba este
+   encabezado con utilitarios sueltos de Bootstrap (d-flex/h3) en vez de las clases
+   reales, así que quedaba sin el padding/tipografía de .card-ps doc-form. */
+.doc-form {
+  padding: 16px;
+}
+
+.doc-form-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.doc-form-volver:hover {
+  color: var(--accent);
+}
+
+.doc-form-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.doc-form-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.doc-list-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.doc-list-contador {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* Columna final de "ir al detalle" (chevron) -- portada de .doc-list-col-detalle
+   (theme.css:1489), reemplaza el link en la primera celda de la entrega anterior. */
+.doc-list-col-detalle {
+  text-align: center;
+  width: 32px;
+}
+
+.doc-list-col-detalle a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.doc-list-fila {
+  cursor: pointer;
+}
+
+.doc-list-paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.doc-list-paginacion .disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Barra de acciones de una tabla de líneas de detalle -- "+ Agregar línea"/"Descargar
+   plantilla CSV"/"Importar CSV"/"Vaciar todas las líneas" (ver document-lines-editor.js).
+   Antes sin gap propio (solo separación por defecto de elementos inline-block) --
+   ahora una fila con espaciado consistente, mismo patrón en los 3 motores genéricos. */
+.admin-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Botones "« Anterior"/"Siguiente »" -- portado de .btn-module-action (theme.css:170),
+   faltaba por completo: la entrega anterior los armaba con btn-outline-secondary de
+   Bootstrap, que usa el gris fijo de Bootstrap (--bs-secondary, #6c757d) sin variables
+   de tema -- en tema oscuro el borde/texto quedaba casi del mismo tono que el fondo,
+   perdiendo el botón por completo (mismo bug reportado de contraste en tema oscuro). */
+.btn-module-action {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-module-action:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+/* ==========================================================================
+   Selector de tema (4 paletas) -- portado de theme.css:839-860. Los 4 botones viven
+   en el dropdown de usuario (_Layout.cshtml .user-menu-panel), theme-switcher.js
+   cablea el click + localStorage.
+   ========================================================================== */
+
+.theme-row {
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px 10px;
+}
+
+.theme-row button {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Color de cada swatch -- por atributo data-theme-switch (mismo atributo que ya lee
+   theme-switcher.js), no por clase aparte ni style="" inline. Fuente única: los 4
+   --theme-preview-* de :root, arriba. */
+.theme-row button[data-theme-switch="claro"] { background: var(--theme-preview-claro); }
+.theme-row button[data-theme-switch="oscuro"] { background: var(--theme-preview-oscuro); }
+.theme-row button[data-theme-switch="teal"] { background: var(--theme-preview-teal); }
+.theme-row button[data-theme-switch="violeta"] { background: var(--theme-preview-violeta); }
+
+.theme-row button[data-active="true"] {
+  border-color: var(--accent);
+}
+
+/* ==========================================================================
+   (C) Formulario de documento -- portado de theme.css .doc-tabs/.doc-tab-btn/
+   .doc-tab-seccion/.form-row/.doc-columnas-2/.doc-badge-* /.doc-resumen-total.
+   Clases agregadas junto a las de Bootstrap ya existentes en el markup (nav-tabs/
+   nav-link/badge), nunca las reemplazan -- así no hace falta tocar el PageModel que
+   arma StatusClass/data-bs-toggle.
+   ========================================================================== */
+
+/* Tabs de navegación interna del documento -- rediseño (27 jul 2026, regla dura de
+   diseño para todo el proyecto, ver CLAUDE.md "Densidad visual estándar"): pasa de
+   subrayado plano a un grupo segmentado tipo "pill switcher" (mismo lenguaje visual
+   que un selector de vista moderno) -- contenedor con fondo tenue y borde, cada tab
+   es una pastilla; la activa se pinta con --accent sólido y texto --on-accent, en vez
+   de solo cambiar el color de un subrayado de 2px. Conviven con nav-tabs/nav-link de
+   Bootstrap (mismo <ul>/<button>, dos clases cada uno) -- se anulan explícitamente
+   los estilos propios de Bootstrap. */
+.doc-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 4px;
+  margin-bottom: 4px;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  border-bottom: 1px solid var(--card-border) !important;
+}
+
+.doc-tab-btn {
+  border: none !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 6px 16px !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent !important;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.doc-tab-btn:hover {
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--text-main) 6%, transparent) !important;
+}
+
+.doc-tab-btn.active {
+  color: var(--on-accent) !important;
+  background: var(--accent) !important;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.doc-tab-btn.active:hover {
+  background: var(--accent) !important;
+}
+
+/* Badge de estado -- portado de .doc-badge-abierto/cerrado/pendiente
+   (theme.css:1555-1577). Clase marcador (doc-status-badge) agregada en el markup
+   junto al bg-success/bg-secondary/bg-warning que ya arma el PageModel -- nunca se
+   tocó ese C#, solo se re-estiliza acá con selector compuesto. */
+.doc-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.doc-status-badge.bg-success {
+  color: var(--bs-success) !important;
+  background: color-mix(in srgb, var(--bs-success) 15%, transparent) !important;
+}
+
+.doc-status-badge.bg-secondary {
+  color: var(--text-muted) !important;
+  background: color-mix(in srgb, var(--text-muted) 15%, transparent) !important;
+}
+
+.doc-status-badge.bg-warning {
+  color: var(--bs-warning) !important;
+  background: color-mix(in srgb, var(--bs-warning) 15%, transparent) !important;
+}
+
+/* Sección de tab (General/Contenido/Logística/Finanzas) -- portada de .doc-tab-seccion
+   (theme.css:1614). Las tabs de arriba (.doc-tabs) quedan sticky -- scroll-margin-top
+   evita que el título de la sección quede tapado detrás al hacer scroll-into-view
+   (doc-tabs.js), mismo valor real de la referencia. Ahora con consumidor real: las 3
+   secciones (General/Contenido/+Logística/Finanzas si aplican) se ven TODAS a la vez,
+   apiladas -- las tabs son anclas de scroll, nunca ocultan la sección anterior (ver
+   DocumentForm/Default.cshtml). */
+.doc-tab-seccion {
+  margin-bottom: 12px;
+  scroll-margin-top: 48px;
+}
+
+.doc-tab-seccion:last-child {
+  margin-bottom: 0;
+}
+
+.doc-tab-seccion + .doc-tab-seccion {
+  border-top: 1px solid var(--card-border);
+  padding-top: 12px;
+}
+
+/* Grilla base de campos -- portada de .form-row genérico (fuera de .doc-tab-seccion,
+   theme.css usa esto para formularios que no son de documento, ej. Configuración).
+   Dentro de .doc-tab-seccion se vuelve más densa y cada campo es una celda con
+   borde -- ver la regla siguiente. */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-group-ancho-completo {
+  grid-column: 1 / -1;
+}
+
+/* Grilla densa tipo SAP B1 -- portada literal de theme.css:1631-1650. Reemplaza la
+   lista plana "label encima del valor" por una grilla con separación real: cada
+   .form-group es una celda visible (borde + fondo propio), no solo texto flotando. */
+.doc-tab-seccion .form-row {
+  gap: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.doc-tab-seccion .form-group {
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+.doc-tab-seccion .form-group .form-label {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-bottom: 1px;
+  display: block;
+}
+
+.doc-tab-seccion .form-group .form-control,
+.doc-tab-seccion .form-group .form-select {
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+}
+
+/* Texto de ayuda dentro de una celda (ej. "SAP no permite mezclar líneas..." bajo
+   Tipo de línea) -- sin este margen queda pegado al borde inferior de la celda,
+   dando sensación de apretado (reportado por el dueño del proyecto). */
+.doc-tab-seccion .form-group .form-text {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.doc-tab-seccion .form-group .form-control:disabled,
+.doc-tab-seccion .form-group .form-select:disabled {
+  background: transparent;
+  color: var(--text-main);
+}
+
+.doc-tab-seccion .form-group .form-control:focus,
+.doc-tab-seccion .form-group .form-select:focus {
+  box-shadow: none;
+}
+
+/* Layout de 2 columnas independientes (no confundir con .form-row, que empareja de
+   a 2 campos por fila fija) -- portado de .doc-columnas-2, cada .doc-columna es su
+   propia lista vertical de campos. Sin consumidor real todavía (ningún tab de este
+   proyecto necesita 2 columnas independientes hoy), queda lista para Logística/
+   Finanzas. */
+.doc-columnas-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+}
+
+.doc-columna {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Grilla checkbox + perfil por defecto de /organizacion/grupos-menu -- cada fila es
+   [checkbox+label de ancho flexible] [select de ancho fijo], para que todos los
+   selects de la lista queden alineados en la misma columna sin importar el largo
+   del nombre de la pantalla. */
+.menu-perfil-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menu-perfil-fila {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 2px;
+}
+
+.menu-perfil-fila:hover {
+  background: var(--input-bg);
+  border-radius: 6px;
+}
+
+.menu-perfil-fila .form-check {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Resumen de totales -- portado de .doc-resumen-total (theme.css, sección Contenido).
+   Primer consumidor real: Modulo.Ventas (26 jul 2026), ver
+   DetailGenericSalesDocumentModelBase (TotalBeforeDiscount/Discount/Tax/DocumentTotal). */
+.doc-resumen-total {
+  max-width: 480px;
+  margin-left: auto;
+  border-top: 1px solid var(--card-border);
+  padding-top: 12px;
+}
+
+/* Título "Resumen total" -- portado de .admin-subtitulo (theme.css:1174), con nombre
+   propio en vez del genérico original (acá no existe una clase "admin-subtitulo"
+   reusada en otros lados, así que se nombra específica a este bloque). */
+.doc-resumen-total-titulo {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin: 0 0 8px;
+}
+
+.doc-resumen-total-fila {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  color: var(--text-muted);
+}
+
+.doc-resumen-total-final {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  border-top: 1px solid var(--card-border);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+/* Responsive: .form-row/.doc-columnas-2 son grids de 2 columnas fijas -- en un
+   viewport angosto (tablet/celular) eso deja cada celda demasiado angosta en vez de
+   apilarse. Colapsan a 1 columna bajo el mismo breakpoint que ya usa Bootstrap para
+   md (768px, ver el font-size responsive de más arriba). .form-group-ancho-completo
+   ya ocupa las 2 columnas siempre, no necesita regla propia acá. */
+/* ============================= Inicio (post-login) -- accesos directos ============================= */
+/* Portado de referencia-original/PortalSAP_v2 theme.css (.inicio-*) -- grilla de tarjetas
+   personalizable en la pantalla de Inicio, mismo --menu-color-N que el chip de icono del
+   sidebar (SidebarMenu/Default.cshtml) para que se lean como el mismo lenguaje visual. */
+.inicio-accesos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.inicio-acceso-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-main);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.inicio-acceso-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card);
+  border-color: var(--icon-color, var(--accent));
+}
+
+.inicio-acceso-icono {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--icon-color, var(--accent)) 15%, transparent);
+  color: var(--icon-color, var(--accent));
+  font-size: 19px;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.inicio-acceso-card:hover .inicio-acceso-icono {
+  transform: scale(1.12) rotate(-6deg);
+  background: color-mix(in srgb, var(--icon-color, var(--accent)) 26%, transparent);
+}
+
+.inicio-acceso-nombre {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* Envoltorio solo para el modo personalizado (botón "x" superpuesto en la esquina de la
+   tarjeta) -- position:relative en el wrap, absolute en el botón, para no alterar el
+   tamaño/centrado de .inicio-acceso-card. */
+.inicio-acceso-wrap {
+  position: relative;
+}
+
+.inicio-acceso-quitar {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+}
+
+.inicio-acceso-quitar button {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.inicio-acceso-quitar button:hover {
+  background: var(--bs-danger);
+  color: #fff;
+  border-color: var(--bs-danger);
+}
+
+/* Tile "+" -- mismo tamaño/forma que .inicio-acceso-card pero con borde punteado, para
+   que se lea como una acción ("agregar") y no como otro módulo más de la grilla. */
+.inicio-acceso-agregar {
+  border-style: dashed;
+  cursor: pointer;
+  font: inherit;
+}
+
+.inicio-acceso-agregar .inicio-acceso-icono {
+  --icon-color: var(--text-muted);
+}
+
+.inicio-acceso-agregar:hover {
+  border-color: var(--accent);
+}
+
+.inicio-acceso-agregar:hover .inicio-acceso-icono {
+  --icon-color: var(--accent);
+}
+
+.inicio-picker {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+}
+
+.inicio-picker-lista {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inicio-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.inicio-picker-item:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.inicio-picker-item span {
+  font-size: 13px;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 767.98px) {
+  .form-row,
+  .doc-columnas-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-perfil-fila {
+    grid-template-columns: 1fr;
+    row-gap: 4px;
+  }
+}
+
+/* ==========================================================================
+   Login (Account/Login.cshtml) -- estructura split-screen portada de
+   referencia-original/PortalSAP_v2 (theme.css .login-*): panel de marca a la
+   izquierda (degradado --accent/--accent-2) + tarjeta de formulario a la derecha.
+   Solo la ESTRUCTURA, nunca colores propios -- todo sale de las variables de tema ya
+   definidas arriba (--on-accent para texto sobre el degradado, en vez del blanco fijo
+   que usaba el original ahí). A diferencia del original (single-tenant, selecciona
+   "Empresa" en el mismo formulario), acá el login no conoce la organización todavía
+   (se resuelve por Input.OrganizationSlug recién al enviar el form) -- el panel de
+   marca es branding genérico de la plataforma, no de un cliente puntual, y no hay
+   selector de compañía acá (ese paso vive aparte, ver Account/SelectCompany.cshtml.cs).
+   ========================================================================== */
+
+.login-bg {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  font-family: var(--font-sans, inherit);
+  color: var(--text-main);
+}
+
+@media (max-width: 900px) {
+  .login-bg {
+    grid-template-columns: 1fr;
+  }
+
+  .login-brand-panel {
+    display: none;
+  }
+}
+
+.login-brand-panel {
+  position: relative;
+  background:
+    radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--on-accent) 10%, transparent), transparent 40%),
+    linear-gradient(165deg, var(--accent) 0%, var(--accent-2) 78%, var(--bs-body-bg) 100%);
+  color: var(--on-accent);
+  padding: 56px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+/* Textura fina de líneas diagonales, casi imperceptible -- portada tal cual del
+   original, da profundidad de "material" sin competir con el texto. */
+.login-brand-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--on-accent) 3.5%, transparent) 0px, color-mix(in srgb, var(--on-accent) 3.5%, transparent) 1px, transparent 1px, transparent 34px);
+  pointer-events: none;
+}
+
+.login-brand-panel > * {
+  position: relative;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.login-brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--on-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--on-accent) 28%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.login-brand-text h1 {
+  font-size: 18px;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+.login-brand-text p {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--on-accent) 68%, transparent);
+  letter-spacing: 0.2px;
+}
+
+.login-pitch h2 {
+  font-size: 28px;
+  line-height: 1.3;
+  margin: 0 0 14px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  max-width: 22ch;
+}
+
+.login-pitch p {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--on-accent) 78%, transparent);
+  max-width: 40ch;
+  margin: 0;
+}
+
+.login-brand-panel .login-footer {
+  color: color-mix(in srgb, var(--on-accent) 60%, transparent);
+  text-align: left;
+  margin: 0;
+}
+
+.login-form-panel {
+  background:
+    radial-gradient(circle at 85% 15%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 45%),
+    var(--bs-body-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  min-height: 100vh;
+}
+
+.login-shell {
+  width: 100%;
+  max-width: 380px;
+}
+
+.login-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 40px 36px;
+}
+
+.login-card h2 {
+  font-size: 20px;
+  margin: 0 0 6px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+}
+
+.login-card .login-subtitle {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin: 0 0 28px;
+}
+
+/* Botón de envío -- mismo degradado que .btn-erp-primary.btn-block del original
+   (--accent -> --accent-2), distinto del .btn-primary plano del resto del portal a
+   propósito: es la única acción de toda la pantalla, se destaca con el degradado. */
+.login-submit {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  margin-top: 8px;
+  color: var(--on-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 14px 28px -16px color-mix(in srgb, var(--accent-2) 70%, transparent);
+  transition: filter 0.15s ease;
+}
+
+.login-submit:hover {
+  filter: brightness(1.06);
+}
+
+.login-footer {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 22px;
 }

@@ -66,7 +66,7 @@ Los tres están **0% portados** en este proyecto. El más caro de los tres es el
 | **Tabs Logística + Finanzas** (`VistaLogistica`/`VistaContabilidad`) | ❌ Falta — `DocumentFormViewModel.LogisticsView`/`AccountingView` ya soportan esto, solo falta poblar los campos y catálogos |
 | Catálogos Cliente/Vendedor/Artículo/Almacén | ✅ Portado |
 | **Catálogos Cuenta contable/Dimensión/Empleado(Responsable)/Forma de envío/Condición de pago** | ❌ Faltan los 5 — bloquean tabs Logística/Finanzas y líneas de Servicio |
-| **Líneas de tipo Servicio** | ❌ Ya diferido explícitamente (ver `CLAUDE.md`, diseño completo documentado ahí) |
+| **Líneas de tipo Servicio** | ✅ Portado 26 jul 2026 (`DocumentLineType`, `IGeneralLedgerAccountCatalogService`/`ICostCenterCatalogService`) — Dimensión2/Dimensión3 siguen sin portar (YAGNI), sin verificar contra SAP real todavía |
 | **`CamposAdicionales`/UDF dinámicos** (`SapCamposAdicionalesHelper.Aplanar`) | ❌ Falta — sin esto no hay forma de mandar un UDF custom sin tocar código |
 | **Campo condicional por tipo** (ej. `NumeroNotaCreditoOrigen` solo para `NotaCredito`) | ❌ Falta el mecanismo (no hay ningún campo específico de subtipo implementado todavía) |
 | **Importador CSV de líneas del formulario** (`IImportadorLineasDocumentoService`, ver §1.0 #1) | ❌ Diferido a propósito (ver plan de la Fase 1) |
@@ -78,10 +78,10 @@ Los tres están **0% portados** en este proyecto. El más caro de los tres es el
 | Funcionalidad del original | Estado acá |
 |---|---|
 | 2 tipos de documento | ✅ Portado |
-| Oferta permite crear, Pedido nace de Copy-From al aprobar | ⚠️ **Desviación deliberada**: acá ambos permiten creación directa (documentado en `CLAUDE.md`) |
+| Oferta permite crear, Pedido nace de Copy-From al aprobar | ⚠️ **Desviación deliberada**: acá ambos permiten creación directa por default (documentado en `CLAUDE.md`) — desde el 26 jul 2026 existe `OrganizationDocumentPermission` con UI real (`/Admin/Organizations/DocumentPermissions`) para hacer un override por organización sin tocar código ni SQL directo |
 | **Motor de aprobación** (`IAprobacionService`/`Modulo.Aprobacion`, N niveles configurables, condiciones SQL por etapa) | ❌ Completamente ausente — es la brecha más grande del proyecto en general, ver §6 más abajo (se relaciona con Rendiciones) |
 | **`Comprador`/`GrupoAprobacion`** (admin del equipo de aprobadores) | ❌ Falta (depende del motor de aprobación) |
-| Catálogos Cuenta contable/Dimensión (líneas de Servicio) | ❌ Mismo gap que Venta |
+| Catálogos Cuenta contable/Dimensión (líneas de Servicio) | ✅ Portado 26 jul 2026, mismo estado que Venta |
 | **Importador CSV de líneas del formulario** (`IImportadorLineasDocumentoService`, ver §1.0 #1) | ❌ Falta — **es el mismo servicio compartido que usa Venta**, `GenericoVentaLineaDto`/`GenericoCompraLineaDto` son estructuralmente idénticos así que en el original vive una sola vez en `Core` y ambos módulos lo consumen pasándole sus propios catálogos ya cargados (`CatalogosImportacionLineas`); portarlo para Venta lo deja prácticamente listo para Compra también |
 
 ### 1.3 Motor de Inventario (`GenericoInventario` → `InventoryDocumentService`)
@@ -185,19 +185,24 @@ servicio aislado.
 ### 2.3 Lo que hace este porte más caro de lo que parece: 6 catálogos ausentes
 
 El motor en sí (853 líneas, autocontenido, bien comentado) no es lo caro — lo caro son
-las dependencias que hoy **no existen en este proyecto**:
+las dependencias. **Actualización 26 jul 2026: 5 de 7 ya están portadas** (sin ningún
+consumidor real todavía -- ningún plugin las usa hasta que se porte el importador en
+sí, quedan listas para cuando se decida encararlo):
 
 | Servicio que consume el importador | Estado acá |
 |---|---|
-| `IParidadCatalogoService` (SKU cliente ↔ `ItemCode`) | ❌ No existe |
-| `ICuentaContableCatalogoService` | ❌ No existe |
-| `IDimensionCatalogoService` (`CostingCode` 1/2/3, DimCode) | ❌ No existe |
-| `IListaPrecioService.ObtenerPreciosAsync` | ❌ No existe |
-| `ISocioNegocioDefaultsService` (vendedor/lista de precio default del socio) | ❌ No existe |
+| `IParidadCatalogoService` (SKU cliente ↔ `ItemCode`) | ✅ Portado (`IItemCrossReferenceService`, `PortalSaas.Core.Catalogos`) |
+| `ICuentaContableCatalogoService` | ✅ Portado (`IGeneralLedgerAccountCatalogService`, de la entrega de líneas de Servicio) |
+| `IDimensionCatalogoService` (`CostingCode` 1/2/3, DimCode) | ✅ Portado parcial (`ICostCenterCatalogService`, solo `DimCode=1`/Centro de Costos -- Dimensión2/3 quedan fuera, mismo YAGNI de la entrega de líneas de Servicio) |
+| `IListaPrecioService.ObtenerPreciosAsync` | ✅ Portado (`IPriceListService`) |
+| `ISocioNegocioDefaultsService` (vendedor/lista de precio default del socio) | ✅ Portado (`IBusinessPartnerDefaultsService`) |
 | `SapCamposAdicionalesHelper.Aplanar`/`EsNombreReservado` | ❌ No existe |
 | `AdditionalFields` (campos dinámicos) en los DTOs de documento | ❌ No existe en ningún DTO nuevo |
 
-Sin estos 6-7 servicios, "toda su lógica" se degrada a un importador que solo maneja
+Sin los 2 que faltan (`SapCamposAdicionalesHelper` + `AdditionalFields` en los DTOs),
+sigue sin poder importarse con campos de usuario/UDF dinámicos -- son el prerrequisito
+real que queda antes de poder atacar el motor (`ImportacionGenericaService`, 853
+líneas) en sí. Sin estos, "toda su lógica" se degrada a un importador que solo maneja
 líneas de Artículo con almacén — se pierde Servicio (cuenta mayor + 3 dimensiones),
 paridad SKU, precio de lista de sistema, y **campos de usuario enteros** (sin
 `SapCamposAdicionalesHelper` el CRUD de `CamposUsuario` no tiene ningún efecto real).
@@ -393,9 +398,16 @@ diseñado.
 ningún mecanismo para:
 - Subir/instalar un plugin nuevo sin acceso al filesystem del servidor.
 - Habilitar/deshabilitar un plugin **por organización** (hoy todos los plugins
-  cargados están disponibles para todas las organizaciones por igual — brecha ya
-  anotada en `CLAUDE.md`: "el filtrado del árbol de menú por módulos contratados
-  (`organization_modules`) tampoco existe").
+  cargados están disponibles para todas las organizaciones por igual). **Actualización
+  26 jul 2026**: el consumo de este filtro ya se construyó (`IModuleAccessService`/
+  `MenuNavigationService` filtra `Menu.OriginModule` contra los `PlatformModule.Code`
+  contratados por la organización) y ya existe UI real para cargar las tres tablas
+  (`/Admin/PlatformModules`, la sección "Módulos incluidos" de `/Admin/Plans/Edit`, y
+  `/Admin/Organizations/Modules` para add-ons -- ver `CLAUDE.md`). Sigue habiendo un
+  hueco real: instalar un plugin nuevo (`artifacts/plugins/`) no da de alta
+  automáticamente su `PlatformModule` -- hay que crearlo a mano en `/Admin/PlatformModules`
+  con un `Code` que coincida exactamente con el `ModuleCode` del plugin, ningún
+  chequeo automático lo valida todavía.
 - Versionar/actualizar un plugin en caliente.
 
 ### 4.2 Relación directa con una brecha ya conocida

@@ -20,10 +20,17 @@ internal sealed class SapInventoryDocumentHeader
     public int? DocEntry { get; set; }
     public int? DocNum { get; set; }
     public DateTime? DocDate { get; set; }
+
+    /// <summary>NNM1.Series -- null omite el campo del JSON, SAP asigna la serie por defecto del tipo de documento.</summary>
+    public int? Series { get; set; }
+
     public string? Comments { get; set; }
     public string? DocumentStatus { get; set; }
     public List<SapInventoryDocumentLine> StockTransferLines { get; set; } = [];
     public string? U_PortalUser { get; set; }
+
+    /// <summary>Campos de usuario (UDF dinámicos) -- ver SapAdditionalFieldsHelper.</summary>
+    public IReadOnlyDictionary<string, object?>? AdditionalFields { get; set; }
 }
 
 internal sealed class SapInventoryDocumentLine
@@ -37,4 +44,7 @@ internal sealed class SapInventoryDocumentLine
 
     /// <summary>Almacén origen de esta línea.</summary>
     public string FromWarehouseCode { get; set; } = null!;
+
+    /// <summary>Campos de usuario de línea -- ver SapInventoryDocumentHeader.AdditionalFields.</summary>
+    public IReadOnlyDictionary<string, object?>? AdditionalFields { get; set; }
 }

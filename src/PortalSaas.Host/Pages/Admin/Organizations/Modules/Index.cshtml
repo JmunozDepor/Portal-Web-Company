@@ -1,0 +1,72 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Modules.IndexModel
+@{
+    ViewData["Title"] = $"Módulos · {Model.Organization.LegalName}";
+}
+
+<div class="mb-3">
+    <h1 class="h3 mb-0">Módulos contratados por @Model.Organization.LegalName</h1>
+    <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
+</div>
+
+@if (TempData["Mensaje"] is string mensaje)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+
+@if (Model.AllModules.Count == 0)
+{
+    <p class="text-muted">Todavía no hay módulos en el <a asp-page="/Admin/PlatformModules/Index">catálogo</a>.</p>
+}
+else
+{
+    <form method="post" asp-antiforgery="true">
+        <p class="text-muted">
+            Los módulos "core" o incluidos en el plan actual ya están disponibles sin marcarlos acá --
+            esta pantalla es solo para add-ons puntuales de esta organización, más allá de su plan.
+        </p>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Módulo</th>
+                    <th>Origen</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var module in Model.AllModules)
+                {
+                    <tr>
+                        <td>
+                            @if (Model.AlreadyIncludedCodes.Contains(module.Code))
+                            {
+                                <input class="form-check-input me-2" type="checkbox" checked disabled />
+                            }
+                            else
+                            {
+                                <input class="form-check-input me-2" type="checkbox" name="selectedAddonModuleIds" value="@module.Id"
+                                       id="module-@module.Id" checked="@Model.SelectedAddonModuleIds.Contains(module.Id)" />
+                            }
+                            <label class="form-check-label" for="module-@module.Id">@module.Name (@module.Code)</label>
+                        </td>
+                        <td class="text-muted">
+                            @if (Model.AlreadyIncludedCodes.Contains(module.Code))
+                            {
+                                @:Ya incluido (core o plan actual)
+                            }
+                            else if (Model.SelectedAddonModuleIds.Contains(module.Id))
+                            {
+                                @:Add-on de esta organización
+                            }
+                            else
+                            {
+                                @:Sin contratar
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button type="submit" class="btn btn-primary">Guardar</button>
+    </form>
+}

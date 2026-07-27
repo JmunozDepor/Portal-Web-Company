@@ -4,7 +4,16 @@
    CLAUDE.md, decisión de alcance de esta entrega. El árbol colapsable usa el
    componente `collapse` nativo de Bootstrap (clases .collapse/.show que
    bootstrap.bundle.min.js ya trae) -- este archivo solo aporta layout/color, sidebar.js
-   solo aporta persistencia en localStorage. */
+   solo aporta persistencia en localStorage.
+
+   Sidebar/topbar BLANCOS (26 jul 2026, revierte el sólido navy de la entrega
+   anterior) -- decisión validada línea por línea contra theme.css real:
+   .sidebar/.topbar usan var(--card-bg) ahí, el navy (--bs-primary) es acento
+   (activo/hover/botones), nunca fondo sólido de estos dos. Ver site.css para el
+   detalle completo de por qué la entrega anterior tomó el camino equivocado
+   (capturas de una build vieja de Comercial Depor, ya reemplazada en el código
+   fuente real). Todos los estados de acá para abajo vuelven a ser oscuro-sobre-claro
+   (texto var(--text-main)/var(--text-muted), acento color-mix con --bs-primary). */
 
 html[data-sidebar="collapsed"] .app-shell {
     grid-template-columns: 64px 1fr;
@@ -21,8 +30,8 @@ html[data-sidebar="collapsed"] .app-shell {
 
 .sidebar {
     grid-area: sidebar;
-    background: var(--bs-tertiary-bg);
-    border-right: 1px solid var(--bs-border-color);
+    background: var(--card-bg);
+    border-right: 1px solid var(--card-border);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -33,14 +42,14 @@ html[data-sidebar="collapsed"] .app-shell {
     align-items: center;
     gap: 10px;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--bs-border-color);
+    border-bottom: 1px solid var(--card-border);
     height: 56px;
 }
 
 .sidebar-toggle {
     background: transparent;
     border: none;
-    color: var(--bs-secondary-color);
+    color: var(--text-muted);
     font-size: 16px;
     padding: 6px;
     border-radius: var(--bs-border-radius-sm);
@@ -51,19 +60,21 @@ html[data-sidebar="collapsed"] .app-shell {
 }
 
 .sidebar-toggle:hover {
-    background: var(--bs-secondary-bg);
-    color: var(--bs-body-color);
+    background: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+    color: var(--text-main);
 }
 
+/* Degradado navy -- portado tal cual de .sidebar-brand-mark (theme.css:524,
+   linear-gradient(135deg, var(--accent), var(--accent-2))). */
 .sidebar-brand-mark {
     width: 30px;
     height: 30px;
     border-radius: var(--bs-border-radius-sm);
-    background: var(--bs-primary);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 700;
     font-size: 12px;
     flex-shrink: 0;
@@ -74,6 +85,7 @@ html[data-sidebar="collapsed"] .app-shell {
     flex-direction: column;
     line-height: 1.25;
     overflow: hidden;
+    color: var(--text-main);
 }
 
 .sidebar-brand-text strong {
@@ -82,7 +94,7 @@ html[data-sidebar="collapsed"] .app-shell {
 
 .sidebar-brand-text span {
     font-size: 10.5px;
-    color: var(--bs-secondary-color);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.4px;
     white-space: nowrap;
@@ -93,37 +105,47 @@ html[data-sidebar="collapsed"] .app-shell {
 .sidebar-nav {
     list-style: none;
     margin: 0;
-    padding: 10px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
 }
 
+/* .sidebar-nav-sub es un <ul class="sidebar-nav sidebar-nav-sub"> anidado (ver
+   _MenuNode.cshtml) -- hereda el padding:6px de .sidebar-nav de ARRIBA, así que sin
+   esta regla cada nivel de submenú suma otros 6px propios (bug real: "genera mucho
+   espacio entre menú y submenú", eran paddings de .sidebar-nav acumulados en cada
+   nivel de anidamiento, no un solo valor). Un submenú no necesita padding vertical
+   propio -- ya lo separa el .collapse que lo contiene. */
 .sidebar-nav-sub {
-    padding: 2px 0 2px 14px;
+    padding: 0 0 0 12px;
+    gap: 0;
 }
 
 .sidebar-nav a {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
+    gap: 8px;
+    padding: 5px 8px;
     border-radius: var(--bs-border-radius-sm);
-    color: var(--bs-secondary-color);
+    color: var(--text-muted);
     text-decoration: none;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 500;
     box-shadow: inset 3px 0 0 transparent;
     transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Valores exactos validados: activo = color-mix al 16% + texto/inset en
+   --bs-primary; hover = mismo color-mix al 10%, sin el inset (theme.css
+   .sidebar-nav a.active/:hover, adaptado de --accent a --bs-primary). */
 .sidebar-nav a:hover {
-    background: var(--bs-secondary-bg);
-    color: var(--bs-body-color);
+    background: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+    color: var(--text-main);
 }
 
 .sidebar-nav a.active {
-    background: var(--bs-primary-bg-subtle, var(--bs-secondary-bg));
+    background: color-mix(in srgb, var(--bs-primary) 16%, transparent);
     color: var(--bs-primary);
     font-weight: 700;
     box-shadow: inset 3px 0 0 var(--bs-primary);
@@ -138,6 +160,30 @@ html[data-sidebar="collapsed"] .app-shell {
 .sidebar-nav-grupo {
     cursor: pointer;
     user-select: none;
+}
+
+/* Chip de color sólido SOLO para categorías raíz (nivel 0) -- portado de theme.css
+   :634-660. --icon-color se fija inline por nodo (ver _MenuNode.cshtml/
+   SidebarMenu/Default.cshtml, cicla --menu-color-1..6). Un subgrupo anidado no lleva
+   esta clase -- queda chico y gris, visualmente subordinado a su carpeta raíz. */
+.sidebar-nav-grupo-raiz .nav-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: var(--bs-border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--icon-color, var(--text-muted));
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.sidebar-nav-grupo-raiz .nav-icon i {
+    color: var(--on-accent);
+    font-size: 11.5px;
+}
+
+.sidebar-nav-grupo-raiz:hover .nav-icon {
+    transform: scale(1.08);
 }
 
 .sidebar-nav-grupo .nav-texto {
@@ -187,17 +233,19 @@ html[data-sidebar="collapsed"] .sidebar-brand-mark {
 
 .topbar {
     grid-area: topbar;
-    background: var(--bs-body-bg);
-    border-bottom: 1px solid var(--bs-border-color);
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--card-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 18px;
+    color: var(--text-main);
 }
 
 .topbar-title {
     font-size: 14px;
     font-weight: 700;
+    color: var(--text-main);
 }
 
 .topbar-right {
@@ -233,7 +281,7 @@ html[data-sidebar="collapsed"] .sidebar-brand-mark {
     height: 28px;
     border-radius: 50%;
     background: var(--bs-primary);
-    color: #fff;
+    color: var(--on-accent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -251,10 +299,10 @@ html[data-sidebar="collapsed"] .sidebar-brand-mark {
     position: absolute;
     right: 0;
     top: calc(100% + 8px);
-    background: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: var(--bs-border-radius);
-    box-shadow: var(--bs-box-shadow);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card);
     width: 200px;
     padding: 10px;
     z-index: 1030;

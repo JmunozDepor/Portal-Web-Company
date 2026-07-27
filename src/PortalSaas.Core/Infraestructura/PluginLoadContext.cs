@@ -45,6 +45,24 @@ public sealed class PluginLoadContext : AssemblyLoadContext
             return null; // null le indica al runtime que siga buscando en el Default context
         }
 
+        // Cualquier ensamblado que el Default context (Host/framework compartido) ya
+        // tenga cargado se resuelve ahí, nunca desde una copia propia del plugin --
+        // bug real encontrado con Modulo.Rendiciones (primer plugin con dependencias
+        // NuGet propias que arrastran ensamblados del framework compartido, ej.
+        // Microsoft.Extensions.DependencyInjection.Abstractions vía los providers de
+        // EF Core con CopyLocalLockFileAssemblies=true): sin este chequeo, el plugin
+        // cargaba su PROPIA copia de ese ensamblado con una versión distinta a la que
+        // ya usa el Host, y el runtime rechazaba RegisterServices(IServiceCollection)
+        // con TypeLoadException ("does not have an implementation") porque
+        // IServiceCollection del plugin y el del Host dejaban de ser "el mismo tipo".
+        // Mismo criterio que ya aplica a PortalSaas.Abstractions arriba, generalizado.
+        var alreadyLoaded = AssemblyLoadContext.Default.Assemblies
+            .FirstOrDefault(a => string.Equals(a.GetName().Name, assemblyName.Name, StringComparison.OrdinalIgnoreCase));
+        if (alreadyLoaded is not null)
+        {
+            return null;
+        }
+
         var resolvedPath = _resolver.ResolveAssemblyToPath(assemblyName);
         return resolvedPath is not null ? LoadFromAssemblyPath(resolvedPath) : null;
     }

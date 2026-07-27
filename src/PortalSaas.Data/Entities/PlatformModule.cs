@@ -10,6 +10,18 @@ public sealed class PlatformModule
     /// <summary>true = incluido en todo plan, no se vende suelto.</summary>
     public bool IsCore { get; set; }
 
+    /// <summary>
+    /// Personalización puntual de un solo cliente (ej. SellOut/GestionDistribucionGastos
+    /// del proyecto original) -- no null significa "este módulo NUNCA se vende a otra
+    /// organización", sin importar qué Plan/OrganizationModule se le asigne por error.
+    /// IModuleAccessService.GetContractedModuleCodesAsync filtra por esto de una;
+    /// Admin/Organizations/Modules oculta el módulo de la lista de add-ons de cualquier
+    /// otra organización. Mismo patrón nullable-FK ya usado por
+    /// ModuleExternalConnection.CompanyId (null = caso general, no-null = acotado).
+    /// </summary>
+    public Guid? ExclusiveOrganizationId { get; set; }
+    public Organization? ExclusiveOrganization { get; set; }
+
     public ICollection<PlanModule> PlanModules { get; set; } = new List<PlanModule>();
     public ICollection<OrganizationModule> OrganizationModules { get; set; } = new List<OrganizationModule>();
 }

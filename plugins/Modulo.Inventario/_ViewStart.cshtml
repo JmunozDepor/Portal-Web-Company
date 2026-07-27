@@ -1,4 +1,6 @@
 @{
     // Toda página de este plugin hereda el shell del Host: sidebar dinámico, topbar.
-    Layout = "/Pages/Shared/_Layout.cshtml";
+    Layout = Context.Request.Headers["X-Requested-With"] == "XMLHttpRequest"
+        ? null // fetch parcial de DocumentList (ver doc-list.js) -- sin layout, sin sidebar
+        : "/Pages/Shared/_Layout.cshtml";
 }

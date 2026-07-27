@@ -13,13 +13,18 @@ public sealed class SalesEmployeeCatalogService : ISalesEmployeeCatalogService
         _hana = hana;
     }
 
-    public async Task<IReadOnlyList<SalesEmployeeDto>> ListAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<SalesEmployeeDto>> ListAsync(string? searchText = null, int? limit = null, CancellationToken ct = default)
     {
-        const string sql = """
+        var (whereSql, limitSql, parameters) = CatalogSqlHelper.BuildSearchFilter(
+            searchText, ["TO_VARCHAR(\"SlpCode\")", "\"SlpName\""], limit, fixedWhere: "\"Active\" = 'Y'");
+
+        var sql = $"""
             SELECT "SlpCode" AS "SalesEmployeeCode", "SlpName" AS "SalesEmployeeName"
-            FROM "OSLP" WHERE "Active" = 'Y' ORDER BY "SlpName"
+            FROM "OSLP" WHERE {whereSql}
+            ORDER BY "SlpName"
+            {limitSql}
             """;
 
-        return await _hana.QueryAsync<SalesEmployeeDto>(sql, ct: ct);
+        return await _hana.QueryAsync<SalesEmployeeDto>(sql, parameters, ct);
     }
 }

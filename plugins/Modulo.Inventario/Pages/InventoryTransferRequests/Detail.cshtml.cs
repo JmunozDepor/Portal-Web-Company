@@ -10,8 +10,9 @@ public sealed class DetailModel : DetailGenericInventoryDocumentModelBase
         IInventoryDocumentService documents,
         ICurrentUserContext currentUser,
         IWarehouseCatalogService warehouses,
-        IItemCatalogService items)
-        : base(documents, currentUser, warehouses, items)
+        IItemCatalogService items,
+        ISeriesCatalogService series)
+        : base(documents, currentUser, warehouses, items, series)
     {
     }
 

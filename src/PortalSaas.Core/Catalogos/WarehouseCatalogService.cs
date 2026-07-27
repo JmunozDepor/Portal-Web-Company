@@ -13,13 +13,18 @@ public sealed class WarehouseCatalogService : IWarehouseCatalogService
         _hana = hana;
     }
 
-    public async Task<IReadOnlyList<WarehouseDto>> ListAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<WarehouseDto>> ListAsync(string? searchText = null, int? limit = null, CancellationToken ct = default)
     {
-        const string sql = """
+        var (whereSql, limitSql, parameters) = CatalogSqlHelper.BuildSearchFilter(
+            searchText, ["\"WhsCode\"", "\"WhsName\""], limit, fixedWhere: "\"Inactive\" = 'N'");
+
+        var sql = $"""
             SELECT "WhsCode" AS "WarehouseCode", "WhsName" AS "WarehouseName"
-            FROM "OWHS" WHERE "Inactive" = 'N' ORDER BY "WhsName"
+            FROM "OWHS" WHERE {whereSql}
+            ORDER BY "WhsName"
+            {limitSql}
             """;
 
-        return await _hana.QueryAsync<WarehouseDto>(sql, ct: ct);
+        return await _hana.QueryAsync<WarehouseDto>(sql, parameters, ct);
     }
 }

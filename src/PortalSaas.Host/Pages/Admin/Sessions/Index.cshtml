@@ -1,0 +1,66 @@
+@page
+@model PortalSaas.Host.Pages.Admin.Sessions.IndexModel
+@{
+    ViewData["Title"] = "Clientes conectados";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Clientes conectados</h1>
+        <span class="text-muted">@Model.TotalSessions sesión(es) activa(s)@(Model.OrganizationId is null ? " -- todas las organizaciones" : "")</span>
+    </div>
+</div>
+
+<form method="get" class="row g-2 mb-4 align-items-end">
+    <div class="col-auto">
+        <label class="form-label" for="organizationId">Organización</label>
+        <select id="organizationId" name="OrganizationId" class="form-select" asp-items="Model.Organizations" onchange="this.form.submit()">
+            <option value="">-- Todas (vista global) --</option>
+        </select>
+    </div>
+</form>
+
+@if (Model.SessionsByOrganization.Count == 0)
+{
+    <p class="text-muted">No hay sesiones activas en este momento.</p>
+}
+
+@foreach (var grupo in Model.SessionsByOrganization)
+{
+    <div class="card-ps mb-3">
+        <div class="d-flex justify-content-between align-items-center p-3 border-bottom" style="border-color: var(--card-border);">
+            <strong>@grupo.Key</strong>
+            <span class="text-muted">@grupo.Count() sesión(es)</span>
+        </div>
+        <table class="table table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Correo</th>
+                    <th>Compañía activa</th>
+                    <th>Dirección IP</th>
+                    <th>Conectado desde</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var sesion in grupo)
+                {
+                    <tr>
+                        <td>@sesion.Username</td>
+                        <td>@sesion.Email</td>
+                        <td>@(sesion.CompanyName ?? "-")</td>
+                        <td>@(sesion.IpAddress ?? "-")</td>
+                        <td>@sesion.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td class="text-end">
+                            <form method="post" asp-page-handler="Revoke" asp-route-sessionId="@sesion.SessionId" asp-route-organizationId="@Model.OrganizationId" asp-antiforgery="true"
+                                  onsubmit="return confirm('¿Desconectar a @sesion.Username? Va a tener que volver a iniciar sesión.');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Desconectar</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/PortalSaas.Host/bin/Debug/net8.0/PortalSaas.Host.dll",
+            "program": "${workspaceFolder}/src/PortalSaas.Host/bin/x64/Debug/net8.0/PortalSaas.Host.dll",
             "args": [],
             "cwd": "${workspaceFolder}/src/PortalSaas.Host",
             "stopAtEntry": false,

@@ -17,6 +17,13 @@
         if (localStorage.getItem('portalsaas-sidebar-collapsed') === 'collapsed') {
             document.documentElement.setAttribute('data-sidebar', 'collapsed');
         }
+        // Aplica el tema guardado ANTES de pintar, mismo criterio que el sidebar
+        // colapsado de arriba -- evita el parpadeo de theme-switcher.js aplicándolo
+        // recién en DOMContentLoaded.
+        var savedTheme = localStorage.getItem('ps-theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
     </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
@@ -25,6 +32,12 @@
     {
         <link rel="stylesheet" href="~/css/sidebar.css" asp-append-version="true" />
     }
+    @* CSS propio de un plugin con ServesOwnWwwRoot=true (ej. Modulo.Rendiciones) --
+       required: false porque la mayoría de las páginas no define esta sección. Bug
+       real encontrado en la verificación E2E de Modulo.Rendiciones: sin este
+       RenderSectionAsync, cualquier página que declare "@section Styles { ... }"
+       tira InvalidOperationException ("sections... have not been rendered"). *@
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
     @if (isAuthenticated)
@@ -44,7 +57,7 @@
                         }
                     </div>
                 </div>
-                <ul class="sidebar-nav">
+                <ul class="sidebar-nav" id="sidebar-nav-root">
                     <li><a asp-page="/Home/Index"><span class="nav-icon"><i class="bi bi-house"></i></span><span class="nav-texto">Inicio</span></a></li>
                     @await Component.InvokeAsync("SidebarMenu")
                 </ul>
@@ -62,6 +75,17 @@
                             {
                                 <div class="user-menu-org">@organizationSlug</div>
                             }
+                            @* 4 paletas reales -- portado de referencia-original/PortalSAP_v2
+                               (theme-switcher.js/theme.css [data-theme]), persistencia por
+                               navegador (localStorage), no por usuario/organización. *@
+                            @* Color de cada swatch: en site.css (.theme-row button[data-theme-switch="..."]),
+                               no acá -- un solo lugar de configuración, nunca un color repetido en el markup. *@
+                            <div class="theme-row">
+                                <button type="button" data-theme-switch="claro" title="Claro"></button>
+                                <button type="button" data-theme-switch="oscuro" title="Oscuro"></button>
+                                <button type="button" data-theme-switch="teal" title="Teal"></button>
+                                <button type="button" data-theme-switch="violeta" title="Violeta"></button>
+                            </div>
                             <a asp-page="/Home/Preferences" class="user-menu-link"><i class="bi bi-gear"></i> Mis preferencias</a>
                             <form method="post" asp-page="/Account/Logout">
                                 <button type="submit" class="btn-logout">Cerrar sesión</button>
@@ -96,6 +120,9 @@
     @if (isAuthenticated)
     {
         <script src="~/js/sidebar.js" asp-append-version="true"></script>
+        <script src="~/js/doc-list.js" asp-append-version="true"></script>
+        <script src="~/js/doc-tabs.js" asp-append-version="true"></script>
+        <script src="~/js/theme-switcher.js" asp-append-version="true"></script>
     }
 
     @await RenderSectionAsync("Scripts", required: false)

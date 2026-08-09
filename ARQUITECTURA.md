@@ -7,9 +7,57 @@ siguiendo el mismo patrón que `Modulo.Rendiciones` (repo propio en
 Host — ver `docs/09-GUIA-DESARROLLO-PLUGINS.md` de `Portal SaaS - Core`).
 
 Este documento es el resultado de una sesión de análisis (arquitecto de
-soluciones, sin escribir código todavía) — antes de implementar cualquier pieza,
-releer esto para no repetir las decisiones ya tomadas ni las que quedaron
-explícitamente abiertas.
+soluciones) — antes de seguir implementando, releer esto para no repetir las
+decisiones ya tomadas ni las que quedaron explícitamente abiertas.
+
+## Estado actual (2026-08-09)
+
+**Fase 1, arrancada — scaffolding del plugin + migración inicial, código sin
+UI todavía.**
+
+- `src/Modulo.Wms/` — proyecto del plugin (`Microsoft.NET.Sdk.Razor`, mismo
+  patrón exacto que `Modulo.Rendiciones.csproj`: `ProjectReference` temporal a
+  `PortalSaas.Abstractions`, motor dual `Npgsql`/`SqlServer` referenciado sin
+  fijar proveedor en compilación, target `PublicarComoPlugin`).
+- `Models/WmsFieldMapping.cs` / `WmsServiceConfig.cs` / `WmsServiceHeartbeat.cs`
+  — las 3 entidades de Fase 1, `CompanyId` (`Guid`) real en las tres.
+- `Data/WmsDbContext.cs` — mapeo completo a `wms_oracle_field_mappings` /
+  `wms_oracle_service_configs` / `wms_oracle_service_heartbeats`
+  (`snake_case`, convención de nombres del Portal).
+- `ModuloWms.cs` — `IModuloPortal` implementado (`ModuleCode = "Wms"`), menú
+  base (Mapeo de Campos/Configuración del Servicio/Estado del Servicio, sin
+  páginas Razor detrás todavía), `RegisterServices` resuelve `WmsDbContext` vía
+  `IExternalDatabaseConnectionService` — mismo patrón exacto que
+  `ModuloRendiciones.RegisterServices`.
+- `src/Modulo.Wms.Migrations.Postgres/` y `.SqlServer/` — `DesignTimeDbContextFactory`
+  + migración `InitialCreate` generada para los dos motores (`dotnet ef
+  migrations add`, confirmado 1:1 contra el diseño de este documento: las 3
+  tablas, mismas columnas). **`dotnet build` en 0 errores/0 advertencias** para
+  los 4 proyectos.
+- **Migración generada, NO aplicada contra una base real** — bloqueado por
+  falta de permisos de administrador en el entorno de esta sesión para iniciar
+  Docker Desktop/SQL Server local (mismo bloqueo ya documentado para otras
+  tareas de `Portal SaaS - Core`). Aplicar con:
+  ```
+  dotnet ef database update --project src/Modulo.Wms.Migrations.Postgres/Modulo.Wms.Migrations.Postgres.csproj --startup-project src/Modulo.Wms.Migrations.Postgres/Modulo.Wms.Migrations.Postgres.csproj --context WmsDbContext
+  ```
+  (análogo para `.SqlServer`, ver `WMS_CONNECTION_STRING` en el
+  `DesignTimeDbContextFactory` de cada uno para la cadena de conexión default
+  de desarrollo).
+
+**Falta explícitamente, no iniciado todavía:**
+- Páginas Razor del port de `WmsPortal.Web` (Mapeo de Campos/Configuración del
+  Servicio/Estado del Servicio) — hoy solo existen las entradas de menú, sin
+  contenido detrás.
+- Migración de `PORTAL_USERS`/`PORTAL_COMPANIES` reales a
+  `Organization`/`Company`/`User` del Portal.
+- El cambio en `WmsSapIntegration.Service` para que lea estas 3 tablas desde
+  el Portal en vez de su schema HANA local (la excepción acotada de Fase 1,
+  ver más abajo).
+- `config_source_effective` en el heartbeat existe en el modelo/tabla, pero
+  todavía no lo escribe ningún proceso real (eso vive del lado de
+  `WmsSapIntegration.Service`, no tocado en esta entrega).
+- Toda la Fase 2 (maestro SAP, outbox, `wms_oracle_export_*`, licenciamiento).
 
 ## Qué es esto
 

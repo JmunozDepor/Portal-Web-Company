@@ -3,9 +3,10 @@ using PortalSaas.Abstractions.Modelos;
 namespace PortalSaas.Abstractions.Contratos;
 
 /// <summary>
-/// CRUD del catálogo maestro de campos de usuario de la organización actual (ver
-/// ICurrentUserContext.OrganizationId) -- solo administrador de organización. Portado de
-/// ICampoUsuarioImportacionGenericaService.
+/// CRUD del catálogo maestro de campos de usuario de la COMPAÑÍA activa (ver
+/// ICurrentCompanyAccessor.CompanyId -- regla dura de que todo plugin que dependa de SAP
+/// se personaliza por Company, no por Organization: un UDF es propio de la base física
+/// de cada Company). Portado de ICampoUsuarioImportacionGenericaService.
 /// </summary>
 public interface IGenericImportUserFieldService
 {

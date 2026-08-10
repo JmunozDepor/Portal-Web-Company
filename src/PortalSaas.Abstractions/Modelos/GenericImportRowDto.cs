@@ -18,6 +18,16 @@ public sealed record GenericImportRowDto
     public string? CustomerReferenceNumber { get; init; }
     public string? Branch { get; init; }
 
+    /// <summary>
+    /// Null en modo normal (socio fijo del wizard) -- con valor, es el socio de negocio
+    /// DE ESTA FILA (carga multi-socio, ver GenericImportConfigDto.BusinessPartnerFromFile).
+    /// Viaja con la fila para que la creación del documento y la vista previa sepan qué
+    /// socio le corresponde a cada grupo sin tener que re-consultarlo. Portado de
+    /// FilaImportacionGenericaDto.SocioNegocioCardCode/SocioNegocioNombre.
+    /// </summary>
+    public string? BusinessPartnerCardCode { get; init; }
+    public string? BusinessPartnerName { get; init; }
+
     public string? ItemCode { get; init; }
     public string? ItemName { get; init; }
     public string? Description { get; init; }
@@ -46,6 +56,16 @@ public sealed record GenericImportRowDto
 
     public IReadOnlyDictionary<string, object?> UserFieldsHeader { get; init; } = new Dictionary<string, object?>();
     public IReadOnlyDictionary<string, object?> UserFieldsLine { get; init; } = new Dictionary<string, object?>();
+
+    /// <summary>
+    /// Valor tal cual venía en el Excel para cada campo núcleo, ANTES de resolverlo
+    /// contra SAP -- necesario porque ItemCode/ItemName/Description quedan null
+    /// justo en las filas con error (la resolución falló), así que sin esto la vista
+    /// previa no puede mostrar qué valor causó el problema (antes mostraba "-" en toda
+    /// fila con artículo inexistente, sin decir cuál era el código). Portado de
+    /// FilaImportacionGenericaDto.ValoresCrudos.
+    /// </summary>
+    public IReadOnlyDictionary<GenericImportLogicalField, string?> RawValues { get; init; } = new Dictionary<GenericImportLogicalField, string?>();
 
     public bool IsValid { get; init; }
     public IReadOnlyList<string> Errors { get; init; } = [];

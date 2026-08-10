@@ -42,4 +42,13 @@ public interface ITenantUserAdminService
     Task<UserPermissionsDto?> GetPermissionsAsync(Guid userId, Guid companyId, CancellationToken ct = default);
 
     Task<TenantUserOperationResult> SavePermissionsAsync(Guid userId, Guid companyId, IReadOnlyList<long> menuGroupIds, IReadOnlyDictionary<long, long?> profileByMenu, CancellationToken ct = default);
+
+    /// <summary>
+    /// Fija la compañía con la que este usuario entra automáticamente (SelectCompany
+    /// se salta el paso de elegir) -- mismo campo que ya llena el propio usuario desde
+    /// "Recordar esta compañía" en el login (ver Pages/Account/SelectCompany.cshtml.cs
+    /// del Host), ahora también asignable por un admin de la organización. companyId
+    /// null limpia el default (el usuario vuelve a elegir en cada login).
+    /// </summary>
+    Task<TenantUserOperationResult> SetDefaultCompanyAsync(Guid userId, Guid? companyId, CancellationToken ct = default);
 }

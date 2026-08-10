@@ -87,7 +87,10 @@ public abstract class IndexGenericPurchaseDocumentModelBase : PageModel
         // Se propaga como returnUrl del detalle -- sin esto, "Volver" desde un documento
         // siempre vuelve a la página 1 del listado, perdiendo la página/filtros actuales
         // (bug real reportado: "Volver" desde la página 3 volvía a la página 1).
-        var returnUrl = Uri.EscapeDataString(Request.Path + Request.QueryString);
+        // Request.PathBase + Request.Path -- ver el mismo fix (y su porqué) en
+        // IndexGenericSalesDocumentModelBase.cs (regla de paridad entre motores
+        // genéricos, bug real de subaplicación IIS, 2026-08-02).
+        var returnUrl = Uri.EscapeDataString(Request.PathBase + Request.Path + Request.QueryString);
 
         // Columnas/filtros -- paridad exacta con IndexGenericoCompraModelBase (referencia-
         // original/PortalSAP_v2): Id (DocEntry) primero, Proveedor (código) y Nombre
@@ -120,7 +123,7 @@ public abstract class IndexGenericPurchaseDocumentModelBase : PageModel
                     item.DocTotal.ToString("N2"),
                     item.Status,
                 ],
-                DetailUrl: $"{RouteBase}/{item.DocEntry}?returnUrl={returnUrl}")).ToList(),
+                DetailUrl: $"{Request.PathBase}{RouteBase}/{item.DocEntry}?returnUrl={returnUrl}")).ToList(),
             Filters =
             [
                 new DocumentListFilter(nameof(FilterInput.SupplierCardCode), "N.° Proveedor", FilterFieldType.Text, Filter.SupplierCardCode),
@@ -131,7 +134,7 @@ public abstract class IndexGenericPurchaseDocumentModelBase : PageModel
                 new DocumentListFilter(nameof(FilterInput.DateTo), "Fecha hasta", FilterFieldType.Date, Filter.DateTo?.ToString("yyyy-MM-dd")),
             ],
             ShowFreeTextSearch = false,
-            CreateUrl = canCreate ? $"{RouteBase}/nuevo" : null,
+            CreateUrl = canCreate ? $"{Request.PathBase}{RouteBase}/nuevo" : null,
             CreateDisabledTitle = canCreate ? null : $"No tenés permiso para crear {DocumentNamePlural.ToLowerInvariant()}",
             ShowPaging = true,
             CurrentPage = PageNumber,

@@ -15,6 +15,16 @@ public enum GenericImportLogicalField
     CustomerReferenceNumber, // NumAtCard
     Branch,                 // ShipToCode -- solo aplica a GenericImportModule.Sales
 
+    /// <summary>
+    /// Socio de negocio de LA FILA -- solo se resuelve cuando
+    /// GenericImportConfigDto.BusinessPartnerFromFile = true (carga multi-socio: cada
+    /// fila trae su propio CardCode, en vez de un único socio fijo para todo el
+    /// archivo). Al ser parte del enum, aparece automáticamente como fila mapeable en
+    /// "Mapeo de campos núcleo" de Configuración, sin código nuevo ahí. Portado de
+    /// CampoLogicoImportacionGenerica.SocioNegocioCardCode.
+    /// </summary>
+    BusinessPartnerCardCode,
+
     // Línea -- comunes a Artículo y Servicio
     Quantity,
     UnitPrice,          // vacío = SAP asigna el precio de la lista del socio de negocio

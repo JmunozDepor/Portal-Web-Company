@@ -11,20 +11,21 @@ public sealed record GenericImportConfigFieldDto(
 
 /// <summary>
 /// Cabecera de configuración de importación genérica -- BusinessPartnerCardCode null
-/// representa el formato ESTÁNDAR (fallback) de la Organización+Module+DocumentType+
+/// representa el formato ESTÁNDAR (fallback) de la Company+Module+DocumentType+
 /// LineType; una fila con CardCode puntual es la excepción de un cliente/proveedor cuyo
 /// archivo no sigue el estándar (ver IGenericImportConfigService.ResolveAsync).
 /// GroupingColumn null = todo el archivo genera un único documento; con valor, cada
 /// valor distinto de esa columna genera su propio documento. PriceSource/
 /// SystemPriceListCode solo aplican a líneas de Artículo en Venta/Compra (Servicio no
 /// tiene ItemCode, Inventario no tiene precio). Portado de
-/// ConfiguracionImportacionGenericaDto -- la única diferencia real es que acá cuelga de
-/// OrganizationId (plataforma multi-tenant propia), no de EmpresaCodigo/HANA como el
-/// original (mono-tenant).
+/// ConfiguracionImportacionGenericaDto -- cuelga de CompanyId (no OrganizationId, ver
+/// GenericImportConfig -- regla dura de que todo plugin que dependa de SAP se
+/// personaliza por Company), la contraparte más cercana al EmpresaCodigo/HANA del
+/// original (mono-tenant) sigue siendo la Company, no la Organization.
 /// </summary>
 public sealed record GenericImportConfigDto(
     int Id,
-    Guid OrganizationId,
+    Guid CompanyId,
     GenericImportModule Module,
     string DocumentType,
     GenericImportLineType LineType,
@@ -35,4 +36,12 @@ public sealed record GenericImportConfigDto(
     bool IsActive,
     IReadOnlyList<GenericImportConfigFieldDto> Fields,
     GenericImportPriceSource PriceSource = GenericImportPriceSource.BusinessPartner,
-    int? SystemPriceListCode = null);
+    int? SystemPriceListCode = null,
+    /// <summary>
+    /// true = cada fila del Excel trae su propio socio de negocio (columna mapeada a
+    /// GenericImportLogicalField.BusinessPartnerCardCode), en vez de un único socio fijo
+    /// para todo el archivo -- carga multi-socio (portado de
+    /// ConfiguracionImportacionGenericaDto.SocioNegocioDesdeArchivo). Default false, sin
+    /// cambio de comportamiento para configuraciones existentes.
+    /// </summary>
+    bool BusinessPartnerFromFile = false);

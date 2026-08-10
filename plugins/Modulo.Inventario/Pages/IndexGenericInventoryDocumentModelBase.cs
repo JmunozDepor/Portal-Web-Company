@@ -89,7 +89,10 @@ public abstract class IndexGenericInventoryDocumentModelBase : PageModel
         // Se propaga como returnUrl del detalle -- sin esto, "Volver" desde un documento
         // siempre vuelve a la página 1 del listado, perdiendo la página/filtros actuales
         // (bug real reportado: "Volver" desde la página 3 volvía a la página 1).
-        var returnUrl = Uri.EscapeDataString(Request.Path + Request.QueryString);
+        // Request.PathBase + Request.Path -- ver el mismo fix (y su porqué) en
+        // IndexGenericSalesDocumentModelBase.cs (regla de paridad entre motores
+        // genéricos, bug real de subaplicación IIS, 2026-08-02).
+        var returnUrl = Uri.EscapeDataString(Request.PathBase + Request.Path + Request.QueryString);
 
         // DocEntry como primera columna -- paridad con Ventas/Compras y con
         // IndexGenericoInventarioModelBase del original (mismo orden exacto: N.° Socio,
@@ -127,7 +130,7 @@ public abstract class IndexGenericInventoryDocumentModelBase : PageModel
                     item.WarehouseDestinationCode ?? "-",
                     item.Status,
                 ],
-                DetailUrl: $"{RouteBase}/{item.DocEntry}?returnUrl={returnUrl}")).ToList(),
+                DetailUrl: $"{Request.PathBase}{RouteBase}/{item.DocEntry}?returnUrl={returnUrl}")).ToList(),
             Filters =
             [
                 new DocumentListFilter(nameof(FilterInput.BusinessPartnerCardCode), "N.° Socio", FilterFieldType.Text, Filter.BusinessPartnerCardCode),
@@ -138,7 +141,7 @@ public abstract class IndexGenericInventoryDocumentModelBase : PageModel
                 new DocumentListFilter(nameof(FilterInput.DateTo), "Fecha hasta", FilterFieldType.Date, Filter.DateTo?.ToString("yyyy-MM-dd")),
             ],
             ShowFreeTextSearch = false,
-            CreateUrl = canCreate ? $"{RouteBase}/nuevo" : null,
+            CreateUrl = canCreate ? $"{Request.PathBase}{RouteBase}/nuevo" : null,
             CreateDisabledTitle = canCreate ? null : $"No tenés permiso para crear {DocumentNamePlural.ToLowerInvariant()}",
             ShowPaging = true,
             CurrentPage = PageNumber,

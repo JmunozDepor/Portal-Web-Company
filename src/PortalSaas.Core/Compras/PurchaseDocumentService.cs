@@ -49,22 +49,7 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
             NumAtCard = document.SupplierReferenceNumber,
             U_PortalUser = portalUsername,
             AdditionalFields = document.AdditionalFields,
-            DocumentLines = document.Lines.Select(line => new SapPurchaseDocumentLine
-            {
-                ItemType = line.Type == DocumentLineType.Service ? "itService" : "itItems",
-                ItemCode = line.Type == DocumentLineType.Item ? line.ItemCode : null,
-                ItemDescription = line.Description,
-                Quantity = line.Quantity,
-                UnitPrice = line.UnitPrice,
-                DiscountPercent = line.DiscountPercent,
-                WarehouseCode = line.Type == DocumentLineType.Item ? line.WarehouseCode : null,
-                AccountCode = line.Type == DocumentLineType.Service ? line.AccountCode : null,
-                CostingCode = line.Type == DocumentLineType.Service ? line.CostCenterCode : null,
-                CostingCode2 = line.Type == DocumentLineType.Service ? line.CostCenterCode2 : null,
-                CostingCode3 = line.Type == DocumentLineType.Service ? line.CostCenterCode3 : null,
-                RequiredDate = requiredDate,
-                AdditionalFields = line.AdditionalFields,
-            }).ToList(),
+            DocumentLines = document.Lines.Select(line => MapLine(line, requiredDate)).ToList(),
         };
 
         var hasAdditionalFields = header.AdditionalFields is not null || header.DocumentLines.Any(l => l.AdditionalFields is not null);
@@ -75,6 +60,25 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
             ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
 
         return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
+    }
+
+    public async Task AddLinesAsync(PurchaseDocumentType type, int docEntry, IReadOnlyList<PurchaseDocumentLineDto> newLines, CancellationToken ct = default)
+    {
+        var entry = PurchaseDocumentTypeCatalog.Resolve(type);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+
+        var current = await session.GetAsync<SapPurchaseDocumentHeader>($"{entry.Resource}({docEntry})", ct: ct)
+            ?? throw new InvalidOperationException($"No se pudo releer el documento {docEntry} para agregar líneas.");
+
+        // RequiredDate por línea se postea igual al DocDueDate ya grabado en el documento
+        // (mismo criterio que CreateAsync -- ver comentario de SapPurchaseDocumentHeader).
+        var requiredDate = current.DocDueDate;
+
+        var combinedLines = current.DocumentLines.Select(PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten)
+            .Concat(newLines.Select(line => MapLine(line, requiredDate)).Select(PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten))
+            .ToList();
+
+        await session.PatchAsync(entry.Resource, docEntry, new { DocumentLines = combinedLines }, ct);
     }
 
     public async Task<PurchaseDocumentDto?> GetAsync(PurchaseDocumentType type, int docEntry, CancellationToken ct = default)
@@ -205,4 +209,21 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
         lines.Count > 0 && lines[0].Type == DocumentLineType.Service
             ? "dDocument_Service"
             : "dDocument_Items";
+
+    private static SapPurchaseDocumentLine MapLine(PurchaseDocumentLineDto line, DateTime? requiredDate) => new()
+    {
+        ItemType = line.Type == DocumentLineType.Service ? "itService" : "itItems",
+        ItemCode = line.Type == DocumentLineType.Item ? line.ItemCode : null,
+        ItemDescription = line.Description,
+        Quantity = line.Quantity,
+        UnitPrice = line.UnitPrice,
+        DiscountPercent = line.DiscountPercent,
+        WarehouseCode = line.Type == DocumentLineType.Item ? line.WarehouseCode : null,
+        AccountCode = line.Type == DocumentLineType.Service ? line.AccountCode : null,
+        CostingCode = line.Type == DocumentLineType.Service ? line.CostCenterCode : null,
+        CostingCode2 = line.Type == DocumentLineType.Service ? line.CostCenterCode2 : null,
+        CostingCode3 = line.Type == DocumentLineType.Service ? line.CostCenterCode3 : null,
+        RequiredDate = requiredDate,
+        AdditionalFields = line.AdditionalFields,
+    };
 }

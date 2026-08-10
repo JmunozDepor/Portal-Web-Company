@@ -32,19 +32,22 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
     private readonly IWarehouseCatalogService _warehouses;
     private readonly IItemCatalogService _items;
     private readonly ISeriesCatalogService _series;
+    private readonly ICustomerCatalogService _customers;
 
     protected DetailGenericInventoryDocumentModelBase(
         IInventoryDocumentService documents,
         ICurrentUserContext currentUser,
         IWarehouseCatalogService warehouses,
         IItemCatalogService items,
-        ISeriesCatalogService series)
+        ISeriesCatalogService series,
+        ICustomerCatalogService customers)
     {
         _documents = documents;
         _currentUser = currentUser;
         _warehouses = warehouses;
         _items = items;
         _series = series;
+        _customers = customers;
     }
 
     protected abstract InventoryDocumentType Type { get; }
@@ -69,6 +72,9 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
     public int? DocEntry { get; private set; }
     public int? DocNum { get; private set; }
     public string? Status { get; private set; }
+
+    /// <summary>Solo-lectura (documento existente) -- mismo criterio que SalesDocumentDto.CustomerName, ver OnGetSearchCustomersAsync.</summary>
+    public string? CustomerName { get; private set; }
 
     public List<SelectListItem> Series { get; private set; } = [];
 
@@ -113,12 +119,15 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
             DocEntry = document.DocEntry;
             DocNum = document.DocNum;
             Status = document.Status;
+            CustomerName = document.BusinessPartnerName;
 
             Input = new InputModel
             {
                 Comments = document.Comments,
                 DocDate = document.DocDate,
                 Series = document.Series,
+                CustomerCardCode = document.BusinessPartnerCardCode,
+                CustomerReferenceNumber = document.CustomerReferenceNumber,
                 Lines = document.Lines.Select(line => new LineInput
                 {
                     ItemCode = line.ItemCode,
@@ -190,7 +199,9 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
                 Quantity: line.Quantity ?? 0,
                 FromWarehouseCode: line.FromWarehouseCode!,
                 ToWarehouseCode: line.ToWarehouseCode!)).ToList(),
-            Series: Input.Series);
+            Series: Input.Series,
+            BusinessPartnerCardCode: string.IsNullOrWhiteSpace(Input.CustomerCardCode) ? null : Input.CustomerCardCode,
+            CustomerReferenceNumber: Input.CustomerReferenceNumber);
 
         try
         {
@@ -220,6 +231,18 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         return new JsonResult(warehouses.Select(w => new { w.WarehouseCode, w.WarehouseName }));
     }
 
+    /// <summary>Búsqueda en vivo de socio de negocio -- mismo criterio y mismo catálogo que OnGetSearchCustomersAsync (DetailGenericSalesDocumentModelBase, Modulo.Ventas).</summary>
+    public async Task<JsonResult> OnGetSearchCustomersAsync(string text, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return new JsonResult(Array.Empty<object>());
+        }
+
+        var customers = await _customers.ListAsync(new CustomerFilter(text, Limit: 30), ct);
+        return new JsonResult(customers.Select(c => new { c.CardCode, c.CardName }));
+    }
+
     private async Task LoadCatalogsAsync(CancellationToken ct)
     {
         var series = await _series.ListAsync(_documents.GetSapObjectCode(Type).ToString(), ct: ct);
@@ -232,7 +255,7 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         {
             Title = IsNew ? $"Nuevo/a {DocumentName}" : $"{DocumentName} N° {DocNum}",
             ReadOnly = !IsNew,
-            BackUrl = Url.IsLocalUrl(ReturnUrl) && ReturnUrl is not null ? ReturnUrl : RouteBase,
+            BackUrl = Url.IsLocalUrl(ReturnUrl) && ReturnUrl is not null ? ReturnUrl : Request.PathBase + RouteBase,
             StatusText = Status,
             StatusClass = Status == "Abierto" ? "bg-success" : "bg-secondary",
             Model = this,
@@ -251,6 +274,12 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
 
         [Display(Name = "Serie")]
         public int? Series { get; set; }
+
+        [Display(Name = "Socio de negocio")]
+        public string? CustomerCardCode { get; set; }
+
+        [Display(Name = "N° referencia")]
+        public string? CustomerReferenceNumber { get; set; }
 
         public List<LineInput> Lines { get; set; } = [new()];
     }

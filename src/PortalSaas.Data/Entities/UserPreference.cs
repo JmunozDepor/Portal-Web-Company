@@ -22,6 +22,14 @@ public sealed class UserPreference
     public string Theme { get; set; } = UserThemePreference.System;
 
     public bool EmailNotificationsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Compañía que SelectCompany preselecciona/auto-continúa sin pedir elegir de nuevo.
+    /// Nullable: sin default, el usuario elige como siempre. No es una FK dura contra
+    /// borrado en cascada -- si la compañía se desactiva o borra, SelectCompany la valida
+    /// igual que cualquier otra (Company.IsActive) y si no pasa, vuelve a pedir elegir.
+    /// </summary>
+    public Guid? DefaultCompanyId { get; set; }
 }
 
 public static class UserThemePreference

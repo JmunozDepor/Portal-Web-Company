@@ -1,0 +1,56 @@
+@page "{id:long}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Licenses.ConflictsModel
+@{
+    ViewData["Title"] = $"Conflictos de licencia · {Model.Organization.LegalName}";
+}
+
+<div class="mb-3">
+    <h1 class="h3 mb-0">Conflictos de instalación</h1>
+    <a asp-page="/Admin/Organizations/Licenses/Index" asp-route-organizationId="@Model.Organization.Id">Volver a licencias</a>
+</div>
+
+<p>
+    Clave de activación vinculada actualmente a
+    <code>@(Model.License.InstallationFingerprint ?? "(sin activar)")</code>.
+    Cada fila de abajo es una instalación DISTINTA que reportó un fingerprint diferente
+    con la misma clave -- típicamente un backup restaurado en otro servidor. Acepta la
+    que sea legítima (ej. una migración real de servidor); rechaza el resto.
+</p>
+
+@if (Model.UnresolvedConflicts.Count == 0)
+{
+    <p class="text-muted">No hay conflictos pendientes para esta licencia.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Fingerprint reportado</th>
+                <th>IP de origen</th>
+                <th>Reportado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var conflict in Model.UnresolvedConflicts)
+            {
+                <tr>
+                    <td><code>@conflict.ReportedFingerprint</code></td>
+                    <td>@(conflict.ReportedIp ?? "—")</td>
+                    <td>@conflict.ReportedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>
+                        <form method="post" asp-page-handler="Accept" class="d-inline">
+                            <input type="hidden" name="conflictId" value="@conflict.Id" />
+                            <button type="submit" class="btn btn-sm btn-primary">Aceptar (rebindear)</button>
+                        </form>
+                        <form method="post" asp-page-handler="Reject" class="d-inline">
+                            <input type="hidden" name="conflictId" value="@conflict.Id" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Rechazar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

@@ -1,5 +1,9 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using PortalSaas.Abstractions.Modelos;
 using PortalSaas.Core.Comercial;
+using PortalSaas.Core.Comercial.Licenciamiento;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 using Xunit;
@@ -8,6 +12,30 @@ namespace PortalSaas.Core.Tests;
 
 public class ContractLimitServiceTests
 {
+    // Mismo criterio que OrganizationAccessGateServiceTests -- los límites on-premise
+    // ahora salen del SignedStatusToken firmado por el central, no de la tabla Plans
+    // local (esa se puede editar a mano, ver ContractLimitService.GetLimitsFromSignedLicenseAsync),
+    // así que cada test on-premise necesita un token realmente firmado.
+    private static readonly ECDsa Keys = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+    private static readonly string PrivateKeyBase64 = Convert.ToBase64String(Keys.ExportPkcs8PrivateKey());
+    private static readonly string PublicKeyBase64 = Convert.ToBase64String(Keys.ExportSubjectPublicKeyInfo());
+
+    private static IConfiguration CrearConfiguracion() => new ConfigurationBuilder()
+        .AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Licensing:SigningPrivateKey"] = PrivateKeyBase64,
+            ["Licensing:CentralPublicKey"] = PublicKeyBase64,
+            ["Licensing:OfflineGraceDays"] = "15",
+        })
+        .Build();
+
+    private static ContractLimitService CrearServicio(PortalSaasDbContext db)
+    {
+        var configuracion = CrearConfiguracion();
+        var tokenService = new LicenseTokenService(configuracion);
+        return new ContractLimitService(db, tokenService, configuracion);
+    }
+
     private static PortalSaasDbContext CrearContexto()
     {
         // Base InMemory nueva por instancia de test (Guid en el nombre) -- evita que
@@ -55,20 +83,30 @@ public class ContractLimitServiceTests
         var db = CrearContexto();
 
         var org = new Organization { LegalName = "Cliente on-premise", Slug = "cliente-on-premise", Country = "CL", Mode = OrganizationMode.OnPremise };
-        var plan = new Plan { Code = "TEST-PLAN-OP", Name = "Plan de prueba on-premise", UserLimit = userLimit };
+        // UserLimit en la tabla Plans local se deja SIN setear a propósito -- si algún
+        // test empezara a pasar por leer de acá en vez del token firmado, sería la
+        // señal de que se reintrodujo el hueco que este cambio cerró.
+        var plan = new Plan { Code = "TEST-PLAN-OP", Name = "Plan de prueba on-premise" };
 
         db.Organizations.Add(org);
         db.Plans.Add(plan);
         await db.SaveChangesAsync();
 
-        db.OnPremiseLicenses.Add(new OnPremiseLicense
+        var license = new OnPremiseLicense
         {
             OrganizationId = org.Id,
             PlanId = plan.Id,
             ActivationKey = Guid.NewGuid().ToString(),
             Status = licenseStatus,
             ExpiresAt = expiresAt ?? DateTimeOffset.UtcNow.AddYears(1),
-        });
+        };
+
+        var tokenService = new LicenseTokenService(CrearConfiguracion());
+        var payload = new LicenseStatusPayload(org.Id, plan.Id, userLimit, null, null, licenseStatus, license.ExpiresAt, DateTimeOffset.UtcNow);
+        license.SignedStatusToken = tokenService.Sign(payload);
+        license.SignedStatusUpdatedAt = DateTimeOffset.UtcNow;
+
+        db.OnPremiseLicenses.Add(license);
         await db.SaveChangesAsync();
 
         return (db, org, plan);
@@ -82,7 +120,7 @@ public class ContractLimitServiceTests
         db.Organizations.Add(org);
         await db.SaveChangesAsync();
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.False(resultado.IsAllowed);
@@ -95,7 +133,7 @@ public class ContractLimitServiceTests
         db.Users.Add(new User { OrganizationId = org.Id, Username = "u1", Email = "u1@test.cl", PasswordHash = "x", PasswordSalt = "x" });
         await db.SaveChangesAsync();
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.True(resultado.IsAllowed);
@@ -108,7 +146,25 @@ public class ContractLimitServiceTests
         db.Users.Add(new User { OrganizationId = org.Id, Username = "u1", Email = "u1@test.cl", PasswordHash = "x", PasswordSalt = "x" });
         await db.SaveChangesAsync();
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
+        var resultado = await servicio.CheckUserLimitAsync(org.Id);
+
+        Assert.False(resultado.IsAllowed);
+    }
+
+    [Fact]
+    public async Task CheckUserLimit_OnPremisePlanLocalAlterado_IgnoraElValorLocalYUsaElToken()
+    {
+        // Escenario del hueco real que este cambio cierra: el central firmó un límite
+        // de 1 usuario, pero alguien entró a Admin/Plans en la instalación local y subió
+        // el UserLimit de la tabla Plans a 999. Debe seguir mandando el 1 firmado.
+        var (db, org, plan) = await CrearOrganizacionOnPremiseConLicenciaAsync(userLimit: 1);
+        plan.UserLimit = 999;
+        await db.SaveChangesAsync();
+        db.Users.Add(new User { OrganizationId = org.Id, Username = "u1", Email = "u1@test.cl", PasswordHash = "x", PasswordSalt = "x" });
+        await db.SaveChangesAsync();
+
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.False(resultado.IsAllowed);
@@ -121,7 +177,7 @@ public class ContractLimitServiceTests
     {
         var (db, org, _) = await CrearOrganizacionOnPremiseConLicenciaAsync(licenseStatus: status);
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.False(resultado.IsAllowed);
@@ -132,7 +188,7 @@ public class ContractLimitServiceTests
     {
         var (db, org, _) = await CrearOrganizacionOnPremiseConLicenciaAsync(expiresAt: DateTimeOffset.UtcNow.AddDays(-1));
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.False(resultado.IsAllowed);
@@ -146,7 +202,7 @@ public class ContractLimitServiceTests
         db.Organizations.Add(org);
         await db.SaveChangesAsync();
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.False(resultado.IsAllowed);
@@ -158,7 +214,7 @@ public class ContractLimitServiceTests
     {
         var (db, org, _) = await CrearOrganizacionConPlanAsync(userLimit: null);
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.True(resultado.IsAllowed);
@@ -171,7 +227,7 @@ public class ContractLimitServiceTests
         db.Users.Add(new User { OrganizationId = org.Id, Username = "usuario1", Email = "usuario1@test.cl", PasswordHash = "x", PasswordSalt = "x" });
         await db.SaveChangesAsync();
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.True(resultado.IsAllowed);
@@ -185,7 +241,7 @@ public class ContractLimitServiceTests
         db.Users.Add(new User { OrganizationId = org.Id, Username = "usuario2", Email = "usuario2@test.cl", PasswordHash = "x", PasswordSalt = "x" });
         await db.SaveChangesAsync();
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.False(resultado.IsAllowed);
@@ -199,7 +255,7 @@ public class ContractLimitServiceTests
         db.Users.Add(new User { OrganizationId = org.Id, Username = "inactivo", Email = "inactivo@test.cl", PasswordHash = "x", PasswordSalt = "x", IsActive = false });
         await db.SaveChangesAsync();
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckUserLimitAsync(org.Id);
 
         Assert.True(resultado.IsAllowed);
@@ -227,7 +283,7 @@ public class ContractLimitServiceTests
         });
         await db.SaveChangesAsync();
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckCompanyLimitAsync(org.Id);
 
         Assert.False(resultado.IsAllowed);
@@ -243,7 +299,7 @@ public class ContractLimitServiceTests
         db.UsageMetrics.Add(new UsageMetric { OrganizationId = org.Id, MetricName = "document_created", Period = "202607", Value = 1000 });
         await db.SaveChangesAsync();
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckMonthlyTransactionLimitAsync(org.Id, "202607", "sap_transaction");
 
         Assert.False(resultado.IsAllowed);
@@ -257,7 +313,7 @@ public class ContractLimitServiceTests
         db.UsageMetrics.Add(new UsageMetric { OrganizationId = org.Id, MetricName = "sap_transaction", Period = "202606", Value = 99 });
         await db.SaveChangesAsync();
 
-        var servicio = new ContractLimitService(db);
+        var servicio = CrearServicio(db);
         var resultado = await servicio.CheckMonthlyTransactionLimitAsync(org.Id, "202607", "sap_transaction");
 
         Assert.True(resultado.IsAllowed);

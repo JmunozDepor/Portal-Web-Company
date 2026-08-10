@@ -1,4 +1,4 @@
-# CLAUDE.md — Proyecto Saas Portal
+# CLAUDE.md — Portal SaaS - Core (antes "Proyecto Saas Portal")
 
 Contexto persistente para Claude Code en este repositorio. Para el razonamiento
 completo (por qué, no solo qué) ver `ARCHITECTURE.md` y `docs/` — este archivo es el
@@ -8,6 +8,29 @@ resumen operativo y las reglas duras, no lo dupliques ahí.
 `referencia-original/` (no los repos reales en `C:\PROYECTOS\PortalSAP_v2` /
 `C:\PROYECTOS\WMS_Suite`) — es de solo lectura, tomada el 24 jul 2026, ver
 `ARCHITECTURE.md` §-1 para el detalle.
+
+**Carpeta general del proyecto: `C:\PROYECTOS\Proyecto Portal Web-Company\`** — nombres
+unificados bajo la convención `Portal SaaS - <rol>` (29 jul 2026, reordenamiento de
+carpetas). Este repo es **`Portal SaaS - Core\`** (antes `Proyecto Saas Portal\` —
+**si ves esa ruta vieja en un doc/config/atajo, está desactualizada, corregirla al
+encontrarla**). Sus hermanos:
+- **`Portal SaaS - Plugins\`** (antes `Portal SaaS-Plugins\`) — contenedor de los
+  plugins **externos** del portal (repos propios, compilados aparte y copiados a
+  `artifacts/plugins/` de este repo, ver `docs/09-GUIA-DESARROLLO-PLUGINS.md`),
+  separados de `plugins/` (los internos, que sí viven dentro de este repo). Primer
+  miembro: `Portal SaaS - Plugins\Modulo.Rendiciones\` -- **ruta real, corrige
+  cualquier mención más abajo en este archivo a `C:\PROYECTOS\Modulo.Rendiciones` o a
+  `Portal SaaS-Plugins\` (ubicaciones viejas, ya no existen ahí)**.
+- **`Portal SaaS - Servicios SAP\`** (antes `Servicios SAP\`, ver la entrada
+  correspondiente más abajo) — proyecto hermano independiente, sin dependencia
+  cruzada de proyecto/solución con este repo pese a compartir el prefijo de nombre.
+- **`Portal SaaS - Analisis Inicial\`** (antes `Proyecto Mejora Web\`) — análisis
+  previo a la creación de este repo (evaluación CEO de `PortalSAP_v2`/`WMS_Suite`
+  como producto SaaS/on-premise, ver `MEMORY.md`/`proyecto-menoja.md` ahí) —
+  histórico, no área de desarrollo activo.
+
+Al buscar o referenciar algo que podría vivir en un hermano (o agregarse ahí a
+futuro), considerar esta carpeta general, no asumir que todo cuelga de este repo.
 
 ## Qué es esto
 
@@ -35,10 +58,53 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
   `companies`. Ver `docs/03-MODELO-CORE-COMERCIAL.md` para el modelo completo, y
   `docs/01-CONVENCION-NOMBRES-BD.md` para la convención de nombres (inglés, plural,
   formal — el idioma no es lo importante, la consistencia sí).
+- **REGLA DURA (2026-08-08): todo plugin que necesite personalizar su comportamiento o
+  su persistencia por el SAP/negocio del cliente lo hace por `CompanyId`, NUNCA por
+  `OrganizationId` directo, y SIN fallback a un alcance más amplio.** Modelo real:
+  `Organization` 1:N `Instance`, `Instance` 1:N `Company` (varias Company de la misma
+  Organization pueden compartir una Instance física), `Company` N:1 `Instance`. Una
+  Organization puede tener Companies con SAP completamente distintos (UDFs, series,
+  almacenes, layouts de Excel) — cualquier tabla o resolución de conexión que se quede
+  en `OrganizationId` termina mezclando configuración de compañías que en la práctica
+  son SAP distintos. Aplica sin excepción a:
+  - Tablas de configuración de un plugin (ej. `GenericImportConfig`,
+    `GenericImportUserField` de `Modulo.ImportacionGenerica`, corregidas 2026-08-08 —
+    antes colgaban de `OrganizationId`, ahora de `CompanyId`, mismo patrón que
+    `UserMenuProfile`/`OrganizationDocumentPermission`).
+  - Resolución de conexión a base de datos EXTERNA de un plugin
+    (`IExternalDatabaseConnectionService.ResolveConnectionAsync`) — `companyId` es
+    parámetro obligatorio, no nullable, y **no existe** un fallback a una fila global de
+    la organización (`CompanyId IS NULL`). Existía antes (2026-07-26) y se eliminó a
+    propósito: un plugin sin Company activa (`ICurrentCompanyAccessor.HasCompany`
+    false) debe rechazar la operación con un mensaje claro, nunca degradar en silencio a
+    un alcance más amplio. `Modulo.Rendiciones` y `Modulo.GestionDistribucionGastos`
+    (`Portal SaaS - Plugins/`) ya siguen este patrón.
+  - Cualquier plugin nuevo, interno o externo, que persista datos propios o resuelva una
+    conexión — no hay excepción "el módulo no tiene concepto de compañía": si de verdad
+    no lo tiene, es una señal de que no debería vivir bajo este modelo, no una razón
+    para agregar un fallback a Organization.
+  - Company ya resuelve a Organization (`Company.OrganizationId`) — nunca hace falta
+    guardar ambos IDs en la misma tabla, alcanza con `CompanyId`.
+  formal — el idioma no es lo importante, la consistencia sí).
 - **`GestionDistribucionGastos` y `SellOut` NO se portan** — son desarrollo a medida
   de Comercial Depor (confirmado explícitamente por el dueño del proyecto), no
   funcionalidad de plataforma. Si un cliente nuevo necesita algo similar, se construye
   como módulo genérico configurable, nunca como copia con nombres distintos.
+- **Proyecto hermano: `Servicios SAP`** (`C:\PROYECTOS\Proyecto Portal Web-Company\Portal SaaS - Servicios SAP\`,
+  creado 2026-07-29, carpeta renombrada el mismo día como parte del reordenamiento de
+  nombres — ver "Carpeta general del proyecto" más arriba) — familia de Windows Services SAP standalone (sin UI, sin sesión
+  HTTP), independientes de este proyecto pero preparados para integrarse. Primer
+  miembro: `TransferenciaAutomatica`, portado del Windows Service legado de transferencia
+  de stock entre bodegas de Comercial Depor, sin cambiar su lógica de negocio (mismas
+  queries HANA, mismo stored procedure de asignación de bodegas, mismo mecanismo de UDF).
+  No hay dependencia de proyecto/solución cruzada — comparten con este proyecto, vía
+  **copia deliberada**, el cifrado de secretos (`ISecretoCifradoService`, AES-256-GCM) y
+  el shape del connection string hacia el SAP del cliente (mismo criterio que
+  `SapConnectionStringFactory`). El punto de integración futuro es que
+  `ICompanyProvider` de `Servicios SAP` gane una implementación que lea
+  `organizations`/`companies`/`instances` de este proyecto en vez de `appsettings.json` —
+  hasta entonces, `Servicios SAP` corre completamente aparte. Ver
+  `Servicios SAP/docs/00-VINCULO-CON-PORTAL-SAAS.md` para el razonamiento completo.
 
 ## Reglas que no se negocian
 
@@ -2119,6 +2185,23 @@ real. **Pendiente explícito, no cerrado acá**: replicar las mismas 3 brechas d
 columnas a Compras/Inventario -- decisión deliberada de esperar a que Venta se valide
 primero (mismo criterio ya usado para las 3 fases del motor genérico en su momento).
 
+## Bug real: migración `AddLicensingSignedToken` sin aplicar en Postgres dev (29 jul 2026)
+
+Encontrado mientras se probaba el login/flujo real del plugin Rendiciones (ver
+`PENDIENTE.md` de `Portal SaaS - Plugins\Modulo.Rendiciones`), pero es un bug de
+plataforma, no del plugin: la base Postgres de desarrollo no tenía aplicada la
+migración `20260730030738_AddLicensingSignedToken` (columna `signed_status_token` en
+`organizations`) -- causaba un 500 real (`42703: column o.signed_status_token does not
+exist`) al intentar crear **cualquier** usuario tenant desde
+`/Admin/Organizations/Users/Create`, para cualquier organización, no solo Comercial
+Depor. **Corregido**: `dotnet ef database update --project
+src\PortalSaas.Data.Migrations.PostgreSql --startup-project
+src\PortalSaas.Data.Migrations.PostgreSql` (usando el propio proyecto de migraciones
+como startup -- el `PortalSaas.Host` no sirve como startup mientras el proceso está
+corriendo, el `.exe` queda bloqueado por el propio proceso). Aplicar el mismo update
+contra la base SQL Server de desarrollo si se usa esa organización para pruebas --
+no verificado en esta sesión (solo se tocó Postgres, la base real de Comercial Depor).
+
 ## Causa raíz real de "nada de lo de hoy funciona" -- `.vscode/launch.json` apuntaba al build AnyCPU viejo -- 26 jul 2026 (mismo día)
 
 El dueño del proyecto siguió reportando "la paginación sigue sin funcionar" incluso con
@@ -2377,7 +2460,9 @@ Resuelve el hueco documentado hasta hoy como "diferido a propósito (YAGNI)"
 (`ISqlServerService`/bases SQL Server externas no-SAP de un plugin) — surgió como
 prerrequisito real al extraer `Modulo.Rendiciones` (rendición de gastos corporativos,
 nombre interno que evita cualquier marca comercial existente en el mercado) como
-plugin **externo** (repo propio, `C:\PROYECTOS\Modulo.Rendiciones`, compilado aparte y
+plugin **externo** (repo propio, `Portal SaaS - Plugins\Modulo.Rendiciones` — ruta
+histórica al momento de esta entrega: `C:\PROYECTOS\Modulo.Rendiciones`, ya movida,
+ver "Carpeta general del proyecto" más arriba —, compilado aparte y
 copiado a `artifacts/plugins/` de este portal, ver `docs/09-GUIA-DESARROLLO-PLUGINS.md`).
 A diferencia del original (`ISqlServerService` de `PortalSAP_v2`, solo SQL Server),
 acá es **motor dual desde el día uno** (Postgres/SQL Server, mismo criterio que la base

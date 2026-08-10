@@ -9,20 +9,21 @@ namespace PortalSaas.Data.Entities;
 /// propia). Motor dual desde el día uno (postgres/sqlserver, ver
 /// ModuleExternalConnectionEngineType) -- a diferencia del original PortalSAP_v2, que
 /// solo soportaba SQL Server para estas bases externas.
+///
+/// CompanyId obligatorio, sin fallback a nivel Organization -- regla dura del proyecto:
+/// todo plugin (interno o externo) personaliza su persistencia por Company, nunca por
+/// Organization directo (mismo criterio que GenericImportConfig/GenericImportUserField y
+/// UserMenuProfile). Antes existía un fallback "fila global de la organización, CompanyId
+/// NULL" para módulos sin concepto de compañía -- se eliminó a propósito: Company ya
+/// resuelve a Organization (Company.OrganizationId), así que no hay ningún caso real que
+/// justifique una excepción a este esquema.
 /// </summary>
 public sealed class ModuleExternalConnection
 {
     public long Id { get; set; }
 
-    public Guid OrganizationId { get; set; }
-    public Organization Organization { get; set; } = null!;
-
-    /// <summary>
-    /// Null = fila global de la organización para este módulo (fallback cuando no hay
-    /// una fila puntual para la compañía). Con valor = solo aplica a esa Company.
-    /// </summary>
-    public Guid? CompanyId { get; set; }
-    public Company? Company { get; set; }
+    public Guid CompanyId { get; set; }
+    public Company Company { get; set; } = null!;
 
     /// <summary>SIEMPRE IModuloPortal.ModuleCode del plugin que resuelve la conexión, nunca un literal a mano.</summary>
     public string ModuleCode { get; set; } = null!;

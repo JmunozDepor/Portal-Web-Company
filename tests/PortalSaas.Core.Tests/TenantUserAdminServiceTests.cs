@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Core.Administracion;
 using PortalSaas.Core.Comercial;
+using PortalSaas.Core.Comercial.Licenciamiento;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 using Xunit;
@@ -41,8 +43,14 @@ public class TenantUserAdminServiceTests
         return (db, org, plan);
     }
 
-    private static TenantUserAdminService CrearServicio(PortalSaasDbContext db, Guid organizationId, Guid? userId = null) =>
-        new(db, new CurrentUserContextFijo { UserId = userId ?? Guid.NewGuid(), OrganizationId = organizationId }, new ContractLimitService(db));
+    private static TenantUserAdminService CrearServicio(PortalSaasDbContext db, Guid organizationId, Guid? userId = null)
+    {
+        // Estos tests solo ejercitan organizaciones SaaS -- la config de licenciamiento
+        // no se usa en ese camino, basta con una vacía.
+        var configuracion = new ConfigurationBuilder().Build();
+        var contractLimitService = new ContractLimitService(db, new LicenseTokenService(configuracion), configuracion);
+        return new(db, new CurrentUserContextFijo { UserId = userId ?? Guid.NewGuid(), OrganizationId = organizationId }, contractLimitService);
+    }
 
     [Fact]
     public async Task CreateAsync_RespetaElLimiteDelPlan()

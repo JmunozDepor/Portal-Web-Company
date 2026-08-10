@@ -10,6 +10,12 @@ namespace PortalSaas.Abstractions.Modelos;
 /// igual se vuelve a digitar por línea. Sin DocDueDate a propósito -- Service Layer la
 /// rechaza para StockTransfer ("Property 'DocDueDate' of 'StockTransfer' is invalid"),
 /// mismo motivo documentado en el original.
+///
+/// BusinessPartnerCardCode/BusinessPartnerName/CustomerReferenceNumber -- a diferencia
+/// de DocDueDate, CardCode SÍ existe en OWTQ/OWTR y Service Layer lo acepta al crear.
+/// Editable desde el formulario (paridad con Venta/Compra, a pedido explícito del
+/// dueño del proyecto) -- BusinessPartnerName es de solo lectura (viene de SAP, igual
+/// criterio que SalesDocumentDto.CustomerName), nunca se envía de vuelta al crear.
 /// </summary>
 public sealed record InventoryDocumentDto(
     DateOnly DocDate,
@@ -20,6 +26,9 @@ public sealed record InventoryDocumentDto(
     string? Status = null,
     // NNM1.Series -- null deja que SAP asigne la serie por defecto del tipo de documento. Ver ISeriesCatalogService.
     int? Series = null,
+    string? BusinessPartnerCardCode = null,
+    string? BusinessPartnerName = null,
+    string? CustomerReferenceNumber = null,
     // Campos de usuario (UDF dinámicos) -- consumido por Modulo.ImportacionGenerica, ver
     // SapAdditionalFieldsHelper.
     IReadOnlyDictionary<string, object?>? AdditionalFields = null);

@@ -115,10 +115,10 @@
 {
     <div class="admin-row-actions mb-2 mt-2">
         <button type="button" id="sales-order-add-line" class="btn btn-sm btn-outline-secondary">+ Agregar línea</button>
-        <button type="button" id="sales-order-download-template" class="btn btn-sm btn-outline-secondary">Descargar plantilla CSV</button>
-        <button type="button" id="sales-order-import-csv" class="btn btn-sm btn-outline-secondary">Importar CSV</button>
+        <button type="button" id="sales-order-download-template" class="btn btn-sm btn-outline-secondary">Descargar plantilla Excel</button>
+        <button type="button" id="sales-order-import-csv" class="btn btn-sm btn-outline-secondary">Importar Excel</button>
         <button type="button" id="sales-order-clear-lines" class="btn btn-sm btn-outline-danger">Vaciar todas las líneas</button>
-        <input type="file" id="sales-order-csv-file" accept=".csv" style="display:none" />
+        <input type="file" id="sales-order-csv-file" accept=".xlsx,.xls" style="display:none" />
     </div>
     <div id="sales-order-csv-result"></div>
 
@@ -149,6 +149,7 @@
     </template>
 
     <script src="~/js/catalog-search.js"></script>
+    <script src="~/lib/sheetjs/xlsx.full.min.js"></script>
     <script src="~/js/document-lines-editor.js"></script>
     <script>
         wireCatalogSearch({

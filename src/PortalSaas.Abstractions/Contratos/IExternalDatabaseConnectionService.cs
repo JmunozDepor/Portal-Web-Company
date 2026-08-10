@@ -18,16 +18,18 @@ namespace PortalSaas.Abstractions.Contratos;
 public interface IExternalDatabaseConnectionService
 {
     /// <summary>
-    /// Resuelve la conexión para (moduleCode, organizationId, companyId opcional):
-    /// busca primero una fila puntual para companyId, si no hay reintenta con la fila
-    /// global de la organización para ese módulo (CompanyId IS NULL -- caso de un
-    /// módulo sin concepto de compañía). Si ninguna existe, lanza
-    /// InvalidOperationException con un mensaje presentable indicando que hay que
-    /// configurar la conexión desde Administración.
+    /// Resuelve la conexión para (moduleCode, companyId) -- companyId SIEMPRE
+    /// obligatorio, sin fallback a una fila global de la organización (regla dura del
+    /// proyecto: todo plugin personaliza su persistencia por Company). Si el llamador no
+    /// tiene una Company activa en sesión (ICurrentCompanyAccessor.HasCompany false), es
+    /// responsabilidad del llamador rechazar la operación antes de llegar acá -- este
+    /// método no adivina ni degrada a un alcance más amplio. Lanza
+    /// InvalidOperationException con un mensaje presentable si no hay ninguna fila
+    /// configurada para esa Company, indicando que hay que configurarla desde
+    /// Administración.
     /// </summary>
     Task<ExternalDatabaseConnection> ResolveConnectionAsync(
         string moduleCode,
-        Guid organizationId,
-        Guid? companyId,
+        Guid companyId,
         CancellationToken ct = default);
 }

@@ -100,7 +100,12 @@ public abstract class IndexGenericSalesDocumentModelBase : PageModel
         // Se propaga como returnUrl del detalle -- sin esto, "Volver" desde un documento
         // siempre vuelve a la página 1 del listado, perdiendo la página/filtros actuales
         // (bug real reportado: "Volver" desde la página 3 volvía a la página 1).
-        var returnUrl = Uri.EscapeDataString(Request.Path + Request.QueryString);
+        // Request.PathBase + Request.Path (no Request.Path solo) -- hosteado como
+        // subaplicación de IIS (ej. /portalsaas-comercialdepor), Request.Path YA viene
+        // sin ese prefijo; omitirlo generaba un returnUrl que caía fuera de la app
+        // (404 real, primer piloto en IIS, 2026-08-02). Mismo criterio en DetailUrl/
+        // CreateUrl más abajo y en BackUrl de DetailGenericSalesDocumentModelBase.
+        var returnUrl = Uri.EscapeDataString(Request.PathBase + Request.Path + Request.QueryString);
 
         // Columnas/filtros -- paridad exacta con IndexGenericoVentaModelBase (referencia-
         // original/PortalSAP_v2): DocEntry primero, Cliente (código) y Nombre cliente
@@ -136,7 +141,7 @@ public abstract class IndexGenericSalesDocumentModelBase : PageModel
                     item.Status,
                     item.SalesEmployeeName ?? "-",
                 ],
-                DetailUrl: $"{RouteBase}/{item.DocEntry}?returnUrl={returnUrl}")).ToList(),
+                DetailUrl: $"{Request.PathBase}{RouteBase}/{item.DocEntry}?returnUrl={returnUrl}")).ToList(),
             Filters =
             [
                 new DocumentListFilter(nameof(FilterInput.CustomerCardCode), "N.° Cliente", FilterFieldType.Text, Filter.CustomerCardCode),
@@ -148,7 +153,7 @@ public abstract class IndexGenericSalesDocumentModelBase : PageModel
                 new DocumentListFilter(nameof(FilterInput.SalesEmployeeName), "Vendedor", FilterFieldType.Text, Filter.SalesEmployeeName),
             ],
             ShowFreeTextSearch = false,
-            CreateUrl = canCreate ? $"{RouteBase}/nuevo" : null,
+            CreateUrl = canCreate ? $"{Request.PathBase}{RouteBase}/nuevo" : null,
             CreateDisabledTitle = canCreate ? null : $"No tenés permiso para crear {DocumentNamePlural.ToLowerInvariant()}",
             ShowPaging = true,
             CurrentPage = PageNumber,

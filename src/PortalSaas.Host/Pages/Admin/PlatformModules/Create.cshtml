@@ -13,7 +13,23 @@
 
             <div class="mb-3">
                 <label asp-for="Input.Code" class="form-label"></label>
-                <input asp-for="Input.Code" class="form-control" autofocus />
+                @if (Model.AvailablePlugins.Count > 0)
+                {
+                    <select asp-for="Input.Code" class="form-select" autofocus>
+                        <option value="">Seleccionar…</option>
+                        @foreach (var plugin in Model.AvailablePlugins)
+                        {
+                            <option value="@plugin.ModuleCode">@plugin.ModuleCode — @plugin.Name</option>
+                        }
+                    </select>
+                }
+                else
+                {
+                    <p class="text-muted small mb-0">
+                        No hay plugins cargados sin módulo comercial todavía (todos los cargados ya
+                        tienen fila acá, o no hay ninguno cargado en este proceso).
+                    </p>
+                }
                 <span asp-validation-for="Input.Code" class="text-danger"></span>
             </div>
 

@@ -13,7 +13,7 @@
             <div class="alert alert-danger">@Model.ErrorMessage</div>
         }
 
-        <form method="post">
+        <form method="post" asp-antiforgery="true">
             <input type="hidden" asp-for="Input.ReturnUrl" />
 
             <div class="mb-3">

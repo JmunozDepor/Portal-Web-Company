@@ -73,6 +73,31 @@
 {
     <hr class="my-4" />
 
+    <h2 class="h4">Compañía por defecto</h2>
+
+    @if (!Model.TieneCompanies)
+    {
+        <p class="text-warning">Tu organización todavía no tiene ninguna compañía configurada.</p>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="GuardarCompaniaDefault" asp-route-id="@Model.Detalle!.Id" class="row g-2 align-items-end mb-4">
+            <div class="col-auto">
+                <label class="form-label">Compañía con la que entra automáticamente al loguearse</label>
+                <select name="DefaultCompanyId" class="form-select">
+                    <option value="">Sin compañía por defecto (elige cada vez)</option>
+                    @foreach (var company in Model.Companies)
+                    {
+                        <option value="@company.Value" selected="@(company.Value == Model.DefaultCompanyId?.ToString())">@company.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Guardar compañía por defecto</button>
+            </div>
+        </form>
+    }
+
     <h2 class="h4">Permisos</h2>
 
     @if (!Model.TieneCompanies)

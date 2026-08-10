@@ -3,10 +3,11 @@ using PortalSaas.Abstractions.Modelos;
 namespace PortalSaas.Abstractions.Contratos;
 
 /// <summary>
-/// CRUD de la configuración de Modulo.ImportacionGenerica de la organización actual --
-/// ver GenericImportConfigDto para el criterio de estándar (BusinessPartnerCardCode
-/// null) vs excepción por cliente/proveedor. Portado de
-/// IConfiguracionImportacionGenericaService.
+/// CRUD de la configuración de Modulo.ImportacionGenerica de la COMPAÑÍA activa (no la
+/// organización, ver GenericImportConfigDto/GenericImportConfig -- regla dura de que
+/// todo plugin que dependa de SAP se personaliza por Company) -- ver GenericImportConfigDto
+/// para el criterio de estándar (BusinessPartnerCardCode null) vs excepción por
+/// cliente/proveedor. Portado de IConfiguracionImportacionGenericaService.
 /// </summary>
 public interface IGenericImportConfigService
 {
@@ -28,11 +29,13 @@ public interface IGenericImportConfigService
         string? businessPartnerCardCode, string? groupingColumn, bool skuIsCustomerOwn, string alias,
         IReadOnlyList<GenericImportConfigFieldDto> fields,
         GenericImportPriceSource priceSource = GenericImportPriceSource.BusinessPartner, int? systemPriceListCode = null,
+        bool businessPartnerFromFile = false,
         CancellationToken ct = default);
 
     Task UpdateAsync(int id, string? groupingColumn, bool skuIsCustomerOwn, string alias, bool isActive,
         IReadOnlyList<GenericImportConfigFieldDto> fields,
         GenericImportPriceSource priceSource = GenericImportPriceSource.BusinessPartner, int? systemPriceListCode = null,
+        bool businessPartnerFromFile = false,
         CancellationToken ct = default);
 
     Task DeleteAsync(int id, CancellationToken ct = default);

@@ -27,6 +27,16 @@ public interface ISalesDocumentService
     /// </summary>
     Task<int> CreateAsync(SalesDocumentType type, string portalUsername, SalesDocumentDto document, CancellationToken ct = default);
 
+    /// <summary>
+    /// Relee el documento tal cual quedó en SAP (con los LineNum reales que SAP asignó) y
+    /// patchea el arreglo de líneas COMPLETO (existentes + nuevas) -- Service Layer trata
+    /// "DocumentLines" como el estado final del arreglo, así que no alcanza con mandar solo
+    /// las líneas nuevas. Pensado para importaciones masivas con miles de filas: crear con
+    /// el primer lote y agregar el resto en lotes sucesivos evita un único POST gigante que
+    /// puede superar el timeout configurado de Service Layer.
+    /// </summary>
+    Task AddLinesAsync(SalesDocumentType type, int docEntry, IReadOnlyList<SalesDocumentLineDto> newLines, CancellationToken ct = default);
+
     Task<SalesDocumentDto?> GetAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default);
 
     Task<SalesDocumentListResult> ListAsync(SalesDocumentType type, SalesDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default);

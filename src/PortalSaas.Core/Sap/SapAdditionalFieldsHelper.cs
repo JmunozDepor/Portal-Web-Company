@@ -27,6 +27,17 @@ public static class SapAdditionalFieldsHelper
     /// Nombres de propiedad ya resueltos por la lógica núcleo de los 3 motores genéricos
     /// (cabecera y línea, combinados) -- un campo de usuario nunca puede declarar uno de estos,
     /// para no pisar por accidente un valor que el motor ya calculó.
+    ///
+    /// "Comments" NO está acá a propósito (portado de PortalSAP_v2, sección 7.3 del doc de
+    /// referencia) -- las 3 rutas de creación de GenericImportService siempre graban
+    /// `Comments: null`, y Flatten descarta propiedades tipadas null ANTES de mezclar
+    /// AdditionalFields por encima, así que un campo de usuario "Comments" nunca puede
+    /// pisar un valor real que el motor haya calculado. Ninguna página de digitación
+    /// manual (Ventas/Compras/Inventario) pasa AdditionalFields tampoco, cero riesgo de
+    /// colisión ahí. Si algún día el motor agrega un campo núcleo propio para
+    /// Comentarios (mapeable por columna, con resolución real en vez de null fijo), hay
+    /// que devolver "Comments" acá -- si no, un campo de usuario mal configurado pisaría
+    /// en silencio el valor que el motor sí estaría calculando en ese momento.
     /// </summary>
     private static readonly HashSet<string> ReservedNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -36,7 +47,7 @@ public static class SapAdditionalFieldsHelper
         "CostingCode3", "RequiredDate", "FromWarehouseCode",
         // Cabecera
         "DocEntry", "DocNum", "DocType", "CardCode", "CardName", "SalesPersonCode", "Series",
-        "TransportationCode", "GroupNumber", "Comments", "DocDate", "DocDueDate", "RequriedDate",
+        "TransportationCode", "GroupNumber", "DocDate", "DocDueDate", "RequriedDate",
         "TaxDate", "NumAtCard", "DocTotal", "DocumentStatus",
         "DocumentLines", "StockTransferLines", "U_PortalUser",
         AdditionalFieldsPropertyName,

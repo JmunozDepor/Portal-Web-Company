@@ -52,9 +52,11 @@ public class LoginModel : PageModel
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "PlatformAdmin"));
         await HttpContext.SignInAsync("PlatformAdmin", principal);
 
+        // Url.Content("~/...") -- ver el mismo fix en Account/Login.cshtml.cs (literal
+        // absoluto pierde el PathBase de la subaplicación IIS).
         return LocalRedirect(Url.IsLocalUrl(Input.ReturnUrl) && Input.ReturnUrl is not null
             ? Input.ReturnUrl
-            : "/Admin/Organizations/Index");
+            : Url.Content("~/Admin/Organizations/Index"));
     }
 
     public sealed class InputModel

@@ -14,7 +14,7 @@
             <div class="alert alert-success">Preferencias guardadas.</div>
         }
 
-        <form method="post">
+        <form method="post" asp-antiforgery="true">
             <div class="mb-3">
                 <label asp-for="Input.Locale" class="form-label"></label>
                 <input asp-for="Input.Locale" class="form-control" />

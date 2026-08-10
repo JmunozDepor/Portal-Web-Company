@@ -2,10 +2,17 @@ namespace PortalSaas.Data.Entities;
 
 /// <summary>
 /// Catálogo maestro de campos de usuario (UDF dinámicos) de Modulo.ImportacionGenerica,
-/// por organización -- solo administrador de organización. Equivalente a
-/// CAMPO_USUARIO_IMPORTACION_GENERICA en referencia-original/PortalSAP_v2, pero vive en
-/// la base propia de la plataforma (organization_id), no en HANA -- mismo criterio que
-/// OrganizationDocumentPermission.
+/// por COMPAÑÍA -- equivalente a CAMPO_USUARIO_IMPORTACION_GENERICA en
+/// referencia-original/PortalSAP_v2, pero vive en la base propia de la plataforma
+/// (company_id), no en HANA -- mismo criterio que OrganizationDocumentPermission.
+///
+/// CompanyId, no OrganizationId (regla dura, ver GenericImportConfig y CLAUDE.md) -- un
+/// UDF es una particularidad física de la base SAP de ESA Company (confirmado en la
+/// referencia-original, sección "UDF son por compañía SAP, no por el catálogo del
+/// portal": un campo de usuario dado de alta en una Company puede no existir todavía en
+/// otra Company de la misma Organization). El catálogo organization-wide del original
+/// era justamente la causa de ese problema operativo -- acá se corrige de raíz en vez de
+/// heredarlo.
 ///
 /// Module/Level/DataType son string libre, no un enum -- PortalSaas.Data nunca
 /// referencia PortalSaas.Abstractions. Ver
@@ -16,8 +23,8 @@ public sealed class GenericImportUserField
 {
     public int Id { get; set; }
 
-    public Guid OrganizationId { get; set; }
-    public Organization Organization { get; set; } = null!;
+    public Guid CompanyId { get; set; }
+    public Company Company { get; set; } = null!;
 
     /// <summary>"Sales" | "Purchase" | "Inventory".</summary>
     public string Module { get; set; } = null!;

@@ -31,6 +31,22 @@ public sealed class GenericImportService : IGenericImportService
     /// <summary>Clave de agrupamiento cuando la configuración no define GroupingColumn -- todo el archivo cae en un único documento.</summary>
     private const string SingleGroupingKey = "__SINGLE__";
 
+    // Tamaño de lote para la carga de líneas -- un documento con más filas que esto se
+    // crea con el primer lote y el resto se agrega en lotes sucesivos (ver
+    // I{Sales,Purchase,Inventory}DocumentService.AddLinesAsync), en vez de mandar todas
+    // las líneas en un único POST a Service Layer. Sin esto, un archivo de varios miles
+    // de filas sin GroupingColumn configurado (o con un grupo muy grande) arma un único
+    // documento gigante que puede superar el timeout de Service Layer y además deja al
+    // usuario sin ningún indicio de progreso durante todo el proceso (barra fija en
+    // "0 de 1"). Portado de ImportacionGenericaService.TamanoLotePorDefecto
+    // (referencia-original/PortalSAP_v2) -- ese mismo valor (400, no 200) es el
+    // resultado de un ajuste real: con lotes de 200 un archivo de 1600 filas pareció
+    // "colgado" y el usuario cerró la pestaña a mitad de camino (2026-07-24). Cada lote
+    // reprocesa en SAP el documento COMPLETO acumulado hasta ese momento
+    // (AddLinesAsync relee y repatchea el arreglo entero) -- MENOS lotes (más grandes)
+    // significa MENOS pasadas de reprocesamiento acumuladas para el mismo archivo.
+    private const int DefaultBatchSize = 400;
+
     private static readonly IReadOnlyList<IGenericImportValidationRule> BuiltInRules =
     [
         new PositiveQuantityRule(),
@@ -46,6 +62,8 @@ public sealed class GenericImportService : IGenericImportService
     private readonly IGeneralLedgerAccountCatalogService _accounts;
     private readonly ICostCenterCatalogService _costCenters;
     private readonly IPriceListService _priceList;
+    private readonly ICustomerCatalogService _customers;
+    private readonly ISupplierCatalogService _suppliers;
     private readonly ISalesDocumentService _sales;
     private readonly IPurchaseDocumentService _purchase;
     private readonly IInventoryDocumentService _inventory;
@@ -55,7 +73,8 @@ public sealed class GenericImportService : IGenericImportService
     public GenericImportService(IGenericImportConfigService config, IGenericImportUserFieldService userFieldsCatalog,
         IBusinessPartnerDefaultsService partnerDefaults, IItemCrossReferenceService crossReference, IItemCatalogService items,
         IWarehouseCatalogService warehouses, IGeneralLedgerAccountCatalogService accounts, ICostCenterCatalogService costCenters,
-        IPriceListService priceList, ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
+        IPriceListService priceList, ICustomerCatalogService customers, ISupplierCatalogService suppliers,
+        ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
         IGenericImportProgressStore progress, ILogger<GenericImportService> logger)
     {
         _config = config;
@@ -67,6 +86,8 @@ public sealed class GenericImportService : IGenericImportService
         _accounts = accounts;
         _costCenters = costCenters;
         _priceList = priceList;
+        _customers = customers;
+        _suppliers = suppliers;
         _sales = sales;
         _purchase = purchase;
         _inventory = inventory;
@@ -100,15 +121,6 @@ public sealed class GenericImportService : IGenericImportService
 
         var rawRows = ReadRawRows(table, config);
 
-        // Paridad SKU-socio -> ItemCode, solo si la configuración lo pide -- resuelto
-        // una sola vez para todo el archivo, no por fila.
-        var crossReferenceBySku = config.SkuIsCustomerOwn && !string.IsNullOrWhiteSpace(parameters.BusinessPartnerCardCode)
-            ? (await _crossReference.ListAsync(parameters.BusinessPartnerCardCode, ct))
-                .Where(x => !string.IsNullOrWhiteSpace(x.Sku))
-                .GroupBy(x => x.Sku, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First().ItemCode, StringComparer.OrdinalIgnoreCase)
-            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
         IReadOnlyList<string> CodesOf(GenericImportLogicalField field) => rawRows
             .Select(r => r.CoreFields.GetValueOrDefault(field))
             .Where(v => !string.IsNullOrWhiteSpace(v))
@@ -116,9 +128,56 @@ public sealed class GenericImportService : IGenericImportService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // Carga multi-socio (config.BusinessPartnerFromFile): todos los CardCode
+        // distintos de la columna mapeada a BusinessPartnerCardCode. Si no, la lista es
+        // el único socio del wizard (modo de siempre) -- mismo helper CodesOf que ya
+        // usan Bodega/CuentaMayor/etc, resuelto UNA vez por conjunto de códigos
+        // distintos, nunca por fila.
+        var businessPartnersInFile = config.BusinessPartnerFromFile
+            ? CodesOf(GenericImportLogicalField.BusinessPartnerCardCode)
+            : (!string.IsNullOrWhiteSpace(parameters.BusinessPartnerCardCode) ? [parameters.BusinessPartnerCardCode] : Array.Empty<string>());
+
+        // Solo en modo multi-socio: valida existencia contra el catálogo de Cliente
+        // (Venta/Inventario) o Proveedor (Compra) y trae el nombre para la vista previa
+        // -- mismo catálogo que ya reusa el selector del wizard (ver
+        // OnGetSearchBusinessPartnersAsync en Pages/Importar/Index.cshtml.cs).
+        var validBusinessPartners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (config.BusinessPartnerFromFile)
+        {
+            foreach (var cardCode in businessPartnersInFile)
+            {
+                var name = parameters.Module == GenericImportModule.Purchase
+                    ? (await _suppliers.GetAsync(cardCode, ct))?.CardName
+                    : (await _customers.GetAsync(cardCode, ct))?.CardName;
+                if (name is not null)
+                {
+                    validBusinessPartners[cardCode] = name;
+                }
+            }
+        }
+
+        // Paridad SKU-socio -> ItemCode, solo si la configuración lo pide -- una llamada
+        // POR CADA socio distinto de businessPartnersInFile (antes: una sola llamada con
+        // el socio del wizard). Con un único socio (modo normal) esto sigue siendo
+        // exactamente 1 llamada, igual que antes.
+        var crossReferenceBySocio = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        if (config.SkuIsCustomerOwn)
+        {
+            foreach (var cardCode in businessPartnersInFile)
+            {
+                crossReferenceBySocio[cardCode] = (await _crossReference.ListAsync(cardCode, ct))
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Sku))
+                    .GroupBy(x => x.Sku, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First().ItemCode, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
         var excelItemCodes = CodesOf(GenericImportLogicalField.ItemCode);
+        // Unión de todos los ItemCode de todas las paridades resueltas -- trae de más si
+        // hay SKUs sin paridad en algún socio, pero evita una segunda pasada.
         var itemCodesToResolve = config.SkuIsCustomerOwn
-            ? excelItemCodes.Where(crossReferenceBySku.ContainsKey).Select(sku => crossReferenceBySku[sku]).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            ? crossReferenceBySocio.Values.SelectMany(d => excelItemCodes.Where(d.ContainsKey).Select(sku => d[sku]))
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToList()
             : excelItemCodes;
 
         var items = itemCodesToResolve.Count > 0
@@ -168,8 +227,9 @@ public sealed class GenericImportService : IGenericImportService
             systemPrices = await _priceList.GetPricesAsync(items.Keys.ToList(), systemPriceList, ct);
         }
 
-        var rows = rawRows.Select(r => ProcessRow(r, config, parameters.Module, parameters.LineType, crossReferenceBySku, items,
-            warehouses, accounts, costCenters, dimension2, dimension3, userFieldsCatalog, systemPrices)).ToList();
+        var rows = rawRows.Select(r => ProcessRow(r, config, parameters.Module, parameters.LineType, parameters.BusinessPartnerCardCode,
+            validBusinessPartners, crossReferenceBySocio, items, warehouses, accounts, costCenters, dimension2, dimension3,
+            userFieldsCatalog, systemPrices)).ToList();
 
         var documents = rows
             .GroupBy(r => r.GroupingKey)
@@ -252,6 +312,84 @@ public sealed class GenericImportService : IGenericImportService
         return columns;
     }
 
+    public async Task<byte[]> GenerateFileWithErrorsAsync(GenericImportParametersDto parameters,
+        IReadOnlyList<GenericImportDocumentDto> documents, CancellationToken ct = default)
+    {
+        var config = await _config.ResolveAsync(parameters.Module, parameters.DocumentType, parameters.LineType,
+            parameters.BusinessPartnerCardCode, ct)
+            ?? throw new InvalidOperationException("No hay una configuración vigente para regenerar el archivo.");
+
+        var userFieldsCatalog = (await _userFieldsCatalog.ListAsync(parameters.Module, ct)).ToDictionary(f => f.Id);
+
+        using var workbook = new XLWorkbook();
+        var ws = workbook.Worksheets.Add("Datos");
+
+        var mappedFields = config.Fields.Where(f => !string.IsNullOrEmpty(f.ExcelColumn)).ToList();
+        foreach (var field in mappedFields)
+        {
+            var index = ColumnLetterToIndex(field.ExcelColumn!);
+            var label = FieldLabel(field, userFieldsCatalog);
+            ws.Cell(1, index + 1).Value = field.IsRequired ? $"{label}*" : label;
+        }
+
+        // "Errores" siempre al final, después de la última columna mapeada -- nunca pisa
+        // una columna real del layout de la configuración vigente.
+        var errorsColumnIndex = (mappedFields.Count > 0 ? mappedFields.Max(f => ColumnLetterToIndex(f.ExcelColumn!)) : -1) + 1;
+        ws.Cell(1, errorsColumnIndex + 1).Value = "Errores";
+
+        // Los documentos ya vienen agrupados por ClaveAgrupacion -- hay que deshacer eso
+        // para que el archivo salga en el mismo orden que tenía el original.
+        var allRows = documents.SelectMany(d => d.Rows).OrderBy(r => r.RowNumber).ToList();
+
+        var rowIndex = 1;
+        foreach (var row in allRows)
+        {
+            rowIndex++;
+            foreach (var field in mappedFields)
+            {
+                var index = ColumnLetterToIndex(field.ExcelColumn!);
+                ws.Cell(rowIndex, index + 1).Value = FieldValue(row, field, userFieldsCatalog) ?? string.Empty;
+            }
+
+            ws.Cell(rowIndex, errorsColumnIndex + 1).Value = string.Join("; ", row.Errors);
+
+            if (!row.IsValid)
+            {
+                ws.Range(rowIndex, 1, rowIndex, errorsColumnIndex + 1).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 214, 214);
+            }
+        }
+
+        ws.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    private static string FieldLabel(GenericImportConfigFieldDto field, IReadOnlyDictionary<int, GenericImportUserFieldDto> userFieldsCatalog) =>
+        field.LogicalField == GenericImportLogicalField.UserField && field.UserFieldId is { } userFieldId
+            && userFieldsCatalog.TryGetValue(userFieldId, out var userField)
+            ? userField.Label
+            : field.LogicalField.ToString();
+
+    /// <summary>
+    /// Valor a escribir en el archivo con errores -- crudo del Excel original para
+    /// campos núcleo (ver GenericImportRowDto.RawValues, necesario porque el campo ya
+    /// resuelto queda null justo en las filas con error) o el valor ya parseado para
+    /// campos de usuario (que no guardan valor crudo aparte -- aceptable porque esos
+    /// campos nunca fallan contra un catálogo SAP, a diferencia de los núcleo).
+    /// </summary>
+    private static string? FieldValue(GenericImportRowDto row, GenericImportConfigFieldDto field, IReadOnlyDictionary<int, GenericImportUserFieldDto> userFieldsCatalog)
+    {
+        if (field.LogicalField == GenericImportLogicalField.UserField && field.UserFieldId is { } userFieldId
+            && userFieldsCatalog.TryGetValue(userFieldId, out var userField))
+        {
+            return (row.UserFieldsHeader.GetValueOrDefault(userField.SapFieldName) ?? row.UserFieldsLine.GetValueOrDefault(userField.SapFieldName))?.ToString();
+        }
+
+        return row.RawValues.GetValueOrDefault(field.LogicalField);
+    }
+
     public async Task<GenericImportProgressDto> CreateDocumentsAsync(string jobId, string portalUsername,
         GenericImportParametersDto parameters, IReadOnlyList<GenericImportDocumentDto> documents, CancellationToken ct = default)
     {
@@ -264,27 +402,41 @@ public sealed class GenericImportService : IGenericImportService
             return none;
         }
 
-        UpdateProgress(jobId, $"Iniciando creación de {creatable.Count} documento(s)...", 0, creatable.Count, true, null, false);
+        // La unidad de progreso es el LOTE de líneas, no el documento -- con un único
+        // documento de miles de líneas (sin GroupingColumn configurado), "0 de 1" no le
+        // dice nada al usuario mientras dura todo el proceso.
+        var totalBatches = creatable.Sum(d => CountOfBatches(d.Rows.Count));
+        var currentBatch = 0;
 
-        var partnerDefaults = !string.IsNullOrWhiteSpace(parameters.BusinessPartnerCardCode)
-            ? await _partnerDefaults.GetAsync(parameters.BusinessPartnerCardCode, ct)
-            : null;
+        UpdateProgress(jobId, $"Iniciando creación de {creatable.Count} documento(s)...", 0, totalBatches, true, null, false);
+
         var results = new List<GenericImportDocumentResultDto>();
         var processed = 0;
 
         foreach (var document in creatable)
         {
             processed++;
-            UpdateProgress(jobId, $"Creando documento {processed} de {creatable.Count} ({document.GroupingKey})...",
-                processed - 1, creatable.Count, true, null, false);
+            var documentIndex = processed;
+            var totalBatchesDocument = CountOfBatches(document.Rows.Count);
+
+            void ReportBatch(int documentBatch)
+            {
+                currentBatch++;
+                var lineDetail = totalBatchesDocument > 1
+                    ? $" -- líneas {Math.Min(documentBatch * DefaultBatchSize, document.Rows.Count)}/{document.Rows.Count}"
+                    : string.Empty;
+                UpdateProgress(jobId,
+                    $"Creando documento {documentIndex} de {creatable.Count} ({document.GroupingKey}){lineDetail}...",
+                    currentBatch, totalBatches, true, null, false);
+            }
 
             try
             {
                 var docNum = parameters.Module switch
                 {
-                    GenericImportModule.Sales => await CreateSalesDocumentAsync(parameters, document, partnerDefaults, portalUsername, ct),
-                    GenericImportModule.Purchase => await CreatePurchaseDocumentAsync(parameters, document, portalUsername, ct),
-                    GenericImportModule.Inventory => await CreateInventoryDocumentAsync(parameters, document, portalUsername, ct),
+                    GenericImportModule.Sales => await CreateSalesDocumentAsync(parameters, document, portalUsername, ReportBatch, ct),
+                    GenericImportModule.Purchase => await CreatePurchaseDocumentAsync(parameters, document, portalUsername, ReportBatch, ct),
+                    GenericImportModule.Inventory => await CreateInventoryDocumentAsync(parameters, document, portalUsername, ReportBatch, ct),
                     _ => throw new InvalidOperationException($"Módulo {parameters.Module} no soportado."),
                 };
 
@@ -295,23 +447,29 @@ public sealed class GenericImportService : IGenericImportService
                 _logger.LogError(ex, "Error al crear el documento del grupo {GroupingKey} en el trabajo de import {JobId}.", document.GroupingKey, jobId);
                 results.Add(new GenericImportDocumentResultDto(document.GroupingKey, false, 0, ex.Message));
             }
-
-            UpdateProgress(jobId, $"Procesado {processed} de {creatable.Count}...", processed, creatable.Count, true, null, false);
         }
 
         var successes = results.Count(r => r.Success);
         var final = new GenericImportProgressDto(
             $"Proceso completado: {successes} exitoso(s), {creatable.Count - successes} fallido(s).",
-            creatable.Count, creatable.Count, successes == creatable.Count, null, true, results);
+            totalBatches, totalBatches, successes == creatable.Count, null, true, results);
         _progress.Update(jobId, final);
         return final;
     }
 
+    private static int CountOfBatches(int rowCount) => Math.Max(1, (int)Math.Ceiling(rowCount / (double)DefaultBatchSize));
+
     private async Task<int> CreateSalesDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
-        BusinessPartnerDefaultsDto? partnerDefaults, string portalUsername, CancellationToken ct)
+        string portalUsername, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<SalesDocumentType>(parameters.DocumentType);
         var first = document.Rows[0];
+        // Todas las filas de un grupo ya comparten socio por construcción (ver
+        // ProcessRow -- el prefijo de socio en GroupingKey garantiza esto), así que
+        // alcanza con mirar la primera. Resuelto POR documento, no una vez para todo el
+        // archivo -- en modo multi-socio cada documento puede ser de un socio distinto.
+        var cardCode = BusinessPartnerCardCodeOfDocument(document, parameters);
+        var partnerDefaults = !string.IsNullOrWhiteSpace(cardCode) ? await _partnerDefaults.GetAsync(cardCode, ct) : null;
 
         var lines = document.Rows.Select(r => new SalesDocumentLineDto(
             parameters.LineType == GenericImportLineType.Item ? DocumentLineType.Item : DocumentLineType.Service,
@@ -327,8 +485,10 @@ public sealed class GenericImportService : IGenericImportService
             CostCenterCode3: r.Dimension3,
             AdditionalFields: r.UserFieldsLine.Count > 0 ? r.UserFieldsLine : null)).ToList();
 
+        var batches = Chunk(lines, DefaultBatchSize);
+
         var doc = new SalesDocumentDto(
-            CustomerCardCode: parameters.BusinessPartnerCardCode ?? string.Empty,
+            CustomerCardCode: cardCode,
             CustomerName: null,
             SalesEmployeeCode: partnerDefaults?.SalesEmployeeCode,
             Comments: null,
@@ -336,19 +496,37 @@ public sealed class GenericImportService : IGenericImportService
             DocDueDate: DateOnly.FromDateTime(DateTime.Today),
             TaxDate: DateOnly.FromDateTime(DateTime.Today),
             CustomerReferenceNumber: first.CustomerReferenceNumber,
-            Lines: lines,
+            Lines: batches[0],
             AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
 
         var docEntry = await _sales.CreateAsync(type, portalUsername, doc, ct);
+        reportBatch(1);
+
+        for (var i = 1; i < batches.Count; i++)
+        {
+            try
+            {
+                await _sales.AddLinesAsync(type, docEntry, batches[i], ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falló un lote posterior al primero del documento {GroupingKey} (DocEntry {DocEntry}) -- queda a medio cargar en SAP, revisar manualmente.",
+                    document.GroupingKey, docEntry);
+                throw;
+            }
+            reportBatch(i + 1);
+        }
+
         var created = await _sales.GetAsync(type, docEntry, ct);
         return created?.DocNum ?? 0;
     }
 
     private async Task<int> CreatePurchaseDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
-        string portalUsername, CancellationToken ct)
+        string portalUsername, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<PurchaseDocumentType>(parameters.DocumentType);
         var first = document.Rows[0];
+        var cardCode = BusinessPartnerCardCodeOfDocument(document, parameters);
 
         var lines = document.Rows.Select(r => new PurchaseDocumentLineDto(
             parameters.LineType == GenericImportLineType.Item ? DocumentLineType.Item : DocumentLineType.Service,
@@ -364,27 +542,51 @@ public sealed class GenericImportService : IGenericImportService
             CostCenterCode3: r.Dimension3,
             AdditionalFields: r.UserFieldsLine.Count > 0 ? r.UserFieldsLine : null)).ToList();
 
+        var batches = Chunk(lines, DefaultBatchSize);
+
         var doc = new PurchaseDocumentDto(
-            SupplierCardCode: parameters.BusinessPartnerCardCode ?? string.Empty,
+            SupplierCardCode: cardCode,
             SupplierName: null,
             Comments: null,
             DocDate: DateOnly.FromDateTime(DateTime.Today),
             DocDueDate: DateOnly.FromDateTime(DateTime.Today),
             TaxDate: DateOnly.FromDateTime(DateTime.Today),
             SupplierReferenceNumber: first.CustomerReferenceNumber,
-            Lines: lines,
+            Lines: batches[0],
             AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
 
         var docEntry = await _purchase.CreateAsync(type, portalUsername, doc, ct);
+        reportBatch(1);
+
+        for (var i = 1; i < batches.Count; i++)
+        {
+            try
+            {
+                await _purchase.AddLinesAsync(type, docEntry, batches[i], ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Fallo un lote posterior al primero del documento {GroupingKey} (DocEntry {DocEntry}) -- queda a medio cargar en SAP, revisar manualmente.",
+                    document.GroupingKey, docEntry);
+                throw;
+            }
+            reportBatch(i + 1);
+        }
+
         var created = await _purchase.GetAsync(type, docEntry, ct);
         return created?.DocNum ?? 0;
     }
 
     private async Task<int> CreateInventoryDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
-        string portalUsername, CancellationToken ct)
+        string portalUsername, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<InventoryDocumentType>(parameters.DocumentType);
         var first = document.Rows[0];
+        // Socio opcional en Inventario (traslado interno sin cliente/proveedor) --
+        // BusinessPartnerCardCodeOfDocument devuelve "" si no hay ninguno, y ahí queda
+        // como null/vacío en el documento SAP (mismo criterio que ya usa esta pantalla
+        // para Venta/Compra, donde sí es obligatorio).
+        var cardCode = BusinessPartnerCardCodeOfDocument(document, parameters);
 
         var lines = document.Rows.Select(r => new InventoryDocumentLineDto(
             ItemCode: r.ItemCode ?? string.Empty,
@@ -394,26 +596,76 @@ public sealed class GenericImportService : IGenericImportService
             ToWarehouseCode: r.DestinationWarehouse ?? string.Empty,
             AdditionalFields: r.UserFieldsLine.Count > 0 ? r.UserFieldsLine : null)).ToList();
 
+        var batches = Chunk(lines, DefaultBatchSize);
+
         var doc = new InventoryDocumentDto(
             DocDate: DateOnly.FromDateTime(DateTime.Today),
             Comments: null,
-            Lines: lines,
+            Lines: batches[0],
+            BusinessPartnerCardCode: string.IsNullOrWhiteSpace(cardCode) ? null : cardCode,
+            CustomerReferenceNumber: first.CustomerReferenceNumber,
             AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
 
         var docEntry = await _inventory.CreateAsync(type, portalUsername, doc, ct);
+        reportBatch(1);
+
+        for (var i = 1; i < batches.Count; i++)
+        {
+            try
+            {
+                await _inventory.AddLinesAsync(type, docEntry, batches[i], ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Fallo un lote posterior al primero del documento {GroupingKey} (DocEntry {DocEntry}) -- queda a medio cargar en SAP, revisar manualmente.",
+                    document.GroupingKey, docEntry);
+                throw;
+            }
+            reportBatch(i + 1);
+        }
+
         var created = await _inventory.GetAsync(type, docEntry, ct);
         return created?.DocNum ?? 0;
+    }
+
+    /// <summary>Trocea una lista en sublistas de a lo sumo <paramref name="batchSize"/> elementos -- siempre devuelve al menos 1 lote (vacío) para que el primer POST de creación tenga algo que mandar aunque no haya filas.</summary>
+    private static List<List<T>> Chunk<T>(IReadOnlyList<T> items, int batchSize)
+    {
+        if (items.Count == 0)
+        {
+            return [[]];
+        }
+
+        var batches = new List<List<T>>();
+        for (var i = 0; i < items.Count; i += batchSize)
+        {
+            batches.Add(items.Skip(i).Take(batchSize).ToList());
+        }
+        return batches;
     }
 
     private void UpdateProgress(string jobId, string message, int current, int total, bool success, string? details, bool finished) =>
         _progress.Update(jobId, new GenericImportProgressDto(message, current, total, success, details, finished));
 
+    /// <summary>
+    /// CardCode real de ESTE documento -- todas las filas de un grupo ya comparten
+    /// socio por construcción (ver ProcessRow, el prefijo de socio en GroupingKey), así
+    /// que alcanza con mirar la primera fila. Cae al socio fijo del wizard
+    /// (parameters.BusinessPartnerCardCode) cuando la fila no trae uno propio (modo
+    /// normal, sin carga multi-socio).
+    /// </summary>
+    private static string BusinessPartnerCardCodeOfDocument(GenericImportDocumentDto document, GenericImportParametersDto parameters) =>
+        document.Rows[0].BusinessPartnerCardCode ?? parameters.BusinessPartnerCardCode ?? string.Empty;
+
     // -------------------------------------------------------------------------------
     // Resolución fila a fila
     // -------------------------------------------------------------------------------
 
+    private static readonly IReadOnlyDictionary<string, string> EmptyCrossReference = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     private static GenericImportRowDto ProcessRow(RawRow raw, GenericImportConfigDto config, GenericImportModule module,
-        GenericImportLineType lineType, IReadOnlyDictionary<string, string> crossReferenceBySku, IReadOnlyDictionary<string, ItemDto> items,
+        GenericImportLineType lineType, string? parameterBusinessPartnerCardCode, IReadOnlyDictionary<string, string> validBusinessPartners,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> crossReferenceBySocio, IReadOnlyDictionary<string, ItemDto> items,
         IReadOnlyDictionary<string, WarehouseDto> warehouses, IReadOnlyDictionary<string, GeneralLedgerAccountDto> accounts,
         IReadOnlyDictionary<string, CostCenterDto> costCenters, IReadOnlyDictionary<string, CostCenterDto> dimension2, IReadOnlyDictionary<string, CostCenterDto> dimension3,
         IReadOnlyDictionary<int, GenericImportUserFieldDto> userFieldsCatalog, IReadOnlyDictionary<string, decimal> systemPrices)
@@ -421,6 +673,32 @@ public sealed class GenericImportService : IGenericImportService
         var errors = new List<string>();
 
         string? Get(GenericImportLogicalField field) => raw.CoreFields.GetValueOrDefault(field);
+
+        // Carga multi-socio: lee el CardCode de LA FILA y lo valida contra
+        // validBusinessPartners (error de fila si no existe) -- ese CardCode decide qué
+        // diccionario de crossReferenceBySocio usa esta fila. En modo normal (false),
+        // el socio es siempre el del wizard, comportamiento idéntico al de antes.
+        string? businessPartnerCardCode = null;
+        string? businessPartnerName = null;
+        if (config.BusinessPartnerFromFile)
+        {
+            var rowCardCode = Get(GenericImportLogicalField.BusinessPartnerCardCode)?.Trim();
+            if (string.IsNullOrEmpty(rowCardCode))
+            {
+                errors.Add("El socio de negocio es obligatorio.");
+            }
+            else if (!validBusinessPartners.TryGetValue(rowCardCode, out businessPartnerName))
+            {
+                errors.Add($"El socio de negocio \"{rowCardCode}\" no existe.");
+            }
+            else
+            {
+                businessPartnerCardCode = rowCardCode;
+            }
+        }
+
+        var effectiveCardCode = businessPartnerCardCode ?? parameterBusinessPartnerCardCode ?? string.Empty;
+        var crossReferenceBySku = crossReferenceBySocio.GetValueOrDefault(effectiveCardCode, EmptyCrossReference);
 
         var quantity = ParseDecimal(Get(GenericImportLogicalField.Quantity));
         if (quantity is null)
@@ -648,12 +926,20 @@ public sealed class GenericImportService : IGenericImportService
             unitPrice = systemListPrice;
         }
 
-        var groupingKey = string.IsNullOrEmpty(config.GroupingColumn) ? SingleGroupingKey : (raw.RawGroupingKey ?? SingleGroupingKey);
+        var groupingKeyBase = string.IsNullOrEmpty(config.GroupingColumn) ? SingleGroupingKey : (raw.RawGroupingKey ?? SingleGroupingKey);
+        // Prefijo de socio en modo multi-socio -- garantiza que un documento SAP nunca
+        // mezcle dos CardCode distintos, aunque coincida el resto de la clave de
+        // agrupación (ej. misma Sucursal de dos socios distintos). Preserva intacto el
+        // caso ya soportado (mismo socio, varias sucursales -> un documento) porque no
+        // reemplaza groupingKeyBase, solo lo antepone.
+        var groupingKey = config.BusinessPartnerFromFile ? $"{effectiveCardCode}|{groupingKeyBase}" : groupingKeyBase;
 
         var row = new GenericImportRowDto
         {
             RowNumber = raw.RowNumber,
             GroupingKey = groupingKey,
+            BusinessPartnerCardCode = businessPartnerCardCode,
+            BusinessPartnerName = businessPartnerName,
             CustomerReferenceNumber = Get(GenericImportLogicalField.CustomerReferenceNumber),
             Branch = Get(GenericImportLogicalField.Branch),
             ItemCode = itemCode,
@@ -678,6 +964,7 @@ public sealed class GenericImportService : IGenericImportService
             DestinationWarehouseName = destinationWarehouseName,
             UserFieldsHeader = userFieldsHeader,
             UserFieldsLine = userFieldsLine,
+            RawValues = raw.CoreFields,
         };
 
         foreach (var rule in BuiltInRules)

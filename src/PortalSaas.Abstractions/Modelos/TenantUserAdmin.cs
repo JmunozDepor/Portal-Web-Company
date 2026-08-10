@@ -24,6 +24,9 @@ public sealed class TenantUserDetailDto
     public required bool IsAdmin { get; init; }
     public required bool IsActive { get; init; }
     public required bool IsLocked { get; init; }
+
+    /// <summary>Compañía que SelectCompany preselecciona al loguearse -- ver UserPreference.DefaultCompanyId. Null = sin default, el usuario elige como siempre.</summary>
+    public Guid? DefaultCompanyId { get; init; }
 }
 
 /// <summary>Resultado de una operación de escritura -- mismo estilo IsSuccess/Reason que AuthenticationResult/LimitCheckResult.</summary>

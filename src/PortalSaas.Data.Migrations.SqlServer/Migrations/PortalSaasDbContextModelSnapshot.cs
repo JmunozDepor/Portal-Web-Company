@@ -212,6 +212,14 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(15)")
                         .HasColumnName("business_partner_card_code");
 
+                    b.Property<bool>("BusinessPartnerFromFile")
+                        .HasColumnType("bit")
+                        .HasColumnName("business_partner_from_file");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
                     b.Property<string>("DocumentType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -239,10 +247,6 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("module");
 
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("organization_id");
-
                     b.Property<string>("PriceSource")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -260,9 +264,9 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.HasKey("Id")
                         .HasName("pk_generic_import_configs");
 
-                    b.HasIndex("OrganizationId", "Module", "DocumentType", "LineType", "BusinessPartnerCardCode")
+                    b.HasIndex("CompanyId", "Module", "DocumentType", "LineType", "BusinessPartnerCardCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_generic_import_configs_organization_id_module_document_type_line_type_business_partner_card_code")
+                        .HasDatabaseName("ix_generic_import_configs_company_id_module_document_type_line_type_business_partner_card_code")
                         .HasFilter("[business_partner_card_code] IS NOT NULL");
 
                     b.ToTable("generic_import_configs", (string)null);
@@ -326,6 +330,10 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
                     b.Property<string>("DataType")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -354,10 +362,6 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("module");
 
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("organization_id");
-
                     b.Property<string>("SapFieldName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -367,8 +371,8 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.HasKey("Id")
                         .HasName("pk_generic_import_user_fields");
 
-                    b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_generic_import_user_fields_organization_id");
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_generic_import_user_fields_company_id");
 
                     b.ToTable("generic_import_user_fields", (string)null);
                 });
@@ -585,7 +589,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<Guid?>("CompanyId")
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("company_id");
 
@@ -621,10 +625,6 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("module_code");
 
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("organization_id");
-
                     b.Property<int>("Port")
                         .HasColumnType("int")
                         .HasColumnName("port");
@@ -648,13 +648,9 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.HasKey("Id")
                         .HasName("pk_module_external_connections");
 
-                    b.HasIndex("CompanyId")
-                        .HasDatabaseName("ix_module_external_connections_company_id");
-
-                    b.HasIndex("OrganizationId", "CompanyId", "ModuleCode")
+                    b.HasIndex("CompanyId", "ModuleCode")
                         .IsUnique()
-                        .HasDatabaseName("uq_module_external_connections_org_company_module")
-                        .HasFilter("[company_id] IS NOT NULL");
+                        .HasDatabaseName("uq_module_external_connections_company_module");
 
                     b.ToTable("module_external_connections", null, t =>
                         {
@@ -698,6 +694,14 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("plan_id");
 
+                    b.Property<string>("SignedStatusToken")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("signed_status_token");
+
+                    b.Property<DateTimeOffset?>("SignedStatusUpdatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("signed_status_updated_at");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -721,6 +725,56 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         {
                             t.HasCheckConstraint("ck_on_premise_licenses_status", "status in ('active', 'revoked', 'expired')");
                         });
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.OnPremiseLicenseConflict", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("OnPremiseLicenseId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("on_premise_license_id");
+
+                    b.Property<DateTimeOffset>("ReportedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("reported_at");
+
+                    b.Property<string>("ReportedFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("reported_fingerprint");
+
+                    b.Property<string>("ReportedIp")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("reported_ip");
+
+                    b.Property<bool>("Resolved")
+                        .HasColumnType("bit")
+                        .HasColumnName("resolved");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<string>("ResolvedByAdminEmail")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("resolved_by_admin_email");
+
+                    b.HasKey("Id")
+                        .HasName("pk_on_premise_license_conflicts");
+
+                    b.HasIndex("OnPremiseLicenseId")
+                        .HasDatabaseName("ix_on_premise_license_conflicts_on_premise_license_id");
+
+                    b.ToTable("on_premise_license_conflicts", (string)null);
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.Organization", b =>
@@ -1505,6 +1559,10 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("user_id");
 
+                    b.Property<Guid?>("DefaultCompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("default_company_id");
+
                     b.Property<bool>("EmailNotificationsEnabled")
                         .HasColumnType("bit")
                         .HasColumnName("email_notifications_enabled");
@@ -1529,6 +1587,9 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
                     b.HasKey("UserId")
                         .HasName("pk_user_preferences");
+
+                    b.HasIndex("DefaultCompanyId")
+                        .HasDatabaseName("ix_user_preferences_default_company_id");
 
                     b.ToTable("user_preferences", null, t =>
                         {
@@ -1654,14 +1715,14 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
             modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportConfig", b =>
                 {
-                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
                         .WithMany()
-                        .HasForeignKey("OrganizationId")
+                        .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_generic_import_configs_organizations_organization_id");
+                        .HasConstraintName("fk_generic_import_configs_company_company_id");
 
-                    b.Navigation("Organization");
+                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportConfigField", b =>
@@ -1686,14 +1747,14 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
             modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportUserField", b =>
                 {
-                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
                         .WithMany()
-                        .HasForeignKey("OrganizationId")
+                        .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_generic_import_user_fields_organizations_organization_id");
+                        .HasConstraintName("fk_generic_import_user_fields_company_company_id");
 
-                    b.Navigation("Organization");
+                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.Instance", b =>
@@ -1771,19 +1832,11 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.HasOne("PortalSaas.Data.Entities.Company", "Company")
                         .WithMany()
                         .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_module_external_connections_company_company_id");
-
-                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
-                        .WithMany()
-                        .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_module_external_connections_organizations_organization_id");
+                        .HasConstraintName("fk_module_external_connections_company_company_id");
 
                     b.Navigation("Company");
-
-                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.OnPremiseLicense", b =>
@@ -1805,6 +1858,18 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.Navigation("Organization");
 
                     b.Navigation("Plan");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.OnPremiseLicenseConflict", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.OnPremiseLicense", "OnPremiseLicense")
+                        .WithMany("Conflicts")
+                        .HasForeignKey("OnPremiseLicenseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_on_premise_license_conflicts_on_premise_licenses_on_premise_license_id");
+
+                    b.Navigation("OnPremiseLicense");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationDocumentPermission", b =>
@@ -2080,6 +2145,11 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
             modelBuilder.Entity("PortalSaas.Data.Entities.UserPreference", b =>
                 {
+                    b.HasOne("PortalSaas.Data.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("DefaultCompanyId")
+                        .HasConstraintName("fk_user_preferences_companies_default_company_id");
+
                     b.HasOne("PortalSaas.Data.Entities.User", "User")
                         .WithOne("Preference")
                         .HasForeignKey("PortalSaas.Data.Entities.UserPreference", "UserId")
@@ -2143,6 +2213,11 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.Navigation("MenuGroupItems");
 
                     b.Navigation("UserMenuGroups");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.OnPremiseLicense", b =>
+                {
+                    b.Navigation("Conflicts");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.Organization", b =>

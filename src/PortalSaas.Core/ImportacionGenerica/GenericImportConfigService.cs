@@ -7,27 +7,30 @@ using PortalSaas.Data.Entities;
 namespace PortalSaas.Core.ImportacionGenerica;
 
 /// <summary>
-/// CRUD de la configuración de importación genérica, acotado a la organización actual
-/// -- portado de ConfiguracionImportacionGenericaService, pero contra
-/// PortalSaasDbContext en vez de HANA (ver CLAUDE.md, "Persistencia config" del 26 jul
-/// 2026). El detalle de campos se reemplaza por completo en cada Create/Update (borra y
-/// vuelve a crear, mismo criterio que ItemCrossReferenceService.SyncAsync).
+/// CRUD de la configuración de importación genérica, acotado a la COMPAÑÍA activa (no
+/// la organización) -- regla dura del proyecto: el layout de columnas del Excel es
+/// propio de la Company (cada Company puede tener su propio SAP con UDFs/series
+/// distintas aunque compartan Organization), ver GenericImportConfig. Portado de
+/// ConfiguracionImportacionGenericaService, pero contra PortalSaasDbContext en vez de
+/// HANA (ver CLAUDE.md, "Persistencia config" del 26 jul 2026). El detalle de campos se
+/// reemplaza por completo en cada Create/Update (borra y vuelve a crear, mismo criterio
+/// que ItemCrossReferenceService.SyncAsync).
 /// </summary>
 public sealed class GenericImportConfigService : IGenericImportConfigService
 {
     private readonly PortalSaasDbContext _db;
-    private readonly ICurrentUserContext _currentUser;
+    private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public GenericImportConfigService(PortalSaasDbContext db, ICurrentUserContext currentUser)
+    public GenericImportConfigService(PortalSaasDbContext db, ICurrentCompanyAccessor currentCompany)
     {
         _db = db;
-        _currentUser = currentUser;
+        _currentCompany = currentCompany;
     }
 
     public async Task<IReadOnlyList<GenericImportConfigDto>> ListAsync(GenericImportModule? module = null, CancellationToken ct = default)
     {
         var query = _db.GenericImportConfigs.Include(c => c.Fields)
-            .Where(c => c.OrganizationId == _currentUser.OrganizationId);
+            .Where(c => c.CompanyId == _currentCompany.CompanyId);
         if (module is { } m)
         {
             query = query.Where(c => c.Module == m.ToString());
@@ -40,7 +43,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
     public async Task<GenericImportConfigDto?> GetAsync(int id, CancellationToken ct = default)
     {
         var row = await _db.GenericImportConfigs.Include(c => c.Fields)
-            .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == _currentUser.OrganizationId, ct);
+            .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == _currentCompany.CompanyId, ct);
         return row is null ? null : Map(row);
     }
 
@@ -49,11 +52,12 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
     {
         var moduleStr = module.ToString();
         var lineTypeStr = lineType.ToString();
+        var companyId = _currentCompany.CompanyId;
 
         if (!string.IsNullOrWhiteSpace(businessPartnerCardCode))
         {
             var exception = await _db.GenericImportConfigs.Include(c => c.Fields)
-                .FirstOrDefaultAsync(c => c.OrganizationId == _currentUser.OrganizationId && c.Module == moduleStr
+                .FirstOrDefaultAsync(c => c.CompanyId == companyId && c.Module == moduleStr
                     && c.DocumentType == documentType && c.LineType == lineTypeStr
                     && c.BusinessPartnerCardCode == businessPartnerCardCode && c.IsActive, ct);
             if (exception is not null)
@@ -63,7 +67,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         }
 
         var standard = await _db.GenericImportConfigs.Include(c => c.Fields)
-            .FirstOrDefaultAsync(c => c.OrganizationId == _currentUser.OrganizationId && c.Module == moduleStr
+            .FirstOrDefaultAsync(c => c.CompanyId == companyId && c.Module == moduleStr
                 && c.DocumentType == documentType && c.LineType == lineTypeStr
                 && c.BusinessPartnerCardCode == null && c.IsActive, ct);
 
@@ -74,11 +78,12 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         string? businessPartnerCardCode, string? groupingColumn, bool skuIsCustomerOwn, string alias,
         IReadOnlyList<GenericImportConfigFieldDto> fields,
         GenericImportPriceSource priceSource = GenericImportPriceSource.BusinessPartner, int? systemPriceListCode = null,
+        bool businessPartnerFromFile = false,
         CancellationToken ct = default)
     {
         var entity = new GenericImportConfig
         {
-            OrganizationId = _currentUser.OrganizationId,
+            CompanyId = _currentCompany.CompanyId,
             Module = module.ToString(),
             DocumentType = documentType,
             LineType = lineType.ToString(),
@@ -89,6 +94,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
             IsActive = true,
             PriceSource = priceSource.ToString(),
             SystemPriceListCode = systemPriceListCode,
+            BusinessPartnerFromFile = businessPartnerFromFile,
             Fields = fields.Select(MapField).ToList(),
         };
 
@@ -100,10 +106,11 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
     public async Task UpdateAsync(int id, string? groupingColumn, bool skuIsCustomerOwn, string alias, bool isActive,
         IReadOnlyList<GenericImportConfigFieldDto> fields,
         GenericImportPriceSource priceSource = GenericImportPriceSource.BusinessPartner, int? systemPriceListCode = null,
+        bool businessPartnerFromFile = false,
         CancellationToken ct = default)
     {
         var entity = await _db.GenericImportConfigs.Include(c => c.Fields)
-            .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == _currentUser.OrganizationId, ct)
+            .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == _currentCompany.CompanyId, ct)
             ?? throw new InvalidOperationException("Configuración no encontrada.");
 
         entity.GroupingColumn = string.IsNullOrWhiteSpace(groupingColumn) ? null : groupingColumn;
@@ -112,6 +119,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         entity.IsActive = isActive;
         entity.PriceSource = priceSource.ToString();
         entity.SystemPriceListCode = systemPriceListCode;
+        entity.BusinessPartnerFromFile = businessPartnerFromFile;
 
         _db.GenericImportConfigFields.RemoveRange(entity.Fields);
         entity.Fields = fields.Select(MapField).ToList();
@@ -122,7 +130,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         var entity = await _db.GenericImportConfigs
-            .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == _currentUser.OrganizationId, ct);
+            .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == _currentCompany.CompanyId, ct);
         if (entity is null)
         {
             return;
@@ -143,7 +151,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
 
     private static GenericImportConfigDto Map(GenericImportConfig row) => new(
         row.Id,
-        row.OrganizationId,
+        row.CompanyId,
         Enum.Parse<GenericImportModule>(row.Module),
         row.DocumentType,
         Enum.Parse<GenericImportLineType>(row.LineType),
@@ -160,5 +168,6 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
             f.FixedValue,
             f.UserFieldId)).ToList(),
         Enum.Parse<GenericImportPriceSource>(row.PriceSource),
-        row.SystemPriceListCode);
+        row.SystemPriceListCode,
+        row.BusinessPartnerFromFile);
 }

@@ -21,12 +21,14 @@
             <th>Emitida</th>
             <th>Vence</th>
             <th>Huella de instalación</th>
+            <th>Último contacto central</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
         @foreach (var license in Model.Licenses)
         {
+            var conflictCount = Model.UnresolvedConflictsByLicenseId.GetValueOrDefault(license.Id);
             <tr>
                 <td><code>@license.ActivationKey</code></td>
                 <td>@license.Plan.Name</td>
@@ -34,7 +36,17 @@
                 <td>@license.IssuedAt.ToString("yyyy-MM-dd")</td>
                 <td>@license.ExpiresAt.ToString("yyyy-MM-dd")</td>
                 <td>@(license.InstallationFingerprint ?? "—")</td>
-                <td><a asp-page="/Admin/Organizations/Licenses/Edit" asp-route-id="@license.Id">Editar</a></td>
+                <td>@(license.SignedStatusUpdatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "nunca")</td>
+                <td>
+                    <a asp-page="/Admin/Organizations/Licenses/Edit" asp-route-id="@license.Id">Editar</a>
+                    @if (conflictCount > 0)
+                    {
+                        <text> · </text>
+                        <a asp-page="/Admin/Organizations/Licenses/Conflicts" asp-route-id="@license.Id" class="text-danger">
+                            @conflictCount conflicto(s)
+                        </a>
+                    }
+                </td>
             </tr>
         }
     </tbody>

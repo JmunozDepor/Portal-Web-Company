@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 
@@ -26,15 +28,21 @@ public class IndexModel : PageModel
 {
     private readonly PortalSaasDbContext _db;
     private readonly ISecretoCifradoService _secretoCifradoService;
+    private readonly IEmailSenderService _emailSender;
 
-    public IndexModel(PortalSaasDbContext db, ISecretoCifradoService secretoCifradoService)
+    public IndexModel(PortalSaasDbContext db, ISecretoCifradoService secretoCifradoService, IEmailSenderService emailSender)
     {
         _db = db;
         _secretoCifradoService = secretoCifradoService;
+        _emailSender = emailSender;
     }
 
     public Organization Organization { get; private set; } = null!;
     public bool EsNuevo { get; private set; }
+
+    /// <summary>Resultado del último "Enviar correo de prueba" -- se muestra una sola vez, no se persiste.</summary>
+    public string? TestResultMessage { get; private set; }
+    public bool TestResultOk { get; private set; }
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
@@ -114,7 +122,7 @@ public class IndexModel : PageModel
                 }
 
                 encryptedConfig = _secretoCifradoService.Encrypt(JsonSerializer.Serialize(
-                    new GoogleWorkspaceConfigInput(Input.ClientEmail!.Trim(), Input.PrivateKeyPem!.Trim())));
+                    new GoogleWorkspaceConfigInput(Input.ClientEmail!.Trim(), NormalizePemLineBreaks(Input.PrivateKeyPem!.Trim()))));
             }
         }
         else if (Input.Provider == EmailProviderType.Microsoft365)
@@ -180,6 +188,77 @@ public class IndexModel : PageModel
         return RedirectToPage("/Admin/Organizations/EmailSettings/Index", new { organizationId });
     }
 
+    /// <summary>
+    /// "Enviar correo de prueba" -- responde directamente la pregunta "¿está operativa
+    /// esta configuración?" mandando un correo real con el proveedor guardado (Google
+    /// Workspace o M365), en vez de solo validar formato de campos. Va al correo del
+    /// platform admin que hizo click (ClaimTypes.Email, seteado en Admin/Login.cshtml.cs),
+    /// no a un campo nuevo -- evita pedir un destinatario que el admin va a tipear su
+    /// propio correo igual. No guarda nada (no hay Input.Recordar acá): solo ejercita
+    /// IEmailSenderService.SendAsync contra la config YA persistida, así que primero hay
+    /// que Guardar -- no tiene sentido probar credenciales que todavía no se grabaron.
+    /// </summary>
+    public async Task<IActionResult> OnPostTestAsync(Guid organizationId)
+    {
+        var organization = await _db.Organizations.FindAsync(organizationId);
+        if (organization is null)
+        {
+            return NotFound();
+        }
+
+        Organization = organization;
+
+        var existing = await _db.EmailSettings.FindAsync(organizationId);
+        EsNuevo = existing is null;
+
+        if (existing is not null)
+        {
+            Input = new InputModel
+            {
+                Provider = existing.Provider,
+                SenderEmail = existing.SenderEmail,
+                SenderDisplayName = existing.SenderDisplayName,
+                IsActive = existing.IsActive,
+            };
+        }
+
+        if (existing is null)
+        {
+            TestResultOk = false;
+            TestResultMessage = "Todavía no hay nada guardado -- completá los campos y hacé clic en \"Guardar\" antes de probar.";
+            return Page();
+        }
+
+        var adminEmail = User.FindFirstValue(ClaimTypes.Email);
+        if (string.IsNullOrWhiteSpace(adminEmail))
+        {
+            TestResultOk = false;
+            TestResultMessage = "No se pudo determinar tu correo de administrador para enviar la prueba.";
+            return Page();
+        }
+
+        try
+        {
+            await _emailSender.SendAsync(organizationId, new EmailMessage(
+                adminEmail,
+                "Correo de prueba -- Portal SaaS",
+                $"<p>Este es un correo de prueba de la configuración de <strong>{organization.LegalName}</strong> ({existing.Provider}).</p><p>Si lo recibiste, la casilla está operativa.</p>"));
+
+            TestResultOk = true;
+            TestResultMessage = $"Correo de prueba enviado a {adminEmail} -- revisá la bandeja de entrada (y spam) para confirmar que llegó.";
+        }
+        catch (Exception ex)
+        {
+            // Mostrar el mensaje real, no un genérico -- es justo lo que hace falta
+            // para diagnosticar "credencial vencida" vs "permiso faltante" vs "casilla
+            // mal escrita" sin tener que ir a mirar logs del servidor.
+            TestResultOk = false;
+            TestResultMessage = $"No se pudo enviar: {ex.Message}";
+        }
+
+        return Page();
+    }
+
     public sealed class InputModel
     {
         [Required]
@@ -231,4 +310,19 @@ public class IndexModel : PageModel
         [property: JsonPropertyName("tenantId")] string TenantId,
         [property: JsonPropertyName("clientId")] string ClientId,
         [property: JsonPropertyName("clientSecret")] string ClientSecret);
+
+    /// <summary>
+    /// El JSON de cuenta de servicio que Google Cloud da para descargar escapa los saltos
+    /// de línea de "private_key" como "\n" LITERAL (dos caracteres, backslash+n) --
+    /// formato correcto para un valor de JSON, pero no es un PEM válido tal cual: el
+    /// parser de RSA.ImportFromPem (ver GoogleServiceAccountJwtBuilder) exige saltos de
+    /// línea reales entre "-----BEGIN PRIVATE KEY-----", el cuerpo en base64 y
+    /// "-----END PRIVATE KEY-----". Un usuario que copia el campo "private_key" directo
+    /// del .json (en vez de extraer el PEM ya con saltos reales) pega justamente esa
+    /// secuencia -- bug real, 2026-08-08: "No supported key formats were found" al
+    /// intentar enviar. Normalizar acá, antes de cifrar y persistir, para que ambas
+    /// formas de pegar la clave funcionen igual.
+    /// </summary>
+    private static string NormalizePemLineBreaks(string pem) =>
+        pem.Replace("\\r\\n", "\n").Replace("\\n", "\n");
 }

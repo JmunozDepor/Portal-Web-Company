@@ -20,17 +20,20 @@ public class LoginModel : PageModel
     private readonly IAuthenticationService _authenticationService;
     private readonly IOrganizationAccessGateService _accessGateService;
     private readonly IUserSessionService _sessions;
+    private readonly IConfiguration _configuration;
 
     public LoginModel(
         PortalSaasDbContext db,
         IAuthenticationService authenticationService,
         IOrganizationAccessGateService accessGateService,
-        IUserSessionService sessions)
+        IUserSessionService sessions,
+        IConfiguration configuration)
     {
         _db = db;
         _authenticationService = authenticationService;
         _accessGateService = accessGateService;
         _sessions = sessions;
+        _configuration = configuration;
     }
 
     [BindProperty]
@@ -38,13 +41,31 @@ public class LoginModel : PageModel
 
     public string? ErrorMessage { get; set; }
 
+    /// <summary>
+    /// True cuando Tenant:DefaultOrganizationSlug (appsettings, ver el comentario ahí)
+    /// viene configurado -- el campo Organización se muestra precargado y bloqueado, en
+    /// vez de pedirle al usuario que lo tipee. Pensado para un perfil OnPremise de una
+    /// sola organización real (ej. Comercial Depor) -- mismo criterio que
+    /// Tenant:DefaultCompanyCode en SelectCompany.cshtml.cs, un paso más arriba del
+    /// mismo flujo (acá bloquea Organización, ahí bloquea Company).
+    /// </summary>
+    public bool OrganizationLocked { get; private set; }
+
     public void OnGet(string? returnUrl = null)
     {
         Input.ReturnUrl = returnUrl;
+        AplicarOrganizacionBloqueadaSiCorresponde();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
+        // Re-aplicar SIEMPRE antes de validar -- el campo bloqueado en el <form> se
+        // manda disabled (no viaja en el POST), así que sin esto Input.OrganizationSlug
+        // llegaría vacío. Pisa cualquier valor posteado a mano también (mismo criterio
+        // de "no confiar en el cliente" que AplicarCompaniaBloqueadaSiCorresponde en
+        // SelectCompany.cshtml.cs).
+        AplicarOrganizacionBloqueadaSiCorresponde();
+
         if (!ModelState.IsValid)
         {
             return Page();
@@ -109,7 +130,11 @@ public class LoginModel : PageModel
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
-        var returnUrl = Url.IsLocalUrl(Input.ReturnUrl) && Input.ReturnUrl is not null ? Input.ReturnUrl : "/Home/Index";
+        // Url.Content("~/...") -- NO un literal "/Home/Index": bajo IIS hosteado como
+        // subaplicación (ej. /portalsaas-comercialdepor), un literal absoluto pierde el
+        // PathBase y el redirect cae fuera de la app (404 real encontrado en el primer
+        // deploy IIS de este runbook, 2026-08-02).
+        var returnUrl = Url.IsLocalUrl(Input.ReturnUrl) && Input.ReturnUrl is not null ? Input.ReturnUrl : Url.Content("~/Home/Index");
 
         // La compañía SAP activa (ver ICurrentCompanyAccessor) se fija en el login y no
         // cambia sin logout -- si la organización tiene compañías, un segundo paso la
@@ -126,6 +151,25 @@ public class LoginModel : PageModel
         }
 
         return LocalRedirect(returnUrl);
+    }
+
+    private void AplicarOrganizacionBloqueadaSiCorresponde()
+    {
+        var defaultOrganizationSlug = _configuration["Tenant:DefaultOrganizationSlug"];
+        if (string.IsNullOrWhiteSpace(defaultOrganizationSlug))
+        {
+            return;
+        }
+
+        Input.OrganizationSlug = defaultOrganizationSlug.Trim().ToLowerInvariant();
+        OrganizationLocked = true;
+
+        // El campo viaja "disabled" en el <form> (ver Login.cshtml) -- un input disabled
+        // nunca se manda en el POST, así que el binder automático de Razor Pages ya dejó
+        // un error [Required] en ModelState para este campo ANTES de que este método
+        // corra. Sacarlo a mano, si no ModelState.IsValid da false siempre que la
+        // organización está bloqueada.
+        ModelState.Remove($"{nameof(Input)}.{nameof(Input.OrganizationSlug)}");
     }
 
     public sealed class InputModel

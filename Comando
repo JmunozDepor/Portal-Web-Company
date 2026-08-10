@@ -27,3 +27,33 @@ dotnet run --project src/PortalSaas.Host --launch-profile https
 Espera a ver Now listening on: https://localhost:7207 antes de probar en el navegador. Ctrl+C para pararlo.
 
 Regla de oro para no repetir el bug de hoy: nunca ejecutes el .dll a mano salvo que sea explícitamente el de bin\x64\Debug\net8.0\ — cualquier otro camino (bin\Debug\net8.0\, dotnet run --no-build desde una carpeta distinta) puede terminar sirviendo un build viejo sin que se note en la consola.
+
+
+
+--- COMPILAR PUBLICAR DIST/
+
+.\publish-all.ps1
+O con ruta completa desde cualquier lado:
+
+
+& "c:\PROYECTOS\Proyecto Portal Web-Company\Portal SaaS - Core\publish-all.ps1"
+
+------------------------------------------------------------
+Comandos
+Parado en cada repo del plugin:
+
+Modulo.GestionDistribucionGastos
+
+dotnet build "c:\PROYECTOS\Proyecto Portal Web-Company\Portal SaaS - Plugins\Modulo.GestionDistribucionGastos\src\Modulo.GestionDistribucionGastos\Modulo.GestionDistribucionGastos.csproj" -c Release
+
+------------------------------------------------------------
+Modulo.Rendiciones
+
+dotnet build "c:\PROYECTOS\Proyecto Portal Web-Company\Portal SaaS - Plugins\Modulo.Rendiciones\src\Modulo.Rendiciones\Modulo.Rendiciones.csproj" -c Release
+
+--------------------------------------------------------------
+-------------------Publicar Plugins---------------------------
+
+& "c:\PROYECTOS\Proyecto Portal Web-Company\Portal SaaS - Plugins\Modulo.Rendiciones\publish-dist.ps1"
+
+& "c:\PROYECTOS\Proyecto Portal Web-Company\Portal SaaS - Plugins\Modulo.GestionDistribucionGastos\publish-dist.ps1"

@@ -398,7 +398,7 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
         {
             Title = IsNew ? $"Nuevo/a {DocumentName}" : $"{DocumentName} N° {DocNum}",
             ReadOnly = !IsNew,
-            BackUrl = Url.IsLocalUrl(ReturnUrl) && ReturnUrl is not null ? ReturnUrl : RouteBase,
+            BackUrl = Url.IsLocalUrl(ReturnUrl) && ReturnUrl is not null ? ReturnUrl : Request.PathBase + RouteBase,
             StatusText = Status,
             StatusClass = Status == "Abierto" ? "bg-success" : "bg-secondary",
             Model = this,

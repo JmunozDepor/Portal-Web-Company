@@ -45,8 +45,17 @@
             </div>
             <div class="form-group">
                 <label asp-for="Input.SapFieldName" class="form-label"></label>
-                <input asp-for="Input.SapFieldName" class="form-control" placeholder="ej. U_MiCampoPersonalizado" />
+                <input asp-for="Input.SapFieldName" class="form-control" placeholder="ej. U_MiCampoPersonalizado" list="native-field-datalist" autocomplete="off" />
                 <span asp-validation-for="Input.SapFieldName" class="text-danger"></span>
+                @* Solo sugerencias -- el campo sigue siendo texto libre, no hay validación en duro
+                   contra el esquema real de SAP (nombre de columna HANA casi nunca coincide con
+                   el nombre de propiedad de Service Layer). Ver NativeFieldCatalog. *@
+                <datalist id="native-field-datalist">
+                    @foreach (var name in Modulo.ImportacionGenerica.Pages.CamposUsuario.NativeFieldCatalog.All)
+                    {
+                        <option value="@name"></option>
+                    }
+                </datalist>
             </div>
             @if (Model.EditId is not null)
             {

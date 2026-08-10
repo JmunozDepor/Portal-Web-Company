@@ -39,4 +39,16 @@ public interface IGenericImportService
     /// completar antes de configurar el mapeo real.
     /// </summary>
     Task<byte[]> GenerateTemplateAsync(GenericImportParametersDto parameters, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reconstruye el archivo ya procesado (mismas columnas y mismas letras de la
+    /// configuración vigente, en el mismo orden de fila del Excel original -- ver
+    /// GenericImportRowDto.RawValues, el valor tal cual lo tipeó el usuario, no el ya
+    /// resuelto contra SAP) agregando una columna "Errores" al final con la bitácora de
+    /// cada fila (vacía si es válida). Pensado para corregir y volver a subir sin tener
+    /// que ir fila por fila comparando contra la vista previa en pantalla. Portado de
+    /// IImportacionGenericaService.GenerarArchivoConErroresAsync.
+    /// </summary>
+    Task<byte[]> GenerateFileWithErrorsAsync(GenericImportParametersDto parameters,
+        IReadOnlyList<GenericImportDocumentDto> documents, CancellationToken ct = default);
 }

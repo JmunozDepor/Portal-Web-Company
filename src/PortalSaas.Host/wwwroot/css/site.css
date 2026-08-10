@@ -1,3 +1,13 @@
+/* Transición de navegación (View Transitions API nativa del navegador, sin JS ni
+   reescribir la app a SPA) -- esta app recarga la página entera en cada click a
+   propósito (ver DocumentForm/Default.cshtml, MPA no SPA), pero el navegador puede
+   suavizar ESE reload con un cross-fade nativo en vez del salto/flash blanco. Regla
+   CSS pura: si el navegador no la soporta (no-Chromium viejo), simplemente la ignora
+   y navega como siempre -- no hay fallback que mantener a mano. */
+@view-transition {
+  navigation: auto;
+}
+
 /* Identidad visual corporativa -- 4 paletas reales, portadas de
    referencia-original/PortalSAP_v2/src/PortalSAP.Host/wwwroot/css/theme.css (líneas
    21-122: claro/marino-oscuro/teal/violeta), no solo la de "claro". El selector de
@@ -210,6 +220,15 @@
   font-size: 12.5px;
 }
 
+/* El padding shorthand de arriba pisa el padding-right que Bootstrap reserva en
+   .form-select-sm para el ícono de flecha (background-image) -- con solo 6px el
+   texto largo (ej. "CODIGO — Nombre Compañía" en CompanySwitcher/Default.cshtml)
+   queda pisado debajo del botón de desplegar. Solo afecta a .form-select-sm (tiene
+   flecha); .form-control-sm no la necesita. */
+.form-select-sm {
+  padding-right: 28px;
+}
+
 .form-label {
   font-size: 12.5px;
   margin-bottom: 2px;
@@ -384,6 +403,15 @@ body {
   --bs-table-striped-bg: color-mix(in srgb, var(--text-main) 6%, transparent);
   --bs-table-color: var(--text-main);
   --bs-table-striped-color: var(--text-main);
+  /* Bug real (tema oscuro, 2026-08-02, parte 2): las variables de arriba no alcanzan
+     porque bootstrap.min.css (5.1.0) fija `color:#212529` DIRECTO en `.table`, no vía
+     var(--bs-table-color) -- esta versión de Bootstrap no llegó a cablear esa
+     variable al color base (sí la declara, pero no la consume ahí). El fix de filas
+     impares (:nth-of-type(odd) más abajo) alcanzaba a esas nomás -- las pares seguían
+     heredando el negro de Bootstrap sin ningún override. `color` explícito acá cubre
+     TODAS las filas (impares Y pares), misma especificidad que `.table` pero site.css
+     carga después. */
+  color: var(--text-main);
   border: 1px solid var(--card-border);
 }
 
@@ -410,6 +438,20 @@ body {
 
 .document-list-table tbody tr:hover {
   background-color: color-mix(in srgb, var(--bs-primary) 6%, transparent);
+}
+
+/* Bug real (tema oscuro, reportado 2026-08-02): las filas "impares" del listado se
+   veían sin texto -- Bootstrap 5.1.0 fija `.table { --bs-table-striped-color:#212529 }`
+   como DEFAULT (bootstrap.min.css, casi negro), y aunque .document-list-table de
+   arriba pisa esa misma variable con var(--text-main), esa regla y la de Bootstrap
+   tienen la MISMA especificidad (una sola clase cada una) -- en teoría gana la de acá
+   por venir después en el archivo, pero en la práctica (confirmado en el navegador)
+   no alcanza. Selector explícito con más especificidad real (2 clases + la cadena de
+   elementos exacta de Bootstrap), fijando `color` directo en vez de pelear con la
+   variable intermedia -- así no depende de qué tan bien se propague el custom
+   property. */
+.document-list-table.table-striped > tbody > tr:nth-of-type(odd) > * {
+  color: var(--text-main);
 }
 
 /* Caja con borde/radio alrededor de la tabla, encabezado sticky adentro -- portado de
@@ -514,6 +556,22 @@ body {
   border-bottom: none;
 }
 
+/* Consulta (solo-lectura) de un documento -- portado del look real de la referencia
+   (bug reportado: "se ven cuadros con la información" al consultar Venta/Compra/
+   Inventario, comparado con el sistema original). Los <input disabled> de las líneas
+   siguen siendo inputs reales (JS de totales/edición los sigue leyendo igual), pero
+   sin el borde/fondo gris que les pone Bootstrap por default -- mismo tratamiento que
+   ya tenían los campos de la sección General (.doc-tab-seccion .form-group .form-
+   control:disabled, más abajo), que a esta tabla nunca le llegó. */
+.line-items-table input:disabled,
+.line-items-table select:disabled {
+  background: transparent;
+  border: none;
+  padding-left: 2px;
+  color: var(--text-main);
+  opacity: 1;
+}
+
 /* ==========================================================================
    Listado de documentos como UNA sola tarjeta -- portado de referencia-original/
    PortalSAP_v2 (<div class="card-ps doc-list">, theme.css:143/1419-1638). La entrega
@@ -536,7 +594,10 @@ body {
    encabezado con utilitarios sueltos de Bootstrap (d-flex/h3) en vez de las clases
    reales, así que quedaba sin el padding/tipografía de .card-ps doc-form. */
 .doc-form {
-  padding: 16px;
+  /* Compactado (bug real reportado: "usa demasiado espacio de pantalla" en los 3
+     motores genéricos -- Venta/Compra/Inventario comparten este mismo componente,
+     así que el ajuste alcanza a los 3 sin tocar nada más) -- era 16px. */
+  padding: 10px 12px;
 }
 
 .doc-form-volver {
@@ -558,12 +619,12 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .doc-form-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .doc-list-header {
@@ -773,7 +834,7 @@ body {
    apiladas -- las tabs son anclas de scroll, nunca ocultan la sección anterior (ver
    DocumentForm/Default.cshtml). */
 .doc-tab-seccion {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   scroll-margin-top: 48px;
 }
 
@@ -804,21 +865,27 @@ body {
    lista plana "label encima del valor" por una grilla con separación real: cada
    .form-group es una celda visible (borde + fondo propio), no solo texto flotando. */
 .doc-tab-seccion .form-row {
-  gap: 10px 16px;
-  margin-bottom: 10px;
+  /* auto-fit en vez de 1fr 1fr fijo -- compactado (bug real reportado: "General usa
+     demasiado espacio, quiero los campos más juntos"): en pantallas anchas entran 3-4
+     campos cortos (fechas, códigos) por fila en vez de forzar siempre 2, sin tocar el
+     markup de ningún motor genérico -- minmax(160px, 1fr) es lo mínimo legible antes
+     de bajar a la fila siguiente. */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 6px 10px;
+  margin-bottom: 4px;
 }
 
 .doc-tab-seccion .form-group {
   background: var(--input-bg);
   border: 1px solid var(--card-border);
   border-radius: 6px;
-  padding: 6px 12px;
+  padding: 3px 8px;
 }
 
 .doc-tab-seccion .form-group .form-label {
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--text-muted);
-  margin-bottom: 1px;
+  margin-bottom: 0;
   display: block;
 }
 
@@ -917,7 +984,7 @@ body {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  margin: 0 0 8px;
+  margin: 0 0 4px;
 }
 
 .doc-resumen-total-fila {

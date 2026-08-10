@@ -18,71 +18,70 @@
         </div>
     }
 
-    <div class="form-row">
-        <div class="form-group">
-            <label asp-for="Input.CustomerCardCode" class="form-label"></label>
-            @* Búsqueda en vivo (mismo modelo que Artículo, ver catalog-search.js) en vez
-               de un <select> con TODO OCRD precargado -- ver el comentario de
-               OnGetSearchCustomersAsync. En solo-lectura se muestra "código — nombre"
-               (SalesDocumentDto.CustomerName, ya viene de SAP, sin consulta extra) en
-               vez de reabrir el buscador sobre un documento que ya no se edita. *@
-            @if (readOnly)
-            {
-                <input class="form-control" value="@(Model.Input.CustomerCardCode + (Model.CustomerName is null ? "" : " — " + Model.CustomerName))" disabled />
-                <input type="hidden" asp-for="Input.CustomerCardCode" />
-            }
-            else
-            {
-                <input asp-for="Input.CustomerCardCode" list="sales-order-customers-datalist" class="form-control sales-order-customer-code"
-                       autocomplete="off" placeholder="Código o nombre del cliente" />
-                <datalist id="sales-order-customers-datalist"></datalist>
-            }
-            <span asp-validation-for="Input.CustomerCardCode" class="text-danger"></span>
+    @* Layout fijo en 2 columnas (pedido explícito, 2026-08-02) -- izquierda:
+       Cliente/N° referencia/Vendedor/Tipo de línea; derecha: Serie/las 3 fechas.
+       Comentarios queda fuera de las columnas, ancho completo, mismo lugar de
+       siempre. .doc-columnas-2/.doc-columna ya existían en el CSS preparadas para
+       esto (theme.css), sin consumidor real hasta ahora. *@
+    <div class="doc-columnas-2">
+        <div class="doc-columna">
+            <div class="form-group">
+                <label asp-for="Input.CustomerCardCode" class="form-label"></label>
+                @* Búsqueda en vivo (mismo modelo que Artículo, ver catalog-search.js) en vez
+                   de un <select> con TODO OCRD precargado -- ver el comentario de
+                   OnGetSearchCustomersAsync. En solo-lectura se muestra "código — nombre"
+                   (SalesDocumentDto.CustomerName, ya viene de SAP, sin consulta extra) en
+                   vez de reabrir el buscador sobre un documento que ya no se edita. *@
+                @if (readOnly)
+                {
+                    <input class="form-control" value="@(Model.Input.CustomerCardCode + (Model.CustomerName is null ? "" : " — " + Model.CustomerName))" disabled />
+                    <input type="hidden" asp-for="Input.CustomerCardCode" />
+                }
+                else
+                {
+                    <input asp-for="Input.CustomerCardCode" list="sales-order-customers-datalist" class="form-control sales-order-customer-code"
+                           autocomplete="off" placeholder="Código o nombre del cliente" />
+                    <datalist id="sales-order-customers-datalist"></datalist>
+                }
+                <span asp-validation-for="Input.CustomerCardCode" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.CustomerReferenceNumber" class="form-label"></label>
+                <input asp-for="Input.CustomerReferenceNumber" class="form-control" disabled="@readOnly" />
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.SalesEmployeeCode" class="form-label"></label>
+                <select asp-for="Input.SalesEmployeeCode" asp-items="Model.SalesEmployees" class="form-select" disabled="@readOnly">
+                    <option value="">Sin asignar</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.LineType" class="form-label"></label>
+                <select asp-for="Input.LineType" class="form-select" disabled="@readOnly">
+                    <option value="@PortalSaas.Abstractions.Modelos.DocumentLineType.Item">Artículo</option>
+                    <option value="@PortalSaas.Abstractions.Modelos.DocumentLineType.Service">Servicio</option>
+                </select>
+            </div>
         </div>
-        <div class="form-group">
-            <label asp-for="Input.SalesEmployeeCode" class="form-label"></label>
-            <select asp-for="Input.SalesEmployeeCode" asp-items="Model.SalesEmployees" class="form-select" disabled="@readOnly">
-                <option value="">Sin asignar</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group">
-            <label asp-for="Input.DocDate" class="form-label"></label>
-            <input asp-for="Input.DocDate" type="date" class="form-control" disabled="@readOnly" />
-        </div>
-        <div class="form-group">
-            <label asp-for="Input.DocDueDate" class="form-label"></label>
-            <input asp-for="Input.DocDueDate" type="date" class="form-control" disabled="@readOnly" />
-        </div>
-        <div class="form-group">
-            <label asp-for="Input.TaxDate" class="form-label"></label>
-            <input asp-for="Input.TaxDate" type="date" class="form-control" disabled="@readOnly" />
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group">
-            <label asp-for="Input.CustomerReferenceNumber" class="form-label"></label>
-            <input asp-for="Input.CustomerReferenceNumber" class="form-control" disabled="@readOnly" />
-        </div>
-        <div class="form-group">
-            <label asp-for="Input.Series" class="form-label"></label>
-            <select asp-for="Input.Series" asp-items="Model.Series" class="form-select" disabled="@readOnly">
-                <option value="">Serie por defecto de SAP</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group form-group-ancho-completo">
-            <label asp-for="Input.LineType" class="form-label"></label>
-            <select asp-for="Input.LineType" class="form-select" disabled="@readOnly">
-                <option value="@PortalSaas.Abstractions.Modelos.DocumentLineType.Item">Artículo</option>
-                <option value="@PortalSaas.Abstractions.Modelos.DocumentLineType.Service">Servicio</option>
-            </select>
-            <small class="form-text text-muted">SAP no permite mezclar líneas de Artículo y Servicio en el mismo documento.</small>
+        <div class="doc-columna">
+            <div class="form-group">
+                <label asp-for="Input.Series" class="form-label"></label>
+                <select asp-for="Input.Series" asp-items="Model.Series" class="form-select" disabled="@readOnly">
+                    <option value="">Serie por defecto de SAP</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.DocDate" class="form-label"></label>
+                <input asp-for="Input.DocDate" type="date" class="form-control" disabled="@readOnly" />
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.DocDueDate" class="form-label"></label>
+                <input asp-for="Input.DocDueDate" type="date" class="form-control" disabled="@readOnly" />
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.TaxDate" class="form-label"></label>
+                <input asp-for="Input.TaxDate" type="date" class="form-control" disabled="@readOnly" />
+            </div>
         </div>
     </div>
 

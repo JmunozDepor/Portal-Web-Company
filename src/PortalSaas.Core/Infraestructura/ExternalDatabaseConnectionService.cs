@@ -27,16 +27,15 @@ public sealed class ExternalDatabaseConnectionService : IExternalDatabaseConnect
 
     public async Task<ExternalDatabaseConnection> ResolveConnectionAsync(
         string moduleCode,
-        Guid organizationId,
-        Guid? companyId,
+        Guid companyId,
         CancellationToken ct = default)
     {
-        var connection = (companyId is not null
-                ? await BuscarAsync(moduleCode, organizationId, companyId, ct)
-                : null)
-            ?? await BuscarAsync(moduleCode, organizationId, null, ct)
+        var connection = await _db.ModuleExternalConnections
+                .AsNoTracking()
+                .Where(x => x.ModuleCode == moduleCode && x.CompanyId == companyId && x.IsActive)
+                .FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException(
-                $"No hay una base de datos externa asociada al módulo '{moduleCode}' para esta organización -- " +
+                $"No hay una base de datos externa asociada al módulo '{moduleCode}' para esta compañía -- " +
                 "configurarla desde Administración.");
 
         var password = _secretos.Decrypt(connection.TechnicalSecretKey);
@@ -70,14 +69,5 @@ public sealed class ExternalDatabaseConnectionService : IExternalDatabaseConnect
             EngineType = connection.EngineType,
             ConnectionString = connectionString,
         };
-    }
-
-    private Task<ModuleExternalConnection?> BuscarAsync(string moduleCode, Guid organizationId, Guid? companyId, CancellationToken ct)
-    {
-        return _db.ModuleExternalConnections
-            .AsNoTracking()
-            .Where(x => x.ModuleCode == moduleCode && x.OrganizationId == organizationId && x.IsActive)
-            .Where(x => x.CompanyId == companyId)
-            .FirstOrDefaultAsync(ct);
     }
 }

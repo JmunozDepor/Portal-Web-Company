@@ -16,25 +16,36 @@ namespace Modulo.ImportacionGenerica.Pages.Importar;
 /// Sin sesión de servidor para el archivo entre Previsualizar y Confirmar (a diferencia
 /// del original, que corría en el mismo proceso mono-tenant) -- el archivo viaja de
 /// vuelta al navegador como base64 en un campo oculto y se reprocesa (mismo archivo,
-/// misma configuración = mismo resultado determinístico) al confirmar. Sin polling de
-/// progreso vía JS -- CreateDocumentsAsync corre síncrono en el mismo request y el
-/// resultado final se muestra directo (IGenericImportProgressStore queda listo para
-/// una futura mejora con polling si el volumen de documentos lo justifica).
+/// misma configuración = mismo resultado determinístico) al confirmar.
+///
+/// "Confirmar" es un POST por fetch, no un submit de página completa (ver
+/// Index.cshtml, btnConfirmar) -- con archivos de varios miles de filas, un postback
+/// tradicional deja al usuario con la pestaña "colgada" (sin ningún indicio de avance)
+/// durante todo CreateDocumentsAsync. El cliente genera un jobId, dispara OnPostConfirmAsync
+/// y en paralelo consulta OnGetProgressAsync(jobId) por polling contra
+/// IGenericImportProgressStore (actualizado por lote de líneas, no por documento, ver
+/// GenericImportService.CreateDocumentsAsync) -- mismo patrón que
+/// referencia-original/PortalSAP_v2 (Pages/Importar/Index.cshtml.cs, OnPostConfirmarAsync +
+/// OnGetProgreso).
 /// </summary>
 public sealed class IndexModel : PageModelBaseAdmin
 {
     private readonly IGenericImportService _importService;
+    private readonly IGenericImportProgressStore _progress;
+    private readonly IGenericImportConfigService _configs;
     private readonly ISalesDocumentService _sales;
     private readonly IPurchaseDocumentService _purchase;
     private readonly IInventoryDocumentService _inventory;
     private readonly ICustomerCatalogService _customers;
     private readonly ISupplierCatalogService _suppliers;
 
-    public IndexModel(ICurrentUserContext currentUser, IGenericImportService importService,
-        ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
+    public IndexModel(ICurrentUserContext currentUser, IGenericImportService importService, IGenericImportProgressStore progress,
+        IGenericImportConfigService configs, ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
         ICustomerCatalogService customers, ISupplierCatalogService suppliers) : base(currentUser)
     {
         _importService = importService;
+        _progress = progress;
+        _configs = configs;
         _sales = sales;
         _purchase = purchase;
         _inventory = inventory;
@@ -63,16 +74,20 @@ public sealed class IndexModel : PageModelBaseAdmin
     public List<SelectListItem> InventoryDocumentTypes { get; private set; } = [];
 
     public GenericImportResultDto? PreviewResult { get; private set; }
-    public GenericImportProgressDto? FinalProgress { get; private set; }
+
+    /// <summary>true = la configuración vigente para Módulo+TipoDocumento+TipoLínea trae el socio por columna del Excel (carga multi-socio) -- el selector de socio del wizard queda informativo, ver Index.cshtml.</summary>
+    public bool BusinessPartnerFromFile { get; private set; }
 
     public async Task OnGetAsync(CancellationToken ct)
     {
         await LoadCreatableDocumentTypesAsync(ct);
+        await ResolveBusinessPartnerFromFileAsync(ct);
     }
 
     public async Task<IActionResult> OnPostProcessAsync(IFormFile file, CancellationToken ct)
     {
         await LoadCreatableDocumentTypesAsync(ct);
+        await ResolveBusinessPartnerFromFileAsync(ct);
 
         if (file is null || file.Length == 0)
         {
@@ -93,30 +108,45 @@ public sealed class IndexModel : PageModelBaseAdmin
         return Page();
     }
 
-    public async Task<IActionResult> OnPostConfirmAsync(CancellationToken ct)
+    /// <summary>
+    /// Devuelve JSON (no Page()) -- este handler se llama por fetch, nunca por un
+    /// submit de formulario tradicional (ver Index.cshtml, btnConfirmar). Reprocesa el
+    /// archivo (mismo criterio que antes: el archivo no queda en sesión de servidor)
+    /// para obtener GenericImportDocumentDto con los DocumentLineType/valores ya
+    /// resueltos, y recién ahí llama CreateDocumentsAsync con el jobId que generó el
+    /// cliente -- ese mismo jobId es la clave que OnGetProgressAsync consulta por
+    /// polling mientras este método sigue corriendo.
+    /// </summary>
+    public async Task<JsonResult> OnPostConfirmAsync(string jobId, CancellationToken ct)
     {
-        await LoadCreatableDocumentTypesAsync(ct);
+        var parameters = BuildParameters();
 
         if (string.IsNullOrEmpty(Input.Base64File))
         {
-            ModelState.AddModelError(string.Empty, "Volvé a procesar el archivo antes de confirmar.");
-            return Page();
+            return new JsonResult(new GenericImportProgressDto("Volvé a procesar el archivo antes de confirmar.", 0, 0, false, null, true))
+            {
+                StatusCode = StatusCodes.Status400BadRequest,
+            };
         }
 
-        var parameters = BuildParameters();
         var bytes = Convert.FromBase64String(Input.Base64File);
         using var stream = new MemoryStream(bytes);
-        PreviewResult = await _importService.ProcessFileAsync(parameters, stream, ct);
+        var preview = await _importService.ProcessFileAsync(parameters, stream, ct);
 
-        if (!PreviewResult.HasValidConfig)
+        if (!preview.HasValidConfig || !preview.Documents.Any(d => d.CanCreate))
         {
-            return Page();
+            var blocked = new GenericImportProgressDto(
+                preview.HasValidConfig ? "No hay documentos válidos para crear -- volvé a la vista previa." : preview.ErrorMessage ?? "Configuración inválida.",
+                0, 0, false, null, true);
+            return new JsonResult(blocked) { StatusCode = StatusCodes.Status400BadRequest };
         }
 
-        var jobId = Guid.NewGuid().ToString("N");
-        FinalProgress = await _importService.CreateDocumentsAsync(jobId, CurrentUser.Username, parameters, PreviewResult.Documents, ct);
-        return Page();
+        var result = await _importService.CreateDocumentsAsync(jobId, CurrentUser.Username, parameters, preview.Documents, ct);
+        return new JsonResult(result);
     }
+
+    /// <summary>Consultado por polling desde el cliente mientras OnPostConfirmAsync sigue corriendo -- ver IGenericImportProgressStore.</summary>
+    public JsonResult OnGetProgressAsync(string jobId) => new(_progress.Get(jobId));
 
     /// <summary>
     /// Búsqueda en vivo del Socio de negocio -- mismo modelo que Cliente/Proveedor en
@@ -143,12 +173,63 @@ public sealed class IndexModel : PageModelBaseAdmin
         return new JsonResult(suppliers.Select(s => new { s.CardCode, s.CardName }));
     }
 
+    // POST porque el archivo (Input.Base64File) puede superar el límite práctico de una
+    // URL en GET -- mismo motivo que OnPostConfirmAsync. Reprocesa el archivo (mismo
+    // criterio: no queda en sesión de servidor) para tener la bitácora de errores de
+    // cada fila antes de generar el .xlsx.
+    public async Task<IActionResult> OnPostDownloadWithErrorsAsync(CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(Input.Base64File))
+        {
+            ModelState.AddModelError(string.Empty, "Volvé a procesar el archivo antes de descargar.");
+            await LoadCreatableDocumentTypesAsync(ct);
+            await ResolveBusinessPartnerFromFileAsync(ct);
+            return Page();
+        }
+
+        var parameters = BuildParameters();
+        var bytes = Convert.FromBase64String(Input.Base64File);
+        using var stream = new MemoryStream(bytes);
+        var preview = await _importService.ProcessFileAsync(parameters, stream, ct);
+
+        var fileBytes = await _importService.GenerateFileWithErrorsAsync(parameters, preview.Documents, ct);
+        return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"Errores_{Input.Module}_{parameters.DocumentType}.xlsx");
+    }
+
     public async Task<IActionResult> OnGetTemplateAsync(GenericImportModule module, string documentType, GenericImportLineType lineType,
         string? businessPartnerCardCode, CancellationToken ct)
     {
-        var parameters = new GenericImportParametersDto(CurrentUser.OrganizationId, module, documentType, lineType, businessPartnerCardCode);
+        var parameters = new GenericImportParametersDto(module, documentType, lineType, businessPartnerCardCode);
         var bytes = await _importService.GenerateTemplateAsync(parameters, ct);
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "plantilla-importacion.xlsx");
+    }
+
+    /// <summary>
+    /// Resuelve la configuración vigente para Módulo+TipoDocumento+TipoLínea (si ya se
+    /// conoce) para saber si es multi-socio -- necesario ANTES de validar si el socio es
+    /// obligatorio (se relaja esa validación en modo multi-socio) y para mostrarle al
+    /// usuario que puede dejar el selector de socio vacío.
+    /// </summary>
+    private async Task ResolveBusinessPartnerFromFileAsync(CancellationToken ct)
+    {
+        BusinessPartnerFromFile = false;
+
+        var documentType = Input.Module switch
+        {
+            GenericImportModule.Sales => Input.SalesDocumentType,
+            GenericImportModule.Purchase => Input.PurchaseDocumentType,
+            GenericImportModule.Inventory => Input.InventoryDocumentType,
+            _ => null,
+        };
+
+        if (string.IsNullOrWhiteSpace(documentType))
+        {
+            return;
+        }
+
+        var config = await _configs.ResolveAsync(Input.Module, documentType, Input.LineType, Input.BusinessPartnerCardCode, ct);
+        BusinessPartnerFromFile = config?.BusinessPartnerFromFile ?? false;
     }
 
     private GenericImportParametersDto BuildParameters()
@@ -161,7 +242,7 @@ public sealed class IndexModel : PageModelBaseAdmin
             _ => throw new InvalidOperationException("Módulo no soportado."),
         };
 
-        return new GenericImportParametersDto(CurrentUser.OrganizationId, Input.Module, documentType ?? string.Empty,
+        return new GenericImportParametersDto(Input.Module, documentType ?? string.Empty,
             Input.LineType, Input.BusinessPartnerCardCode);
     }
 

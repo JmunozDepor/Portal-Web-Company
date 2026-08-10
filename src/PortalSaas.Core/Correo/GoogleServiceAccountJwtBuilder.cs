@@ -37,7 +37,12 @@ internal static class GoogleServiceAccountJwtBuilder
         var unsignedToken = $"{headerSegment}.{claimsSegment}";
 
         using var rsa = RSA.Create();
-        rsa.ImportFromPem(privateKeyPem);
+        // Defensa adicional -- Pages/Admin/Organizations/EmailSettings/Index.cshtml.cs ya
+        // normaliza esto al guardar, pero una config guardada ANTES de ese fix (con "\n"
+        // literal en vez de saltos de línea reales, el formato tal cual trae el JSON de
+        // cuenta de servicio de Google) sigue rota hasta que alguien la vuelva a pegar --
+        // normalizar acá también para que funcione sin depender de un re-guardado manual.
+        rsa.ImportFromPem(privateKeyPem.Replace("\\r\\n", "\n").Replace("\\n", "\n"));
         var signature = rsa.SignData(Encoding.UTF8.GetBytes(unsignedToken), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
 
         return $"{unsignedToken}.{Base64UrlEncode(signature)}";

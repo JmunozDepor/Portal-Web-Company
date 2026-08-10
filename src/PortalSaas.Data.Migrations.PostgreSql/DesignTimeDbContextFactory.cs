@@ -20,10 +20,13 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Por
 {
     public PortalSaasDbContext CreateDbContext(string[] args)
     {
+        // Sin prefijo -- ver el comentario equivalente en el DesignTimeDbContextFactory
+        // hermano de PortalSaas.Data.Migrations.SqlServer (bug real 2026-08-08, mismatch
+        // de nombre de variable de entorno con el resto del proyecto).
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.Development.json", optional: true)
-            .AddEnvironmentVariables(prefix: "PORTALSAAS_")
+            .AddEnvironmentVariables()
             .Build();
 
         var connectionString = configuration["ConnectionStrings:Default"]

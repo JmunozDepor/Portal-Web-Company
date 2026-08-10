@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -7,6 +8,7 @@ using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Core.Administracion;
 using PortalSaas.Core.Catalogos;
 using PortalSaas.Core.Comercial;
+using PortalSaas.Core.Comercial.Licenciamiento;
 using PortalSaas.Core.Compras;
 using PortalSaas.Core.Correo;
 using PortalSaas.Core.ImportacionGenerica;
@@ -18,10 +20,25 @@ using PortalSaas.Core.Usuarios;
 using PortalSaas.Core.Ventas;
 using PortalSaas.Data;
 using PortalSaas.Host.Comandos;
+using PortalSaas.Host.Infraestructura;
+using PortalSaas.Host.Licenciamiento;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages();
+
+// Límite de tamaño de request: el default de ASP.NET Core (~28.6MB, tanto en Kestrel
+// como en el hosting in-process de IIS) alcanza para un formulario normal, pero no para
+// Rendiciones/Gastos/Importar (hasta 5 fotos de cámara de celular en una sola subida --
+// fácil pasarse de 28.6MB combinadas). Al superarlo, ASP.NET Core corta la conexión con
+// un HTTP 400 genérico sin más detalle -- eso es justo el bug reportado (mismo síntoma
+// en local con Kestrel y en el piloto real con IIS in-process, porque el límite por
+// default es el mismo en los dos hosting models). 100MB cubre ese caso con margen.
+const long MaxUploadRequestBodySize = 100 * 1024 * 1024;
+builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(o =>
+    o.Limits.MaxRequestBodySize = MaxUploadRequestBodySize);
+builder.Services.Configure<Microsoft.AspNetCore.Builder.IISServerOptions>(o =>
+    o.MaxRequestBodySize = MaxUploadRequestBodySize);
 
 // Motor dual (Postgres/SQL Server) -- ver docs/02-ARQUITECTURA-BASE-DE-DATOS.md §1 y
 // §7. El Host NO aplica migraciones en el arranque a propósito -- eso es un paso
@@ -56,10 +73,29 @@ builder.Services.AddScoped<PortalSaas.Abstractions.Contratos.IAuthenticationServ
 builder.Services.AddScoped<IPlatformAdminAuthenticationService, PlatformAdminAuthenticationService>();
 builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
 builder.Services.AddScoped<IUserSessionService, UserSessionService>();
+builder.Services.AddScoped<ICompanySessionActivator, CompanySessionActivator>();
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<IContractLimitService, ContractLimitService>();
 builder.Services.AddScoped<IOrganizationAccessGateService, OrganizationAccessGateService>();
+
+// Licenciamiento remoto on-premise -- ver ILicenseTokenService/ILicenseActivationService
+// y CLAUDE.md. LicenseTokenService se registra siempre (verifica en ambos roles, firma
+// solo si Licensing:SigningPrivateKey está configurada -- ver su constructor).
+// LicenseActivationService solo lo usan los endpoints /api/licensing/* (rol Central,
+// mapeados más abajo), pero registrarlo siempre es inofensivo y más simple que
+// condicionarlo. El BackgroundService y el fingerprint provider SÍ son exclusivos del
+// rol OnPremise -- se registran condicionalmente, después de Build() no hace falta,
+// AddHostedService/AddScoped funcionan igual antes de Build().
+builder.Services.AddScoped<ILicenseTokenService, LicenseTokenService>();
+builder.Services.AddScoped<ILicenseActivationService, LicenseActivationService>();
+
+var licensingRole = builder.Configuration["Licensing:Role"];
+if (licensingRole == "OnPremise")
+{
+    builder.Services.AddSingleton<IInstallationFingerprintProvider, InstallationFingerprintProvider>();
+    builder.Services.AddHostedService<LicenseActivatorBackgroundService>();
+}
 
 // Consumido por MenuNavigationService -- qué módulos comerciales tiene contratados una
 // organización, para filtrar el árbol de menú (ver IModuleAccessService).
@@ -168,6 +204,19 @@ builder.Services.AddScoped<IBusinessPartnerGroupCatalogService, BusinessPartnerG
 builder.Services.AddScoped<IUnitOfMeasureCatalogService, UnitOfMeasureCatalogService>();
 builder.Services.AddScoped<ICurrencyCatalogService, CurrencyCatalogService>();
 
+// Sin esto, el llavero de Data Protection es efímero (en memoria) -- cada reinicio del
+// proceso (build-all.ps1, un recycle de App Pool en IIS, un deploy) genera uno nuevo, y
+// CUALQUIER cookie/token firmado con el llavero anterior deja de validar. Síntoma real
+// (2026-08-08): "HTTP ERROR 400" al hacer POST /Admin/Logout desde una pestaña que
+// quedó abierta de ANTES del último reinicio -- el token antiforgery embebido en esa
+// página vieja no valida contra el llavero nuevo. Persistiendo a disco, el llavero
+// sobrevive reinicios -- cookies/tokens emitidos antes de reiniciar el proceso siguen
+// siendo válidos después. Carpeta relativa a ContentRootPath (no depende de dónde se
+// ejecute el proceso), une entorno local y IIS real bajo el mismo criterio.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, ".dataprotection-keys")))
+    .SetApplicationName("PortalSaas");
+
 // Esquema default = tenant (sin cambios de comportamiento en /Account, /Home). El
 // esquema "PlatformAdmin" es una sesión totalmente aparte -- ver
 // Pages/Admin/Login.cshtml.cs -- para que un administrador de plataforma nunca
@@ -273,9 +322,15 @@ if (args is ["seed-admin", var seedAdminEmail])
     return;
 }
 
+// La página de error propia (Pages/Error.cshtml) corre en TODOS los entornos, no solo
+// producción -- antes solo estaba activa fuera de Development, así que cualquier
+// excepción no manejada en local mostraba la pantalla cruda de desarrollo de ASP.NET
+// Core (stack trace completo, sin el diseño de la app). Pages/Error.cshtml.cs decide
+// cuánto detalle mostrar según el entorno (mensaje+stack solo en Development), así que
+// no hace falta la página de diagnóstico del framework para eso.
+app.UseExceptionHandler("/Error");
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
 
@@ -309,7 +364,34 @@ foreach (var assembly in pluginManager.AssembliesConWwwRootPropio.Values)
 
 app.UseRouting();
 app.UseAuthentication();
+
+// Sin esto, el patrón POST /Account/SwitchCompany -> redirect -> GET puede volver a
+// mostrar una respuesta cacheada por el navegador de ANTES del cambio de compañía --
+// el servidor sí actualiza la sesión/cookie (confirmado por log, UPDATE user_sessions
+// corre siempre), pero el navegador nunca vuelve a pedir la página. Mismo criterio que
+// ASP.NET Core Identity aplica por default a sus propias páginas. Solo para requests
+// autenticados -- assets estáticos (CSS/JS/imágenes) siguen cacheando normal, esto no
+// los toca (corre después de UseStaticFiles).
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity?.IsAuthenticated == true)
+    {
+        context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+        context.Response.Headers.Pragma = "no-cache";
+        context.Response.Headers.Expires = "0";
+    }
+    await next();
+});
+
 app.UseAuthorization();
 app.MapRazorPages();
+
+// Solo el servidor central expone activación/heartbeat de licencias -- una
+// instalación on-premise nunca recibe estas llamadas, las hace (ver
+// LicenseActivatorBackgroundService).
+if (licensingRole == "Central")
+{
+    app.MapLicensingEndpoints();
+}
 
 app.Run();

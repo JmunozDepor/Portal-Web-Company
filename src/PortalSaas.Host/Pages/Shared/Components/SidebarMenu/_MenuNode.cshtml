@@ -15,31 +15,38 @@
 
     // Acota el accordion de Bootstrap (data-bs-parent) al contenedor <ul> INMEDIATO
     // de este nodo -- así abrir una carpeta cierra automáticamente sus carpetas
-    // HERMANAS (mismo nivel, mismo padre), sin tocar carpetas de otras ramas del
-    // árbol. Bug real que esto corrige: sin data-bs-parent, Bootstrap nunca cierra
-    // nada solo -- y como sidebar.js persiste en localStorage cada grupo que
-    // alguna vez se mostró (esta app recarga la página entera en cada navegación,
-    // no es una SPA), con el tiempo terminaban quedando "recordados" como
-    // expandidos varios subgrupos hermanos a la vez (ej. Rendidor/Aprobador/
-    // Administrador de Modulo.Rendiciones todos abiertos juntos, aunque el click
-    // actual solo pedía abrir uno). Con el accordion real, Bootstrap dispara
-    // hidden.bs.collapse sobre los hermanos que cierra, y sidebar.js ya los saca
-    // solo de localStorage (ver su listener existente) -- autocorrige el estado
-    // viejo con el uso normal, sin necesitar limpiar nada a mano.
+    // HERMANAS (mismo nivel, mismo padre) al hacer click, sin tocar carpetas de otras
+    // ramas del árbol. Qué queda abierto al CARGAR la página ya no depende de nada del
+    // navegador (ver ContieneRutaActiva más abajo y sidebar.js) -- es el servidor el
+    // que decide, en cada request, según la ruta activa. sidebar.js ya NO persiste
+    // grupos abiertos en localStorage (bug real que eso causaba: click en un submenú
+    // reabría OTRO grupo sin relación, "recordado" de una exploración anterior en la
+    // misma sesión del navegador -- confirmado con curl que el servidor ya devolvía el
+    // HTML correcto, el problema era 100% esa persistencia del lado del cliente).
     var parentContainerId = ViewData["ParentContainerId"] as string;
 }
 @if (isFolder)
 {
     var collapseId = $"menu-node-{Model.Id}";
     var childrenContainerId = $"menu-children-{Model.Id}";
+
+    // Server-side: si la página activa está en algún nivel de este árbol, la carpeta
+    // arranca YA abierta (class="show" + aria-expanded="true"). Sin esto, el <div
+    // class="collapse"> arranca cerrado en cada request (esta app recarga la página
+    // entera en cada navegación) y sidebar.js recién lo abre después del DOMContentLoaded
+    // -- visible como el submenú "cerrándose y volviendo a abrirse" con la animación de
+    // Bootstrap en cada click (bug real reportado, "el menú se recarga" -- no era la
+    // navegación en sí, era esta animación de apertura tardía).
+    var estaActivo = ContieneRutaActiva(Model, currentPath);
+    var collapseClass = estaActivo ? "collapse show" : "collapse";
     <li class="sidebar-nav-item">
         <a class="sidebar-nav-grupo @(esGrupoRaiz ? "sidebar-nav-grupo-raiz" : "")" data-bs-toggle="collapse" href="#@collapseId" role="button"
-           aria-expanded="false" aria-controls="@collapseId" data-bs-parent="@(parentContainerId is not null ? "#" + parentContainerId : null)" style="@rootIconStyle">
+           aria-expanded="@(estaActivo ? "true" : "false")" aria-controls="@collapseId" data-bs-parent="@(parentContainerId is not null ? "#" + parentContainerId : null)" style="@rootIconStyle">
             <span class="nav-icon"><i class="@(Model.Icon ?? "bi bi-folder")"></i></span>
             <span class="nav-texto">@Model.Name</span>
             <i class="bi bi-chevron-down sidebar-grupo-chevron"></i>
         </a>
-        <div class="collapse" id="@collapseId">
+        <div class="@collapseClass" id="@collapseId">
             <ul class="sidebar-nav sidebar-nav-sub" id="@childrenContainerId">
                 @{ ViewData["ParentContainerId"] = childrenContainerId; }
                 @foreach (var child in Model.Children)
@@ -54,9 +61,46 @@ else
 {
     var href = Url.Content("~" + Model.PagePath);
     <li>
-        <a href="@href" class="@(currentPath == Model.PagePath ? "active" : "")">
+        <a href="@href" class="@(EsRutaActivaOSubruta(Model.PagePath, currentPath) ? "active" : "")">
             <span class="nav-icon"><i class="@(Model.Icon ?? "bi bi-circle")"></i></span>
             <span class="nav-texto">@Model.Name</span>
         </a>
     </li>
+}
+@functions {
+    private static bool ContieneRutaActiva(PortalSaas.Abstractions.Modelos.MenuNodeDto node, string currentPath)
+    {
+        if (EsRutaActivaOSubruta(node.PagePath, currentPath))
+        {
+            return true;
+        }
+
+        foreach (var child in node.Children)
+        {
+            if (ContieneRutaActiva(child, currentPath))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Por igualdad exacta sola, el detalle de un documento (ej. "/ventas/ordenes/61065")
+    // nunca calzaba con la ruta registrada del menú (el listado, "/ventas/ordenes") --
+    // el grupo se veía como "no activo" apenas se entraba al detalle, y sidebar.js lo
+    // volvía a abrir con animación después de cargar (bug real reportado: "si entro al
+    // detalle de un pedido, el menú se recarga/parpadea" -- pasaba SOLO al entrar al
+    // detalle, nunca al quedarse en el listado, justo el patrón de un match por
+    // igualdad exacta fallando en la subruta).
+    private static bool EsRutaActivaOSubruta(string? pagePath, string currentPath)
+    {
+        if (pagePath is null)
+        {
+            return false;
+        }
+
+        return currentPath.Equals(pagePath, StringComparison.OrdinalIgnoreCase)
+            || currentPath.StartsWith(pagePath + "/", StringComparison.OrdinalIgnoreCase);
+    }
 }

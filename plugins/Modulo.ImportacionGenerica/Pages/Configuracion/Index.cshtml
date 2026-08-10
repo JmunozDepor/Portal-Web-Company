@@ -20,18 +20,54 @@
     <div class="alert alert-danger">@Model.ErrorMessage</div>
 }
 
-<div class="card-ps doc-tab-seccion mb-4">
-    <span class="doc-resumen-total-titulo">@(Model.EditId is null ? "Nueva configuración" : "Editar configuración")</span>
-    <form method="post" asp-page-handler="Save" asp-route-editId="@Model.EditId" asp-antiforgery="true">
+@if (!Model.MostrarFormulario)
+{
+    <div class="mb-3">
+        <a asp-page="/Configuracion/Index" asp-route-nuevo="true" class="btn btn-primary">Nueva configuración</a>
+    </div>
+}
+
+@if (Model.MostrarFormulario)
+{
+    <div class="card-ps doc-tab-seccion mb-4">
+        <span class="doc-resumen-total-titulo">@(Model.EditId is null ? "Nueva configuración" : "Editar configuración")</span>
+        <form method="post" asp-page-handler="Save" asp-antiforgery="true">
+        @* EditId/CopyId/Nuevo como campos ocultos, no route values -- así viajan también en
+           los postbacks de "Agregar campo"/"Quitar campo" (que usan formaction propio en el
+           <button>, pisando cualquier asp-route-* puesto en el <form>). Sin esto, tocar un
+           campo de usuario en medio de una edición perdía el EditId y el panel se cerraba
+           solo en el siguiente render (MostrarFormulario en false). *@
+        <input type="hidden" asp-for="EditId" />
+        <input type="hidden" asp-for="CopyId" />
+        <input type="hidden" asp-for="Nuevo" />
         <div class="form-row">
             <div class="form-group">
                 <label asp-for="Input.Module" class="form-label"></label>
-                <select asp-for="Input.Module" asp-items="Model.Modules" class="form-select" disabled="@(Model.EditId is not null)"></select>
+                <select asp-for="Input.Module" asp-items="Model.Modules" class="form-select" disabled="@(Model.EditId is not null)" onchange="mostrarTipoDocumentoConfig(this.value)"></select>
             </div>
-            <div class="form-group">
-                <label asp-for="Input.DocumentType" class="form-label"></label>
-                <input asp-for="Input.DocumentType" class="form-control" placeholder="ej. SalesOrder, PurchaseQuotation, StockTransfer" disabled="@(Model.EditId is not null)" />
+            @* Un <select> por Módulo, filtrado por CanCreateAsync -- antes era texto libre
+               ("ej. SalesOrder, PurchaseQuotation, StockTransfer"), lo que dejaba tipear un
+               nombre inválido (bug real: "StockTranfer", typo, guardado sin error pero
+               ResolveAsync nunca lo iba a encontrar). JS muestra solo el que corresponde al
+               Módulo elegido, mismo patrón que Pages/Importar/Index.cshtml. *@
+            <div class="form-group" id="config-tipo-doc-sales">
+                <label class="form-label">Tipo de documento</label>
+                <select asp-for="Input.SalesDocumentType" asp-items="Model.SalesDocumentTypes" class="form-select" disabled="@(Model.EditId is not null)">
+                    <option value="">Seleccionar…</option>
+                </select>
                 <span asp-validation-for="Input.DocumentType" class="text-danger"></span>
+            </div>
+            <div class="form-group" id="config-tipo-doc-purchase" style="display:none">
+                <label class="form-label">Tipo de documento</label>
+                <select asp-for="Input.PurchaseDocumentType" asp-items="Model.PurchaseDocumentTypes" class="form-select" disabled="@(Model.EditId is not null)">
+                    <option value="">Seleccionar…</option>
+                </select>
+            </div>
+            <div class="form-group" id="config-tipo-doc-inventory" style="display:none">
+                <label class="form-label">Tipo de documento</label>
+                <select asp-for="Input.InventoryDocumentType" asp-items="Model.InventoryDocumentTypes" class="form-select" disabled="@(Model.EditId is not null)">
+                    <option value="">Seleccionar…</option>
+                </select>
             </div>
             <div class="form-group">
                 <label asp-for="Input.LineType" class="form-label"></label>
@@ -65,6 +101,10 @@
             <div class="form-group form-check">
                 <input asp-for="Input.SkuIsCustomerOwn" class="form-check-input" />
                 <label asp-for="Input.SkuIsCustomerOwn" class="form-check-label"></label>
+            </div>
+            <div class="form-group form-check">
+                <input asp-for="Input.BusinessPartnerFromFile" class="form-check-input" />
+                <label asp-for="Input.BusinessPartnerFromFile" class="form-check-label"></label>
             </div>
             @if (Model.EditId is not null)
             {
@@ -113,12 +153,15 @@
         </table>
 
         <h5 class="mt-4">Campos de usuario</h5>
+        <p class="text-muted small">Sin límite de filas -- "Agregar campo" suma otra, "Quitar" saca esa puntual.</p>
         <table class="table table-sm">
             <thead>
                 <tr>
                     <th>Campo de usuario</th>
                     <th>Columna Excel</th>
                     <th>Obligatorio</th>
+                    <th>Valor fijo</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -137,18 +180,53 @@
                         </td>
                         <td><input name="Input.UserFieldMappings[@i].ExcelColumn" value="@mapping.ExcelColumn" class="form-control form-control-sm" style="max-width:80px" /></td>
                         <td><input type="checkbox" name="Input.UserFieldMappings[@i].IsRequired" value="true" class="form-check-input" checked="@mapping.IsRequired" /><input type="hidden" name="Input.UserFieldMappings[@i].IsRequired" value="false" /></td>
+                        <td><input name="Input.UserFieldMappings[@i].FixedValue" value="@mapping.FixedValue" class="form-control form-control-sm" placeholder="(opcional)" /></td>
+                        <td>
+                            @* asp-page-handler puesto directo en el <button>, no en el <form> -- FormActionTagHelper
+                               genera un formaction que pisa la acción de ESTE submit puntual sin tocar el resto
+                               del formulario (mismo criterio que el original, ver el doc-comment de la clase). *@
+                            <button type="submit" asp-page-handler="QuitarCampoUsuario" asp-route-index="@i" class="btn btn-sm btn-outline-danger">Quitar</button>
+                        </td>
                     </tr>
                 }
             </tbody>
         </table>
+        <button type="submit" asp-page-handler="AgregarCampoUsuario" class="btn btn-sm btn-outline-secondary mb-3">Agregar campo</button>
 
         <button type="submit" class="btn btn-primary">@(Model.EditId is null ? "Crear" : "Guardar")</button>
-        @if (Model.EditId is not null)
-        {
-            <a asp-page="/Configuracion/Index" class="btn btn-outline-secondary">Cancelar</a>
-        }
+        <a asp-page="/Configuracion/Index" class="btn btn-outline-secondary">Cancelar</a>
     </form>
-</div>
+    </div>
+
+    <script>
+        // Muestra solo el <select> de Tipo de documento que corresponde al Módulo elegido
+        // -- mismo patrón que Pages/Importar/Index.cshtml (mostrarTipoDocumento).
+        function mostrarTipoDocumentoConfig(modulo) {
+            document.getElementById('config-tipo-doc-sales').style.display = modulo === 'Sales' ? '' : 'none';
+            document.getElementById('config-tipo-doc-purchase').style.display = modulo === 'Purchase' ? '' : 'none';
+            document.getElementById('config-tipo-doc-inventory').style.display = modulo === 'Inventory' ? '' : 'none';
+        }
+        mostrarTipoDocumentoConfig(document.querySelector('[name="Input.Module"]').value);
+    </script>
+
+    @if (Model.EditId is null)
+    {
+        <script src="~/js/catalog-search.js"></script>
+        <script>
+            // Ver el comentario completo en Pages/Importar/Index.cshtml, mismo criterio
+            // (Cliente si Módulo=Venta, Proveedor en cualquier otro caso).
+            wireCatalogSearch({
+                inputSelector: '.import-config-business-partner-code',
+                datalistId: 'import-config-business-partners-datalist',
+                handlerName: 'SearchBusinessPartners',
+                minChars: 2,
+                extraParams: function () { return { module: document.querySelector('[name="Input.Module"]').value }; },
+                getValue: function (item) { return item.cardCode; },
+                getLabel: function (item) { return item.cardCode + ' — ' + item.cardName; },
+            });
+        </script>
+    }
+}
 
 <table class="table table-striped">
     <thead>
@@ -174,6 +252,8 @@
                 <td>@(config.IsActive ? "Sí" : "No")</td>
                 <td>
                     <a asp-page="/Configuracion/Index" asp-route-editId="@config.Id">Editar</a>
+                    ·
+                    <a asp-page="/Configuracion/Index" asp-route-copyId="@config.Id">Copiar</a>
                     <form method="post" asp-page-handler="Delete" asp-antiforgery="true" style="display:inline" onsubmit="return confirm('¿Eliminar esta configuración?');">
                         <input type="hidden" name="id" value="@config.Id" />
                         <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2">Eliminar</button>
@@ -187,22 +267,4 @@
 @if (Model.Configs.Count == 0)
 {
     <p class="text-muted">Todavía no hay configuraciones -- un archivo se puede igual descargar/importar con el layout genérico por defecto.</p>
-}
-
-@if (Model.EditId is null)
-{
-    <script src="~/js/catalog-search.js"></script>
-    <script>
-        // Ver el comentario completo en Pages/Importar/Index.cshtml, mismo criterio
-        // (Cliente si Módulo=Venta, Proveedor en cualquier otro caso).
-        wireCatalogSearch({
-            inputSelector: '.import-config-business-partner-code',
-            datalistId: 'import-config-business-partners-datalist',
-            handlerName: 'SearchBusinessPartners',
-            minChars: 2,
-            extraParams: function () { return { module: document.querySelector('[name="Input.Module"]').value }; },
-            getValue: function (item) { return item.cardCode; },
-            getLabel: function (item) { return item.cardCode + ' — ' + item.cardName; },
-        });
-    </script>
 }

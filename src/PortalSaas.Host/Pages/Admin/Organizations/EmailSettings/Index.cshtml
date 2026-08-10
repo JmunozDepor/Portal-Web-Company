@@ -22,6 +22,13 @@ else
     <p class="text-muted">Esta organización todavía no tiene un proveedor de correo configurado.</p>
 }
 
+@if (Model.TestResultMessage is not null)
+{
+    <div class="admin-alert @(Model.TestResultOk ? "admin-alert-success" : "admin-alert-danger")" style="max-width: 640px;">
+        @Model.TestResultMessage
+    </div>
+}
+
 @* asp-antiforgery="true" explícito -- un <form method="post"> sin ningún otro
    atributo asp-* no dispara la inyección automática del token del
    FormTagHelper (mismo bug encontrado y corregido en SelectCompany.cshtml,
@@ -63,6 +70,11 @@ else
         <div class="mb-1">
             <label asp-for="Input.PrivateKeyPem" class="form-label"></label>
             <textarea asp-for="Input.PrivateKeyPem" class="form-control" rows="6" placeholder="-----BEGIN PRIVATE KEY-----..."></textarea>
+            <div class="form-text">
+                Pegá el PEM completo. Si lo copiás directo del campo <code>private_key</code> del
+                .json de la cuenta de servicio (con <code>\n</code> en vez de saltos de línea reales),
+                también funciona -- se normaliza solo.
+            </div>
             <span asp-validation-for="Input.PrivateKeyPem" class="text-danger"></span>
         </div>
     </fieldset>
@@ -88,6 +100,18 @@ else
 
     <button type="submit" class="btn btn-primary">Guardar</button>
 </form>
+
+@if (!Model.EsNuevo)
+{
+    <form method="post" asp-page-handler="Test" asp-antiforgery="true" style="max-width: 640px; margin-top: 12px;">
+        <button type="submit" class="btn btn-outline-secondary">
+            <i class="bi bi-envelope-check"></i> Enviar correo de prueba
+        </button>
+        <span class="text-muted" style="font-size: 12.5px; margin-left: 8px;">
+            Manda un correo real a tu casilla (@User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value) usando la config guardada.
+        </span>
+    </form>
+}
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

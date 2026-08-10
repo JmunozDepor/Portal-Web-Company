@@ -32,6 +32,9 @@ public class EditarModel : AdminPageModelBase
     [BindProperty]
     public PermissionsInputModel Permissions { get; set; } = new();
 
+    [BindProperty]
+    public Guid? DefaultCompanyId { get; set; }
+
     public sealed class InputModel
     {
         [Required(ErrorMessage = "Ingresa el nombre de usuario.")]
@@ -89,6 +92,7 @@ public class EditarModel : AdminPageModelBase
                 IsActive = Detalle.IsActive,
                 IsLocked = Detalle.IsLocked,
             };
+            DefaultCompanyId = Detalle.DefaultCompanyId;
 
             await CargarPermisosAsync(id.Value, companyId);
         }
@@ -110,6 +114,7 @@ public class EditarModel : AdminPageModelBase
             if (!EsNuevo)
             {
                 Detalle = await _usuarios.GetAsync(id!.Value);
+                DefaultCompanyId = Detalle?.DefaultCompanyId;
                 await CargarPermisosAsync(id.Value, null);
             }
 
@@ -155,6 +160,21 @@ public class EditarModel : AdminPageModelBase
         }
 
         return RedirectToPage(new { id, companyId = Permissions.CompanyId });
+    }
+
+    public async Task<IActionResult> OnPostGuardarCompaniaDefaultAsync(Guid id)
+    {
+        var resultado = await _usuarios.SetDefaultCompanyAsync(id, DefaultCompanyId);
+        if (resultado.IsSuccess)
+        {
+            MensajeExito = "Compañía por defecto actualizada.";
+        }
+        else
+        {
+            MensajeError = resultado.Reason;
+        }
+
+        return RedirectToPage(new { id });
     }
 
     private async Task CargarPermisosAsync(Guid userId, Guid? companyId)

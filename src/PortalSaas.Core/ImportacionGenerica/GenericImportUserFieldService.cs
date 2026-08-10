@@ -8,25 +8,27 @@ using PortalSaas.Data.Entities;
 namespace PortalSaas.Core.ImportacionGenerica;
 
 /// <summary>
-/// CRUD del catálogo maestro de campos de usuario, acotado a la organización actual
-/// (ver ICurrentUserContext.OrganizationId) -- portado de
-/// CampoUsuarioImportacionGenericaService, pero contra PortalSaasDbContext (organización
-/// propia) en vez de HANA (ver CLAUDE.md, "Persistencia config" del 26 jul 2026).
+/// CRUD del catálogo maestro de campos de usuario, acotado a la COMPAÑÍA activa (no la
+/// organización) -- regla dura del proyecto: un UDF es una particularidad física de la
+/// base SAP de esa Company, ver GenericImportUserField. Portado de
+/// CampoUsuarioImportacionGenericaService, pero contra PortalSaasDbContext (base propia
+/// de la plataforma) en vez de HANA (ver CLAUDE.md, "Persistencia config" del 26 jul
+/// 2026).
 /// </summary>
 public sealed class GenericImportUserFieldService : IGenericImportUserFieldService
 {
     private readonly PortalSaasDbContext _db;
-    private readonly ICurrentUserContext _currentUser;
+    private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public GenericImportUserFieldService(PortalSaasDbContext db, ICurrentUserContext currentUser)
+    public GenericImportUserFieldService(PortalSaasDbContext db, ICurrentCompanyAccessor currentCompany)
     {
         _db = db;
-        _currentUser = currentUser;
+        _currentCompany = currentCompany;
     }
 
     public async Task<IReadOnlyList<GenericImportUserFieldDto>> ListAsync(GenericImportModule? module = null, CancellationToken ct = default)
     {
-        var query = _db.GenericImportUserFields.Where(f => f.OrganizationId == _currentUser.OrganizationId);
+        var query = _db.GenericImportUserFields.Where(f => f.CompanyId == _currentCompany.CompanyId);
         if (module is { } m)
         {
             query = query.Where(f => f.Module == m.ToString());
@@ -39,7 +41,7 @@ public sealed class GenericImportUserFieldService : IGenericImportUserFieldServi
     public async Task<GenericImportUserFieldDto?> GetAsync(int id, CancellationToken ct = default)
     {
         var row = await _db.GenericImportUserFields
-            .FirstOrDefaultAsync(f => f.Id == id && f.OrganizationId == _currentUser.OrganizationId, ct);
+            .FirstOrDefaultAsync(f => f.Id == id && f.CompanyId == _currentCompany.CompanyId, ct);
         return row is null ? null : Map(row);
     }
 
@@ -53,7 +55,7 @@ public sealed class GenericImportUserFieldService : IGenericImportUserFieldServi
 
         var entity = new GenericImportUserField
         {
-            OrganizationId = _currentUser.OrganizationId,
+            CompanyId = _currentCompany.CompanyId,
             Module = module.ToString(),
             Level = level.ToString(),
             Label = label,
@@ -76,7 +78,7 @@ public sealed class GenericImportUserFieldService : IGenericImportUserFieldServi
         }
 
         var entity = await _db.GenericImportUserFields
-            .FirstOrDefaultAsync(f => f.Id == id && f.OrganizationId == _currentUser.OrganizationId, ct)
+            .FirstOrDefaultAsync(f => f.Id == id && f.CompanyId == _currentCompany.CompanyId, ct)
             ?? throw new InvalidOperationException("Campo de usuario no encontrado.");
 
         entity.Label = label;
@@ -89,7 +91,7 @@ public sealed class GenericImportUserFieldService : IGenericImportUserFieldServi
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         var entity = await _db.GenericImportUserFields
-            .FirstOrDefaultAsync(f => f.Id == id && f.OrganizationId == _currentUser.OrganizationId, ct);
+            .FirstOrDefaultAsync(f => f.Id == id && f.CompanyId == _currentCompany.CompanyId, ct);
         if (entity is null)
         {
             return;

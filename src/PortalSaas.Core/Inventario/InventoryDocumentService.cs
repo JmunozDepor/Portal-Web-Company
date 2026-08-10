@@ -38,16 +38,11 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
             DocDate = document.DocDate.ToDateTime(TimeOnly.MinValue),
             Series = document.Series,
             Comments = document.Comments,
+            CardCode = document.BusinessPartnerCardCode,
+            NumAtCard = document.CustomerReferenceNumber,
             U_PortalUser = portalUsername,
             AdditionalFields = document.AdditionalFields,
-            StockTransferLines = document.Lines.Select(line => new SapInventoryDocumentLine
-            {
-                ItemCode = line.ItemCode,
-                Quantity = line.Quantity,
-                WarehouseCode = line.ToWarehouseCode,
-                FromWarehouseCode = line.FromWarehouseCode,
-                AdditionalFields = line.AdditionalFields,
-            }).ToList(),
+            StockTransferLines = document.Lines.Select(MapLine).ToList(),
         };
 
         var hasAdditionalFields = header.AdditionalFields is not null || header.StockTransferLines.Any(l => l.AdditionalFields is not null);
@@ -58,6 +53,21 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
             ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
 
         return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
+    }
+
+    public async Task AddLinesAsync(InventoryDocumentType type, int docEntry, IReadOnlyList<InventoryDocumentLineDto> newLines, CancellationToken ct = default)
+    {
+        var entry = InventoryDocumentTypeCatalog.Resolve(type);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+
+        var current = await session.GetAsync<SapInventoryDocumentHeader>($"{entry.Resource}({docEntry})", ct: ct)
+            ?? throw new InvalidOperationException($"No se pudo releer el documento {docEntry} para agregar líneas.");
+
+        var combinedLines = current.StockTransferLines.Select(PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten)
+            .Concat(newLines.Select(MapLine).Select(PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten))
+            .ToList();
+
+        await session.PatchAsync(entry.Resource, docEntry, new { StockTransferLines = combinedLines }, ct);
     }
 
     public async Task<InventoryDocumentDto?> GetAsync(InventoryDocumentType type, int docEntry, CancellationToken ct = default)
@@ -82,7 +92,10 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
             DocEntry: sap.DocEntry,
             DocNum: sap.DocNum,
             Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto",
-            Series: sap.Series);
+            Series: sap.Series,
+            BusinessPartnerCardCode: sap.CardCode,
+            BusinessPartnerName: sap.CardName,
+            CustomerReferenceNumber: sap.NumAtCard);
     }
 
     public async Task<InventoryDocumentListResult> ListAsync(InventoryDocumentType type, InventoryDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
@@ -170,4 +183,13 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
         var whereClause = clauses.Count == 0 ? string.Empty : "WHERE " + string.Join(" AND ", clauses);
         return (whereClause, parameters);
     }
+
+    private static SapInventoryDocumentLine MapLine(InventoryDocumentLineDto line) => new()
+    {
+        ItemCode = line.ItemCode,
+        Quantity = line.Quantity,
+        WarehouseCode = line.ToWarehouseCode,
+        FromWarehouseCode = line.FromWarehouseCode,
+        AdditionalFields = line.AdditionalFields,
+    };
 }

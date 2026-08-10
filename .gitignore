@@ -8,6 +8,10 @@ obj/
 # regenerable con `dotnet build`, no es código fuente.
 artifacts/
 
+# Output de publish-all.ps1 (Host publicado + artifacts/plugins limpio, listo para
+# copiar a IIS) -- regenerable, no es código fuente.
+dist/
+
 # appsettings.Development.json SÍ se versiona -- solo trae credenciales de
 # docker-compose.yml (desarrollo local, no secretos reales). appsettings.Production.json
 # y cualquier override personal *.local.json nunca se versionan.

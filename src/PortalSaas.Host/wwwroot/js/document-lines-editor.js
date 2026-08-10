@@ -1,15 +1,20 @@
 // Editor de líneas de documento compartido por los 3 motores genéricos
 // (Venta/Compra/Inventario) -- "+ Agregar línea"/"Quitar"/"Vaciar todas las líneas"
-// + recálculo en vivo del Resumen total + plantilla/importación CSV, portado del
+// + recálculo en vivo del Resumen total + plantilla/importación Excel, portado del
 // comportamiento real de _TabContenido.cshtml (referencia-original/PortalSAP_v2).
 //
-// A diferencia del original, la importación CSV corre 100% en el cliente (sin
-// round-trip al servidor): no hay validación contra catálogos SAP (existencia de
-// artículo, nombre resuelto) -- el usuario corrige a mano si un código no existe,
-// recién al enviar el formulario (mismo error que ya devuelve el motor genérico al
-// guardar). Esto es una simplificación deliberada frente al importador del original
-// (que sí valida servidor-side fila por fila) para no tener que portar
+// A diferencia del original, la importación corre 100% en el cliente (sin
+// round-trip al servidor, vía SheetJS vendorizado -- ver wwwroot/lib/sheetjs, mismo
+// criterio ya usado en Modulo.CierreMensual): no hay validación contra catálogos SAP
+// (existencia de artículo, nombre resuelto) -- el usuario corrige a mano si un código
+// no existe, recién al enviar el formulario (mismo error que ya devuelve el motor
+// genérico al guardar). Esto es una simplificación deliberada frente al importador
+// del original (que sí valida servidor-side fila por fila) para no tener que portar
 // IImportadorLineasDocumentoService todavía -- ver CLAUDE.md, brecha pendiente.
+//
+// Era CSV hasta el 2026-08-02 (mismo criterio 100% cliente) -- reemplazado por Excel
+// real a pedido del dueño del proyecto, para que el importador de líneas coincida con
+// el formato de todos los demás importadores del portal (Modulo.ImportacionGenerica).
 (function () {
     window.wireDocumentLinesEditor = function (options) {
         var cuerpo = document.getElementById(options.tableBodyId);
@@ -145,37 +150,18 @@
             });
         }
 
-        // ---- CSV: plantilla + importación (cliente, sin validación de catálogo) ----
+        // ---- Excel (SheetJS): plantilla + importación (cliente, sin validación de catálogo) ----
         if (!options.csvColumns) {
             return;
-        }
-
-        function parsearCsv(texto) {
-            var lineas = texto.replace(/^﻿/, '').split(/\r\n|\n/).filter(function (l) { return l.trim().length > 0; });
-            if (lineas.length === 0) {
-                return { encabezados: [], filas: [] };
-            }
-            var separador = lineas[0].indexOf(';') > -1 && lineas[0].indexOf(',') === -1 ? ';' : ',';
-            var encabezados = lineas[0].split(separador).map(function (h) { return h.trim(); });
-            var filas = lineas.slice(1).map(function (linea) {
-                var valores = linea.split(separador);
-                var fila = {};
-                encabezados.forEach(function (encabezado, i) { fila[encabezado] = (valores[i] || '').trim(); });
-                return fila;
-            });
-            return { encabezados: encabezados, filas: filas };
         }
 
         var botonDescargar = document.getElementById(options.downloadTemplateButtonId);
         if (botonDescargar) {
             botonDescargar.addEventListener('click', function () {
-                var contenido = options.csvColumns.join(',') + '\r\n';
-                var blob = new Blob(['﻿' + contenido], { type: 'text/csv;charset=utf-8;' });
-                var enlace = document.createElement('a');
-                enlace.href = URL.createObjectURL(blob);
-                enlace.download = 'plantilla-lineas.csv';
-                enlace.click();
-                URL.revokeObjectURL(enlace.href);
+                var hoja = XLSX.utils.aoa_to_sheet([options.csvColumns]);
+                var libro = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(libro, hoja, 'Líneas');
+                XLSX.writeFile(libro, 'plantilla-lineas.xlsx');
             });
         }
 
@@ -194,14 +180,19 @@
 
                 var lector = new FileReader();
                 lector.onload = function () {
-                    var resultado = parsearCsv(String(lector.result));
-                    var filasValidas = 0;
+                    var libro = XLSX.read(new Uint8Array(lector.result), { type: 'array' });
+                    var hoja = libro.Sheets[libro.SheetNames[0]];
+                    // defval: '' -- una celda vacía en medio de una fila no debe quedar
+                    // "undefined" (sheet_to_json omite la propiedad si la celda está
+                    // realmente vacía), sino string vacío, igual criterio que el parser
+                    // CSV anterior (siempre asignaba algo, nunca undefined).
+                    var filas = XLSX.utils.sheet_to_json(hoja, { defval: '' });
 
                     // Antes de volcar las líneas importadas, saca las filas vacías que
                     // ya estaban en la tabla (la fila en blanco con la que arranca todo
                     // documento nuevo) -- nunca toca una fila que ya tiene un artículo
                     // cargado.
-                    if (resultado.filas.length > 0) {
+                    if (filas.length > 0) {
                         Array.prototype.slice.call(cuerpo.querySelectorAll('tr')).forEach(function (fila) {
                             var campoArticulo = fila.querySelector(options.itemCodeSelector);
                             if (campoArticulo && !campoArticulo.value.trim()) {
@@ -210,18 +201,15 @@
                         });
                     }
 
-                    resultado.filas.forEach(function (filaCsv) {
+                    filas.forEach(function (filaExcel) {
                         var filaNueva = crearFilaDesdePlantilla();
                         cuerpo.appendChild(filaNueva);
                         options.csvColumns.forEach(function (columna) {
                             var input = filaNueva.querySelector('[name$=".' + columna + '"]');
-                            if (input && filaCsv[columna] !== undefined) {
-                                input.value = filaCsv[columna];
+                            if (input && filaExcel[columna] !== undefined) {
+                                input.value = filaExcel[columna];
                             }
                         });
-                        if (filaCsv[options.csvColumns[0]] && filaCsv[options.csvColumns[0]].trim()) {
-                            filasValidas++;
-                        }
                     });
 
                     aplicarTipoLinea();
@@ -230,10 +218,10 @@
 
                     if (divResultado) {
                         divResultado.innerHTML = '<p class="alert alert-success py-1 px-2">'
-                            + resultado.filas.length + ' línea(s) importada(s) desde el CSV. Revisá los códigos de artículo/catálogo antes de guardar -- se validan recién al enviar el formulario.</p>';
+                            + filas.length + ' línea(s) importada(s) desde el Excel. Revisá los códigos de artículo/catálogo antes de guardar -- se validan recién al enviar el formulario.</p>';
                     }
                 };
-                lector.readAsText(archivo, 'utf-8');
+                lector.readAsArrayBuffer(archivo);
             });
         }
     };

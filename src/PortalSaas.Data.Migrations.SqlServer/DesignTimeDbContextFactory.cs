@@ -19,10 +19,19 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Por
 {
     public PortalSaasDbContext CreateDbContext(string[] args)
     {
+        // Sin prefijo -- bug real (2026-08-08): con prefix: "PORTALSAAS_", la variable
+        // de entorno tenía que llamarse "PORTALSAAS_ConnectionStrings__Default", pero
+        // TODO el resto del proyecto (Program.cs, build-all.ps1, docs/11-ESTADO-PILOTO-
+        // DESARROLLO.md) usa el nombre estándar de ASP.NET Core sin prefijo
+        // ("ConnectionStrings__Default"). El mismatch hacía que esta factory nunca
+        // encontrara la variable, cayera siempre al fallback hardcodeado de abajo
+        // (Server=localhost, inexistente en este equipo) y fallara con "Named Pipes
+        // Provider, error 40" sin importar qué connection string se seteara -- el
+        // usuario nunca estaba conectando de verdad a sqlsap.cdepor.cl.
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.Development.json", optional: true)
-            .AddEnvironmentVariables(prefix: "PORTALSAAS_")
+            .AddEnvironmentVariables()
             .Build();
 
         var connectionString = configuration["ConnectionStrings:Default"]

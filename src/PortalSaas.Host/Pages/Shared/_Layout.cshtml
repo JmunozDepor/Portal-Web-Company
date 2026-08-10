@@ -2,6 +2,11 @@
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var username = User.Identity?.Name ?? "Usuario";
     var organizationSlug = User.FindFirst("OrganizationSlug")?.Value;
+    // Nombre de la Company ACTIVA (no la Organization) -- se re-emite en cada switch
+    // (ver CompanySessionActivator), así que esto sí cambia al elegir otra compañía en
+    // el CompanySwitcher del topbar, a diferencia de organizationSlug (fijo desde el
+    // login, nunca cambia con el switch).
+    var companyCode = User.FindFirst("CompanyCode")?.Value;
     var initials = username.Length > 0 ? char.ToUpperInvariant(username[0]).ToString() : "?";
 }
 <!DOCTYPE html>
@@ -51,9 +56,9 @@
                     <div class="sidebar-brand-mark">PS</div>
                     <div class="sidebar-brand-text">
                         <strong>Portal SaaS</strong>
-                        @if (!string.IsNullOrEmpty(organizationSlug))
+                        @if (!string.IsNullOrEmpty(companyCode))
                         {
-                            <span>@organizationSlug</span>
+                            <span>@companyCode</span>
                         }
                     </div>
                 </div>
@@ -65,6 +70,9 @@
             <header class="topbar">
                 <span class="topbar-title">@ViewData["Title"]</span>
                 <div class="topbar-right">
+                    @* Solo aparece si el usuario tiene acceso a más de una compañía --
+                       ver CompanySwitcherViewComponent. *@
+                    @await Component.InvokeAsync("CompanySwitcher")
                     <details class="user-menu">
                         <summary>
                             <span class="user-avatar">@initials</span>
@@ -95,6 +103,16 @@
                 </div>
             </header>
             <main class="content">
+                @* Banner global de error de sesión (ej. switch de compañía fallado) --
+                   TempData en vez de ViewData porque el origen (Pages/Account/SwitchCompany,
+                   que nunca renderiza vista propia) redirige a una página arbitraria
+                   (ReturnUrl) que no sabe de antemano que tiene que mostrar este mensaje;
+                   TempData sobrevive exactamente un redirect, este layout es el único lugar
+                   que lo necesita leer. *@
+                @if (TempData["Error"] is string errorMensaje && !string.IsNullOrEmpty(errorMensaje))
+                {
+                    <div class="alert alert-danger">@errorMensaje</div>
+                }
                 @RenderBody()
             </main>
         </div>

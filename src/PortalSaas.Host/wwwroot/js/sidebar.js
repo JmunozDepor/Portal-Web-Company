@@ -1,53 +1,23 @@
-// Sidebar: persistencia de qué grupos quedaron expandidos (localStorage), sobre el
-// componente `collapse` nativo de Bootstrap 5 (bootstrap.bundle.min.js) -- este script
-// nunca oculta/muestra nada a mano, solo llama a la API de Collapse y escucha sus
-// eventos para guardar el estado. Aparte, modo "solo iconos" del sidebar completo
-// (no es un collapse de Bootstrap, es un modo de layout distinto).
+// Sidebar: qué grupos quedan expandidos lo decide el SERVIDOR en cada request
+// (_MenuNode.cshtml, class="collapse show" si el grupo contiene la página activa) --
+// este script ya no persiste nada de eso en localStorage. Bootstrap's data-api propio
+// (bootstrap.bundle.min.js) ya wirea el click de [data-bs-toggle="collapse"] solo, sin
+// JS de acá -- lo único que queda es el modo "solo iconos" del sidebar completo (no es
+// un collapse de Bootstrap, es un modo de layout distinto).
+//
+// Antes esto recordaba en localStorage CUALQUIER grupo que el usuario hubiera abierto
+// a mano alguna vez, y lo reabría en cada navegación sin importar la página actual --
+// bug real reportado: click en un submenú (ej. "Ofertas de Compra") reabría un grupo
+// completamente distinto (ej. "Rendiciones" y todo su árbol) porque había quedado
+// "recordado" de una exploración anterior en la misma sesión del navegador. Confirmado
+// con curl que el servidor SOLO marcaba el grupo correcto como abierto -- el bug era
+// 100% esta persistencia del lado del cliente. Con el servidor como única fuente de
+// verdad, un grupo abierto a mano se cierra solo en la próxima navegación si no
+// contiene la página activa -- comportamiento simple y predecible.
 (function () {
     var SIDEBAR_STORAGE_KEY = 'portalsaas-sidebar-collapsed';
-    var GROUPS_STORAGE_KEY = 'portalsaas-sidebar-groups-expanded';
-
-    function getExpandedGroups() {
-        try {
-            return new Set(JSON.parse(localStorage.getItem(GROUPS_STORAGE_KEY) || '[]'));
-        } catch (e) {
-            return new Set();
-        }
-    }
-
-    function saveExpandedGroups(groups) {
-        localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(Array.from(groups)));
-    }
 
     document.addEventListener('DOMContentLoaded', function () {
-        var expandedGroups = getExpandedGroups();
-
-        document.querySelectorAll('.sidebar-nav [data-bs-toggle="collapse"]').forEach(function (toggle) {
-            var targetSelector = toggle.getAttribute('href') || toggle.getAttribute('data-bs-target');
-            var target = targetSelector ? document.querySelector(targetSelector) : null;
-            if (!target) {
-                return;
-            }
-
-            var groupId = target.id;
-            // toggle:false -- no animar/expandir nada todavía, solo crear la instancia.
-            var collapseInstance = bootstrap.Collapse.getOrCreateInstance(target, { toggle: false });
-
-            if (expandedGroups.has(groupId)) {
-                collapseInstance.show();
-            }
-
-            target.addEventListener('shown.bs.collapse', function () {
-                expandedGroups.add(groupId);
-                saveExpandedGroups(expandedGroups);
-            });
-
-            target.addEventListener('hidden.bs.collapse', function () {
-                expandedGroups.delete(groupId);
-                saveExpandedGroups(expandedGroups);
-            });
-        });
-
         var sidebarToggleButton = document.getElementById('btn-collapse-sidebar');
         if (sidebarToggleButton) {
             sidebarToggleButton.addEventListener('click', function () {

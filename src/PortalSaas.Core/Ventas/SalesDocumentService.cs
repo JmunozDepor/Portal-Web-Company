@@ -48,21 +48,7 @@ public sealed class SalesDocumentService : ISalesDocumentService
             NumAtCard = document.CustomerReferenceNumber,
             U_PortalUser = portalUsername,
             AdditionalFields = document.AdditionalFields,
-            DocumentLines = document.Lines.Select(line => new SapSalesDocumentLine
-            {
-                ItemType = line.Type == DocumentLineType.Service ? "itService" : "itItems",
-                ItemCode = line.Type == DocumentLineType.Item ? line.ItemCode : null,
-                ItemDescription = line.Description,
-                Quantity = line.Quantity,
-                UnitPrice = line.UnitPrice,
-                DiscountPercent = line.DiscountPercent,
-                WarehouseCode = line.Type == DocumentLineType.Item ? line.WarehouseCode : null,
-                AccountCode = line.Type == DocumentLineType.Service ? line.AccountCode : null,
-                CostingCode = line.Type == DocumentLineType.Service ? line.CostCenterCode : null,
-                CostingCode2 = line.Type == DocumentLineType.Service ? line.CostCenterCode2 : null,
-                CostingCode3 = line.Type == DocumentLineType.Service ? line.CostCenterCode3 : null,
-                AdditionalFields = line.AdditionalFields,
-            }).ToList(),
+            DocumentLines = document.Lines.Select(MapLine).ToList(),
         };
 
         var session = await _connectionProvider.GetConnectionAsync(ct);
@@ -70,6 +56,25 @@ public sealed class SalesDocumentService : ISalesDocumentService
             ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
 
         return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
+    }
+
+    public async Task AddLinesAsync(SalesDocumentType type, int docEntry, IReadOnlyList<SalesDocumentLineDto> newLines, CancellationToken ct = default)
+    {
+        var entry = SalesDocumentTypeCatalog.Resolve(type);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+
+        // Se relee el documento tal cual quedó en SAP (con los LineNum reales que SAP le
+        // asignó) antes de patchear -- Service Layer trata "DocumentLines" como el estado
+        // final completo del arreglo: una línea sin LineNum se agrega como nueva, pero si
+        // una línea YA EXISTENTE se omite del PATCH, SAP la borra.
+        var current = await session.GetAsync<SapSalesDocumentHeader>($"{entry.Resource}({docEntry})", ct: ct)
+            ?? throw new InvalidOperationException($"No se pudo releer el documento {docEntry} para agregar líneas.");
+
+        var combinedLines = current.DocumentLines.Select(PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten)
+            .Concat(newLines.Select(MapLine).Select(PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten))
+            .ToList();
+
+        await session.PatchAsync(entry.Resource, docEntry, new { DocumentLines = combinedLines }, ct);
     }
 
     public async Task<SalesDocumentDto?> GetAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default)
@@ -264,4 +269,20 @@ public sealed class SalesDocumentService : ISalesDocumentService
         lines.Count > 0 && lines[0].Type == DocumentLineType.Service
             ? "dDocument_Service"
             : "dDocument_Items";
+
+    private static SapSalesDocumentLine MapLine(SalesDocumentLineDto line) => new()
+    {
+        ItemType = line.Type == DocumentLineType.Service ? "itService" : "itItems",
+        ItemCode = line.Type == DocumentLineType.Item ? line.ItemCode : null,
+        ItemDescription = line.Description,
+        Quantity = line.Quantity,
+        UnitPrice = line.UnitPrice,
+        DiscountPercent = line.DiscountPercent,
+        WarehouseCode = line.Type == DocumentLineType.Item ? line.WarehouseCode : null,
+        AccountCode = line.Type == DocumentLineType.Service ? line.AccountCode : null,
+        CostingCode = line.Type == DocumentLineType.Service ? line.CostCenterCode : null,
+        CostingCode2 = line.Type == DocumentLineType.Service ? line.CostCenterCode2 : null,
+        CostingCode3 = line.Type == DocumentLineType.Service ? line.CostCenterCode3 : null,
+        AdditionalFields = line.AdditionalFields,
+    };
 }

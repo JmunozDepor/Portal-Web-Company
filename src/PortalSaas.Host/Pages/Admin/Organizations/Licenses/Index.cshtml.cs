@@ -19,6 +19,7 @@ public class IndexModel : PageModel
 
     public Organization Organization { get; private set; } = null!;
     public List<OnPremiseLicense> Licenses { get; private set; } = [];
+    public Dictionary<long, int> UnresolvedConflictsByLicenseId { get; private set; } = [];
 
     public async Task<IActionResult> OnGetAsync(Guid organizationId)
     {
@@ -34,6 +35,13 @@ public class IndexModel : PageModel
             .Where(l => l.OrganizationId == organizationId)
             .OrderByDescending(l => l.IssuedAt)
             .ToListAsync();
+
+        var licenseIds = Licenses.Select(l => l.Id).ToList();
+        UnresolvedConflictsByLicenseId = await _db.OnPremiseLicenseConflicts
+            .Where(c => licenseIds.Contains(c.OnPremiseLicenseId) && !c.Resolved)
+            .GroupBy(c => c.OnPremiseLicenseId)
+            .Select(g => new { LicenseId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.LicenseId, x => x.Count);
 
         return Page();
     }

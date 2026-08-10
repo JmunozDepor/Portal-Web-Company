@@ -24,20 +24,22 @@ public sealed class ItemCatalogService : IItemCatalogService
             return [];
         }
 
-        // Tamaño de página SIEMPRE clamped antes de interpolar -- mismo criterio que
-        // el resto del Core (nunca un valor externo directo en el LIMIT).
-        var clampedLimit = Math.Clamp(limit, 1, 100);
+        // CatalogSqlHelper (no el SQL de :texto repetido de antes) -- bug real
+        // confirmado (2026-08-02): reusar el mismo nombre de parámetro en más de una
+        // posición del OR no bindea todas las apariciones en HANA
+        // (Sap.Data.Hana.HanaException: "Parameter/Column (2) not bound."), único
+        // catálogo del namespace que había quedado con el SQL viejo sin migrar a este
+        // helper -- el resto (Cliente/Proveedor/etc.) ya lo usa justo para evitar esto.
+        var (whereSql, limitSql, parameters) = CatalogSqlHelper.BuildSearchFilter(
+            searchText, ["\"ItemCode\"", "\"ItemName\""], limit);
 
-        // UPPER(...) LIKE UPPER(:texto) -- SAP guarda ItemCode/ItemName en mayúsculas,
-        // y un LIKE sin normalizar en HANA es case-sensitive por defecto (bug real: un
-        // usuario tipeando en minúscula, ej. "m91", no encontraba nada).
         var sql = $"""
             SELECT "ItemCode", "ItemName" FROM "OITM"
-            WHERE UPPER("ItemCode") LIKE UPPER(:texto) OR UPPER("ItemName") LIKE UPPER(:texto)
-            ORDER BY "ItemName" LIMIT {clampedLimit}
+            WHERE {whereSql}
+            ORDER BY "ItemName" {limitSql}
             """;
 
-        return await _hana.QueryAsync<ItemDto>(sql, new { texto = $"%{searchText}%" }, ct);
+        return await _hana.QueryAsync<ItemDto>(sql, parameters, ct);
     }
 
     public async Task<IReadOnlyList<ItemDto>> GetByCodesAsync(IReadOnlyCollection<string> itemCodes, CancellationToken ct = default)

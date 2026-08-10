@@ -50,17 +50,26 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
     public async Task<TenantUserDetailDto?> GetAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await FindOwnUserAsync(userId, ct);
-        return user is null
-            ? null
-            : new TenantUserDetailDto
-            {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                IsAdmin = user.IsAdmin,
-                IsActive = user.IsActive,
-                IsLocked = user.IsLocked,
-            };
+        if (user is null)
+        {
+            return null;
+        }
+
+        var defaultCompanyId = await _db.UserPreferences
+            .Where(p => p.UserId == userId)
+            .Select(p => p.DefaultCompanyId)
+            .FirstOrDefaultAsync(ct);
+
+        return new TenantUserDetailDto
+        {
+            Id = user.Id,
+            Username = user.Username,
+            Email = user.Email,
+            IsAdmin = user.IsAdmin,
+            IsActive = user.IsActive,
+            IsLocked = user.IsLocked,
+            DefaultCompanyId = defaultCompanyId,
+        };
     }
 
     public async Task<TenantUserOperationResult> CreateAsync(string username, string email, string password, bool isAdmin, CancellationToken ct = default)
@@ -275,6 +284,31 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
         await _db.SaveChangesAsync(ct);
 
         return TenantUserOperationResult.Success();
+    }
+
+    public async Task<TenantUserOperationResult> SetDefaultCompanyAsync(Guid userId, Guid? companyId, CancellationToken ct = default)
+    {
+        if (!await IsOwnUserAsync(userId, ct))
+        {
+            return TenantUserOperationResult.Failure("Usuario no encontrado.");
+        }
+
+        if (companyId is { } id && !await IsOwnCompanyAsync(id, ct))
+        {
+            return TenantUserOperationResult.Failure("Compañía no encontrada.");
+        }
+
+        var preference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        if (preference is null)
+        {
+            preference = new UserPreference { UserId = userId };
+            _db.UserPreferences.Add(preference);
+        }
+
+        preference.DefaultCompanyId = companyId;
+        await _db.SaveChangesAsync(ct);
+
+        return TenantUserOperationResult.Success(userId);
     }
 
     private Task<User?> FindOwnUserAsync(Guid userId, CancellationToken ct) =>

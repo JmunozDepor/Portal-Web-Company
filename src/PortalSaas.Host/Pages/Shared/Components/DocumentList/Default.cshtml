@@ -18,7 +18,10 @@
             .SelectMany(kv => kv.Value.Select(v => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(v ?? string.Empty)}"))
             .ToList();
         query.Add($"pageNumber={pageNumber}");
-        return Context.Request.Path + "?" + string.Join("&", query);
+        // PathBase + Path, no Path solo -- hosteado como subaplicación de IIS (ej.
+        // /portalsaas-comercialdepor), Path YA viene sin ese prefijo (mismo bug ya
+        // corregido en CompanySwitcher/Default.cshtml y los *GenericDocumentModelBase).
+        return Context.Request.PathBase + Context.Request.Path + "?" + string.Join("&", query);
     }
 }
 

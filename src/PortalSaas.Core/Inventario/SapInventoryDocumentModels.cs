@@ -29,6 +29,19 @@ internal sealed class SapInventoryDocumentHeader
     public List<SapInventoryDocumentLine> StockTransferLines { get; set; } = [];
     public string? U_PortalUser { get; set; }
 
+    /// <summary>
+    /// Socio de negocio de cabecera -- SÍ existe la columna en OWTQ/OWTR (confirmado,
+    /// ver InventoryDocumentService.ListAsync que ya la consulta por HANA para el
+    /// listado/filtro) y Service Layer la acepta al crear (a diferencia de DocDueDate,
+    /// que si la rechaza -- ver el comentario de arriba). Antes no se exponía como
+    /// editable en el formulario a propósito; ahora sí, a pedido explícito del dueño
+    /// del proyecto (traslados/solicitudes de traslado también manejan socio de
+    /// negocio, igual que Venta/Compra).
+    /// </summary>
+    public string? CardCode { get; set; }
+    public string? CardName { get; set; }
+    public string? NumAtCard { get; set; }
+
     /// <summary>Campos de usuario (UDF dinámicos) -- ver SapAdditionalFieldsHelper.</summary>
     public IReadOnlyDictionary<string, object?>? AdditionalFields { get; set; }
 }

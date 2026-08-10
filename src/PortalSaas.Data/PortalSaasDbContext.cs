@@ -34,6 +34,7 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<GenericImportConfigField> GenericImportConfigFields => Set<GenericImportConfigField>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<OnPremiseLicense> OnPremiseLicenses => Set<OnPremiseLicense>();
+    public DbSet<OnPremiseLicenseConflict> OnPremiseLicenseConflicts => Set<OnPremiseLicenseConflict>();
     public DbSet<Instance> Instances => Set<Instance>();
     public DbSet<ModuleExternalConnection> ModuleExternalConnections => Set<ModuleExternalConnection>();
     public DbSet<Company> Companies => Set<Company>();
@@ -145,13 +146,13 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.Label).HasMaxLength(100);
             entity.Property(e => e.SapFieldName).HasMaxLength(100);
             entity.Property(e => e.DataType).HasMaxLength(10);
-            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId);
         });
 
         modelBuilder.Entity<GenericImportConfig>(entity =>
         {
             entity.ToTable("generic_import_configs");
-            entity.HasIndex(e => new { e.OrganizationId, e.Module, e.DocumentType, e.LineType, e.BusinessPartnerCardCode }).IsUnique();
+            entity.HasIndex(e => new { e.CompanyId, e.Module, e.DocumentType, e.LineType, e.BusinessPartnerCardCode }).IsUnique();
             entity.Property(e => e.Module).HasMaxLength(20);
             entity.Property(e => e.DocumentType).HasMaxLength(50);
             entity.Property(e => e.LineType).HasMaxLength(10);
@@ -159,7 +160,7 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.GroupingColumn).HasMaxLength(10);
             entity.Property(e => e.Alias).HasMaxLength(100);
             entity.Property(e => e.PriceSource).HasMaxLength(20);
-            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId);
         });
 
         modelBuilder.Entity<GenericImportConfigField>(entity =>
@@ -191,8 +192,19 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.ActivationKey).HasMaxLength(100);
             entity.Property(e => e.InstallationFingerprint).HasMaxLength(200);
             entity.Property(e => e.Status).HasMaxLength(20);
+            // Sin HasMaxLength -- es un payload JSON + firma base64, largo variable
+            // (nvarchar(max)/text según motor, EF Core lo resuelve solo).
             entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
             entity.HasOne(e => e.Plan).WithMany(p => p.OnPremiseLicenses).HasForeignKey(e => e.PlanId);
+        });
+
+        modelBuilder.Entity<OnPremiseLicenseConflict>(entity =>
+        {
+            entity.ToTable("on_premise_license_conflicts");
+            entity.Property(e => e.ReportedFingerprint).HasMaxLength(200);
+            entity.Property(e => e.ReportedIp).HasMaxLength(50);
+            entity.Property(e => e.ResolvedByAdminEmail).HasMaxLength(200);
+            entity.HasOne(e => e.OnPremiseLicense).WithMany(l => l.Conflicts).HasForeignKey(e => e.OnPremiseLicenseId);
         });
 
         modelBuilder.Entity<Instance>(entity =>
@@ -213,31 +225,19 @@ public sealed class PortalSaasDbContext : DbContext
             entity.ToTable("module_external_connections", t => t.HasCheckConstraint(
                 "ck_module_external_connections_engine_type",
                 $"engine_type in ('{ModuleExternalConnectionEngineType.Postgres}', '{ModuleExternalConnectionEngineType.SqlServer}')"));
-            // Sin CompanyId (fila global de la organización para el módulo) o con
-            // CompanyId puntual -- las dos formas conviven, la resolución en Core
-            // prueba primero la fila puntual y cae a la global (ver
-            // IExternalDatabaseConnectionService). Único índice real: no puede haber
-            // dos filas para la misma (OrganizationId, CompanyId, ModuleCode) --
-            // CompanyId nullable no rompe esto porque SQL trata NULL como distinto en
-            // ambos motores, así que dos filas globales del mismo módulo para la
-            // misma organización igual colisionarían solo si CompanyId es el mismo
-            // valor no nulo; el caso "dos filas globales" se valida en código, no acá.
-            entity.HasIndex(e => new { e.OrganizationId, e.CompanyId, e.ModuleCode })
+            // CompanyId siempre obligatorio, sin fila global de organización (regla
+            // dura, ver ModuleExternalConnection) -- único índice real: no puede haber
+            // dos filas para la misma (CompanyId, ModuleCode).
+            entity.HasIndex(e => new { e.CompanyId, e.ModuleCode })
                 .IsUnique()
-                .HasDatabaseName("uq_module_external_connections_org_company_module");
+                .HasDatabaseName("uq_module_external_connections_company_module");
             entity.Property(e => e.ModuleCode).HasMaxLength(50);
             entity.Property(e => e.EngineType).HasMaxLength(20);
             entity.Property(e => e.Host).HasMaxLength(200);
             entity.Property(e => e.DatabaseName).HasMaxLength(100);
             entity.Property(e => e.TechnicalUsername).HasMaxLength(100);
             entity.Property(e => e.TechnicalSecretKey).HasMaxLength(200);
-            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
-            // Restrict, no Cascade -- mismo motivo que Company.Organization: ya es
-            // alcanzable en cascada vía Organization -> Company directo, un segundo
-            // camino en cascada acá (Organization -> Company -> esta tabla) crea un
-            // ciclo que SQL Server rechaza (error 1785) aunque Postgres lo permita.
-            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
-                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId);
         });
 
         modelBuilder.Entity<Company>(entity =>
@@ -313,6 +313,15 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.Timezone).HasMaxLength(50);
             entity.Property(e => e.Theme).HasMaxLength(20);
             entity.HasOne(e => e.User).WithOne(u => u.Preference).HasForeignKey<UserPreference>(e => e.UserId);
+            // ClientSetNull, no SetNull -- SqlServer rechaza SetNull acá con "may cause
+            // cycles or multiple cascade paths" (bug real, 2026-08-07: la ruta
+            // Company->UserPreference compite con otras rutas de cascada ya existentes
+            // desde Company). ClientSetNull logra el mismo resultado (borrar una Company
+            // no debe bloquear ni arrastrar el borrado de la preferencia del usuario,
+            // solo "olvidar" el default) pero resuelto del lado de EF -- la FK en la base
+            // queda NO ACTION, sin el conflicto de múltiples rutas.
+            entity.HasOne<Company>().WithMany().HasForeignKey(e => e.DefaultCompanyId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
         modelBuilder.Entity<EmailSettings>(entity =>

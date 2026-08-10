@@ -53,18 +53,40 @@
                     </div>
                 }
 
-                <form method="post">
+                <form method="post" asp-antiforgery="true">
                     <input type="hidden" asp-for="Input.ReturnUrl" />
 
-                    <div class="form-group mb-3">
-                        <label asp-for="Input.OrganizationSlug" class="form-label">Organización</label>
-                        <input asp-for="Input.OrganizationSlug" class="form-control" autocomplete="organization" autofocus />
-                        <span asp-validation-for="Input.OrganizationSlug" class="text-danger"></span>
-                    </div>
+                    @if (Model.OrganizationLocked)
+                    {
+                        @* Tenant:DefaultOrganizationSlug configurado (perfil OnPremise de una sola
+                           organización real) -- precargada y bloqueada, el usuario no tipea nada acá.
+                           disabled a propósito: LoginModel.AplicarOrganizacionBloqueadaSiCorresponde
+                           reaplica el valor real en el servidor en cada POST, así que un campo
+                           disabled (que nunca viaja en el submit) es más seguro que uno solo readonly. *@
+                        <div class="form-group mb-3">
+                            <label class="form-label">Organización</label>
+                            <input value="@Model.Input.OrganizationSlug" class="form-control" disabled />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="form-group mb-3">
+                            <label asp-for="Input.OrganizationSlug" class="form-label">Organización</label>
+                            <input asp-for="Input.OrganizationSlug" class="form-control" autocomplete="organization" autofocus />
+                            <span asp-validation-for="Input.OrganizationSlug" class="text-danger"></span>
+                        </div>
+                    }
 
                     <div class="form-group mb-3">
                         <label asp-for="Input.EmailOrUsername" class="form-label">Usuario</label>
-                        <input asp-for="Input.EmailOrUsername" class="form-control" autocomplete="username" />
+                        @if (Model.OrganizationLocked)
+                        {
+                            <input asp-for="Input.EmailOrUsername" class="form-control" autocomplete="username" autofocus />
+                        }
+                        else
+                        {
+                            <input asp-for="Input.EmailOrUsername" class="form-control" autocomplete="username" />
+                        }
                         <span asp-validation-for="Input.EmailOrUsername" class="text-danger"></span>
                     </div>
 

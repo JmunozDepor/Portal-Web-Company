@@ -1,0 +1,86 @@
+@page "{id:long}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Companies.ExternalConnections.EditModel
+@{
+    ViewData["Title"] = $"Editar conexión externa · {Model.Company.Code}";
+}
+
+<h1 class="h3 mb-3">Editar conexión externa de @Model.Company.Code &mdash; @Model.Company.Name</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <form method="post" asp-antiforgery="true">
+            <input type="hidden" asp-for="Input.Id" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Input.ModuleCode" class="form-label"></label>
+                <select asp-for="Input.ModuleCode" class="form-select" autofocus>
+                    @if (Model.CurrentModuleName is null && !string.IsNullOrEmpty(Model.Input.ModuleCode))
+                    {
+                        @* El código guardado no corresponde a ningún plugin cargado en este proceso
+                           ahora mismo (ej. desinstalado/renombrado) -- se deja como opción igual
+                           para no perder el valor guardado si el admin guarda sin tocar este campo. *@
+                        <option value="@Model.Input.ModuleCode" selected>@Model.Input.ModuleCode (no cargado actualmente)</option>
+                    }
+                    @foreach (var plugin in Model.AvailablePlugins)
+                    {
+                        <option value="@plugin.ModuleCode">@plugin.ModuleCode — @plugin.Name</option>
+                    }
+                </select>
+                @if (Model.CurrentModuleName is not null)
+                {
+                    <div class="form-text">Módulo registrado: <strong>@Model.CurrentModuleName</strong></div>
+                }
+                <span asp-validation-for="Input.ModuleCode" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.EngineType" class="form-label"></label>
+                <select asp-for="Input.EngineType" class="form-select" asp-items="Model.EngineTypes.Select(e => new SelectListItem(e, e))"></select>
+                <span asp-validation-for="Input.EngineType" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Host" class="form-label"></label>
+                <input asp-for="Input.Host" class="form-control" />
+                <span asp-validation-for="Input.Host" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Port" class="form-label"></label>
+                <input asp-for="Input.Port" class="form-control" />
+                <span asp-validation-for="Input.Port" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.DatabaseName" class="form-label"></label>
+                <input asp-for="Input.DatabaseName" class="form-control" />
+                <span asp-validation-for="Input.DatabaseName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.TechnicalUsername" class="form-label"></label>
+                <input asp-for="Input.TechnicalUsername" class="form-control" />
+                <span asp-validation-for="Input.TechnicalUsername" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.TechnicalSecretKey" class="form-label"></label>
+                <input asp-for="Input.TechnicalSecretKey" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="Input.TechnicalSecretKey" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input asp-for="Input.IsActive" class="form-check-input" />
+                <label asp-for="Input.IsActive" class="form-check-label"></label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a asp-page="/Admin/Organizations/Companies/ExternalConnections/Index" asp-route-companyId="@Model.Company.Id" class="btn btn-link">Cancelar</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

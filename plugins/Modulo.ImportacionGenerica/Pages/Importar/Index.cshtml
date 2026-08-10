@@ -1,4 +1,5 @@
 @page "/importacion-generica/importar"
+@using PortalSaas.Abstractions.Modelos
 @model Modulo.ImportacionGenerica.Pages.Importar.IndexModel
 @{
     ViewData["Title"] = "Importar documentos";
@@ -43,8 +44,12 @@
             </div>
             <div class="form-group">
                 <label asp-for="Input.BusinessPartnerCardCode" class="form-label"></label>
-                <input asp-for="Input.BusinessPartnerCardCode" class="form-control import-business-partner-code" list="import-business-partners-datalist" autocomplete="off" />
+                <input asp-for="Input.BusinessPartnerCardCode" class="form-control import-business-partner-code" list="import-business-partners-datalist" autocomplete="off" disabled="@Model.BusinessPartnerFromFile" />
                 <datalist id="import-business-partners-datalist"></datalist>
+                @if (Model.BusinessPartnerFromFile)
+                {
+                    <div class="form-text text-warning">Carga multi-socio -- dejá este campo vacío, cada fila del Excel trae su propio socio de negocio.</div>
+                }
             </div>
         </div>
         <div class="form-row">
@@ -69,36 +74,76 @@
             <span class="doc-resumen-total-titulo">Vista previa -- @Model.PreviewResult.Documents.Count documento(s)</span>
             @foreach (var document in Model.PreviewResult.Documents)
             {
-                <h6 class="mt-3">
-                    Grupo "@document.GroupingKey" --
-                    @(document.CanCreate ? "listo para crear" : "con errores, no se creará")
-                </h6>
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Fila</th>
-                            <th>Artículo</th>
-                            <th>Cantidad</th>
-                            <th>Errores</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in document.Rows)
+                // Resumen colapsable por documento -- <details>/<summary> nativo del
+                // navegador, sin JS (mismo criterio que el original, sección 7.7).
+                // Colapsado por defecto: con archivos de miles de filas, tener las
+                // tablas de todos los documentos expandidas a la vez vuelve la vista
+                // previa impracticable de recorrer.
+                var cantidadTotal = document.Rows.Sum(r => r.Quantity ?? 0);
+                // Solo líneas que traen precio propio -- las que dejan que SAP asigne
+                // el de la lista del socio no entran en la suma (no hay forma de saber
+                // ese monto antes de crear el documento en SAP).
+                var lineasConPrecio = document.Rows.Where(r => r.UnitPrice is not null).ToList();
+                var montoTotal = lineasConPrecio.Sum(r => (r.Quantity ?? 0) * (r.UnitPrice ?? 0));
+                var lineasSinPrecio = document.Rows.Count - lineasConPrecio.Count;
+                var muestraMonto = Model.Input.Module != GenericImportModule.Inventory;
+                // Carga multi-socio: todas las filas del grupo ya comparten socio por
+                // construcción (ver GenericImportService.ProcessRow), alcanza con mirar
+                // la primera para saber de qué socio es este documento.
+                var socioDelGrupo = document.Rows[0].BusinessPartnerName ?? document.Rows[0].BusinessPartnerCardCode;
+
+                <details class="mt-3" open="@(!document.CanCreate)">
+                    <summary style="cursor:pointer">
+                        <strong>Grupo "@document.GroupingKey"</strong> --
+                        @(document.CanCreate ? "listo para crear" : "con errores, no se creará")
+                        @if (socioDelGrupo is not null)
                         {
-                            <tr class="@(row.IsValid ? "" : "table-danger")">
-                                <td>@row.RowNumber</td>
-                                <td>@(row.ItemName ?? row.ItemCode ?? row.Description)</td>
-                                <td>@row.Quantity</td>
-                                <td>@string.Join("; ", row.Errors)</td>
-                            </tr>
+                            <text> · Socio: @socioDelGrupo</text>
                         }
-                    </tbody>
-                </table>
+                        · @document.Rows.Count fila(s) · Cantidad total: @cantidadTotal.ToString("N2")
+                        @if (muestraMonto)
+                        {
+                            <text> · Monto total: @montoTotal.ToString("N2")</text>
+                            if (lineasSinPrecio > 0)
+                            {
+                                <text> (@lineasSinPrecio línea(s) sin precio propio, las asigna SAP -- no entran en esta suma)</text>
+                            }
+                        }
+                    </summary>
+                    <table class="table table-sm mt-2">
+                        <thead>
+                            <tr>
+                                <th>Fila</th>
+                                <th>Artículo</th>
+                                <th>Cantidad</th>
+                                <th>Errores</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in document.Rows)
+                            {
+                                // Cascada hasta el valor crudo del Excel cuando ItemName/ItemCode/
+                                // Description vienen null (típico en una fila con error -- la
+                                // resolución contra SAP falló) -- antes mostraba "-" sin decir cuál
+                                // era el código/descripción que no existía.
+                                var articuloMostrado = row.ItemName ?? row.ItemCode ?? row.Description
+                                    ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.ItemCode)
+                                    ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.Description);
+                                <tr class="@(row.IsValid ? "" : "table-danger")">
+                                    <td>@row.RowNumber</td>
+                                    <td>@articuloMostrado</td>
+                                    <td>@row.Quantity</td>
+                                    <td>@string.Join("; ", row.Errors)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </details>
             }
 
-            @if (Model.FinalProgress is null)
+            @if (Model.PreviewResult.Documents.Any(d => d.CanCreate))
             {
-                <form method="post" asp-page-handler="Confirm" asp-antiforgery="true">
+                <form id="formConfirmar" asp-antiforgery="true">
                     <input type="hidden" asp-for="Input.Module" />
                     <input type="hidden" asp-for="Input.SalesDocumentType" />
                     <input type="hidden" asp-for="Input.PurchaseDocumentType" />
@@ -106,44 +151,151 @@
                     <input type="hidden" asp-for="Input.LineType" />
                     <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
                     <input type="hidden" asp-for="Input.Base64File" />
-                    <button type="submit" class="btn btn-success">Confirmar creación en SAP</button>
+                </form>
+                <button type="button" class="btn btn-success" id="btnConfirmar">Confirmar creación en SAP</button>
+                <div id="progresoConfirmar" class="mt-3" style="display:none">
+                    <div class="progress" style="height: 1.5rem">
+                        <div id="progresoConfirmarBarra" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                    <div id="progresoConfirmarMensaje" class="text-muted mt-1 small"></div>
+                </div>
+            }
+
+            @if (Model.PreviewResult.Documents.Any(d => !d.CanCreate))
+            {
+                @* Descarga de archivo = navegación normal, no fetch -- <form> aparte del
+                   de Confirmar, con method="post" real (un <a> no puede mandar
+                   Base64File si el archivo es grande, por eso POST y no querystring). *@
+                <form method="post" asp-page-handler="DownloadWithErrors" asp-antiforgery="true" class="mt-2 d-inline-block">
+                    <input type="hidden" asp-for="Input.Module" />
+                    <input type="hidden" asp-for="Input.SalesDocumentType" />
+                    <input type="hidden" asp-for="Input.PurchaseDocumentType" />
+                    <input type="hidden" asp-for="Input.InventoryDocumentType" />
+                    <input type="hidden" asp-for="Input.LineType" />
+                    <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
+                    <input type="hidden" asp-for="Input.Base64File" />
+                    <button type="submit" class="btn btn-outline-secondary">Descargar archivo con errores</button>
                 </form>
             }
         </div>
     }
 }
 
-@if (Model.FinalProgress is not null)
-{
-    <div class="alert @(Model.FinalProgress.Success ? "alert-success" : "alert-warning")">
-        @Model.FinalProgress.Message
-    </div>
+<div id="resultadoConfirmar"></div>
 
-    @if (Model.FinalProgress.Results is not null)
-    {
-        <table class="table table-sm">
-            <thead>
-                <tr>
-                    <th>Grupo</th>
-                    <th>Resultado</th>
-                    <th>N° documento</th>
-                    <th>Mensaje</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var result in Model.FinalProgress.Results)
-                {
-                    <tr class="@(result.Success ? "" : "table-danger")">
-                        <td>@result.GroupingKey</td>
-                        <td>@(result.Success ? "OK" : "Error")</td>
-                        <td>@(result.Success ? result.DocNum.ToString() : "-")</td>
-                        <td>@result.Message</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
-}
+<script>
+    // Confirmar es un fetch, no un submit de página completa -- con archivos de miles
+    // de filas, un postback tradicional deja la pestaña sin ningún indicio de avance
+    // durante todo el proceso (ver IndexModel.OnPostConfirmAsync). El jobId lo genera
+    // el cliente y viaja tanto al POST de Confirmar como al polling de Progreso, para
+    // que ambos apunten al mismo trabajo en IGenericImportProgressStore.
+    (function () {
+        var btnConfirmar = document.getElementById('btnConfirmar');
+        if (!btnConfirmar) {
+            return;
+        }
+
+        var formConfirmar = document.getElementById('formConfirmar');
+        var progresoDiv = document.getElementById('progresoConfirmar');
+        var progresoBarra = document.getElementById('progresoConfirmarBarra');
+        var progresoMensaje = document.getElementById('progresoConfirmarMensaje');
+        var resultadoDiv = document.getElementById('resultadoConfirmar');
+        var pollingActivo = false;
+
+        function generarJobId() {
+            return 'job-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+        }
+
+        function actualizarBarra(progreso) {
+            var porcentaje = progreso.total > 0 ? Math.round((progreso.current / progreso.total) * 100) : 0;
+            progresoBarra.style.width = porcentaje + '%';
+            progresoBarra.textContent = porcentaje + '%';
+            progresoMensaje.textContent = progreso.message || '';
+        }
+
+        function escaparHtml(texto) {
+            var div = document.createElement('div');
+            div.textContent = texto == null ? '' : String(texto);
+            return div.innerHTML;
+        }
+
+        function mostrarResultado(progreso) {
+            var filas = (progreso.results || []).map(function (r) {
+                var claseFila = r.success ? '' : ' class="table-danger"';
+                return '<tr' + claseFila + '>' +
+                    '<td>' + escaparHtml(r.groupingKey) + '</td>' +
+                    '<td>' + (r.success ? 'OK' : 'Error') + '</td>' +
+                    '<td>' + (r.success ? escaparHtml(r.docNum) : '-') + '</td>' +
+                    '<td>' + escaparHtml(r.message) + '</td>' +
+                    '</tr>';
+            }).join('');
+
+            var tabla = filas
+                ? '<table class="table table-sm"><thead><tr><th>Grupo</th><th>Resultado</th><th>N° documento</th><th>Mensaje</th></tr></thead><tbody>' + filas + '</tbody></table>'
+                : '';
+
+            resultadoDiv.innerHTML =
+                '<div class="alert ' + (progreso.success ? 'alert-success' : 'alert-warning') + '">' + escaparHtml(progreso.message) + '</div>' + tabla;
+        }
+
+        function consultarProgreso(jobId) {
+            if (!pollingActivo) {
+                return;
+            }
+            fetch('?handler=Progress&jobId=' + encodeURIComponent(jobId))
+                .then(function (respuesta) { return respuesta.ok ? respuesta.json() : null; })
+                .then(function (progreso) {
+                    if (!progreso) {
+                        setTimeout(function () { consultarProgreso(jobId); }, 1500);
+                        return;
+                    }
+                    actualizarBarra(progreso);
+                    if (progreso.finished) {
+                        pollingActivo = false;
+                        return;
+                    }
+                    setTimeout(function () { consultarProgreso(jobId); }, 1500);
+                })
+                .catch(function () {
+                    setTimeout(function () { consultarProgreso(jobId); }, 3000);
+                });
+        }
+
+        btnConfirmar.addEventListener('click', function () {
+            btnConfirmar.disabled = true;
+            resultadoDiv.innerHTML = '';
+            progresoDiv.style.display = '';
+            actualizarBarra({ current: 0, total: 0, message: 'Iniciando…' });
+
+            var jobId = generarJobId();
+            var formData = new FormData(formConfirmar);
+            formData.append('jobId', jobId);
+
+            var token = formConfirmar.querySelector('input[name="__RequestVerificationToken"]');
+            if (token) {
+                formData.append('__RequestVerificationToken', token.value);
+            }
+
+            pollingActivo = true;
+            consultarProgreso(jobId);
+
+            fetch('?handler=Confirm', { method: 'POST', body: formData })
+                .then(function (respuesta) { return respuesta.json().then(function (data) { return { ok: respuesta.ok, data: data }; }); })
+                .then(function (resultado) {
+                    pollingActivo = false;
+                    actualizarBarra(resultado.data);
+                    mostrarResultado(resultado.data);
+                })
+                .catch(function () {
+                    pollingActivo = false;
+                    resultadoDiv.innerHTML = '<div class="alert alert-danger">No se pudo confirmar la importación -- revisá la conexión e intentá de nuevo.</div>';
+                })
+                .finally(function () {
+                    btnConfirmar.disabled = false;
+                });
+        });
+    })();
+</script>
 
 <script>
     function mostrarTipoDocumento(modulo) {

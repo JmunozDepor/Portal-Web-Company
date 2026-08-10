@@ -34,21 +34,50 @@ UI todavía.**
   migrations add`, confirmado 1:1 contra el diseño de este documento: las 3
   tablas, mismas columnas). **`dotnet build` en 0 errores/0 advertencias** para
   los 4 proyectos.
-- **Migración generada, NO aplicada contra una base real** — bloqueado por
-  falta de permisos de administrador en el entorno de esta sesión para iniciar
-  Docker Desktop/SQL Server local (mismo bloqueo ya documentado para otras
-  tareas de `Portal SaaS - Core`). Aplicar con:
+- **Migración aplicada contra bases reales de desarrollo, los dos motores**
+  (2026-08-09, sesión posterior a la anterior nota de bloqueo — Docker/SQL
+  Server local ya disponibles): `modulo_wms_dev` creada y confirmada con las 3
+  tablas reales tanto en Postgres (`docker exec ... \dt`) como en SQL Server
+  (`sys.tables`). Comando usado, para repetir en otro entorno:
   ```
   dotnet ef database update --project src/Modulo.Wms.Migrations.Postgres/Modulo.Wms.Migrations.Postgres.csproj --startup-project src/Modulo.Wms.Migrations.Postgres/Modulo.Wms.Migrations.Postgres.csproj --context WmsDbContext
   ```
   (análogo para `.SqlServer`, ver `WMS_CONNECTION_STRING` en el
   `DesignTimeDbContextFactory` de cada uno para la cadena de conexión default
   de desarrollo).
+- De paso, en la misma sesión, se aplicaron también las migraciones pendientes
+  que tenía `Portal SaaS - Core` (Postgres y SQL Server), incluida
+  `AddLicensingSignedToken` en SQL Server dev (pendiente desde el 29 jul). Dos
+  conflictos de datos reales de prueba encontrados y resueltos al aplicar
+  Postgres (no forzados a ciegas): una fila huérfana en
+  `generic_import_configs` (borrada, sin valor de negocio) y dos filas de
+  `module_external_connections` con `company_id` NULL que iban a colisionar
+  contra el mismo default (remapeadas a la compañía real de cada
+  organización). Detalle completo en el historial de la sesión, no repetido
+  acá para no duplicar.
+- Verificado además, por primera vez, que `PortalSaas.Host` levanta de punta a
+  punta contra Postgres real con este estado (`/Account/Login` → 200, `/` →
+  302 sin sesión, los 7 plugins existentes cargan, CSS del rediseño con
+  sistema de 4 temas confirmado servido) — sin herramienta de navegador
+  disponible en el entorno, así que es verificación HTTP real, no una captura
+  visual.
 
-**Falta explícitamente, no iniciado todavía:**
+**Falta explícitamente, no iniciado todavía — este es el punto real donde
+retomar:**
+- **El plugin no está publicado a `artifacts/plugins/` del Host** — solo
+  existe en `dist/` de este repo (`PublicarComoPlugin` corre, pero nadie
+  copió el resultado a `Portal SaaS - Core/artifacts/plugins/Modulo.Wms/1.0.0/`
+  todavía, ni existe un `publish-dist.ps1` propio como el que sí tiene
+  `Modulo.Rendiciones`). Confirmado con el Host real: el log de plugins
+  cargados no lo menciona.
 - Páginas Razor del port de `WmsPortal.Web` (Mapeo de Campos/Configuración del
   Servicio/Estado del Servicio) — hoy solo existen las entradas de menú, sin
-  contenido detrás.
+  contenido detrás. **Sugerencia de orden: empezar por Mapeo de Campos**, es
+  la más simple de las tres (CRUD directo sobre `wms_oracle_field_mappings`,
+  mismo patrón que `Admin/PlatformModules` del Core).
+- Ninguna fila de `module_external_connections` está configurada todavía para
+  `module_code = "Wms"` — sin esto, `WmsDbContext` falla al primer intento de
+  resolver conexión aunque el plugin ya esté cargado y con páginas.
 - Migración de `PORTAL_USERS`/`PORTAL_COMPANIES` reales a
   `Organization`/`Company`/`User` del Portal.
 - El cambio en `WmsSapIntegration.Service` para que lea estas 3 tablas desde

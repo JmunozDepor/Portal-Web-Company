@@ -12,7 +12,8 @@
     <a asp-page="/Admin/Organizations/Subscriptions/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Asignar plan</a>
 </div>
 
-<table class="table table-striped">
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
     <thead>
         <tr>
             <th>Plan</th>
@@ -37,6 +38,7 @@
         }
     </tbody>
 </table>
+</div>
 
 @if (Model.Subscriptions.Count == 0)
 {

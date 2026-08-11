@@ -20,7 +20,8 @@
 </p>
 
 <form method="post" asp-antiforgery="true">
-    <table class="table table-striped">
+    <div class="document-list-table-wrapper">
+        <table class="table document-list-table">
         <thead>
             <tr>
                 <th>Motor</th>
@@ -48,6 +49,7 @@
             }
         </tbody>
     </table>
+    </div>
 
     <button type="submit" class="btn btn-primary">Guardar</button>
 </form>

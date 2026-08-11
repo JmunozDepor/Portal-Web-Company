@@ -18,8 +18,11 @@
     <div class="alert alert-danger">@Model.MensajeError</div>
 }
 
-<form method="get" class="d-flex gap-2 mb-3" style="max-width:420px;">
-    <input type="text" name="Texto" value="@Model.Texto" class="form-control" placeholder="Buscar por usuario o correo..." />
+<form method="get" class="filter-card">
+    <div class="col-auto">
+        <label class="form-label">Buscar</label>
+        <input type="text" name="Texto" value="@Model.Texto" class="form-control" placeholder="Usuario o correo..." />
+    </div>
     <button type="submit" class="btn btn-outline-secondary">Buscar</button>
     @if (!string.IsNullOrWhiteSpace(Model.Texto))
     {
@@ -27,7 +30,8 @@
     }
 </form>
 
-<table class="table table-striped">
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
     <thead>
         <tr>
             <th>Usuario</th>
@@ -72,6 +76,7 @@
         }
     </tbody>
 </table>
+</div>
 
 @if (Model.Usuarios.Count == 0)
 {

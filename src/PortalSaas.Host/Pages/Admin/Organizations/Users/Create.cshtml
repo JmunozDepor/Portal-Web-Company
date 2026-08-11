@@ -4,46 +4,47 @@
     ViewData["Title"] = $"Nuevo usuario · {Model.Organization.LegalName}";
 }
 
-<h1 class="h3 mb-3">Nuevo usuario en @Model.Organization.LegalName</h1>
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>Nuevo usuario en @Model.Organization.LegalName</h2>
+    </div>
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-<div class="row">
-    <div class="col-md-6">
-        <form method="post" asp-antiforgery="true">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-            <div class="mb-3">
+        <div class="form-row">
+            <div class="form-group">
                 <label asp-for="Input.Username" class="form-label"></label>
                 <input asp-for="Input.Username" class="form-control" autofocus />
                 <span asp-validation-for="Input.Username" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Email" class="form-label"></label>
                 <input asp-for="Input.Email" class="form-control" />
                 <span asp-validation-for="Input.Email" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Password" class="form-label"></label>
                 <input asp-for="Input.Password" class="form-control" />
                 <span asp-validation-for="Input.Password" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.ConfirmPassword" class="form-label"></label>
                 <input asp-for="Input.ConfirmPassword" class="form-control" />
                 <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
             </div>
 
-            <div class="mb-3 form-check">
+            <div class="form-group form-check">
                 <input asp-for="Input.IsAdmin" class="form-check-input" />
                 <label asp-for="Input.IsAdmin" class="form-check-label"></label>
             </div>
+        </div>
 
-            <button type="submit" class="btn btn-primary">Crear</button>
-            <a asp-page="/Admin/Organizations/Users/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-link">Cancelar</a>
-        </form>
-    </div>
+        <button type="submit" class="btn btn-primary mt-3">Crear</button>
+        <a asp-page="/Admin/Organizations/Users/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-link mt-3">Cancelar</a>
+    </form>
 </div>
 
 @section Scripts {

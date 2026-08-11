@@ -4,29 +4,30 @@
     ViewData["Title"] = "Nuevo grupo de menú";
 }
 
-<h1 class="h3 mb-3">Nuevo grupo de menú</h1>
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>Nuevo grupo de menú</h2>
+    </div>
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-<div class="row">
-    <div class="col-md-6">
-        <form method="post" asp-antiforgery="true">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-            <div class="mb-3">
+        <div class="form-row">
+            <div class="form-group">
                 <label asp-for="Input.Name" class="form-label"></label>
                 <input asp-for="Input.Name" class="form-control" autofocus />
                 <span asp-validation-for="Input.Name" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Description" class="form-label"></label>
                 <input asp-for="Input.Description" class="form-control" />
                 <span asp-validation-for="Input.Description" class="text-danger"></span>
             </div>
+        </div>
 
-            <button type="submit" class="btn btn-primary">Crear</button>
-            <a asp-page="/Admin/MenuGroups/Index" class="btn btn-link">Cancelar</a>
-        </form>
-    </div>
+        <button type="submit" class="btn btn-primary mt-3">Crear</button>
+        <a asp-page="/Admin/MenuGroups/Index" class="btn btn-link mt-3">Cancelar</a>
+    </form>
 </div>
 
 @section Scripts {

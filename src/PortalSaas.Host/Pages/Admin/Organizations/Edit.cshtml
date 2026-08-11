@@ -4,54 +4,55 @@
     ViewData["Title"] = "Editar organización";
 }
 
-<h1 class="h3 mb-3">Editar organización</h1>
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>Editar organización</h2>
+    </div>
+    <form method="post" asp-antiforgery="true">
+        <input type="hidden" asp-for="Input.Id" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-<div class="row">
-    <div class="col-md-6">
-        <form method="post" asp-antiforgery="true">
-            <input type="hidden" asp-for="Input.Id" />
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-            <div class="mb-3">
+        <div class="form-row">
+            <div class="form-group">
                 <label asp-for="Input.LegalName" class="form-label"></label>
                 <input asp-for="Input.LegalName" class="form-control" autofocus />
                 <span asp-validation-for="Input.LegalName" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Slug" class="form-label"></label>
                 <input asp-for="Input.Slug" class="form-control" />
                 <span asp-validation-for="Input.Slug" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.TaxId" class="form-label"></label>
                 <input asp-for="Input.TaxId" class="form-control" />
                 <span asp-validation-for="Input.TaxId" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Country" class="form-label"></label>
                 <input asp-for="Input.Country" class="form-control" />
                 <span asp-validation-for="Input.Country" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Mode" class="form-label"></label>
                 <select asp-for="Input.Mode" class="form-select" asp-items="Model.Modes.Select(m => new SelectListItem(m, m))"></select>
                 <span asp-validation-for="Input.Mode" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Status" class="form-label"></label>
                 <select asp-for="Input.Status" class="form-select" asp-items="Model.Statuses.Select(s => new SelectListItem(s, s))"></select>
                 <span asp-validation-for="Input.Status" class="text-danger"></span>
             </div>
+        </div>
 
-            <button type="submit" class="btn btn-primary">Guardar</button>
-            <a asp-page="/Admin/Organizations/Index" class="btn btn-link">Cancelar</a>
-        </form>
-    </div>
+        <button type="submit" class="btn btn-primary mt-3">Guardar</button>
+        <a asp-page="/Admin/Organizations/Index" class="btn btn-link mt-3">Cancelar</a>
+    </form>
 </div>
 
 @section Scripts {

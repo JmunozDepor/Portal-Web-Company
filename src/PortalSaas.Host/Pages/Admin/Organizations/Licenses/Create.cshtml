@@ -4,34 +4,35 @@
     ViewData["Title"] = $"Emitir licencia · {Model.Organization.LegalName}";
 }
 
-<h1 class="h3 mb-3">Emitir licencia para @Model.Organization.LegalName</h1>
-<p class="text-muted">La clave de activación se genera automáticamente al guardar -- no se elige a mano.</p>
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>Emitir licencia para @Model.Organization.LegalName</h2>
+    </div>
+    <p class="text-muted">La clave de activación se genera automáticamente al guardar -- no se elige a mano.</p>
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-<div class="row">
-    <div class="col-md-6">
-        <form method="post" asp-antiforgery="true">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-            <div class="mb-3">
+        <div class="form-row">
+            <div class="form-group">
                 <label asp-for="Input.PlanId" class="form-label"></label>
                 <select asp-for="Input.PlanId" class="form-select" asp-items="Model.Plans"></select>
                 <span asp-validation-for="Input.PlanId" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.ExpiresAt" class="form-label"></label>
                 <input asp-for="Input.ExpiresAt" type="date" class="form-control" />
                 <span asp-validation-for="Input.ExpiresAt" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.InstallationFingerprint" class="form-label"></label>
                 <input asp-for="Input.InstallationFingerprint" class="form-control" />
                 <span asp-validation-for="Input.InstallationFingerprint" class="text-danger"></span>
             </div>
+        </div>
 
-            <button type="submit" class="btn btn-primary">Emitir</button>
-            <a asp-page="/Admin/Organizations/Licenses/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-link">Cancelar</a>
-        </form>
-    </div>
+        <button type="submit" class="btn btn-primary mt-3">Emitir</button>
+        <a asp-page="/Admin/Organizations/Licenses/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-link mt-3">Cancelar</a>
+    </form>
 </div>

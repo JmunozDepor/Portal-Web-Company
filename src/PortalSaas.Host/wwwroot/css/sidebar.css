@@ -30,11 +30,30 @@ html[data-sidebar="collapsed"] .app-shell {
 
 .sidebar {
     grid-area: sidebar;
+    position: relative;
     background: var(--card-bg);
     border-right: 1px solid var(--card-border);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+}
+
+/* Costura de marca -- elemento de firma (DESIGN.md, hallazgo "sin ningún
+   elemento de firma"): reusa el mismo degradado --accent->--accent-2 del panel
+   de login (.login-brand-panel) en el único borde del sidebar que hoy no tiene
+   ningún tratamiento (arriba -- el derecho ya es --card-border, ver arriba).
+   Pseudo-elemento posicionado, no border-image: .sidebar ya declara
+   border-right propio, y border-image pinta los 4 lados del borde a la vez --
+   se habría pisado el color plano del borde derecho. position:absolute no
+   suma altura/ancho al grid del shell (.app-shell), la densidad no cambia. */
+.sidebar::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
 }
 
 .sidebar-brand {

@@ -4,79 +4,80 @@
     ViewData["Title"] = "Editar grupo de menú";
 }
 
-<h1 class="h3 mb-3">Editar grupo de menú</h1>
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>Editar grupo de menú</h2>
+    </div>
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <input type="hidden" asp-for="Input.Id" />
 
-<div class="row">
-    <div class="col-md-6">
-        <form method="post" asp-antiforgery="true">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="Input.Id" />
-
-            <div class="mb-3">
+        <div class="form-row">
+            <div class="form-group">
                 <label asp-for="Input.Name" class="form-label"></label>
                 <input asp-for="Input.Name" class="form-control" autofocus />
                 <span asp-validation-for="Input.Name" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Description" class="form-label"></label>
                 <input asp-for="Input.Description" class="form-control" />
                 <span asp-validation-for="Input.Description" class="text-danger"></span>
             </div>
 
-            <div class="mb-3 form-check">
+            <div class="form-group form-check">
                 <input asp-for="Input.IsActive" class="form-check-input" />
                 <label asp-for="Input.IsActive" class="form-check-label"></label>
             </div>
+        </div>
 
-            <div class="mb-3">
-                <label class="form-label">Nodos de menú incluidos</label>
-                <p class="text-muted" style="font-size: 12.5px;">
-                    Para un nodo final (hoja), elegí además el Perfil que van a HEREDAR
-                    todos los usuarios de este grupo -- sin eso, el nodo queda en el
-                    grupo solo como navegación, pero ningún usuario ve ni puede usar la
-                    página hasta que se le asigne un perfil manual aparte.
-                </p>
-                @if (Model.AllMenus.Count == 0)
+        <span class="doc-resumen-total-titulo mt-3 d-block">Nodos de menú incluidos</span>
+        <p class="text-muted" style="font-size: 12.5px;">
+            Para un nodo final (hoja), elegí además el Perfil que van a HEREDAR
+            todos los usuarios de este grupo -- sin eso, el nodo queda en el
+            grupo solo como navegación, pero ningún usuario ve ni puede usar la
+            página hasta que se le asigne un perfil manual aparte.
+        </p>
+        @if (Model.AllMenus.Count == 0)
+        {
+            <p class="text-muted">Todavía no hay nodos de menú (no hay plugins cargados).</p>
+        }
+        else
+        {
+            <div class="menu-perfil-panel">
+                @foreach (var menu in Model.AllMenus)
                 {
-                    <p class="text-muted">Todavía no hay nodos de menú (no hay plugins cargados).</p>
-                }
-                else
-                {
-                    @foreach (var menu in Model.AllMenus)
-                    {
-                        var perfilActual = Model.Input.DefaultProfileByMenu.GetValueOrDefault(menu.Id);
-                        <div class="d-flex align-items-center gap-2 mb-1" style="margin-left: @(menu.Level * 20)px;">
-                            <div class="form-check flex-shrink-0">
-                                <input class="form-check-input" type="checkbox" name="Input.SelectedMenuIds" value="@menu.Id"
-                                       id="menu-@menu.Id" checked="@Model.Input.SelectedMenuIds.Contains(menu.Id)" />
-                                <label class="form-check-label" for="menu-@menu.Id">
-                                    @menu.Name <span class="text-muted">(@($"{menu.OriginModule}.{menu.Code}"))</span>
-                                    @if (!menu.IsActive)
-                                    {
-                                        <span class="badge bg-secondary">inactivo</span>
-                                    }
-                                </label>
-                            </div>
-                            @if (menu.PagePath is not null)
-                            {
-                                <select name="Input.DefaultProfileByMenu[@menu.Id]" class="form-select form-select-sm" style="max-width: 220px;">
-                                    <option value="" selected="@(perfilActual is null or 0)">Sin perfil por defecto</option>
-                                    @foreach (var profile in Model.ProfileOptions)
-                                    {
-                                        <option value="@profile.Value" selected="@(profile.Value == perfilActual?.ToString())">@profile.Text</option>
-                                    }
-                                </select>
-                            }
+                    var perfilActual = Model.Input.DefaultProfileByMenu.GetValueOrDefault(menu.Id);
+                    <div class="d-flex align-items-center gap-2 mb-1" style="margin-left: @(menu.Level * 20)px;">
+                        <div class="form-check flex-shrink-0">
+                            <input class="form-check-input" type="checkbox" name="Input.SelectedMenuIds" value="@menu.Id"
+                                   id="menu-@menu.Id" checked="@Model.Input.SelectedMenuIds.Contains(menu.Id)" />
+                            <label class="form-check-label" for="menu-@menu.Id">
+                                @menu.Name <span class="text-muted">(@($"{menu.OriginModule}.{menu.Code}"))</span>
+                                @if (!menu.IsActive)
+                                {
+                                    <span class="badge bg-secondary doc-status-badge">inactivo</span>
+                                }
+                            </label>
                         </div>
-                    }
+                        @if (menu.PagePath is not null)
+                        {
+                            <select name="Input.DefaultProfileByMenu[@menu.Id]" class="form-select form-select-sm" style="max-width: 220px;">
+                                <option value="" selected="@(perfilActual is null or 0)">Sin perfil por defecto</option>
+                                @foreach (var profile in Model.ProfileOptions)
+                                {
+                                    <option value="@profile.Value" selected="@(profile.Value == perfilActual?.ToString())">@profile.Text</option>
+                                }
+                            </select>
+                        }
+                    </div>
                 }
             </div>
+        }
 
-            <button type="submit" class="btn btn-primary">Guardar</button>
-            <a asp-page="/Admin/MenuGroups/Index" class="btn btn-link">Cancelar</a>
-        </form>
-    </div>
+        <button type="submit" class="btn btn-primary mt-3">Guardar</button>
+        <a asp-page="/Admin/MenuGroups/Index" class="btn btn-link mt-3">Cancelar</a>
+    </form>
 </div>
 
 @section Scripts {

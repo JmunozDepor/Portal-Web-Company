@@ -4,59 +4,60 @@
     ViewData["Title"] = $"Editar instancia · {Model.Organization.LegalName}";
 }
 
-<h1 class="h3 mb-3">Editar instancia de @Model.Organization.LegalName</h1>
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>Editar instancia de @Model.Organization.LegalName</h2>
+    </div>
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <input type="hidden" asp-for="Input.Id" />
 
-<div class="row">
-    <div class="col-md-6">
-        <form method="post" asp-antiforgery="true">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="Input.Id" />
-
-            <div class="mb-3">
+        <div class="form-row">
+            <div class="form-group">
                 <label asp-for="Input.Name" class="form-label"></label>
                 <input asp-for="Input.Name" class="form-control" autofocus />
                 <span asp-validation-for="Input.Name" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Host" class="form-label"></label>
                 <input asp-for="Input.Host" class="form-control" />
                 <span asp-validation-for="Input.Host" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Port" class="form-label"></label>
                 <input asp-for="Input.Port" class="form-control" />
                 <span asp-validation-for="Input.Port" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.EngineType" class="form-label"></label>
                 <select asp-for="Input.EngineType" class="form-select" asp-items="Model.EngineTypes.Select(e => new SelectListItem(e, e))"></select>
                 <span asp-validation-for="Input.EngineType" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.TechnicalUsername" class="form-label"></label>
                 <input asp-for="Input.TechnicalUsername" class="form-control" />
                 <span asp-validation-for="Input.TechnicalUsername" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.TechnicalSecretKey" class="form-label"></label>
                 <input asp-for="Input.TechnicalSecretKey" class="form-control" autocomplete="new-password" />
                 <span asp-validation-for="Input.TechnicalSecretKey" class="text-danger"></span>
             </div>
 
-            <div class="mb-3 form-check">
+            <div class="form-group form-check">
                 <input asp-for="Input.IsActive" class="form-check-input" />
                 <label asp-for="Input.IsActive" class="form-check-label"></label>
             </div>
+        </div>
 
-            <button type="submit" class="btn btn-primary">Guardar</button>
-            <a asp-page="/Admin/Organizations/Instances/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-link">Cancelar</a>
-        </form>
-    </div>
+        <button type="submit" class="btn btn-primary mt-3">Guardar</button>
+        <a asp-page="/Admin/Organizations/Instances/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-link mt-3">Cancelar</a>
+    </form>
 </div>
 
 @section Scripts {

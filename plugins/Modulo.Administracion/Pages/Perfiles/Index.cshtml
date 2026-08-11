@@ -20,10 +20,14 @@
     <div class="alert alert-danger">@Model.MensajeError</div>
 }
 
-<div class="card-ps doc-tab-seccion mb-4">
-    <span class="doc-resumen-total-titulo">
-        @(Model.EditId is null ? "Nuevo perfil" : Model.IsEditingGlobalTemplate ? "Plantilla de plataforma (solo lectura)" : "Editar perfil")
-    </span>
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>@(Model.EditId is null ? "Nuevo perfil" : Model.IsEditingGlobalTemplate ? "Plantilla de plataforma" : "Editar perfil")</h2>
+        @if (Model.EditId is not null && Model.IsEditingGlobalTemplate)
+        {
+            <span class="badge bg-secondary doc-status-badge">Solo lectura</span>
+        }
+    </div>
 
     @if (Model.EditId is not null && Model.IsEditingGlobalTemplate)
     {
@@ -44,15 +48,17 @@
                 </div>
             </div>
 
-            <h5 class="mt-3">Acciones incluidas</h5>
-            @foreach (var action in Model.AllActions)
-            {
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input" name="Input.SelectedActionIds" value="@action.Id"
-                           checked="@Model.Input.SelectedActionIds.Contains(action.Id)" id="action-@action.Id" />
-                    <label class="form-check-label" for="action-@action.Id">@action.Name</label>
-                </div>
-            }
+            <span class="doc-resumen-total-titulo mt-3 d-block">Acciones incluidas</span>
+            <div class="menu-perfil-panel">
+                @foreach (var action in Model.AllActions)
+                {
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="Input.SelectedActionIds" value="@action.Id"
+                               checked="@Model.Input.SelectedActionIds.Contains(action.Id)" id="action-@action.Id" />
+                        <label class="form-check-label" for="action-@action.Id">@action.Name</label>
+                    </div>
+                }
+            </div>
 
             <button type="submit" class="btn btn-primary mt-3">@(Model.EditId is null ? "Crear" : "Guardar")</button>
             @if (Model.EditId is not null)
@@ -63,7 +69,8 @@
     }
 </div>
 
-<table class="table table-striped">
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
     <thead>
         <tr>
             <th>Nombre</th>
@@ -91,6 +98,7 @@
         }
     </tbody>
 </table>
+</div>
 
 @if (Model.Profiles.Count == 0)
 {

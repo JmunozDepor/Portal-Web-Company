@@ -12,7 +12,8 @@
     <a asp-page="/Admin/Organizations/Licenses/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Emitir licencia</a>
 </div>
 
-<table class="table table-striped">
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
     <thead>
         <tr>
             <th>Clave de activación</th>
@@ -51,6 +52,7 @@
         }
     </tbody>
 </table>
+</div>
 
 @if (Model.Licenses.Count == 0)
 {

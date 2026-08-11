@@ -4,20 +4,21 @@
     ViewData["Title"] = $"Asignar plan · {Model.Organization.LegalName}";
 }
 
-<h1 class="h3 mb-3">Asignar plan a @Model.Organization.LegalName</h1>
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>Asignar plan a @Model.Organization.LegalName</h2>
+    </div>
+    @if (Model.ActivePlans.Count == 0)
+    {
+        <p class="text-muted">No hay planes activos. Crea uno primero en <a asp-page="/Admin/Plans/Create">Planes</a>.</p>
+    }
+    else
+    {
+        <form method="post" asp-antiforgery="true">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-<div class="row">
-    <div class="col-md-6">
-        @if (Model.ActivePlans.Count == 0)
-        {
-            <p class="text-muted">No hay planes activos. Crea uno primero en <a asp-page="/Admin/Plans/Create">Planes</a>.</p>
-        }
-        else
-        {
-            <form method="post" asp-antiforgery="true">
-                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-                <div class="mb-3">
+            <div class="form-row">
+                <div class="form-group">
                     <label asp-for="Input.PlanId" class="form-label"></label>
                     <select asp-for="Input.PlanId" class="form-select" asp-items="Model.PlanOptions">
                         <option value="">-- Selecciona un plan --</option>
@@ -25,27 +26,27 @@
                     <span asp-validation-for="Input.PlanId" class="text-danger"></span>
                 </div>
 
-                <div class="mb-3">
+                <div class="form-group">
                     <label asp-for="Input.Status" class="form-label"></label>
                     <select asp-for="Input.Status" class="form-select" asp-items="PortalSaas.Data.Entities.SubscriptionStatus.All.Select(s => new SelectListItem(s, s))"></select>
                     <span asp-validation-for="Input.Status" class="text-danger"></span>
                 </div>
 
-                <div class="mb-3">
+                <div class="form-group">
                     <label asp-for="Input.PaymentProvider" class="form-label"></label>
                     <input asp-for="Input.PaymentProvider" class="form-control" placeholder="stripe / flow / transbank" />
                     <span asp-validation-for="Input.PaymentProvider" class="text-danger"></span>
                 </div>
 
-                <div class="mb-3">
+                <div class="form-group">
                     <label asp-for="Input.ExternalPaymentReference" class="form-label"></label>
                     <input asp-for="Input.ExternalPaymentReference" class="form-control" />
                     <span asp-validation-for="Input.ExternalPaymentReference" class="text-danger"></span>
                 </div>
+            </div>
 
-                <button type="submit" class="btn btn-primary">Asignar</button>
-                <a asp-page="/Admin/Organizations/Subscriptions/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-link">Cancelar</a>
-            </form>
-        }
-    </div>
+            <button type="submit" class="btn btn-primary mt-3">Asignar</button>
+            <a asp-page="/Admin/Organizations/Subscriptions/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-link mt-3">Cancelar</a>
+        </form>
+    }
 </div>

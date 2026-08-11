@@ -8,6 +8,18 @@
   navigation: auto;
 }
 
+/* Tipografía -- ver DESIGN.md §1 (Hallazgo 1 de la auditoría visual, 10 ago 2026:
+   ningún selector del portal declaraba una fuente propia, todo caía al stack del
+   sistema operativo del usuario). IBM Plex Sans (texto) + IBM Plex Mono (códigos
+   SAP, ver .sap-code más abajo). DESIGN.md §1.1 recomienda self-hosted
+   (`wwwroot/fonts/`, mismo criterio que Bootstrap/jQuery/Bootstrap Icons vendored a
+   mano en este proyecto, sin libman.json) -- se usa Google Fonts vía @import acá por
+   decisión explícita del dueño del proyecto, pedida sobre esa recomendación. Pesos
+   cargados: 400/500/600/700 de Plex Sans (los 4 que site.css ya fuerza vía
+   font-weight en distintos selectores, ver DESIGN.md §1.1) y 400/500 de Plex Mono
+   (400 para .sap-code, 500 disponible si algún selector futuro lo necesita). */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
 /* Identidad visual corporativa -- 4 paletas reales, portadas de
    referencia-original/PortalSAP_v2/src/PortalSAP.Host/wwwroot/css/theme.css (líneas
    21-122: claro/marino-oscuro/teal/violeta), no solo la de "claro". El selector de
@@ -171,6 +183,11 @@
 }
 
 :root {
+  /* DESIGN.md §1.1/§1.2 -- IBM Plex Sans (texto) / IBM Plex Mono (códigos SAP,
+     ver .sap-code más abajo). Fallback a la fuente de sistema si el @import de
+     Google Fonts de arriba no llega a cargar (red bloqueada, offline). */
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Code", "Consolas", monospace;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
@@ -355,6 +372,19 @@ h2.h5, .h5 { font-size: 1rem; }
   background-color: var(--bs-primary) !important;
 }
 
+/* DESIGN.md §2.3 -- explícito en vez de confiar solo en la herencia de
+   font-family de `body` (ver más abajo): si Bootstrap alguna vez fija su propia
+   fuente en .navbar-brand/.nav-link (no lo hace hoy en 5.1.0, confirmado
+   leyendo bootstrap.min.css), esta regla sigue ganando por especificidad. El
+   fondo se mantiene distinto al .topbar del shell de tenant a propósito (ver
+   DESIGN.md §2.3) -- es la señal real de "estás en la sesión de administrador
+   de plataforma, no en la de una organización", los dos esquemas de cookie
+   nunca deben confundirse. */
+.navbar.bg-dark .navbar-brand,
+.navbar.bg-dark .nav-link {
+  font-family: var(--font-sans);
+}
+
 html {
   font-size: 14px;
 }
@@ -381,6 +411,21 @@ html {
 
 body {
   margin-bottom: 60px;
+  /* DESIGN.md §1.1 -- tabular-nums alinea verticalmente columnas de
+     Total/Cantidad/Precio Unitario en .document-list-table/.line-items-table
+     (cada dígito ocupa el mismo ancho), sin necesitar CSS por columna. */
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+/* DESIGN.md §1.2 -- códigos SAP (ItemCode/CardCode/WhsCode/DocEntry/AcctCode,
+   claves de activación de licencia) nunca en la fuente de texto corrido. Sin
+   consumidor todavía en el markup -- se aplica pantalla por pantalla al tocar
+   cada una (ver DESIGN.md §2.5, checklist), no en un solo pase sobre ~200
+   archivos .cshtml. */
+.sap-code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
 }
 
 /* width:100% -- valor real de .admin-table (theme.css:1185), la tabla debe llenar el
@@ -598,6 +643,29 @@ body {
      motores genéricos -- Venta/Compra/Inventario comparten este mismo componente,
      así que el ajuste alcanza a los 3 sin tocar nada más) -- era 16px. */
   padding: 10px 12px;
+  position: relative;
+}
+
+/* Costura de marca -- elemento de firma (DESIGN.md, hallazgo "sin ningún
+   elemento de firma"), mismo degradado que .login-brand-panel y
+   .sidebar::before (sidebar.css). Colgada de .doc-form (la tarjeta completa,
+   <div class="card-ps doc-form">), NO de .doc-form-header -- .doc-form-volver
+   ("← Volver") se renderiza ANTES del header cuando Model.BackUrl no es null
+   (el caso común, ver DocumentForm/Default.cshtml), así que un margen negativo
+   colgado del header habría quedado flotando sobre ese link en vez de pegado
+   al borde real de la tarjeta. position:absolute no agrega alto/ancho a
+   .doc-form -- la densidad ya calibrada (padding 10px 12px) no cambia.
+   border-radius replica el redondeo superior de .card-ps (var(--radius-md))
+   para no romper la esquina con un rectángulo cuadrado asomando. */
+.doc-form::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
 }
 
 .doc-form-volver {
@@ -934,6 +1002,21 @@ body {
   gap: 10px;
 }
 
+/* Panel scrolleable de checkboxes (/organizacion/grupos-menu, "Pantallas incluidas")
+   -- reemplaza el "border rounded p-2" de Bootstrap + estilo inline que traía antes:
+   un borde propio ahí quedaba anidado dentro del borde de .card-ps que ya lo
+   contiene, dos bordes concéntricos sin necesidad (limpieza pedida en la auditoría
+   visual). Basta con diferenciar el fondo (var(--input-bg), mismo tono que un
+   .form-control) -- separa el panel del resto del formulario sin sumar una línea
+   más. max-height/overflow-y portados tal cual del estilo inline que reemplaza. */
+.menu-perfil-panel {
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+
 /* Grilla checkbox + perfil por defecto de /organizacion/grupos-menu -- cada fila es
    [checkbox+label de ancho flexible] [select de ancho fijo], para que todos los
    selects de la lista queden alineados en la misma columna sin importar el largo
@@ -952,8 +1035,11 @@ body {
   padding: 4px 2px;
 }
 
+/* color-mix en vez de var(--input-bg) -- el panel que contiene esta grilla
+   (.menu-perfil-panel) ya tiene ese mismo tono de fondo, un hover con el
+   mismo color quedaría invisible. */
 .menu-perfil-fila:hover {
-  background: var(--input-bg);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   border-radius: 6px;
 }
 

@@ -9,8 +9,8 @@ probar contra esto sepa exactamente qué usar sin tener que reconstruirlo de mem
 
 | Rol | Qué hace | Dónde corre hoy |
 |---|---|---|
-| **Central** | Emite/valida licencias on-premise (`/api/licensing/*`), panel admin de plataforma (Plans/Organizations/Licenses) | IIS real: `https://depor-sl.sapenlanube.com:9003/portalsaas-central` · Local: `http://localhost:5001` |
-| **OnPremise (Comercial Depor)** | El portal que usan los usuarios del piloto — Ventas/Compras/Inventario contra el HANA real de Comercial Depor | IIS real: `https://depor-sl.sapenlanube.com:9003/portalsaas-comercialdepor` · Local: `http://localhost:5002` |
+| **Central** | Emite/valida licencias on-premise (`/api/licensing/*`), panel admin de plataforma (Plans/Organizations/Licenses) | IIS real: `https://depor-sl.sapenlanube.com:9003/portalsaas-central` · Local: `http://localhost:6001` |
+| **OnPremise (Comercial Depor)** | El portal que usan los usuarios del piloto — Ventas/Compras/Inventario contra el HANA real de Comercial Depor | IIS real: `https://depor-sl.sapenlanube.com:9003/portalsaas-comercialdepor` · Local: `http://localhost:6002` |
 
 Ver `src/PortalSaas.Host/Program.cs` (`Licensing:Role`) y
 `src/PortalSaas.Core/Comercial/Licenciamiento/` para el mecanismo de licenciamiento
@@ -50,9 +50,9 @@ licencia que esto ya causó una vez.
 
 | Rol | Login | Usuario | Contraseña |
 |---|---|---|---|
-| Platform admin Central | `/portalsaas-central/Admin/Login` (IIS) o `:5001/Admin/Login` (local) | `admin-central@test.local` | `Test-Central-2026!` |
-| Platform admin OnPremise | `/portalsaas-comercialdepor/Admin/Login` (IIS) o `:5002/Admin/Login` (local) | `admin-comercialdepor@test.local` | `Test-ComercialDepor-2026!` |
-| Usuario tenant (piloto) | `/portalsaas-comercialdepor/Account/Login` (IIS) o `:5002/Account/Login` (local) — Organización: `depor` (slug acortado 2026-08-02, era `comercial-depor`) | `piloto` | `Piloto-Depor-2026!` |
+| Platform admin Central | `/portalsaas-central/Admin/Login` (IIS) o `:6001/Admin/Login` (local) | `admin-central@test.local` | `Test-Central-2026!` |
+| Platform admin OnPremise | `/portalsaas-comercialdepor/Admin/Login` (IIS) o `:6002/Admin/Login` (local) | `admin-comercialdepor@test.local` | `Test-ComercialDepor-2026!` |
+| Usuario tenant (piloto) | `/portalsaas-comercialdepor/Account/Login` (IIS) o `:6002/Account/Login` (local) — Organización: `depor` (slug acortado 2026-08-02, era `comercial-depor`) | `piloto` | `Piloto-Depor-2026!` |
 
 ## 4. Conexión SAP (HANA) — Instance + 2 Companies
 
@@ -137,13 +137,13 @@ $env:Security__MasterSecretKey = "<pedir>"
 $env:Licensing__Role = "Central"
 $env:Licensing__SigningPrivateKey = "<pedir>"
 $env:Licensing__CentralPublicKey = "<pedir>"
-dotnet run --project src\PortalSaas.Host --urls "http://localhost:5001"
+dotnet run --project src\PortalSaas.Host --urls "http://localhost:6001"
 
 # Comercial Depor (SIN Licensing:Role -- ver incidente en §6)
 $env:ConnectionStrings__Default = "Server=sqlsap.cdepor.cl,11433;Database=PS_COMDEPOR;User Id=saas_temp;Password=<pedir>;TrustServerCertificate=True"
 $env:Security__MasterSecretKey = "<pedir, distinta de la de Central>"
 $env:Licensing__CentralPublicKey = "<misma que arriba>"
-dotnet run --project src\PortalSaas.Host --urls "http://localhost:5002"
+dotnet run --project src\PortalSaas.Host --urls "http://localhost:6002"
 ```
 
 Plugins (`artifacts/plugins/`) se cargan automáticamente al arrancar — recompilar el

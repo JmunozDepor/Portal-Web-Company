@@ -17,7 +17,8 @@
     <div class="alert alert-danger">@Model.ErrorMessage</div>
 }
 
-<table class="table table-striped">
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
     <thead>
         <tr>
             <th>Nombre</th>
@@ -51,6 +52,7 @@
         }
     </tbody>
 </table>
+</div>
 
 @if (Model.Instances.Count == 0)
 {

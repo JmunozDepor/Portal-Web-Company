@@ -12,7 +12,8 @@
     <a asp-page="/Admin/Organizations/Users/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Nuevo usuario</a>
 </div>
 
-<table class="table table-striped">
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
     <thead>
         <tr>
             <th>Usuario</th>
@@ -52,6 +53,7 @@
         }
     </tbody>
 </table>
+</div>
 
 @if (Model.Users.Count == 0)
 {

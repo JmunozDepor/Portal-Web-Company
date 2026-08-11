@@ -21,10 +21,21 @@
     <div class="alert alert-danger">@Model.MensajeError</div>
 }
 
-<div class="card-ps doc-tab-seccion mb-4">
-    <span class="doc-resumen-total-titulo">
-        @(Model.EditId is null ? "Nuevo grupo" : Model.IsEditingGlobalTemplate ? "Plantilla de plataforma (solo lectura)" : "Editar grupo")
-    </span>
+@* card-ps: tarjeta con borde/radio. doc-form: costura de marca (degradado --accent
+   -> --accent-2 en el borde superior, mismo elemento de firma que el login y los 3
+   motores de documento) + el padding/tipografía real de un encabezado de
+   formulario. doc-tab-seccion: mismo selector que ya usan Venta/Compra/Inventario
+   para que .form-group (más abajo) sea una celda densa con borde propio, no texto
+   flotando -- las 3 clases conviven porque cubren 3 responsabilidades distintas
+   (contenedor / firma+header / grilla densa de campos), no se pisan entre sí. *@
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>@(Model.EditId is null ? "Nuevo grupo" : Model.IsEditingGlobalTemplate ? "Plantilla de plataforma" : "Editar grupo")</h2>
+        @if (Model.EditId is not null && Model.IsEditingGlobalTemplate)
+        {
+            <span class="badge bg-secondary doc-status-badge">Solo lectura</span>
+        }
+    </div>
 
     @if (Model.EditId is not null && Model.IsEditingGlobalTemplate)
     {
@@ -64,7 +75,7 @@
                 </div>
             </div>
 
-            <h5 class="mt-3">Pantallas incluidas</h5>
+            <span class="doc-resumen-total-titulo mt-3 d-block">Pantallas incluidas</span>
             <p class="text-muted" style="font-size: 12.5px;">
                 Elegí además el Perfil que van a HEREDAR todos los usuarios asignados a
                 este grupo para esa pantalla -- sin perfil, el nodo queda solo como
@@ -72,7 +83,7 @@
                 acceso distinto desde su ficha (Usuarios → Permisos); eso tiene
                 prioridad sobre lo que herede acá.
             </p>
-            <div style="max-height:400px; overflow-y:auto" class="border rounded p-2">
+            <div class="menu-perfil-panel">
                 <div class="menu-perfil-grid">
                     @foreach (var menu in Model.LeafMenus)
                     {
@@ -104,7 +115,8 @@
     }
 </div>
 
-<table class="table table-striped">
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
     <thead>
         <tr>
             <th>Nombre</th>
@@ -136,6 +148,7 @@
         }
     </tbody>
 </table>
+</div>
 
 @if (Model.Groups.Count == 0)
 {

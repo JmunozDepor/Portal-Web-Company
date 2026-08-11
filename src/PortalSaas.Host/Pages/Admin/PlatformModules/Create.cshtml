@@ -4,14 +4,15 @@
     ViewData["Title"] = "Nuevo módulo";
 }
 
-<h1 class="h3 mb-3">Nuevo módulo</h1>
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>Nuevo módulo</h2>
+    </div>
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-<div class="row">
-    <div class="col-md-6">
-        <form method="post" asp-antiforgery="true">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-            <div class="mb-3">
+        <div class="form-row">
+            <div class="form-group">
                 <label asp-for="Input.Code" class="form-label"></label>
                 @if (Model.AvailablePlugins.Count > 0)
                 {
@@ -33,18 +34,18 @@
                 <span asp-validation-for="Input.Code" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group">
                 <label asp-for="Input.Name" class="form-label"></label>
                 <input asp-for="Input.Name" class="form-control" />
                 <span asp-validation-for="Input.Name" class="text-danger"></span>
             </div>
 
-            <div class="mb-3 form-check">
+            <div class="form-group form-check">
                 <input asp-for="Input.IsCore" class="form-check-input" />
                 <label asp-for="Input.IsCore" class="form-check-label"></label>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group form-group-ancho-completo">
                 <label asp-for="Input.ExclusiveOrganizationId" class="form-label"></label>
                 <select asp-for="Input.ExclusiveOrganizationId" class="form-select">
                     <option value="">— Ninguna (vendible a cualquier organización) —</option>
@@ -54,11 +55,11 @@
                     }
                 </select>
             </div>
+        </div>
 
-            <button type="submit" class="btn btn-primary">Crear</button>
-            <a asp-page="/Admin/PlatformModules/Index" class="btn btn-link">Cancelar</a>
-        </form>
-    </div>
+        <button type="submit" class="btn btn-primary mt-3">Crear</button>
+        <a asp-page="/Admin/PlatformModules/Index" class="btn btn-link mt-3">Cancelar</a>
+    </form>
 </div>
 
 @section Scripts {

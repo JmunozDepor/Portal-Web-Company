@@ -4,10 +4,7 @@
     ViewData["Title"] = Model.EsNuevo ? "Nuevo usuario" : $"Editar · {Model.Detalle?.Username}";
 }
 
-<div class="mb-3">
-    <h1 class="h3 mb-0">@(Model.EsNuevo ? "Nuevo usuario" : $"Editar usuario: {Model.Detalle?.Username}")</h1>
-    <a href="~/organizacion/usuarios">Volver a usuarios</a>
-</div>
+<a href="~/organizacion/usuarios" class="doc-form-volver"><i class="bi bi-arrow-left"></i> Volver a usuarios</a>
 
 @if (Model.MensajeExito is not null)
 {
@@ -18,165 +15,180 @@
     <div class="alert alert-danger">@Model.MensajeError</div>
 }
 
-<form method="post" asp-page-handler="Guardar">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-    <div class="mb-3">
-        <label asp-for="Input.Username" class="form-label"></label>
-        <input asp-for="Input.Username" class="form-control" />
-        <span asp-validation-for="Input.Username" class="text-danger"></span>
+<div class="card-ps doc-form doc-tab-seccion mb-4">
+    <div class="doc-form-header">
+        <h2>@(Model.EsNuevo ? "Nuevo usuario" : $"Editar usuario: {Model.Detalle?.Username}")</h2>
     </div>
+    <form method="post" asp-page-handler="Guardar">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <div class="mb-3">
-        <label asp-for="Input.Email" class="form-label"></label>
-        <input asp-for="Input.Email" class="form-control" />
-        <span asp-validation-for="Input.Email" class="text-danger"></span>
-    </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="Input.Username" class="form-label"></label>
+                <input asp-for="Input.Username" class="form-control" />
+                <span asp-validation-for="Input.Username" class="text-danger"></span>
+            </div>
 
-    <div class="mb-3">
-        <label asp-for="Input.Password" class="form-label"></label>
-        <input asp-for="Input.Password" class="form-control" />
-        <span asp-validation-for="Input.Password" class="text-danger"></span>
-        @if (!Model.EsNuevo)
-        {
-            <div class="form-text">Dejar en blanco para no cambiar la contraseña actual.</div>
-        }
-    </div>
+            <div class="form-group">
+                <label asp-for="Input.Email" class="form-label"></label>
+                <input asp-for="Input.Email" class="form-control" />
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
 
-    <div class="mb-3">
-        <label asp-for="Input.ConfirmPassword" class="form-label"></label>
-        <input asp-for="Input.ConfirmPassword" class="form-control" />
-        <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
-    </div>
+            <div class="form-group">
+                <label asp-for="Input.Password" class="form-label"></label>
+                <input asp-for="Input.Password" class="form-control" />
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+                @if (!Model.EsNuevo)
+                {
+                    <div class="form-text">Dejar en blanco para no cambiar la contraseña actual.</div>
+                }
+            </div>
 
-    <div class="form-check mb-2">
-        <input asp-for="Input.IsAdmin" class="form-check-input" />
-        <label asp-for="Input.IsAdmin" class="form-check-label"></label>
-    </div>
+            <div class="form-group">
+                <label asp-for="Input.ConfirmPassword" class="form-label"></label>
+                <input asp-for="Input.ConfirmPassword" class="form-control" />
+                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+            </div>
 
-    @if (!Model.EsNuevo)
-    {
-        <div class="form-check mb-2">
-            <input asp-for="Input.IsActive" class="form-check-input" />
-            <label asp-for="Input.IsActive" class="form-check-label"></label>
+            <div class="form-group form-check">
+                <input asp-for="Input.IsAdmin" class="form-check-input" />
+                <label asp-for="Input.IsAdmin" class="form-check-label"></label>
+            </div>
+
+            @if (!Model.EsNuevo)
+            {
+                <div class="form-group form-check">
+                    <input asp-for="Input.IsActive" class="form-check-input" />
+                    <label asp-for="Input.IsActive" class="form-check-label"></label>
+                </div>
+                <div class="form-group form-check">
+                    <input asp-for="Input.IsLocked" class="form-check-input" />
+                    <label asp-for="Input.IsLocked" class="form-check-label"></label>
+                </div>
+            }
         </div>
-        <div class="form-check mb-3">
-            <input asp-for="Input.IsLocked" class="form-check-input" />
-            <label asp-for="Input.IsLocked" class="form-check-label"></label>
-        </div>
-    }
 
-    <button type="submit" class="btn btn-primary">Guardar</button>
-</form>
+        <button type="submit" class="btn btn-primary mt-3">Guardar</button>
+    </form>
+</div>
 
 @if (!Model.EsNuevo)
 {
-    <hr class="my-4" />
+    <div class="card-ps doc-form doc-tab-seccion mb-4">
+        <div class="doc-form-header">
+            <h2>Compañía por defecto</h2>
+        </div>
 
-    <h2 class="h4">Compañía por defecto</h2>
-
-    @if (!Model.TieneCompanies)
-    {
-        <p class="text-warning">Tu organización todavía no tiene ninguna compañía configurada.</p>
-    }
-    else
-    {
-        <form method="post" asp-page-handler="GuardarCompaniaDefault" asp-route-id="@Model.Detalle!.Id" class="row g-2 align-items-end mb-4">
-            <div class="col-auto">
-                <label class="form-label">Compañía con la que entra automáticamente al loguearse</label>
-                <select name="DefaultCompanyId" class="form-select">
-                    <option value="">Sin compañía por defecto (elige cada vez)</option>
-                    @foreach (var company in Model.Companies)
-                    {
-                        <option value="@company.Value" selected="@(company.Value == Model.DefaultCompanyId?.ToString())">@company.Text</option>
-                    }
-                </select>
-            </div>
-            <div class="col-auto">
+        @if (!Model.TieneCompanies)
+        {
+            <p class="text-warning">Tu organización todavía no tiene ninguna compañía configurada.</p>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="GuardarCompaniaDefault" asp-route-id="@Model.Detalle!.Id" class="filter-card">
+                <div class="col-auto">
+                    <label class="form-label">Compañía con la que entra automáticamente al loguearse</label>
+                    <select name="DefaultCompanyId" class="form-select">
+                        <option value="">Sin compañía por defecto (elige cada vez)</option>
+                        @foreach (var company in Model.Companies)
+                        {
+                            <option value="@company.Value" selected="@(company.Value == Model.DefaultCompanyId?.ToString())">@company.Text</option>
+                        }
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-primary">Guardar compañía por defecto</button>
-            </div>
-        </form>
-    }
+            </form>
+        }
+    </div>
 
-    <h2 class="h4">Permisos</h2>
+    <div class="card-ps doc-form doc-tab-seccion mb-4">
+        <div class="doc-form-header">
+            <h2>Permisos</h2>
+        </div>
 
-    @if (!Model.TieneCompanies)
-    {
-        <p class="text-warning">Tu organización todavía no tiene ninguna compañía configurada.</p>
-    }
-    else
-    {
-        <form method="get" class="row g-2 align-items-end mb-3">
-            <input type="hidden" name="id" value="@Model.Detalle!.Id" />
-            <div class="col-auto">
-                <label class="form-label">Compañía</label>
-                <select name="companyId" class="form-select" onchange="this.form.submit()">
-                    @foreach (var company in Model.Companies)
-                    {
-                        <option value="@company.Value" selected="@(company.Value == Model.SelectedCompanyId.ToString())">@company.Text</option>
-                    }
-                </select>
-            </div>
-        </form>
+        @if (!Model.TieneCompanies)
+        {
+            <p class="text-warning">Tu organización todavía no tiene ninguna compañía configurada.</p>
+        }
+        else
+        {
+            <form method="get" class="filter-card">
+                <input type="hidden" name="id" value="@Model.Detalle!.Id" />
+                <div class="col-auto">
+                    <label class="form-label">Compañía</label>
+                    <select name="companyId" class="form-select" onchange="this.form.submit()">
+                        @foreach (var company in Model.Companies)
+                        {
+                            <option value="@company.Value" selected="@(company.Value == Model.SelectedCompanyId.ToString())">@company.Text</option>
+                        }
+                    </select>
+                </div>
+            </form>
 
-        <form method="post" asp-page-handler="GuardarPermisos" asp-route-id="@Model.Detalle!.Id">
-            <input type="hidden" asp-for="Permissions.CompanyId" />
+            <form method="post" asp-page-handler="GuardarPermisos" asp-route-id="@Model.Detalle!.Id">
+                <input type="hidden" asp-for="Permissions.CompanyId" />
 
-            <h3 class="h6">Grupos de menú</h3>
-            @if (Model.AllMenuGroups.Count == 0)
-            {
-                <p class="text-muted">Todavía no hay grupos de menú creados (los crea el operador de plataforma).</p>
-            }
-            else
-            {
-                @foreach (var group in Model.AllMenuGroups)
+                <span class="doc-resumen-total-titulo d-block">Grupos de menú</span>
+                @if (Model.AllMenuGroups.Count == 0)
                 {
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="Permissions.SelectedMenuGroupIds" value="@group.Id"
-                               id="group-@group.Id" checked="@Model.Permissions.SelectedMenuGroupIds.Contains(group.Id)" />
-                        <label class="form-check-label" for="group-@group.Id">@group.Name</label>
+                    <p class="text-muted">Todavía no hay grupos de menú creados (los crea el operador de plataforma).</p>
+                }
+                else
+                {
+                    <div class="menu-perfil-panel">
+                        @foreach (var group in Model.AllMenuGroups)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="Permissions.SelectedMenuGroupIds" value="@group.Id"
+                                       id="group-@group.Id" checked="@Model.Permissions.SelectedMenuGroupIds.Contains(group.Id)" />
+                                <label class="form-check-label" for="group-@group.Id">@group.Name</label>
+                            </div>
+                        }
                     </div>
                 }
-            }
 
-            <h3 class="h6 mt-4">Perfil por nodo de menú</h3>
-            @if (Model.LeafMenus.Count == 0)
-            {
-                <p class="text-muted">Todavía no hay nodos de menú finales.</p>
-            }
-            else
-            {
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Menú</th>
-                            <th>Perfil</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var menu in Model.LeafMenus)
-                        {
-                            var actual = Model.Permissions.ProfileByMenu.GetValueOrDefault(menu.Id);
+                <span class="doc-resumen-total-titulo d-block mt-3">Perfil por nodo de menú</span>
+                @if (Model.LeafMenus.Count == 0)
+                {
+                    <p class="text-muted">Todavía no hay nodos de menú finales.</p>
+                }
+                else
+                {
+                    <div class="document-list-table-wrapper">
+                        <table class="table document-list-table mb-0">
+                        <thead>
                             <tr>
-                                <td>@menu.Name <span class="text-muted">(@($"{menu.OriginModule}.{menu.Code}"))</span></td>
-                                <td>
-                                    <select name="Permissions.ProfileByMenu[@menu.Id]" class="form-select form-select-sm">
-                                        <option value="" selected="@(actual is null or 0)">Sin asignar</option>
-                                        @foreach (var profile in Model.ProfileOptions)
-                                        {
-                                            <option value="@profile.Value" selected="@(profile.Value == actual?.ToString())">@profile.Text</option>
-                                        }
-                                    </select>
-                                </td>
+                                <th>Menú</th>
+                                <th>Perfil</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
-            }
+                        </thead>
+                        <tbody>
+                            @foreach (var menu in Model.LeafMenus)
+                            {
+                                var actual = Model.Permissions.ProfileByMenu.GetValueOrDefault(menu.Id);
+                                <tr>
+                                    <td>@menu.Name <span class="text-muted">(@($"{menu.OriginModule}.{menu.Code}"))</span></td>
+                                    <td>
+                                        <select name="Permissions.ProfileByMenu[@menu.Id]" class="form-select form-select-sm">
+                                            <option value="" selected="@(actual is null or 0)">Sin asignar</option>
+                                            @foreach (var profile in Model.ProfileOptions)
+                                            {
+                                                <option value="@profile.Value" selected="@(profile.Value == actual?.ToString())">@profile.Text</option>
+                                            }
+                                        </select>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    </div>
+                }
 
-            <button type="submit" class="btn btn-primary">Guardar permisos</button>
-        </form>
-    }
+                <button type="submit" class="btn btn-primary mt-3">Guardar permisos</button>
+            </form>
+        }
+    </div>
 }
 
 @section Scripts {

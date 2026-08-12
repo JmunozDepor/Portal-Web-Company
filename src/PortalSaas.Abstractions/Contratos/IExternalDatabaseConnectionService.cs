@@ -32,4 +32,14 @@ public interface IExternalDatabaseConnectionService
         string moduleCode,
         Guid companyId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Lista (CompanyId, OrganizationId) de toda compañía con una conexión ACTIVA
+    /// configurada para moduleCode -- para procesos sin sesión HTTP (background jobs)
+    /// que necesitan recorrer todas las compañías de un módulo, algo que
+    /// ResolveConnectionAsync no puede hacer porque ya exige conocer el companyId.
+    /// </summary>
+    Task<IReadOnlyList<ModuleCompanyDto>> ListActiveCompanyIdsAsync(
+        string moduleCode,
+        CancellationToken ct = default);
 }

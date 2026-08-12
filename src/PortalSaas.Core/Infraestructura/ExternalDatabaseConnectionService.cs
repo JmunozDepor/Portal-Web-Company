@@ -70,4 +70,16 @@ public sealed class ExternalDatabaseConnectionService : IExternalDatabaseConnect
             ConnectionString = connectionString,
         };
     }
+
+    public async Task<IReadOnlyList<ModuleCompanyDto>> ListActiveCompanyIdsAsync(
+        string moduleCode,
+        CancellationToken ct = default)
+    {
+        return await _db.ModuleExternalConnections
+            .AsNoTracking()
+            .Where(x => x.ModuleCode == moduleCode && x.IsActive)
+            .Select(x => new ModuleCompanyDto(x.CompanyId, x.Company.OrganizationId))
+            .Distinct()
+            .ToListAsync(ct);
+    }
 }

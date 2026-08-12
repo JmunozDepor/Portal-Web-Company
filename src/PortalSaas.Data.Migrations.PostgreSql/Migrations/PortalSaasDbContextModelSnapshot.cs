@@ -62,14 +62,14 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.HasKey("Id")
                         .HasName("pk_audit_logs");
 
-                    b.HasIndex("CompanyId")
-                        .HasDatabaseName("ix_audit_logs_company_id");
-
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_audit_logs_created_at");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_audit_logs_user_id");
+
+                    b.HasIndex("CompanyId", "CreatedAt")
+                        .HasDatabaseName("ix_audit_logs_company_id_created_at");
 
                     b.ToTable("audit_logs", (string)null);
                 });
@@ -526,6 +526,9 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_menus");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("ix_menus_is_active");
 
                     b.HasIndex("PagePath")
                         .HasDatabaseName("ix_menus_page_path");
@@ -1482,6 +1485,9 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.HasIndex("OrganizationId", "Email")
                         .IsUnique()
                         .HasDatabaseName("ix_users_organization_id_email");
+
+                    b.HasIndex("OrganizationId", "IsActive")
+                        .HasDatabaseName("ix_users_organization_id_is_active");
 
                     b.HasIndex("OrganizationId", "Username")
                         .IsUnique()

@@ -273,6 +273,9 @@ public sealed class PortalSaasDbContext : DbContext
             // Email obligatorio y único dentro de la organización -- toda cuenta
             // queda siempre asociada a un correo real (ver Entities/User.cs).
             entity.HasIndex(e => new { e.OrganizationId, e.Email }).IsUnique();
+            // TenantUserAdminService.ListAsync ya filtra IsActive dentro de la
+            // organización -- sin índice compuesto hasta ahora.
+            entity.HasIndex(e => new { e.OrganizationId, e.IsActive });
             entity.Property(e => e.Username).HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(150).IsRequired();
             entity.Property(e => e.PasswordHash).HasMaxLength(300);
@@ -380,6 +383,10 @@ public sealed class PortalSaasDbContext : DbContext
             entity.ToTable("menus");
             entity.HasIndex(e => new { e.OriginModule, e.Code }).IsUnique();
             entity.HasIndex(e => e.PagePath);
+            // Toda carga del sidebar filtra por IsActive (MenuNavigationService,
+            // en cada request de cada usuario) -- sin índice hasta ahora porque la
+            // tabla era chica, agregado antes de que crezca con más plugins.
+            entity.HasIndex(e => e.IsActive);
             entity.Property(e => e.OriginModule).HasMaxLength(100);
             entity.Property(e => e.Code).HasMaxLength(100);
             entity.Property(e => e.Name).HasMaxLength(100);
@@ -487,6 +494,11 @@ public sealed class PortalSaasDbContext : DbContext
         {
             entity.ToTable("audit_logs");
             entity.HasIndex(e => e.CreatedAt);
+            // Compuesto para "eventos de esta compañía en este rango" -- el caso de
+            // uso obvio de una tabla de auditoría multi-tenant, sin pantalla
+            // consumidora todavía pero agregado con el modelo, no después de que la
+            // tabla tenga millones de filas.
+            entity.HasIndex(e => new { e.CompanyId, e.CreatedAt });
             entity.Property(e => e.Event).HasMaxLength(100);
             entity.Property(e => e.Detail).HasMaxLength(2000);
             entity.Property(e => e.IpAddress).HasMaxLength(50);

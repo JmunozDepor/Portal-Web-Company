@@ -668,6 +668,54 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
                     b.ToTable("external_service_usages", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Rendiciones.Models.ReminderLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateOnly>("SentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("sent_date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SentDate")
+                        .IsUnique()
+                        .HasDatabaseName("uq_rendiciones_reminder_log_sent_date");
+
+                    b.ToTable("rendiciones_reminder_log", (string)null);
+                });
+
+            modelBuilder.Entity("Modulo.Rendiciones.Models.RendicionesSettings", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("ReminderEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("reminder_enabled");
+
+                    b.Property<TimeOnly>("ReminderHour")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("reminder_hour");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("rendiciones_settings", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Rendiciones.Models.UserCostCenter", b =>
                 {
                     b.Property<long>("Id")

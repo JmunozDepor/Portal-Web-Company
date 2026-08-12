@@ -105,6 +105,8 @@ builder.Services.AddScoped<IModuleAccessService, ModuleAccessService>();
 // propia organización, ver ITenantUserAdminService.
 builder.Services.AddScoped<ITenantUserAdminService, TenantUserAdminService>();
 
+builder.Services.AddScoped<IUserContactLookupService, UserContactLookupService>();
+
 // Self-service de Modulo.Administracion -- qué módulos oculta la organización del
 // menú (sin cambiar lo contratado), y CRUD de sus propios grupos de menú/perfiles
 // (ver CLAUDE.md, "Grupos de Menú + Perfiles", 27 jul 2026).

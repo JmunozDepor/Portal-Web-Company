@@ -24,7 +24,7 @@ public class CurrentUserContextTests
     private static PortalSaasDbContext CrearContexto() => new(
         new DbContextOptionsBuilder<PortalSaasDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
+            .Options, new NullOrganizationScopeProvider());
 
     private static CurrentUserContext CrearServicio(PortalSaasDbContext db, Guid userId, Guid companyId, bool isAdmin)
     {

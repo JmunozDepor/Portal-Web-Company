@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Core.Comercial;
+using PortalSaas.Core.Seguridad;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 using Xunit;
@@ -11,7 +12,7 @@ public class ModuleAccessServiceTests
     private static PortalSaasDbContext CrearContexto() => new(
         new DbContextOptionsBuilder<PortalSaasDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
+            .Options, new NullOrganizationScopeProvider());
 
     [Fact]
     public async Task GetContractedModuleCodes_ModuloCore_SiempreIncluido()

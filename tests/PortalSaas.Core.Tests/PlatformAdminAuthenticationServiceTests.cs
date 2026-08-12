@@ -11,7 +11,7 @@ public class PlatformAdminAuthenticationServiceTests
     private static PortalSaasDbContext CrearContexto() => new(
         new DbContextOptionsBuilder<PortalSaasDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
+            .Options, new NullOrganizationScopeProvider());
 
     private static async Task<(PortalSaasDbContext Db, PlatformAdmin Admin)> CrearAdminAsync(string password)
     {

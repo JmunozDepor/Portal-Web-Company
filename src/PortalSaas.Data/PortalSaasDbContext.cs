@@ -18,8 +18,12 @@ namespace PortalSaas.Data;
 /// </summary>
 public sealed class PortalSaasDbContext : DbContext
 {
-    public PortalSaasDbContext(DbContextOptions<PortalSaasDbContext> options) : base(options)
+    private readonly IOrganizationScopeProvider _scopeProvider;
+
+    public PortalSaasDbContext(DbContextOptions<PortalSaasDbContext> options, IOrganizationScopeProvider scopeProvider)
+        : base(options)
     {
+        _scopeProvider = scopeProvider;
     }
 
     public DbSet<Organization> Organizations => Set<Organization>();
@@ -497,5 +501,26 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.JobId).HasMaxLength(100);
             entity.Property(e => e.Status).HasMaxLength(50);
         });
+
+        // ---------------------------------------------------------------------------
+        // Filtro global por organización -- red de seguridad automática, ADEMÁS del
+        // filtrado manual que ya hace cada servicio (CurrentUserContext, etc.), no en
+        // vez de. _scopeProvider.CurrentOrganizationId en null (backoffice de
+        // plataforma, /Admin/*) deja pasar todo -- ver docs/superpowers/plans para el
+        // razonamiento completo. Un bypass explícito puntual usa
+        // .IgnoreQueryFilters(), nunca se desactiva esto a nivel de DbContext.
+        // ---------------------------------------------------------------------------
+        modelBuilder.Entity<Company>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<OrganizationDocumentPermission>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<Subscription>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<OnPremiseLicense>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<Instance>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<User>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<UserSession>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<EmailSettings>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<UsageMetric>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<MenuGroup>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<OrganizationModuleVisibility>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
+        modelBuilder.Entity<Profile>().HasQueryFilter(e => _scopeProvider.CurrentOrganizationId == null || e.OrganizationId == _scopeProvider.CurrentOrganizationId);
     }
 }

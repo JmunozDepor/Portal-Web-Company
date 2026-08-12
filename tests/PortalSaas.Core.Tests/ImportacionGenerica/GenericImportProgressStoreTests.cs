@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Abstractions.Modelos;
 using PortalSaas.Core.ImportacionGenerica;
+using PortalSaas.Core.Tests.TestHelpers;
 using PortalSaas.Data;
 using Xunit;
 
@@ -13,7 +14,7 @@ public class GenericImportProgressStoreTests
         var options = new DbContextOptionsBuilder<PortalSaasDbContext>()
             .UseInMemoryDatabase(dbName)
             .Options;
-        return new PortalSaasDbContext(options);
+        return new PortalSaasDbContext(options, new NullOrganizationScopeProvider());
     }
 
     [Fact]
@@ -74,6 +75,6 @@ public class GenericImportProgressStoreTests
         Assert.NotNull(result);
         Assert.Equal(10, result!.ProcessedRows);
         Assert.Equal("Completado", result.Status);
-        Assert.Single(context.Set<Data.Entities.GenericImportJobProgress>());
+        Assert.Single(context.Set<PortalSaas.Data.Entities.GenericImportJobProgress>());
     }
 }

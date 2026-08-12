@@ -11,7 +11,7 @@ public class PasswordResetServiceTests
     private static PortalSaasDbContext CrearContexto() => new(
         new DbContextOptionsBuilder<PortalSaasDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
+            .Options, new NullOrganizationScopeProvider());
 
     private static async Task<(PortalSaasDbContext Db, Organization Org, User User)> CrearUsuarioAsync()
     {

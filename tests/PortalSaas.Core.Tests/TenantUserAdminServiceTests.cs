@@ -4,6 +4,7 @@ using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Core.Administracion;
 using PortalSaas.Core.Comercial;
 using PortalSaas.Core.Comercial.Licenciamiento;
+using PortalSaas.Core.Seguridad;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 using Xunit;
@@ -25,7 +26,7 @@ public class TenantUserAdminServiceTests
     private static PortalSaasDbContext CrearContexto() => new(
         new DbContextOptionsBuilder<PortalSaasDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
+            .Options, new NullOrganizationScopeProvider());
 
     private static async Task<(PortalSaasDbContext Db, Organization Org, Plan Plan)> CrearOrganizacionConPlanAsync(int? userLimit = null)
     {

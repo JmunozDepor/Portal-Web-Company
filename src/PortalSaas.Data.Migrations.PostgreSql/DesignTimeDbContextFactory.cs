@@ -36,6 +36,14 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Por
             .UseNpgsql(connectionString, x => x.MigrationsAssembly("PortalSaas.Data.Migrations.PostgreSql"))
             .UseSnakeCaseNamingConvention();
 
-        return new PortalSaasDbContext(optionsBuilder.Options);
+        return new PortalSaasDbContext(optionsBuilder.Options, new DesignTimeOrganizationScopeProvider());
+    }
+
+    // Este proyecto solo referencia PortalSaas.Data (no Core, donde vive la
+    // implementación real que lee ICurrentUserContext) -- `dotnet ef` nunca ejecuta
+    // queries de negocio, así que sin filtro (null) es correcto acá.
+    private sealed class DesignTimeOrganizationScopeProvider : IOrganizationScopeProvider
+    {
+        public Guid? CurrentOrganizationId => null;
     }
 }

@@ -81,7 +81,7 @@ var secretos = new SecretoCifradoService(configuration);
 
 using var db = new PortalSaasDbContext(new DbContextOptionsBuilder<PortalSaasDbContext>()
     .UseInMemoryDatabase(Guid.NewGuid().ToString())
-    .Options);
+    .Options, new PortalSaas.Core.Seguridad.NullOrganizationScopeProvider());
 
 var org = new Organization { LegalName = "Prueba manual de correo", Slug = "prueba-manual-correo", Country = "CL" };
 db.Organizations.Add(org);

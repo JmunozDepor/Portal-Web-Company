@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 using PortalSaas.Core.Correo;
+using PortalSaas.Core.Seguridad;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 using Xunit;
@@ -27,7 +28,7 @@ public class EmailSenderServiceTests
     private static PortalSaasDbContext CrearContexto() => new(
         new DbContextOptionsBuilder<PortalSaasDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
+            .Options, new NullOrganizationScopeProvider());
 
     [Fact]
     public async Task SendAsync_SinEmailSettings_LanzaExcepcion()

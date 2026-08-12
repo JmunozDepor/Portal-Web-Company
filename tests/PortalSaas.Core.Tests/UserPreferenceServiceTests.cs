@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Abstractions.Modelos;
+using PortalSaas.Core.Tests.TestHelpers;
 using PortalSaas.Core.Usuarios;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
@@ -14,7 +15,8 @@ public class UserPreferenceServiceTests
         var db = new PortalSaasDbContext(
             new DbContextOptionsBuilder<PortalSaasDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options);
+                .Options,
+            new NullOrganizationScopeProvider());
 
         var org = new Organization { LegalName = "Cliente de prueba", Slug = "cliente-prueba", Country = "CL" };
         db.Organizations.Add(org);

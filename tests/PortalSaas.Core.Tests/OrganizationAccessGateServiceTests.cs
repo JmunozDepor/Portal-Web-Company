@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using PortalSaas.Abstractions.Modelos;
 using PortalSaas.Core.Comercial;
 using PortalSaas.Core.Comercial.Licenciamiento;
+using PortalSaas.Core.Seguridad;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 using Xunit;
@@ -23,7 +24,7 @@ public class OrganizationAccessGateServiceTests
     private static PortalSaasDbContext CrearContexto() => new(
         new DbContextOptionsBuilder<PortalSaasDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
+            .Options, new NullOrganizationScopeProvider());
 
     private static IConfiguration CrearConfiguracion(int offlineGraceDays = 15) => new ConfigurationBuilder()
         .AddInMemoryCollection(new Dictionary<string, string?>

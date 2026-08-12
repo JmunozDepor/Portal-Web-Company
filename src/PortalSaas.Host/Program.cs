@@ -48,6 +48,12 @@ var databaseProvider = builder.Configuration["Database:Provider"] ?? "postgresql
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("Falta ConnectionStrings:Default en la configuración.");
 
+// IOrganizationScopeProvider debe registrarse antes de AddDbContext -- lo consume el
+// filtro global de OrganizationId dentro de PortalSaasDbContext.OnModelCreating (ver
+// docs/superpowers/plans). AddHttpContextAccessor ya está registrado más abajo en este
+// mismo archivo, no se duplica acá.
+builder.Services.AddScoped<PortalSaas.Data.IOrganizationScopeProvider, PortalSaas.Core.Seguridad.OrganizationScopeProvider>();
+
 builder.Services.AddDbContext<PortalSaasDbContext>(options =>
 {
     switch (databaseProvider)

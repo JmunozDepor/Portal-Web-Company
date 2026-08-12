@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using PortalSaas.Abstractions.Modelos;
 using PortalSaas.Core.Comercial;
 using PortalSaas.Core.Comercial.Licenciamiento;
+using PortalSaas.Core.Tests.TestHelpers;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 using Xunit;
@@ -44,7 +45,7 @@ public class ContractLimitServiceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        return new PortalSaasDbContext(options);
+        return new PortalSaasDbContext(options, new NullOrganizationScopeProvider());
     }
 
     private static async Task<(PortalSaasDbContext Db, Organization Org, Plan Plan)> CrearOrganizacionConPlanAsync(

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 using PortalSaas.Core.Infraestructura;
+using PortalSaas.Core.Seguridad;
 using PortalSaas.Data;
 using Xunit;
 
@@ -31,7 +32,7 @@ public class MenuSyncServiceTests
     private static PortalSaasDbContext CrearContexto() => new(
         new DbContextOptionsBuilder<PortalSaasDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
+            .Options, new NullOrganizationScopeProvider());
 
     [Fact]
     public async Task SyncAsync_CreaNodosRaiz()

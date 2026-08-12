@@ -242,6 +242,7 @@ public sealed class ModuloRendiciones : IModuloPortal
         services.AddHttpClient<IRoutingService, AzureMapsRoutingService>();
         services.AddScoped<IExpenseApprovalGroupService, ExpenseApprovalGroupService>();
         services.AddScoped<IExpenseReportService, ExpenseReportService>();
+        services.AddHostedService<RendicionesReminderBackgroundService>();
         services.AddScoped<IClosingReportService, ClosingReportService>();
     }
 }

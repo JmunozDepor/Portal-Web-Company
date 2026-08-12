@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Modulo.Wms.Data;
+using Modulo.Wms.Services;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
@@ -95,5 +96,7 @@ public sealed class ModuloWms : IModuloPortal
                         $"Motor de base de datos externa no soportado: '{connection.EngineType}'.");
             }
         });
+
+        services.AddScoped<IFieldMappingService, FieldMappingService>();
     }
 }

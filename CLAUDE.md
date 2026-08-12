@@ -261,6 +261,53 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
     actualizar ese documento para reflejar el estado real en los tres, no dejarlo
     desactualizado.
 
+- **REGLA DURA (2026-08-12): todo desarrollo nuevo debe cumplir, desde el día que se
+  escribe, las condiciones mínimas de escalabilidad horizontal que dejó establecidas
+  `docs/superpowers/plans/2026-08-11-escalabilidad-horizontal.md`** — no son
+  "mejoras de rendimiento opcionales", son la base para poder correr más de una
+  instancia de `PortalSaas.Host` detrás de un balanceador sin perder datos ni
+  mezclar organizaciones. Aplica a plugins internos, plugins externos
+  (`Portal SaaS - Plugins/`), y cualquier servicio nuevo de `PortalSaas.Core`/`Host`.
+  Condiciones concretas, sin excepción:
+  - **Ningún estado de proceso mutable que un usuario necesite volver a leer
+    después** (progreso de un job, resultado intermedio, cualquier dato que otro
+    request — posiblemente contra otra instancia — vaya a consultar) puede vivir
+    solo en memoria (`ConcurrentDictionary`/campo de instancia de un `Singleton`).
+    Se persiste en `PortalSaasDbContext` (mismo patrón que
+    `GenericImportJobProgress`, Task 1 del plan) o en la cola/tabla que corresponda.
+    Un `IMemoryCache` con TTL corto e invalidación activa para catálogos de
+    lectura frecuente/escritura rara SÍ está permitido (ver `ICacheService`,
+    Task 6) — la diferencia es que ahí perder el caché de una instancia nunca
+    pierde datos, solo fuerza un recálculo.
+  - **Toda entidad nueva con `OrganizationId` directo entra al `HasQueryFilter`
+    global de `PortalSaasDbContext`** (Task 2) — agregarla ahí es parte de crear
+    la entidad, no una tarea aparte para después. Si la entidad resuelve la
+    organización solo vía `CompanyId` (patrón `CompanyId`, ver la regla dura de
+    2026-08-08 más arriba), el filtro global no aplica directo — pero el
+    filtrado manual explícito sigue siendo obligatorio en cada query.
+  - **Ningún candado (`SemaphoreSlim`/lock) que sirva a más de una organización o
+    compañía puede ser único/global** si serializa trabajo de compañías/
+    organizaciones distintas sin necesidad real — un candado compartido se
+    particiona por la clave que corresponda (`companyId`/`organizationId`),
+    mismo patrón que `SapSessionCache` (Task 3).
+  - **Cualquier procesamiento que pueda tardar más de unos segundos con datos
+    reales (archivos grandes, lotes, llamadas externas encadenadas) no bloquea
+    el hilo de request HTTP** — se encola (`Channel<T>` + `BackgroundService`,
+    mismo patrón que `GenericImportBackgroundService`, Task 7) o se mueve a un
+    `IHostedService`, nunca se espera in-line dentro de un `OnPostAsync`/
+    `OnGetAsync` si el trabajo real puede superar el orden de segundos.
+  - **Toda query nueva contra `PortalSaasDbContext` que se sepa se va a ejecutar
+    en cada request/carga de pantalla (sidebar, permisos, listados frecuentes)
+    lleva su índice desde el modelo, no después de que la tabla crezca** (Task 5)
+    — mismo criterio que la regla dura de `organization_id`: se agrega con el
+    modelo, no se posterga.
+  - Antes de dar un módulo/feature nuevo por terminado, quien lo entregue debe
+    poder responder explícitamente estas 5 preguntas (no basta con "no se me
+    ocurre nada") — si alguna respuesta es "no cumple", corregirlo es parte de
+    terminar la tarea, no un pendiente aparte a menos que se documente
+    explícitamente por qué (mismo criterio de honestidad que ya rige todo este
+    archivo: nunca fingir que se verificó lo que no se verificó).
+
 ## Pendiente de escalabilidad horizontal (fuera de alcance del plan de 2026-08-11)
 
 Cerrado en `docs/superpowers/plans/2026-08-11-escalabilidad-horizontal.md`: progreso de

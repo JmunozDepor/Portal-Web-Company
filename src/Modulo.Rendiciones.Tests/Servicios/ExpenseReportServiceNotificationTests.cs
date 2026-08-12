@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Modulo.Rendiciones.Data;
 using Modulo.Rendiciones.Models;
 using Modulo.Rendiciones.Servicios;
@@ -74,7 +75,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(approver1Id, new UserContactDto(orgId, "aprobador1@test.cl", true));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, NullLogger<ExpenseReportService>.Instance);
 
         await sut.SubmitAsync(report.Id, companyId);
 
@@ -105,7 +106,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(approver1Id, new UserContactDto(Guid.NewGuid(), "aprobador1@test.cl", false));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, NullLogger<ExpenseReportService>.Instance);
 
         await sut.SubmitAsync(report.Id, companyId);
 
@@ -135,7 +136,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(approver2Id, new UserContactDto(orgId, "aprobador2@test.cl", true));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, NullLogger<ExpenseReportService>.Instance);
 
         await sut.ApproveAsync(report.Id, companyId, approver1Id, comment: null);
 
@@ -166,7 +167,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(requesterId, new UserContactDto(orgId, "dueno@test.cl", true));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, NullLogger<ExpenseReportService>.Instance);
 
         await sut.ApproveAsync(report.Id, companyId, approver1Id, comment: null);
 
@@ -196,7 +197,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(requesterId, new UserContactDto(orgId, "dueno@test.cl", true));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, NullLogger<ExpenseReportService>.Instance);
 
         await sut.RejectAsync(report.Id, companyId, approver1Id, comment: "Falta comprobante");
 
@@ -226,7 +227,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(approver1Id, new UserContactDto(Guid.NewGuid(), "aprobador1@test.cl", true));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), new ThrowingEmailSenderService(), contacts);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), new ThrowingEmailSenderService(), contacts, NullLogger<ExpenseReportService>.Instance);
 
         await sut.SubmitAsync(report.Id, companyId);
 

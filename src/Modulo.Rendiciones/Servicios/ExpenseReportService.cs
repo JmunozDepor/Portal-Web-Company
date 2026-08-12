@@ -15,9 +15,11 @@ public sealed class ExpenseReportService : IExpenseReportService
     private readonly IAttachmentStorageService _attachments;
     private readonly IEmailSenderService _emailSender;
     private readonly IUserContactLookupService _contacts;
+    private readonly ILogger<ExpenseReportService> _logger;
 
     public ExpenseReportService(RendicionesDbContext db, IExpenseApprovalGroupService groups, IExpenseFundService funds,
-        IAttachmentStorageService attachments, IEmailSenderService emailSender, IUserContactLookupService contacts)
+        IAttachmentStorageService attachments, IEmailSenderService emailSender, IUserContactLookupService contacts,
+        ILogger<ExpenseReportService> logger)
     {
         _db = db;
         _groups = groups;
@@ -25,6 +27,7 @@ public sealed class ExpenseReportService : IExpenseReportService
         _attachments = attachments;
         _emailSender = emailSender;
         _contacts = contacts;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<ExpenseReport>> ListByUserAsync(Guid companyId, Guid userId, CancellationToken ct = default) =>
@@ -256,7 +259,7 @@ public sealed class ExpenseReportService : IExpenseReportService
         report.ResolvedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(ct);
 
-        var motivo = string.IsNullOrWhiteSpace(comment) ? "sin motivo indicado" : comment;
+        var motivo = string.IsNullOrWhiteSpace(comment) ? "sin motivo indicado" : System.Net.WebUtility.HtmlEncode(comment);
         await NotifyReportOwnerAsync(report, $"Tu informe fue rechazado. Motivo: {motivo}", ct);
     }
 
@@ -351,10 +354,11 @@ public sealed class ExpenseReportService : IExpenseReportService
         {
             await _emailSender.SendAsync(contact.OrganizationId, new EmailMessage(contact.Email, subject, htmlBody), ct);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Correo caído (ej. organización sin proveedor configurado) no debe bloquear
             // la transacción de negocio ya confirmada -- ver constraint global del plan.
+            _logger.LogWarning(ex, "No se pudo enviar la notificación por correo a {UserId} ({Email}).", userId, contact.Email);
         }
     }
 }

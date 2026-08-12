@@ -261,6 +261,24 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
     actualizar ese documento para reflejar el estado real en los tres, no dejarlo
     desactualizado.
 
+## Pendiente de escalabilidad horizontal (fuera de alcance del plan de 2026-08-11)
+
+Cerrado en `docs/superpowers/plans/2026-08-11-escalabilidad-horizontal.md`: progreso de
+importación ahora persistido en BD (no memoria de proceso), filtro global de EF Core por
+`OrganizationId`, `SapSessionCache` con semáforo por compañía. **Quedan 2 puntos reales,
+documentados a propósito, no resueltos ahí**:
+
+- **Uploads a disco local** (`Pages/Admin/PlatformModules/Import.cshtml.cs`, paquetes de
+  plugin) -- en un web farm de N instancias, un plugin subido a una instancia no está
+  disponible en las otras sin sincronización manual. Resolver cuando exista un segundo
+  ambiente real con más de una instancia IIS -- hoy sigue siendo YAGNI (un solo servidor
+  en producción real).
+- **Sin caché distribuido** -- no hay `IMemoryCache` ni Redis en el proyecto; cada
+  consulta de permisos/catálogos golpea la base directo. No es un bloqueador de
+  escalabilidad horizontal en sí (cada instancia puede consultar la misma base
+  compartida sin corromper datos), pero sí un techo de rendimiento bajo carga alta --
+  evaluar solo si un perfil de carga real lo justifica, no antes.
+
 ## Dónde está cada cosa
 
 - `ARCHITECTURE.md` — visión completa, qué se reutiliza de `PortalSAP_v2` y por qué.

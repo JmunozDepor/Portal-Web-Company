@@ -1,0 +1,760 @@
+/*
+  CSS propio de Modulo.Rendiciones -- se suma AL LADO de site.css/sidebar.css del
+  portal (nunca los reemplaza, ver _ViewStart.cshtml -> Layout del host). Regla de
+  oro: cero colores literales -- todo sale de las variables que YA define
+  src/PortalSaas.Host/wwwroot/css/site.css del portal (--card-bg/--card-border/
+  --accent/--accent-soft/--text-main/--text-muted/--bs-success/--bs-warning/
+  --bs-danger/--radius-sm/--radius-md/--shadow-card), conscientes de claro/oscuro. Un
+  plugin externo con ServesOwnWwwRoot=true nunca debería definir sus propias variables
+  de color -- solo reusar las del shell que lo hospeda.
+*/
+
+.rnd-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.rnd-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    /* Título de PÁGINA -- un nivel por encima del título de tarjeta
+       (.admin-card h2, 18px, ver más abajo). Antes sin font-size propio, caía
+       al tamaño por defecto del user-agent para <h2> -- funcionaba por
+       casualidad, no por diseño. */
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.15px;
+    color: var(--text-main);
+}
+
+.rnd-header h2 i {
+    color: var(--accent);
+}
+
+/* Fila de tarjetas KPI -- resumen antes del detalle. */
+.rnd-stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 22px;
+}
+
+.rnd-stat-tile {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-card);
+}
+
+.rnd-stat-tile .rnd-stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.rnd-stat-tile .rnd-stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.rnd-stat-tile.rnd-stat-accent .rnd-stat-value { color: var(--accent); }
+.rnd-stat-tile.rnd-stat-success .rnd-stat-value { color: var(--bs-success); }
+.rnd-stat-tile.rnd-stat-warning .rnd-stat-value { color: var(--bs-warning); }
+.rnd-stat-tile.rnd-stat-danger .rnd-stat-value { color: var(--bs-danger); }
+
+/* Badge de estado -- fondo suave (color-mix) + texto en el color plano. */
+.rnd-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+
+.rnd-badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.rnd-badge--neutral { background: color-mix(in srgb, var(--text-muted) 16%, transparent); color: var(--text-muted); }
+.rnd-badge--accent  { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.rnd-badge--success { background: color-mix(in srgb, var(--bs-success) 16%, transparent); color: var(--bs-success); }
+.rnd-badge--warning { background: color-mix(in srgb, var(--bs-warning) 18%, transparent); color: var(--bs-warning); }
+.rnd-badge--danger  { background: color-mix(in srgb, var(--bs-danger) 16%, transparent); color: var(--bs-danger); }
+
+/* Lista en tarjetas -- pantallas de uso diario (Gastos/Informes/Fondos). Las
+   pantallas de configuración/administración usan .document-list-table del portal. */
+.rnd-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.rnd-card-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    box-shadow: var(--shadow-card);
+    transition: transform .12s ease, box-shadow .12s ease;
+    text-decoration: none;
+}
+
+.rnd-card-row:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 28px 56px -30px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.rnd-card-icon {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.rnd-card-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.rnd-card-title {
+    font-weight: 600;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rnd-card-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.rnd-card-meta {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.rnd-card-amount {
+    font-weight: 700;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+    min-width: 100px;
+    text-align: right;
+}
+
+.rnd-card-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    background: var(--card-bg);
+    border: 1px dashed var(--card-border);
+    border-radius: var(--radius-md);
+}
+
+.rnd-card-empty i {
+    font-size: 28px;
+    display: block;
+    margin-bottom: 10px;
+    color: var(--accent-soft);
+}
+
+/* Editar gasto: formulario + visor de comprobante lado a lado (en vez de "Ver
+   comprobante" abriendo pestaña nueva). Solo aparece cuando el gasto ya tiene un
+   comprobante cargado -- un gasto nuevo sin adjunto muestra el formulario a ancho
+   completo. */
+.rnd-gasto-split {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.rnd-gasto-form {
+    flex: 0 0 380px;
+    min-width: 0;
+}
+
+.rnd-gasto-form .form-row {
+    grid-template-columns: 1fr;
+}
+
+.rnd-gasto-visor {
+    flex: 1 1 auto;
+    min-width: 320px;
+    position: sticky;
+    top: 16px;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.rnd-gasto-visor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--card-border);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.rnd-gasto-visor-header span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.rnd-gasto-visor-header a {
+    color: var(--text-muted);
+}
+
+.rnd-gasto-visor-header a:hover {
+    color: var(--accent);
+}
+
+.rnd-gasto-visor iframe {
+    width: 100%;
+    height: calc(100vh - 160px);
+    min-height: 480px;
+    border: 0;
+    display: block;
+}
+
+/* Solo colapsa a columna en mobile real -- formulario + visor lado a lado, fijo a la
+   derecha, en cualquier ventana de escritorio. */
+@media (max-width: 640px) {
+    .rnd-gasto-split {
+        flex-direction: column;
+    }
+
+    .rnd-gasto-visor {
+        position: static;
+        width: 100%;
+    }
+}
+
+/* Consumo de servicios externos (Azure Maps / Document Intelligence) -- una tarjeta
+   por servicio con barra de progreso. */
+.rnd-consumo-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Sin borde propio, mismo criterio que .admin-subcard más arriba -- también vive
+   siempre anidada dentro de .card-ps.admin-card. Fondo pasa de --card-bg (idéntico
+   al de la tarjeta que la contiene, sin ningún contraste real) a --bs-body-bg
+   (el de la página) para que la separación se lea por color, no por una segunda
+   línea de borde redundante. */
+.rnd-consumo-tile {
+    background: var(--bs-body-bg);
+    border-radius: var(--radius-md);
+    padding: 16px 18px;
+}
+
+.rnd-consumo-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.rnd-consumo-nombre {
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.rnd-consumo-cifras {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.rnd-progreso {
+    height: 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+    overflow: hidden;
+}
+
+.rnd-progreso-relleno {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.2s ease;
+}
+
+.rnd-consumo-tile.rnd-consumo-warning .rnd-progreso-relleno { background: var(--bs-warning); }
+.rnd-consumo-tile.rnd-consumo-warning .rnd-consumo-cifras { color: var(--bs-warning); }
+
+.rnd-consumo-tile.rnd-consumo-danger .rnd-progreso-relleno { background: var(--bs-danger); }
+.rnd-consumo-tile.rnd-consumo-danger .rnd-consumo-cifras { color: var(--bs-danger); }
+
+.rnd-consumo-mensaje {
+    margin: 8px 0 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--bs-danger);
+}
+
+/*
+  ================================================================================
+  Diseño visual portado 1:1 de theme.css del original (PortalSAP_v2) -- pedido
+  explícito del dueño del proyecto: "el plugin debe quedar con el mismo diseño
+  visual". Mismos selectores, mismos valores de layout/spacing/tipografía que el
+  original -- SOLO cambian los nombres de variable de color, mapeados a las que ya
+  define site.css de este portal (nunca duplicadas, nunca un valor literal nuevo):
+
+    original theme.css   ->  site.css de este portal
+    --page-bg             ->  --bs-body-bg
+    --success              ->  --bs-success
+    --danger                ->  --bs-danger
+    --warning                ->  --bs-warning
+    --card-bg/--card-border/--text-main/--text-muted/--accent/--accent-2/
+    --input-bg/--radius-sm/--radius-md/--shadow-card ya existen igual en site.css,
+    sin traducción de nombre.
+
+  Iconos: el original usa FontAwesome (Font Awesome 6 Free); este portal decidió
+  Bootstrap Icons para TODOS los plugins (ver CLAUDE.md "Sidebar dinámico") -- se
+  mantuvo esa decisión acá también (Bootstrap Icons ya vendored, agregar FontAwesome
+  solo para este plugin habría creado dos sistemas de íconos conviviendo en el mismo
+  portal). El resto del lenguaje visual (tarjetas, tablas, botones, formularios,
+  maestro-detalle) es el mismo, selector por selector.
+  ================================================================================
+*/
+
+.card-ps {
+    position: relative;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+}
+
+/* Costura de marca -- elemento de firma reusado del portal (mismo degradado que
+   .login-brand-panel/.sidebar/.doc-form del Host, ver DESIGN.md). Definida acá,
+   localmente, en vez de heredar .doc-form::before del Host -- este plugin declara
+   ServesOwnWwwRoot=true a propósito y no depende de clases que solo existen en
+   site.css del portal (regla de aislamiento documentada arriba en este archivo);
+   --accent/--accent-2/--radius-md sí son variables de tema compartidas, esas se
+   reusan sin problema. .card-ps es el contenedor raíz de TODA pantalla de este
+   plugin (admin-card lo combina siempre en el markup) -- una sola regla alcanza a
+   las 11 pantallas de formulario/configuración sin tocar cada .cshtml. */
+.card-ps::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.admin-card {
+    padding: 24px;
+}
+
+/* Jerarquía deliberada de 4 niveles dentro de una pantalla de este plugin --
+   antes .admin-card h2 no fijaba font-weight/letter-spacing (heredaba el bold
+   por defecto del navegador, sin relación con la escala tipográfica del resto
+   del portal) y .rnd-header h2 (título de página) no tenía NINGÚN font-size
+   propio, quedando al tamaño por defecto del user-agent para <h2> -- dos
+   títulos de jerarquía distinta (título de página vs. título de tarjeta)
+   podían terminar con el mismo tamaño visual según el navegador. Escala
+   explícita, mayor a menor: título de página (rnd-header h2, 20px) > título de
+   tarjeta (admin-card h2, 18px) > título de subtarjeta (h3, 14px) > etiqueta de
+   sección (admin-subtitulo, 11.5px mayúsculas, ya existía). */
+.admin-card h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.1px;
+    color: var(--text-main);
+}
+
+.admin-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    color: var(--text-main);
+}
+
+.admin-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.admin-sep {
+    border: none;
+    border-top: 1px solid var(--card-border);
+    margin: 18px 0;
+}
+
+/* Sin borde propio -- vive SIEMPRE anidada dentro de .card-ps.admin-card (que ya
+   tiene su propio borde), un segundo borde ahí adentro era un rectángulo dentro
+   de otro rectángulo sin necesidad (limpieza pedida en la auditoría visual,
+   mismo criterio ya aplicado a .menu-perfil-panel del portal). El fondo
+   --bs-body-bg (el de la página, no el de una tarjeta) ya la distingue de
+   .admin-card (--card-bg) con solo el contraste de color -- no hace falta
+   además una línea. */
+.admin-subcard {
+    background: var(--bs-body-bg);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    margin-bottom: 20px;
+}
+
+.admin-subcard:last-child {
+    margin-bottom: 0;
+}
+
+.admin-subcard .admin-table {
+    background: var(--card-bg);
+}
+
+.admin-muted {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.admin-alert {
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+}
+
+.admin-alert-success {
+    color: var(--bs-success);
+    background: color-mix(in srgb, var(--bs-success) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--bs-success) 35%, transparent);
+}
+
+.admin-alert-danger {
+    color: var(--bs-danger);
+    background: color-mix(in srgb, var(--bs-danger) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--bs-danger) 35%, transparent);
+}
+
+.admin-alert-warning {
+    color: var(--bs-warning);
+    background: color-mix(in srgb, var(--bs-warning) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--bs-warning) 35%, transparent);
+    font-weight: 400;
+}
+
+.admin-subtitulo {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin: 16px 0 8px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.admin-table th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--card-border);
+    padding: 8px 10px;
+}
+
+.admin-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.admin-table tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-table tr.admin-fila-inactiva td {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.admin-table th.admin-col-accion,
+.admin-table td.admin-col-accion {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.admin-form-asignar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 8px;
+}
+
+.admin-form-asignar .form-group {
+    margin-bottom: 0;
+}
+
+.admin-form-asignar button {
+    white-space: nowrap;
+}
+
+.form-row-check {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+}
+
+.form-row-check label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 400;
+    text-transform: none;
+    color: var(--text-main);
+}
+
+.admin-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-row-actions form {
+    margin: 0;
+}
+
+.btn-module-danger {
+    color: var(--bs-danger);
+    border-color: color-mix(in srgb, var(--bs-danger) 55%, transparent);
+}
+
+.btn-module-danger:hover {
+    background: color-mix(in srgb, var(--bs-danger) 12%, transparent);
+}
+
+.admin-master-detail {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.admin-master-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.admin-master-list a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.admin-master-list a:hover {
+    background: var(--input-bg);
+}
+
+.admin-master-list a.admin-master-activo {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.admin-master-nuevo {
+    margin-top: 12px;
+}
+
+/*
+  Formulario/tabla propios de este plugin (.form-row/.form-group/.form-control/
+  .btn-erp-primary/.btn-module-action) -- MISMOS selectores que ya existen en
+  site.css de este portal para los 3 motores genéricos de documento (Venta/Compra/
+  Inventario), pero definidos acá de nuevo, deliberadamente: ese CSS del portal es
+  para el shell/Host, un plugin externo con ServesOwnWwwRoot=true no debe depender
+  de clases que solo existen ahí (regla de aislamiento del plugin) -- se define la
+  MISMA apariencia acá, localmente, apoyada en las mismas variables de color.
+*/
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-control {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+    border-radius: var(--radius-sm);
+    padding: 11px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent-soft);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+select.form-control {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+    background-position: calc(100% - 18px) center, calc(100% - 13px) center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 34px;
+}
+
+.btn-erp-primary {
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-erp-primary:hover {
+    background: var(--accent-2);
+    color: #ffffff;
+}
+
+.btn-erp-primary:disabled {
+    background: var(--accent);
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-module-action {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.btn-module-action:hover {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Igual criterio que el original: el <div asp-validation-summary> SIEMPRE renderiza
+   un <ul><li> aunque no haya errores -- se oculta por el atributo que agrega la
+   librería de validación no intrusiva de ASP.NET (data-valmsg-summary), NUNCA por
+   clase "text-danger" a secas (eso ocultaría también los <span asp-validation-for>
+   de campo individual, que sí deben poder mostrarse). */
+div[data-valmsg-summary] {
+    display: none;
+}
+
+div[data-valmsg-summary].validation-summary-errors {
+    display: block;
+    color: var(--bs-danger);
+    font-size: 12.5px;
+    background: color-mix(in srgb, var(--bs-danger) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--bs-danger) 35%, transparent);
+    border-radius: var(--radius-sm);
+    padding: 9px 11px;
+    margin: -6px 0 16px;
+}
+
+div[data-valmsg-summary].validation-summary-errors ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+/* Mensaje de campo individual (<span asp-validation-for>) -- texto chico en línea,
+   sin caja, distinto del resumen (que sí lleva caja/fondo, ver arriba). No existía
+   en el original (esas páginas no usaban validación por campo, solo resumen) --
+   agregado acá porque este plugin sí la usa en varias páginas (Gastos/Detalle,
+   Informes) y necesita algún tratamiento visual, mismo color semántico. */
+span.field-validation-error {
+    display: block;
+    color: var(--bs-danger);
+    font-size: 11.5px;
+    margin-top: 4px;
+}

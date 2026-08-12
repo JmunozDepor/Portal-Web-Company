@@ -1,0 +1,96 @@
+@page "/rendiciones/configuracion/politicas-gasto"
+@model Modulo.Rendiciones.Pages.Configuracion.PoliticasGasto.IndexModel
+@{
+    ViewData["Title"] = "Políticas de gasto";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Políticas de gasto</h2>
+    </div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+}
+
+<p class="admin-muted">
+    Tope de monto por categoría. "Bloqueante" impide guardar el gasto si lo supera;
+    si no, solo se muestra una advertencia y se guarda igual. La detección de
+    posibles duplicados (mismo número de documento + proveedor repetido) corre
+    siempre, para cualquier categoría, y no se configura acá.
+</p>
+
+<table class="admin-table">
+    <thead><tr><th>Tipo de gasto</th><th>Monto máximo</th><th>Bloqueante</th><th>Activo</th><th class="admin-col-accion"></th></tr></thead>
+    <tbody>
+        @foreach (var p in Model.Policies)
+        {
+            <tr class="@(p.IsActive ? "" : "admin-fila-inactiva")">
+                <td>@(p.ExpenseType?.Name ?? "—")</td>
+                <td><input type="number" step="0.01" name="montoMaximo" value="@p.MaxAmount" class="form-control" placeholder="Sin tope" form="pol-@p.Id" /></td>
+                <td><input type="checkbox" name="esBloqueante" value="true" checked="@p.IsBlocking" form="pol-@p.Id" /></td>
+                <td>
+                    <input type="hidden" name="activo" value="@p.IsActive" form="pol-@p.Id" />
+                    @(p.IsActive ? "Sí" : "No")
+                </td>
+                <td class="admin-col-accion">
+                    <div class="admin-row-actions">
+                        <button type="submit" class="btn-module-action" form="pol-@p.Id">Guardar</button>
+                        <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@p.Id" method="post" style="display:inline-block;"
+                              onsubmit="return confirm('¿Eliminar esta política?');">
+                            <button type="submit" class="btn-module-action btn-module-danger">Eliminar</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (Model.Policies.Count == 0)
+        {
+            <tr><td colspan="5" class="admin-muted">Sin políticas configuradas todavía.</td></tr>
+        }
+    </tbody>
+</table>
+
+@foreach (var p in Model.Policies)
+{
+    <form id="pol-@p.Id" asp-page="./Index" asp-page-handler="Guardar" asp-route-id="@p.Id"></form>
+}
+
+<span class="admin-subtitulo">Nueva política</span>
+@if (Model.ExpenseTypesWithoutPolicy.Count == 0)
+{
+    <p class="admin-muted">Todos los tipos de gasto activos ya tienen una política.</p>
+}
+else
+{
+    <form method="post" asp-page-handler="Crear" class="admin-form-asignar">
+        <div asp-validation-summary="All" class="text-danger" style="grid-column:1/-1;"></div>
+        <div class="form-group">
+            <label asp-for="New.ExpenseTypeId">Tipo de gasto</label>
+            <select asp-for="New.ExpenseTypeId" class="form-control">
+                <option value="">-- Seleccionar --</option>
+                @foreach (var t in Model.ExpenseTypesWithoutPolicy)
+                {
+                    <option value="@t.Id">@t.Name</option>
+                }
+            </select>
+        </div>
+        <div class="form-group">
+            <label asp-for="New.MaxAmount">Monto máximo</label>
+            <input asp-for="New.MaxAmount" class="form-control" placeholder="Sin tope" />
+        </div>
+        <div class="form-group form-row-check">
+            <label><input asp-for="New.IsBlocking" type="checkbox" /> Bloqueante</label>
+        </div>
+        <button type="submit" class="btn-erp-primary">Crear</button>
+    </form>
+}
+</div>

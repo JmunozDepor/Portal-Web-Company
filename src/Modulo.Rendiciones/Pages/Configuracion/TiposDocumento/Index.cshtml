@@ -1,0 +1,85 @@
+@page "/rendiciones/configuracion/tipos-documento"
+@model Modulo.Rendiciones.Pages.Configuracion.TiposDocumento.IndexModel
+@{
+    ViewData["Title"] = "Tipos de documento";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Tipos de documento</h2>
+    </div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+}
+
+<table class="admin-table">
+    <thead><tr><th>Nombre</th><th>Aplica IVA</th><th>% IVA</th><th>Activo</th><th class="admin-col-accion"></th></tr></thead>
+    <tbody>
+        @foreach (var t in Model.Types)
+        {
+            var formId = $"tipo-{t.Id}";
+            <tr class="@(t.IsActive ? "" : "admin-fila-inactiva")">
+                <td><input type="text" name="nombre" value="@t.Name" class="form-control" form="@formId" /></td>
+                <td><input type="checkbox" name="aplicaIva" value="true" checked="@t.AppliesTax" form="@formId" /></td>
+                <td><input type="number" step="0.01" name="porcentajeIva" value="@t.TaxPercentage" class="form-control" form="@formId" /></td>
+                <td>
+                    <input type="hidden" name="activo" value="@t.IsActive" form="@formId" />
+                    @(t.IsActive ? "Sí" : "No")
+                </td>
+                <td class="admin-col-accion">
+                    <div class="admin-row-actions">
+                        <button type="submit" class="btn-module-action" form="@formId">Guardar</button>
+                        @if (t.IsActive)
+                        {
+                            <form asp-page="./Index" asp-page-handler="Desactivar" asp-route-id="@t.Id" asp-route-nombre="@t.Name" asp-route-aplicaIva="@t.AppliesTax" asp-route-porcentajeIva="@t.TaxPercentage" method="post" style="display:inline-block;">
+                                <button type="submit" class="btn-module-action btn-module-danger">Desactivar</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-page="./Index" asp-page-handler="Activar" asp-route-id="@t.Id" asp-route-nombre="@t.Name" asp-route-aplicaIva="@t.AppliesTax" asp-route-porcentajeIva="@t.TaxPercentage" method="post" style="display:inline-block;">
+                                <button type="submit" class="btn-module-action">Activar</button>
+                            </form>
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (Model.Types.Count == 0)
+        {
+            <tr><td colspan="5" class="admin-muted">Sin tipos de documento todavía.</td></tr>
+        }
+    </tbody>
+</table>
+
+@foreach (var t in Model.Types)
+{
+    <form id="tipo-@t.Id" asp-page="./Index" asp-page-handler="Guardar" asp-route-id="@t.Id"></form>
+}
+
+<span class="admin-subtitulo">Nuevo tipo de documento</span>
+<form method="post" asp-page-handler="Crear" class="admin-form-asignar">
+    <div asp-validation-summary="All" class="text-danger" style="grid-column:1/-1;"></div>
+    <div class="form-group">
+        <label asp-for="New.Name">Nombre</label>
+        <input asp-for="New.Name" class="form-control" placeholder="Ej. Boleta, Factura..." />
+    </div>
+    <div class="form-group form-row-check">
+        <label><input asp-for="New.AppliesTax" type="checkbox" /> Aplica IVA</label>
+    </div>
+    <div class="form-group">
+        <label asp-for="New.TaxPercentage">% IVA</label>
+        <input asp-for="New.TaxPercentage" class="form-control" />
+    </div>
+    <button type="submit" class="btn-erp-primary">Crear</button>
+</form>
+</div>

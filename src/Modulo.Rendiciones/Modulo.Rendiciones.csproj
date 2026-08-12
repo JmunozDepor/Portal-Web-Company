@@ -24,20 +24,26 @@
          referencia SOLO PortalSaas.Abstractions. Nunca PortalSaas.Core ni PortalSaas.Host.
 
          TEMPORAL: esto es una ProjectReference relativa cruzando repos (asume que este
-         repo y "Proyecto Saas Portal" viven como carpetas hermanas bajo C:\PROYECTOS).
-         Reemplazar por un PackageReference a un paquete NuGet versionado de
-         PortalSaas.Abstractions apenas ese paquete exista: una ProjectReference entre
-         repos separados rompe la premisa de "build realmente independiente" que motivó
-         extraer este módulo como plugin externo. Ver docs/09-GUIA-DESARROLLO-PLUGINS.md
-         §1 del portal para el detalle. -->
-    <ProjectReference Include="..\..\..\Proyecto Saas Portal\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+         repo y "Portal SaaS - Core" viven como carpetas hermanas bajo
+         "Proyecto Portal Web-Company"). Reemplazar por un PackageReference a un paquete
+         NuGet versionado de PortalSaas.Abstractions apenas ese paquete exista: una
+         ProjectReference entre repos separados rompe la premisa de "build realmente
+         independiente" que motivó extraer este módulo como plugin externo. Ver
+         docs/09-GUIA-DESARROLLO-PLUGINS.md §1 del portal para el detalle. -->
+    <ProjectReference Include="..\..\..\..\Portal SaaS - Core\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Base de datos propia del módulo (SQL Server, ajena al SAP de la organización),
-         resuelta self-service vía el contrato de conexión externa de la plataforma:
-         ver PENDIENTE.md, ese contrato todavía no existe en PortalSaas.Abstractions. -->
+    <!-- Base de datos propia del módulo, motor dual (Postgres/SQL Server), resuelta
+         self-service vía IExternalDatabaseConnectionService (PortalSaas.Abstractions),
+         que decide en
+         runtime cuál de los dos proveedores de EF Core usar según lo que la
+         organización tenga configurado. REGLA para cualquier plugin de esta
+         plataforma (ver docs/09-GUIA-DESARROLLO-PLUGINS.md §1/§6 del portal): un
+         plugin con base propia NUNCA asume un solo motor: referencia los DOS
+         proveedores y elige en runtime, nunca en tiempo de compilación. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
     <!-- OCR de comprobantes (fase de servicios, no portado todavía): endpoint/clave se
          leen de configuración en runtime, nunca en appsettings.json en texto plano. -->
     <PackageReference Include="Azure.AI.DocumentIntelligence" Version="1.0.0" />

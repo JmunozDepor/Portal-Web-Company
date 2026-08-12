@@ -1,4 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Modulo.Rendiciones.Data;
+using Modulo.Rendiciones.Servicios;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
@@ -165,45 +168,80 @@ public sealed class ModuloRendiciones : IModuloPortal
 
         yield return new MenuItemDefinition
         {
+            Code = "config-proveedores",
+            ParentCode = "grupo-administrador",
+            Name = "Proveedores de Servicios Externos",
+            PageRoute = "/rendiciones/configuracion/proveedores",
+            Order = 7,
+        };
+
+        yield return new MenuItemDefinition
+        {
             Code = "config-consumo-servicios",
             ParentCode = "grupo-administrador",
             Name = "Consumo de Servicios Externos",
             PageRoute = "/rendiciones/configuracion/consumo-servicios",
-            Order = 7,
+            Order = 8,
         };
     }
 
     public void RegisterServices(IServiceCollection services)
     {
-        // TODO (fase de servicios, ver PENDIENTE.md): registrar RendicionesDbContext
-        // resolviendo su connection string vía el contrato de conexión externa de la
-        // plataforma (equivalente a ISqlServerService.ResolverConnectionStringAsync del
-        // original, que hoy NO existe en PortalSaas.Abstractions -- hueco documentado
-        // en PENDIENTE.md, prerrequisito antes de que este método compile de verdad
-        // contra un DbContext funcional). Ejemplo del patrón esperado (comentado, no
-        // ejecutable todavía):
-        //
-        // services.AddDbContext<RendicionesDbContext>((sp, options) =>
-        // {
-        //     var companyAccessor = sp.GetRequiredService<ICurrentCompanyAccessor>();
-        //     var externalDb = sp.GetRequiredService<IExternalSqlServerService>(); // TODO: no existe aún
-        //     var connectionString = externalDb
-        //         .ResolveConnectionStringAsync(ModuleCode, companyAccessor.CompanyId)
-        //         .GetAwaiter().GetResult();
-        //     options.UseSqlServer(connectionString);
-        // });
-        //
-        // services.AddScoped<IExpenseFundService, ExpenseFundService>();
-        // services.AddScoped<IExpenseTypeService, ExpenseTypeService>();
-        // services.AddScoped<IDocumentTypeService, DocumentTypeService>();
-        // services.AddScoped<IUserCostCenterService, UserCostCenterService>();
-        // services.AddScoped<IAttachmentStorageService, AttachmentStorageService>();
-        // services.AddScoped<IExpensePolicyService, ExpensePolicyService>();
-        // services.AddScoped<IExpenseService, ExpenseService>();
-        // services.AddScoped<IReceiptExtractorService, AzureDocumentIntelligenceExtractorService>();
-        // services.AddHttpClient<IRoutingService, AzureMapsRoutingService>();
-        // services.AddScoped<IExpenseApprovalGroupService, ExpenseApprovalGroupService>();
-        // services.AddScoped<IExpenseReportService, ExpenseReportService>();
-        // services.AddScoped<IClosingReportService, ClosingReportService>();
+        // RendicionesDbContext resuelto self-service vía IExternalDatabaseConnectionService
+        // (PortalSaas.Abstractions) -- motor dual, se decide EN RUNTIME cuál proveedor de
+        // EF Core usar según lo que la Company tenga configurado
+        // (ModuleExternalConnection.EngineType), nunca fijo en el código del plugin.
+        // CompanyId SIEMPRE obligatorio -- regla dura del proyecto: todo plugin
+        // personaliza su persistencia por Company, sin fallback a nivel Organization (ver
+        // IExternalDatabaseConnectionService). Si el usuario todavía no eligió Company en
+        // esta sesión (ICurrentCompanyAccessor.HasCompany false), este plugin no puede
+        // operar todavía -- se rechaza acá con un mensaje claro en vez de degradar
+        // silenciosamente a un alcance más amplio.
+        services.AddDbContext<RendicionesDbContext>((sp, options) =>
+        {
+            var companyAccessor = sp.GetRequiredService<ICurrentCompanyAccessor>();
+            var externalDb = sp.GetRequiredService<IExternalDatabaseConnectionService>();
+
+            if (!companyAccessor.HasCompany)
+            {
+                throw new InvalidOperationException(
+                    "Modulo.Rendiciones requiere una compañía activa en la sesión -- seleccioná una compañía antes de continuar.");
+            }
+
+            var connection = externalDb
+                .ResolveConnectionAsync(ModuleCode, companyAccessor.CompanyId)
+                .GetAwaiter().GetResult();
+
+            switch (connection.EngineType)
+            {
+                case ExternalDatabaseEngineType.Postgres:
+                    options.UseNpgsql(connection.ConnectionString);
+                    break;
+                case ExternalDatabaseEngineType.SqlServer:
+                    options.UseSqlServer(connection.ConnectionString);
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"Motor de base de datos externa no soportado: '{connection.EngineType}'.");
+            }
+        });
+
+        services.AddScoped<IExternalServiceProviderService, ExternalServiceProviderService>();
+        services.AddScoped<IExternalServiceUsageService, ExternalServiceUsageService>();
+        services.AddScoped<IExternalServiceProviderSelector, ExternalServiceProviderSelector>();
+        services.AddScoped<IExpenseFundService, ExpenseFundService>();
+        services.AddScoped<IExpenseTypeService, ExpenseTypeService>();
+        services.AddScoped<IDocumentTypeService, DocumentTypeService>();
+        services.AddScoped<IUserCostCenterService, UserCostCenterService>();
+        services.AddScoped<IAttachmentStorageService, AttachmentStorageService>();
+        services.AddScoped<IExpensePolicyService, ExpensePolicyService>();
+        services.AddScoped<IExpenseService, ExpenseService>();
+        services.AddScoped<IReceiptExtractorService, AzureDocumentIntelligenceExtractorService>();
+        // Typed client -- IRoutingService se resuelve con un HttpClient propio manejado
+        // por HttpClientFactory (pooling de sockets), no un "new HttpClient()" a mano.
+        services.AddHttpClient<IRoutingService, AzureMapsRoutingService>();
+        services.AddScoped<IExpenseApprovalGroupService, ExpenseApprovalGroupService>();
+        services.AddScoped<IExpenseReportService, ExpenseReportService>();
+        services.AddScoped<IClosingReportService, ClosingReportService>();
     }
 }

@@ -1,0 +1,92 @@
+@page "/rendiciones/gastos/importar"
+@model Modulo.Rendiciones.Pages.Gastos.ImportarModel
+@{
+    ViewData["Title"] = "Importar gastos (OCR)";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="rnd-header">
+    <h2><i class="bi bi-camera"></i> Importar con OCR</h2>
+    <a asp-page="./Index" class="btn-module-action">Volver a Mis Gastos</a>
+</div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="admin-subcard">
+    <p class="admin-muted">
+        Subí hasta 5 comprobantes (PDF o foto) y el sistema intenta leer monto, fecha, IVA,
+        proveedor, RUT y folio automáticamente. Después completás la categoría de cada uno
+        en "Mis Gastos" -- el OCR no puede adivinar eso, es una clasificación propia del portal.
+    </p>
+    <form method="post" enctype="multipart/form-data" id="rnd-form-importar-ocr" asp-antiforgery="true">
+        <div class="form-group">
+            <label for="archivos-input">Comprobantes (máx. 5)</label>
+            <input id="archivos-input" type="file" name="Archivos" class="form-control"
+                   accept="image/*,application/pdf" capture="environment" multiple />
+        </div>
+        <button type="submit" class="btn-erp-primary" id="rnd-btn-procesar-ocr">Procesar con OCR</button>
+        <span id="rnd-procesando-ocr" class="admin-muted" style="display:none;">Procesando comprobantes, puede demorar unos segundos por archivo...</span>
+    </form>
+</div>
+
+<script>
+    (function () {
+        var form = document.getElementById('rnd-form-importar-ocr');
+        var boton = document.getElementById('rnd-btn-procesar-ocr');
+        var aviso = document.getElementById('rnd-procesando-ocr');
+        var enviando = false;
+
+        form.addEventListener('submit', function (e) {
+            if (enviando) {
+                e.preventDefault();
+                return;
+            }
+            enviando = true;
+            boton.disabled = true;
+            boton.textContent = 'Procesando...';
+            aviso.style.display = '';
+        });
+    })();
+</script>
+
+@if (Model.Results.Count > 0)
+{
+    <div class="rnd-card-list" style="margin-top:20px;">
+        @foreach (var r in Model.Results)
+        {
+            <a asp-page="./Detalle" asp-route-id="@r.ExpenseId" class="rnd-card-row">
+                <div class="rnd-card-icon"><i class="bi bi-receipt"></i></div>
+                <div class="rnd-card-main">
+                    <div class="rnd-card-title">@r.FileName</div>
+                    <div class="rnd-card-sub">
+                        @if (r.Extracted.Error is not null)
+                        {
+                            <span>@r.Extracted.Error</span>
+                        }
+                        else
+                        {
+                            <span>@(r.Extracted.SupplierName ?? "Proveedor no detectado") · Falta elegir categoría</span>
+                        }
+                    </div>
+                </div>
+                <div class="rnd-card-meta">
+                    @if (r.Warnings.Count > 0)
+                    {
+                        <span class="rnd-badge rnd-badge--warning" title="@string.Join(" ", r.Warnings)">Posible duplicado</span>
+                    }
+                    <span class="rnd-badge rnd-badge--neutral">Revisar</span>
+                    <span class="rnd-card-amount">@(r.Extracted.Amount?.ToString("N2") ?? "—")</span>
+                </div>
+            </a>
+        }
+    </div>
+}

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Proyecto de solo herramientas: nunca se referencia desde el plugin en
+         runtime. Separado del proyecto del plugin (que referencia los dos
+         proveedores para elegir en runtime) porque dotnet ef necesita un
+         ModelSnapshot único por ensamblado: dos proveedores en el mismo ensamblado
+         de migraciones generan snapshots ambiguos (bug real encontrado al intentar
+         hacerlo en un solo proyecto: ver PENDIENTE.md). Mismo patrón que
+         PortalSaas.Data.Migrations.PostgreSql/SqlServer del portal. -->
+    <ProjectReference Include="..\Modulo.Rendiciones\Modulo.Rendiciones.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

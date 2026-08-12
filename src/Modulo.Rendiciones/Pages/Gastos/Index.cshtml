@@ -1,0 +1,66 @@
+@page "/rendiciones/gastos"
+@model Modulo.Rendiciones.Pages.Gastos.IndexModel
+@using Modulo.Rendiciones.Pages
+@{
+    ViewData["Title"] = "Mis Gastos";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="rnd-header">
+    <h2><i class="bi bi-receipt"></i> Mis Gastos</h2>
+    <div class="admin-row-actions">
+        <a asp-page="./Importar" class="btn-module-action"><i class="bi bi-camera"></i> Importar con OCR</a>
+        <a asp-page="./Detalle" class="btn-erp-primary">+ Crear gasto</a>
+    </div>
+</div>
+
+<div class="rnd-stat-row">
+    <div class="rnd-stat-tile rnd-stat-accent">
+        <span class="rnd-stat-label">Sueltos</span>
+        <span class="rnd-stat-value">@Model.Expenses.Count(g => g.Status == "Loose")</span>
+    </div>
+    <div class="rnd-stat-tile">
+        <span class="rnd-stat-label">En informes</span>
+        <span class="rnd-stat-value">@Model.Expenses.Count(g => g.Status != "Loose")</span>
+    </div>
+    <div class="rnd-stat-tile rnd-stat-success">
+        <span class="rnd-stat-label">Total registrado</span>
+        <span class="rnd-stat-value">@Model.Expenses.Sum(g => g.Amount).ToString("N0")</span>
+    </div>
+</div>
+
+@if (Model.Expenses.Count == 0)
+{
+    <div class="rnd-card-empty">
+        <i class="bi bi-receipt"></i>
+        Todavía no registraste ningún gasto -- probá con "+ Crear gasto".
+    </div>
+}
+else
+{
+    <div class="rnd-card-list">
+        @foreach (var g in Model.Expenses)
+        {
+            var status = Modulo.Rendiciones.Pages.Gastos.IndexModel.StatusToShow(g);
+            <a href="@(g.Status == "Loose" ? Url.Page("./Detalle", new { id = g.Id }) : Url.Page("/Informes/Detalle", new { id = g.ExpenseReportId }))" class="rnd-card-row">
+                <div class="rnd-card-icon"><i class="bi @RendicionesUi.CategoryIcon(g.ExpenseType?.Name)"></i></div>
+                <div class="rnd-card-main">
+                    <div class="rnd-card-title">@(g.SupplierName ?? g.ExpenseType?.Name ?? "Gasto")</div>
+                    <div class="rnd-card-sub">
+                        @g.Date.ToString("dd-MM-yyyy") · @(g.ExpenseType?.Name ?? "—")
+                        @if (g.ExpenseReceiptId is not null)
+                        {
+                            <i class="bi bi-paperclip" title="Tiene comprobante"></i>
+                        }
+                    </div>
+                </div>
+                <div class="rnd-card-meta">
+                    <span class="rnd-badge @RendicionesUi.BadgeClass(status)">@status</span>
+                    <span class="rnd-card-amount">@g.Currency @g.Amount.ToString("N2")</span>
+                </div>
+            </a>
+        }
+    </div>
+}

@@ -1,0 +1,53 @@
+@page "/rendiciones/configuracion/consumo-servicios"
+@model Modulo.Rendiciones.Pages.Configuracion.ConsumoServicios.IndexModel
+@{
+    ViewData["Title"] = "Consumo de servicios externos";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Consumo de servicios externos</h2>
+        <a asp-page="/Configuracion/Proveedores/Index" class="btn-module-action">Administrar proveedores</a>
+    </div>
+
+<p class="admin-muted">
+    Uso del mes actual de cada proveedor configurado (podés tener más de una cuenta por
+    servicio, ver "Administrar proveedores"). Al llegar al límite de una cuenta, el
+    servicio pasa automáticamente a la siguiente por prioridad -- solo cuando TODAS
+    las cuentas de un mismo servicio están al límite se deshabilita esa funcionalidad
+    hasta el próximo mes (no se cobra de más ni se corta el resto del módulo).
+</p>
+
+<div class="rnd-consumo-lista">
+    @foreach (var c in Model.Usages)
+    {
+        var estado = c.LimitReached ? "rnd-consumo-danger" : c.PercentageUsed >= 80 ? "rnd-consumo-warning" : "";
+        <div class="rnd-consumo-tile @estado">
+            <div class="rnd-consumo-header">
+                <span class="rnd-consumo-nombre">
+                    @Model.DisplayName(c.ServiceType) — @c.ProviderName
+                    @if (!c.IsActive)
+                    {
+                        <span class="admin-muted">(inactivo)</span>
+                    }
+                </span>
+                <span class="rnd-consumo-cifras">@c.Used.ToString("N0") / @c.MonthlyLimit.ToString("N0") @Model.DisplayUnit(c.ServiceType)</span>
+            </div>
+            <div class="rnd-progreso">
+                <div class="rnd-progreso-relleno" style="width:@(Math.Round(c.PercentageUsed, 1).ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div>
+            </div>
+            @if (c.LimitReached)
+            {
+                <p class="rnd-consumo-mensaje">Límite alcanzado -- este proveedor queda deshabilitado hasta el próximo mes.</p>
+            }
+        </div>
+    }
+    @if (Model.Usages.Count == 0)
+    {
+        <p class="admin-muted">No hay proveedores configurados todavía -- agregá uno en "Administrar proveedores".</p>
+    }
+</div>
+</div>

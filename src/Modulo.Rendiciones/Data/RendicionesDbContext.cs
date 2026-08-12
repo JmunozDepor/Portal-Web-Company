@@ -4,11 +4,13 @@ using Modulo.Rendiciones.Models;
 namespace Modulo.Rendiciones.Data;
 
 /// <summary>
-/// Base de datos propia del módulo (SQL Server, ajena al SAP de la organización),
-/// resuelta self-service vía el contrato de conexión externa de la plataforma (ver
-/// PENDIENTE.md -- ISqlServerService/equivalente todavía no existe en
-/// PortalSaas.Abstractions, hueco pendiente antes de que este DbContext se pueda
-/// registrar de verdad en ModuloRendiciones.RegisterServices).
+/// Base de datos propia del módulo, ajena al SAP de la organización, resuelta
+/// self-service vía IExternalDatabaseConnectionService (PortalSaas.Abstractions) --
+/// registrada en ModuloRendiciones.RegisterServices, que decide en runtime si usa
+/// UseNpgsql o UseSqlServer según lo que devuelva ese servicio (ver
+/// ExternalDatabaseConnection.EngineType). MOTOR DUAL: nunca asumir un proveedor fijo
+/// acá -- por eso ninguna columna usa HasColumnType con un tipo SQL específico de un
+/// solo motor (ver HasPrecision en vez de HasColumnType("decimal(...)") más abajo).
 ///
 /// Nombres de tabla/columna siguen la convención obligatoria de la plataforma
 /// (docs/01-CONVENCION-NOMBRES-BD.md) aunque esta base sea propia del plugin: inglés,
@@ -34,6 +36,8 @@ public class RendicionesDbContext : DbContext
     public DbSet<ExpenseApprovalGroup> ExpenseApprovalGroups => Set<ExpenseApprovalGroup>();
     public DbSet<ExpenseApprovalGroupLevel> ExpenseApprovalGroupLevels => Set<ExpenseApprovalGroupLevel>();
     public DbSet<ExpenseApprovalGroupMember> ExpenseApprovalGroupMembers => Set<ExpenseApprovalGroupMember>();
+    public DbSet<ExternalServiceProvider> ExternalServiceProviders => Set<ExternalServiceProvider>();
+    public DbSet<ExternalServiceUsage> ExternalServiceUsages => Set<ExternalServiceUsage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -47,7 +51,7 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.CostCenterCode).HasColumnName("cost_center_code").HasMaxLength(50);
             e.Property(x => x.CostCenterName).HasColumnName("cost_center_name").HasMaxLength(200);
             e.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
-            e.Property(x => x.Amount).HasColumnName("amount").HasColumnType("decimal(18,2)");
+            e.Property(x => x.Amount).HasColumnName("amount").HasPrecision(18, 2);
             e.Property(x => x.DeliveredAt).HasColumnName("delivered_at");
             e.Property(x => x.SettlementDueAt).HasColumnName("settlement_due_at");
             e.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
@@ -65,7 +69,7 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.SapGlAccount).HasColumnName("sap_gl_account").HasMaxLength(30);
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.Property(x => x.IsMileage).HasColumnName("is_mileage");
-            e.Property(x => x.RatePerKm).HasColumnName("rate_per_km").HasColumnType("decimal(18,2)");
+            e.Property(x => x.RatePerKm).HasColumnName("rate_per_km").HasPrecision(18, 2);
             e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_expense_types_company_id");
         });
 
@@ -77,7 +81,7 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
             e.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
             e.Property(x => x.AppliesTax).HasColumnName("applies_tax");
-            e.Property(x => x.TaxPercentage).HasColumnName("tax_percentage").HasColumnType("decimal(5,2)");
+            e.Property(x => x.TaxPercentage).HasColumnName("tax_percentage").HasPrecision(5, 2);
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_document_types_company_id");
         });
@@ -101,7 +105,7 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
             e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
             e.Property(x => x.ExpenseTypeId).HasColumnName("expense_type_id").IsRequired();
-            e.Property(x => x.MaxAmount).HasColumnName("max_amount").HasColumnType("decimal(18,2)");
+            e.Property(x => x.MaxAmount).HasColumnName("max_amount").HasPrecision(18, 2);
             e.Property(x => x.IsBlocking).HasColumnName("is_blocking");
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.HasOne(x => x.ExpenseType)
@@ -217,8 +221,8 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.ExpenseTypeId).HasColumnName("expense_type_id");
             e.Property(x => x.DocumentTypeId).HasColumnName("document_type_id");
             e.Property(x => x.Date).HasColumnName("expense_date");
-            e.Property(x => x.Amount).HasColumnName("amount").HasColumnType("decimal(18,2)");
-            e.Property(x => x.TaxAmount).HasColumnName("tax_amount").HasColumnType("decimal(18,2)");
+            e.Property(x => x.Amount).HasColumnName("amount").HasPrecision(18, 2);
+            e.Property(x => x.TaxAmount).HasColumnName("tax_amount").HasPrecision(18, 2);
             e.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
             e.Property(x => x.DocumentNumber).HasColumnName("document_number").HasMaxLength(50);
             e.Property(x => x.SupplierTaxId).HasColumnName("supplier_tax_id").HasMaxLength(20);
@@ -227,8 +231,8 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.ExpenseReceiptId).HasColumnName("expense_receipt_id");
             e.Property(x => x.Origin).HasColumnName("origin").HasMaxLength(300);
             e.Property(x => x.Destination).HasColumnName("destination").HasMaxLength(300);
-            e.Property(x => x.DistanceKm).HasColumnName("distance_km").HasColumnType("decimal(10,2)");
-            e.Property(x => x.AppliedRatePerKm).HasColumnName("applied_rate_per_km").HasColumnType("decimal(18,2)");
+            e.Property(x => x.DistanceKm).HasColumnName("distance_km").HasPrecision(10, 2);
+            e.Property(x => x.AppliedRatePerKm).HasColumnName("applied_rate_per_km").HasPrecision(18, 2);
             e.HasOne(x => x.ExpenseType)
                 .WithMany()
                 .HasForeignKey(x => x.ExpenseTypeId)
@@ -263,6 +267,44 @@ public class RendicionesDbContext : DbContext
                 .HasForeignKey(x => x.ExpenseReportId)
                 .HasConstraintName("fk_expense_report_actions_expense_reports")
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ExternalServiceProvider>(e =>
+        {
+            e.ToTable("external_service_providers");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.ServiceType).HasColumnName("service_type").HasMaxLength(50).IsRequired();
+            e.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+            e.Property(x => x.Endpoint).HasColumnName("endpoint").HasMaxLength(300);
+            e.Property(x => x.ApiKeyEncrypted).HasColumnName("api_key_encrypted").HasMaxLength(500).IsRequired();
+            e.Property(x => x.MonthlyLimit).HasColumnName("monthly_limit").IsRequired();
+            e.Property(x => x.Priority).HasColumnName("priority");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.HasIndex(x => new { x.CompanyId, x.ServiceType, x.Priority })
+                .HasDatabaseName("ix_external_service_providers_company_service_priority");
+        });
+
+        modelBuilder.Entity<ExternalServiceUsage>(e =>
+        {
+            e.ToTable("external_service_usages");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.ProviderId).HasColumnName("provider_id").IsRequired();
+            e.Property(x => x.Year).HasColumnName("year").IsRequired();
+            e.Property(x => x.Month).HasColumnName("month").IsRequired();
+            e.Property(x => x.UsedUnits).HasColumnName("used_units");
+            e.HasOne(x => x.Provider)
+                .WithMany()
+                .HasForeignKey(x => x.ProviderId)
+                .HasConstraintName("fk_external_service_usages_external_service_providers")
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.ProviderId, x.Year, x.Month })
+                .IsUnique()
+                .HasDatabaseName("uq_external_service_usages_provider_year_month");
         });
     }
 }

@@ -1,0 +1,49 @@
+@page "/rendiciones/aprobaciones"
+@model Modulo.Rendiciones.Pages.Aprobaciones.IndexModel
+@{
+    ViewData["Title"] = "Aprobaciones pendientes";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="rnd-header">
+    <h2><i class="bi bi-check2-square"></i> Aprobaciones pendientes</h2>
+</div>
+
+<div class="rnd-stat-row">
+    <div class="rnd-stat-tile rnd-stat-warning">
+        <span class="rnd-stat-label">Esperando tu decisión</span>
+        <span class="rnd-stat-value">@Model.Pending.Count</span>
+    </div>
+    <div class="rnd-stat-tile">
+        <span class="rnd-stat-label">Monto total</span>
+        <span class="rnd-stat-value">@Model.Pending.Sum(r => r.Lines.Sum(d => d.Amount)).ToString("N0")</span>
+    </div>
+</div>
+
+@if (Model.Pending.Count == 0)
+{
+    <div class="rnd-card-empty">
+        <i class="bi bi-check2-square"></i>
+        No tenés rendiciones pendientes de aprobar.
+    </div>
+}
+else
+{
+    <div class="rnd-card-list">
+        @foreach (var r in Model.Pending)
+        {
+            <a href="~/rendiciones/informes/@r.Id" class="rnd-card-row">
+                <div class="rnd-card-icon"><i class="bi bi-folder2-open"></i></div>
+                <div class="rnd-card-main">
+                    <div class="rnd-card-title">Informe #@r.Id — @(r.CostCenterName ?? r.CostCenterCode ?? "sin centro de costo")</div>
+                    <div class="rnd-card-sub">Enviado @(r.SubmittedAt?.ToString("dd-MM-yyyy") ?? "—") · Nivel @r.CurrentLevel · @r.Lines.Count gasto(s)</div>
+                </div>
+                <div class="rnd-card-meta">
+                    <span class="rnd-card-amount">@r.Lines.Sum(d => d.Amount).ToString("N2")</span>
+                </div>
+            </a>
+        }
+    </div>
+}

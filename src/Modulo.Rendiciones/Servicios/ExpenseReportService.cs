@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Modulo.Rendiciones.Data;
 using Modulo.Rendiciones.Models;
+using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.Rendiciones.Servicios;
 
@@ -10,14 +13,18 @@ public sealed class ExpenseReportService : IExpenseReportService
     private readonly IExpenseApprovalGroupService _groups;
     private readonly IExpenseFundService _funds;
     private readonly IAttachmentStorageService _attachments;
+    private readonly IEmailSenderService _emailSender;
+    private readonly IUserContactLookupService _contacts;
 
     public ExpenseReportService(RendicionesDbContext db, IExpenseApprovalGroupService groups, IExpenseFundService funds,
-        IAttachmentStorageService attachments)
+        IAttachmentStorageService attachments, IEmailSenderService emailSender, IUserContactLookupService contacts)
     {
         _db = db;
         _groups = groups;
         _funds = funds;
         _attachments = attachments;
+        _emailSender = emailSender;
+        _contacts = contacts;
     }
 
     public async Task<IReadOnlyList<ExpenseReport>> ListByUserAsync(Guid companyId, Guid userId, CancellationToken ct = default) =>
@@ -35,9 +42,6 @@ public sealed class ExpenseReportService : IExpenseReportService
     public async Task<long> CreateReportAsync(Guid companyId, Guid userId, IReadOnlyList<long> expenseIds, long? expenseFundId,
         string? costCenterCode, string? costCenterName, CancellationToken ct = default)
     {
-        // Transacción explícita: crear la cabecera y adjuntar los gastos son dos
-        // SaveChangesAsync separados -- sin esto, si el attach falla (ej. un gasto sin
-        // categoría), queda un informe vacío huérfano en Draft.
         await using var transaction = await _db.Database.BeginTransactionAsync(ct);
 
         var report = new ExpenseReport
@@ -73,9 +77,6 @@ public sealed class ExpenseReportService : IExpenseReportService
         if (expenseIds.Count == 0)
             return;
 
-        // Siempre se adjuntan gastos DEL DUEÑO DEL INFORME, no de quien ejecuta la
-        // acción -- un administrador editando el borrador de otra persona debe seguir
-        // viendo/adjuntando los sueltos de esa persona, no los suyos propios.
         var report = await RequireEditableAsync(reportId, companyId, ct);
 
         var expenses = await _db.ExpenseReportLines
@@ -162,7 +163,6 @@ public sealed class ExpenseReportService : IExpenseReportService
 
         if (group is null)
         {
-            // Sin grupo configurado = autoaprobado.
             report.Status = "Approved";
             report.ResolvedAt = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync(ct);
@@ -176,7 +176,6 @@ public sealed class ExpenseReportService : IExpenseReportService
         report.ExpenseApprovalGroupId = group.Id;
         if (nextLevel is null)
         {
-            // Todos los niveles configurados colapsan en el propio solicitante.
             report.Status = "Approved";
             report.ResolvedAt = DateTimeOffset.UtcNow;
         }
@@ -189,7 +188,13 @@ public sealed class ExpenseReportService : IExpenseReportService
         await _db.SaveChangesAsync(ct);
 
         if (report.Status == "Approved")
+        {
             await RecalculateFundIfApplicableAsync(report, companyId, ct);
+        }
+        else
+        {
+            await NotifyApproverAsync(report, levels[nextLevel!.Value], ct);
+        }
     }
 
     public async Task ApproveAsync(long reportId, Guid companyId, Guid approverUserId, string? comment, CancellationToken ct = default)
@@ -223,7 +228,14 @@ public sealed class ExpenseReportService : IExpenseReportService
         await _db.SaveChangesAsync(ct);
 
         if (report.Status == "Approved")
+        {
             await RecalculateFundIfApplicableAsync(report, companyId, ct);
+            await NotifyReportOwnerAsync(report, "Tu informe fue aprobado.", ct);
+        }
+        else
+        {
+            await NotifyApproverAsync(report, levels[nextLevel!.Value], ct);
+        }
     }
 
     public async Task RejectAsync(long reportId, Guid companyId, Guid approverUserId, string? comment, CancellationToken ct = default)
@@ -243,6 +255,9 @@ public sealed class ExpenseReportService : IExpenseReportService
         report.CurrentLevel = null;
         report.ResolvedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(ct);
+
+        var motivo = string.IsNullOrWhiteSpace(comment) ? "sin motivo indicado" : comment;
+        await NotifyReportOwnerAsync(report, $"Tu informe fue rechazado. Motivo: {motivo}", ct);
     }
 
     public async Task ReopenAsync(long reportId, Guid companyId, Guid userId, CancellationToken ct = default)
@@ -315,5 +330,31 @@ public sealed class ExpenseReportService : IExpenseReportService
             throw new InvalidOperationException("Solo se puede modificar una rendición en estado Draft.");
 
         return report;
+    }
+
+    /// <summary>Un correo caído nunca debe tumbar una transición de estado real -- loguear y seguir (ver el spec de esta feature).</summary>
+    private async Task NotifyApproverAsync(ExpenseReport report, Guid approverUserId, CancellationToken ct) =>
+        await NotifyAsync(approverUserId, $"Informe #{report.Id} pendiente de tu aprobación",
+            $"<p>Tenés un informe de rendición de gastos (#{report.Id}) esperando tu decisión.</p>", ct);
+
+    private async Task NotifyReportOwnerAsync(ExpenseReport report, string message, CancellationToken ct) =>
+        await NotifyAsync(report.UserId, $"Informe #{report.Id} — actualización",
+            $"<p>{message}</p>", ct);
+
+    private async Task NotifyAsync(Guid userId, string subject, string htmlBody, CancellationToken ct)
+    {
+        var contact = await _contacts.GetContactAsync(userId, ct);
+        if (contact is null || !contact.EmailNotificationsEnabled)
+            return;
+
+        try
+        {
+            await _emailSender.SendAsync(contact.OrganizationId, new EmailMessage(contact.Email, subject, htmlBody), ct);
+        }
+        catch (Exception)
+        {
+            // Correo caído (ej. organización sin proveedor configurado) no debe bloquear
+            // la transacción de negocio ya confirmada -- ver constraint global del plan.
+        }
     }
 }

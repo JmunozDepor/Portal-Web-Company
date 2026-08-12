@@ -265,8 +265,9 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
 
 Cerrado en `docs/superpowers/plans/2026-08-11-escalabilidad-horizontal.md`: progreso de
 importación ahora persistido en BD (no memoria de proceso), filtro global de EF Core por
-`OrganizationId`, `SapSessionCache` con semáforo por compañía. **Quedan 2 puntos reales,
-documentados a propósito, no resueltos ahí**:
+`OrganizationId`, `SapSessionCache` con semáforo por compañía, creación de documentos de
+importación movida a un `BackgroundService` con cola en memoria (libera el hilo de
+request HTTP). **Quedan 3 puntos reales, documentados a propósito, no resueltos ahí**:
 
 - **Uploads a disco local** (`Pages/Admin/PlatformModules/Import.cshtml.cs`, paquetes de
   plugin) -- en un web farm de N instancias, un plugin subido a una instancia no está
@@ -278,6 +279,13 @@ documentados a propósito, no resueltos ahí**:
   escalabilidad horizontal en sí (cada instancia puede consultar la misma base
   compartida sin corromper datos), pero sí un techo de rendimiento bajo carga alta --
   evaluar solo si un perfil de carga real lo justifica, no antes.
+- **Cola de importación en memoria de proceso** (`GenericImportJobQueue`, `Channel<T>`)
+  -- libera el hilo de request HTTP (antes bloqueado minutos con archivos grandes),
+  pero no es durable: un trabajo encolado se pierde si la instancia se recicla antes
+  de procesarlo. Resolverlo de verdad requiere una tabla de jobs pendientes en BD
+  (mismo patrón que `GenericImportJobProgress`) con polling desde el
+  `BackgroundService` -- no construido todavía, evaluar cuando el volumen de
+  importaciones reales lo justifique.
 
 ## Dónde está cada cosa
 

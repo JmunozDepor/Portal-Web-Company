@@ -32,6 +32,7 @@ public sealed class IndexModel : PageModelBaseAdmin
 {
     private readonly IGenericImportService _importService;
     private readonly IGenericImportProgressStore _progress;
+    private readonly IGenericImportJobQueue _jobQueue;
     private readonly IGenericImportConfigService _configs;
     private readonly ISalesDocumentService _sales;
     private readonly IPurchaseDocumentService _purchase;
@@ -40,11 +41,12 @@ public sealed class IndexModel : PageModelBaseAdmin
     private readonly ISupplierCatalogService _suppliers;
 
     public IndexModel(ICurrentUserContext currentUser, IGenericImportService importService, IGenericImportProgressStore progress,
-        IGenericImportConfigService configs, ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
-        ICustomerCatalogService customers, ISupplierCatalogService suppliers) : base(currentUser)
+        IGenericImportJobQueue jobQueue, IGenericImportConfigService configs, ISalesDocumentService sales, IPurchaseDocumentService purchase,
+        IInventoryDocumentService inventory, ICustomerCatalogService customers, ISupplierCatalogService suppliers) : base(currentUser)
     {
         _importService = importService;
         _progress = progress;
+        _jobQueue = jobQueue;
         _configs = configs;
         _sales = sales;
         _purchase = purchase;
@@ -113,9 +115,12 @@ public sealed class IndexModel : PageModelBaseAdmin
     /// submit de formulario tradicional (ver Index.cshtml, btnConfirmar). Reprocesa el
     /// archivo (mismo criterio que antes: el archivo no queda en sesión de servidor)
     /// para obtener GenericImportDocumentDto con los DocumentLineType/valores ya
-    /// resueltos, y recién ahí llama CreateDocumentsAsync con el jobId que generó el
-    /// cliente -- ese mismo jobId es la clave que OnGetProgressAsync consulta por
-    /// polling mientras este método sigue corriendo.
+    /// resueltos, y recién ahí encola el trabajo (IGenericImportJobQueue) con el jobId
+    /// que generó el cliente en vez de llamar CreateDocumentsAsync directo -- así este
+    /// handler devuelve de inmediato sin bloquear el hilo de request HTTP, y el
+    /// GenericImportBackgroundService procesa el trabajo en segundo plano. Ese mismo
+    /// jobId es la clave que OnGetProgressAsync consulta por polling (ver Task 7,
+    /// docs/superpowers/plans/2026-08-11-escalabilidad-horizontal.md).
     /// </summary>
     public async Task<JsonResult> OnPostConfirmAsync(string jobId, CancellationToken ct)
     {
@@ -141,8 +146,16 @@ public sealed class IndexModel : PageModelBaseAdmin
             return new JsonResult(blocked) { StatusCode = StatusCodes.Status400BadRequest };
         }
 
-        var result = await _importService.CreateDocumentsAsync(jobId, CurrentUser.Username, parameters, preview.Documents, ct);
-        return new JsonResult(result);
+        _jobQueue.Enqueue(new GenericImportJobRequest(jobId, CurrentUser.Username, parameters, preview.Documents));
+
+        // Progreso inicial visible de inmediato -- antes de este cambio, el primer
+        // progreso lo escribía CreateDocumentsAsync ya corriendo dentro del propio
+        // request; ahora el trabajo recién se encoló, así que el propio handler deja
+        // un estado "en cola" para que el polling (OnGetProgressAsync) no encuentre
+        // un jobId sin ninguna fila todavía durante la primera consulta.
+        await _progress.UpdateAsync(jobId, new GenericImportProgressDto("En cola, esperando procesamiento...", 0, 0, true, null, false));
+
+        return new JsonResult(new { jobId, queued = true });
     }
 
     /// <summary>Consultado por polling desde el cliente mientras OnPostConfirmAsync sigue corriendo -- ver IGenericImportProgressStore.</summary>

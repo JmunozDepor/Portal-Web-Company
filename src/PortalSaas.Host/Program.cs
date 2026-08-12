@@ -195,6 +195,11 @@ builder.Services.AddScoped<IGenericImportConfigService, GenericImportConfigServi
 // El progreso ya no vive en memoria de proceso, ver GenericImportProgressStore.
 builder.Services.AddScoped<IGenericImportProgressStore, GenericImportProgressStore>();
 builder.Services.AddScoped<IGenericImportService, GenericImportService>();
+// Cola en memoria de proceso (Channel<T>) para desacoplar CreateDocumentsAsync del
+// hilo de request HTTP -- ver GenericImportBackgroundService y Task 7 del plan de
+// escalabilidad horizontal (límite reconocido: no durable entre reciclajes de proceso).
+builder.Services.AddSingleton<IGenericImportJobQueue, GenericImportJobQueue>();
+builder.Services.AddHostedService<GenericImportBackgroundService>();
 
 // Catálogos nuevos, sin consumidor propio todavía (ningún plugin los usa aún) --
 // identificados como necesarios para que Sucursales/Series/Impuestos/Dimensión2-3/

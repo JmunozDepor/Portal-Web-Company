@@ -252,6 +252,8 @@
                     actualizarBarra(progreso);
                     if (progreso.finished) {
                         pollingActivo = false;
+                        mostrarResultado(progreso);
+                        btnConfirmar.disabled = false;
                         return;
                     }
                     setTimeout(function () { consultarProgreso(jobId); }, 1500);
@@ -279,18 +281,28 @@
             pollingActivo = true;
             consultarProgreso(jobId);
 
+            // OnPostConfirmAsync ya no espera a que termine la creación de documentos --
+            // encola el trabajo (GenericImportBackgroundService lo procesa en segundo
+            // plano) y devuelve de inmediato { jobId, queued: true }. El resultado final
+            // llega por el polling de arriba (consultarProgreso), que ya venía corriendo
+            // en paralelo y renderiza el resultado cuando progreso.finished = true. Acá
+            // solo queda manejar el caso de error temprano (400, ej. archivo sin
+            // documentos válidos), que sí viaja en esta misma respuesta.
             fetch('?handler=Confirm', { method: 'POST', body: formData })
                 .then(function (respuesta) { return respuesta.json().then(function (data) { return { ok: respuesta.ok, data: data }; }); })
                 .then(function (resultado) {
-                    pollingActivo = false;
-                    actualizarBarra(resultado.data);
-                    mostrarResultado(resultado.data);
+                    if (!resultado.ok) {
+                        pollingActivo = false;
+                        actualizarBarra(resultado.data);
+                        mostrarResultado(resultado.data);
+                        btnConfirmar.disabled = false;
+                    }
+                    // ok === true (queued: true) -- no hay nada más que hacer acá, se
+                    // espera a que el polling detecte progreso.finished.
                 })
                 .catch(function () {
                     pollingActivo = false;
                     resultadoDiv.innerHTML = '<div class="alert alert-danger">No se pudo confirmar la importación -- revisá la conexión e intentá de nuevo.</div>';
-                })
-                .finally(function () {
                     btnConfirmar.disabled = false;
                 });
         });

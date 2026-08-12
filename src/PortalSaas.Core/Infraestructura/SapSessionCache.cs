@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using B1SLayer;
 using PortalSaas.Core.Sap;
 
@@ -6,9 +7,13 @@ namespace PortalSaas.Core.Infraestructura;
 /// <summary>
 /// Cachea una SLConnection por clave (usuario TÉCNICO/de integración de la compañía, no
 /// depende del usuario web conectado) -- Singleton. B1SLayer maneja el relogin/refresh de
-/// token internamente. Portado de PortalSAP_v2 (ISapSessionCache/SapSessionCache), tal
-/// cual salvo la clave de cache: acá es directamente Company.Id (Guid, ya único por
-/// compañía+base de datos) en vez de "empresaCodigo:database" (dos strings compuestos).
+/// token internamente.
+///
+/// Semáforo POR COMPAÑÍA (no uno global) -- con un solo semáforo compartido, un
+/// cache-miss simultáneo de dos compañías distintas serializaba su creación de sesión
+/// sin necesidad (cuello de botella real en arranque en frío de un web farm con
+/// muchas organizaciones, ver docs/superpowers/plans). Cada companyId tiene su propio
+/// lock, así que compañías distintas nunca se bloquean entre sí.
 /// </summary>
 public interface ISapSessionCache
 {
@@ -17,8 +22,8 @@ public interface ISapSessionCache
 
 public sealed class SapSessionCache : ISapSessionCache
 {
-    private readonly Dictionary<Guid, SLConnection> _sessions = [];
-    private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly ConcurrentDictionary<Guid, SLConnection> _sessions = new();
+    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
 
     public async Task<SLConnection> GetOrCreateAsync(Guid companyId, Func<Task<SLConnection>> create)
     {
@@ -27,7 +32,8 @@ public sealed class SapSessionCache : ISapSessionCache
             return existing;
         }
 
-        await _lock.WaitAsync();
+        var companyLock = _locks.GetOrAdd(companyId, _ => new SemaphoreSlim(1, 1));
+        await companyLock.WaitAsync();
         try
         {
             if (_sessions.TryGetValue(companyId, out existing))
@@ -41,7 +47,7 @@ public sealed class SapSessionCache : ISapSessionCache
         }
         finally
         {
-            _lock.Release();
+            companyLock.Release();
         }
     }
 }

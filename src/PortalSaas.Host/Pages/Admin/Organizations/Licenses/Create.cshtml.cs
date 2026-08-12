@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 
@@ -14,10 +15,12 @@ namespace PortalSaas.Host.Pages.Admin.Organizations.Licenses;
 public class CreateModel : PageModel
 {
     private readonly PortalSaasDbContext _db;
+    private readonly ICacheService _cache;
 
-    public CreateModel(PortalSaasDbContext db)
+    public CreateModel(PortalSaasDbContext db, ICacheService cache)
     {
         _db = db;
+        _cache = cache;
     }
 
     public Organization Organization { get; private set; } = null!;
@@ -78,6 +81,10 @@ public class CreateModel : PageModel
         });
 
         await _db.SaveChangesAsync();
+
+        // Nueva licencia on-premise -- puede cambiar el plan activo de esta
+        // organización. Ver ICacheService/Task 6.
+        _cache.RemoveByPrefix($"modulos-contratados:{organizationId}");
 
         return RedirectToPage("/Admin/Organizations/Licenses/Index", new { organizationId });
     }

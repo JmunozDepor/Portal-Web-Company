@@ -20,11 +20,13 @@ public class IndexModel : PageModel
 {
     private readonly PortalSaasDbContext _db;
     private readonly IModuleAccessService _moduleAccess;
+    private readonly ICacheService _cache;
 
-    public IndexModel(PortalSaasDbContext db, IModuleAccessService moduleAccess)
+    public IndexModel(PortalSaasDbContext db, IModuleAccessService moduleAccess, ICacheService cache)
     {
         _db = db;
         _moduleAccess = moduleAccess;
+        _cache = cache;
     }
 
     public Organization Organization { get; private set; } = null!;
@@ -71,6 +73,10 @@ public class IndexModel : PageModel
         }
 
         await _db.SaveChangesAsync();
+
+        // Solo esta organización cambió su set de add-ons -- invalidación puntual, no
+        // hace falta tocar el caché de las demás. Ver ICacheService/Task 6.
+        _cache.RemoveByPrefix($"modulos-contratados:{organizationId}");
 
         Organization = organization;
         await LoadAsync(organizationId);

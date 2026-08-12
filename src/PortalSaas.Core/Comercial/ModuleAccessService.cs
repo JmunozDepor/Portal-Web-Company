@@ -11,14 +11,20 @@ namespace PortalSaas.Core.Comercial;
 /// (acá solo hace falta el PlanId, no el Plan completo con sus límites) -- mismo
 /// criterio de "implementaciones paralelas, no una superclase compartida" que ya rige
 /// los 3 motores genéricos de documento (ver CLAUDE.md).
+/// GetContractedModuleCodesAsync se cachea (ICacheService, TTL 3 min, clave
+/// "modulos-contratados:{organizationId}") -- ver docs/superpowers/plans Task 6. Se
+/// invalida activamente desde los puntos de escritura reales (Plans/Edit,
+/// Organizations/Modules, Subscriptions, Licenses).
 /// </summary>
 public sealed class ModuleAccessService : IModuleAccessService
 {
     private readonly PortalSaasDbContext _db;
+    private readonly ICacheService _cache;
 
-    public ModuleAccessService(PortalSaasDbContext db)
+    public ModuleAccessService(PortalSaasDbContext db, ICacheService cache)
     {
         _db = db;
+        _cache = cache;
     }
 
     public async Task<IReadOnlySet<string>> GetCatalogedModuleCodesAsync(CancellationToken ct = default)
@@ -27,37 +33,40 @@ public sealed class ModuleAccessService : IModuleAccessService
         return codes.ToHashSet();
     }
 
-    public async Task<IReadOnlySet<string>> GetContractedModuleCodesAsync(Guid organizationId, CancellationToken ct = default)
+    public Task<IReadOnlySet<string>> GetContractedModuleCodesAsync(Guid organizationId, CancellationToken ct = default)
     {
-        var coreCodes = await _db.PlatformModules
-            .Where(m => m.IsCore)
-            .Select(m => m.Code)
-            .ToListAsync(ct);
-
-        var planId = await ResolveActivePlanIdAsync(organizationId, ct);
-        var planCodes = planId is null
-            ? []
-            : await _db.PlanModules
-                .Where(pm => pm.PlanId == planId)
-                .Select(pm => pm.Module.Code)
+        return _cache.GetOrCreateAsync($"modulos-contratados:{organizationId}", async () =>
+        {
+            var coreCodes = await _db.PlatformModules
+                .Where(m => m.IsCore)
+                .Select(m => m.Code)
                 .ToListAsync(ct);
 
-        var addonCodes = await _db.OrganizationModules
-            .Where(om => om.OrganizationId == organizationId)
-            .Select(om => om.Module.Code)
-            .ToListAsync(ct);
+            var planId = await ResolveActivePlanIdAsync(organizationId, ct);
+            var planCodes = planId is null
+                ? []
+                : await _db.PlanModules
+                    .Where(pm => pm.PlanId == planId)
+                    .Select(pm => pm.Module.Code)
+                    .ToListAsync(ct);
 
-        // Un módulo exclusivo de OTRA organización nunca queda contratado acá, sin
-        // importar que se haya colado en un Plan/OrganizationModule por error -- es la
-        // garantía real detrás de "aplicación puntual de un solo cliente".
-        var exclusiveElsewhereCodes = await _db.PlatformModules
-            .Where(m => m.ExclusiveOrganizationId != null && m.ExclusiveOrganizationId != organizationId)
-            .Select(m => m.Code)
-            .ToListAsync(ct);
+            var addonCodes = await _db.OrganizationModules
+                .Where(om => om.OrganizationId == organizationId)
+                .Select(om => om.Module.Code)
+                .ToListAsync(ct);
 
-        return coreCodes.Concat(planCodes).Concat(addonCodes)
-            .Except(exclusiveElsewhereCodes)
-            .ToHashSet();
+            // Un módulo exclusivo de OTRA organización nunca queda contratado acá, sin
+            // importar que se haya colado en un Plan/OrganizationModule por error -- es la
+            // garantía real detrás de "aplicación puntual de un solo cliente".
+            var exclusiveElsewhereCodes = await _db.PlatformModules
+                .Where(m => m.ExclusiveOrganizationId != null && m.ExclusiveOrganizationId != organizationId)
+                .Select(m => m.Code)
+                .ToListAsync(ct);
+
+            return (IReadOnlySet<string>)coreCodes.Concat(planCodes).Concat(addonCodes)
+                .Except(exclusiveElsewhereCodes)
+                .ToHashSet();
+        }, TimeSpan.FromMinutes(3));
     }
 
     public async Task<IReadOnlySet<string>> GetHiddenModuleCodesAsync(Guid organizationId, CancellationToken ct = default)

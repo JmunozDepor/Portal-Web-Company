@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 
@@ -13,10 +14,12 @@ namespace PortalSaas.Host.Pages.Admin.Organizations.Licenses;
 public class EditModel : PageModel
 {
     private readonly PortalSaasDbContext _db;
+    private readonly ICacheService _cache;
 
-    public EditModel(PortalSaasDbContext db)
+    public EditModel(PortalSaasDbContext db, ICacheService cache)
     {
         _db = db;
+        _cache = cache;
     }
 
     public Organization Organization { get; private set; } = null!;
@@ -86,6 +89,10 @@ public class EditModel : PageModel
         license.InstallationFingerprint = string.IsNullOrWhiteSpace(Input.InstallationFingerprint) ? null : Input.InstallationFingerprint.Trim();
 
         await _db.SaveChangesAsync();
+
+        // Cambia el plan/estado de la licencia on-premise de esta organización -- ver
+        // ICacheService/Task 6.
+        _cache.RemoveByPrefix($"modulos-contratados:{license.OrganizationId}");
 
         return RedirectToPage("/Admin/Organizations/Licenses/Index", new { organizationId = Input.OrganizationId });
     }

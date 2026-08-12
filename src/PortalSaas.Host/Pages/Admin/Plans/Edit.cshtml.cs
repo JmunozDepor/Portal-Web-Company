@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 
@@ -12,10 +13,12 @@ namespace PortalSaas.Host.Pages.Admin.Plans;
 public class EditModel : PageModel
 {
     private readonly PortalSaasDbContext _db;
+    private readonly ICacheService _cache;
 
-    public EditModel(PortalSaasDbContext db)
+    public EditModel(PortalSaasDbContext db, ICacheService cache)
     {
         _db = db;
+        _cache = cache;
     }
 
     [BindProperty]
@@ -100,6 +103,12 @@ public class EditModel : PageModel
         }
 
         await _db.SaveChangesAsync();
+
+        // Un plan afecta a TODAS las organizaciones suscritas/con licencia sobre él --
+        // no se conoce acá la lista completa sin otra consulta, así que se invalida el
+        // caché de módulos contratados de todas las organizaciones (más caro, pero
+        // correcto). Ver ICacheService/Task 6, docs/superpowers/plans.
+        _cache.RemoveByPrefix("modulos-contratados:");
 
         return RedirectToPage("/Admin/Plans/Index");
     }

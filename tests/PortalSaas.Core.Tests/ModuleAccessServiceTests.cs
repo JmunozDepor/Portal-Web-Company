@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using PortalSaas.Core.Comercial;
+using PortalSaas.Core.Infraestructura;
 using PortalSaas.Core.Seguridad;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
@@ -14,6 +16,13 @@ public class ModuleAccessServiceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options, new NullOrganizationScopeProvider());
 
+    // Cada test arma su propio contexto InMemory con un Guid distinto, así que un
+    // caché nuevo por servicio no genera falsos positivos entre tests -- solo se
+    // agrega acá porque el constructor de ModuleAccessService ahora lo requiere
+    // (ver Task 6, docs/superpowers/plans).
+    private static ModuleAccessService CrearServicio(PortalSaasDbContext db) =>
+        new(db, new MemoryCacheService(new MemoryCache(new MemoryCacheOptions())));
+
     [Fact]
     public async Task GetContractedModuleCodes_ModuloCore_SiempreIncluido()
     {
@@ -23,7 +32,7 @@ public class ModuleAccessServiceTests
         db.PlatformModules.Add(new PlatformModule { Code = "Administracion", Name = "Administración", IsCore = true });
         await db.SaveChangesAsync();
 
-        var servicio = new ModuleAccessService(db);
+        var servicio = CrearServicio(db);
         var codigos = await servicio.GetContractedModuleCodesAsync(org.Id);
 
         Assert.Contains("Administracion", codigos);
@@ -45,7 +54,7 @@ public class ModuleAccessServiceTests
         db.Subscriptions.Add(new Subscription { OrganizationId = org.Id, PlanId = plan.Id, Status = SubscriptionStatus.Active });
         await db.SaveChangesAsync();
 
-        var servicio = new ModuleAccessService(db);
+        var servicio = CrearServicio(db);
         var codigos = await servicio.GetContractedModuleCodesAsync(org.Id);
 
         Assert.Contains("Ventas", codigos);
@@ -70,7 +79,7 @@ public class ModuleAccessServiceTests
         db.Subscriptions.Add(new Subscription { OrganizationId = org.Id, PlanId = plan.Id, Status = SubscriptionStatus.Active });
         await db.SaveChangesAsync();
 
-        var servicio = new ModuleAccessService(db);
+        var servicio = CrearServicio(db);
         var codigos = await servicio.GetContractedModuleCodesAsync(org.Id);
 
         Assert.Contains("Ventas", codigos);
@@ -90,7 +99,7 @@ public class ModuleAccessServiceTests
         db.OrganizationModules.Add(new OrganizationModule { OrganizationId = org.Id, ModuleId = modulo.Id });
         await db.SaveChangesAsync();
 
-        var servicio = new ModuleAccessService(db);
+        var servicio = CrearServicio(db);
         var codigos = await servicio.GetContractedModuleCodesAsync(org.Id);
 
         Assert.Contains("Inventario", codigos);
@@ -111,7 +120,7 @@ public class ModuleAccessServiceTests
         db.OrganizationModules.Add(new OrganizationModule { OrganizationId = otraOrg.Id, ModuleId = modulo.Id });
         await db.SaveChangesAsync();
 
-        var servicio = new ModuleAccessService(db);
+        var servicio = CrearServicio(db);
         var codigos = await servicio.GetContractedModuleCodesAsync(org.Id);
 
         Assert.DoesNotContain("Inventario", codigos);
@@ -140,7 +149,7 @@ public class ModuleAccessServiceTests
         });
         await db.SaveChangesAsync();
 
-        var servicio = new ModuleAccessService(db);
+        var servicio = CrearServicio(db);
         var codigos = await servicio.GetContractedModuleCodesAsync(org.Id);
 
         Assert.Contains("Compras", codigos);
@@ -167,7 +176,7 @@ public class ModuleAccessServiceTests
         db.OrganizationModules.Add(new OrganizationModule { OrganizationId = org.Id, ModuleId = moduloExclusivo.Id });
         await db.SaveChangesAsync();
 
-        var servicio = new ModuleAccessService(db);
+        var servicio = CrearServicio(db);
         var codigosOrg = await servicio.GetContractedModuleCodesAsync(org.Id);
         var codigosDueno = await servicio.GetContractedModuleCodesAsync(dueno.Id);
 
@@ -183,7 +192,7 @@ public class ModuleAccessServiceTests
         db.PlatformModules.Add(new PlatformModule { Code = "Compras", Name = "Compras" });
         await db.SaveChangesAsync();
 
-        var servicio = new ModuleAccessService(db);
+        var servicio = CrearServicio(db);
         var codigos = await servicio.GetCatalogedModuleCodesAsync();
 
         Assert.Equal(2, codigos.Count);

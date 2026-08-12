@@ -271,6 +271,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 builder.Services.AddAuthorization();
 
+// Caché de aplicación (catálogos de lectura frecuente/escritura rara, ej. módulos
+// contratados) -- ver ICacheService/MemoryCacheService y docs/superpowers/plans Task 6.
+// Singleton, no Scoped: el caché debe sobrevivir entre requests dentro de la misma
+// instancia, es la razón de ser de este servicio.
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
+
 // --- Carga de plugins + sync de menú: ANTES de builder.Build() -----------------------
 // IModuloPortal.RegisterServices(IServiceCollection) de un plugin (ej. un AddDbContext
 // propio) solo puede agregar descriptors mientras builder.Services siga mutable --

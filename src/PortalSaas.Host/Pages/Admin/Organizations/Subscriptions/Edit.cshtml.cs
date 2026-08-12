@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 
@@ -12,10 +13,12 @@ namespace PortalSaas.Host.Pages.Admin.Organizations.Subscriptions;
 public class EditModel : PageModel
 {
     private readonly PortalSaasDbContext _db;
+    private readonly ICacheService _cache;
 
-    public EditModel(PortalSaasDbContext db)
+    public EditModel(PortalSaasDbContext db, ICacheService cache)
     {
         _db = db;
+        _cache = cache;
     }
 
     public Organization Organization { get; private set; } = null!;
@@ -82,6 +85,10 @@ public class EditModel : PageModel
         subscription.ExternalPaymentReference = string.IsNullOrWhiteSpace(Input.ExternalPaymentReference) ? null : Input.ExternalPaymentReference.Trim();
 
         await _db.SaveChangesAsync();
+
+        // Cambia el estado/vigencia de la suscripción de esta organización -- ver
+        // ICacheService/Task 6.
+        _cache.RemoveByPrefix($"modulos-contratados:{subscription.OrganizationId}");
 
         return RedirectToPage("/Admin/Organizations/Subscriptions/Index", new { organizationId = Input.OrganizationId });
     }

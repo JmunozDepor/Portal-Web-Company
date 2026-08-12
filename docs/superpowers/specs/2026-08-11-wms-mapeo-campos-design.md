@@ -49,6 +49,15 @@ es lógica de negocio real ya en producción, no se reescribe.
   patrón que `TiposGasto` — nunca se borra una fila.
 - **Scoping por `ICurrentCompanyAccessor.CompanyId`**, sin fallback a
   `Organization` — regla dura del Portal, ya aplicada en `WmsDbContext`.
+- **`UpdatedBy` = usuario logueado del Portal.** Los handlers de
+  `Crear`/`Guardar`/`Activar`/`Desactivar` toman `ICurrentUserContext.Username`
+  y lo pasan al servicio — no es un campo que ingresa el usuario en el
+  formulario, se asigna automático en cada escritura, igual que hace
+  `WMS_Suite` hoy (columna `UpdatedBy` de `INT_SAP_FIELD_MAPPING`).
+- **Estilo: clases del Portal ya existentes** (`admin-card`, `admin-table`,
+  `admin-form-asignar`, `btn-erp-primary`, `btn-module-action`, etc.), mismas
+  que usa `TiposGasto` — sin CSS propio de WMS, sin reescribir el look de los
+  formularios base.
 
 ## Arquitectura
 

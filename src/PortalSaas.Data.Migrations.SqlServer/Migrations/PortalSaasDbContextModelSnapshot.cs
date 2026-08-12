@@ -321,6 +321,37 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.ToTable("generic_import_config_fields", (string)null);
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportJobProgress", b =>
+                {
+                    b.Property<string>("JobId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("job_id");
+
+                    b.Property<int>("ProcessedRows")
+                        .HasColumnType("int")
+                        .HasColumnName("processed_rows");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TotalRows")
+                        .HasColumnType("int")
+                        .HasColumnName("total_rows");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("JobId")
+                        .HasName("pk_generic_import_job_progress");
+
+                    b.ToTable("generic_import_job_progress", (string)null);
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportUserField", b =>
                 {
                     b.Property<int>("Id")

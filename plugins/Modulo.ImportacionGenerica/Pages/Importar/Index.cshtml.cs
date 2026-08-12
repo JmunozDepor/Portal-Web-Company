@@ -146,7 +146,7 @@ public sealed class IndexModel : PageModelBaseAdmin
     }
 
     /// <summary>Consultado por polling desde el cliente mientras OnPostConfirmAsync sigue corriendo -- ver IGenericImportProgressStore.</summary>
-    public JsonResult OnGetProgressAsync(string jobId) => new(_progress.Get(jobId));
+    public async Task<JsonResult> OnGetProgressAsync(string jobId) => new(await _progress.GetAsync(jobId));
 
     /// <summary>
     /// Búsqueda en vivo del Socio de negocio -- mismo modelo que Cliente/Proveedor en

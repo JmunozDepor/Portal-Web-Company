@@ -55,6 +55,7 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<UserMenuProfile> UserMenuProfiles => Set<UserMenuProfile>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<UserHomeShortcut> UserHomeShortcuts => Set<UserHomeShortcut>();
+    public DbSet<GenericImportJobProgress> GenericImportJobProgresses => Set<GenericImportJobProgress>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -487,6 +488,14 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.IpAddress).HasMaxLength(50);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).IsRequired(false);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).IsRequired(false);
+        });
+
+        modelBuilder.Entity<GenericImportJobProgress>(entity =>
+        {
+            entity.ToTable("generic_import_job_progress");
+            entity.HasKey(e => e.JobId);
+            entity.Property(e => e.JobId).HasMaxLength(100);
+            entity.Property(e => e.Status).HasMaxLength(50);
         });
     }
 }

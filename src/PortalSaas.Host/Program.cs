@@ -185,7 +185,9 @@ builder.Services.AddScoped<IPurchaseDocumentService, PurchaseDocumentService>();
 // el SAP del cliente -- ver CLAUDE.md, "Persistencia config" 26 jul 2026.
 builder.Services.AddScoped<IGenericImportUserFieldService, GenericImportUserFieldService>();
 builder.Services.AddScoped<IGenericImportConfigService, GenericImportConfigService>();
-builder.Services.AddSingleton<IGenericImportProgressStore, GenericImportProgressStore>();
+// Scoped, no Singleton -- ahora depende de PortalSaasDbContext (también Scoped).
+// El progreso ya no vive en memoria de proceso, ver GenericImportProgressStore.
+builder.Services.AddScoped<IGenericImportProgressStore, GenericImportProgressStore>();
 builder.Services.AddScoped<IGenericImportService, GenericImportService>();
 
 // Catálogos nuevos, sin consumidor propio todavía (ningún plugin los usa aún) --

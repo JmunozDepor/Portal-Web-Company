@@ -398,7 +398,7 @@ public sealed class GenericImportService : IGenericImportService
         {
             var none = new GenericImportProgressDto(
                 "No hay documentos válidos para crear (revisá los errores de la vista previa).", 0, 0, false, null, true);
-            _progress.Update(jobId, none);
+            await _progress.UpdateAsync(jobId, none);
             return none;
         }
 
@@ -408,7 +408,7 @@ public sealed class GenericImportService : IGenericImportService
         var totalBatches = creatable.Sum(d => CountOfBatches(d.Rows.Count));
         var currentBatch = 0;
 
-        UpdateProgress(jobId, $"Iniciando creación de {creatable.Count} documento(s)...", 0, totalBatches, true, null, false);
+        await UpdateProgressAsync(jobId, $"Iniciando creación de {creatable.Count} documento(s)...", 0, totalBatches, true, null, false);
 
         var results = new List<GenericImportDocumentResultDto>();
         var processed = 0;
@@ -419,13 +419,13 @@ public sealed class GenericImportService : IGenericImportService
             var documentIndex = processed;
             var totalBatchesDocument = CountOfBatches(document.Rows.Count);
 
-            void ReportBatch(int documentBatch)
+            async Task ReportBatch(int documentBatch)
             {
                 currentBatch++;
                 var lineDetail = totalBatchesDocument > 1
                     ? $" -- líneas {Math.Min(documentBatch * DefaultBatchSize, document.Rows.Count)}/{document.Rows.Count}"
                     : string.Empty;
-                UpdateProgress(jobId,
+                await UpdateProgressAsync(jobId,
                     $"Creando documento {documentIndex} de {creatable.Count} ({document.GroupingKey}){lineDetail}...",
                     currentBatch, totalBatches, true, null, false);
             }
@@ -453,14 +453,14 @@ public sealed class GenericImportService : IGenericImportService
         var final = new GenericImportProgressDto(
             $"Proceso completado: {successes} exitoso(s), {creatable.Count - successes} fallido(s).",
             totalBatches, totalBatches, successes == creatable.Count, null, true, results);
-        _progress.Update(jobId, final);
+        await _progress.UpdateAsync(jobId, final);
         return final;
     }
 
     private static int CountOfBatches(int rowCount) => Math.Max(1, (int)Math.Ceiling(rowCount / (double)DefaultBatchSize));
 
     private async Task<int> CreateSalesDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
-        string portalUsername, Action<int> reportBatch, CancellationToken ct)
+        string portalUsername, Func<int, Task> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<SalesDocumentType>(parameters.DocumentType);
         var first = document.Rows[0];
@@ -500,7 +500,7 @@ public sealed class GenericImportService : IGenericImportService
             AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
 
         var docEntry = await _sales.CreateAsync(type, portalUsername, doc, ct);
-        reportBatch(1);
+        await reportBatch(1);
 
         for (var i = 1; i < batches.Count; i++)
         {
@@ -514,7 +514,7 @@ public sealed class GenericImportService : IGenericImportService
                     document.GroupingKey, docEntry);
                 throw;
             }
-            reportBatch(i + 1);
+            await reportBatch(i + 1);
         }
 
         var created = await _sales.GetAsync(type, docEntry, ct);
@@ -522,7 +522,7 @@ public sealed class GenericImportService : IGenericImportService
     }
 
     private async Task<int> CreatePurchaseDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
-        string portalUsername, Action<int> reportBatch, CancellationToken ct)
+        string portalUsername, Func<int, Task> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<PurchaseDocumentType>(parameters.DocumentType);
         var first = document.Rows[0];
@@ -556,7 +556,7 @@ public sealed class GenericImportService : IGenericImportService
             AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
 
         var docEntry = await _purchase.CreateAsync(type, portalUsername, doc, ct);
-        reportBatch(1);
+        await reportBatch(1);
 
         for (var i = 1; i < batches.Count; i++)
         {
@@ -570,7 +570,7 @@ public sealed class GenericImportService : IGenericImportService
                     document.GroupingKey, docEntry);
                 throw;
             }
-            reportBatch(i + 1);
+            await reportBatch(i + 1);
         }
 
         var created = await _purchase.GetAsync(type, docEntry, ct);
@@ -578,7 +578,7 @@ public sealed class GenericImportService : IGenericImportService
     }
 
     private async Task<int> CreateInventoryDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
-        string portalUsername, Action<int> reportBatch, CancellationToken ct)
+        string portalUsername, Func<int, Task> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<InventoryDocumentType>(parameters.DocumentType);
         var first = document.Rows[0];
@@ -607,7 +607,7 @@ public sealed class GenericImportService : IGenericImportService
             AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
 
         var docEntry = await _inventory.CreateAsync(type, portalUsername, doc, ct);
-        reportBatch(1);
+        await reportBatch(1);
 
         for (var i = 1; i < batches.Count; i++)
         {
@@ -621,7 +621,7 @@ public sealed class GenericImportService : IGenericImportService
                     document.GroupingKey, docEntry);
                 throw;
             }
-            reportBatch(i + 1);
+            await reportBatch(i + 1);
         }
 
         var created = await _inventory.GetAsync(type, docEntry, ct);
@@ -644,8 +644,8 @@ public sealed class GenericImportService : IGenericImportService
         return batches;
     }
 
-    private void UpdateProgress(string jobId, string message, int current, int total, bool success, string? details, bool finished) =>
-        _progress.Update(jobId, new GenericImportProgressDto(message, current, total, success, details, finished));
+    private Task UpdateProgressAsync(string jobId, string message, int current, int total, bool success, string? details, bool finished) =>
+        _progress.UpdateAsync(jobId, new GenericImportProgressDto(message, current, total, success, details, finished));
 
     /// <summary>
     /// CardCode real de ESTE documento -- todas las filas de un grupo ya comparten

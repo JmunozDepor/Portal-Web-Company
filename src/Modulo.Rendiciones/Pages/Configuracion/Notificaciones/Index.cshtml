@@ -1,0 +1,32 @@
+@page "/rendiciones/configuracion/notificaciones"
+@model Modulo.Rendiciones.Pages.Configuracion.Notificaciones.IndexModel
+@{
+    ViewData["Title"] = "Notificaciones";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Notificaciones</h2>
+    </div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+
+<p class="admin-muted">Recordatorio diario por correo a cada aprobador con informes pendientes -- un solo correo resumen por día, agrupando todos sus pendientes.</p>
+
+<form method="post" class="admin-form-asignar">
+    <div class="form-group">
+        <label asp-for="Settings.ReminderHour">Hora de envío</label>
+        <input asp-for="Settings.ReminderHour" type="time" class="form-control" />
+    </div>
+    <div class="form-group form-row-check">
+        <label><input asp-for="Settings.ReminderEnabled" type="checkbox" /> Recordatorio diario habilitado</label>
+    </div>
+    <button type="submit" class="btn-erp-primary">Guardar</button>
+</form>
+</div>

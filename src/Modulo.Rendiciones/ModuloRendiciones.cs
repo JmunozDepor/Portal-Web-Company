@@ -183,6 +183,15 @@ public sealed class ModuloRendiciones : IModuloPortal
             PageRoute = "/rendiciones/configuracion/consumo-servicios",
             Order = 8,
         };
+
+        yield return new MenuItemDefinition
+        {
+            Code = "config-notificaciones",
+            ParentCode = "grupo-administrador",
+            Name = "Notificaciones",
+            PageRoute = "/rendiciones/configuracion/notificaciones",
+            Order = 9,
+        };
     }
 
     public void RegisterServices(IServiceCollection services)

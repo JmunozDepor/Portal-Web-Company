@@ -1,0 +1,99 @@
+@page "/wms/mapeo-campos"
+@model Modulo.Wms.Pages.MapeoCampos.IndexModel
+@{
+    ViewData["Title"] = "Mapeo de Campos";
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Mapeo de Campos</h2>
+    </div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+}
+
+<table class="admin-table">
+    <thead><tr><th>Documento</th><th>Campo UDF</th><th>Valor / Plantilla</th><th>Activo</th><th>Actualizado</th><th class="admin-col-accion"></th></tr></thead>
+    <tbody>
+        @foreach (var m in Model.Mappings)
+        {
+            var formId = $"mapeo-{m.Id}";
+            <tr class="@(m.IsActive ? "" : "admin-fila-inactiva")">
+                <td>@(Model.MapperKeyLabels.GetValueOrDefault(m.MapperKey, m.MapperKey))</td>
+                <td><code>@m.FieldName</code></td>
+                <td><input type="text" name="valueTemplate" value="@m.ValueTemplate" class="form-control" form="@formId" /></td>
+                <td>
+                    <input type="hidden" name="activo" value="@m.IsActive" form="@formId" />
+                    @(m.IsActive ? "Sí" : "No")
+                </td>
+                <td>@m.UpdatedAt.ToString("yyyy-MM-dd HH:mm") @(m.UpdatedBy is not null ? $"({m.UpdatedBy})" : "")</td>
+                <td class="admin-col-accion">
+                    <div class="admin-row-actions">
+                        <button type="submit" class="btn-module-action" form="@formId">Guardar</button>
+                        @if (m.IsActive)
+                        {
+                            <form asp-page="./Index" asp-page-handler="Desactivar" asp-route-id="@m.Id" asp-route-valueTemplate="@m.ValueTemplate" method="post" style="display:inline-block;">
+                                <button type="submit" class="btn-module-action btn-module-danger">Desactivar</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-page="./Index" asp-page-handler="Activar" asp-route-id="@m.Id" asp-route-valueTemplate="@m.ValueTemplate" method="post" style="display:inline-block;">
+                                <button type="submit" class="btn-module-action">Activar</button>
+                            </form>
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (Model.Mappings.Count == 0)
+        {
+            <tr><td colspan="6" class="admin-muted">Sin mapeos todavía.</td></tr>
+        }
+    </tbody>
+</table>
+
+@* Un <form> no puede abrirse en una <td> y cerrarse en otra (el parser lo corta en
+   el primer </td>), y tampoco puede ser hijo directo de <tr> -- por eso viven acá
+   afuera, vacíos, y los inputs/botones de cada fila se asocian por id vía form="...". *@
+@foreach (var m in Model.Mappings)
+{
+    <form id="mapeo-@m.Id" asp-page="./Index" asp-page-handler="Guardar" asp-route-id="@m.Id"></form>
+}
+
+<span class="admin-subtitulo">Nuevo mapeo</span>
+<form method="post" asp-page-handler="Crear" class="admin-form-asignar">
+    <div asp-validation-summary="All" class="text-danger" style="grid-column:1/-1;"></div>
+    <div class="form-group">
+        <label asp-for="New.MapperKey">Documento</label>
+        <select asp-for="New.MapperKey" class="form-control">
+            @foreach (var kv in Model.MapperKeyLabels)
+            {
+                <option value="@kv.Key">@kv.Value</option>
+            }
+        </select>
+    </div>
+    <div class="form-group">
+        <label asp-for="New.FieldName">Campo UDF</label>
+        <input asp-for="New.FieldName" class="form-control" placeholder="U_..." />
+    </div>
+    <div class="form-group">
+        <label asp-for="New.ValueTemplate">Valor / Plantilla</label>
+        <input asp-for="New.ValueTemplate" class="form-control" placeholder="Ej: Y (literal) o {lpn} / {header.MessageId}" />
+    </div>
+    <div class="form-group form-row-check">
+        <label><input asp-for="New.IsActive" type="checkbox" /> Activo (se envía a SAP)</label>
+    </div>
+    <button type="submit" class="btn-erp-primary">Crear</button>
+</form>
+<p class="admin-muted">
+    Literal (ej. <code>Y</code>) o plantilla con placeholders: <code>{lpn}</code> / <code>{shipmentNbr}</code>
+    / <code>{header.NombreColumna}</code> (cualquier columna de la fila de staging origen).
+</p>
+</div>

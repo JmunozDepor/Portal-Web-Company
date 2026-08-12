@@ -1,14 +1,13 @@
 namespace Modulo.Rendiciones.Models;
 
 /// <summary>
-/// Configuración global del recordatorio diario -- fila única (Id siempre 1), no hay
-/// concepto de "settings globales de plataforma" reusable en el portal todavía (ver
-/// docs/superpowers/specs/2026-08-11-flujo-aprobacion-notificaciones-design.md),
-/// así que vive acá, propia del plugin.
+/// Configuración del recordatorio diario -- una fila por compañía (CompanyId es la PK),
+/// ya que ModuleExternalConnection no impide que varias compañías compartan la misma
+/// base externa (ver docs/superpowers/specs/2026-08-11-flujo-aprobacion-notificaciones-design.md).
 /// </summary>
 public class RendicionesSettings
 {
-    public long Id { get; set; }
+    public required Guid CompanyId { get; set; }
 
     public TimeOnly ReminderHour { get; set; } = new(8, 0);
 

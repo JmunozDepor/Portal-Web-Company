@@ -102,20 +102,20 @@ public sealed class RendicionesReminderBackgroundService : BackgroundService
 
         await using var db = new RendicionesDbContext(optionsBuilder.Options);
 
-        var settings = await db.RendicionesSettings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == 1, ct);
-        if (settings is null || !settings.ReminderEnabled)
+        var settings = await db.RendicionesSettings.AsNoTracking().FirstOrDefaultAsync(x => x.CompanyId == company.CompanyId, ct)
+            ?? new RendicionesSettings { CompanyId = company.CompanyId };
+        if (!settings.ReminderEnabled)
             return;
 
         var nowLocal = TimeOnly.FromDateTime(DateTime.Now);
         var todayLocal = DateOnly.FromDateTime(DateTime.Now);
 
-        // Ventana de +/- la mitad del intervalo de polling alrededor de la hora
-        // configurada -- evita depender de que el ciclo caiga justo en el minuto exacto.
-        var withinWindow = Math.Abs((nowLocal.ToTimeSpan() - settings.ReminderHour.ToTimeSpan()).TotalMinutes) <= PollInterval.TotalMinutes / 2;
-        if (!withinWindow)
+        // El ReminderLog (con su índice único por company_id+sent_date) es la guarda real
+        // de idempotencia -- alcanza con chequear que ya pasó la hora configurada hoy.
+        if (nowLocal < settings.ReminderHour)
             return;
 
-        var alreadySentToday = await db.ReminderLogs.AsNoTracking().AnyAsync(x => x.SentDate == todayLocal, ct);
+        var alreadySentToday = await db.ReminderLogs.AsNoTracking().AnyAsync(x => x.CompanyId == company.CompanyId && x.SentDate == todayLocal, ct);
         if (alreadySentToday)
             return;
 
@@ -151,15 +151,16 @@ public sealed class RendicionesReminderBackgroundService : BackgroundService
                 {
                     await emailSender.SendAsync(contact.OrganizationId, new EmailMessage(contact.Email, "Recordatorio: informes pendientes de aprobar", body), ct);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     // Mismo criterio que ExpenseReportService: un correo caído no debe
                     // frenar el resto de la ronda de recordatorios.
+                    _logger.LogWarning(ex, "No se pudo enviar el recordatorio diario a {UserId}.", approverUserId);
                 }
             }
         }
 
-        db.ReminderLogs.Add(new ReminderLog { SentDate = todayLocal });
+        db.ReminderLogs.Add(new ReminderLog { CompanyId = company.CompanyId, SentDate = todayLocal });
         await db.SaveChangesAsync(ct);
     }
 }

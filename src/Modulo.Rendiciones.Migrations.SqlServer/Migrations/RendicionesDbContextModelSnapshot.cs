@@ -677,27 +677,29 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
                     b.Property<DateOnly>("SentDate")
                         .HasColumnType("date")
                         .HasColumnName("sent_date");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SentDate")
+                    b.HasIndex("CompanyId", "SentDate")
                         .IsUnique()
-                        .HasDatabaseName("uq_rendiciones_reminder_log_sent_date");
+                        .HasDatabaseName("uq_rendiciones_reminder_log_company_id_sent_date");
 
                     b.ToTable("rendiciones_reminder_log", (string)null);
                 });
 
             modelBuilder.Entity("Modulo.Rendiciones.Models.RendicionesSettings", b =>
                 {
-                    b.Property<long>("Id")
+                    b.Property<Guid>("CompanyId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
 
                     b.Property<bool>("ReminderEnabled")
                         .HasColumnType("bit")
@@ -711,7 +713,7 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.HasKey("CompanyId");
 
                     b.ToTable("rendiciones_settings", (string)null);
                 });

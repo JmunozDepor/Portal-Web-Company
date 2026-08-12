@@ -312,8 +312,8 @@ public class RendicionesDbContext : DbContext
         modelBuilder.Entity<RendicionesSettings>(e =>
         {
             e.ToTable("rendiciones_settings");
-            e.HasKey(x => x.Id);
-            e.Property(x => x.Id).HasColumnName("id");
+            e.HasKey(x => x.CompanyId);
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
             e.Property(x => x.ReminderHour).HasColumnName("reminder_hour").IsRequired();
             e.Property(x => x.ReminderEnabled).HasColumnName("reminder_enabled");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
@@ -324,8 +324,9 @@ public class RendicionesDbContext : DbContext
             e.ToTable("rendiciones_reminder_log");
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
             e.Property(x => x.SentDate).HasColumnName("sent_date").IsRequired();
-            e.HasIndex(x => x.SentDate).IsUnique().HasDatabaseName("uq_rendiciones_reminder_log_sent_date");
+            e.HasIndex(x => new { x.CompanyId, x.SentDate }).IsUnique().HasDatabaseName("uq_rendiciones_reminder_log_company_id_sent_date");
         });
     }
 }

@@ -3,16 +3,19 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modulo.Rendiciones.Data;
 using Modulo.Rendiciones.Models;
+using PortalSaas.Abstractions.Contratos;
 
 namespace Modulo.Rendiciones.Pages.Configuracion.Notificaciones;
 
 public sealed class IndexModel : RendicionesPageModelBase
 {
     private readonly RendicionesDbContext _db;
+    private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(RendicionesDbContext db)
+    public IndexModel(RendicionesDbContext db, ICurrentCompanyAccessor currentCompany)
     {
         _db = db;
+        _currentCompany = currentCompany;
     }
 
     [BindProperty]
@@ -20,7 +23,7 @@ public sealed class IndexModel : RendicionesPageModelBase
 
     public async Task OnGetAsync(CancellationToken ct)
     {
-        var settings = await _db.RendicionesSettings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == 1, ct);
+        var settings = await _db.RendicionesSettings.AsNoTracking().FirstOrDefaultAsync(x => x.CompanyId == _currentCompany.CompanyId, ct);
         if (settings is not null)
         {
             Settings.ReminderHour = settings.ReminderHour;
@@ -33,10 +36,10 @@ public sealed class IndexModel : RendicionesPageModelBase
         if (!ModelState.IsValid)
             return Page();
 
-        var settings = await _db.RendicionesSettings.FirstOrDefaultAsync(x => x.Id == 1, ct);
+        var settings = await _db.RendicionesSettings.FirstOrDefaultAsync(x => x.CompanyId == _currentCompany.CompanyId, ct);
         if (settings is null)
         {
-            settings = new RendicionesSettings { Id = 1 };
+            settings = new RendicionesSettings { CompanyId = _currentCompany.CompanyId };
             _db.RendicionesSettings.Add(settings);
         }
 

@@ -1,10 +1,9 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
+namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
 {
     /// <inheritdoc />
     public partial class AddRendicionesSettingsAndReminderLog : Migration
@@ -17,7 +16,8 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    company_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     sent_date = table.Column<DateOnly>(type: "date", nullable: false)
                 },
                 constraints: table =>
@@ -29,21 +29,20 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
                 name: "rendiciones_settings",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    reminder_hour = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
-                    reminder_enabled = table.Column<bool>(type: "boolean", nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    company_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    reminder_hour = table.Column<TimeOnly>(type: "time", nullable: false),
+                    reminder_enabled = table.Column<bool>(type: "bit", nullable: false),
+                    updated_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_rendiciones_settings", x => x.id);
+                    table.PrimaryKey("PK_rendiciones_settings", x => x.company_id);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "uq_rendiciones_reminder_log_sent_date",
+                name: "uq_rendiciones_reminder_log_company_id_sent_date",
                 table: "rendiciones_reminder_log",
-                column: "sent_date",
+                columns: new[] { "company_id", "sent_date" },
                 unique: true);
         }
 

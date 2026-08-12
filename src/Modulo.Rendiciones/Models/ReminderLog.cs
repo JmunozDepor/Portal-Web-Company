@@ -8,5 +8,7 @@ public class ReminderLog
 {
     public long Id { get; set; }
 
+    public required Guid CompanyId { get; set; }
+
     public required DateOnly SentDate { get; set; }
 }

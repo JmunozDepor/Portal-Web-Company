@@ -346,19 +346,20 @@ public sealed class ExpenseReportService : IExpenseReportService
 
     private async Task NotifyAsync(Guid userId, string subject, string htmlBody, CancellationToken ct)
     {
-        var contact = await _contacts.GetContactAsync(userId, ct);
-        if (contact is null || !contact.EmailNotificationsEnabled)
-            return;
-
         try
         {
+            var contact = await _contacts.GetContactAsync(userId, ct);
+            if (contact is null || !contact.EmailNotificationsEnabled)
+                return;
+
             await _emailSender.SendAsync(contact.OrganizationId, new EmailMessage(contact.Email, subject, htmlBody), ct);
         }
         catch (Exception ex)
         {
-            // Correo caído (ej. organización sin proveedor configurado) no debe bloquear
-            // la transacción de negocio ya confirmada -- ver constraint global del plan.
-            _logger.LogWarning(ex, "No se pudo enviar la notificación por correo a {UserId} ({Email}).", userId, contact.Email);
+            // Correo caído (ej. organización sin proveedor configurado) o falla al resolver
+            // el contacto no debe bloquear la transacción de negocio ya confirmada -- ver
+            // constraint global del plan.
+            _logger.LogWarning(ex, "No se pudo enviar la notificación por correo a {UserId}.", userId);
         }
     }
 }

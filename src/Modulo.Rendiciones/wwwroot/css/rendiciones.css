@@ -497,22 +497,37 @@
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 8px;
-    font-size: 13px;
+    font-size: 12.5px;
 }
 
 .admin-table th {
     text-align: left;
-    font-size: 11px;
+    font-size: 10.5px;
     text-transform: uppercase;
     letter-spacing: 0.4px;
     color: var(--text-muted);
     border-bottom: 1px solid var(--card-border);
-    padding: 8px 10px;
+    padding: 6px 10px;
 }
 
 .admin-table td {
-    padding: 9px 10px;
+    padding: 5px 10px;
     border-bottom: 1px solid var(--card-border);
+}
+
+/* Densidad de fila estilo ERP -- los <input>/<select> editables inline dentro de
+   una fila de tabla van más chicos que un .form-control de formulario suelto
+   (que sigue a tamaño normal, ver más abajo), para que la fila se lea como una
+   línea de grilla y no como una serie de formularios apilados. */
+.admin-table .form-control {
+    padding: 5px 8px;
+    font-size: 12.5px;
+}
+
+.admin-table input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    vertical-align: middle;
 }
 
 .admin-table tr:last-child td {
@@ -531,20 +546,45 @@
     text-align: right;
 }
 
+/* Flex en vez de CSS grid a propósito: con auto-fit + minmax, una fila con pocos
+   campos puede "colapsar" a una columna en anchos intermedios en vez de quedarse
+   en una sola línea (el defecto que se veía en producción: 4 campos + botón
+   apilados en 5 filas). Con flex-wrap, los campos comparten el ancho disponible en
+   una sola línea y SOLO bajan de línea cuando el ancho real ya no alcanza --
+   degradación más predecible para una barra de alta angosta tipo ERP. */
 .admin-form-asignar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto;
-    gap: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     align-items: end;
     margin-bottom: 8px;
 }
 
 .admin-form-asignar .form-group {
+    flex: 1 1 150px;
+    min-width: 140px;
     margin-bottom: 0;
 }
 
+/* Un checkbox no necesita compartir el ancho elástico de los campos de texto --
+   ancho fijo al contenido, para que no quede un casillero flotando en medio de un
+   tramo vacío grande. */
+.admin-form-asignar .form-group.form-row-check {
+    flex: 0 0 auto;
+}
+
 .admin-form-asignar button {
+    flex: 0 0 auto;
     white-space: nowrap;
+}
+
+/* El resumen de validación es el único hijo que debe forzar salto de línea propio
+   -- ocupa el ancho completo de la barra cuando tiene contenido. Selector por
+   data-valmsg-summary (el atributo real que queda en el HTML renderizado; el
+   TagHelper asp-validation-summary no sobrevive al render, ver la regla de
+   visibilidad de este mismo atributo más abajo en este archivo). */
+.admin-form-asignar > div[data-valmsg-summary] {
+    flex-basis: 100%;
 }
 
 .form-row-check {
@@ -700,6 +740,16 @@ select.form-control {
     background: var(--accent);
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Variante compacta -- misma jerarquía visual (relleno sólido, color de acento)
+   que .btn-erp-primary, pero del tamaño de un control de línea, no de un CTA de
+   página completa. Para acciones "Crear" dentro de una barra inline de alta
+   densidad (ver .admin-form-asignar) -- un botón a tamaño completo ahí se leía
+   como un bloque publicitario en medio de una pantalla de administración. */
+.btn-erp-primary--sm {
+    padding: 7px 16px;
+    font-size: 12.5px;
 }
 
 .btn-module-action {

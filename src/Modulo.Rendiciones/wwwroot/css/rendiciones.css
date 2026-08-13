@@ -603,13 +603,24 @@
     color: var(--text-main);
 }
 
+/* "Guardar" + "Activar"/"Desactivar" (o "Eliminar", "Quitar", etc.) SIEMPRE uno al
+   lado del otro en la última columna de cualquier tabla admin -- nunca apilados.
+   flex-direction/flex-wrap explícitos (no solo el display:flex por default) porque
+   cada botón real es un <button> o un <form> con su propio botón adentro: sin
+   flex:0 0 auto en ambos, cualquier regla de ancho heredada de un elemento padre
+   (ej. un form a ancho completo) alcanza a estirar un hijo y lo baja de línea. */
 .admin-row-actions {
     display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
 }
 
-.admin-row-actions form {
+.admin-row-actions > button,
+.admin-row-actions > form {
+    flex: 0 0 auto;
+    width: auto;
     margin: 0;
 }
 

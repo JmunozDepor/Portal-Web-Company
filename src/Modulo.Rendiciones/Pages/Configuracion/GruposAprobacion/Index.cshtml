@@ -36,12 +36,12 @@
         <div class="admin-master-nuevo">
             <span class="admin-subtitulo">Nuevo grupo</span>
             <form method="post" asp-page-handler="CrearGrupo" class="admin-form-asignar">
-                <div asp-validation-summary="All" class="text-danger" style="grid-column:1/-1;"></div>
+                <div asp-validation-summary="All" class="text-danger"></div>
                 <div class="form-group">
                     <label asp-for="Group.Name">Nombre</label>
                     <input asp-for="Group.Name" class="form-control" />
                 </div>
-                <button type="submit" class="btn-erp-primary">Crear grupo</button>
+                <button type="submit" class="btn-erp-primary btn-erp-primary--sm">Crear grupo</button>
             </form>
         </div>
     </div>

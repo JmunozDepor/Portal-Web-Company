@@ -68,7 +68,7 @@
 
 <span class="admin-subtitulo">Nuevo tipo de documento</span>
 <form method="post" asp-page-handler="Crear" class="admin-form-asignar">
-    <div asp-validation-summary="All" class="text-danger" style="grid-column:1/-1;"></div>
+    <div asp-validation-summary="All" class="text-danger"></div>
     <div class="form-group">
         <label asp-for="New.Name">Nombre</label>
         <input asp-for="New.Name" class="form-control" placeholder="Ej. Boleta, Factura..." />
@@ -80,6 +80,6 @@
         <label asp-for="New.TaxPercentage">% IVA</label>
         <input asp-for="New.TaxPercentage" class="form-control" />
     </div>
-    <button type="submit" class="btn-erp-primary">Crear</button>
+    <button type="submit" class="btn-erp-primary btn-erp-primary--sm">Crear</button>
 </form>
 </div>

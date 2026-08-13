@@ -308,6 +308,25 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
     }
 
     /// <summary>
+    /// Resuelve en una sola consulta los códigos de artículo que vinieron de una
+    /// importación Excel de líneas (ver document-lines-editor.js) -- mismo mecanismo
+    /// que usa Modulo.ImportacionGenerica para cruzar todos los ItemCode distintos de
+    /// un archivo de una vez (IItemCatalogService.GetByCodesAsync), en vez de dejar que
+    /// el usuario descubra un código inválido recién al enviar el formulario completo.
+    /// Devuelve solo los códigos que SÍ existen -- el cliente calcula la diferencia
+    /// contra lo que importó.
+    /// </summary>
+    public async Task<JsonResult> OnGetValidateItemCodesAsync(string[] codes, CancellationToken ct)
+    {
+        var distinctCodes = (codes ?? [])
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var items = await _items.GetByCodesAsync(distinctCodes, ct);
+        return new JsonResult(items.Select(i => new { i.ItemCode, i.ItemName }));
+    }
+
+    /// <summary>
     /// Búsqueda en vivo del cliente -- mismo modelo que Artículo (LIKE acotado con
     /// LIMIT + debounce/mínimo de caracteres del lado cliente, ver catalog-search.js).
     /// Antes esta pantalla precargaba TODO OCRD (CardType='C') en un &lt;select&gt; en

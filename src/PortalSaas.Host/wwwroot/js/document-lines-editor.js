@@ -3,14 +3,15 @@
 // + recálculo en vivo del Resumen total + plantilla/importación Excel, portado del
 // comportamiento real de _TabContenido.cshtml (referencia-original/PortalSAP_v2).
 //
-// A diferencia del original, la importación corre 100% en el cliente (sin
-// round-trip al servidor, vía SheetJS vendorizado -- ver wwwroot/lib/sheetjs, mismo
-// criterio ya usado en Modulo.CierreMensual): no hay validación contra catálogos SAP
-// (existencia de artículo, nombre resuelto) -- el usuario corrige a mano si un código
-// no existe, recién al enviar el formulario (mismo error que ya devuelve el motor
-// genérico al guardar). Esto es una simplificación deliberada frente al importador
-// del original (que sí valida servidor-side fila por fila) para no tener que portar
-// IImportadorLineasDocumentoService todavía -- ver CLAUDE.md, brecha pendiente.
+// El parseo del Excel corre 100% en el cliente (sin round-trip al servidor para leer
+// el archivo, vía SheetJS vendorizado -- ver wwwroot/lib/sheetjs, mismo criterio ya
+// usado en Modulo.CierreMensual). Después de volcar las filas SÍ se valida (ver
+// validarFilasImportadas, agregado 2026-08-11): catálogos chicos (Almacén/Cuenta
+// Mayor/Centro de Costos) contra el <datalist> ya precargado, Artículo contra el
+// catálogo real vía OnGetValidateItemCodesAsync (un solo round-trip con todos los
+// códigos distintos, mismo mecanismo que Modulo.ImportacionGenerica), y Cantidad
+// numérica > 0. Sigue sin portar IImportadorLineasDocumentoService completo (reglas
+// de negocio más finas del original) -- ver CLAUDE.md, brecha pendiente.
 //
 // Era CSV hasta el 2026-08-02 (mismo criterio 100% cliente) -- reemplazado por Excel
 // real a pedido del dueño del proyecto, para que el importador de líneas coincida con
@@ -201,9 +202,11 @@
                         });
                     }
 
+                    var filasCreadas = [];
                     filas.forEach(function (filaExcel) {
                         var filaNueva = crearFilaDesdePlantilla();
                         cuerpo.appendChild(filaNueva);
+                        filasCreadas.push(filaNueva);
                         options.csvColumns.forEach(function (columna) {
                             var input = filaNueva.querySelector('[name$=".' + columna + '"]');
                             if (input && filaExcel[columna] !== undefined) {
@@ -217,12 +220,170 @@
                     inputArchivo.value = '';
 
                     if (divResultado) {
-                        divResultado.innerHTML = '<p class="alert alert-success py-1 px-2">'
-                            + filas.length + ' línea(s) importada(s) desde el Excel. Revisá los códigos de artículo/catálogo antes de guardar -- se validan recién al enviar el formulario.</p>';
+                        divResultado.innerHTML = '<p class="alert alert-info py-1 px-2">Validando ' + filas.length + ' línea(s) importada(s)…</p>';
                     }
+                    validarFilasImportadas(filasCreadas).then(function (errores) {
+                        if (!divResultado) {
+                            return;
+                        }
+                        if (errores.length === 0) {
+                            divResultado.innerHTML = '<p class="alert alert-success py-1 px-2">'
+                                + filas.length + ' línea(s) importada(s) desde el Excel -- todas válidas.</p>';
+                            return;
+                        }
+                        var listaErrores = errores.map(function (e) { return '<li>' + e + '</li>'; }).join('');
+                        divResultado.innerHTML = '<p class="alert alert-warning py-1 px-2 mb-1">'
+                            + filas.length + ' línea(s) importada(s), ' + errores.length + ' con problema(s) -- revisá los campos marcados en rojo:</p>'
+                            + '<ul class="alert alert-warning py-1 px-2 mb-0">' + listaErrores + '</ul>';
+                    });
                 };
                 lector.readAsArrayBuffer(archivo);
             });
+        }
+
+        // ---- Validación post-importación: existencia de Artículo (server, catálogo
+        // grande) + catálogos chicos ya precargados (Almacén/Cuenta Mayor/Centro de
+        // Costos, cliente) + Cantidad numérica > 0 -- mismo criterio de "validar
+        // correcto o con problema" que ya usa Modulo.ImportacionGenerica, para no
+        // dejar que un código mal tipeado se descubra recién al enviar el documento
+        // completo o, peor, en el rechazo de SAP Service Layer.
+        // Los mensajes de error citan valores tal cual vinieron del Excel importado
+        // (código de artículo, almacén, etc.) -- nunca confiar en ese contenido al
+        // insertarlo vía innerHTML (ver divResultado más abajo), por eso se escapa acá
+        // antes de concatenar.
+        function escaparHtml(texto) {
+            var div = document.createElement('div');
+            div.textContent = texto;
+            return div.innerHTML;
+        }
+
+        function marcarInvalido(input, mensaje) {
+            input.classList.add('is-invalid');
+            input.title = mensaje;
+        }
+
+        function limpiarInvalido(input) {
+            input.classList.remove('is-invalid');
+            input.removeAttribute('title');
+        }
+
+        function obtenerCodigosDatalist(datalistId) {
+            var datalist = document.getElementById(datalistId);
+            if (!datalist) {
+                return null;
+            }
+            var set = {};
+            Array.prototype.forEach.call(datalist.options, function (o) {
+                set[o.value.trim().toUpperCase()] = true;
+            });
+            return set;
+        }
+
+        function validarFilasImportadas(filasCreadas) {
+            var errores = [];
+
+            filasCreadas.forEach(function (fila, indice) {
+                var etiquetaFila = 'Línea ' + (indice + 1);
+                var campoArticulo = options.itemCodeSelector ? fila.querySelector(options.itemCodeSelector) : null;
+                if (campoArticulo) {
+                    etiquetaFila += campoArticulo.value ? ' (Artículo ' + escaparHtml(campoArticulo.value) + ')' : '';
+                }
+
+                // Cantidad -- el nombre del campo siempre es "Quantity" en los 3 motores
+                // (Venta/Compra/Inventario), aunque la clase CSS varíe.
+                var inputCantidad = fila.querySelector('[name$=".Quantity"]');
+                if (inputCantidad && !inputCantidad.disabled) {
+                    limpiarInvalido(inputCantidad);
+                    var cantidad = parseFloat(inputCantidad.value);
+                    if (!inputCantidad.value || isNaN(cantidad) || cantidad <= 0) {
+                        marcarInvalido(inputCantidad, 'La cantidad debe ser un número mayor a 0.');
+                        errores.push(etiquetaFila + ': cantidad inválida ("' + escaparHtml(inputCantidad.value) + '").');
+                    }
+                }
+
+                // Cualquier campo con list="..." salvo el de Artículo (catálogo grande,
+                // se valida server-side aparte) es un catálogo chico que ya está
+                // precargado completo en su <datalist> (minChars: 0, ver
+                // catalog-search.js) -- alcanza con comparar contra las <option> ya
+                // cargadas, sin ida y vuelta al servidor.
+                fila.querySelectorAll('input[list]').forEach(function (input) {
+                    if (input.disabled || (campoArticulo && input === campoArticulo)) {
+                        return;
+                    }
+                    limpiarInvalido(input);
+                    var valor = input.value.trim();
+                    if (!valor) {
+                        return;
+                    }
+                    var codigos = obtenerCodigosDatalist(input.getAttribute('list'));
+                    if (codigos && !codigos[valor.toUpperCase()]) {
+                        marcarInvalido(input, 'Código no encontrado en el catálogo.');
+                        errores.push(etiquetaFila + ': "' + escaparHtml(valor) + '" no existe en el catálogo (' + escaparHtml(input.name) + ').');
+                    }
+                });
+            });
+
+            if (!options.itemCodeSelector) {
+                return Promise.resolve(errores);
+            }
+
+            var camposArticulo = filasCreadas
+                .map(function (fila) { return fila.querySelector(options.itemCodeSelector); })
+                .filter(function (input) { return input && !input.disabled && input.value.trim(); });
+
+            if (camposArticulo.length === 0) {
+                return Promise.resolve(errores);
+            }
+
+            var codigosDistintos = [];
+            camposArticulo.forEach(function (input) {
+                var codigo = input.value.trim();
+                if (codigosDistintos.indexOf(codigo) === -1) {
+                    codigosDistintos.push(codigo);
+                }
+            });
+
+            var query = '?handler=ValidateItemCodes&' + codigosDistintos.map(function (c) {
+                return 'codes=' + encodeURIComponent(c);
+            }).join('&');
+
+            return fetch(query)
+                .then(function (r) {
+                    if (!r.ok) {
+                        throw new Error('HTTP ' + r.status + ' validando códigos de artículo');
+                    }
+                    return r.json();
+                })
+                .then(function (encontrados) {
+                    var nombresPorCodigo = {};
+                    encontrados.forEach(function (item) {
+                        nombresPorCodigo[item.itemCode.trim().toUpperCase()] = item.itemName;
+                    });
+
+                    camposArticulo.forEach(function (input) {
+                        var codigo = input.value.trim();
+                        var nombre = nombresPorCodigo[codigo.toUpperCase()];
+                        var span = input.parentElement.querySelector('.line-item-resolved-name');
+                        if (!span) {
+                            span = document.createElement('small');
+                            span.className = 'text-muted line-item-resolved-name d-block';
+                            input.insertAdjacentElement('afterend', span);
+                        }
+                        if (nombre) {
+                            span.textContent = nombre;
+                        } else {
+                            marcarInvalido(input, 'Artículo no encontrado en el catálogo.');
+                            errores.push('Artículo "' + escaparHtml(codigo) + '": no existe en el catálogo.');
+                        }
+                    });
+
+                    return errores;
+                })
+                .catch(function (error) {
+                    console.error('document-lines-editor: validación de artículos falló', error);
+                    errores.push('No se pudo validar la existencia de los artículos contra el catálogo (revisá la consola) -- se validarán igual al enviar el formulario.');
+                    return errores;
+                });
         }
     };
 })();

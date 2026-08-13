@@ -224,6 +224,17 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         return new JsonResult(items.Select(i => new { i.ItemCode, i.ItemName }));
     }
 
+    /// <summary>Ver el comentario completo en OnGetValidateItemCodesAsync (DetailGenericSalesDocumentModelBase, Modulo.Ventas), mismo criterio.</summary>
+    public async Task<JsonResult> OnGetValidateItemCodesAsync(string[] codes, CancellationToken ct)
+    {
+        var distinctCodes = (codes ?? [])
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var items = await _items.GetByCodesAsync(distinctCodes, ct);
+        return new JsonResult(items.Select(i => new { i.ItemCode, i.ItemName }));
+    }
+
     /// <summary>Ver el comentario completo en OnGetSearchWarehousesAsync (DetailGenericSalesDocumentModelBase, Modulo.Ventas), mismo criterio.</summary>
     public async Task<JsonResult> OnGetSearchWarehousesAsync(string text, CancellationToken ct)
     {

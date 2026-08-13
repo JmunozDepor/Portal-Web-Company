@@ -21,34 +21,41 @@
     <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
 }
 
-<div class="admin-master-detail">
-    <div>
-        <div class="admin-master-list">
-            @foreach (var g in Model.Groups)
-            {
-                <a href="~/rendiciones/configuracion/grupos?groupId=@g.Id"
-                   class="@(Model.GroupId == g.Id ? "admin-master-activo" : "")">
-                    <span>@g.Name</span>
-                </a>
-            }
-        </div>
-
-        <div class="admin-master-nuevo">
-            <span class="admin-subtitulo">Nuevo grupo</span>
-            <form method="post" asp-page-handler="CrearGrupo" class="admin-form-asignar">
-                <div asp-validation-summary="All" class="text-danger"></div>
-                <div class="form-group">
-                    <label asp-for="Group.Name">Nombre</label>
-                    <input asp-for="Group.Name" class="form-control" />
-                </div>
-                <button type="submit" class="btn-erp-primary btn-erp-primary--sm">Crear grupo</button>
-            </form>
-        </div>
-    </div>
-
-    <div>
-        @if (Model.GroupId is { } groupId)
+<table class="admin-table">
+    <thead><tr><th>Nombre</th><th>Miembros</th><th>Niveles asignados</th><th class="admin-col-accion"></th></tr></thead>
+    <tbody>
+        @foreach (var g in Model.Groups)
         {
+            <tr class="@(Model.GroupId == g.Id ? "admin-fila-activa" : "")">
+                <td>@g.Name</td>
+                <td>@Model.MemberCountByGroupId.GetValueOrDefault(g.Id, 0)</td>
+                <td>@Model.LevelCountByGroupId.GetValueOrDefault(g.Id, 0)/2</td>
+                <td class="admin-col-accion">
+                    <a asp-page="./Index" asp-route-groupId="@g.Id" class="admin-link-action">Editar</a>
+                </td>
+            </tr>
+        }
+        @if (Model.Groups.Count == 0)
+        {
+            <tr><td colspan="4" class="admin-muted">Sin grupos de aprobación todavía.</td></tr>
+        }
+    </tbody>
+</table>
+
+<span class="admin-subtitulo">Nuevo grupo</span>
+<form method="post" asp-page-handler="CrearGrupo" class="admin-form-asignar">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="form-group">
+        <label asp-for="Group.Name">Nombre</label>
+        <input asp-for="Group.Name" class="form-control" />
+    </div>
+    <button type="submit" class="btn-erp-primary btn-erp-primary--sm">Crear grupo</button>
+</form>
+
+<div>
+    @if (Model.GroupId is { } groupId)
+    {
+            <p class="admin-muted"><a asp-page="./Index" class="admin-link-action">‹ Volver al listado</a></p>
             <div class="admin-subcard">
                 <h3>Equipo</h3>
                 <p class="admin-muted">Quiénes solicitan rendiciones bajo este grupo (se asume 1 grupo por colaborador).</p>
@@ -140,5 +147,4 @@
             <p class="admin-muted">Seleccioná un grupo de la lista o creá uno nuevo.</p>
         }
     </div>
-</div>
 </div>

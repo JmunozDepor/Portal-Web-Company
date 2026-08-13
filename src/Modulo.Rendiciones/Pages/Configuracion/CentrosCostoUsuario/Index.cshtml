@@ -26,21 +26,32 @@
     costo de SAP al declarar gastos o fondos. Asigná acá solo si necesitás acotarlo.
 </p>
 
-<form method="get" class="form-group" style="max-width:400px;">
-    <label for="usuario-select">Colaborador</label>
-    <select id="usuario-select" name="UserId" class="form-control" onchange="this.form.submit()">
-        <option value="">-- Seleccionar --</option>
-        @foreach (var u in Model.AvailableUsers)
+<table class="admin-table">
+    <thead><tr><th>Usuario</th><th>Correo</th><th>Centros asignados</th><th class="admin-col-accion"></th></tr></thead>
+    <tbody>
+        @foreach (var u in Model.Users)
         {
-            <option value="@u.Value" selected="@(u.Value == Model.UserId)">@u.Text</option>
+            <tr class="@(u.Id.ToString() == Model.UserId ? "admin-fila-activa" : "")">
+                <td>@u.Username</td>
+                <td>@u.Email</td>
+                <td>@Model.AssignedCountByUserId.GetValueOrDefault(u.Id, 0)</td>
+                <td class="admin-col-accion">
+                    <a asp-page="./Index" asp-route-UserId="@u.Id" class="admin-link-action">Editar</a>
+                </td>
+            </tr>
         }
-    </select>
-</form>
+        @if (Model.Users.Count == 0)
+        {
+            <tr><td colspan="4" class="admin-muted">Sin usuarios en esta organización.</td></tr>
+        }
+    </tbody>
+</table>
 
 @if (Model.UserId is { Length: > 0 })
 {
     <div class="admin-subcard">
         <h3>Asignados a @Model.SelectedUserName</h3>
+        <p class="admin-muted"><a asp-page="./Index" class="admin-link-action">‹ Volver al listado</a></p>
         <table class="admin-table">
             <thead><tr><th>Código</th><th>Nombre</th><th class="admin-col-accion"></th></tr></thead>
             <tbody>

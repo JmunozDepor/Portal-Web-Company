@@ -38,6 +38,11 @@ public sealed class IndexModel : RendicionesPageModelBase
     public string? SelectedCostCenterCode { get; set; }
 
     public List<SelectListItem> AvailableUsers { get; set; } = new();
+
+    /// <summary>Listado completo -- fila por usuario de la organización, con conteo de centros asignados, para la tabla "Usuario / Correo / Centros asignados / Editar".</summary>
+    public IReadOnlyList<TenantUserDto> Users { get; private set; } = Array.Empty<TenantUserDto>();
+    public IReadOnlyDictionary<Guid, int> AssignedCountByUserId { get; private set; } = new Dictionary<Guid, int>();
+
     public string? SelectedUserName { get; private set; }
     public IReadOnlyList<Models.UserCostCenter> Assigned { get; private set; } = Array.Empty<Models.UserCostCenter>();
     public IReadOnlyList<CostCenterDto> SapCostCenters { get; private set; } = Array.Empty<CostCenterDto>();
@@ -46,6 +51,15 @@ public sealed class IndexModel : RendicionesPageModelBase
     {
         var users = await _users.ListAsync(ct);
         AvailableUsers = users.Select(u => new SelectListItem(u.Username, u.Id.ToString())).ToList();
+        Users = users;
+
+        // N pequeño (usuarios de una organización en una pantalla de administración) --
+        // un conteo por usuario alcanza, no justifica un método nuevo "bulk" en el
+        // servicio todavía.
+        var counts = new Dictionary<Guid, int>();
+        foreach (var u in users)
+            counts[u.Id] = (await _userCostCenters.ListAssignedAsync(_currentCompany.CompanyId, u.Id, ct)).Count;
+        AssignedCountByUserId = counts;
 
         if (string.IsNullOrEmpty(UserId) || !Guid.TryParse(UserId, out var userGuid))
             return;

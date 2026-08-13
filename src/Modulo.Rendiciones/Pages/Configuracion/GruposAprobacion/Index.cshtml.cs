@@ -35,6 +35,8 @@ public sealed class IndexModel : RendicionesPageModelBase
     public string? SelectedUserId { get; set; }
 
     public IReadOnlyList<ExpenseApprovalGroup> Groups { get; set; } = Array.Empty<ExpenseApprovalGroup>();
+    public IReadOnlyDictionary<long, int> MemberCountByGroupId { get; set; } = new Dictionary<long, int>();
+    public IReadOnlyDictionary<long, int> LevelCountByGroupId { get; set; } = new Dictionary<long, int>();
     public List<SelectListItem> AvailableUsers { get; set; } = new();
     public Dictionary<Guid, string> NameByUserId { get; set; } = new();
 
@@ -150,6 +152,18 @@ public sealed class IndexModel : RendicionesPageModelBase
     private async Task LoadListsAsync(CancellationToken ct)
     {
         Groups = await _groups.ListAsync(_currentCompany.CompanyId, ct);
+
+        // N pequeño (grupos de aprobación de una compañía) -- un conteo por grupo
+        // alcanza para la columna del listado, no justifica un método "bulk" nuevo.
+        var memberCounts = new Dictionary<long, int>();
+        var levelCounts = new Dictionary<long, int>();
+        foreach (var g in Groups)
+        {
+            memberCounts[g.Id] = (await _groups.ListMembersAsync(g.Id, ct)).Count;
+            levelCounts[g.Id] = (await _groups.GetLevelsAsync(g.Id, ct)).Count;
+        }
+        MemberCountByGroupId = memberCounts;
+        LevelCountByGroupId = levelCounts;
 
         var users = await _users.ListAsync(ct);
         AvailableUsers = users.Select(u => new SelectListItem(u.Username, u.Id.ToString())).ToList();

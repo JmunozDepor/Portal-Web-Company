@@ -624,6 +624,38 @@
     margin: 0;
 }
 
+/* Acción de navegación en una fila de listado (ej. "Editar" hacia el detalle de un
+   registro) -- texto con color semántico, no un botón, mismo criterio que la
+   pantalla de Usuarios del portal (Admin/Organizations/Users). Distinto de
+   .btn-module-action (que sí es un botón real, para acciones que disparan un POST
+   ahí mismo en la fila) -- esto es solo navegación de lectura, "ir al detalle". */
+.admin-link-action {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 12.5px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.admin-link-action:hover {
+    text-decoration: underline;
+}
+
+.admin-link-action.admin-link-danger {
+    color: var(--bs-danger);
+}
+
+/* Separador entre dos .admin-link-action en la misma celda (ej. "Editar · Eliminar"). */
+.admin-link-sep {
+    color: var(--text-muted);
+    margin: 0 6px;
+}
+
+/* Fila resaltada -- el registro cuyo detalle está abierto debajo del listado. */
+.admin-table tr.admin-fila-activa {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
 .btn-module-danger {
     color: var(--bs-danger);
     border-color: color-mix(in srgb, var(--bs-danger) 55%, transparent);
@@ -631,45 +663,6 @@
 
 .btn-module-danger:hover {
     background: color-mix(in srgb, var(--bs-danger) 12%, transparent);
-}
-
-.admin-master-detail {
-    display: grid;
-    grid-template-columns: 260px 1fr;
-    gap: 24px;
-    align-items: start;
-}
-
-.admin-master-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.admin-master-list a {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 10px 12px;
-    border-radius: var(--radius-sm);
-    color: var(--text-main);
-    text-decoration: none;
-    font-size: 13px;
-}
-
-.admin-master-list a:hover {
-    background: var(--input-bg);
-}
-
-.admin-master-list a.admin-master-activo {
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
-    color: var(--accent);
-    font-weight: 600;
-}
-
-.admin-master-nuevo {
-    margin-top: 12px;
 }
 
 /*

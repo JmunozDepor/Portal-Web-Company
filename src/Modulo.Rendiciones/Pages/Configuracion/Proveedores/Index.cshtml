@@ -35,8 +35,6 @@
         <tr>
             <th>Servicio</th>
             <th>Nombre</th>
-            <th>Endpoint</th>
-            <th>Clave</th>
             <th>Límite mensual</th>
             <th>Prioridad</th>
             <th>Activo</th>
@@ -46,38 +44,73 @@
     <tbody>
         @foreach (var p in Model.Providers)
         {
-            var formId = $"prov-{p.Id}";
-            <tr class="@(p.IsActive ? "" : "admin-fila-inactiva")">
+            <tr class="@(p.IsActive ? "" : "admin-fila-inactiva") @(Model.Id == p.Id ? "admin-fila-activa" : "")">
                 <td>@p.ServiceType</td>
-                <td><input type="text" name="nombre" value="@p.Name" class="form-control" form="@formId" /></td>
-                <td><input type="text" name="endpoint" value="@p.Endpoint" class="form-control" placeholder="Solo Document Intelligence" form="@formId" /></td>
-                <td><input type="password" name="apiKey" class="form-control" placeholder="Dejar en blanco para no cambiar" form="@formId" autocomplete="new-password" /></td>
-                <td><input type="number" name="monthlyLimit" value="@p.MonthlyLimit" class="form-control" form="@formId" /></td>
-                <td><input type="number" name="priority" value="@p.Priority" class="form-control" form="@formId" /></td>
-                <td><input type="checkbox" name="activo" value="true" checked="@p.IsActive" form="@formId" /></td>
+                <td>@p.Name</td>
+                <td>@p.MonthlyLimit</td>
+                <td>@p.Priority</td>
+                <td>@(p.IsActive ? "Sí" : "No")</td>
                 <td class="admin-col-accion">
-                    <div class="admin-row-actions">
-                        <button type="submit" class="btn-module-action" form="@formId">Guardar</button>
-                        <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@p.Id" method="post" style="display:inline-block;"
-                              onsubmit="return confirm('¿Eliminar este proveedor?');">
-                            <button type="submit" class="btn-module-action btn-module-danger">Eliminar</button>
-                        </form>
-                    </div>
+                    <a asp-page="./Index" asp-route-id="@p.Id" class="admin-link-action">Editar</a>
                 </td>
             </tr>
         }
         @if (Model.Providers.Count == 0)
         {
-            <tr><td colspan="8" class="admin-muted">Sin proveedores configurados todavía.</td></tr>
+            <tr><td colspan="6" class="admin-muted">Sin proveedores configurados todavía.</td></tr>
         }
     </tbody>
 </table>
 
-@* Un <form> no puede abrirse en una <td> y cerrarse en otra, ni ser hijo directo de
-   <tr> -- viven acá afuera, vacíos, asociados por form="prov-{id}". *@
-@foreach (var p in Model.Providers)
+@if (Model.Selected is { } selected)
 {
-    <form id="prov-@p.Id" asp-page="./Index" asp-page-handler="Guardar" asp-route-id="@p.Id"></form>
+    <div class="admin-subcard">
+        <h3>Editar: @selected.Name</h3>
+        <p class="admin-muted"><a asp-page="./Index" class="admin-link-action">‹ Volver al listado</a></p>
+        <form method="post" asp-page-handler="Guardar" asp-route-id="@selected.Id">
+            <div asp-validation-summary="All" class="text-danger"></div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Servicio</label>
+                    <input type="text" value="@selected.ServiceType" class="form-control" disabled />
+                </div>
+                <div class="form-group">
+                    <label asp-for="Edit.Name">Nombre</label>
+                    <input asp-for="Edit.Name" class="form-control" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Edit.Endpoint">Endpoint</label>
+                    <input asp-for="Edit.Endpoint" class="form-control" placeholder="Solo Document Intelligence" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="Edit.ApiKey">Clave</label>
+                    <input asp-for="Edit.ApiKey" type="password" class="form-control" placeholder="Dejar en blanco para no cambiar" autocomplete="new-password" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Edit.MonthlyLimit">Límite mensual</label>
+                    <input asp-for="Edit.MonthlyLimit" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="Edit.Priority">Prioridad</label>
+                    <input asp-for="Edit.Priority" class="form-control" />
+                </div>
+            </div>
+            <div class="form-group form-row-check">
+                <label><input asp-for="Edit.IsActive" type="checkbox" /> Activo</label>
+            </div>
+            <div class="admin-row-actions">
+                <button type="submit" class="btn-erp-primary btn-erp-primary--sm">Guardar</button>
+                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@selected.Id" method="post"
+                      onsubmit="return confirm('¿Eliminar este proveedor?');">
+                    <button type="submit" class="btn-module-action btn-module-danger">Eliminar</button>
+                </form>
+            </div>
+        </form>
+    </div>
 }
 
 <span class="admin-subtitulo">Nuevo proveedor</span>

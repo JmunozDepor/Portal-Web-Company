@@ -28,12 +28,34 @@ public sealed class IndexModel : RendicionesPageModelBase
 
     public IReadOnlyList<string> ServiceTypes { get; } = ExternalServiceType.All.ToList();
 
+    [BindProperty(SupportsGet = true)]
+    public long? Id { get; set; }
+
+    public ExternalServiceProvider? Selected { get; private set; }
+
+    [BindProperty]
+    public EditProviderInput Edit { get; set; } = new();
+
     [BindProperty]
     public NewProviderInput New { get; set; } = new();
 
     public async Task OnGetAsync(CancellationToken ct)
     {
         Providers = await _providers.ListAsync(_currentCompany.CompanyId, ct);
+
+        if (Id is not { } id)
+            return;
+
+        Selected = Providers.FirstOrDefault(p => p.Id == id);
+        if (Selected is null)
+            return;
+
+        Edit.ServiceType = Selected.ServiceType;
+        Edit.Name = Selected.Name;
+        Edit.Endpoint = Selected.Endpoint;
+        Edit.MonthlyLimit = Selected.MonthlyLimit;
+        Edit.Priority = Selected.Priority;
+        Edit.IsActive = Selected.IsActive;
     }
 
     public async Task<IActionResult> OnPostCrearAsync(CancellationToken ct)
@@ -58,11 +80,19 @@ public sealed class IndexModel : RendicionesPageModelBase
         }
     }
 
-    public async Task<IActionResult> OnPostGuardarAsync(long id, string nombre, string? endpoint, string? apiKey, int monthlyLimit, int priority, bool activo, CancellationToken ct)
+    public async Task<IActionResult> OnPostGuardarAsync(long id, CancellationToken ct)
     {
+        if (!ModelState.IsValid)
+        {
+            Providers = await _providers.ListAsync(_currentCompany.CompanyId, ct);
+            Selected = Providers.FirstOrDefault(p => p.Id == id);
+            Id = id;
+            return Page();
+        }
+
         try
         {
-            await _providers.UpdateAsync(id, _currentCompany.CompanyId, nombre, endpoint, apiKey, monthlyLimit, priority, activo, ct);
+            await _providers.UpdateAsync(id, _currentCompany.CompanyId, Edit.Name, Edit.Endpoint, Edit.ApiKey, Edit.MonthlyLimit, Edit.Priority, Edit.IsActive, ct);
             SuccessMessage = "Proveedor actualizado.";
         }
         catch (Exception ex)
@@ -70,7 +100,7 @@ public sealed class IndexModel : RendicionesPageModelBase
             ErrorMessage = GetErrorMessage(ex);
         }
 
-        return RedirectToPage();
+        return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostEliminarAsync(long id, CancellationToken ct)
@@ -78,6 +108,29 @@ public sealed class IndexModel : RendicionesPageModelBase
         await _providers.DeleteAsync(id, _currentCompany.CompanyId, ct);
         SuccessMessage = "Proveedor eliminado.";
         return RedirectToPage();
+    }
+
+    public sealed class EditProviderInput
+    {
+        public string ServiceType { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+
+        [StringLength(300)]
+        public string? Endpoint { get; set; }
+
+        /// <summary>Write-only -- en blanco al editar significa "no cambiar la clave guardada".</summary>
+        [StringLength(500)]
+        public string? ApiKey { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "El límite mensual debe ser mayor a 0.")]
+        public int MonthlyLimit { get; set; }
+
+        public int Priority { get; set; }
+
+        public bool IsActive { get; set; } = true;
     }
 
     public sealed class NewProviderInput

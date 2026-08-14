@@ -104,12 +104,31 @@ public sealed class ModuloRendiciones : IModuloPortal
 
         yield return new MenuItemDefinition
         {
+            Code = "grupo-reporte",
+            ParentCode = "raiz",
+            Name = "Reporte",
+            Icon = "bi-bar-chart",
+            PageRoute = null,
+            Order = 3,
+        };
+
+        yield return new MenuItemDefinition
+        {
+            Code = "reportes-cierre",
+            ParentCode = "grupo-reporte",
+            Name = "Cierre y Reportes",
+            PageRoute = "/rendiciones/reportes/cierre",
+            Order = 1,
+        };
+
+        yield return new MenuItemDefinition
+        {
             Code = "grupo-administrador",
             ParentCode = "raiz",
             Name = "Administrador",
             Icon = "bi-shield-lock",
             PageRoute = null,
-            Order = 3,
+            Order = 4,
         };
 
         yield return new MenuItemDefinition
@@ -159,20 +178,11 @@ public sealed class ModuloRendiciones : IModuloPortal
 
         yield return new MenuItemDefinition
         {
-            Code = "reportes-cierre",
-            ParentCode = "grupo-administrador",
-            Name = "Cierre y Reportes",
-            PageRoute = "/rendiciones/reportes/cierre",
-            Order = 6,
-        };
-
-        yield return new MenuItemDefinition
-        {
             Code = "config-proveedores",
             ParentCode = "grupo-administrador",
             Name = "Proveedores de Servicios Externos",
             PageRoute = "/rendiciones/configuracion/proveedores",
-            Order = 7,
+            Order = 6,
         };
 
         yield return new MenuItemDefinition
@@ -181,7 +191,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             ParentCode = "grupo-administrador",
             Name = "Consumo de Servicios Externos",
             PageRoute = "/rendiciones/configuracion/consumo-servicios",
-            Order = 8,
+            Order = 7,
         };
 
         yield return new MenuItemDefinition
@@ -190,7 +200,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             ParentCode = "grupo-administrador",
             Name = "Notificaciones",
             PageRoute = "/rendiciones/configuracion/notificaciones",
-            Order = 9,
+            Order = 8,
         };
     }
 

@@ -263,6 +263,16 @@ Ver el análisis completo en la conversación que originó este documento — re
 
 ## Fase 2 — alcance
 
+> **Decisión 2026-08-14:** Fase 2 se construye como consumidor del motor de
+> integración genérico `PortalSaas.Integrations`, no como implementación
+> ad-hoc de Wms. Ver diseño completo en
+> `Portal SaaS - Core/docs/superpowers/specs/2026-08-14-motor-integracion-erp-design.md`.
+> Motivación: Wms↔Sorter (proyecto concretizable) y Modulo.Rendiciones como
+> eventual producto independiente con ERP externo por definir son casos reales
+> que justifican generalizar el motor de mapeo/conector/orquestación en vez de
+> construirlo solo para SAP. `WmsSapIntegration.Service` (trigger HANA
+> externo) no se toca ni se reemplaza — resuelve un problema distinto.
+
 Todo lo que Fase 1 dejó afuera, en este orden sugerido (cada uno depende del
 anterior):
 

@@ -98,5 +98,6 @@ public sealed class ModuloWms : IModuloPortal
         });
 
         services.AddScoped<IFieldMappingService, FieldMappingService>();
+        services.AddScoped<IServiceConfigService, ServiceConfigService>();
     }
 }

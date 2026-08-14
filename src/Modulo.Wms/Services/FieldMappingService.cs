@@ -1,6 +1,8 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Modulo.Wms.Data;
 using Modulo.Wms.Models;
+using Npgsql;
 using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.Wms.Services;
@@ -52,7 +54,7 @@ public sealed class FieldMappingService : IFieldMappingService
         {
             await _db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
             throw new InvalidOperationException("Ya existe un mapeo para ese documento y campo UDF.");
         }
@@ -60,10 +62,26 @@ public sealed class FieldMappingService : IFieldMappingService
         return mapping.Id;
     }
 
+    private static bool IsUniqueViolation(DbUpdateException ex) => ex.InnerException switch
+    {
+        PostgresException pg => pg.SqlState == "23505",
+        SqlException sql => sql.Number is 2601 or 2627,
+        _ => false,
+    };
+
     public async Task UpdateAsync(long id, Guid companyId, string valueTemplate, bool isActive, string updatedBy, CancellationToken ct = default)
     {
         var mapping = await _db.FieldMappings.FirstOrDefaultAsync(m => m.Id == id && m.CompanyId == companyId, ct)
             ?? throw new InvalidOperationException("El mapeo no existe o no pertenece a esta compañía.");
+
+        if (string.IsNullOrWhiteSpace(valueTemplate))
+        {
+            throw new InvalidOperationException("El valor/plantilla es requerido.");
+        }
+        if (valueTemplate.Length > 500)
+        {
+            throw new InvalidOperationException("El valor/plantilla no puede superar los 500 caracteres.");
+        }
 
         mapping.ValueTemplate = valueTemplate;
         mapping.IsActive = isActive;

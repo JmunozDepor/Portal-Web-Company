@@ -83,6 +83,13 @@ public sealed class DetalleModel : RendicionesPageModelBase
         if (id is { } existingId)
             Expense = await _expenses.GetAsync(existingId, _currentCompany.CompanyId, ct);
 
+        // [Required] sobre un long no-nullable NO valida nada en ASP.NET Core -- un
+        // value type nunca se ve "faltante" para el binder, así que Input.ExpenseTypeId
+        // en 0 (categoría no elegida, o perdida en el binding) pasaba ModelState.IsValid
+        // igual. Validación explícita, mismo criterio que Amount unas líneas más abajo.
+        if (Input.ExpenseTypeId <= 0)
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.ExpenseTypeId)}", "Elegí una categoría.");
+
         var selectedExpenseType = ExpenseTypes.FirstOrDefault(t => t.Id == Input.ExpenseTypeId);
         var isMileage = selectedExpenseType?.IsMileage == true;
         if (isMileage)

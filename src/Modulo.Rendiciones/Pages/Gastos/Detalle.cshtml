@@ -36,7 +36,15 @@ else
     var receiptUrl = hasReceipt ? Url.Page("./Comprobante", new { id = Model.Expense!.Id }) : null;
     <div class="@(hasReceipt ? "rnd-gasto-split" : "")">
         <div class="rnd-gasto-form">
-            <form method="post" asp-page-handler="Guardar" asp-route-id="@Model.Expense?.Id" enctype="multipart/form-data">
+            <form method="post" asp-page-handler="Guardar" enctype="multipart/form-data">
+                @* id vía input oculto, no asp-route-id -- asp-route-id="@Model.Expense?.Id" con
+                   valor null (gasto nuevo) rompía el FormTagHelper por completo: ni action ni
+                   el token antiforgery se generaban, el POST caía en la URL base sin handler
+                   y la página se re-renderizaba sin ejecutar ningún código, en silencio. *@
+                @if (Model.Expense is not null)
+                {
+                    <input type="hidden" name="id" value="@Model.Expense.Id" />
+                }
                 <div asp-validation-summary="All" class="text-danger"></div>
 
                 <div class="form-group">

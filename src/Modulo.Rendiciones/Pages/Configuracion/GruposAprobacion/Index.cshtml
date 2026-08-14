@@ -82,8 +82,8 @@
 
                 <form asp-page="./Index" asp-page-handler="AgregarMiembro" asp-route-groupId="@groupId" method="post" class="admin-form-asignar">
                     <div class="form-group">
-                        <label>Colaborador</label>
-                        <select asp-for="SelectedUserId" asp-items="Model.AvailableUsers" class="form-control">
+                        <label for="SelectedUserId-Equipo">Colaborador</label>
+                        <select asp-for="SelectedUserId" id="SelectedUserId-Equipo" asp-items="Model.AvailableUsers" class="form-control">
                             <option value="">-- Seleccionar --</option>
                         </select>
                     </div>
@@ -133,8 +133,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Aprobador</label>
-                        <select asp-for="SelectedUserId" asp-items="Model.AvailableUsers" class="form-control">
+                        <label for="SelectedUserId-Nivel">Aprobador</label>
+                        <select asp-for="SelectedUserId" id="SelectedUserId-Nivel" asp-items="Model.AvailableUsers" class="form-control">
                             <option value="">-- Seleccionar --</option>
                         </select>
                     </div>

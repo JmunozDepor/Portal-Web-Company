@@ -1,12 +1,77 @@
 # Pendiente — Modulo.Rendiciones
 
-Estado: **fases 1-6 completas (27 jul 2026) — código base portado, migraciones
-generadas y aplicadas contra los dos motores reales, plugin cargando de verdad en el
-Host real, 4 bugs reales encontrados y corregidos, diseño visual del original portado
-1:1, OCR/Azure Maps ahora soportan múltiples proveedores configurables con fallback y
-control de consumo por cuenta**. Ver "Fase 4/5/6" abajo. Sigue sin probarse: flujo de
-negocio completo con clic real en navegador (gasto→informe→aprobación) y una llamada
-real a Azure con claves reales.
+Estado: **fases 1-6 completas (27 jul 2026)** + **notificaciones/aprobación y limpieza
+de diseño (13 ago 2026, ver "Fase 8" abajo)**. Sigue sin probarse de punta a punta:
+flujo de negocio completo con clic real en navegador (gasto→informe→aprobación) contra
+un usuario tenant real, y una llamada real a Azure con claves reales.
+
+## Fase 8 — Notificaciones de aprobación + consistencia de diseño (13 ago 2026)
+
+Spec/plan completos en `docs/superpowers/specs/2026-08-11-flujo-aprobacion-notificaciones-design.md`
+y `docs/superpowers/plans/2026-08-11-flujo-aprobacion-notificaciones.md`.
+
+**Hecho:**
+- Notificación por correo al aprobador/dueño en Submit/Approve/Reject
+  (`ExpenseReportService`), reusando `IEmailSenderService` del portal. Respeta
+  `UserPreference.EmailNotificationsEnabled`; un correo caído nunca bloquea la
+  transición de estado.
+- Recordatorio diario configurable (`RendicionesReminderBackgroundService`,
+  `Configuracion/Notificaciones`), agrupado por aprobador, con dedupe por día.
+- Dos extensiones chicas a `PortalSaas.Abstractions`/`Portal SaaS - Core`:
+  `IExternalDatabaseConnectionService.ListActiveCompanyIdsAsync` (listar compañías
+  activas de un módulo) e `IUserContactLookupService` (contacto de cualquier usuario
+  sin depender de sesión HTTP) -- ambas necesarias para que el recordatorio, que corre
+  sin request HTTP, pueda recorrer todas las compañías.
+- Contador de pendientes en `Aprobaciones/Index` -- ya existía, no se tocó.
+- Menú: nuevo grupo "Reporte" (Rendidor/Aprobador/Reporte/Administrador), con "Cierre
+  y Reportes" movido ahí desde Administrador -- pedido explícito.
+- Rediseño visual: tabla de Tipos de Gasto compactada (menos padding, barra de alta en
+  una sola línea con flexbox en vez del grid que colapsaba en producción), botones
+  `Guardar`/`Activar`/`Desactivar` forzados en línea (`.admin-row-actions` con
+  `flex:0 0 auto` explícito), y **Proveedores de Servicios Externos** /
+  **Centros de Costo por Usuario** / **Grupos de Aprobación** migrados al mismo patrón
+  listado+"Editar" (antes edición inline o un `<select>` para elegir registro).
+- **Bases de datos de prueba creadas en el servidor real** (`sqlsap.cdepor.cl`):
+  `PS_COMDEPOR_RG_DEV` (Rendiciones) para la compañía `DEPORTEST` ("Depor (Testing)",
+  ya existente bajo la organización `depor`) -- esquema completo aplicado (3
+  migraciones), completamente aislada de la base real `PS_COMDEPOR_RG`. Usuarios de
+  prueba `piloto2`/`aprobador1` creados (admin de organización) con acceso a
+  DEPORTEST.
+- Migración `AddRendicionesSettingsAndReminderLog` aplicada contra la base **real**
+  de Comercial Depor (`PS_COMDEPOR_RG`) -- nunca se había aplicado ahí, solo contra
+  bases de desarrollo locales; causaba un 500 real en `/rendiciones/configuracion/notificaciones`.
+
+**Bugs reales encontrados y corregidos durante la verificación en navegador:**
+1. **Guardar un gasto nuevo no hacía nada, sin error visible** (`Gastos/Detalle.cshtml`)
+   -- `asp-route-id="@Model.Expense?.Id"` con valor `null` (gasto nuevo) hacía que el
+   `FormTagHelper` no generara NINGÚN `action` ni el token antiforgery; el POST caía en
+   la URL base sin `?handler=`, Razor Pages no ejecutaba ningún código. Arreglado con
+   un `<input type="hidden" name="id">` condicional en vez de `asp-route-id`. **Auditar
+   si el mismo patrón (`asp-route-id` con un valor que puede ser `null`) aparece en
+   otras pantallas "crear o editar" del plugin -- no se revisó exhaustivamente.**
+2. `[Required]` sobre `Input.ExpenseTypeId` (un `long` no-nullable) no validaba nada
+   -- gotcha real de ASP.NET Core, un value type nunca se ve "faltante" para el model
+   binder. Agregada validación explícita (`Input.ExpenseTypeId <= 0`), mismo criterio
+   que ya usaba `Input.Amount`.
+3. `id="SelectedUserId"` duplicado en `Configuracion/GruposAprobacion/Index.cshtml`
+   (dos `<select>` con el mismo id) -- HTML inválido, rompía la asociación
+   `<label for="...">` y cualquier automatización/JS que resolviera por id.
+4. N+1 real en `Configuracion/CentrosCostoUsuario` -- una consulta por usuario contra
+   la base externa del plugin para contar centros asignados; muy lento contra un
+   servidor remoto real. Reemplazado por `IUserCostCenterService.CountAssignedByUserAsync`,
+   una sola consulta agrupada.
+
+**Sigue pendiente:**
+- **Terminar la verificación end-to-end en navegador** (crear gasto → armar informe →
+  enviar → aprobar con `aprobador1`, contra `DEPORTEST`/`PS_COMDEPOR_RG_DEV`) -- se
+  llegó a corregir el bug que impedía guardar un gasto, pero no se retomó el flujo
+  completo después del fix por decisión de cortar las pruebas ahí.
+- Auditar otras pantallas por el mismo patrón `asp-route-id` con valor nullable (bug 1
+  arriba).
+- Claves reales de Azure Document Intelligence/Azure Maps -- sin probar todavía.
+- `dist/portalsaas` (repo `Portal SaaS - Core`) compilado y verificado con el código de
+  esta fase (13 ago 2026) -- falta el paso manual de copiarlo al servidor IIS real y
+  reciclar el Application Pool (`docs/10-RUNBOOK-IIS-PILOTO.md`).
 
 ## Fase 7 (propuesta, no iniciada) — integración bidireccional con SAP: pedido explícito del dueño del proyecto (29 jul 2026)
 

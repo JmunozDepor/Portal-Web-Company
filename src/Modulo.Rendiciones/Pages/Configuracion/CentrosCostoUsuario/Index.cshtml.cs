@@ -53,13 +53,10 @@ public sealed class IndexModel : RendicionesPageModelBase
         AvailableUsers = users.Select(u => new SelectListItem(u.Username, u.Id.ToString())).ToList();
         Users = users;
 
-        // N pequeño (usuarios de una organización en una pantalla de administración) --
-        // un conteo por usuario alcanza, no justifica un método nuevo "bulk" en el
-        // servicio todavía.
-        var counts = new Dictionary<Guid, int>();
-        foreach (var u in users)
-            counts[u.Id] = (await _userCostCenters.ListAssignedAsync(_currentCompany.CompanyId, u.Id, ct)).Count;
-        AssignedCountByUserId = counts;
+        // Una sola consulta agrupada para TODA la compañía -- la versión anterior hacía
+        // una consulta por usuario (N round-trips contra la base externa del plugin),
+        // lento de verdad cuando esa base vive en un servidor remoto real, no local.
+        AssignedCountByUserId = await _userCostCenters.CountAssignedByUserAsync(_currentCompany.CompanyId, ct);
 
         if (string.IsNullOrEmpty(UserId) || !Guid.TryParse(UserId, out var userGuid))
             return;

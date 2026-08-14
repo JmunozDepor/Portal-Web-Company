@@ -40,6 +40,17 @@ public sealed class UserCostCenterService : IUserCostCenterService
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, int>> CountAssignedByUserAsync(Guid companyId, CancellationToken ct = default)
+    {
+        var counts = await _db.UserCostCenters
+            .Where(c => c.CompanyId == companyId)
+            .GroupBy(c => c.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        return counts.ToDictionary(x => x.UserId, x => x.Count);
+    }
+
     public async Task RemoveAsync(long id, Guid companyId, CancellationToken ct = default)
     {
         var assignment = await _db.UserCostCenters.FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId, ct);

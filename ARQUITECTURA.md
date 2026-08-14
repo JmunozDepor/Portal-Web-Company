@@ -107,10 +107,18 @@ subagent-driven-development, las 7 tareas revisadas y cerradas:
   original, tiene el mismo defecto — no se tocó, fuera de alcance de esta
   entrega).
 
+**Resuelto (2026-08-14, sesión posterior):**
+- **`publish-dist.ps1` propio** — agregado, portado tal cual de
+  `Modulo.Rendiciones/publish-dist.ps1`. Además se creó la **junction real**
+  `Portal SaaS - Core/artifacts/plugins/Modulo.Wms` →
+  `Modulo.Wms/dist/Modulo.Wms` (no existía; hasta ahora la copia a
+  `artifacts/plugins/` se hacía a mano, archivo por archivo). Probado de
+  punta a punta: `./publish-dist.ps1` compila Release, limpia
+  `dist/Modulo.Wms/1.0.0/` y el resultado queda visible automáticamente en
+  `artifacts/plugins/Modulo.Wms/1.0.0/` vía la junction, sin paso manual.
+
 **Falta explícitamente, no iniciado todavía — este es el punto real donde
 retomar:**
-- **`publish-dist.ps1` propio** — hoy la copia a `artifacts/plugins/` se hizo
-  a mano, no hay script (igual que documentaba la nota anterior).
 - Las otras 2 páginas Razor: **Configuración del Servicio** y **Estado del
   Servicio** — hoy solo existen las entradas de menú, sin contenido detrás.
   Mapeo de Campos (arriba) ya está completa y es la referencia de patrón a

@@ -29,7 +29,7 @@
                 <td><code>@m.FieldName</code></td>
                 <td><input type="text" name="valueTemplate" value="@m.ValueTemplate" class="form-control" form="@formId" /></td>
                 <td>
-                    <input type="hidden" name="activo" value="@m.IsActive" form="@formId" />
+                    <input type="hidden" name="activo" value="@(m.IsActive ? "true" : "false")" form="@formId" />
                     @(m.IsActive ? "Sí" : "No")
                 </td>
                 <td>@m.UpdatedAt.ToString("yyyy-MM-dd HH:mm") @(m.UpdatedBy is not null ? $"({m.UpdatedBy})" : "")</td>

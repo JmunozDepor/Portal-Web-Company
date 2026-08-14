@@ -62,22 +62,59 @@ UI todavía.**
   disponible en el entorno, así que es verificación HTTP real, no una captura
   visual.
 
+## Estado actual (2026-08-14) — página Mapeo de Campos completa y verificada
+
+Plan de implementación completo en
+`docs/superpowers/plans/2026-08-11-wms-mapeo-campos.md` (spec en
+`docs/superpowers/specs/2026-08-11-wms-mapeo-campos-design.md`), ejecutado con
+subagent-driven-development, las 7 tareas revisadas y cerradas:
+
+- `WmsFieldMapperKeys` (`PortalSaas.Abstractions.Modelos`) — las 6 claves fijas
+  de mapeo, portadas de `WMS_Suite.FieldMappingKeys.Labels`.
+- `WmsPageModelBase`, `IFieldMappingService`/`FieldMappingService` (CRUD sobre
+  `wms_oracle_field_mappings`, valida duplicados por
+  `UNIQUE(company_id, mapper_key, field_name)`).
+- `Pages/MapeoCampos/Index` en `/wms/mapeo-campos` — Razor Page
+  server-rendered (mismo patrón que `Modulo.Rendiciones/TiposGasto`), tabla +
+  form de creación, Documento/Campo UDF bloqueados en edición
+  (`MapperKey`/`FieldName` son inmutables), `UpdatedBy` tomado de
+  `ICurrentUserContext.Username` automático.
+- **El plugin YA está publicado** en
+  `Portal SaaS - Core/artifacts/plugins/Modulo.Wms/1.0.0/` (copiado a mano
+  desde `dist/`, todavía sin `publish-dist.ps1` propio — ver pendiente abajo).
+- **Fila de `module_external_connections` para `module_code = "Wms"`
+  configurada** para las compañías DEPOR y DEPORTEST de la organización
+  Comercial Depor (motor SQL Server, `sqlsap.cdepor.cl,11433`, bases
+  `PS_COMDEPOR_WMS_DEV`/`PS_COMDEPOR_WMS`→corregida a `PS_COMDEPOR_WMS_DEV`
+  también para DEPOR). Además existe `modulo_wms_dev` migrada en el SQL Server
+  local de desarrollo (`localhost`).
+- **Verificación E2E completa contra el Host real** (HTTP, sesión real,
+  usuario de organización con `IsAdmin=true`, compañía DEPORTEST activa):
+  página carga (200), crear mapeo funciona, editar `ValueTemplate` con
+  "Guardar" funciona, Activar/Desactivar funciona, duplicado
+  (`mapper_key`+`field_name` repetido) se rechaza con el mensaje esperado.
+- **Bug encontrado y corregido durante la verificación E2E**: el campo oculto
+  `activo` en `Index.cshtml` usaba `value="@m.IsActive"` — Razor renderiza un
+  `bool` C# usado como valor de atributo HTML con la convención de "atributo
+  booleano HTML5" (igual que `checked`/`disabled`): `true` → `value="value"`
+  (nombre repetido, no el texto "True"), `false` → atributo omitido por
+  completo. Ningún caso parseaba como `bool` en el binder de
+  `OnPostGuardarAsync`, así que el botón "Guardar" desactivaba silenciosamente
+  cualquier fila, sin importar su estado real. Fix: forzar texto literal con
+  `value="@(m.IsActive ? "true" : "false")"`. Mismo patrón a revisar si se
+  reutiliza en `Configuración del Servicio`/`Estado del Servicio` (no
+  confirmado si `Modulo.Rendiciones/TiposGasto`, de donde se copió el patrón
+  original, tiene el mismo defecto — no se tocó, fuera de alcance de esta
+  entrega).
+
 **Falta explícitamente, no iniciado todavía — este es el punto real donde
 retomar:**
-- **El plugin no está publicado a `artifacts/plugins/` del Host** — solo
-  existe en `dist/` de este repo (`PublicarComoPlugin` corre, pero nadie
-  copió el resultado a `Portal SaaS - Core/artifacts/plugins/Modulo.Wms/1.0.0/`
-  todavía, ni existe un `publish-dist.ps1` propio como el que sí tiene
-  `Modulo.Rendiciones`). Confirmado con el Host real: el log de plugins
-  cargados no lo menciona.
-- Páginas Razor del port de `WmsPortal.Web` (Mapeo de Campos/Configuración del
-  Servicio/Estado del Servicio) — hoy solo existen las entradas de menú, sin
-  contenido detrás. **Sugerencia de orden: empezar por Mapeo de Campos**, es
-  la más simple de las tres (CRUD directo sobre `wms_oracle_field_mappings`,
-  mismo patrón que `Admin/PlatformModules` del Core).
-- Ninguna fila de `module_external_connections` está configurada todavía para
-  `module_code = "Wms"` — sin esto, `WmsDbContext` falla al primer intento de
-  resolver conexión aunque el plugin ya esté cargado y con páginas.
+- **`publish-dist.ps1` propio** — hoy la copia a `artifacts/plugins/` se hizo
+  a mano, no hay script (igual que documentaba la nota anterior).
+- Las otras 2 páginas Razor: **Configuración del Servicio** y **Estado del
+  Servicio** — hoy solo existen las entradas de menú, sin contenido detrás.
+  Mapeo de Campos (arriba) ya está completa y es la referencia de patrón a
+  seguir.
 - Migración de `PORTAL_USERS`/`PORTAL_COMPANIES` reales a
   `Organization`/`Company`/`User` del Portal.
 - El cambio en `WmsSapIntegration.Service` para que lea estas 3 tablas desde

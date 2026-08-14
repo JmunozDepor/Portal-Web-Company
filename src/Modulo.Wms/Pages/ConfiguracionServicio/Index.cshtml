@@ -1,0 +1,106 @@
+@page "/wms/configuracion-servicio"
+@model Modulo.Wms.Pages.ConfiguracionServicio.IndexModel
+@{
+    ViewData["Title"] = "Configuración del Servicio";
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Configuración del Servicio</h2>
+    </div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="admin-alert">
+    Estos valores solo tienen efecto si la instancia de <code>WmsSapIntegration.Service</code>
+    de esta compañía tiene <code>"ConfigSource": "Database"</code> en su propio
+    <code>appsettings.json</code> (por defecto es <code>"File"</code> -- configuración
+    autónoma, sin depender de este Portal). El Portal no tiene forma de saber qué modo
+    tiene la instancia real corriendo en el servidor, así que si editás algo acá y no
+    ves efecto, confirmá primero ese valor con quien administra el servidor.
+</div>
+
+<table class="admin-table">
+    <thead><tr><th>Parámetro</th><th>Valor</th><th>Activo</th><th>Actualizado</th><th class="admin-col-accion"></th></tr></thead>
+    <tbody>
+        @foreach (var c in Model.Configs)
+        {
+            var formId = $"config-{c.Id}";
+            var label = Model.ConfigKeyInfo.TryGetValue(c.ConfigKey, out var info) ? info.Label : c.ConfigKey;
+            <tr class="@(c.IsActive ? "" : "admin-fila-inactiva")">
+                <td>@label<br /><small class="admin-muted"><code>@c.ConfigKey</code></small></td>
+                <td><input type="text" name="configValue" value="@c.ConfigValue" class="form-control" form="@formId" /></td>
+                <td>
+                    <input type="hidden" name="activo" value="@(c.IsActive ? "true" : "false")" form="@formId" />
+                    @(c.IsActive ? "Sí" : "No")
+                </td>
+                <td>@c.UpdatedAt.ToString("yyyy-MM-dd HH:mm") @(c.UpdatedBy is not null ? $"({c.UpdatedBy})" : "")</td>
+                <td class="admin-col-accion">
+                    <div class="admin-row-actions">
+                        <button type="submit" class="btn-module-action" form="@formId">Guardar</button>
+                        @if (c.IsActive)
+                        {
+                            <form asp-page="./Index" asp-page-handler="Desactivar" asp-route-id="@c.Id" asp-route-configValue="@c.ConfigValue" method="post" style="display:inline-block;">
+                                <button type="submit" class="btn-module-action btn-module-danger">Desactivar</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-page="./Index" asp-page-handler="Activar" asp-route-id="@c.Id" asp-route-configValue="@c.ConfigValue" method="post" style="display:inline-block;">
+                                <button type="submit" class="btn-module-action">Activar</button>
+                            </form>
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (Model.Configs.Count == 0)
+        {
+            <tr><td colspan="5" class="admin-muted">Sin parámetros todavía.</td></tr>
+        }
+    </tbody>
+</table>
+
+@* Un <form> no puede abrirse en una <td> y cerrarse en otra (el parser lo corta en
+   el primer </td>), y tampoco puede ser hijo directo de <tr> -- por eso viven acá
+   afuera, vacíos, y los inputs/botones de cada fila se asocian por id vía form="...". *@
+@foreach (var c in Model.Configs)
+{
+    <form id="config-@c.Id" asp-page="./Index" asp-page-handler="Guardar" asp-route-id="@c.Id"></form>
+}
+
+<span class="admin-subtitulo">Nuevo parámetro</span>
+<form method="post" asp-page-handler="Crear" class="admin-form-asignar">
+    <div asp-validation-summary="All" class="text-danger" style="grid-column:1/-1;"></div>
+    <div class="form-group">
+        <label asp-for="New.ConfigKey">Parámetro</label>
+        <select asp-for="New.ConfigKey" class="form-control">
+            @foreach (var kv in Model.ConfigKeyInfo)
+            {
+                <option value="@kv.Key" title="@kv.Value.Hint">@kv.Value.Label — @kv.Key</option>
+            }
+        </select>
+    </div>
+    <div class="form-group">
+        <label asp-for="New.ConfigValue">Valor</label>
+        <input asp-for="New.ConfigValue" class="form-control" placeholder="Ver el tipo esperado al pasar el mouse sobre la opción elegida" />
+    </div>
+    <div class="form-group form-row-check">
+        <label><input asp-for="New.IsActive" type="checkbox" /> Activo (sobreescribe el valor de appsettings)</label>
+    </div>
+    <button type="submit" class="btn-erp-primary">Crear</button>
+</form>
+<p class="admin-muted">
+    El valor es texto libre -- pasá el mouse sobre cada opción de "Parámetro" para ver
+    el tipo esperado (<code>true / false</code>, número entero, texto). La
+    interpretación real queda del lado de <code>WmsSapIntegration.Service</code> al
+    leerlo.
+</p>
+</div>

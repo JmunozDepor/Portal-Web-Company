@@ -70,16 +70,18 @@ public class IndexModel : PageModel
     }
 
     // Bloquea el borrado si la compañía ya tiene acceso/permisos asignados a algún
-    // usuario, o una conexión externa de plugin configurada -- borrarla ahí dejaría
-    // esas filas huérfanas en silencio.
+    // usuario, una conexión externa de plugin configurada, o una clave de API activa
+    // -- borrarla ahí dejaría esas filas huérfanas en silencio (o, en el caso de la
+    // API key, un acceso M2M silencioso desconectado de cualquier compañía real).
     public async Task<IActionResult> OnPostDeleteAsync(Guid organizationId, Guid id)
     {
         var inUse = await _db.UserMenuGroups.AnyAsync(g => g.CompanyId == id)
             || await _db.UserMenuProfiles.AnyAsync(p => p.CompanyId == id)
-            || await _db.ModuleExternalConnections.AnyAsync(c => c.CompanyId == id);
+            || await _db.ModuleExternalConnections.AnyAsync(c => c.CompanyId == id)
+            || await _db.ApiClientCredentials.AnyAsync(c => c.CompanyId == id && c.Activo);
         if (inUse)
         {
-            ErrorMessage = "No se puede eliminar: la compañía tiene usuarios con acceso asignado o conexiones de plugin configuradas.";
+            ErrorMessage = "No se puede eliminar: la compañía tiene usuarios con acceso asignado, conexiones de plugin configuradas o claves de API activas.";
             return RedirectToPage(new { organizationId });
         }
 

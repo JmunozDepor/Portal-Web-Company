@@ -573,6 +573,7 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.LastUsedAt).HasColumnName("last_used_at");
             entity.HasIndex(e => e.ApiKeyHash).IsUnique();
             entity.HasIndex(e => new { e.CompanyId, e.Activo });
+            entity.HasOne<Company>().WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 

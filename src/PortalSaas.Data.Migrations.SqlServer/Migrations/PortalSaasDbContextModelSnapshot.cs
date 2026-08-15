@@ -1884,6 +1884,16 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.ToTable("user_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.ApiClientCredential", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_api_client_credentials_companies_company_id");
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.AuditLog", b =>
                 {
                     b.HasOne("PortalSaas.Data.Entities.Company", "Company")

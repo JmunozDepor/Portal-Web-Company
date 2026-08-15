@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PortalSaas.Data;
@@ -11,9 +12,11 @@ using PortalSaas.Data;
 namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 {
     [DbContext(typeof(PortalSaasDbContext))]
-    partial class PortalSaasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260815165404_AddApiClientCredentialsCompanyForeignKey")]
+    partial class AddApiClientCredentialsCompanyForeignKey
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

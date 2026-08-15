@@ -1,6 +1,6 @@
 namespace PortalSaas.Abstractions.Contratos.Integraciones;
 
-public interface IIntegrationEntityWriter<T>
+public interface IIntegrationEntityWriter
 {
     string EntidadNegocio { get; }
 

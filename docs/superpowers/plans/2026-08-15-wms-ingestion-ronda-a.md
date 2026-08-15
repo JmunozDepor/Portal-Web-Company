@@ -18,6 +18,7 @@
 - `[Authorize(AuthenticationSchemes = "ExternalApiKey")]` en el endpoint — la `CompanyId` se lee de `HttpContext.User` (claim `"CompanyId"`, ya poblado por `ApiKeyAuthenticationHandler` de la Ronda 0), nunca del payload.
 - Formato JSON/TXT: la estructura (`Formato` enum) debe existir, pero solo el parser XML se implementa en esta ronda — cualquier intento con otro formato responde 400 explícito, no se inserta en staging.
 - Tests: xUnit + `UseInMemoryDatabase(Guid.NewGuid().ToString())`, sin mocking framework, siguiendo el patrón de `tests/PortalSaas.Core.Tests/` (este plan usa un proyecto de test análogo dentro de `Modulo.Wms`, ver Task 1 Step 1 para confirmarlo o crearlo).
+- **Riesgo conocido de datos SAP/HANA**: algunos nombres de columna en sistemas legados de este tipo pueden traer espacios al final (padding) en el DDL real de producción, aunque no se detectaron en los archivos DDL revisados para este plan (`WMS_Suite/db/provisioning/hana/004_stg_wms_ihth.sql`, `005_stg_wms_slsh.sql`, `006_stg_wms_svsh.sql`, `001_int_wms_stage.sql` — los cuatro se revisaron explícitamente, ninguno tiene espacios). Antes de dar por buena la Tarea 1, volver a `grep` el DDL real contra el que se generó el modelo (`grep -oP '"[^"]*"' <archivo.sql> | awk -F'"' '{ if ($2 ~ /^ | $/) print }'`) y, si aparece alguno, usar `.Trim()` al asignar el valor en `WmsSlshXmlParser` (Task 4) en vez de cambiar el nombre de columna en sí (el nombre de columna del lado C#/BD debe quedar limpio de espacios siempre, sea cual sea el dato crudo que traiga el XML).
 
 ---
 
@@ -62,6 +63,11 @@
 
 Run: `find "Portal SaaS - Plugins/Modulo.Wms" -iname "*.Tests.csproj"` (o `Get-ChildItem -Recurse -Filter "*.Tests.csproj"` en PowerShell, desde la raíz de `Portal SaaS - Plugins/Modulo.Wms`)
 Expected: si existe un proyecto de test (ej. `tests/Modulo.Wms.Tests/Modulo.Wms.Tests.csproj`), usar esa ruta para todos los tests de este plan. Si NO existe ninguno, créalo antes de continuar: `dotnet new xunit -o tests/Modulo.Wms.Tests -n Modulo.Wms.Tests`, agrégalo a la solución del plugin (`dotnet sln add tests/Modulo.Wms.Tests/Modulo.Wms.Tests.csproj` si hay un `.sln`), y agrégale `ProjectReference` a `src/Modulo.Wms/Modulo.Wms.csproj` más el paquete `Microsoft.EntityFrameworkCore.InMemory` (misma versión de EF Core que usa `Modulo.Wms.csproj` — revisa ese `.csproj` para la versión exacta). Ajusta las rutas de los Steps siguientes (y de las Tasks 2-4) según lo que encuentres aquí.
+
+- [ ] **Step 1b: Verificar que el DDL real no tenga columnas con espacios al final**
+
+Run: `grep -oP '"[^"]*"' "C:\PROYECTOS\WMS_Suite\db\provisioning\hana\005_stg_wms_slsh.sql" | awk -F'"' '{ if ($2 ~ /^ | $/) print "["$2"]" }'`
+Expected: sin salida (ningún identificador entre comillas con espacio al inicio o al final). Si aparece alguno, anota el nombre exacto con espacio y usa la versión SIN espacio como nombre de propiedad C#/columna en los Steps 3-4 de este task — el espacio es un defecto del dato de origen, no algo que deba propagarse al modelo nuevo.
 
 - [ ] **Step 2: Crear `WmsOracleInboundStage`**
 

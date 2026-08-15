@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
+using Microsoft.AspNetCore.Mvc;
 using PortalSaas.Abstractions.Contratos;
 
 namespace PortalSaas.Host.Wms;
@@ -13,7 +14,8 @@ public static class WmsInboundEndpoints
     public static void MapWmsInboundEndpoints(this WebApplication app)
     {
         app.MapPost("/api/wms/inbound/receive", HandleAsync)
-            .RequireAuthorization(policy => policy.AddAuthenticationSchemes("ExternalApiKey").RequireAuthenticatedUser());
+            .RequireAuthorization(policy => policy.AddAuthenticationSchemes("ExternalApiKey").RequireAuthenticatedUser())
+            .WithMetadata(new RequestSizeLimitAttribute(MaxBodySizeBytes));
     }
 
     private static async Task<IResult> HandleAsync(
@@ -53,6 +55,11 @@ public static class WmsInboundEndpoints
                 success = false,
                 message = $"Formato '{formato}' reconocido pero sin parser implementado todavía — solo XML soportado en esta ronda.",
             });
+        }
+
+        if (httpContext.Request.ContentLength is long contentLength && contentLength > MaxBodySizeBytes)
+        {
+            return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
         }
 
         using var memoryStream = new MemoryStream();

@@ -270,8 +270,19 @@ Ver el análisis completo en la conversación que originó este documento — re
 > Motivación: Wms↔Sorter (proyecto concretizable) y Modulo.Rendiciones como
 > eventual producto independiente con ERP externo por definir son casos reales
 > que justifican generalizar el motor de mapeo/conector/orquestación en vez de
-> construirlo solo para SAP. `WmsSapIntegration.Service` (trigger HANA
-> externo) no se toca ni se reemplaza — resuelve un problema distinto.
+> construirlo solo para SAP.
+>
+> **Corrección 2026-08-15:** la nota original decía que `WmsSapIntegration.Service`
+> "no se toca ni se reemplaza — resuelve un problema distinto (captura de eventos)".
+> Eso estaba basado en información incompleta. Investigación posterior confirmó que
+> ese servicio implementa el ciclo WMS↔SAP **completo** en producción hoy (15
+> `BackgroundService`: ingestión XML, staging IHTH/SLSH/SVSH, push real a SAP Service
+> Layer vía `WmsInbound_OrderConfirmProcessor`/`ReceipConfirmProcessor`, más el
+> camino SAP→WMS). Decisión de negocio actualizada: sí se reemplaza, gradualmente,
+> con piloto en una compañía de bajo volumen transaccional. Ver descomposición en
+> `Portal SaaS - Core/docs/12-MOTOR-INTEGRACION-ERP-PENDIENTES.md` (punto 3) y el
+> spec de la Ronda 0 (autenticación máquina-a-máquina) en
+> `Portal SaaS - Core/docs/superpowers/specs/2026-08-15-auth-maquina-a-maquina-design.md`.
 
 Todo lo que Fase 1 dejó afuera, en este orden sugerido (cada uno depende del
 anterior):

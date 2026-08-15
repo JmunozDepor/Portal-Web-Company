@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Modulo.Wms.Data;
 using Modulo.Wms.Services;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Contratos.Integraciones;
 using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.Wms;
@@ -100,6 +101,7 @@ public sealed class ModuloWms : IModuloPortal
         services.AddScoped<IFieldMappingService, FieldMappingService>();
         services.AddScoped<IServiceConfigService, ServiceConfigService>();
         services.AddScoped<IWmsInboundIngestionService, WmsInboundIngestionService>();
+        services.AddScoped<IIntegrationEntityReader, WmsSlshInventoryReader>();
         services.AddHostedService<WmsSlshStageParser>();
     }
 }

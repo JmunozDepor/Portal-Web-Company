@@ -72,6 +72,7 @@ builder.Services.AddDbContext<PortalSaasDbContext>(options =>
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ISecretoCifradoService, SecretoCifradoService>();
+builder.Services.AddScoped<IApiKeyAuthenticator, ApiKeyAuthenticator>();
 builder.Services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
 builder.Services.AddScoped<IIntegrationConnector, SapDocumentConnector>();
 builder.Services.AddHostedService<IntegrationSyncHostedService>();
@@ -268,7 +269,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Admin/Login";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
-    });
+    })
+    .AddScheme<ApiKeyAuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ExternalApiKey", options => { });
 builder.Services.AddAuthorization();
 
 // --- Carga de plugins + sync de menú: ANTES de builder.Build() -----------------------

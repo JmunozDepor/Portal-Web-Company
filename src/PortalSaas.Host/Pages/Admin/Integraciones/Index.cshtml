@@ -1,0 +1,68 @@
+@page
+@model PortalSaas.Host.Pages.Admin.Integraciones.IndexModel
+@{
+    ViewData["Title"] = "Integraciones";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Integraciones</h1>
+        <span class="text-muted">@Model.Integraciones.Count integración(es) configurada(s)</span>
+    </div>
+</div>
+
+@if (TempData["Mensaje"] is string mensaje)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+
+@if (Model.Integraciones.Count == 0)
+{
+    <p class="text-muted">No hay integraciones configuradas.</p>
+}
+else
+{
+    <div class="document-list-table-wrapper">
+        <table class="table document-list-table mb-0">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Módulo origen</th>
+                    <th>Conector</th>
+                    <th>Dirección</th>
+                    <th>Estado</th>
+                    <th>Próxima ejecución</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var integracion in Model.Integraciones)
+                {
+                    <tr>
+                        <td>@integracion.Nombre</td>
+                        <td>@integracion.ModuloOrigen</td>
+                        <td>@integracion.ConectorTipo</td>
+                        <td>@integracion.Direccion</td>
+                        <td>
+                            @if (integracion.Activo)
+                            {
+                                <span class="badge bg-success">Activa</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inactiva</span>
+                            }
+                        </td>
+                        <td>@(integracion.NextRunAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                        <td class="text-end">
+                            <a asp-page="/Admin/Integraciones/Bitacora" asp-route-id="@integracion.Id" class="btn btn-sm btn-outline-secondary">Ver bitácora</a>
+                            <form method="post" asp-page-handler="Ejecutar" asp-route-id="@integracion.Id" asp-antiforgery="true" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-primary" @(integracion.Activo ? "" : "disabled")>Ejecutar ahora</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

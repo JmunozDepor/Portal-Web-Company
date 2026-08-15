@@ -54,9 +54,12 @@ public class WmsSlshInventoryReader : IIntegrationEntityReader
                 }));
             }
 
+            var primeraFila = grupo.First();
+
             registros.Add(new IntegrationRecord(new Dictionary<string, object?>
             {
                 ["TipoDocumento"] = "Inventory",
+                ["DocDate"] = ParseDateOrNull(primeraFila.TimeStamp) ?? ParseDateOrNull(primeraFila.ord_date),
                 ["Lineas"] = lineas,
                 ["_StagingLineIds"] = idsDeLinea,
             }));
@@ -83,4 +86,7 @@ public class WmsSlshInventoryReader : IIntegrationEntityReader
     }
 
     private static int? ParseIntOrNull(string? valor) => int.TryParse(valor, out var resultado) ? resultado : null;
+
+    private static DateTime? ParseDateOrNull(string? valor) =>
+        !string.IsNullOrWhiteSpace(valor) && DateTime.TryParse(valor, out var resultado) ? resultado : null;
 }

@@ -72,6 +72,56 @@ public class WmsSlshInventoryReaderTests
     }
 
     [Fact]
+    public async Task LeerPendientesAsync_PoblaDocDateDesdeTimeStampConFallbackAOrdDate()
+    {
+        await using var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+        var parentId = await SembrarInboundStageAsync(contexto, companyId);
+
+        contexto.WmsOracleStageSlsh.Add(new WmsOracleStageSlsh
+        {
+            ParentId = parentId,
+            Status = WmsSlshStatus.Pendiente,
+            order_hdr_cust_field_4 = "42",
+            item_part_a = "ITEM-A",
+            TimeStamp = "2026-08-10T10:00:00",
+            ord_date = "2026-08-01",
+        });
+        await contexto.SaveChangesAsync();
+
+        var reader = new WmsSlshInventoryReader(contexto);
+        var registros = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+
+        Assert.Single(registros);
+        Assert.Equal(new DateTime(2026, 8, 10, 10, 0, 0), registros[0]["DocDate"]);
+    }
+
+    [Fact]
+    public async Task LeerPendientesAsync_PoblaDocDateConOrdDateSiTimeStampEsVacio()
+    {
+        await using var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+        var parentId = await SembrarInboundStageAsync(contexto, companyId);
+
+        contexto.WmsOracleStageSlsh.Add(new WmsOracleStageSlsh
+        {
+            ParentId = parentId,
+            Status = WmsSlshStatus.Pendiente,
+            order_hdr_cust_field_4 = "42",
+            item_part_a = "ITEM-A",
+            TimeStamp = null,
+            ord_date = "2026-08-01",
+        });
+        await contexto.SaveChangesAsync();
+
+        var reader = new WmsSlshInventoryReader(contexto);
+        var registros = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+
+        Assert.Single(registros);
+        Assert.Equal(new DateTime(2026, 8, 1), registros[0]["DocDate"]);
+    }
+
+    [Fact]
     public async Task LeerPendientesAsync_SoloTraeFilasDeLaCompaniaPedida()
     {
         await using var contexto = CrearContexto();

@@ -59,6 +59,7 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<IntegrationDefinition> IntegrationDefinitions => Set<IntegrationDefinition>();
     public DbSet<IntegrationFieldMapping> IntegrationFieldMappings => Set<IntegrationFieldMapping>();
     public DbSet<IntegrationRunLog> IntegrationRunLogs => Set<IntegrationRunLog>();
+    public DbSet<ApiClientCredential> ApiClientCredentials => Set<ApiClientCredential>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -558,6 +559,20 @@ public sealed class PortalSaasDbContext : DbContext
                 .HasConversion(v => DisparadoPorAProveedor(v), v => DisparadoPorDesdeProveedor(v))
                 .HasMaxLength(20);
             entity.HasIndex(e => e.IntegrationDefinitionId);
+        });
+
+        modelBuilder.Entity<ApiClientCredential>(entity =>
+        {
+            entity.ToTable("api_client_credentials");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.Nombre).HasColumnName("name").HasMaxLength(200);
+            entity.Property(e => e.ApiKeyHash).HasColumnName("api_key_hash").HasMaxLength(100);
+            entity.Property(e => e.Activo).HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.LastUsedAt).HasColumnName("last_used_at");
+            entity.HasIndex(e => e.ApiKeyHash).IsUnique();
+            entity.HasIndex(e => new { e.CompanyId, e.Activo });
         });
     }
 

@@ -22,6 +22,54 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.ApiClientCredential", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("ApiKeyHash")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("api_key_hash");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_api_client_credentials");
+
+                    b.HasIndex("ApiKeyHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_api_client_credentials_api_key_hash");
+
+                    b.HasIndex("CompanyId", "Activo")
+                        .HasDatabaseName("ix_api_client_credentials_company_id_is_active");
+
+                    b.ToTable("api_client_credentials", (string)null);
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.AuditLog", b =>
                 {
                     b.Property<long>("Id")

@@ -283,6 +283,9 @@ public sealed class SalesDocumentService : ISalesDocumentService
         CostingCode = line.Type == DocumentLineType.Service ? line.CostCenterCode : null,
         CostingCode2 = line.Type == DocumentLineType.Service ? line.CostCenterCode2 : null,
         CostingCode3 = line.Type == DocumentLineType.Service ? line.CostCenterCode3 : null,
+        BaseType = line.BaseType,
+        BaseEntry = line.BaseEntry,
+        BaseLine = line.BaseLine,
         AdditionalFields = line.AdditionalFields,
     };
 }

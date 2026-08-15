@@ -79,6 +79,11 @@ internal sealed class SapSalesDocumentLine
     /// <summary>Dimensión3 (Tipo de Gasto) -- solo Servicio, opcional.</summary>
     public string? CostingCode3 { get; set; }
 
+    /// <summary>Copy-From -- ver SalesDocumentLineDto.BaseType/BaseEntry/BaseLine.</summary>
+    public int? BaseType { get; set; }
+    public int? BaseEntry { get; set; }
+    public int? BaseLine { get; set; }
+
     /// <summary>Campos de usuario de línea -- ver SapSalesDocumentHeader.AdditionalFields.</summary>
     public IReadOnlyDictionary<string, object?>? AdditionalFields { get; set; }
 }

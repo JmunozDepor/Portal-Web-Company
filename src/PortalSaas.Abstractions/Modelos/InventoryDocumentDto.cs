@@ -37,8 +37,16 @@ public sealed record InventoryDocumentLineDto(
     string ItemCode,
     string? Description,
     decimal Quantity,
-    string FromWarehouseCode,
-    string ToWarehouseCode,
+    // Nullable -- Copy-From (BaseType/BaseEntry/BaseLine) deja que SAP derive el
+    // almacén desde el documento base, ver SapDocumentConnector (Task 4 de esta ronda).
+    string? FromWarehouseCode,
+    string? ToWarehouseCode,
+    // Copy-From del documento base (ej. Solicitud de Traslado -> Traslado) -- SAP
+    // resuelve BaseType/BaseEntry/BaseLine y deriva el resto de la línea. Null = línea
+    // digitada directa, sin documento base (comportamiento actual, sin cambios).
+    int? BaseType = null,
+    int? BaseEntry = null,
+    int? BaseLine = null,
     // Campos de usuario de línea -- ver InventoryDocumentDto.AdditionalFields.
     IReadOnlyDictionary<string, object?>? AdditionalFields = null);
 

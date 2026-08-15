@@ -190,6 +190,9 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
         Quantity = line.Quantity,
         WarehouseCode = line.ToWarehouseCode,
         FromWarehouseCode = line.FromWarehouseCode,
+        BaseType = line.BaseType,
+        BaseEntry = line.BaseEntry,
+        BaseLine = line.BaseLine,
         AdditionalFields = line.AdditionalFields,
     };
 }

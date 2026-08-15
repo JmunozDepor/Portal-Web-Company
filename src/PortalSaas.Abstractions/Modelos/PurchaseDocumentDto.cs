@@ -44,6 +44,11 @@ public sealed record PurchaseDocumentLineDto(
     // ICostCenterCatalogService.ListByDimensionAsync.
     string? CostCenterCode2 = null,
     string? CostCenterCode3 = null,
+    // Copy-From (paridad con InventoryDocumentLineDto) -- sin consumidor todavía en
+    // Compra, ver CLAUDE.md "Paridad entre los motores genéricos de documento".
+    int? BaseType = null,
+    int? BaseEntry = null,
+    int? BaseLine = null,
     // Campos de usuario de línea -- ver PurchaseDocumentDto.AdditionalFields.
     IReadOnlyDictionary<string, object?>? AdditionalFields = null);
 

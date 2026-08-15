@@ -81,6 +81,11 @@ internal sealed class SapPurchaseDocumentLine
     /// <summary>Fecha requerida por línea -- se postea igual al DocDueDate del encabezado en todas las líneas (el portal no captura una fecha distinta por línea), mismo criterio que el original.</summary>
     public DateTime? RequiredDate { get; set; }
 
+    /// <summary>Copy-From -- ver PurchaseDocumentLineDto.BaseType/BaseEntry/BaseLine.</summary>
+    public int? BaseType { get; set; }
+    public int? BaseEntry { get; set; }
+    public int? BaseLine { get; set; }
+
     /// <summary>Campos de usuario de línea -- ver SapPurchaseDocumentHeader.AdditionalFields.</summary>
     public IReadOnlyDictionary<string, object?>? AdditionalFields { get; set; }
 }

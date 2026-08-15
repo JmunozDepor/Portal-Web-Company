@@ -52,11 +52,16 @@ internal sealed class SapInventoryDocumentLine
     public string ItemCode { get; set; } = null!;
     public decimal Quantity { get; set; }
 
-    /// <summary>Almacén destino de esta línea.</summary>
-    public string WarehouseCode { get; set; } = null!;
+    /// <summary>Almacén destino de esta línea -- nullable, Copy-From no lo necesita (SAP lo deriva del documento base).</summary>
+    public string? WarehouseCode { get; set; }
 
-    /// <summary>Almacén origen de esta línea.</summary>
-    public string FromWarehouseCode { get; set; } = null!;
+    /// <summary>Almacén origen de esta línea -- nullable, mismo motivo que WarehouseCode.</summary>
+    public string? FromWarehouseCode { get; set; }
+
+    /// <summary>Copy-From -- ver InventoryDocumentLineDto.BaseType/BaseEntry/BaseLine.</summary>
+    public int? BaseType { get; set; }
+    public int? BaseEntry { get; set; }
+    public int? BaseLine { get; set; }
 
     /// <summary>Campos de usuario de línea -- ver SapInventoryDocumentHeader.AdditionalFields.</summary>
     public IReadOnlyDictionary<string, object?>? AdditionalFields { get; set; }

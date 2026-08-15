@@ -34,6 +34,12 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
+        if (!definicion.Activo)
+        {
+            TempData["Mensaje"] = $"No se puede ejecutar: '{definicion.Nombre}' está inactiva.";
+            return RedirectToPage();
+        }
+
         definicion.NextRunAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(ct);
 

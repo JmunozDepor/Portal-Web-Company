@@ -73,7 +73,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ISecretoCifradoService, SecretoCifradoService>();
 builder.Services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
-builder.Services.AddSingleton<IIntegrationConnector, SapDocumentConnector>();
+builder.Services.AddScoped<IIntegrationConnector, SapDocumentConnector>();
 builder.Services.AddHostedService<IntegrationSyncHostedService>();
 builder.Services.AddScoped<PortalSaas.Abstractions.Contratos.IAuthenticationService, PortalSaas.Core.Seguridad.AuthenticationService>();
 builder.Services.AddScoped<IPlatformAdminAuthenticationService, PlatformAdminAuthenticationService>();

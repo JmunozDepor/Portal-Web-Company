@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Contratos.Integraciones;
+using PortalSaas.Core.Seguridad;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities.Integraciones;
 using PortalSaas.Integrations;
@@ -14,16 +15,27 @@ public class IntegrationSyncHostedServiceTests
 {
     private class ConectorFalso : IIntegrationConnector
     {
+        private readonly Func<IReadOnlyList<IntegrationRecord>, IReadOnlyList<IntegrationPushResult>>? _resultadosFactory;
+
+        public ConectorFalso(Func<IReadOnlyList<IntegrationRecord>, IReadOnlyList<IntegrationPushResult>>? resultadosFactory = null)
+        {
+            _resultadosFactory = resultadosFactory;
+        }
+
         public string Tipo => "Sap";
         public bool PushLlamado { get; private set; }
+        public IReadOnlyList<IntegrationRecord>? RegistrosRecibidos { get; private set; }
 
         public Task<IReadOnlyList<IntegrationRecord>> PullAsync(string conectorConfigJson, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<IntegrationRecord>>(Array.Empty<IntegrationRecord>());
 
-        public Task PushAsync(string conectorConfigJson, IReadOnlyList<IntegrationRecord> registros, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<IntegrationPushResult>> PushAsync(string conectorConfigJson, IReadOnlyList<IntegrationRecord> registros, CancellationToken cancellationToken)
         {
             PushLlamado = true;
-            return Task.CompletedTask;
+            RegistrosRecibidos = registros;
+            var resultados = _resultadosFactory?.Invoke(registros)
+                ?? registros.Select(r => new IntegrationPushResult(r, Exito: true, MensajeError: null)).ToList();
+            return Task.FromResult(resultados);
         }
     }
 
@@ -70,6 +82,7 @@ public class IntegrationSyncHostedServiceTests
         services.AddSingleton<IIntegrationEntityReader>(readerFalso);
         services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
         services.AddScoped<ISecretoCifradoService, SecretoCifradoServiceFalso>();
+        services.AddScoped<ICurrentCompanyOverride, CurrentCompanyOverride>();
         services.AddSingleton<Microsoft.Extensions.Logging.ILogger<IntegrationSyncHostedService>>(NullLogger<IntegrationSyncHostedService>.Instance);
         var proveedor = services.BuildServiceProvider();
 
@@ -122,6 +135,7 @@ public class IntegrationSyncHostedServiceTests
         services.AddSingleton<IIntegrationEntityReader>(readerFalso);
         services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
         services.AddScoped<ISecretoCifradoService, SecretoCifradoServiceFalso>();
+        services.AddScoped<ICurrentCompanyOverride, CurrentCompanyOverride>();
         services.AddSingleton<Microsoft.Extensions.Logging.ILogger<IntegrationSyncHostedService>>(NullLogger<IntegrationSyncHostedService>.Instance);
         var proveedor = services.BuildServiceProvider();
 
@@ -146,5 +160,63 @@ public class IntegrationSyncHostedServiceTests
         Assert.Single(readerFalso.LlamadasDeAck);
         Assert.True(readerFalso.LlamadasDeAck[0].Exito);
         Assert.True(conectorFalso.PushLlamado);
+    }
+
+    [Fact]
+    public async Task EjecutarCicloAsync_ConPushParcial_AckIndividualYLogParcial()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var registroOk = new IntegrationRecord(new Dictionary<string, object?> { ["TipoDocumento"] = "Inventory", ["Id"] = 1 });
+        var registroFalla = new IntegrationRecord(new Dictionary<string, object?> { ["TipoDocumento"] = "Inventory", ["Id"] = 2 });
+        var conectorFalso = new ConectorFalso(registros => registros
+            .Select(r => r == registroFalla
+                ? new IntegrationPushResult(r, Exito: false, MensajeError: "Falló este registro puntual")
+                : new IntegrationPushResult(r, Exito: true, MensajeError: null))
+            .ToList());
+        var readerFalso = new ReaderFalso(new List<IntegrationRecord> { registroOk, registroFalla });
+
+        var services = new ServiceCollection();
+        services.AddDbContext<PortalSaasDbContext>(o => o.UseInMemoryDatabase(dbName));
+        services.AddSingleton<IIntegrationConnector>(conectorFalso);
+        services.AddSingleton<IIntegrationEntityReader>(readerFalso);
+        services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
+        services.AddScoped<ISecretoCifradoService, SecretoCifradoServiceFalso>();
+        services.AddScoped<ICurrentCompanyOverride, CurrentCompanyOverride>();
+        services.AddSingleton<Microsoft.Extensions.Logging.ILogger<IntegrationSyncHostedService>>(NullLogger<IntegrationSyncHostedService>.Instance);
+        var proveedor = services.BuildServiceProvider();
+
+        var definicion = new IntegrationDefinition
+        {
+            Nombre = "Test", ModuloOrigen = "Wms", EntidadNegocio = "Wms.ConfirmacionTraslado",
+            ConectorTipo = IntegrationConectorTipo.Sap, ConectorConfigCifrado = "{}",
+            Direccion = IntegrationDireccion.Subida, Activo = true,
+            NextRunAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        };
+
+        using (var scope = proveedor.CreateScope())
+        {
+            var contexto = scope.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+            contexto.IntegrationDefinitions.Add(definicion);
+            await contexto.SaveChangesAsync();
+        }
+
+        var servicio = new IntegrationSyncHostedService(proveedor.GetRequiredService<IServiceScopeFactory>(), NullLogger<IntegrationSyncHostedService>.Instance);
+        await servicio.EjecutarCicloAsync(CancellationToken.None);
+
+        // El lote completo llega al conector -- ya no se filtra/mapea antes de PushAsync
+        // (ver Fix 1), y ninguno de los dos registros se pierde en el ack aunque uno falle.
+        Assert.Equal(2, conectorFalso.RegistrosRecibidos?.Count);
+        Assert.Equal(2, readerFalso.LlamadasDeAck.Count);
+        Assert.Contains(readerFalso.LlamadasDeAck, a => a.Exito);
+        Assert.Contains(readerFalso.LlamadasDeAck, a => !a.Exito);
+
+        using var scopeVerificacion = proveedor.CreateScope();
+        var contextoVerificacion = scopeVerificacion.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+        var log = await contextoVerificacion.IntegrationRunLogs
+            .SingleAsync(l => l.IntegrationDefinitionId == definicion.Id);
+
+        Assert.Equal(IntegrationRunResultado.Parcial, log.Resultado);
+        Assert.Equal(1, log.RegistrosProcesados);
+        Assert.Equal(1, log.RegistrosConError);
     }
 }

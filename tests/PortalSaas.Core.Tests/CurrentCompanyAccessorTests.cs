@@ -14,7 +14,7 @@ public class CurrentCompanyAccessorTests
             User = new ClaimsPrincipal(new ClaimsIdentity(claims)),
         };
         var accessor = new HttpContextAccessor { HttpContext = httpContext };
-        return new CurrentCompanyAccessor(accessor);
+        return new CurrentCompanyAccessor(accessor, new CurrentCompanyOverride());
     }
 
     [Fact]
@@ -50,5 +50,44 @@ public class CurrentCompanyAccessorTests
         Assert.Equal("CLPRDDEPOR", accessor.Database);
         Assert.Equal("https://sap.local:50000/b1s/v1", accessor.ServiceLayerUrl);
         Assert.Equal("CL", accessor.Country);
+    }
+
+    [Fact]
+    public void CompanyId_ConOverrideFijado_UsaElOverrideEnVezDelClaim()
+    {
+        var httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity()),
+        };
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+        var companyOverride = new CurrentCompanyOverride();
+        var companyIdDelOverride = Guid.NewGuid();
+        companyOverride.Set(companyIdDelOverride);
+        var accessor = new CurrentCompanyAccessor(httpContextAccessor, companyOverride);
+
+        Assert.Equal(companyIdDelOverride, accessor.CompanyId);
+    }
+
+    [Fact]
+    public void HasCompany_ConOverrideFijadoYSinClaim_EsTrue()
+    {
+        var httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity()),
+        };
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+        var companyOverride = new CurrentCompanyOverride();
+        companyOverride.Set(Guid.NewGuid());
+        var accessor = new CurrentCompanyAccessor(httpContextAccessor, companyOverride);
+
+        Assert.True(accessor.HasCompany);
+    }
+
+    [Fact]
+    public void HasCompany_SinOverrideNiClaim_EsFalse()
+    {
+        var accessor = CrearConClaims();
+
+        Assert.False(accessor.HasCompany);
     }
 }

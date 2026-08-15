@@ -137,6 +137,11 @@ builder.Services.AddScoped<IUserHomeShortcutService, UserHomeShortcutService>();
 // (claims fijados en el login de tenant, ver Pages/Account/Login.cshtml.cs) -- NUNCA
 // Singleton, congelaría la conexión a la primera compañía resuelta (bug real que ya tuvo
 // PortalSAP_v2 con el servicio equivalente).
+// Override ambiente de compañía -- lo necesita CurrentCompanyAccessor en su
+// constructor, así que va registrado antes. Ver ICurrentCompanyOverride: lo consume
+// IntegrationSyncHostedService para fijar la compañía de un ciclo de integración sin
+// HttpContext (BackgroundService).
+builder.Services.AddScoped<ICurrentCompanyOverride, CurrentCompanyOverride>();
 builder.Services.AddScoped<ICurrentCompanyAccessor, CurrentCompanyAccessor>();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
 builder.Services.AddScoped<IHanaService, HanaService>();

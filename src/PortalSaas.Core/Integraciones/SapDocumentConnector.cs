@@ -31,11 +31,17 @@ public class SapDocumentConnector : IIntegrationConnector
             "está explícitamente fuera de alcance del motor de integración por ahora.");
     }
 
-    public async Task PushAsync(
+    public async Task<IReadOnlyList<IntegrationPushResult>> PushAsync(
         string conectorConfigJson,
         IReadOnlyList<IntegrationRecord> registros,
         CancellationToken cancellationToken)
     {
+        if (registros.Count == 0)
+        {
+            return Array.Empty<IntegrationPushResult>();
+        }
+
+        var resultados = new List<IntegrationPushResult>();
         var errores = new List<Exception>();
 
         foreach (var registro in registros)
@@ -69,18 +75,49 @@ public class SapDocumentConnector : IIntegrationConnector
                     case "Inventory":
                     {
                         var lineasRaw = (List<IntegrationRecord>)(registro["Lineas"] ?? new List<IntegrationRecord>());
-                        var lineasDto = lineasRaw.Select(l => new InventoryDocumentLineDto(
-                            ItemCode: (string)l["ItemCode"]!,
-                            Description: null,
-                            Quantity: Convert.ToDecimal(l["Quantity"]),
-                            FromWarehouseCode: null,
-                            ToWarehouseCode: null,
-                            BaseType: (int?)l["BaseType"],
-                            BaseEntry: (int?)l["BaseEntry"],
-                            BaseLine: (int?)l["BaseLine"])).ToList();
+                        var lineasDto = lineasRaw.Select(l =>
+                        {
+                            // Quantity llega como string (shipped_qty de la tabla de staging del
+                            // WMS) -- convertirla con Convert.ToDecimal usa la cultura del hilo
+                            // actual (cultura del servidor, no necesariamente invariante), mismo
+                            // tipo de bug de cultura ya encontrado 2 veces antes en este proyecto
+                            // (ver CLAUDE.md). Se parsea explícito en cultura invariante; si no se
+                            // puede parsear, esta línea/registro queda como error puntual sin
+                            // tumbar el resto del lote.
+                            var quantityRaw = l["Quantity"] as string;
+                            if (!decimal.TryParse(
+                                    quantityRaw,
+                                    System.Globalization.NumberStyles.Any,
+                                    System.Globalization.CultureInfo.InvariantCulture,
+                                    out var cantidad))
+                            {
+                                throw new FormatException(
+                                    $"SapDocumentConnector.PushAsync: no se pudo interpretar 'Quantity' " +
+                                    $"('{quantityRaw}') como número invariante para el artículo " +
+                                    $"'{l["ItemCode"]}'.");
+                            }
+
+                            return new InventoryDocumentLineDto(
+                                ItemCode: (string)l["ItemCode"]!,
+                                Description: null,
+                                Quantity: cantidad,
+                                FromWarehouseCode: null,
+                                ToWarehouseCode: null,
+                                BaseType: (int?)l["BaseType"],
+                                BaseEntry: (int?)l["BaseEntry"],
+                                BaseLine: (int?)l["BaseLine"]);
+                        }).ToList();
+
+                        // DocDate lo produce el reader del WMS (WmsSlshInventoryReader) en
+                        // Fields["DocDate"] -- usarlo si vino con valor; si no, mismo fallback de
+                        // siempre (fecha actual del servidor).
+                        var docDateRaw = registro["DocDate"] as DateTime?;
+                        var docDate = docDateRaw.HasValue
+                            ? DateOnly.FromDateTime(docDateRaw.Value)
+                            : DateOnly.FromDateTime(DateTime.UtcNow);
 
                         var dto = new InventoryDocumentDto(
-                            DocDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                            DocDate: docDate,
                             Comments: null,
                             Lines: lineasDto);
 
@@ -92,16 +129,25 @@ public class SapDocumentConnector : IIntegrationConnector
                             $"SapDocumentConnector.PushAsync: TipoDocumento '{tipoDocumento}' no reconocido. " +
                             "Valores soportados: 'Sales', 'Purchase', 'Inventory'.");
                 }
+
+                resultados.Add(new IntegrationPushResult(registro, Exito: true, MensajeError: null));
             }
             catch (Exception ex)
             {
                 errores.Add(ex);
+                resultados.Add(new IntegrationPushResult(registro, Exito: false, MensajeError: ex.Message));
             }
         }
 
-        if (errores.Count == registros.Count && errores.Count > 0)
+        if (errores.Count == registros.Count)
         {
+            // Fallo catastrófico -- todo el lote falló, el llamador (IntegrationSyncHostedService)
+            // espera poder ver esto como una excepción para marcar el ciclo entero como Error, no
+            // Parcial (mismo comportamiento que tenía este método antes de exponer resultados por
+            // registro).
             throw new AggregateException("Todos los registros del lote fallaron.", errores);
         }
+
+        return resultados;
     }
 }

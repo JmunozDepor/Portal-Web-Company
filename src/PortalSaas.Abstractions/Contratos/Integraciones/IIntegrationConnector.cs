@@ -8,7 +8,7 @@ public interface IIntegrationConnector
         string conectorConfigJson,
         CancellationToken cancellationToken);
 
-    Task PushAsync(
+    Task<IReadOnlyList<IntegrationPushResult>> PushAsync(
         string conectorConfigJson,
         IReadOnlyList<IntegrationRecord> registros,
         CancellationToken cancellationToken);

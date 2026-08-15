@@ -75,10 +75,7 @@ public sealed class IntegrationSyncHostedService : BackgroundService
             // las demás integraciones del mismo ciclo.
             using var scope = _scopeFactory.CreateScope();
             var contexto = scope.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
-            var mapeoServicio = scope.ServiceProvider.GetRequiredService<IIntegrationFieldMappingService>();
             var secretoServicio = scope.ServiceProvider.GetRequiredService<ISecretoCifradoService>();
-            var conectores = scope.ServiceProvider.GetServices<IIntegrationConnector>().ToList();
-            var readers = scope.ServiceProvider.GetServices<IIntegrationEntityReader>().ToList();
 
             var definicion = await contexto.IntegrationDefinitions
                 .FirstOrDefaultAsync(d => d.Id == definicionId, cancellationToken);
@@ -87,13 +84,23 @@ public sealed class IntegrationSyncHostedService : BackgroundService
                 continue;
             }
 
-            await EjecutarIntegracionAsync(contexto, mapeoServicio, secretoServicio, conectores, readers, definicion, cancellationToken);
+            // El override de compañía ambiente debe fijarse ANTES de resolver
+            // conectores/readers -- un DbContext de plugin (ej. WmsDbContext) que dependa
+            // de ICurrentCompanyAccessor.HasCompany/.CompanyId en su propio constructor
+            // (vía la fábrica de connection string) necesita verlo ya fijado en el
+            // momento en que el contenedor lo construye. Sin HttpContext (BackgroundService),
+            // ICurrentCompanyAccessor no tiene de dónde más leer la compañía.
+            scope.ServiceProvider.GetRequiredService<ICurrentCompanyOverride>().Set(definicion.CompanyId);
+
+            var conectores = scope.ServiceProvider.GetServices<IIntegrationConnector>().ToList();
+            var readers = scope.ServiceProvider.GetServices<IIntegrationEntityReader>().ToList();
+
+            await EjecutarIntegracionAsync(contexto, secretoServicio, conectores, readers, definicion, cancellationToken);
         }
     }
 
     private async Task EjecutarIntegracionAsync(
         PortalSaasDbContext contexto,
-        IIntegrationFieldMappingService mapeoServicio,
         ISecretoCifradoService secretoServicio,
         List<IIntegrationConnector> conectores,
         List<IIntegrationEntityReader> readers,
@@ -131,36 +138,43 @@ public sealed class IntegrationSyncHostedService : BackgroundService
                     ?? throw new InvalidOperationException($"No hay reader registrado para entidad '{definicion.EntidadNegocio}'.");
 
                 var registrosLocales = await reader.LeerPendientesAsync(definicion.CompanyId, cancellationToken);
-                var registrosMapeados = new List<IntegrationRecord>();
-                foreach (var registroLocal in registrosLocales)
-                {
-                    registrosMapeados.Add(await mapeoServicio.MapToExternalAsync(definicion.Id, registroLocal));
-                }
 
-                Exception? excepcionDePush = null;
+                // NO se pasa por IIntegrationFieldMappingService acá -- el mapeo campo-a-campo
+                // (IntegrationFieldMapping en BD) sirve para traducir NOMBRES de campo entre el
+                // sistema local y el externo, pero los readers de este flujo (ej.
+                // WmsSlshInventoryReader) ya devuelven registros estructurados con los nombres
+                // fijos que SapDocumentConnector.PushAsync espera ('TipoDocumento'/'Lineas'/etc.).
+                // Sin ninguna fila de mapeo configurada para esta integración (no la hay todavía
+                // para WMS), MapToExternalAsync devolvía un IntegrationRecord vacío -- el
+                // conector recibía TipoDocumento=null y todo terminaba en NotSupportedException.
+                IReadOnlyList<IntegrationPushResult> resultados;
                 try
                 {
-                    await conector.PushAsync(conectorConfigJson, registrosMapeados, cancellationToken);
+                    resultados = await conector.PushAsync(conectorConfigJson, registrosLocales, cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    excepcionDePush = ex;
+                    // Todo el lote falló catastróficamente (ver SapDocumentConnector.PushAsync) --
+                    // marcar todos los registros locales como fallidos antes de relanzar, para que
+                    // el reader pueda reintentarlos en el próximo ciclo.
+                    foreach (var registroLocal in registrosLocales)
+                    {
+                        await reader.MarcarProcesadoAsync(definicion.CompanyId, registroLocal, exito: false, mensajeError: ex.Message, cancellationToken);
+                    }
+
+                    throw;
                 }
 
-                foreach (var registroLocal in registrosLocales)
+                foreach (var resultado in resultados)
                 {
-                    await reader.MarcarProcesadoAsync(definicion.CompanyId, registroLocal, exito: excepcionDePush is null, mensajeError: excepcionDePush?.Message, cancellationToken);
+                    await reader.MarcarProcesadoAsync(definicion.CompanyId, resultado.Registro, resultado.Exito, resultado.MensajeError, cancellationToken);
                 }
 
-                if (excepcionDePush is not null)
-                {
-                    throw excepcionDePush;
-                }
-
-                log.RegistrosProcesados = registrosLocales.Count;
+                log.RegistrosProcesados = resultados.Count(r => r.Exito);
+                log.RegistrosConError = resultados.Count(r => !r.Exito);
             }
 
-            log.Resultado = IntegrationRunResultado.Exito;
+            log.Resultado = log.RegistrosConError > 0 ? IntegrationRunResultado.Parcial : IntegrationRunResultado.Exito;
         }
         catch (Exception ex)
         {

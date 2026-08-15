@@ -12,19 +12,26 @@ namespace PortalSaas.Core.Seguridad;
 public sealed class CurrentCompanyAccessor : ICurrentCompanyAccessor
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ICurrentCompanyOverride _override;
 
-    public CurrentCompanyAccessor(IHttpContextAccessor httpContextAccessor)
+    public CurrentCompanyAccessor(IHttpContextAccessor httpContextAccessor, ICurrentCompanyOverride @override)
     {
         _httpContextAccessor = httpContextAccessor;
+        _override = @override;
     }
 
-    public Guid CompanyId => Guid.Parse(GetClaim("CompanyId"));
+    // El override ambiente (fijado explícitamente, ej. por IntegrationSyncHostedService
+    // para un ciclo de integración de una compañía puntual) tiene prioridad sobre el
+    // claim de sesión -- es el único mecanismo disponible para un BackgroundService, que
+    // no tiene HttpContext. Code/Database/ServiceLayerUrl/Country siguen dependiendo solo
+    // de claims: nadie los necesita todavía fuera de un HttpContext real.
+    public Guid CompanyId => _override.CompanyId ?? Guid.Parse(GetClaim("CompanyId"));
     public string Code => GetClaim("CompanyCode");
     public string Database => GetClaim("CompanyDatabase");
     public string ServiceLayerUrl => GetClaim("CompanyServiceLayerUrl");
     public string Country => GetClaim("CompanyCountry");
 
-    public bool HasCompany => _httpContextAccessor.HttpContext?.User.FindFirst("CompanyId") is not null;
+    public bool HasCompany => _override.CompanyId is not null || _httpContextAccessor.HttpContext?.User.FindFirst("CompanyId") is not null;
 
     private string GetClaim(string type)
     {

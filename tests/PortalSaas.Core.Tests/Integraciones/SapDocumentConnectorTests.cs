@@ -133,20 +133,112 @@ public class SapDocumentConnectorTests
 
         var lineas = new List<IntegrationRecord>
         {
-            new(new Dictionary<string, object?> { ["ItemCode"] = "ITEM-A", ["Quantity"] = 10m, ["BaseType"] = 1250000001, ["BaseEntry"] = 42, ["BaseLine"] = 0 }),
+            new(new Dictionary<string, object?> { ["ItemCode"] = "ITEM-A", ["Quantity"] = "10", ["BaseType"] = 1250000001, ["BaseEntry"] = 42, ["BaseLine"] = 0 }),
         };
         var registros = new List<IntegrationRecord>
         {
             new(new Dictionary<string, object?> { ["TipoDocumento"] = "Inventory", ["Lineas"] = lineas }),
         };
 
-        await conector.PushAsync("{}", registros, CancellationToken.None);
+        var resultados = await conector.PushAsync("{}", registros, CancellationToken.None);
 
         Assert.Equal(InventoryDocumentType.StockTransfer, tipoUsado);
         Assert.NotNull(dtoUsado);
         Assert.Single(dtoUsado!.Lines);
         Assert.Equal("ITEM-A", dtoUsado.Lines[0].ItemCode);
         Assert.Equal(42, dtoUsado.Lines[0].BaseEntry);
+        var resultado = Assert.Single(resultados);
+        Assert.True(resultado.Exito);
+    }
+
+    [Fact]
+    public async Task PushAsync_ConDocDateEnElRegistro_UsaEseValorEnVezDelFallback()
+    {
+        DateOnly? docDateUsado = null;
+        var inventoryServiceFalso = new InventoryDocumentServiceCapturador((tipo, usuario, dto, ct) =>
+        {
+            docDateUsado = dto.DocDate;
+            return Task.FromResult(999);
+        });
+        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso);
+
+        var docDateEsperado = new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc);
+        var lineas = new List<IntegrationRecord>
+        {
+            new(new Dictionary<string, object?> { ["ItemCode"] = "ITEM-A", ["Quantity"] = "10" }),
+        };
+        var registros = new List<IntegrationRecord>
+        {
+            new(new Dictionary<string, object?> { ["TipoDocumento"] = "Inventory", ["Lineas"] = lineas, ["DocDate"] = docDateEsperado }),
+        };
+
+        await conector.PushAsync("{}", registros, CancellationToken.None);
+
+        Assert.Equal(DateOnly.FromDateTime(docDateEsperado), docDateUsado);
+    }
+
+    [Fact]
+    public async Task PushAsync_QuantityComoStringInvarianteConDecimales_SeParseaCorrectamente()
+    {
+        decimal? cantidadUsada = null;
+        var inventoryServiceFalso = new InventoryDocumentServiceCapturador((tipo, usuario, dto, ct) =>
+        {
+            cantidadUsada = dto.Lines[0].Quantity;
+            return Task.FromResult(999);
+        });
+        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso);
+
+        var lineas = new List<IntegrationRecord>
+        {
+            new(new Dictionary<string, object?> { ["ItemCode"] = "ITEM-A", ["Quantity"] = "10.5" }),
+        };
+        var registros = new List<IntegrationRecord>
+        {
+            new(new Dictionary<string, object?> { ["TipoDocumento"] = "Inventory", ["Lineas"] = lineas }),
+        };
+
+        var resultados = await conector.PushAsync("{}", registros, CancellationToken.None);
+
+        Assert.Equal(10.5m, cantidadUsada);
+        Assert.True(Assert.Single(resultados).Exito);
+    }
+
+    [Fact]
+    public async Task PushAsync_QuantityNoParseable_ResultadoFallidoParaEseRegistroSinTumbarElLote()
+    {
+        var inventoryServiceFalso = new InventoryDocumentServiceCapturador((tipo, usuario, dto, ct) => Task.FromResult(999));
+        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso);
+
+        var lineasRegistroMalo = new List<IntegrationRecord>
+        {
+            new(new Dictionary<string, object?> { ["ItemCode"] = "ITEM-A", ["Quantity"] = "no-es-un-numero" }),
+        };
+        var lineasRegistroBueno = new List<IntegrationRecord>
+        {
+            new(new Dictionary<string, object?> { ["ItemCode"] = "ITEM-B", ["Quantity"] = "5" }),
+        };
+        var registros = new List<IntegrationRecord>
+        {
+            new(new Dictionary<string, object?> { ["TipoDocumento"] = "Inventory", ["Lineas"] = lineasRegistroMalo }),
+            new(new Dictionary<string, object?> { ["TipoDocumento"] = "Inventory", ["Lineas"] = lineasRegistroBueno }),
+        };
+
+        var resultados = await conector.PushAsync("{}", registros, CancellationToken.None);
+
+        Assert.Equal(2, resultados.Count);
+        Assert.False(resultados[0].Exito);
+        Assert.Contains("Quantity", resultados[0].MensajeError);
+        Assert.True(resultados[1].Exito);
+    }
+
+    [Fact]
+    public async Task PushAsync_ListaVacia_RetornaListaVaciaSinLanzar()
+    {
+        var conector = CrearConector();
+
+        var resultados = await conector.PushAsync("{}", Array.Empty<IntegrationRecord>(), CancellationToken.None);
+
+        Assert.Empty(resultados);
     }
 
     private sealed class InventoryDocumentServiceCapturador : IInventoryDocumentService

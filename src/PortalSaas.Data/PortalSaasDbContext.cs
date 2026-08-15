@@ -497,23 +497,25 @@ public sealed class PortalSaasDbContext : DbContext
         {
             entity.ToTable("integration_definitions", t =>
             {
-                t.HasCheckConstraint("ck_integration_definitions_conector_tipo",
-                    "conector_tipo in ('Sap', 'Rest', 'Archivo')");
-                t.HasCheckConstraint("ck_integration_definitions_direccion",
-                    "direccion in ('Subida', 'Bajada', 'Ambas')");
+                t.HasCheckConstraint("ck_integration_definitions_connector_type",
+                    "connector_type in ('sap', 'rest', 'file')");
+                t.HasCheckConstraint("ck_integration_definitions_direction",
+                    "direction in ('upload', 'download', 'both')");
             });
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CompanyId).HasColumnName("company_id");
-            entity.Property(e => e.Nombre).HasColumnName("nombre").HasMaxLength(200);
-            entity.Property(e => e.ModuloOrigen).HasColumnName("modulo_origen").HasMaxLength(100);
-            entity.Property(e => e.EntidadNegocio).HasColumnName("entidad_negocio").HasMaxLength(100);
-            entity.Property(e => e.ConectorTipo).HasColumnName("conector_tipo")
-                .HasConversion<string>().HasMaxLength(20);
-            entity.Property(e => e.ConectorConfigCifrado).HasColumnName("conector_config_cifrado");
-            entity.Property(e => e.Direccion).HasColumnName("direccion")
-                .HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Nombre).HasColumnName("name").HasMaxLength(200);
+            entity.Property(e => e.ModuloOrigen).HasColumnName("source_module").HasMaxLength(100);
+            entity.Property(e => e.EntidadNegocio).HasColumnName("business_entity").HasMaxLength(100);
+            entity.Property(e => e.ConectorTipo).HasColumnName("connector_type")
+                .HasConversion(v => ConectorTipoAProveedor(v), v => ConectorTipoDesdeProveedor(v))
+                .HasMaxLength(20);
+            entity.Property(e => e.ConectorConfigCifrado).HasColumnName("encrypted_connector_config");
+            entity.Property(e => e.Direccion).HasColumnName("direction")
+                .HasConversion(v => DireccionAProveedor(v), v => DireccionDesdeProveedor(v))
+                .HasMaxLength(20);
             entity.Property(e => e.Activo).HasColumnName("is_active");
-            entity.Property(e => e.ProgramacionCron).HasColumnName("programacion_cron").HasMaxLength(100);
+            entity.Property(e => e.ProgramacionCron).HasColumnName("cron_schedule").HasMaxLength(100);
             entity.Property(e => e.NextRunAt).HasColumnName("next_run_at");
             entity.HasIndex(e => new { e.CompanyId, e.Activo });
         });
@@ -523,9 +525,9 @@ public sealed class PortalSaasDbContext : DbContext
             entity.ToTable("integration_field_mappings");
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.IntegrationDefinitionId).HasColumnName("integration_definition_id");
-            entity.Property(e => e.CampoLocal).HasColumnName("campo_local").HasMaxLength(100);
-            entity.Property(e => e.CampoExterno).HasColumnName("campo_externo").HasMaxLength(100);
-            entity.Property(e => e.Transformacion).HasColumnName("transformacion").HasMaxLength(100);
+            entity.Property(e => e.CampoLocal).HasColumnName("local_field").HasMaxLength(100);
+            entity.Property(e => e.CampoExterno).HasColumnName("external_field").HasMaxLength(100);
+            entity.Property(e => e.Transformacion).HasColumnName("transformation").HasMaxLength(100);
             entity.Property(e => e.Obligatorio).HasColumnName("is_required");
             entity.HasOne(e => e.IntegrationDefinition)
                 .WithMany(d => d.Mapeos)
@@ -537,23 +539,93 @@ public sealed class PortalSaasDbContext : DbContext
         {
             entity.ToTable("integration_run_logs", t =>
             {
-                t.HasCheckConstraint("ck_integration_run_logs_resultado",
-                    "resultado in ('Exito', 'Error', 'Parcial')");
-                t.HasCheckConstraint("ck_integration_run_logs_disparado_por",
-                    "disparado_por in ('Programado', 'Manual')");
+                t.HasCheckConstraint("ck_integration_run_logs_status",
+                    "status in ('success', 'error', 'partial')");
+                t.HasCheckConstraint("ck_integration_run_logs_triggered_by",
+                    "triggered_by in ('scheduled', 'manual')");
             });
             entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
             entity.Property(e => e.IntegrationDefinitionId).HasColumnName("integration_definition_id");
-            entity.Property(e => e.IniciadoEn).HasColumnName("iniciado_at");
-            entity.Property(e => e.FinalizadoEn).HasColumnName("finalizado_at");
-            entity.Property(e => e.Resultado).HasColumnName("resultado")
-                .HasConversion<string>().HasMaxLength(20);
-            entity.Property(e => e.RegistrosProcesados).HasColumnName("registros_procesados");
-            entity.Property(e => e.RegistrosConError).HasColumnName("registros_con_error");
-            entity.Property(e => e.DetalleError).HasColumnName("detalle_error");
-            entity.Property(e => e.DisparadoPor).HasColumnName("disparado_por")
-                .HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.IniciadoEn).HasColumnName("started_at");
+            entity.Property(e => e.FinalizadoEn).HasColumnName("finished_at");
+            entity.Property(e => e.Resultado).HasColumnName("status")
+                .HasConversion(v => ResultadoAProveedor(v), v => ResultadoDesdeProveedor(v))
+                .HasMaxLength(20);
+            entity.Property(e => e.RegistrosProcesados).HasColumnName("records_processed");
+            entity.Property(e => e.RegistrosConError).HasColumnName("records_failed");
+            entity.Property(e => e.DetalleError).HasColumnName("error_detail");
+            entity.Property(e => e.DisparadoPor).HasColumnName("triggered_by")
+                .HasConversion(v => DisparadoPorAProveedor(v), v => DisparadoPorDesdeProveedor(v))
+                .HasMaxLength(20);
             entity.HasIndex(e => e.IntegrationDefinitionId);
         });
     }
+
+    // Conversores explícitos enum <-> string en inglés minúscula (docs/01-CONVENCION-
+    // NOMBRES-BD.md §1) -- NO usar HasConversion<string>() a secas: el valor guardado
+    // sería el nombre del miembro del enum en C# (español, PascalCase), lo que viola
+    // la convención de la base. Métodos estáticos (no lambdas inline) porque
+    // HasConversion espera Expression<Func<>> y una expresión switch no puede vivir
+    // dentro de un árbol de expresión -- una referencia a método sí puede.
+    private static string ConectorTipoAProveedor(IntegrationConectorTipo v) => v switch
+    {
+        IntegrationConectorTipo.Sap => "sap",
+        IntegrationConectorTipo.Rest => "rest",
+        IntegrationConectorTipo.Archivo => "file",
+        _ => throw new ArgumentOutOfRangeException(nameof(v)),
+    };
+
+    private static IntegrationConectorTipo ConectorTipoDesdeProveedor(string v) => v switch
+    {
+        "sap" => IntegrationConectorTipo.Sap,
+        "rest" => IntegrationConectorTipo.Rest,
+        "file" => IntegrationConectorTipo.Archivo,
+        _ => throw new ArgumentOutOfRangeException(nameof(v)),
+    };
+
+    private static string DireccionAProveedor(IntegrationDireccion v) => v switch
+    {
+        IntegrationDireccion.Subida => "upload",
+        IntegrationDireccion.Bajada => "download",
+        IntegrationDireccion.Ambas => "both",
+        _ => throw new ArgumentOutOfRangeException(nameof(v)),
+    };
+
+    private static IntegrationDireccion DireccionDesdeProveedor(string v) => v switch
+    {
+        "upload" => IntegrationDireccion.Subida,
+        "download" => IntegrationDireccion.Bajada,
+        "both" => IntegrationDireccion.Ambas,
+        _ => throw new ArgumentOutOfRangeException(nameof(v)),
+    };
+
+    private static string ResultadoAProveedor(IntegrationRunResultado v) => v switch
+    {
+        IntegrationRunResultado.Exito => "success",
+        IntegrationRunResultado.Error => "error",
+        IntegrationRunResultado.Parcial => "partial",
+        _ => throw new ArgumentOutOfRangeException(nameof(v)),
+    };
+
+    private static IntegrationRunResultado ResultadoDesdeProveedor(string v) => v switch
+    {
+        "success" => IntegrationRunResultado.Exito,
+        "error" => IntegrationRunResultado.Error,
+        "partial" => IntegrationRunResultado.Parcial,
+        _ => throw new ArgumentOutOfRangeException(nameof(v)),
+    };
+
+    private static string DisparadoPorAProveedor(IntegrationRunDisparadoPor v) => v switch
+    {
+        IntegrationRunDisparadoPor.Programado => "scheduled",
+        IntegrationRunDisparadoPor.Manual => "manual",
+        _ => throw new ArgumentOutOfRangeException(nameof(v)),
+    };
+
+    private static IntegrationRunDisparadoPor DisparadoPorDesdeProveedor(string v) => v switch
+    {
+        "scheduled" => IntegrationRunDisparadoPor.Programado,
+        "manual" => IntegrationRunDisparadoPor.Manual,
+        _ => throw new ArgumentOutOfRangeException(nameof(v)),
+    };
 }

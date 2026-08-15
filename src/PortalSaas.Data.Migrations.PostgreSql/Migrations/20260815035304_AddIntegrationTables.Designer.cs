@@ -12,7 +12,7 @@ using PortalSaas.Data;
 namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 {
     [DbContext(typeof(PortalSaasDbContext))]
-    [Migration("20260815032734_AddIntegrationTables")]
+    [Migration("20260815035304_AddIntegrationTables")]
     partial class AddIntegrationTables
     {
         /// <inheritdoc />
@@ -461,31 +461,31 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Property<string>("ConectorConfigCifrado")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("conector_config_cifrado");
+                        .HasColumnName("encrypted_connector_config");
 
                     b.Property<string>("ConectorTipo")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasColumnName("conector_tipo");
+                        .HasColumnName("connector_type");
 
                     b.Property<string>("Direccion")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasColumnName("direccion");
+                        .HasColumnName("direction");
 
                     b.Property<string>("EntidadNegocio")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("entidad_negocio");
+                        .HasColumnName("business_entity");
 
                     b.Property<string>("ModuloOrigen")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("modulo_origen");
+                        .HasColumnName("source_module");
 
                     b.Property<DateTimeOffset?>("NextRunAt")
                         .HasColumnType("timestamp with time zone")
@@ -495,12 +495,12 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
-                        .HasColumnName("nombre");
+                        .HasColumnName("name");
 
                     b.Property<string>("ProgramacionCron")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("programacion_cron");
+                        .HasColumnName("cron_schedule");
 
                     b.HasKey("Id")
                         .HasName("pk_integration_definitions");
@@ -510,9 +510,9 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 
                     b.ToTable("integration_definitions", null, t =>
                         {
-                            t.HasCheckConstraint("ck_integration_definitions_conector_tipo", "conector_tipo in ('Sap', 'Rest', 'Archivo')");
+                            t.HasCheckConstraint("ck_integration_definitions_connector_type", "connector_type in ('sap', 'rest', 'file')");
 
-                            t.HasCheckConstraint("ck_integration_definitions_direccion", "direccion in ('Subida', 'Bajada', 'Ambas')");
+                            t.HasCheckConstraint("ck_integration_definitions_direction", "direction in ('upload', 'download', 'both')");
                         });
                 });
 
@@ -527,13 +527,13 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("campo_externo");
+                        .HasColumnName("external_field");
 
                     b.Property<string>("CampoLocal")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("campo_local");
+                        .HasColumnName("local_field");
 
                     b.Property<Guid>("IntegrationDefinitionId")
                         .HasColumnType("uuid")
@@ -546,7 +546,7 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Property<string>("Transformacion")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("transformacion");
+                        .HasColumnName("transformation");
 
                     b.HasKey("Id")
                         .HasName("pk_integration_field_mappings");
@@ -568,21 +568,21 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 
                     b.Property<string>("DetalleError")
                         .HasColumnType("text")
-                        .HasColumnName("detalle_error");
+                        .HasColumnName("error_detail");
 
                     b.Property<string>("DisparadoPor")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasColumnName("disparado_por");
+                        .HasColumnName("triggered_by");
 
                     b.Property<DateTimeOffset?>("FinalizadoEn")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("finalizado_at");
+                        .HasColumnName("finished_at");
 
                     b.Property<DateTimeOffset>("IniciadoEn")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("iniciado_at");
+                        .HasColumnName("started_at");
 
                     b.Property<Guid>("IntegrationDefinitionId")
                         .HasColumnType("uuid")
@@ -590,17 +590,17 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 
                     b.Property<int>("RegistrosConError")
                         .HasColumnType("integer")
-                        .HasColumnName("registros_con_error");
+                        .HasColumnName("records_failed");
 
                     b.Property<int>("RegistrosProcesados")
                         .HasColumnType("integer")
-                        .HasColumnName("registros_procesados");
+                        .HasColumnName("records_processed");
 
                     b.Property<string>("Resultado")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasColumnName("resultado");
+                        .HasColumnName("status");
 
                     b.HasKey("Id")
                         .HasName("pk_integration_run_logs");
@@ -610,9 +610,9 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 
                     b.ToTable("integration_run_logs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_integration_run_logs_disparado_por", "disparado_por in ('Programado', 'Manual')");
+                            t.HasCheckConstraint("ck_integration_run_logs_status", "status in ('success', 'error', 'partial')");
 
-                            t.HasCheckConstraint("ck_integration_run_logs_resultado", "resultado in ('Exito', 'Error', 'Parcial')");
+                            t.HasCheckConstraint("ck_integration_run_logs_triggered_by", "triggered_by in ('scheduled', 'manual')");
                         });
                 });
 

@@ -78,6 +78,7 @@ public sealed class IntegrationSyncHostedService : BackgroundService
             var mapeoServicio = scope.ServiceProvider.GetRequiredService<IIntegrationFieldMappingService>();
             var secretoServicio = scope.ServiceProvider.GetRequiredService<ISecretoCifradoService>();
             var conectores = scope.ServiceProvider.GetServices<IIntegrationConnector>().ToList();
+            var readers = scope.ServiceProvider.GetServices<IIntegrationEntityReader>().ToList();
 
             var definicion = await contexto.IntegrationDefinitions
                 .FirstOrDefaultAsync(d => d.Id == definicionId, cancellationToken);
@@ -86,7 +87,7 @@ public sealed class IntegrationSyncHostedService : BackgroundService
                 continue;
             }
 
-            await EjecutarIntegracionAsync(contexto, mapeoServicio, secretoServicio, conectores, definicion, cancellationToken);
+            await EjecutarIntegracionAsync(contexto, mapeoServicio, secretoServicio, conectores, readers, definicion, cancellationToken);
         }
     }
 
@@ -95,6 +96,7 @@ public sealed class IntegrationSyncHostedService : BackgroundService
         IIntegrationFieldMappingService mapeoServicio,
         ISecretoCifradoService secretoServicio,
         List<IIntegrationConnector> conectores,
+        List<IIntegrationEntityReader> readers,
         IntegrationDefinition definicion,
         CancellationToken cancellationToken)
     {
@@ -125,14 +127,40 @@ public sealed class IntegrationSyncHostedService : BackgroundService
             {
                 var conectorConfigJson = DescifrarConfigConector(secretoServicio, definicion);
 
-                // La lectura de pendientes desde el módulo origen (IIntegrationEntityReader)
-                // se resuelve en el plan de migración del módulo consumidor (ver spec, fuera de alcance aquí).
-                var registrosExternos = new List<IntegrationRecord>();
-                await conector.PushAsync(conectorConfigJson, registrosExternos, cancellationToken);
+                var reader = readers.FirstOrDefault(r => r.EntidadNegocio == definicion.EntidadNegocio)
+                    ?? throw new InvalidOperationException($"No hay reader registrado para entidad '{definicion.EntidadNegocio}'.");
+
+                var registrosLocales = await reader.LeerPendientesAsync(definicion.CompanyId, cancellationToken);
+                var registrosMapeados = new List<IntegrationRecord>();
+                foreach (var registroLocal in registrosLocales)
+                {
+                    registrosMapeados.Add(await mapeoServicio.MapToExternalAsync(definicion.Id, registroLocal));
+                }
+
+                Exception? excepcionDePush = null;
+                try
+                {
+                    await conector.PushAsync(conectorConfigJson, registrosMapeados, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    excepcionDePush = ex;
+                }
+
+                foreach (var registroLocal in registrosLocales)
+                {
+                    await reader.MarcarProcesadoAsync(definicion.CompanyId, registroLocal, exito: excepcionDePush is null, mensajeError: excepcionDePush?.Message, cancellationToken);
+                }
+
+                if (excepcionDePush is not null)
+                {
+                    throw excepcionDePush;
+                }
+
+                log.RegistrosProcesados = registrosLocales.Count;
             }
 
             log.Resultado = IntegrationRunResultado.Exito;
-            log.RegistrosProcesados = 0;
         }
         catch (Exception ex)
         {

@@ -2,25 +2,28 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PortalSaas.Data;
 
 #nullable disable
 
-namespace PortalSaas.Data.Migrations.SqlServer.Migrations
+namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 {
     [DbContext(typeof(PortalSaasDbContext))]
-    partial class PortalSaasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260815032734_AddIntegrationTables")]
+    partial class AddIntegrationTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.8")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("ProductVersion", "8.0.10")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("PortalSaas.Data.Entities.AuditLog", b =>
                 {
@@ -29,34 +32,34 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid?>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("Detail")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnType("character varying(2000)")
                         .HasColumnName("detail");
 
                     b.Property<string>("Event")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("event");
 
                     b.Property<string>("IpAddress")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ip_address");
 
                     b.Property<Guid?>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -78,25 +81,25 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("code");
 
                     b.Property<string>("Country")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("country");
 
                     b.Property<string>("DatabaseName")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("database_name");
 
                     b.Property<long>("InstanceId")
@@ -106,33 +109,33 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.Property<string>("IntegrationSecretKey")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("integration_secret_key");
 
                     b.Property<string>("IntegrationUsername")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("integration_username");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<string>("ServiceLayerUrl")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
+                        .HasColumnType("character varying(300)")
                         .HasColumnName("service_layer_url");
 
                     b.HasKey("Id")
@@ -154,33 +157,33 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
             modelBuilder.Entity("PortalSaas.Data.Entities.EmailSettings", b =>
                 {
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<string>("EncryptedProviderConfig")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("encrypted_provider_config");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Provider")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("provider");
 
                     b.Property<string>("SenderDisplayName")
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("sender_display_name");
 
                     b.Property<string>("SenderEmail")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("sender_email");
 
                     b.HasKey("OrganizationId")
@@ -196,69 +199,69 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Alias")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("alias");
 
                     b.Property<string>("BusinessPartnerCardCode")
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)")
+                        .HasColumnType("character varying(15)")
                         .HasColumnName("business_partner_card_code");
 
                     b.Property<bool>("BusinessPartnerFromFile")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("business_partner_from_file");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("DocumentType")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("document_type");
 
                     b.Property<string>("GroupingColumn")
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("grouping_column");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("LineType")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("line_type");
 
                     b.Property<string>("Module")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("module");
 
                     b.Property<string>("PriceSource")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("price_source");
 
                     b.Property<bool>("SkuIsCustomerOwn")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("sku_is_customer_own");
 
                     b.Property<int?>("SystemPriceListCode")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("system_price_list_code");
 
                     b.HasKey("Id")
@@ -266,8 +269,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
                     b.HasIndex("CompanyId", "Module", "DocumentType", "LineType", "BusinessPartnerCardCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_generic_import_configs_company_id_module_document_type_line_type_business_partner_card_code")
-                        .HasFilter("[business_partner_card_code] IS NOT NULL");
+                        .HasDatabaseName("ix_generic_import_configs_company_id_module_document_type_line");
 
                     b.ToTable("generic_import_configs", (string)null);
                 });
@@ -276,37 +278,37 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("ConfigId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("config_id");
 
                     b.Property<string>("ExcelColumn")
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("excel_column");
 
                     b.Property<string>("FixedValue")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("fixed_value");
 
                     b.Property<bool>("IsRequired")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_required");
 
                     b.Property<string>("LogicalField")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("logical_field");
 
                     b.Property<int?>("UserFieldId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("user_field_id");
 
                     b.HasKey("Id")
@@ -325,47 +327,47 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("DataType")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("data_type");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Label")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("label");
 
                     b.Property<string>("Level")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("level");
 
                     b.Property<string>("Module")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("module");
 
                     b.Property<string>("SapFieldName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("sap_field_name");
 
                     b.HasKey("Id")
@@ -384,48 +386,48 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("EngineType")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("engine_type");
 
                     b.Property<string>("Host")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("host");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("name");
 
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<int>("Port")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("port");
 
                     b.Property<string>("TechnicalSecretKey")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("technical_secret_key");
 
                     b.Property<string>("TechnicalUsername")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("technical_username");
 
                     b.HasKey("Id")
@@ -445,59 +447,59 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<bool>("Activo")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("ConectorConfigCifrado")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("conector_config_cifrado");
 
                     b.Property<string>("ConectorTipo")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("conector_tipo");
 
                     b.Property<string>("Direccion")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("direccion");
 
                     b.Property<string>("EntidadNegocio")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("entidad_negocio");
 
                     b.Property<string>("ModuloOrigen")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("modulo_origen");
 
                     b.Property<DateTimeOffset?>("NextRunAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_run_at");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("nombre");
 
                     b.Property<string>("ProgramacionCron")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("programacion_cron");
 
                     b.HasKey("Id")
@@ -518,32 +520,32 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("CampoExterno")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("campo_externo");
 
                     b.Property<string>("CampoLocal")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("campo_local");
 
                     b.Property<Guid>("IntegrationDefinitionId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("integration_definition_id");
 
                     b.Property<bool>("Obligatorio")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_required");
 
                     b.Property<string>("Transformacion")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("transformacion");
 
                     b.HasKey("Id")
@@ -562,42 +564,42 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("DetalleError")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("detalle_error");
 
                     b.Property<string>("DisparadoPor")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("disparado_por");
 
                     b.Property<DateTimeOffset?>("FinalizadoEn")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("finalizado_at");
 
                     b.Property<DateTimeOffset>("IniciadoEn")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("iniciado_at");
 
                     b.Property<Guid>("IntegrationDefinitionId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("integration_definition_id");
 
                     b.Property<int>("RegistrosConError")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("registros_con_error");
 
                     b.Property<int>("RegistrosProcesados")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("registros_procesados");
 
                     b.Property<string>("Resultado")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("resultado");
 
                     b.HasKey("Id")
@@ -621,46 +623,46 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("code");
 
                     b.Property<string>("Icon")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("icon");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<int>("Level")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("level");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<int>("Order")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("order");
 
                     b.Property<string>("OriginModule")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("origin_module");
 
                     b.Property<string>("PagePath")
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
+                        .HasColumnType("character varying(300)")
                         .HasColumnName("page_path");
 
                     b.Property<long?>("ParentMenuId")
@@ -690,29 +692,29 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid?>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("Description")
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
+                        .HasColumnType("character varying(300)")
                         .HasColumnName("description");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<Guid?>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.HasKey("Id")
@@ -760,62 +762,62 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("DatabaseName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("database_name");
 
                     b.Property<string>("EngineType")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("engine_type");
 
                     b.Property<string>("Host")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("host");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("ModuleCode")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("module_code");
 
                     b.Property<int>("Port")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("port");
 
                     b.Property<string>("TechnicalSecretKey")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("technical_secret_key");
 
                     b.Property<string>("TechnicalUsername")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("technical_username");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -838,29 +840,29 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("ActivationKey")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("activation_key");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
                     b.Property<string>("InstallationFingerprint")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("installation_fingerprint");
 
                     b.Property<DateTimeOffset>("IssuedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("issued_at");
 
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<long>("PlanId")
@@ -868,17 +870,17 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnName("plan_id");
 
                     b.Property<string>("SignedStatusToken")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("signed_status_token");
 
                     b.Property<DateTimeOffset?>("SignedStatusUpdatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("signed_status_updated_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.HasKey("Id")
@@ -907,38 +909,38 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<long>("OnPremiseLicenseId")
                         .HasColumnType("bigint")
                         .HasColumnName("on_premise_license_id");
 
                     b.Property<DateTimeOffset>("ReportedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("reported_at");
 
                     b.Property<string>("ReportedFingerprint")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("reported_fingerprint");
 
                     b.Property<string>("ReportedIp")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("reported_ip");
 
                     b.Property<bool>("Resolved")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("resolved");
 
                     b.Property<DateTimeOffset?>("ResolvedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("resolved_at");
 
                     b.Property<string>("ResolvedByAdminEmail")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("resolved_by_admin_email");
 
                     b.HasKey("Id")
@@ -954,46 +956,46 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("Country")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("country");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("LegalName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("legal_name");
 
                     b.Property<string>("Mode")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("mode");
 
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("slug");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.Property<string>("TaxId")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("tax_id");
 
                     b.HasKey("Id")
@@ -1015,31 +1017,31 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<bool>("CanCreate")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("can_create");
 
                     b.Property<string>("DocumentType")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("document_type");
 
                     b.Property<string>("Engine")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("engine");
 
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -1047,7 +1049,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
                     b.HasIndex("OrganizationId", "Engine", "DocumentType")
                         .IsUnique()
-                        .HasDatabaseName("ix_organization_document_permissions_organization_id_engine_document_type");
+                        .HasDatabaseName("ix_organization_document_permissions_organization_id_engine_do");
 
                     b.ToTable("organization_document_permissions", (string)null);
                 });
@@ -1055,7 +1057,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
             modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationModule", b =>
                 {
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<long>("ModuleId")
@@ -1063,7 +1065,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnName("module_id");
 
                     b.Property<DateTimeOffset>("ContractedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("contracted_at");
 
                     b.HasKey("OrganizationId", "ModuleId")
@@ -1078,7 +1080,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
             modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationModuleVisibility", b =>
                 {
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<long>("ModuleId")
@@ -1086,7 +1088,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnName("module_id");
 
                     b.Property<bool>("IsHidden")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_hidden");
 
                     b.HasKey("OrganizationId", "ModuleId")
@@ -1105,28 +1107,28 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
                     b.Property<bool>("IsUsed")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_used");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
+                        .HasColumnType("character varying(300)")
                         .HasColumnName("token_hash");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -1145,18 +1147,18 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("code");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -1214,47 +1216,47 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("code");
 
                     b.Property<int?>("CompanyLimit")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("company_limit");
 
                     b.Property<string>("Currency")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)")
+                        .HasColumnType("character varying(3)")
                         .HasDefaultValue("CLP")
                         .HasColumnName("currency");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<decimal?>("MonthlyPrice")
                         .HasPrecision(12, 2)
-                        .HasColumnType("decimal(12,2)")
+                        .HasColumnType("numeric(12,2)")
                         .HasColumnName("monthly_price");
 
                     b.Property<int?>("MonthlyTransactionLimit")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("monthly_transaction_limit");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<int?>("UserLimit")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("user_limit");
 
                     b.HasKey("Id")
@@ -1290,45 +1292,45 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("email");
 
                     b.Property<int>("FailedLoginAttempts")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("failed_login_attempts");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<bool>("IsLocked")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_locked");
 
                     b.Property<DateTimeOffset?>("LastLoginAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_login_at");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
+                        .HasColumnType("character varying(300)")
                         .HasColumnName("password_hash");
 
                     b.Property<string>("PasswordSalt")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("password_salt");
 
                     b.HasKey("Id")
@@ -1348,26 +1350,26 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("code");
 
                     b.Property<Guid?>("ExclusiveOrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("exclusive_organization_id");
 
                     b.Property<bool>("IsCore")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_core");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -1390,21 +1392,21 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Description")
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
+                        .HasColumnType("character varying(300)")
                         .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<Guid?>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.HasKey("Id")
@@ -1442,24 +1444,24 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<DateTimeOffset?>("EndedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("ended_at");
 
                     b.Property<string>("ExternalPaymentReference")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("external_payment_reference");
 
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<string>("PaymentProvider")
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("payment_provider");
 
                     b.Property<long>("PlanId")
@@ -1467,13 +1469,13 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnName("plan_id");
 
                     b.Property<DateTimeOffset>("StartedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.HasKey("Id")
@@ -1498,36 +1500,36 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid?>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("MetricName")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("metric_name");
 
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<string>("Period")
                         .IsRequired()
                         .HasMaxLength(6)
-                        .HasColumnType("nchar(6)")
+                        .HasColumnType("character(6)")
                         .HasColumnName("period")
                         .IsFixedLength();
 
                     b.Property<DateTimeOffset>("RecordedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("recorded_at");
 
                     b.Property<decimal>("Value")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("value");
 
                     b.HasKey("Id")
@@ -1546,77 +1548,77 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("email");
 
                     b.Property<int>("FailedLoginAttempts")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("failed_login_attempts");
 
                     b.Property<bool>("HasTwoFactorEnabled")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("has_two_factor_enabled");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<bool>("IsAdmin")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_admin");
 
                     b.Property<bool>("IsEmailConfirmed")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_email_confirmed");
 
                     b.Property<bool>("IsLocked")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_locked");
 
                     b.Property<DateTimeOffset?>("LastLoginAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_login_at");
 
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
+                        .HasColumnType("character varying(300)")
                         .HasColumnName("password_hash");
 
                     b.Property<string>("PasswordSalt")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("password_salt");
 
                     b.Property<string>("TwoFactorMethod")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("two_factor_method");
 
                     b.Property<string>("TwoFactorSecret")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("two_factor_secret");
 
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("username");
 
                     b.HasKey("Id")
@@ -1640,18 +1642,18 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<long>("MenuId")
                         .HasColumnType("bigint")
                         .HasColumnName("menu_id");
 
                     b.Property<int>("Order")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("order");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -1670,7 +1672,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
             modelBuilder.Entity("PortalSaas.Data.Entities.UserMenuGroup", b =>
                 {
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.Property<long>("MenuGroupId")
@@ -1678,7 +1680,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnName("menu_group_id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.HasKey("UserId", "MenuGroupId", "CompanyId")
@@ -1696,7 +1698,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
             modelBuilder.Entity("PortalSaas.Data.Entities.UserMenuProfile", b =>
                 {
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.Property<long>("MenuId")
@@ -1704,7 +1706,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnName("menu_id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<long>("ProfileId")
@@ -1729,33 +1731,33 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
             modelBuilder.Entity("PortalSaas.Data.Entities.UserPreference", b =>
                 {
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.Property<Guid?>("DefaultCompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("default_company_id");
 
                     b.Property<bool>("EmailNotificationsEnabled")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("email_notifications_enabled");
 
                     b.Property<string>("Locale")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("locale");
 
                     b.Property<string>("Theme")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("theme");
 
                     b.Property<string>("Timezone")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("timezone");
 
                     b.HasKey("UserId")
@@ -1774,47 +1776,47 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<Guid?>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("IpAddress")
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)")
+                        .HasColumnType("character varying(64)")
                         .HasColumnName("ip_address");
 
                     b.Property<bool>("IsRevoked")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_revoked");
 
                     b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
                     b.Property<DateTimeOffset?>("RevokedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("revoked_at");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
+                        .HasColumnType("character varying(300)")
                         .HasColumnName("token_hash");
 
                     b.Property<string>("UserAgent")
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
+                        .HasColumnType("character varying(300)")
                         .HasColumnName("user_agent");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -1905,13 +1907,13 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasForeignKey("ConfigId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_generic_import_config_fields_generic_import_configs_config_id");
+                        .HasConstraintName("fk_generic_import_config_fields_generic_import_configs_config_");
 
                     b.HasOne("PortalSaas.Data.Entities.GenericImportUserField", "UserField")
                         .WithMany()
                         .HasForeignKey("UserFieldId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_generic_import_config_fields_generic_import_user_fields_user_field_id");
+                        .HasConstraintName("fk_generic_import_config_fields_generic_import_user_fields_use");
 
                     b.Navigation("Config");
 
@@ -1949,7 +1951,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasForeignKey("IntegrationDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_integration_field_mappings_integration_definitions_integration_definition_id");
+                        .HasConstraintName("fk_integration_field_mappings_integration_definitions_integrat");
 
                     b.Navigation("IntegrationDefinition");
                 });
@@ -2052,7 +2054,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasForeignKey("OnPremiseLicenseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_on_premise_license_conflicts_on_premise_licenses_on_premise_license_id");
+                        .HasConstraintName("fk_on_premise_license_conflicts_on_premise_licenses_on_premise");
 
                     b.Navigation("OnPremiseLicense");
                 });
@@ -2064,7 +2066,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_organization_document_permissions_organizations_organization_id");
+                        .HasConstraintName("fk_organization_document_permissions_organizations_organizatio");
 
                     b.Navigation("Organization");
                 });
@@ -2104,7 +2106,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_organization_module_visibilities_organizations_organization_id");
+                        .HasConstraintName("fk_organization_module_visibilities_organizations_organization");
 
                     b.Navigation("Module");
 

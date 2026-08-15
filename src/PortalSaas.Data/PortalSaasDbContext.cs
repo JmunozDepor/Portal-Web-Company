@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Data.Entities;
+using PortalSaas.Data.Entities.Integraciones;
 
 namespace PortalSaas.Data;
 
@@ -55,6 +56,9 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<UserMenuProfile> UserMenuProfiles => Set<UserMenuProfile>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<UserHomeShortcut> UserHomeShortcuts => Set<UserHomeShortcut>();
+    public DbSet<IntegrationDefinition> IntegrationDefinitions => Set<IntegrationDefinition>();
+    public DbSet<IntegrationFieldMapping> IntegrationFieldMappings => Set<IntegrationFieldMapping>();
+    public DbSet<IntegrationRunLog> IntegrationRunLogs => Set<IntegrationRunLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -487,6 +491,69 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.IpAddress).HasMaxLength(50);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).IsRequired(false);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).IsRequired(false);
+        });
+
+        modelBuilder.Entity<IntegrationDefinition>(entity =>
+        {
+            entity.ToTable("integration_definitions", t =>
+            {
+                t.HasCheckConstraint("ck_integration_definitions_conector_tipo",
+                    "conector_tipo in ('Sap', 'Rest', 'Archivo')");
+                t.HasCheckConstraint("ck_integration_definitions_direccion",
+                    "direccion in ('Subida', 'Bajada', 'Ambas')");
+            });
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.Nombre).HasColumnName("nombre").HasMaxLength(200);
+            entity.Property(e => e.ModuloOrigen).HasColumnName("modulo_origen").HasMaxLength(100);
+            entity.Property(e => e.EntidadNegocio).HasColumnName("entidad_negocio").HasMaxLength(100);
+            entity.Property(e => e.ConectorTipo).HasColumnName("conector_tipo")
+                .HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ConectorConfigCifrado).HasColumnName("conector_config_cifrado");
+            entity.Property(e => e.Direccion).HasColumnName("direccion")
+                .HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Activo).HasColumnName("is_active");
+            entity.Property(e => e.ProgramacionCron).HasColumnName("programacion_cron").HasMaxLength(100);
+            entity.Property(e => e.NextRunAt).HasColumnName("next_run_at");
+            entity.HasIndex(e => new { e.CompanyId, e.Activo });
+        });
+
+        modelBuilder.Entity<IntegrationFieldMapping>(entity =>
+        {
+            entity.ToTable("integration_field_mappings");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.IntegrationDefinitionId).HasColumnName("integration_definition_id");
+            entity.Property(e => e.CampoLocal).HasColumnName("campo_local").HasMaxLength(100);
+            entity.Property(e => e.CampoExterno).HasColumnName("campo_externo").HasMaxLength(100);
+            entity.Property(e => e.Transformacion).HasColumnName("transformacion").HasMaxLength(100);
+            entity.Property(e => e.Obligatorio).HasColumnName("is_required");
+            entity.HasOne(e => e.IntegrationDefinition)
+                .WithMany(d => d.Mapeos)
+                .HasForeignKey(e => e.IntegrationDefinitionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<IntegrationRunLog>(entity =>
+        {
+            entity.ToTable("integration_run_logs", t =>
+            {
+                t.HasCheckConstraint("ck_integration_run_logs_resultado",
+                    "resultado in ('Exito', 'Error', 'Parcial')");
+                t.HasCheckConstraint("ck_integration_run_logs_disparado_por",
+                    "disparado_por in ('Programado', 'Manual')");
+            });
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.IntegrationDefinitionId).HasColumnName("integration_definition_id");
+            entity.Property(e => e.IniciadoEn).HasColumnName("iniciado_at");
+            entity.Property(e => e.FinalizadoEn).HasColumnName("finalizado_at");
+            entity.Property(e => e.Resultado).HasColumnName("resultado")
+                .HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.RegistrosProcesados).HasColumnName("registros_procesados");
+            entity.Property(e => e.RegistrosConError).HasColumnName("registros_con_error");
+            entity.Property(e => e.DetalleError).HasColumnName("detalle_error");
+            entity.Property(e => e.DisparadoPor).HasColumnName("disparado_por")
+                .HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.IntegrationDefinitionId);
         });
     }
 }

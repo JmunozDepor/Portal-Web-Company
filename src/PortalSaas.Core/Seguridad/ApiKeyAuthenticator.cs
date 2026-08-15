@@ -26,15 +26,19 @@ public class ApiKeyAuthenticator : IApiKeyAuthenticator
         }
 
         var company = await _contexto.Companies
-            .FirstOrDefaultAsync(c => c.Id == credencial.CompanyId, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == credencial.CompanyId && c.IsActive, cancellationToken);
 
         if (company is null)
         {
             return ApiKeyAuthenticationResult.Failure();
         }
 
-        credencial.LastUsedAt = DateTimeOffset.UtcNow;
-        await _contexto.SaveChangesAsync(cancellationToken);
+        var ahora = DateTimeOffset.UtcNow;
+        if (credencial.LastUsedAt is null || ahora - credencial.LastUsedAt.Value > TimeSpan.FromMinutes(1))
+        {
+            credencial.LastUsedAt = ahora;
+            await _contexto.SaveChangesAsync(cancellationToken);
+        }
 
         return ApiKeyAuthenticationResult.Ok(
             company.Id,

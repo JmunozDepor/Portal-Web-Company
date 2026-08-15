@@ -94,6 +94,30 @@ public class ApiKeyAuthenticatorTests
     }
 
     [Fact]
+    public async Task AuthenticateAsync_ConCompanyInactiva_RetornaFailure()
+    {
+        await using var contexto = CrearContexto();
+        var company = await SembrarCompanyAsync(contexto);
+        company.IsActive = false;
+        await contexto.SaveChangesAsync();
+
+        var rawKey = ApiKeyGenerator.GenerateRawKey();
+        contexto.ApiClientCredentials.Add(new ApiClientCredential
+        {
+            CompanyId = company.Id,
+            Nombre = "Test",
+            ApiKeyHash = ApiKeyGenerator.Hash(rawKey),
+            Activo = true,
+        });
+        await contexto.SaveChangesAsync();
+
+        var authenticator = new ApiKeyAuthenticator(contexto);
+        var resultado = await authenticator.AuthenticateAsync(rawKey, CancellationToken.None);
+
+        Assert.False(resultado.Success);
+    }
+
+    [Fact]
     public async Task AuthenticateAsync_ConKeyValida_ActualizaLastUsedAt()
     {
         await using var contexto = CrearContexto();

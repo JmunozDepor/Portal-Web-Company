@@ -54,7 +54,7 @@ public sealed class WmsSlshStageParser : BackgroundService
         var contexto = scope.ServiceProvider.GetRequiredService<WmsDbContext>();
 
         var pendientes = await contexto.WmsOracleInboundStages
-            .Where(s => s.Estado == WmsInboundEstado.Pendiente && s.TipoDoc == "SLSH")
+            .Where(s => s.Estado == WmsInboundEstado.Pendiente && s.TipoDoc == "SLSH" && s.Formato == WmsInboundFormato.Xml)
             .ToListAsync(cancellationToken);
 
         foreach (var entry in pendientes)
@@ -96,7 +96,48 @@ public sealed class WmsSlshStageParser : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error guardando el resultado del aplanado para el archivo {NombreArchivo}", entry.NombreArchivo);
+                await RegistrarFalloDePersistenciaAsync(entry.Id, ex, cancellationToken);
             }
+        }
+    }
+
+    /// <summary>
+    /// Registra un fallo de guardado en una escritura separada, usando un scope/contexto nuevo
+    /// para no arrastrar estado corrupto o parcialmente rastreado del contexto que acaba de fallar.
+    /// Incrementa Intentos y, al alcanzar el umbral, deja la fila en estado terminal ErrorStaging
+    /// para que deje de reintentarse indefinidamente.
+    /// </summary>
+    private async Task RegistrarFalloDePersistenciaAsync(long entryId, Exception fallo, CancellationToken cancellationToken)
+    {
+        const int MaxIntentos = 3;
+
+        try
+        {
+            using var recoveryScope = _scopeFactory.CreateScope();
+            var recoveryContexto = recoveryScope.ServiceProvider.GetRequiredService<WmsDbContext>();
+
+            var entryFresco = await recoveryContexto.WmsOracleInboundStages
+                .FirstOrDefaultAsync(s => s.Id == entryId, cancellationToken);
+
+            if (entryFresco is null)
+            {
+                return;
+            }
+
+            entryFresco.Intentos++;
+            entryFresco.ProcessedAt = DateTimeOffset.UtcNow;
+
+            if (entryFresco.Intentos >= MaxIntentos)
+            {
+                entryFresco.Estado = WmsInboundEstado.ErrorStaging;
+                entryFresco.MensajeError = $"Fallo de persistencia tras {entryFresco.Intentos} intentos: {fallo.Message}";
+            }
+
+            await recoveryContexto.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception recoveryEx)
+        {
+            _logger.LogError(recoveryEx, "Error registrando el fallo de persistencia para la fila {EntryId}", entryId);
         }
     }
 }

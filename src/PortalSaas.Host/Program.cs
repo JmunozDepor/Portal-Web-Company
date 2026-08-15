@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Contratos.Integraciones;
 using PortalSaas.Core.Administracion;
 using PortalSaas.Core.Catalogos;
 using PortalSaas.Core.Comercial;
@@ -22,6 +23,8 @@ using PortalSaas.Data;
 using PortalSaas.Host.Comandos;
 using PortalSaas.Host.Infraestructura;
 using PortalSaas.Host.Licenciamiento;
+using PortalSaas.Integrations;
+using PortalSaas.Integrations.Connectors;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,6 +72,9 @@ builder.Services.AddDbContext<PortalSaasDbContext>(options =>
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ISecretoCifradoService, SecretoCifradoService>();
+builder.Services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
+builder.Services.AddSingleton<IIntegrationConnector, SapDocumentConnector>();
+builder.Services.AddHostedService<IntegrationSyncHostedService>();
 builder.Services.AddScoped<PortalSaas.Abstractions.Contratos.IAuthenticationService, PortalSaas.Core.Seguridad.AuthenticationService>();
 builder.Services.AddScoped<IPlatformAdminAuthenticationService, PlatformAdminAuthenticationService>();
 builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();

@@ -4,6 +4,7 @@
     <ProjectReference Include="..\PortalSaas.Core\PortalSaas.Core.csproj" />
     <ProjectReference Include="..\PortalSaas.Data\PortalSaas.Data.csproj" />
     <ProjectReference Include="..\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+    <ProjectReference Include="..\PortalSaas.Integrations\PortalSaas.Integrations.csproj" />
   </ItemGroup>
 
   <ItemGroup>

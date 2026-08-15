@@ -57,6 +57,8 @@
                     ·
                     <a asp-page="/Admin/Organizations/Companies/ExternalConnections/Index" asp-route-companyId="@company.Id">Conexiones externas</a>
                     ·
+                    <a asp-page="/Admin/Organizations/Companies/ApiKeys/Index" asp-route-companyId="@company.Id">API Keys</a>
+                    ·
                     <form method="post" asp-page-handler="TestConnection" asp-route-organizationId="@Model.Organization.Id" asp-route-companyId="@company.Id" class="d-inline">
                         <button type="submit" class="btn btn-link p-0 align-baseline">Probar conexión</button>
                     </form>

@@ -1,0 +1,80 @@
+@page
+@model PortalSaas.Host.Pages.Admin.Organizations.Companies.ApiKeys.IndexModel
+@{
+    ViewData["Title"] = "API Keys";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">API Keys: @Model.Company.Name</h1>
+        <span class="text-muted">Credenciales para llamadas de sistema externo (máquina-a-máquina)</span>
+    </div>
+</div>
+
+@if (Model.RawKeyGenerada is string rawKey)
+{
+    <div class="alert alert-warning">
+        <strong>Guarda esta key ahora — no se va a volver a mostrar:</strong>
+        <pre class="mb-0 mt-2">@rawKey</pre>
+    </div>
+}
+
+<form method="post" asp-page-handler="Create" asp-route-companyId="@Model.Company.Id" asp-antiforgery="true" class="row g-2 mb-4 align-items-end">
+    <div class="col-auto">
+        <label class="form-label" for="nombre">Nombre</label>
+        <input type="text" id="nombre" name="nombre" class="form-control" placeholder="ej. Oracle WMS - Ingesta XML" required />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Generar API key</button>
+    </div>
+</form>
+
+@if (Model.Credenciales.Count == 0)
+{
+    <p class="text-muted">No hay API keys generadas para esta compañía.</p>
+}
+else
+{
+    <div class="document-list-table-wrapper">
+        <table class="table document-list-table mb-0">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Creada</th>
+                    <th>Último uso</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var credencial in Model.Credenciales)
+                {
+                    <tr>
+                        <td>@credencial.Nombre</td>
+                        <td>@credencial.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@(credencial.LastUsedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                        <td>
+                            @if (credencial.Activo)
+                            {
+                                <span class="badge bg-success">Activa</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Revocada</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (credencial.Activo)
+                            {
+                                <form method="post" asp-page-handler="Revoke" asp-route-companyId="@Model.Company.Id" asp-route-id="@credencial.Id" asp-antiforgery="true"
+                                      onsubmit="return confirm('¿Revocar esta API key? Cualquier sistema que la use dejará de poder autenticarse.');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Revocar</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

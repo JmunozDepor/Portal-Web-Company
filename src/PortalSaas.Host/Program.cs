@@ -24,7 +24,7 @@ using PortalSaas.Host.Comandos;
 using PortalSaas.Host.Infraestructura;
 using PortalSaas.Host.Licenciamiento;
 using PortalSaas.Integrations;
-using PortalSaas.Integrations.Connectors;
+using PortalSaas.Core.Integraciones;
 
 var builder = WebApplication.CreateBuilder(args);
 

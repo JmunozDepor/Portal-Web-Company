@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Contratos.Integraciones;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities.Integraciones;
@@ -26,6 +27,13 @@ public class IntegrationSyncHostedServiceTests
         }
     }
 
+    private class SecretoCifradoServiceFalso : ISecretoCifradoService
+    {
+        public string Encrypt(string plainText) => plainText;
+
+        public string Decrypt(string cipherText) => cipherText;
+    }
+
     [Fact]
     public async Task EjecutarCicloAsync_IntegracionVencida_EjecutaYRegistraLog()
     {
@@ -36,6 +44,7 @@ public class IntegrationSyncHostedServiceTests
         services.AddDbContext<PortalSaasDbContext>(o => o.UseInMemoryDatabase(dbName));
         services.AddSingleton<IIntegrationConnector>(conectorFalso);
         services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
+        services.AddScoped<ISecretoCifradoService, SecretoCifradoServiceFalso>();
         services.AddSingleton<Microsoft.Extensions.Logging.ILogger<IntegrationSyncHostedService>>(NullLogger<IntegrationSyncHostedService>.Instance);
         var proveedor = services.BuildServiceProvider();
 

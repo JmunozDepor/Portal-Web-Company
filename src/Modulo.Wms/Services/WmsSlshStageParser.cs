@@ -88,11 +88,15 @@ public sealed class WmsSlshStageParser : BackgroundService
             {
                 entry.ProcessedAt = DateTimeOffset.UtcNow;
             }
-        }
 
-        if (pendientes.Count > 0)
-        {
-            await contexto.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await contexto.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error guardando el resultado del aplanado para el archivo {NombreArchivo}", entry.NombreArchivo);
+            }
         }
     }
 }

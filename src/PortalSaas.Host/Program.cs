@@ -23,6 +23,7 @@ using PortalSaas.Data;
 using PortalSaas.Host.Comandos;
 using PortalSaas.Host.Infraestructura;
 using PortalSaas.Host.Licenciamiento;
+using PortalSaas.Host.Wms;
 using PortalSaas.Integrations;
 using PortalSaas.Core.Integraciones;
 
@@ -395,6 +396,7 @@ app.Use(async (context, next) =>
 
 app.UseAuthorization();
 app.MapRazorPages();
+app.MapWmsInboundEndpoints();
 
 // Solo el servidor central expone activación/heartbeat de licencias -- una
 // instalación on-premise nunca recibe estas llamadas, las hace (ver

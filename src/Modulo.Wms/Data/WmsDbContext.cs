@@ -35,6 +35,8 @@ public class WmsDbContext : DbContext
     public DbSet<WmsSapStageStore> WmsSapStageStores => Set<WmsSapStageStore>();
     public DbSet<WmsSapStageInboundHdr> WmsSapStageInboundHdrs => Set<WmsSapStageInboundHdr>();
     public DbSet<WmsSapStageInboundDtl> WmsSapStageInboundDtls => Set<WmsSapStageInboundDtl>();
+    public DbSet<WmsSapStageOrderHdr> WmsSapStageOrderHdrs => Set<WmsSapStageOrderHdr>();
+    public DbSet<WmsSapStageOrderDtl> WmsSapStageOrderDtls => Set<WmsSapStageOrderDtl>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -382,6 +384,48 @@ public class WmsDbContext : DbContext
             entity.Property(e => e.WhsCode).HasColumnName("whs_code").HasMaxLength(20);
             entity.Property(e => e.LineNum).HasColumnName("line_num");
             entity.HasOne<WmsSapStageInboundHdr>().WithMany().HasForeignKey(e => e.ParentId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WmsSapStageOrderHdr>(entity =>
+        {
+            entity.ToTable("wms_sap_stage_order_hdr");
+            entity.HasKey(e => e.LineId);
+            entity.Property(e => e.LineId).HasColumnName("line_id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.OrderNbr).HasColumnName("order_nbr").HasMaxLength(50);
+            entity.Property(e => e.OrderType).HasColumnName("order_type").HasMaxLength(20);
+            entity.Property(e => e.PickListAbsEntry).HasColumnName("pick_list_abs_entry");
+            entity.Property(e => e.BaseObjectType).HasColumnName("base_object_type");
+            entity.Property(e => e.BaseEntry).HasColumnName("base_entry");
+            entity.Property(e => e.CardCode).HasColumnName("card_code").HasMaxLength(50);
+            entity.Property(e => e.CardName).HasColumnName("card_name").HasMaxLength(200);
+            entity.Property(e => e.CustomerPoNbr).HasColumnName("customer_po_nbr").HasMaxLength(50);
+            entity.Property(e => e.OrdDate).HasColumnName("ord_date");
+            entity.Property(e => e.ExpDate).HasColumnName("exp_date");
+            entity.Property(e => e.ReqShipDate).HasColumnName("req_ship_date");
+            entity.Property(e => e.ShipToCode).HasColumnName("ship_to_code").HasMaxLength(20);
+            entity.Property(e => e.SourceUpdateDate).HasColumnName("source_update_date");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.RetryCount).HasColumnName("retry_count");
+            entity.Property(e => e.ErrorMsg).HasColumnName("error_msg").HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.SyncedAt).HasColumnName("synced_at");
+            entity.HasIndex(e => new { e.CompanyId, e.OrderNbr }).IsUnique().HasDatabaseName("ix_wms_sap_stage_order_hdr_company_ordernbr");
+            entity.HasIndex(e => e.Status).HasDatabaseName("ix_wms_sap_stage_order_hdr_status");
+        });
+
+        modelBuilder.Entity<WmsSapStageOrderDtl>(entity =>
+        {
+            entity.ToTable("wms_sap_stage_order_dtl");
+            entity.HasKey(e => e.LineId);
+            entity.Property(e => e.LineId).HasColumnName("line_id");
+            entity.Property(e => e.ParentId).HasColumnName("parent_id");
+            entity.Property(e => e.ItemCode).HasColumnName("item_code").HasMaxLength(50);
+            entity.Property(e => e.Quantity).HasColumnName("quantity").HasPrecision(18, 4);
+            entity.Property(e => e.WhsCode).HasColumnName("whs_code").HasMaxLength(20);
+            entity.Property(e => e.LineNum).HasColumnName("line_num");
+            entity.Property(e => e.SeqNbr).HasColumnName("seq_nbr");
+            entity.HasOne<WmsSapStageOrderHdr>().WithMany().HasForeignKey(e => e.ParentId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -1331,6 +1331,160 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                     b.ToTable("wms_sap_stage_item", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Wms.Models.WmsSapStageOrderDtl", b =>
+                {
+                    b.Property<long>("LineId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("line_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("LineId"));
+
+                    b.Property<string>("ItemCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("item_code");
+
+                    b.Property<int>("LineNum")
+                        .HasColumnType("int")
+                        .HasColumnName("line_num");
+
+                    b.Property<long>("ParentId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("parent_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("quantity");
+
+                    b.Property<int>("SeqNbr")
+                        .HasColumnType("int")
+                        .HasColumnName("seq_nbr");
+
+                    b.Property<string>("WhsCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("whs_code");
+
+                    b.HasKey("LineId");
+
+                    b.HasIndex("ParentId");
+
+                    b.ToTable("wms_sap_stage_order_dtl", (string)null);
+                });
+
+            modelBuilder.Entity("Modulo.Wms.Models.WmsSapStageOrderHdr", b =>
+                {
+                    b.Property<long>("LineId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("line_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("LineId"));
+
+                    b.Property<int>("BaseEntry")
+                        .HasColumnType("int")
+                        .HasColumnName("base_entry");
+
+                    b.Property<int>("BaseObjectType")
+                        .HasColumnType("int")
+                        .HasColumnName("base_object_type");
+
+                    b.Property<string>("CardCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("card_code");
+
+                    b.Property<string>("CardName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("card_name");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CustomerPoNbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("customer_po_nbr");
+
+                    b.Property<string>("ErrorMsg")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("error_msg");
+
+                    b.Property<DateTime?>("ExpDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("exp_date");
+
+                    b.Property<DateTime?>("OrdDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ord_date");
+
+                    b.Property<string>("OrderNbr")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("order_nbr");
+
+                    b.Property<string>("OrderType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("order_type");
+
+                    b.Property<int>("PickListAbsEntry")
+                        .HasColumnType("int")
+                        .HasColumnName("pick_list_abs_entry");
+
+                    b.Property<DateTime?>("ReqShipDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("req_ship_date");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int")
+                        .HasColumnName("retry_count");
+
+                    b.Property<string>("ShipToCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("ship_to_code");
+
+                    b.Property<DateTime>("SourceUpdateDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("source_update_date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("SyncedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("synced_at");
+
+                    b.HasKey("LineId");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_wms_sap_stage_order_hdr_status");
+
+                    b.HasIndex("CompanyId", "OrderNbr")
+                        .IsUnique()
+                        .HasDatabaseName("ix_wms_sap_stage_order_hdr_company_ordernbr");
+
+                    b.ToTable("wms_sap_stage_order_hdr", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Wms.Models.WmsSapStageStore", b =>
                 {
                     b.Property<long>("LineId")
@@ -1506,6 +1660,15 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
             modelBuilder.Entity("Modulo.Wms.Models.WmsSapStageInboundDtl", b =>
                 {
                     b.HasOne("Modulo.Wms.Models.WmsSapStageInboundHdr", null)
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Modulo.Wms.Models.WmsSapStageOrderDtl", b =>
+                {
+                    b.HasOne("Modulo.Wms.Models.WmsSapStageOrderHdr", null)
                         .WithMany()
                         .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.Cascade)

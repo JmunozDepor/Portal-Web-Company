@@ -40,6 +40,40 @@ public class WmsSapStageOrderReaderTests
     }
 
     [Fact]
+    public async Task LeerPendientesAsync_IncluyeCamposQueAntesSePerdianEnLaFronteraTask2ATask4()
+    {
+        // Fix 2 de la ronda de correcciones de revisión final: PickListAbsEntry,
+        // BaseObjectType, BaseEntry, CardCode y CardName ya se escribían en la tabla de
+        // staging (Task 2) pero LeerPendientesAsync (Task 4) nunca los incluía en el
+        // IntegrationRecord, así que nunca llegaban a WmsCloudConnector (Task 5).
+        var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+        var hdr = new WmsSapStageOrderHdr
+        {
+            CompanyId = companyId,
+            OrderNbr = "VTA-1001",
+            OrderType = "VTA",
+            CardCode = "C001",
+            CardName = "Cliente de prueba",
+            PickListAbsEntry = 100,
+            BaseObjectType = 17,
+            BaseEntry = 500,
+            Status = WmsSapStageStatus.Pendiente,
+        };
+        contexto.WmsSapStageOrderHdrs.Add(hdr);
+        await contexto.SaveChangesAsync();
+
+        var reader = new WmsSapStageOrderReader(contexto);
+        var registro = (await reader.LeerPendientesAsync(companyId, CancellationToken.None)).Single();
+
+        Assert.Equal(100, registro["PickListAbsEntry"]);
+        Assert.Equal(17, registro["BaseObjectType"]);
+        Assert.Equal(500, registro["BaseEntry"]);
+        Assert.Equal("C001", registro["CardCode"]);
+        Assert.Equal("Cliente de prueba", registro["CardName"]);
+    }
+
+    [Fact]
     public async Task MarcarProcesadoAsync_Exito_ActualizaStatusYSyncedAt()
     {
         var contexto = CrearContexto();

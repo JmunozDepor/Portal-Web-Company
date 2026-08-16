@@ -157,14 +157,24 @@ public class WmsCloudConnector : IIntegrationConnector
     {
         var lineas = (List<IntegrationRecord>)registro["Lineas"]!;
         var hdr = new XElement("order_hdr",
+            new XElement("company_code", "DEPOR"),
+            new XElement("action_code", "CREATE"),
+            new XElement("facility_code", "BO02"),
             new XElement("order_nbr", registro["OrderNbr"]),
             new XElement("order_type", registro["OrderType"]),
-            new XElement("ord_date", registro["OrdDate"]),
-            new XElement("exp_date", registro["ExpDate"]),
-            new XElement("req_ship_date", registro["ReqShipDate"]),
+            new XElement("ord_date", FormatearFecha(registro["OrdDate"])),
+            new XElement("exp_date", FormatearFecha(registro["ExpDate"])),
+            new XElement("req_ship_date", FormatearFecha(registro["ReqShipDate"])),
             new XElement("ref_nbr", registro["CustomerPoNbr"]),
             new XElement("dest_dept_nbr", registro["ShipToCode"]),
-            new XElement("priority", "1"));
+            new XElement("priority", "1"),
+            new XElement("cust_field_2", registro["PickListAbsEntry"]),
+            new XElement("cust_field_3", registro["CardName"]),
+            new XElement("cust_field_4", registro["BaseEntry"]),
+            new XElement("cust_field_5", registro["BaseObjectType"]),
+            new XElement("cust_short_text_1", registro["PickListAbsEntry"]),
+            new XElement("cust_short_text_2", registro["CardCode"]),
+            new XElement("customer_po_nbr", registro["CustomerPoNbr"]));
 
         var detalles = lineas.Select(l => new XElement("order_dtl",
             new XElement("order_nbr", registro["OrderNbr"]),
@@ -174,6 +184,15 @@ public class WmsCloudConnector : IIntegrationConnector
 
         return new XElement("order", hdr, detalles);
     }
+
+    /// <summary>
+    /// El legado usa formato YYYYMMDD (TO_DATS(...) en el SP legado) para las fechas del
+    /// order_hdr, no ISO-8601 con hora que produce XElement al recibir un DateTime
+    /// directamente. Si el valor es null, se devuelve null -- XElement(nombre, (object?)null)
+    /// ya produce un nodo vacío sin valor, mismo criterio que usan hoy los demás campos
+    /// opcionales de este archivo (ej. ExpDate/ReqShipDate cuando vienen null).
+    /// </summary>
+    private static string? FormatearFecha(object? valor) => valor is DateTime fecha ? fecha.ToString("yyyyMMdd") : null;
 
     private async Task EnviarAsync(XDocument xml, WmsCloudConfig config, CancellationToken cancellationToken)
     {

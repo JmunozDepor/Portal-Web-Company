@@ -46,6 +46,11 @@ public class WmsSapStageOrderReader : IIntegrationEntityReader
                 ["ReqShipDate"] = hdr.ReqShipDate,
                 ["CustomerPoNbr"] = hdr.CustomerPoNbr,
                 ["ShipToCode"] = hdr.ShipToCode,
+                ["PickListAbsEntry"] = hdr.PickListAbsEntry,
+                ["BaseObjectType"] = hdr.BaseObjectType,
+                ["BaseEntry"] = hdr.BaseEntry,
+                ["CardCode"] = hdr.CardCode,
+                ["CardName"] = hdr.CardName,
                 ["Lineas"] = detalle
                     .Select(d => new IntegrationRecord(new Dictionary<string, object?>
                     {

@@ -122,6 +122,49 @@ public class WmsSapStageInboundWriterTests
     }
 
     [Fact]
+    public async Task EscribirAsync_TrasladoYaProcesadoSinCambiosEnSap_NoDuplicaDetalle()
+    {
+        // Bug real encontrado en la revisión final de Ronda C: SAP vuelve a mandar el
+        // mismo traslado ya ProcesadoWms sin cambios reales (mismo SourceUpdateDate) --
+        // el foreach de inserción de líneas corría SIEMPRE, fuera del if(esResync) que
+        // borra el detalle viejo, duplicando la línea en cada ciclo sin fin.
+        var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+        var mismaFecha = new DateTime(2026, 8, 15);
+        var hdrExistente = new WmsSapStageInboundHdr
+        {
+            CompanyId = companyId,
+            SapDocEntry = 500123,
+            ShipmentType = "TRASLADO_ESTANDAR",
+            SourceUpdateDate = mismaFecha,
+            Status = WmsSapStageStatus.ProcesadoWms,
+        };
+        contexto.WmsSapStageInboundHdrs.Add(hdrExistente);
+        await contexto.SaveChangesAsync();
+        contexto.WmsSapStageInboundDtls.Add(new WmsSapStageInboundDtl
+        {
+            ParentId = hdrExistente.LineId,
+            ItemCode = "ITM001",
+            Quantity = 10m,
+            WhsCode = "01",
+            LineNum = 0,
+        });
+        await contexto.SaveChangesAsync();
+
+        var writer = new WmsSapStageInboundWriter(contexto);
+        // Mismo SourceUpdateDate que ya tiene el header -- SAP reenvía el mismo dato,
+        // sin cambios reales.
+        await writer.EscribirAsync(companyId, [CrearRegistroTraslado(500123, mismaFecha)], CancellationToken.None);
+
+        var hdr = Assert.Single(contexto.WmsSapStageInboundHdrs);
+        Assert.Equal(WmsSapStageStatus.ProcesadoWms, hdr.Status);
+
+        // La fila de detalle sigue siendo exactamente 1 -- nunca se tocó, no se
+        // duplicó.
+        Assert.Single(contexto.WmsSapStageInboundDtls);
+    }
+
+    [Fact]
     public async Task EscribirAsync_TrasladoEnErrorWms_VuelveAPendienteYReemplazaDetalleSinDuplicar()
     {
         var contexto = CrearContexto();

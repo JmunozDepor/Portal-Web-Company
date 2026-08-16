@@ -48,7 +48,10 @@ public class WmsSapStageStoreWriter : IIntegrationEntityWriter
                 continue;
             }
 
-            if (existente.Status == WmsSapStageStatus.ProcesadoWms && sourceUpdateDate > existente.SourceUpdateDate)
+            var debeResincronizar = (existente.Status == WmsSapStageStatus.ProcesadoWms && sourceUpdateDate > existente.SourceUpdateDate)
+                || existente.Status == WmsSapStageStatus.ErrorWms;
+
+            if (debeResincronizar)
             {
                 existente.Status = WmsSapStageStatus.Pendiente;
                 existente.ErrorMsg = null;

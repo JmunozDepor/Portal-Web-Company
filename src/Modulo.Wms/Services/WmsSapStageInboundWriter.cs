@@ -35,6 +35,14 @@ public class WmsSapStageInboundWriter : IIntegrationEntityWriter
             var hdr = await _contexto.WmsSapStageInboundHdrs
                 .FirstOrDefaultAsync(f => f.CompanyId == companyId && f.SapDocEntry == docEntry, cancellationToken);
 
+            // Solo se toca el detalle (borrar + volver a insertar) cuando el header es
+            // NUEVO (nada que borrar todavía) o cuando hace falta resync -- si el header
+            // ya existe, sigue ProcesadoWms y SAP lo vuelve a mandar SIN cambios reales
+            // (mismo SourceUpdateDate o más vieja), el detalle existente debe quedar
+            // intacto: insertar de nuevo sin haber borrado antes duplica las líneas en
+            // cada ciclo (bug real encontrado en la revisión final de Ronda C).
+            bool insertarDetalle;
+
             if (hdr is null)
             {
                 hdr = new WmsSapStageInboundHdr
@@ -47,6 +55,7 @@ public class WmsSapStageInboundWriter : IIntegrationEntityWriter
                 };
                 _contexto.WmsSapStageInboundHdrs.Add(hdr);
                 await _contexto.SaveChangesAsync(cancellationToken);
+                insertarDetalle = true;
             }
             else
             {
@@ -71,18 +80,23 @@ public class WmsSapStageInboundWriter : IIntegrationEntityWriter
                     _contexto.WmsSapStageInboundDtls.RemoveRange(detalleExistente);
                     await _contexto.SaveChangesAsync(cancellationToken);
                 }
+
+                insertarDetalle = esResync;
             }
 
-            foreach (var linea in lineas)
+            if (insertarDetalle)
             {
-                _contexto.WmsSapStageInboundDtls.Add(new WmsSapStageInboundDtl
+                foreach (var linea in lineas)
                 {
-                    ParentId = hdr.LineId,
-                    ItemCode = (string)linea["ItemCode"]!,
-                    Quantity = (decimal)linea["Quantity"]!,
-                    WhsCode = (string)linea["WhsCode"]!,
-                    LineNum = (int)linea["LineNum"]!,
-                });
+                    _contexto.WmsSapStageInboundDtls.Add(new WmsSapStageInboundDtl
+                    {
+                        ParentId = hdr.LineId,
+                        ItemCode = (string)linea["ItemCode"]!,
+                        Quantity = (decimal)linea["Quantity"]!,
+                        WhsCode = (string)linea["WhsCode"]!,
+                        LineNum = (int)linea["LineNum"]!,
+                    });
+                }
             }
 
             await _contexto.SaveChangesAsync(cancellationToken);

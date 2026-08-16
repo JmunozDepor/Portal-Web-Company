@@ -100,4 +100,42 @@ public class WmsSapStageItemWriterTests
         Assert.Equal(WmsSapStageStatus.Pendiente, fila.Status);
         Assert.Equal("Nombre nuevo", fila.ItemName);
     }
+
+    [Fact]
+    public async Task EscribirAsync_ItemEnErrorWms_VuelveAPendienteYLimpiaErrorMsg()
+    {
+        // Bug real encontrado en la revisión final de Ronda C: a diferencia de
+        // WmsSapStageInboundWriter (Traslado), este writer nunca disparaba resync
+        // desde ErrorWms -- un Artículo que fallara una vez al postear a WMS quedaba
+        // en error para siempre, sin ningún reintento posterior.
+        var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+        contexto.WmsSapStageItems.Add(new WmsSapStageItem
+        {
+            CompanyId = companyId,
+            ItemCode = "ITM001",
+            ItemName = "Artículo con error",
+            SourceUpdateDate = new DateTime(2026, 8, 10),
+            Status = WmsSapStageStatus.ErrorWms,
+            ErrorMsg = "Error al postear en WMS",
+        });
+        await contexto.SaveChangesAsync();
+
+        var writer = new WmsSapStageItemWriter(contexto);
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["ItemCode"] = "ITM001",
+            ["ItemName"] = "Artículo con error",
+            ["BarCode"] = null,
+            // Misma fecha que ya tenía -- SAP puede reenviar el mismo dato, el punto
+            // es que ErrorWms siempre debe reintentarse sin importar la fecha.
+            ["SourceUpdateDate"] = new DateTime(2026, 8, 10),
+        });
+
+        await writer.EscribirAsync(companyId, [registro], CancellationToken.None);
+
+        var fila = Assert.Single(contexto.WmsSapStageItems);
+        Assert.Equal(WmsSapStageStatus.Pendiente, fila.Status);
+        Assert.Null(fila.ErrorMsg);
+    }
 }

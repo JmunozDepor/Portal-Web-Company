@@ -106,4 +106,44 @@ public class WmsSapStageStoreWriterTests
         Assert.Equal(WmsSapStageStatus.Pendiente, fila.Status);
         Assert.Equal("Nombre nuevo", fila.CardName);
     }
+
+    [Fact]
+    public async Task EscribirAsync_StoreEnErrorWms_VuelveAPendienteYLimpiaErrorMsg()
+    {
+        // Bug real encontrado en la revisión final de Ronda C: a diferencia de
+        // WmsSapStageInboundWriter (Traslado), este writer nunca disparaba resync
+        // desde ErrorWms -- una Tienda que fallara una vez al postear a WMS quedaba
+        // en error para siempre, sin ningún reintento posterior.
+        var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+        contexto.WmsSapStageStores.Add(new WmsSapStageStore
+        {
+            CompanyId = companyId,
+            CardCode = "C001",
+            CardName = "Tienda con error",
+            SourceUpdateDate = new DateTime(2026, 8, 10),
+            Status = WmsSapStageStatus.ErrorWms,
+            ErrorMsg = "Error al postear en WMS",
+        });
+        await contexto.SaveChangesAsync();
+
+        var writer = new WmsSapStageStoreWriter(contexto);
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["CardCode"] = "C001",
+            ["CardName"] = "Tienda con error",
+            ["Street"] = null,
+            ["City"] = null,
+            ["ZipCode"] = null,
+            // Misma fecha que ya tenía -- ErrorWms siempre debe reintentarse sin
+            // importar la fecha.
+            ["SourceUpdateDate"] = new DateTime(2026, 8, 10),
+        });
+
+        await writer.EscribirAsync(companyId, [registro], CancellationToken.None);
+
+        var fila = Assert.Single(contexto.WmsSapStageStores);
+        Assert.Equal(WmsSapStageStatus.Pendiente, fila.Status);
+        Assert.Null(fila.ErrorMsg);
+    }
 }

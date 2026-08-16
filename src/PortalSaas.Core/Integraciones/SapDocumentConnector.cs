@@ -48,7 +48,7 @@ public class SapDocumentConnector : IIntegrationConnector
     private static async Task<IReadOnlyList<IntegrationRecord>> LeerItemsAsync(ISapSession session, CancellationToken ct)
     {
         var filtro = "U_NX_EnviarWMS eq 'Y' and InvntItem eq 'tYES'";
-        var filas = await session.GetAsync<List<SapWmsItemRow>>("Items", filtro, ct: ct) ?? [];
+        var filas = await session.GetAllAsync<SapWmsItemRow>("Items", filtro, ct: ct);
 
         return filas
             .Where(f => !string.IsNullOrWhiteSpace(f.CodeBars) && f.CodeBars != "0")
@@ -65,7 +65,7 @@ public class SapDocumentConnector : IIntegrationConnector
     private static async Task<IReadOnlyList<IntegrationRecord>> LeerStoresAsync(ISapSession session, CancellationToken ct)
     {
         var filtro = "U_NX_EnviarWMS eq 'Y'";
-        var filas = await session.GetAsync<List<SapWmsStoreRow>>("BusinessPartners", filtro, "BPAddresses", ct) ?? [];
+        var filas = await session.GetAllAsync<SapWmsStoreRow>("BusinessPartners", filtro, "BPAddresses", ct);
 
         var registros = new List<IntegrationRecord>();
         foreach (var fila in filas)
@@ -93,7 +93,7 @@ public class SapDocumentConnector : IIntegrationConnector
     private static async Task<IReadOnlyList<IntegrationRecord>> LeerTrasladosAsync(ISapSession session, CancellationToken ct)
     {
         var filtro = "(U_NX_WMS_SEND eq 'Y' or U_NX_WMS_SEND eq 'EN PROCESO ENVIO WMS' or U_NX_WMS_SEND eq 'EN PROCESO RE-ENVIO WMS') and U_NX_shipment_type ne ''";
-        var filas = await session.GetAsync<List<SapWmsTrasladoRow>>("InventoryTransferRequests", filtro, "StockTransferLines", ct) ?? [];
+        var filas = await session.GetAllAsync<SapWmsTrasladoRow>("InventoryTransferRequests", filtro, "StockTransferLines", ct);
 
         return filas
             .Select(f => new IntegrationRecord(new Dictionary<string, object?>

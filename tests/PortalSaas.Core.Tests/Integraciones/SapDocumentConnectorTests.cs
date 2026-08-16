@@ -1,3 +1,4 @@
+using System.Linq;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Contratos.Integraciones;
 using PortalSaas.Abstractions.Modelos;
@@ -77,6 +78,16 @@ public class SapDocumentConnectorTests
         public Task<T?> GetAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default)
             => Task.FromResult((T?)_resultado);
 
+        public Task<IReadOnlyList<T>> GetAllAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default)
+        {
+            // Simula lo que B1SLayer.SLRequest.GetAllAsync<T>() ya hace internamente:
+            // agota la paginación de Service Layer (odata.nextLink) y devuelve TODAS
+            // las filas de todas las páginas en una sola lista -- acá el fake ya recibe
+            // el resultado "acumulado" (ej. varias páginas concatenadas por el test).
+            var lista = (IReadOnlyList<T>?)_resultado ?? Array.Empty<T>();
+            return Task.FromResult(lista);
+        }
+
         public Task<T?> PostAsync<T>(string recurso, object cuerpo, CancellationToken ct = default)
             => throw new InvalidOperationException("No debería llamarse en este test.");
 
@@ -120,6 +131,26 @@ public class SapDocumentConnectorTests
         Assert.Equal("ITM001", registro["ItemCode"]);
         Assert.Equal("Artículo de prueba", registro["ItemName"]);
         Assert.Equal("7801234567890", registro["BarCode"]);
+    }
+
+    [Fact]
+    public async Task PullAsync_TipoEntidadItem_ConMasFilasQueUnaSolaPaginaDeServiceLayer_TraeTodasLasFilas()
+    {
+        // Simula 2 "páginas" de Service Layer (por default ~20 filas cada una) ya
+        // combinadas por GetAllAsync -- si PullAsync siguiera usando GetAsync<List<T>>
+        // (una sola página), este total (25) nunca se vería reflejado completo.
+        var primeraPagina = Enumerable.Range(1, 20)
+            .Select(i => new SapWmsItemRow { ItemCode = $"ITM{i:000}", ItemName = $"Artículo {i}", CodeBars = $"780000000{i:0000}", UpdateDate = DateTime.Today });
+        var segundaPagina = Enumerable.Range(21, 5)
+            .Select(i => new SapWmsItemRow { ItemCode = $"ITM{i:000}", ItemName = $"Artículo {i}", CodeBars = $"780000000{i:0000}", UpdateDate = DateTime.Today });
+        var filas = primeraPagina.Concat(segundaPagina).ToList();
+
+        var sesionFalsa = new SapSessionFalsa(filas);
+        var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
+
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Item"}""", CancellationToken.None);
+
+        Assert.Equal(25, resultado.Count);
     }
 
     [Fact]

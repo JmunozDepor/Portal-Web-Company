@@ -499,7 +499,7 @@ public sealed class PortalSaasDbContext : DbContext
             entity.ToTable("integration_definitions", t =>
             {
                 t.HasCheckConstraint("ck_integration_definitions_connector_type",
-                    "connector_type in ('sap', 'rest', 'file')");
+                    "connector_type in ('sap', 'rest', 'file', 'wmscloud')");
                 t.HasCheckConstraint("ck_integration_definitions_direction",
                     "direction in ('upload', 'download', 'both')");
             });
@@ -588,6 +588,7 @@ public sealed class PortalSaasDbContext : DbContext
         IntegrationConectorTipo.Sap => "sap",
         IntegrationConectorTipo.Rest => "rest",
         IntegrationConectorTipo.Archivo => "file",
+        IntegrationConectorTipo.WmsCloud => "wmscloud",
         _ => throw new ArgumentOutOfRangeException(nameof(v)),
     };
 
@@ -596,6 +597,7 @@ public sealed class PortalSaasDbContext : DbContext
         "sap" => IntegrationConectorTipo.Sap,
         "rest" => IntegrationConectorTipo.Rest,
         "file" => IntegrationConectorTipo.Archivo,
+        "wmscloud" => IntegrationConectorTipo.WmsCloud,
         _ => throw new ArgumentOutOfRangeException(nameof(v)),
     };
 

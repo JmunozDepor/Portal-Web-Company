@@ -555,7 +555,7 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 
                     b.ToTable("integration_definitions", null, t =>
                         {
-                            t.HasCheckConstraint("ck_integration_definitions_connector_type", "connector_type in ('sap', 'rest', 'file')");
+                            t.HasCheckConstraint("ck_integration_definitions_connector_type", "connector_type in ('sap', 'rest', 'file', 'wmscloud')");
 
                             t.HasCheckConstraint("ck_integration_definitions_direction", "direction in ('upload', 'download', 'both')");
                         });

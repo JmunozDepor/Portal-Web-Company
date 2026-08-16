@@ -20,6 +20,16 @@ public interface ISapConnectionProvider
 public interface ISapSession
 {
     Task<T?> GetAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Trae TODAS las filas de un recurso, siguiendo la paginación de Service Layer
+    /// (odata.nextLink) internamente hasta agotarla -- Service Layer solo devuelve
+    /// ~20 filas por default en un GetAsync&lt;List&lt;T&gt;&gt; simple, así que cualquier
+    /// consulta que pueda traer más de una página (ej. PullAsync de un conector de
+    /// integración) debe usar este método, nunca GetAsync&lt;List&lt;T&gt;&gt;.
+    /// </summary>
+    Task<IReadOnlyList<T>> GetAllAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default);
+
     Task<T?> PostAsync<T>(string recurso, object cuerpo, CancellationToken ct = default);
 
     /// <summary>

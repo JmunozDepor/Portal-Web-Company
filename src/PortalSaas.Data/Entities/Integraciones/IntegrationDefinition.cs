@@ -1,6 +1,6 @@
 namespace PortalSaas.Data.Entities.Integraciones;
 
-public enum IntegrationConectorTipo { Sap, Rest, Archivo }
+public enum IntegrationConectorTipo { Sap, Rest, Archivo, WmsCloud }
 public enum IntegrationDireccion { Subida, Bajada, Ambas }
 
 public class IntegrationDefinition

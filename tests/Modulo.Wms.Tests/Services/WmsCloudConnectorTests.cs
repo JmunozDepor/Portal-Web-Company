@@ -96,4 +96,36 @@ public class WmsCloudConnectorTests
         Assert.Contains("500123", handlerFalso.UltimoContenido);
         Assert.Contains("ib_shipment_dtl", handlerFalso.UltimoContenido);
     }
+
+    [Fact]
+    public async Task PushAsync_ConTipoDocumentoOrder_PosteaXmlConCabeceraYDetalleAnidados()
+    {
+        var handlerFalso = new HttpHandlerFalso(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handlerFalso) { BaseAddress = new Uri("https://wms.example.com/") };
+        var conector = new WmsCloudConnector(httpClient, NullLogger<WmsCloudConnector>.Instance);
+
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["TipoDocumento"] = "Order",
+            ["OrderNbr"] = "VTA-1001",
+            ["OrderType"] = "VTA",
+            ["OrdDate"] = new DateTime(2026, 8, 16),
+            ["ExpDate"] = (DateTime?)null,
+            ["ReqShipDate"] = (DateTime?)null,
+            ["CustomerPoNbr"] = "PO-1",
+            ["ShipToCode"] = "SHIP1",
+            ["Lineas"] = new List<IntegrationRecord>
+            {
+                new(new Dictionary<string, object?> { ["ItemCode"] = "ITM001", ["Quantity"] = 5m, ["LineNum"] = 0, ["SeqNbr"] = 1 }),
+            },
+        });
+
+        var config = """{"ApiUrl":"https://wms.example.com/init_stage_interface","Usuario":"wmsuser","Clave":"wmspass","ClientEnvCode":"CLI01","ParentCompanyCode":"COMP01"}""";
+        var resultado = await conector.PushAsync(config, [registro], CancellationToken.None);
+
+        Assert.True(resultado[0].Exito);
+        Assert.Contains("ListOfOrders", handlerFalso.UltimoContenido);
+        Assert.Contains("VTA-1001", handlerFalso.UltimoContenido);
+        Assert.Contains("order_dtl", handlerFalso.UltimoContenido);
+    }
 }

@@ -32,6 +32,12 @@ namespace Modulo.Wms.Services;
 ///     item_alternate_code, shipped_qty (NO "expected_qty" como se había asumido),
 ///     facility_code (NO "dest_facility_code" -- esa columna no existe en el DDL real,
 ///     la tabla solo tiene "facility_code", igual que la cabecera).
+///   - Order / Picking cabecera (order_hdr): order_nbr, order_type, ord_date, exp_date,
+///     req_ship_date, ref_nbr (mapeado desde CustomerPoNbr), dest_dept_nbr (mapeado desde
+///     ShipToCode), priority (fijo "1" -- sin fuente en SAP para este campo, ver spec de
+///     Ronda D).
+///   - Order / Picking detalle (order_dtl): order_nbr, seq_nbr, item_alternate_code,
+///     ord_qty (mapeado desde Quantity).
 /// </summary>
 public class WmsCloudConnector : IIntegrationConnector
 {
@@ -100,6 +106,7 @@ public class WmsCloudConnector : IIntegrationConnector
             "Item" => ("item", "ListOfItems", "item"),
             "Store" => ("store", "ListOfStores", "store"),
             "IbShipment" => ("ib_shipment", "ListOfIbShipments", "ib_shipment"),
+            "Order" => ("order", "ListOfOrders", "order"),
             _ => throw new InvalidOperationException($"TipoDocumento '{tipoDocumento}' no soportado en WmsCloudConnector."),
         };
 
@@ -123,6 +130,7 @@ public class WmsCloudConnector : IIntegrationConnector
                 new XElement("name", registro["CardName"]),
                 new XElement("parent_company_id", config.ParentCompanyCode)),
             "IbShipment" => ArmarNodoIbShipment(registro),
+            "Order" => ArmarNodoOrder(registro),
             _ => throw new InvalidOperationException($"TipoDocumento '{tipoDocumento}' no soportado en WmsCloudConnector."),
         };
 
@@ -143,6 +151,28 @@ public class WmsCloudConnector : IIntegrationConnector
             new XElement("facility_code", l["WhsCode"])));
 
         return new XElement("ib_shipment", hdr, detalles);
+    }
+
+    private static XElement ArmarNodoOrder(IntegrationRecord registro)
+    {
+        var lineas = (List<IntegrationRecord>)registro["Lineas"]!;
+        var hdr = new XElement("order_hdr",
+            new XElement("order_nbr", registro["OrderNbr"]),
+            new XElement("order_type", registro["OrderType"]),
+            new XElement("ord_date", registro["OrdDate"]),
+            new XElement("exp_date", registro["ExpDate"]),
+            new XElement("req_ship_date", registro["ReqShipDate"]),
+            new XElement("ref_nbr", registro["CustomerPoNbr"]),
+            new XElement("dest_dept_nbr", registro["ShipToCode"]),
+            new XElement("priority", "1"));
+
+        var detalles = lineas.Select(l => new XElement("order_dtl",
+            new XElement("order_nbr", registro["OrderNbr"]),
+            new XElement("seq_nbr", l["SeqNbr"]),
+            new XElement("item_alternate_code", l["ItemCode"]),
+            new XElement("ord_qty", l["Quantity"])));
+
+        return new XElement("order", hdr, detalles);
     }
 
     private async Task EnviarAsync(XDocument xml, WmsCloudConfig config, CancellationToken cancellationToken)

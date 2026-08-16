@@ -30,7 +30,7 @@
          ProjectReference entre repos separados rompe la premisa de "build realmente
          independiente" que motivó extraer este módulo como plugin externo. Ver
          docs/09-GUIA-DESARROLLO-PLUGINS.md §1 del portal para el detalle. -->
-    <ProjectReference Include="..\..\..\..\Portal SaaS - Core\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\..\..\Portal SaaS - Core\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

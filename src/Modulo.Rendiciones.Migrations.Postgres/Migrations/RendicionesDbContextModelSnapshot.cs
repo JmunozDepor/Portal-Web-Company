@@ -709,6 +709,10 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
                         .HasColumnType("time without time zone")
                         .HasColumnName("reminder_hour");
 
+                    b.Property<bool>("SapCatalogSyncEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("sap_catalog_sync_enabled");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");

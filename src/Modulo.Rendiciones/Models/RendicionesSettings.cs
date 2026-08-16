@@ -13,5 +13,7 @@ public class RendicionesSettings
 
     public bool ReminderEnabled { get; set; } = true;
 
+    public bool SapCatalogSyncEnabled { get; set; } = true;
+
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

@@ -108,6 +108,7 @@ public sealed class ModuloWms : IModuloPortal
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageItemWriter>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageStoreWriter>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageInboundWriter>();
+        services.AddScoped<IIntegrationEntityWriter, WmsSapStageOrderWriter>();
         services.AddHostedService<WmsSlshStageParser>();
 
         // Conector de la etapa Subida (staging local -> Oracle WMS Cloud real). Se

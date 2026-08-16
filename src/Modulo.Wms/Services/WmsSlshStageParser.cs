@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Modulo.Wms.Data;
 using Modulo.Wms.Models;
+using PortalSaas.Abstractions.Contratos;
 
 namespace Modulo.Wms.Services;
 
@@ -50,7 +51,27 @@ public sealed class WmsSlshStageParser : BackgroundService
 
     internal async Task EjecutarCicloAsync(CancellationToken cancellationToken)
     {
+        List<PortalSaas.Abstractions.Modelos.ModuleCompanyDto> companias;
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var externalDb = scope.ServiceProvider.GetRequiredService<IExternalDatabaseConnectionService>();
+            companias = (await externalDb.ListActiveCompanyIdsAsync("Wms", cancellationToken)).ToList();
+        }
+
+        foreach (var compania in companias)
+        {
+            await ProcesarCompaniaAsync(compania.CompanyId, cancellationToken);
+        }
+    }
+
+    private async Task ProcesarCompaniaAsync(Guid companyId, CancellationToken cancellationToken)
+    {
+        // El override de compañía ambiente debe fijarse ANTES de resolver WmsDbContext --
+        // su fábrica (ver ModuloWms.cs) depende de ICurrentCompanyAccessor.HasCompany/.CompanyId,
+        // que sin HttpContext (BackgroundService) no tiene de dónde más leer la compañía. Mismo
+        // patrón que IntegrationSyncHostedService.EjecutarCicloAsync.
         using var scope = _scopeFactory.CreateScope();
+        scope.ServiceProvider.GetRequiredService<ICurrentCompanyOverride>().Set(companyId);
         var contexto = scope.ServiceProvider.GetRequiredService<WmsDbContext>();
 
         var pendientes = await contexto.WmsOracleInboundStages
@@ -96,7 +117,7 @@ public sealed class WmsSlshStageParser : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error guardando el resultado del aplanado para el archivo {NombreArchivo}", entry.NombreArchivo);
-                await RegistrarFalloDePersistenciaAsync(entry.Id, ex, cancellationToken);
+                await RegistrarFalloDePersistenciaAsync(companyId, entry.Id, ex, cancellationToken);
             }
         }
     }
@@ -107,13 +128,14 @@ public sealed class WmsSlshStageParser : BackgroundService
     /// Incrementa Intentos y, al alcanzar el umbral, deja la fila en estado terminal ErrorStaging
     /// para que deje de reintentarse indefinidamente.
     /// </summary>
-    private async Task RegistrarFalloDePersistenciaAsync(long entryId, Exception fallo, CancellationToken cancellationToken)
+    private async Task RegistrarFalloDePersistenciaAsync(Guid companyId, long entryId, Exception fallo, CancellationToken cancellationToken)
     {
         const int MaxIntentos = 3;
 
         try
         {
             using var recoveryScope = _scopeFactory.CreateScope();
+            recoveryScope.ServiceProvider.GetRequiredService<ICurrentCompanyOverride>().Set(companyId);
             var recoveryContexto = recoveryScope.ServiceProvider.GetRequiredService<WmsDbContext>();
 
             var entryFresco = await recoveryContexto.WmsOracleInboundStages

@@ -20,6 +20,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Permite a Modulo.Wms.Tests ejercer EjecutarCicloAsync (internal) de
+         WmsSlshStageParser a través de un contenedor DI real, necesario para poder
+         probar el bug de scoping/ICurrentCompanyOverride: un test que instancia
+         WmsDbContext directo (bypasseando la fábrica de ModuloWms.RegisterServices)
+         nunca lo detecta. Mismo criterio ya usado en PortalSaas.Integrations.csproj. -->
+    <InternalsVisibleTo Include="Modulo.Wms.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- REGLA DURA (ver docs/09-GUIA-DESARROLLO-PLUGINS.md §1 del portal): un plugin
          referencia SOLO PortalSaas.Abstractions. Nunca PortalSaas.Core ni PortalSaas.Host.
 

@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Modulo.Rendiciones.Data;
 using Modulo.Rendiciones.Models;
 using Modulo.Rendiciones.Servicios;
 using PortalSaas.Abstractions.Contratos;
@@ -10,22 +12,27 @@ public sealed class IndexModel : RendicionesPageModelBase
 {
     private readonly IExpenseTypeService _expenseTypes;
     private readonly ICurrentCompanyAccessor _currentCompany;
-    private readonly IGeneralLedgerAccountCatalogService _accounts;
+    private readonly RendicionesDbContext _db;
 
-    public IndexModel(IExpenseTypeService expenseTypes, ICurrentCompanyAccessor currentCompany, IGeneralLedgerAccountCatalogService accounts)
+    public IndexModel(IExpenseTypeService expenseTypes, ICurrentCompanyAccessor currentCompany, RendicionesDbContext db)
     {
         _expenseTypes = expenseTypes;
         _currentCompany = currentCompany;
-        _accounts = accounts;
+        _db = db;
     }
 
-    /// <summary>Búsqueda en vivo de Cuenta Mayor contra el plan de cuentas real de SAP -- mismo
-    /// patrón que Modulo.Ventas/Compras (catalog-search.js + wireCatalogSearch, minChars: 0
-    /// porque el plan de cuentas es un catálogo chico, precarga completa al foco).</summary>
+    /// <summary>Búsqueda en vivo de Cuenta Mayor contra el catálogo local (rendiciones_gl_accounts),
+    /// mantenido sincronizado desde SAP por un job desatendido -- mismo patrón de UI que
+    /// Modulo.Ventas/Compras (catalog-search.js + wireCatalogSearch, minChars: 0 porque el plan de
+    /// cuentas es un catálogo chico, precarga completa al foco).</summary>
     public async Task<JsonResult> OnGetSearchAccountsAsync(string text, CancellationToken ct)
     {
-        var accounts = await _accounts.ListAsync(text, 30, ct);
-        return new JsonResult(accounts.Select(a => new { a.AccountCode, a.AccountName }));
+        var query = _db.GlAccounts.Where(a => a.CompanyId == _currentCompany.CompanyId && a.IsActive);
+        if (!string.IsNullOrWhiteSpace(text))
+            query = query.Where(a => a.Code.Contains(text) || a.Name.Contains(text));
+
+        var accounts = await query.OrderBy(a => a.Name).Take(30).ToListAsync(ct);
+        return new JsonResult(accounts.Select(a => new { AccountCode = a.Code, AccountName = a.Name }));
     }
 
     public IReadOnlyList<ExpenseType> Types { get; private set; } = Array.Empty<ExpenseType>();

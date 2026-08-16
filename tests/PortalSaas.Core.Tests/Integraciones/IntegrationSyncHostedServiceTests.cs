@@ -16,10 +16,14 @@ public class IntegrationSyncHostedServiceTests
     private class ConectorFalso : IIntegrationConnector
     {
         private readonly Func<IReadOnlyList<IntegrationRecord>, IReadOnlyList<IntegrationPushResult>>? _resultadosFactory;
+        private readonly IReadOnlyList<IntegrationRecord>? _registrosPull;
 
-        public ConectorFalso(Func<IReadOnlyList<IntegrationRecord>, IReadOnlyList<IntegrationPushResult>>? resultadosFactory = null)
+        public ConectorFalso(
+            Func<IReadOnlyList<IntegrationRecord>, IReadOnlyList<IntegrationPushResult>>? resultadosFactory = null,
+            IReadOnlyList<IntegrationRecord>? registrosPull = null)
         {
             _resultadosFactory = resultadosFactory;
+            _registrosPull = registrosPull;
         }
 
         public string Tipo => "Sap";
@@ -27,7 +31,7 @@ public class IntegrationSyncHostedServiceTests
         public IReadOnlyList<IntegrationRecord>? RegistrosRecibidos { get; private set; }
 
         public Task<IReadOnlyList<IntegrationRecord>> PullAsync(string conectorConfigJson, CancellationToken cancellationToken)
-            => Task.FromResult<IReadOnlyList<IntegrationRecord>>(Array.Empty<IntegrationRecord>());
+            => Task.FromResult(_registrosPull ?? Array.Empty<IntegrationRecord>());
 
         public Task<IReadOnlyList<IntegrationPushResult>> PushAsync(string conectorConfigJson, IReadOnlyList<IntegrationRecord> registros, CancellationToken cancellationToken)
         {
@@ -65,6 +69,23 @@ public class IntegrationSyncHostedServiceTests
         public Task MarcarProcesadoAsync(Guid companyId, IntegrationRecord registro, bool exito, string? mensajeError, CancellationToken cancellationToken)
         {
             LlamadasDeAck.Add((companyId, exito));
+            return Task.CompletedTask;
+        }
+    }
+
+    private class WriterFalso : IIntegrationEntityWriter
+    {
+        public WriterFalso(string entidadNegocio)
+        {
+            EntidadNegocio = entidadNegocio;
+        }
+
+        public string EntidadNegocio { get; }
+        public List<IntegrationRecord> RegistrosRecibidos { get; } = new();
+
+        public Task EscribirAsync(Guid companyId, IReadOnlyList<IntegrationRecord> registros, CancellationToken cancellationToken)
+        {
+            RegistrosRecibidos.AddRange(registros);
             return Task.CompletedTask;
         }
     }
@@ -218,5 +239,98 @@ public class IntegrationSyncHostedServiceTests
         Assert.Equal(IntegrationRunResultado.Parcial, log.Resultado);
         Assert.Equal(1, log.RegistrosProcesados);
         Assert.Equal(1, log.RegistrosConError);
+    }
+
+    [Fact]
+    public async Task EjecutarCicloAsync_DireccionBajadaConWriterYPullExitoso_EscribeYRegistraLog()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var registrosPull = new List<IntegrationRecord>
+        {
+            new(new Dictionary<string, object?> { ["ItemCode"] = "A1" }),
+            new(new Dictionary<string, object?> { ["ItemCode"] = "A2" }),
+        };
+        var conectorFalso = new ConectorFalso(registrosPull: registrosPull);
+        var writerFalso = new WriterFalso(entidadNegocio: "SapWms.Item");
+
+        var services = new ServiceCollection();
+        services.AddDbContext<PortalSaasDbContext>(o => o.UseInMemoryDatabase(dbName));
+        services.AddSingleton<IIntegrationConnector>(conectorFalso);
+        services.AddSingleton<IIntegrationEntityWriter>(writerFalso);
+        services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
+        services.AddScoped<ISecretoCifradoService, SecretoCifradoServiceFalso>();
+        services.AddScoped<ICurrentCompanyOverride, CurrentCompanyOverride>();
+        services.AddSingleton<Microsoft.Extensions.Logging.ILogger<IntegrationSyncHostedService>>(NullLogger<IntegrationSyncHostedService>.Instance);
+        var proveedor = services.BuildServiceProvider();
+
+        var definicion = new IntegrationDefinition
+        {
+            Nombre = "Test", ModuloOrigen = "Wms", EntidadNegocio = "SapWms.Item",
+            ConectorTipo = IntegrationConectorTipo.Sap, ConectorConfigCifrado = "{}",
+            Direccion = IntegrationDireccion.Bajada, Activo = true,
+            NextRunAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        };
+
+        using (var scope = proveedor.CreateScope())
+        {
+            var contexto = scope.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+            contexto.IntegrationDefinitions.Add(definicion);
+            await contexto.SaveChangesAsync();
+        }
+
+        var servicio = new IntegrationSyncHostedService(proveedor.GetRequiredService<IServiceScopeFactory>(), NullLogger<IntegrationSyncHostedService>.Instance);
+        await servicio.EjecutarCicloAsync(CancellationToken.None);
+
+        Assert.Equal(2, writerFalso.RegistrosRecibidos.Count);
+
+        using var scopeVerificacion = proveedor.CreateScope();
+        var contextoVerificacion = scopeVerificacion.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+        var log = await contextoVerificacion.IntegrationRunLogs
+            .SingleAsync(l => l.IntegrationDefinitionId == definicion.Id);
+
+        Assert.Equal(IntegrationRunResultado.Exito, log.Resultado);
+        Assert.Equal(2, log.RegistrosProcesados);
+    }
+
+    [Fact]
+    public async Task EjecutarCicloAsync_DireccionBajadaSinWriterRegistrado_LanzaYRegistraError()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var conectorFalso = new ConectorFalso();
+
+        var services = new ServiceCollection();
+        services.AddDbContext<PortalSaasDbContext>(o => o.UseInMemoryDatabase(dbName));
+        services.AddSingleton<IIntegrationConnector>(conectorFalso);
+        services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
+        services.AddScoped<ISecretoCifradoService, SecretoCifradoServiceFalso>();
+        services.AddScoped<ICurrentCompanyOverride, CurrentCompanyOverride>();
+        services.AddSingleton<Microsoft.Extensions.Logging.ILogger<IntegrationSyncHostedService>>(NullLogger<IntegrationSyncHostedService>.Instance);
+        var proveedor = services.BuildServiceProvider();
+
+        var definicion = new IntegrationDefinition
+        {
+            Nombre = "Test", ModuloOrigen = "Wms", EntidadNegocio = "Entidad.Inexistente",
+            ConectorTipo = IntegrationConectorTipo.Sap, ConectorConfigCifrado = "{}",
+            Direccion = IntegrationDireccion.Bajada, Activo = true,
+            NextRunAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        };
+
+        using (var scope = proveedor.CreateScope())
+        {
+            var contexto = scope.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+            contexto.IntegrationDefinitions.Add(definicion);
+            await contexto.SaveChangesAsync();
+        }
+
+        var servicio = new IntegrationSyncHostedService(proveedor.GetRequiredService<IServiceScopeFactory>(), NullLogger<IntegrationSyncHostedService>.Instance);
+        await servicio.EjecutarCicloAsync(CancellationToken.None);
+
+        using var scopeVerificacion = proveedor.CreateScope();
+        var contextoVerificacion = scopeVerificacion.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+        var log = await contextoVerificacion.IntegrationRunLogs
+            .SingleAsync(l => l.IntegrationDefinitionId == definicion.Id);
+
+        Assert.Equal(IntegrationRunResultado.Error, log.Resultado);
+        Assert.Contains("No hay writer registrado", log.DetalleError);
     }
 }

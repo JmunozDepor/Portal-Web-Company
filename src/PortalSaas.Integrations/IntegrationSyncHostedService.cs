@@ -94,8 +94,9 @@ public sealed class IntegrationSyncHostedService : BackgroundService
 
             var conectores = scope.ServiceProvider.GetServices<IIntegrationConnector>().ToList();
             var readers = scope.ServiceProvider.GetServices<IIntegrationEntityReader>().ToList();
+            var writers = scope.ServiceProvider.GetServices<IIntegrationEntityWriter>().ToList();
 
-            await EjecutarIntegracionAsync(contexto, secretoServicio, conectores, readers, definicion, cancellationToken);
+            await EjecutarIntegracionAsync(contexto, secretoServicio, conectores, readers, writers, definicion, cancellationToken);
         }
     }
 
@@ -104,6 +105,7 @@ public sealed class IntegrationSyncHostedService : BackgroundService
         ISecretoCifradoService secretoServicio,
         List<IIntegrationConnector> conectores,
         List<IIntegrationEntityReader> readers,
+        List<IIntegrationEntityWriter> writers,
         IntegrationDefinition definicion,
         CancellationToken cancellationToken)
     {
@@ -119,15 +121,27 @@ public sealed class IntegrationSyncHostedService : BackgroundService
             var conector = conectores.FirstOrDefault(c => c.Tipo == definicion.ConectorTipo.ToString())
                 ?? throw new InvalidOperationException($"No hay conector registrado para tipo '{definicion.ConectorTipo}'.");
 
-            if (definicion.Direccion is IntegrationDireccion.Bajada or IntegrationDireccion.Ambas)
+            if (definicion.Direccion is IntegrationDireccion.Ambas)
             {
-                // La descarga (Bajada) todavía no está implementada -- ver
-                // SapDocumentConnector.PullAsync, que lanza NotSupportedException por el
-                // mismo motivo. No dejar caer en silencio a Exito: es preferible un
-                // Error explícito a una sincronización "exitosa" que en realidad no bajó
-                // nada.
+                // 'Ambas' (Bajada + Subida combinadas) todavía no está implementada --
+                // ninguna IntegrationDefinition de esta ronda la usa. No dejar caer en
+                // silencio a Exito: es preferible un Error explícito a una sincronización
+                // "exitosa" que en realidad no hizo lo que la definición pedía.
                 throw new NotSupportedException(
-                    $"La dirección '{definicion.Direccion}' incluye descarga (Bajada), que todavía no está implementada para la integración '{definicion.Nombre}'.");
+                    $"La dirección 'Ambas' todavía no está implementada para la integración '{definicion.Nombre}'.");
+            }
+
+            if (definicion.Direccion is IntegrationDireccion.Bajada)
+            {
+                var conectorConfigJson = DescifrarConfigConector(secretoServicio, definicion);
+
+                var writer = writers.FirstOrDefault(w => w.EntidadNegocio == definicion.EntidadNegocio)
+                    ?? throw new InvalidOperationException($"No hay writer registrado para entidad '{definicion.EntidadNegocio}'.");
+
+                var registrosExternos = await conector.PullAsync(conectorConfigJson, cancellationToken);
+                await writer.EscribirAsync(definicion.CompanyId, registrosExternos, cancellationToken);
+
+                log.RegistrosProcesados = registrosExternos.Count;
             }
 
             if (definicion.Direccion is IntegrationDireccion.Subida)

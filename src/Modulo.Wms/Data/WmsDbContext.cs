@@ -31,6 +31,10 @@ public class WmsDbContext : DbContext
     public DbSet<WmsServiceHeartbeat> ServiceHeartbeats => Set<WmsServiceHeartbeat>();
     public DbSet<WmsOracleInboundStage> WmsOracleInboundStages => Set<WmsOracleInboundStage>();
     public DbSet<WmsOracleStageSlsh> WmsOracleStageSlsh => Set<WmsOracleStageSlsh>();
+    public DbSet<WmsSapStageItem> WmsSapStageItems => Set<WmsSapStageItem>();
+    public DbSet<WmsSapStageStore> WmsSapStageStores => Set<WmsSapStageStore>();
+    public DbSet<WmsSapStageInboundHdr> WmsSapStageInboundHdrs => Set<WmsSapStageInboundHdr>();
+    public DbSet<WmsSapStageInboundDtl> WmsSapStageInboundDtls => Set<WmsSapStageInboundDtl>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -307,6 +311,77 @@ public class WmsDbContext : DbContext
             entity.HasIndex(e => e.ParentId).HasDatabaseName("ix_wms_oracle_stage_slsh_parent");
             entity.HasIndex(e => new { e.Status, e.RetryCount }).HasDatabaseName("ix_wms_oracle_stage_slsh_status_retry");
             entity.HasIndex(e => e.ob_lpn_nbr).HasDatabaseName("ix_wms_oracle_stage_slsh_lpn");
+        });
+
+        modelBuilder.Entity<WmsSapStageItem>(entity =>
+        {
+            entity.ToTable("wms_sap_stage_item");
+            entity.HasKey(e => e.LineId);
+            entity.Property(e => e.LineId).HasColumnName("line_id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.ItemCode).HasColumnName("item_code").HasMaxLength(50);
+            entity.Property(e => e.ItemName).HasColumnName("item_name").HasMaxLength(200);
+            entity.Property(e => e.BarCode).HasColumnName("bar_code").HasMaxLength(50);
+            entity.Property(e => e.SourceUpdateDate).HasColumnName("source_update_date");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.RetryCount).HasColumnName("retry_count");
+            entity.Property(e => e.ErrorMsg).HasColumnName("error_msg").HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.SyncedAt).HasColumnName("synced_at");
+            entity.HasIndex(e => new { e.CompanyId, e.ItemCode }).IsUnique().HasDatabaseName("ix_wms_sap_stage_item_company_itemcode");
+            entity.HasIndex(e => e.Status).HasDatabaseName("ix_wms_sap_stage_item_status");
+        });
+
+        modelBuilder.Entity<WmsSapStageStore>(entity =>
+        {
+            entity.ToTable("wms_sap_stage_store");
+            entity.HasKey(e => e.LineId);
+            entity.Property(e => e.LineId).HasColumnName("line_id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.CardCode).HasColumnName("card_code").HasMaxLength(50);
+            entity.Property(e => e.CardName).HasColumnName("card_name").HasMaxLength(200);
+            entity.Property(e => e.Street).HasColumnName("street").HasMaxLength(200);
+            entity.Property(e => e.City).HasColumnName("city").HasMaxLength(100);
+            entity.Property(e => e.ZipCode).HasColumnName("zip_code").HasMaxLength(20);
+            entity.Property(e => e.SourceUpdateDate).HasColumnName("source_update_date");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.RetryCount).HasColumnName("retry_count");
+            entity.Property(e => e.ErrorMsg).HasColumnName("error_msg").HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.SyncedAt).HasColumnName("synced_at");
+            entity.HasIndex(e => new { e.CompanyId, e.CardCode }).IsUnique().HasDatabaseName("ix_wms_sap_stage_store_company_cardcode");
+            entity.HasIndex(e => e.Status).HasDatabaseName("ix_wms_sap_stage_store_status");
+        });
+
+        modelBuilder.Entity<WmsSapStageInboundHdr>(entity =>
+        {
+            entity.ToTable("wms_sap_stage_inbound_hdr");
+            entity.HasKey(e => e.LineId);
+            entity.Property(e => e.LineId).HasColumnName("line_id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.SapDocEntry).HasColumnName("sap_doc_entry");
+            entity.Property(e => e.ShipmentType).HasColumnName("shipment_type").HasMaxLength(50);
+            entity.Property(e => e.SourceUpdateDate).HasColumnName("source_update_date");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.RetryCount).HasColumnName("retry_count");
+            entity.Property(e => e.ErrorMsg).HasColumnName("error_msg").HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.SyncedAt).HasColumnName("synced_at");
+            entity.HasIndex(e => new { e.CompanyId, e.SapDocEntry }).IsUnique().HasDatabaseName("ix_wms_sap_stage_inbound_hdr_company_docentry");
+            entity.HasIndex(e => e.Status).HasDatabaseName("ix_wms_sap_stage_inbound_hdr_status");
+        });
+
+        modelBuilder.Entity<WmsSapStageInboundDtl>(entity =>
+        {
+            entity.ToTable("wms_sap_stage_inbound_dtl");
+            entity.HasKey(e => e.LineId);
+            entity.Property(e => e.LineId).HasColumnName("line_id");
+            entity.Property(e => e.ParentId).HasColumnName("parent_id");
+            entity.Property(e => e.ItemCode).HasColumnName("item_code").HasMaxLength(50);
+            entity.Property(e => e.Quantity).HasColumnName("quantity").HasPrecision(18, 4);
+            entity.Property(e => e.WhsCode).HasColumnName("whs_code").HasMaxLength(20);
+            entity.Property(e => e.LineNum).HasColumnName("line_num");
+            entity.HasOne<WmsSapStageInboundHdr>().WithMany().HasForeignKey(e => e.ParentId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

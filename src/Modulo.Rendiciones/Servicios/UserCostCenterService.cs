@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Modulo.Rendiciones.Data;
 using Modulo.Rendiciones.Models;
-using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.Rendiciones.Servicios;
@@ -9,12 +8,10 @@ namespace Modulo.Rendiciones.Servicios;
 public sealed class UserCostCenterService : IUserCostCenterService
 {
     private readonly RendicionesDbContext _db;
-    private readonly ICostCenterCatalogService _costCenters;
 
-    public UserCostCenterService(RendicionesDbContext db, ICostCenterCatalogService costCenters)
+    public UserCostCenterService(RendicionesDbContext db)
     {
         _db = db;
-        _costCenters = costCenters;
     }
 
     public async Task<IReadOnlyList<UserCostCenter>> ListAssignedAsync(Guid companyId, Guid userId, CancellationToken ct = default) =>
@@ -71,7 +68,10 @@ public sealed class UserCostCenterService : IUserCostCenterService
                 .ToList();
         }
 
-        // Sin asignaciones todavía -- fallback al catálogo completo de SAP.
-        return await _costCenters.ListAsync(ct: ct);
+        var local = await _db.CostCenters
+            .Where(c => c.CompanyId == companyId && c.IsActive)
+            .OrderBy(c => c.Name)
+            .ToListAsync(ct);
+        return local.Select(c => new CostCenterDto { Code = c.Code, Name = c.Name }).ToList();
     }
 }

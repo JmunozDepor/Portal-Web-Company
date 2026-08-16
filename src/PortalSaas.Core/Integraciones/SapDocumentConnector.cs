@@ -196,7 +196,17 @@ public class SapDocumentConnector : IIntegrationConnector
                 continue;
             }
 
-            var sufijoOrderNbr = baseObjectType == 17 ? $"-{pickList.AbsEntry}" : string.Empty;
+            // El sufijo -{AbsEntry} se aplica SIEMPRE, sin importar baseObjectType. El legado
+            // solo lo aplicaba para Órdenes de Venta (17); para Facturas (13) y Traslados
+            // (1250000001) el legado deduplicaba por order_nbr+seq_nbr en vez de generar un
+            // order_nbr único por Lista de Picking -- técnicamente no perdía líneas ahí, pero
+            // nuestro modelo de staging (cabecera+detalle con upsert por OrderNbr como clave
+            // única de CABECERA, ver WmsSapStageOrderWriter) sí necesita que cada Lista de
+            // Picking tenga su propio OrderNbr único, o 2 Listas de Picking distintas sobre el
+            // mismo documento base (Factura/Traslado) sobrescribirían silenciosamente el
+            // detalle una de la otra. Desviación deliberada del legado, adjudicada con el
+            // dueño del proyecto (ver spec de la ronda de correcciones de revisión final).
+            var sufijoOrderNbr = $"-{pickList.AbsEntry}";
             var orderNbr = $"{pickList.U_NX_order_type}{documentoBase.DocEntry}{sufijoOrderNbr}";
 
             registros.Add(new IntegrationRecord(new Dictionary<string, object?>

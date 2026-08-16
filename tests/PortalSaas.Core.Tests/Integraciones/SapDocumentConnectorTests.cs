@@ -442,6 +442,64 @@ public class SapDocumentConnectorTests
         Assert.Equal(1, sesionFalsa.LlamadasPorRecurso.GetValueOrDefault("Orders"));
     }
 
+    [Theory]
+    [InlineData(13)] // Factura
+    [InlineData(1250000001)] // Traslado
+    public async Task PullAsync_TipoEntidadPicking_DosPickListsDistintosMismoDocumentoBaseFacturaOTraslado_OrderNbrNoColisiona(int baseObjectType)
+    {
+        // Fix 3 de la ronda de correcciones de revisión final: antes del fix, el sufijo
+        // -{AbsEntry} del OrderNbr solo se aplicaba para baseObjectType == 17 (Órdenes de
+        // Venta). Para Facturas (13) y Traslados (1250000001), 2 Listas de Picking DISTINTAS
+        // sobre el mismo documento base terminaban con el MISMO OrderNbr, y como el upsert de
+        // staging es por (CompanyId, OrderNbr) como clave de cabecera, la segunda Lista de
+        // Picking sobrescribía el detalle de la primera. Este test verifica que ahora el
+        // sufijo se aplica siempre, así que los 2 OrderNbr NO colisionan.
+        var pickListUno = new SapWmsPickListRow
+        {
+            AbsEntry = 300,
+            PickDate = new DateTime(2026, 8, 16),
+            UpdateDate = new DateTime(2026, 8, 16),
+            U_NX_order_type = "VTA",
+            PickListsLines = new List<SapWmsPickListLineRow>
+            {
+                new() { BaseObjectType = baseObjectType, OrderEntry = 700, OrderLine = 0, ReleasedQuantity = 5m },
+            },
+        };
+        var pickListDos = new SapWmsPickListRow
+        {
+            AbsEntry = 301,
+            PickDate = new DateTime(2026, 8, 16),
+            UpdateDate = new DateTime(2026, 8, 16),
+            U_NX_order_type = "VTA",
+            PickListsLines = new List<SapWmsPickListLineRow>
+            {
+                new() { BaseObjectType = baseObjectType, OrderEntry = 700, OrderLine = 1, ReleasedQuantity = 2m },
+            },
+        };
+        var ordenBase = new SapWmsOrderBaseRow
+        {
+            DocEntry = 700,
+            CardCode = "C001",
+            CardName = "Cliente de prueba",
+            DocumentLines = new List<SapWmsOrderBaseLineRow>
+            {
+                new() { LineNum = 0, ItemCode = "ITM001", WarehouseCode = "01" },
+                new() { LineNum = 1, ItemCode = "ITM002", WarehouseCode = "01" },
+            },
+        };
+
+        var sesionFalsa = new SapSessionFalsaParaPicking(
+            pickLists: new List<SapWmsPickListRow> { pickListUno, pickListDos },
+            ordenes: new List<SapWmsOrderBaseRow> { ordenBase });
+        var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
+
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Picking"}""", CancellationToken.None);
+
+        Assert.Equal(2, resultado.Count);
+        var orderNbrs = resultado.Select(r => (string)r["OrderNbr"]!).ToList();
+        Assert.Equal(2, orderNbrs.Distinct().Count());
+    }
+
     [Fact]
     public async Task PullAsync_TipoEntidadDesconocido_LanzaExcepcionClara()
     {

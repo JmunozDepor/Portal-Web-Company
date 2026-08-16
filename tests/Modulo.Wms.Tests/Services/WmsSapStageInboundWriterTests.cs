@@ -88,4 +88,73 @@ public class WmsSapStageInboundWriterTests
         var dtl = Assert.Single(contexto.WmsSapStageInboundDtls);
         Assert.Equal("ITM001", dtl.ItemCode);
     }
+
+    [Fact]
+    public async Task EscribirAsync_TrasladoYaPendienteSinCambios_NoDuplicaDetalle()
+    {
+        var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+        var hdrExistente = new WmsSapStageInboundHdr
+        {
+            CompanyId = companyId,
+            SapDocEntry = 500123,
+            ShipmentType = "TRASLADO_ESTANDAR",
+            SourceUpdateDate = new DateTime(2026, 8, 15),
+            Status = WmsSapStageStatus.Pendiente,
+        };
+        contexto.WmsSapStageInboundHdrs.Add(hdrExistente);
+        await contexto.SaveChangesAsync();
+        contexto.WmsSapStageInboundDtls.Add(new WmsSapStageInboundDtl
+        {
+            ParentId = hdrExistente.LineId,
+            ItemCode = "ITM001",
+            Quantity = 10m,
+            WhsCode = "01",
+            LineNum = 0,
+        });
+        await contexto.SaveChangesAsync();
+
+        var writer = new WmsSapStageInboundWriter(contexto);
+        await writer.EscribirAsync(companyId, [CrearRegistroTraslado(500123, new DateTime(2026, 8, 15))], CancellationToken.None);
+
+        Assert.Single(contexto.WmsSapStageInboundHdrs);
+        Assert.Single(contexto.WmsSapStageInboundDtls);
+    }
+
+    [Fact]
+    public async Task EscribirAsync_TrasladoEnErrorWms_VuelveAPendienteYReemplazaDetalleSinDuplicar()
+    {
+        var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+        var hdrExistente = new WmsSapStageInboundHdr
+        {
+            CompanyId = companyId,
+            SapDocEntry = 500123,
+            ShipmentType = "TRASLADO_ESTANDAR",
+            SourceUpdateDate = new DateTime(2026, 8, 10),
+            Status = WmsSapStageStatus.ErrorWms,
+            ErrorMsg = "Error al postear en WMS",
+        };
+        contexto.WmsSapStageInboundHdrs.Add(hdrExistente);
+        await contexto.SaveChangesAsync();
+        contexto.WmsSapStageInboundDtls.Add(new WmsSapStageInboundDtl
+        {
+            ParentId = hdrExistente.LineId,
+            ItemCode = "ITM_VIEJO",
+            Quantity = 1m,
+            WhsCode = "01",
+            LineNum = 0,
+        });
+        await contexto.SaveChangesAsync();
+
+        var writer = new WmsSapStageInboundWriter(contexto);
+        await writer.EscribirAsync(companyId, [CrearRegistroTraslado(500123, new DateTime(2026, 8, 15))], CancellationToken.None);
+
+        var hdr = Assert.Single(contexto.WmsSapStageInboundHdrs);
+        Assert.Equal(WmsSapStageStatus.Pendiente, hdr.Status);
+        Assert.Null(hdr.ErrorMsg);
+
+        var dtl = Assert.Single(contexto.WmsSapStageInboundDtls);
+        Assert.Equal("ITM001", dtl.ItemCode);
+    }
 }

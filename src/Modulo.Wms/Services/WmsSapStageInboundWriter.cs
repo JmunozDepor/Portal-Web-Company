@@ -50,7 +50,8 @@ public class WmsSapStageInboundWriter : IIntegrationEntityWriter
             }
             else
             {
-                var debeResincronizar = hdr.Status == WmsSapStageStatus.ProcesadoWms && sourceUpdateDate > hdr.SourceUpdateDate;
+                var debeResincronizar = (hdr.Status == WmsSapStageStatus.ProcesadoWms && sourceUpdateDate > hdr.SourceUpdateDate)
+                    || hdr.Status == WmsSapStageStatus.ErrorWms;
                 var esResync = debeResincronizar || hdr.Status == WmsSapStageStatus.Pendiente;
 
                 if (debeResincronizar)

@@ -59,10 +59,11 @@ public sealed class SapCatalogSyncProvider : ICatalogSyncProvider
                 _db.Set<TEntity>().Add(create(companyId, code, name));
                 created++;
             }
-            else if (GetName(row) != name || !GetIsActive(row))
+            else if (GetName(row) != name || !GetIsActive(row) || GetSource(row) != CatalogEntrySource.Sap)
             {
                 SetName(row, name);
                 SetIsActive(row, true);
+                SetSource(row, CatalogEntrySource.Sap);
                 SetUpdatedAt(row);
                 updated++;
             }
@@ -82,7 +83,9 @@ public sealed class SapCatalogSyncProvider : ICatalogSyncProvider
     private static string GetCode(object e) => e switch { CostCenter c => c.Code, GlAccount g => g.Code, _ => throw new NotSupportedException() };
     private static string GetName(object e) => e switch { CostCenter c => c.Name, GlAccount g => g.Name, _ => throw new NotSupportedException() };
     private static bool GetIsActive(object e) => e switch { CostCenter c => c.IsActive, GlAccount g => g.IsActive, _ => throw new NotSupportedException() };
+    private static CatalogEntrySource GetSource(object e) => e switch { CostCenter c => c.Source, GlAccount g => g.Source, _ => throw new NotSupportedException() };
     private static void SetName(object e, string name) { if (e is CostCenter c) c.Name = name; else if (e is GlAccount g) g.Name = name; }
     private static void SetIsActive(object e, bool value) { if (e is CostCenter c) c.IsActive = value; else if (e is GlAccount g) g.IsActive = value; }
+    private static void SetSource(object e, CatalogEntrySource source) { if (e is CostCenter c) c.Source = source; else if (e is GlAccount g) g.Source = source; }
     private static void SetUpdatedAt(object e) { if (e is CostCenter c) c.UpdatedAt = DateTimeOffset.UtcNow; else if (e is GlAccount g) g.UpdatedAt = DateTimeOffset.UtcNow; }
 }

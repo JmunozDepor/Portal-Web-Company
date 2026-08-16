@@ -87,4 +87,24 @@ public class SapCatalogSyncProviderTests
         var untouched = await db.CostCenters.FirstAsync(c => c.CompanyId == otherCompanyId);
         Assert.Equal("No debe tocarse", untouched.Name);
     }
+
+    [Fact]
+    public async Task SyncCostCentersAsync_flips_manual_row_to_sap_when_code_collides()
+    {
+        var companyId = Guid.NewGuid();
+        await using var db = CreateDb(nameof(SyncCostCentersAsync_flips_manual_row_to_sap_when_code_collides));
+        db.CostCenters.Add(new CostCenter { CompanyId = companyId, Code = "CC-1", Name = "Centro manual", IsActive = true, Source = CatalogEntrySource.Manual });
+        await db.SaveChangesAsync();
+
+        var sapItems = new List<CostCenterDto> { new() { Code = "CC-1", Name = "Centro manual" } };
+        var sut = new SapCatalogSyncProvider(db, new FakeCostCenterCatalogService(sapItems), new FakeGlAccountCatalogService(new List<GeneralLedgerAccountDto>()));
+
+        var result = await sut.SyncCostCentersAsync(companyId, CancellationToken.None);
+
+        Assert.Equal(0, result.Created);
+        Assert.Equal(1, result.Updated);
+
+        var updated = await db.CostCenters.FirstAsync(c => c.Code == "CC-1" && c.CompanyId == companyId);
+        Assert.Equal(CatalogEntrySource.Sap, updated.Source);
+    }
 }

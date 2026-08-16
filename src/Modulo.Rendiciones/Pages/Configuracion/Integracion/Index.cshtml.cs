@@ -54,6 +54,13 @@ public sealed class IndexModel : RendicionesPageModelBase
 
     public async Task<IActionResult> OnPostSincronizarAsync(CancellationToken ct)
     {
+        var settings = await _db.RendicionesSettings.FirstOrDefaultAsync(x => x.CompanyId == _currentCompany.CompanyId, ct);
+        if (!(settings?.SapCatalogSyncEnabled ?? true))
+        {
+            ErrorMessage = "La sincronización con SAP está desactivada para esta compañía.";
+            return RedirectToPage();
+        }
+
         try
         {
             var costCenterResult = await _sync.SyncCostCentersAsync(_currentCompany.CompanyId, ct);
@@ -70,6 +77,13 @@ public sealed class IndexModel : RendicionesPageModelBase
 
     public async Task<IActionResult> OnPostAgregarCentroCostoAsync(CancellationToken ct)
     {
+        var settings = await _db.RendicionesSettings.FirstOrDefaultAsync(x => x.CompanyId == _currentCompany.CompanyId, ct);
+        if (settings?.SapCatalogSyncEnabled ?? true)
+        {
+            ErrorMessage = "No se pueden agregar catálogos manuales mientras la sincronización con SAP está activa.";
+            return RedirectToPage();
+        }
+
         _db.CostCenters.Add(new CostCenter
         {
             CompanyId = _currentCompany.CompanyId,
@@ -84,6 +98,13 @@ public sealed class IndexModel : RendicionesPageModelBase
 
     public async Task<IActionResult> OnPostAgregarCuentaAsync(CancellationToken ct)
     {
+        var settings = await _db.RendicionesSettings.FirstOrDefaultAsync(x => x.CompanyId == _currentCompany.CompanyId, ct);
+        if (settings?.SapCatalogSyncEnabled ?? true)
+        {
+            ErrorMessage = "No se pueden agregar catálogos manuales mientras la sincronización con SAP está activa.";
+            return RedirectToPage();
+        }
+
         _db.GlAccounts.Add(new GlAccount
         {
             CompanyId = _currentCompany.CompanyId,

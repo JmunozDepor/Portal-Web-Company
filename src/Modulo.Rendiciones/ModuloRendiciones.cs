@@ -202,6 +202,15 @@ public sealed class ModuloRendiciones : IModuloPortal
             PageRoute = "/rendiciones/configuracion/notificaciones",
             Order = 8,
         };
+
+        yield return new MenuItemDefinition
+        {
+            Code = "config-integracion",
+            ParentCode = "grupo-administrador",
+            Name = "Integración",
+            PageRoute = "/rendiciones/configuracion/integracion",
+            Order = 9,
+        };
     }
 
     public void RegisterServices(IServiceCollection services)

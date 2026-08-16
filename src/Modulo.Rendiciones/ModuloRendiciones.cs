@@ -263,5 +263,6 @@ public sealed class ModuloRendiciones : IModuloPortal
         services.AddScoped<IExpenseReportService, ExpenseReportService>();
         services.AddHostedService<RendicionesReminderBackgroundService>();
         services.AddScoped<IClosingReportService, ClosingReportService>();
+        services.AddScoped<ICatalogSyncProvider, SapCatalogSyncProvider>();
     }
 }

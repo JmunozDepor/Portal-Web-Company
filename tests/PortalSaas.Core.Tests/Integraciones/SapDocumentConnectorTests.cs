@@ -53,8 +53,46 @@ public class SapDocumentConnectorTests
             => throw new InvalidOperationException("No debería llamarse en este test.");
     }
 
-    private static SapDocumentConnector CrearConector()
-        => new(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), new InventoryDocumentServiceFalso());
+    private sealed class SapConnectionProviderFalso : ISapConnectionProvider
+    {
+        private readonly ISapSession _sesion;
+
+        public SapConnectionProviderFalso(ISapSession sesion)
+        {
+            _sesion = sesion;
+        }
+
+        public Task<ISapSession> GetConnectionAsync(CancellationToken ct = default) => Task.FromResult(_sesion);
+    }
+
+    private sealed class SapSessionFalsa : ISapSession
+    {
+        private readonly object? _resultado;
+
+        public SapSessionFalsa(object? resultado)
+        {
+            _resultado = resultado;
+        }
+
+        public Task<T?> GetAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default)
+            => Task.FromResult((T?)_resultado);
+
+        public Task<T?> PostAsync<T>(string recurso, object cuerpo, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+
+        public Task PatchAsync(string recurso, object clave, object cuerpo, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+
+        public Task DeleteAsync(string recurso, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+    }
+
+    private static SapDocumentConnector CrearConector(ISapConnectionProvider? proveedorSap = null)
+        => new(
+            new SalesDocumentServiceFalso(),
+            new PurchaseDocumentServiceFalso(),
+            new InventoryDocumentServiceFalso(),
+            proveedorSap ?? new SapConnectionProviderFalso(new SapSessionFalsa(null)));
 
     [Fact]
     public void Tipo_EsSap()
@@ -65,12 +103,124 @@ public class SapDocumentConnectorTests
     }
 
     [Fact]
-    public async Task PullAsync_LanzaNotSupportedException()
+    public async Task PullAsync_TipoEntidadItem_ConsultaServiceLayerYMapeaCampos()
+    {
+        var filas = new List<SapWmsItemRow>
+        {
+            new() { ItemCode = "ITM001", ItemName = "Artículo de prueba", CodeBars = "7801234567890", UpdateDate = new DateTime(2026, 8, 15) },
+        };
+        var sesionFalsa = new SapSessionFalsa(filas);
+        var proveedorFalso = new SapConnectionProviderFalso(sesionFalsa);
+        var conector = CrearConector(proveedorFalso);
+
+        var config = """{"TipoEntidad":"Item"}""";
+        var resultado = await conector.PullAsync(config, CancellationToken.None);
+
+        var registro = Assert.Single(resultado);
+        Assert.Equal("ITM001", registro["ItemCode"]);
+        Assert.Equal("Artículo de prueba", registro["ItemName"]);
+        Assert.Equal("7801234567890", registro["BarCode"]);
+    }
+
+    [Fact]
+    public async Task PullAsync_TipoEntidadItem_ExcluyeArticulosSinCodigoDeBarra()
+    {
+        var filas = new List<SapWmsItemRow>
+        {
+            new() { ItemCode = "ITM001", ItemName = "Con barra", CodeBars = "7801234567890", UpdateDate = DateTime.Today },
+            new() { ItemCode = "ITM002", ItemName = "Sin barra", CodeBars = null, UpdateDate = DateTime.Today },
+            new() { ItemCode = "ITM003", ItemName = "Barra cero", CodeBars = "0", UpdateDate = DateTime.Today },
+        };
+        var sesionFalsa = new SapSessionFalsa(filas);
+        var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
+
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Item"}""", CancellationToken.None);
+
+        var registro = Assert.Single(resultado);
+        Assert.Equal("ITM001", registro["ItemCode"]);
+    }
+
+    [Fact]
+    public async Task PullAsync_TipoEntidadStore_MapeaDireccionShipToYExcluyeSinShipTo()
+    {
+        var filas = new List<SapWmsStoreRow>
+        {
+            new()
+            {
+                CardCode = "C001",
+                CardName = "Tienda Uno",
+                UpdateDate = new DateTime(2026, 8, 1),
+                BPAddresses = new List<SapWmsBpAddressRow>
+                {
+                    new() { AddressType = "bo_BillTo", Street = "Calle Facturación" },
+                    new() { AddressType = "bo_ShipTo", Street = "Av. Siempreviva 742", City = "Springfield", ZipCode = "1234" },
+                },
+            },
+            new()
+            {
+                CardCode = "C002",
+                CardName = "Tienda Sin ShipTo",
+                UpdateDate = DateTime.Today,
+                BPAddresses = new List<SapWmsBpAddressRow>
+                {
+                    new() { AddressType = "bo_BillTo", Street = "Otra calle" },
+                },
+            },
+        };
+        var sesionFalsa = new SapSessionFalsa(filas);
+        var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
+
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Store"}""", CancellationToken.None);
+
+        var registro = Assert.Single(resultado);
+        Assert.Equal("C001", registro["CardCode"]);
+        Assert.Equal("Tienda Uno", registro["CardName"]);
+        Assert.Equal("Av. Siempreviva 742", registro["Street"]);
+        Assert.Equal("Springfield", registro["City"]);
+        Assert.Equal("1234", registro["ZipCode"]);
+    }
+
+    [Fact]
+    public async Task PullAsync_TipoEntidadInboundTraslado_MapeaCabeceraYLineasExcluyendoCantidadCero()
+    {
+        var filas = new List<SapWmsTrasladoRow>
+        {
+            new()
+            {
+                DocEntry = 1001,
+                U_NX_shipment_type = "NORMAL",
+                UpdateDate = new DateTime(2026, 8, 10),
+                StockTransferLines = new List<SapWmsTrasladoLineaRow>
+                {
+                    new() { ItemCode = "ITEM-A", Quantity = 10, WarehouseCode = "01" },
+                    new() { ItemCode = "ITEM-B", Quantity = 0, WarehouseCode = "02" },
+                },
+            },
+        };
+        var sesionFalsa = new SapSessionFalsa(filas);
+        var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
+
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"InboundTraslado"}""", CancellationToken.None);
+
+        var registro = Assert.Single(resultado);
+        Assert.Equal(1001, registro["SapDocEntry"]);
+        Assert.Equal("NORMAL", registro["ShipmentType"]);
+        var lineas = Assert.IsType<List<IntegrationRecord>>(registro["Lineas"]);
+        var linea = Assert.Single(lineas);
+        Assert.Equal("ITEM-A", linea["ItemCode"]);
+        Assert.Equal(10m, linea["Quantity"]);
+        Assert.Equal("01", linea["WhsCode"]);
+        Assert.Equal(0, linea["LineNum"]);
+    }
+
+    [Fact]
+    public async Task PullAsync_TipoEntidadDesconocido_LanzaExcepcionClara()
     {
         var conector = CrearConector();
 
-        await Assert.ThrowsAsync<NotSupportedException>(
-            () => conector.PullAsync("{}", CancellationToken.None));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => conector.PullAsync("""{"TipoEntidad":"Desconocido"}""", CancellationToken.None));
+        Assert.Contains("Desconocido", ex.Message);
     }
 
     [Fact]
@@ -129,7 +279,7 @@ public class SapDocumentConnectorTests
             dtoUsado = dto;
             return Task.FromResult(999);
         });
-        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso);
+        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso, new SapConnectionProviderFalso(new SapSessionFalsa(null)));
 
         var lineas = new List<IntegrationRecord>
         {
@@ -160,7 +310,7 @@ public class SapDocumentConnectorTests
             docDateUsado = dto.DocDate;
             return Task.FromResult(999);
         });
-        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso);
+        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso, new SapConnectionProviderFalso(new SapSessionFalsa(null)));
 
         var docDateEsperado = new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc);
         var lineas = new List<IntegrationRecord>
@@ -186,7 +336,7 @@ public class SapDocumentConnectorTests
             cantidadUsada = dto.Lines[0].Quantity;
             return Task.FromResult(999);
         });
-        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso);
+        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso, new SapConnectionProviderFalso(new SapSessionFalsa(null)));
 
         var lineas = new List<IntegrationRecord>
         {
@@ -207,7 +357,7 @@ public class SapDocumentConnectorTests
     public async Task PushAsync_QuantityNoParseable_ResultadoFallidoParaEseRegistroSinTumbarElLote()
     {
         var inventoryServiceFalso = new InventoryDocumentServiceCapturador((tipo, usuario, dto, ct) => Task.FromResult(999));
-        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso);
+        var conector = new SapDocumentConnector(new SalesDocumentServiceFalso(), new PurchaseDocumentServiceFalso(), inventoryServiceFalso, new SapConnectionProviderFalso(new SapSessionFalsa(null)));
 
         var lineasRegistroMalo = new List<IntegrationRecord>
         {

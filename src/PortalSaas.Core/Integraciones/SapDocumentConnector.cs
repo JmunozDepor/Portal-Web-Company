@@ -9,26 +9,110 @@ public class SapDocumentConnector : IIntegrationConnector
     private readonly ISalesDocumentService _salesDocumentService;
     private readonly IPurchaseDocumentService _purchaseDocumentService;
     private readonly IInventoryDocumentService _inventoryDocumentService;
+    private readonly ISapConnectionProvider _sapConnectionProvider;
 
     public SapDocumentConnector(
         ISalesDocumentService salesDocumentService,
         IPurchaseDocumentService purchaseDocumentService,
-        IInventoryDocumentService inventoryDocumentService)
+        IInventoryDocumentService inventoryDocumentService,
+        ISapConnectionProvider sapConnectionProvider)
     {
         _salesDocumentService = salesDocumentService;
         _purchaseDocumentService = purchaseDocumentService;
         _inventoryDocumentService = inventoryDocumentService;
+        _sapConnectionProvider = sapConnectionProvider;
     }
 
     public string Tipo => "Sap";
 
-    public Task<IReadOnlyList<IntegrationRecord>> PullAsync(
+    private sealed record SapWmsOutboundConfig(string TipoEntidad);
+
+    public async Task<IReadOnlyList<IntegrationRecord>> PullAsync(
         string conectorConfigJson,
         CancellationToken cancellationToken)
     {
-        throw new NotSupportedException(
-            "SapDocumentConnector.PullAsync no está implementado: la bajada (descarga desde SAP) " +
-            "está explícitamente fuera de alcance del motor de integración por ahora.");
+        var config = System.Text.Json.JsonSerializer.Deserialize<SapWmsOutboundConfig>(conectorConfigJson)
+            ?? throw new InvalidOperationException("Config de conector Sap (Bajada) inválida o vacía.");
+
+        var session = await _sapConnectionProvider.GetConnectionAsync(cancellationToken);
+
+        return config.TipoEntidad switch
+        {
+            "Item" => await LeerItemsAsync(session, cancellationToken),
+            "Store" => await LeerStoresAsync(session, cancellationToken),
+            "InboundTraslado" => await LeerTrasladosAsync(session, cancellationToken),
+            _ => throw new InvalidOperationException($"TipoEntidad '{config.TipoEntidad}' no soportado en PullAsync."),
+        };
+    }
+
+    private static async Task<IReadOnlyList<IntegrationRecord>> LeerItemsAsync(ISapSession session, CancellationToken ct)
+    {
+        var filtro = "U_NX_EnviarWMS eq 'Y' and InvntItem eq 'tYES'";
+        var filas = await session.GetAsync<List<SapWmsItemRow>>("Items", filtro, ct: ct) ?? [];
+
+        return filas
+            .Where(f => !string.IsNullOrWhiteSpace(f.CodeBars) && f.CodeBars != "0")
+            .Select(f => new IntegrationRecord(new Dictionary<string, object?>
+            {
+                ["ItemCode"] = f.ItemCode,
+                ["ItemName"] = f.ItemName,
+                ["BarCode"] = f.CodeBars,
+                ["SourceUpdateDate"] = f.UpdateDate,
+            }))
+            .ToList();
+    }
+
+    private static async Task<IReadOnlyList<IntegrationRecord>> LeerStoresAsync(ISapSession session, CancellationToken ct)
+    {
+        var filtro = "U_NX_EnviarWMS eq 'Y'";
+        var filas = await session.GetAsync<List<SapWmsStoreRow>>("BusinessPartners", filtro, "BPAddresses", ct) ?? [];
+
+        var registros = new List<IntegrationRecord>();
+        foreach (var fila in filas)
+        {
+            var direccionEnvio = fila.BPAddresses?.FirstOrDefault(a => a.AddressType == "bo_ShipTo");
+            if (direccionEnvio is null)
+            {
+                continue;
+            }
+
+            registros.Add(new IntegrationRecord(new Dictionary<string, object?>
+            {
+                ["CardCode"] = fila.CardCode,
+                ["CardName"] = fila.CardName,
+                ["Street"] = direccionEnvio.Street,
+                ["City"] = direccionEnvio.City,
+                ["ZipCode"] = direccionEnvio.ZipCode,
+                ["SourceUpdateDate"] = fila.UpdateDate,
+            }));
+        }
+
+        return registros;
+    }
+
+    private static async Task<IReadOnlyList<IntegrationRecord>> LeerTrasladosAsync(ISapSession session, CancellationToken ct)
+    {
+        var filtro = "(U_NX_WMS_SEND eq 'Y' or U_NX_WMS_SEND eq 'EN PROCESO ENVIO WMS' or U_NX_WMS_SEND eq 'EN PROCESO RE-ENVIO WMS') and U_NX_shipment_type ne ''";
+        var filas = await session.GetAsync<List<SapWmsTrasladoRow>>("InventoryTransferRequests", filtro, "StockTransferLines", ct) ?? [];
+
+        return filas
+            .Select(f => new IntegrationRecord(new Dictionary<string, object?>
+            {
+                ["SapDocEntry"] = f.DocEntry,
+                ["ShipmentType"] = f.U_NX_shipment_type,
+                ["SourceUpdateDate"] = f.UpdateDate,
+                ["Lineas"] = (f.StockTransferLines ?? [])
+                    .Where(l => l.Quantity != 0)
+                    .Select((l, indice) => new IntegrationRecord(new Dictionary<string, object?>
+                    {
+                        ["ItemCode"] = l.ItemCode,
+                        ["Quantity"] = l.Quantity,
+                        ["WhsCode"] = l.WarehouseCode,
+                        ["LineNum"] = indice,
+                    }))
+                    .ToList(),
+            }))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<IntegrationPushResult>> PushAsync(
@@ -150,4 +234,43 @@ public class SapDocumentConnector : IIntegrationConnector
 
         return resultados;
     }
+}
+
+internal sealed class SapWmsItemRow
+{
+    public string ItemCode { get; set; } = string.Empty;
+    public string ItemName { get; set; } = string.Empty;
+    public string? CodeBars { get; set; }
+    public DateTime UpdateDate { get; set; }
+}
+
+internal sealed class SapWmsStoreRow
+{
+    public string CardCode { get; set; } = string.Empty;
+    public string CardName { get; set; } = string.Empty;
+    public DateTime UpdateDate { get; set; }
+    public List<SapWmsBpAddressRow>? BPAddresses { get; set; }
+}
+
+internal sealed class SapWmsBpAddressRow
+{
+    public string AddressType { get; set; } = string.Empty;
+    public string? Street { get; set; }
+    public string? City { get; set; }
+    public string? ZipCode { get; set; }
+}
+
+internal sealed class SapWmsTrasladoRow
+{
+    public int DocEntry { get; set; }
+    public string U_NX_shipment_type { get; set; } = string.Empty;
+    public DateTime UpdateDate { get; set; }
+    public List<SapWmsTrasladoLineaRow>? StockTransferLines { get; set; }
+}
+
+internal sealed class SapWmsTrasladoLineaRow
+{
+    public string ItemCode { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
+    public string WarehouseCode { get; set; } = string.Empty;
 }

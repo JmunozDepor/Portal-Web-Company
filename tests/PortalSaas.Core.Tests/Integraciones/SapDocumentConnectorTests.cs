@@ -388,6 +388,61 @@ public class SapDocumentConnectorTests
     }
 
     [Fact]
+    public async Task PullAsync_TipoEntidadPicking_DosPickListsDistintosMismoDocumentoBase_NoLosFundeYConsultaUnaSolaVez()
+    {
+        // 2 PickLists DISTINTOS (ej. 2 oleadas de picking separadas) referencian el
+        // MISMO documento base (BaseObjectType=17, OrderEntry=500) -- no deben fundirse
+        // en un solo IntegrationRecord (cada uno conserva su propio AbsEntry/OrderType/
+        // PickDate), pero la consulta HTTP al documento base debe hacerse una sola vez
+        // gracias a la caché.
+        var pickListUno = new SapWmsPickListRow
+        {
+            AbsEntry = 100,
+            PickDate = new DateTime(2026, 8, 16),
+            UpdateDate = new DateTime(2026, 8, 16),
+            U_NX_order_type = "VTA",
+            PickListsLines = new List<SapWmsPickListLineRow>
+            {
+                new() { BaseObjectType = 17, OrderEntry = 500, OrderLine = 0, ReleasedQuantity = 5m },
+            },
+        };
+        var pickListDos = new SapWmsPickListRow
+        {
+            AbsEntry = 101,
+            PickDate = new DateTime(2026, 8, 16),
+            UpdateDate = new DateTime(2026, 8, 16),
+            U_NX_order_type = "VTA",
+            PickListsLines = new List<SapWmsPickListLineRow>
+            {
+                new() { BaseObjectType = 17, OrderEntry = 500, OrderLine = 1, ReleasedQuantity = 2m },
+            },
+        };
+        var ordenBase = new SapWmsOrderBaseRow
+        {
+            DocEntry = 500,
+            CardCode = "C001",
+            CardName = "Cliente de prueba",
+            DocumentLines = new List<SapWmsOrderBaseLineRow>
+            {
+                new() { LineNum = 0, ItemCode = "ITM001", WarehouseCode = "01" },
+                new() { LineNum = 1, ItemCode = "ITM002", WarehouseCode = "01" },
+            },
+        };
+
+        var sesionFalsa = new SapSessionFalsaParaPicking(
+            pickLists: new List<SapWmsPickListRow> { pickListUno, pickListDos },
+            ordenes: new List<SapWmsOrderBaseRow> { ordenBase });
+        var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
+
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Picking"}""", CancellationToken.None);
+
+        Assert.Equal(2, resultado.Count);
+        var absEntries = resultado.Select(r => (int)r["PickListAbsEntry"]!).OrderBy(x => x).ToList();
+        Assert.Equal(new[] { 100, 101 }, absEntries);
+        Assert.Equal(1, sesionFalsa.LlamadasPorRecurso.GetValueOrDefault("Orders"));
+    }
+
+    [Fact]
     public async Task PullAsync_TipoEntidadDesconocido_LanzaExcepcionClara()
     {
         var conector = CrearConector();

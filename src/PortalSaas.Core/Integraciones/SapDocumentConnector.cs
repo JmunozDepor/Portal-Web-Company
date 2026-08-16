@@ -131,16 +131,24 @@ public class SapDocumentConnector : IIntegrationConnector
         // PickListsLines no trae ItemCode/almacén -- solo BaseObjectType/OrderEntry/OrderLine.
         // Se agrupa por documento base distinto (BaseObjectType, OrderEntry) para consultar
         // cada documento base UNA sola vez, no una vez por línea.
-        var lineasPorDocumentoBase = pickLists
+        // Se agrupa por (PickList.AbsEntry, BaseObjectType, OrderEntry) -- NUNCA solo por
+        // documento base -- porque 2 PickLists DISTINTOS (ej. 2 oleadas de picking
+        // separadas) pueden referenciar el mismo documento base sin ser la misma Lista de
+        // Picking. Agrupar solo por documento base las fundiría en un único
+        // IntegrationRecord y perdería la identidad (AbsEntry/OrderType/PickDate) de una
+        // de las dos. La caché de documentosBaseCache sigue evitando repetir la consulta
+        // HTTP al documento base cuando 2 grupos distintos (de 2 PickLists distintas)
+        // apuntan al mismo documento base.
+        var lineasPorPickListYDocumentoBase = pickLists
             .SelectMany(pl => pl.PickListsLines ?? new List<SapWmsPickListLineRow>(), (pl, linea) => (PickList: pl, Linea: linea))
-            .GroupBy(x => (x.Linea.BaseObjectType, x.Linea.OrderEntry));
+            .GroupBy(x => (x.PickList.AbsEntry, x.Linea.BaseObjectType, x.Linea.OrderEntry));
 
         var documentosBaseCache = new Dictionary<(int Tipo, int DocEntry), SapWmsOrderBaseRow?>();
         var registros = new List<IntegrationRecord>();
 
-        foreach (var grupo in lineasPorDocumentoBase)
+        foreach (var grupo in lineasPorPickListYDocumentoBase)
         {
-            var (baseObjectType, orderEntry) = grupo.Key;
+            var (_, baseObjectType, orderEntry) = grupo.Key;
             var clave = (baseObjectType, orderEntry);
 
             if (!documentosBaseCache.TryGetValue(clave, out var documentoBase))

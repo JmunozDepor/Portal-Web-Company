@@ -105,6 +105,7 @@ public sealed class ModuloWms : IModuloPortal
         services.AddScoped<IIntegrationEntityReader, WmsSapStageItemReader>();
         services.AddScoped<IIntegrationEntityReader, WmsSapStageStoreReader>();
         services.AddScoped<IIntegrationEntityReader, WmsSapStageInboundReader>();
+        services.AddScoped<IIntegrationEntityReader, WmsSapStageOrderReader>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageItemWriter>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageStoreWriter>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageInboundWriter>();

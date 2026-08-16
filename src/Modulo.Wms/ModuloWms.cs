@@ -109,5 +109,15 @@ public sealed class ModuloWms : IModuloPortal
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageStoreWriter>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageInboundWriter>();
         services.AddHostedService<WmsSlshStageParser>();
+
+        // Conector de la etapa Subida (staging local -> Oracle WMS Cloud real). Se
+        // agrega como OTRA registración de IIntegrationConnector -- el Host ya registra
+        // SapDocumentConnector con AddScoped<IIntegrationConnector, ...> en Program.cs,
+        // e IntegrationSyncHostedService resuelve TODOS los conectores vía
+        // GetServices<IIntegrationConnector>() (no un único registro), así que no hay
+        // conflicto entre este AddHttpClient y ese AddScoped. AddHttpClient (en vez de
+        // "new HttpClient()" directo) gestiona el HttpClient vía IHttpClientFactory,
+        // evita el socket exhaustion clásico de crear HttpClient a mano.
+        services.AddHttpClient<IIntegrationConnector, WmsCloudConnector>();
     }
 }

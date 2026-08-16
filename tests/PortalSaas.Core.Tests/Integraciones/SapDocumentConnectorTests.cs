@@ -98,6 +98,61 @@ public class SapDocumentConnectorTests
             => throw new InvalidOperationException("No debería llamarse en este test.");
     }
 
+    private sealed class SapSessionFalsaParaPicking : ISapSession
+    {
+        private readonly IReadOnlyList<SapWmsPickListRow> _pickLists;
+        private readonly Dictionary<int, SapWmsOrderBaseRow> _ordenesPorDocEntry;
+
+        public Dictionary<string, int> LlamadasPorRecurso { get; } = new();
+
+        public SapSessionFalsaParaPicking(List<SapWmsPickListRow> pickLists, List<SapWmsOrderBaseRow> ordenes)
+        {
+            _pickLists = pickLists;
+            _ordenesPorDocEntry = ordenes.ToDictionary(o => o.DocEntry);
+        }
+
+        public Task<T?> GetAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default)
+        {
+            // recurso llega como "Orders(500)" -- se extrae el nombre base para contar
+            // llamadas por recurso y el DocEntry para ubicar la orden falsa.
+            var nombreRecurso = recurso.Split('(')[0];
+            LlamadasPorRecurso[nombreRecurso] = LlamadasPorRecurso.GetValueOrDefault(nombreRecurso) + 1;
+
+            var docEntryTexto = recurso.Contains('(')
+                ? recurso.Substring(recurso.IndexOf('(') + 1).TrimEnd(')')
+                : null;
+
+            if (docEntryTexto is not null && int.TryParse(docEntryTexto, out var docEntry) &&
+                _ordenesPorDocEntry.TryGetValue(docEntry, out var orden))
+            {
+                return Task.FromResult((T?)(object?)orden);
+            }
+
+            return Task.FromResult(default(T));
+        }
+
+        public Task<IReadOnlyList<T>> GetAllAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default)
+        {
+            LlamadasPorRecurso[recurso] = LlamadasPorRecurso.GetValueOrDefault(recurso) + 1;
+
+            if (recurso == "PickLists")
+            {
+                return Task.FromResult((IReadOnlyList<T>)(object)_pickLists);
+            }
+
+            return Task.FromResult<IReadOnlyList<T>>(Array.Empty<T>());
+        }
+
+        public Task<T?> PostAsync<T>(string recurso, object cuerpo, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+
+        public Task PatchAsync(string recurso, object clave, object cuerpo, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+
+        public Task DeleteAsync(string recurso, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+    }
+
     private static SapDocumentConnector CrearConector(ISapConnectionProvider? proveedorSap = null)
         => new(
             new SalesDocumentServiceFalso(),
@@ -242,6 +297,94 @@ public class SapDocumentConnectorTests
         Assert.Equal(10m, linea["Quantity"]);
         Assert.Equal("01", linea["WhsCode"]);
         Assert.Equal(0, linea["LineNum"]);
+    }
+
+    [Fact]
+    public async Task PullAsync_TipoEntidadPicking_AgrupaPorDocumentoBaseYArmaRegistro()
+    {
+        // Nota: el test ilustrativo del brief traía un campo "Owner" en SapWmsPickListRow
+        // para CardCode/CardName -- se descartó porque el diseño real (LeerPickingAsync)
+        // saca esos campos del documento base (SapWmsOrderBaseRow), no de PickLists, igual
+        // que el SP legado (join con OCRD/T4 vía el documento base, no la Lista de Picking).
+        var pickList = new SapWmsPickListRow
+        {
+            AbsEntry = 100,
+            PickDate = new DateTime(2026, 8, 16),
+            UpdateDate = new DateTime(2026, 8, 16),
+            U_NX_order_type = "VTA",
+            PickListsLines = new List<SapWmsPickListLineRow>
+            {
+                new() { BaseObjectType = 17, OrderEntry = 500, OrderLine = 0, ReleasedQuantity = 5m },
+            },
+        };
+        var ordenBase = new SapWmsOrderBaseRow
+        {
+            DocEntry = 500,
+            CardCode = "C001",
+            CardName = "Cliente de prueba",
+            NumAtCard = "PO-1",
+            CancelDate = null,
+            DocDueDate = null,
+            ShipToCode = "SHIP1",
+            DocumentLines = new List<SapWmsOrderBaseLineRow> { new() { LineNum = 0, ItemCode = "ITM001", WarehouseCode = "01" } },
+        };
+
+        var sesionFalsa = new SapSessionFalsaParaPicking(
+            pickLists: new List<SapWmsPickListRow> { pickList },
+            ordenes: new List<SapWmsOrderBaseRow> { ordenBase });
+        var proveedorFalso = new SapConnectionProviderFalso(sesionFalsa);
+        var conector = CrearConector(proveedorFalso);
+
+        var config = """{"TipoEntidad":"Picking"}""";
+        var resultado = await conector.PullAsync(config, CancellationToken.None);
+
+        var registro = Assert.Single(resultado);
+        Assert.Equal("C001", registro["CardCode"]);
+        Assert.Equal(500, registro["BaseEntry"]);
+        var lineas = Assert.IsType<List<IntegrationRecord>>(registro["Lineas"]);
+        var linea = Assert.Single(lineas);
+        Assert.Equal("ITM001", linea["ItemCode"]);
+        Assert.Equal(5m, linea["Quantity"]);
+    }
+
+    [Fact]
+    public async Task PullAsync_TipoEntidadPicking_DosLineasDelMismoDocumentoBase_ConsultaUnaSolaVez()
+    {
+        var pickList = new SapWmsPickListRow
+        {
+            AbsEntry = 200,
+            PickDate = new DateTime(2026, 8, 16),
+            UpdateDate = new DateTime(2026, 8, 16),
+            U_NX_order_type = "VTA",
+            PickListsLines = new List<SapWmsPickListLineRow>
+            {
+                new() { BaseObjectType = 17, OrderEntry = 500, OrderLine = 0, ReleasedQuantity = 5m },
+                new() { BaseObjectType = 17, OrderEntry = 500, OrderLine = 1, ReleasedQuantity = 3m },
+            },
+        };
+        var ordenBase = new SapWmsOrderBaseRow
+        {
+            DocEntry = 500,
+            CardCode = "C001",
+            CardName = "Cliente de prueba",
+            DocumentLines = new List<SapWmsOrderBaseLineRow>
+            {
+                new() { LineNum = 0, ItemCode = "ITM001", WarehouseCode = "01" },
+                new() { LineNum = 1, ItemCode = "ITM002", WarehouseCode = "01" },
+            },
+        };
+
+        var sesionFalsa = new SapSessionFalsaParaPicking(
+            pickLists: new List<SapWmsPickListRow> { pickList },
+            ordenes: new List<SapWmsOrderBaseRow> { ordenBase });
+        var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
+
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Picking"}""", CancellationToken.None);
+
+        var registro = Assert.Single(resultado);
+        var lineas = Assert.IsType<List<IntegrationRecord>>(registro["Lineas"]);
+        Assert.Equal(2, lineas.Count);
+        Assert.Equal(1, sesionFalsa.LlamadasPorRecurso.GetValueOrDefault("Orders"));
     }
 
     [Fact]

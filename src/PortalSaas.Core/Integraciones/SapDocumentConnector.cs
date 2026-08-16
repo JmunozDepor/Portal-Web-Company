@@ -41,6 +41,7 @@ public class SapDocumentConnector : IIntegrationConnector
             "Item" => await LeerItemsAsync(session, cancellationToken),
             "Store" => await LeerStoresAsync(session, cancellationToken),
             "InboundTraslado" => await LeerTrasladosAsync(session, cancellationToken),
+            "Picking" => await LeerPickingAsync(session, cancellationToken),
             _ => throw new InvalidOperationException($"TipoEntidad '{config.TipoEntidad}' no soportado en PullAsync."),
         };
     }
@@ -113,6 +114,103 @@ public class SapDocumentConnector : IIntegrationConnector
                     .ToList(),
             }))
             .ToList();
+    }
+
+    private static async Task<IReadOnlyList<IntegrationRecord>> LeerPickingAsync(ISapSession session, CancellationToken ct)
+    {
+        // RIESGO NO CONFIRMADO (Ronda D, Task 3): el SP legado filtra OPKL.Status = 'R'
+        // (columna nativa de la tabla HANA OPKL), pero no se encontró en este repo ningún
+        // GET previo contra el recurso "PickLists" de Service Layer que confirme el
+        // nombre/valor real del campo equivalente. Se usa "Status eq 'psReleased'" como
+        // mejor esfuerzo (misma convención de enum con prefijo que Service Layer usa en
+        // otros recursos, ej. bo_ShipTo en BPAddresses.AddressType de Ronda C) -- ESTO
+        // DEBE VERIFICARSE CONTRA UN AMBIENTE SAP REAL ANTES DE PRODUCCIÓN.
+        var filtro = "Status eq 'psReleased'";
+        var pickLists = await session.GetAllAsync<SapWmsPickListRow>("PickLists", filtro, "PickListsLines", ct);
+
+        // PickListsLines no trae ItemCode/almacén -- solo BaseObjectType/OrderEntry/OrderLine.
+        // Se agrupa por documento base distinto (BaseObjectType, OrderEntry) para consultar
+        // cada documento base UNA sola vez, no una vez por línea.
+        var lineasPorDocumentoBase = pickLists
+            .SelectMany(pl => pl.PickListsLines ?? new List<SapWmsPickListLineRow>(), (pl, linea) => (PickList: pl, Linea: linea))
+            .GroupBy(x => (x.Linea.BaseObjectType, x.Linea.OrderEntry));
+
+        var documentosBaseCache = new Dictionary<(int Tipo, int DocEntry), SapWmsOrderBaseRow?>();
+        var registros = new List<IntegrationRecord>();
+
+        foreach (var grupo in lineasPorDocumentoBase)
+        {
+            var (baseObjectType, orderEntry) = grupo.Key;
+            var clave = (baseObjectType, orderEntry);
+
+            if (!documentosBaseCache.TryGetValue(clave, out var documentoBase))
+            {
+                var recurso = baseObjectType switch
+                {
+                    17 => "Orders",
+                    13 => "Invoices",
+                    1250000001 => "InventoryTransferRequests",
+                    _ => null,
+                };
+
+                documentoBase = recurso is null
+                    ? null
+                    : await session.GetAsync<SapWmsOrderBaseRow>($"{recurso}({orderEntry})", ct: ct);
+                documentosBaseCache[clave] = documentoBase;
+            }
+
+            if (documentoBase is null)
+            {
+                continue;
+            }
+
+            var pickList = grupo.First().PickList;
+            var lineasDelGrupo = grupo.ToList();
+
+            var lineas = lineasDelGrupo
+                .Select(x =>
+                {
+                    var lineaBase = documentoBase.DocumentLines?.FirstOrDefault(l => l.LineNum == x.Linea.OrderLine);
+                    return new IntegrationRecord(new Dictionary<string, object?>
+                    {
+                        ["ItemCode"] = lineaBase?.ItemCode,
+                        ["Quantity"] = x.Linea.ReleasedQuantity,
+                        ["WhsCode"] = lineaBase?.WarehouseCode,
+                        ["LineNum"] = x.Linea.OrderLine,
+                        ["SeqNbr"] = x.Linea.OrderLine,
+                    });
+                })
+                .Where(l => l["ItemCode"] is not null)
+                .ToList();
+
+            if (lineas.Count == 0)
+            {
+                continue;
+            }
+
+            var sufijoOrderNbr = baseObjectType == 17 ? $"-{pickList.AbsEntry}" : string.Empty;
+            var orderNbr = $"{pickList.U_NX_order_type}{documentoBase.DocEntry}{sufijoOrderNbr}";
+
+            registros.Add(new IntegrationRecord(new Dictionary<string, object?>
+            {
+                ["OrderNbr"] = orderNbr,
+                ["OrderType"] = pickList.U_NX_order_type,
+                ["PickListAbsEntry"] = pickList.AbsEntry,
+                ["BaseObjectType"] = baseObjectType,
+                ["BaseEntry"] = orderEntry,
+                ["CardCode"] = documentoBase.CardCode,
+                ["CardName"] = documentoBase.CardName,
+                ["CustomerPoNbr"] = documentoBase.NumAtCard,
+                ["OrdDate"] = pickList.PickDate,
+                ["ExpDate"] = documentoBase.CancelDate,
+                ["ReqShipDate"] = documentoBase.DocDueDate,
+                ["ShipToCode"] = documentoBase.ShipToCode,
+                ["SourceUpdateDate"] = pickList.UpdateDate,
+                ["Lineas"] = lineas,
+            }));
+        }
+
+        return registros;
     }
 
     public async Task<IReadOnlyList<IntegrationPushResult>> PushAsync(
@@ -273,4 +371,44 @@ internal sealed class SapWmsTrasladoLineaRow
     public string ItemCode { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
     public string WarehouseCode { get; set; } = string.Empty;
+}
+
+// Nota (Ronda D, Task 3): a diferencia del test ilustrativo del brief, este POCO NO
+// incluye un campo "Owner" -- el diseño real toma CardCode/CardName del documento base
+// (SapWmsOrderBaseRow), igual que hace el SP legado vía join con OCRD/T4, no de PickLists
+// directamente. Se mantiene consistencia interna del código sobre el test ilustrativo.
+internal sealed class SapWmsPickListRow
+{
+    public int AbsEntry { get; set; }
+    public DateTime PickDate { get; set; }
+    public DateTime UpdateDate { get; set; }
+    public string U_NX_order_type { get; set; } = string.Empty;
+    public List<SapWmsPickListLineRow>? PickListsLines { get; set; }
+}
+
+internal sealed class SapWmsPickListLineRow
+{
+    public int BaseObjectType { get; set; }
+    public int OrderEntry { get; set; }
+    public int OrderLine { get; set; }
+    public decimal ReleasedQuantity { get; set; }
+}
+
+internal sealed class SapWmsOrderBaseRow
+{
+    public int DocEntry { get; set; }
+    public string CardCode { get; set; } = string.Empty;
+    public string CardName { get; set; } = string.Empty;
+    public string? NumAtCard { get; set; }
+    public DateTime? CancelDate { get; set; }
+    public DateTime? DocDueDate { get; set; }
+    public string? ShipToCode { get; set; }
+    public List<SapWmsOrderBaseLineRow>? DocumentLines { get; set; }
+}
+
+internal sealed class SapWmsOrderBaseLineRow
+{
+    public int LineNum { get; set; }
+    public string ItemCode { get; set; } = string.Empty;
+    public string? WarehouseCode { get; set; }
 }

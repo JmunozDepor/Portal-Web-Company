@@ -40,6 +40,8 @@ public class RendicionesDbContext : DbContext
     public DbSet<ExternalServiceUsage> ExternalServiceUsages => Set<ExternalServiceUsage>();
     public DbSet<RendicionesSettings> RendicionesSettings => Set<RendicionesSettings>();
     public DbSet<ReminderLog> ReminderLogs => Set<ReminderLog>();
+    public DbSet<CostCenter> CostCenters => Set<CostCenter>();
+    public DbSet<GlAccount> GlAccounts => Set<GlAccount>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -328,6 +330,34 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
             e.Property(x => x.SentDate).HasColumnName("sent_date").IsRequired();
             e.HasIndex(x => new { x.CompanyId, x.SentDate }).IsUnique().HasDatabaseName("uq_rendiciones_reminder_log_company_id_sent_date");
+        });
+
+        modelBuilder.Entity<CostCenter>(e =>
+        {
+            e.ToTable("rendiciones_cost_centers");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.Code).HasColumnName("code").IsRequired().HasMaxLength(50);
+            e.Property(x => x.Name).HasColumnName("name").IsRequired().HasMaxLength(200);
+            e.Property(x => x.IsActive).HasColumnName("is_active").IsRequired();
+            e.Property(x => x.Source).HasColumnName("source").IsRequired().HasConversion<int>();
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
+            e.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique().HasDatabaseName("uq_rendiciones_cost_centers_company_id_code");
+        });
+
+        modelBuilder.Entity<GlAccount>(e =>
+        {
+            e.ToTable("rendiciones_gl_accounts");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.Code).HasColumnName("code").IsRequired().HasMaxLength(50);
+            e.Property(x => x.Name).HasColumnName("name").IsRequired().HasMaxLength(200);
+            e.Property(x => x.IsActive).HasColumnName("is_active").IsRequired();
+            e.Property(x => x.Source).HasColumnName("source").IsRequired().HasConversion<int>();
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
+            e.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique().HasDatabaseName("uq_rendiciones_gl_accounts_company_id_code");
         });
     }
 }

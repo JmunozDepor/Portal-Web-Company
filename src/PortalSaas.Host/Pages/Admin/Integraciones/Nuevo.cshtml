@@ -107,6 +107,14 @@
             <input asp-for="Input.ParentCompanyCode" class="form-control" />
             <span asp-validation-for="Input.ParentCompanyCode" class="text-danger"></span>
         </div>
+        <div class="col-md-3">
+            <label asp-for="Input.BatchSize" class="form-label"></label>
+            <input asp-for="Input.BatchSize" class="form-control" type="number" min="1" />
+        </div>
+        <div class="col-md-9">
+            <label asp-for="Input.LgfApiBaseUrl" class="form-label"></label>
+            <input asp-for="Input.LgfApiBaseUrl" class="form-control" placeholder="Ej. https://ta11.wms.ocs.oraclecloud.com/cd_test/wms/lgfapi/v10/entity/" />
+        </div>
     </div>
 
     <div class="mt-4">

@@ -121,5 +121,6 @@ public sealed class ModuloWms : IModuloPortal
         // "new HttpClient()" directo) gestiona el HttpClient vía IHttpClientFactory,
         // evita el socket exhaustion clásico de crear HttpClient a mano.
         services.AddHttpClient<IIntegrationConnector, WmsCloudConnector>();
+        services.AddHttpClient<IWmsValidationApiClient, WmsValidationApiClient>();
     }
 }

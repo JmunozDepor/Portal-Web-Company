@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
 using Microsoft.Extensions.Logging;
+using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Contratos.Integraciones;
 
 namespace Modulo.Wms.Services;
@@ -43,11 +44,19 @@ public class WmsCloudConnector : IIntegrationConnector
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<WmsCloudConnector> _logger;
+    private readonly IFieldMappingService _fieldMappingService;
+    private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public WmsCloudConnector(HttpClient httpClient, ILogger<WmsCloudConnector> logger)
+    public WmsCloudConnector(
+        HttpClient httpClient,
+        ILogger<WmsCloudConnector> logger,
+        IFieldMappingService fieldMappingService,
+        ICurrentCompanyAccessor currentCompany)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _fieldMappingService = fieldMappingService;
+        _currentCompany = currentCompany;
     }
 
     public string Tipo => "WmsCloud";
@@ -68,6 +77,14 @@ public class WmsCloudConnector : IIntegrationConnector
         var config = JsonSerializer.Deserialize<WmsCloudConfig>(conectorConfigJson)
             ?? throw new InvalidOperationException("Config de conector WmsCloud inválida o vacía.");
 
+        // Se cargan una sola vez por lote (no por registro) -- una IntegrationDefinition
+        // de Subida es siempre de una sola compañía, ver comentario más abajo. Sin filas
+        // activas para un campo, ArmarXml cae al mismo mapeo hardcodeado de siempre (ver
+        // docs/superpowers/specs/2026-08-16-mapeo-campos-sap-wms-design.md).
+        var mapeos = (await _fieldMappingService.ListAllAsync(_currentCompany.CompanyId, cancellationToken))
+            .Where(m => m.IsActive)
+            .ToDictionary(m => (m.MapperKey, m.FieldName), m => m.ValueTemplate);
+
         // A diferencia de SapDocumentConnector.PushAsync (que relanza AggregateException
         // cuando TODO el lote falla), acá NUNCA se relanza -- se documentó ya en
         // IntegrationDefinition que "en la práctica cada IntegrationDefinition de Subida
@@ -84,7 +101,7 @@ public class WmsCloudConnector : IIntegrationConnector
         {
             try
             {
-                var xml = ArmarXml(registro, config);
+                var xml = ArmarXml(registro, config, mapeos);
                 await EnviarAsync(xml, config, cancellationToken);
                 resultados.Add(new IntegrationPushResult(registro, Exito: true, MensajeError: null));
             }
@@ -98,7 +115,7 @@ public class WmsCloudConnector : IIntegrationConnector
         return resultados;
     }
 
-    private static XDocument ArmarXml(IntegrationRecord registro, WmsCloudConfig config)
+    private static XDocument ArmarXml(IntegrationRecord registro, WmsCloudConfig config, IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos)
     {
         var tipoDocumento = (string)registro["TipoDocumento"]!;
         var (entity, nombreLista, nombreItem) = tipoDocumento switch
@@ -122,65 +139,82 @@ public class WmsCloudConnector : IIntegrationConnector
         var nodoItem = tipoDocumento switch
         {
             "Item" => new XElement(nombreItem,
-                new XElement("item_alternate_code", registro["ItemCode"]),
-                new XElement("description", registro["ItemName"]),
-                new XElement("barcode", registro["BarCode"])),
+                CampoXml(mapeos, "SAPWMS_ITEM", "item_alternate_code", registro, registro["ItemCode"]),
+                CampoXml(mapeos, "SAPWMS_ITEM", "description", registro, registro["ItemName"]),
+                CampoXml(mapeos, "SAPWMS_ITEM", "barcode", registro, registro["BarCode"])),
             "Store" => new XElement(nombreItem,
-                new XElement("code", registro["CardCode"]),
-                new XElement("name", registro["CardName"]),
-                new XElement("parent_company_id", config.ParentCompanyCode)),
-            "IbShipment" => ArmarNodoIbShipment(registro),
-            "Order" => ArmarNodoOrder(registro),
+                CampoXml(mapeos, "SAPWMS_STORE", "code", registro, registro["CardCode"]),
+                CampoXml(mapeos, "SAPWMS_STORE", "name", registro, registro["CardName"]),
+                CampoXml(mapeos, "SAPWMS_STORE", "parent_company_id", registro, config.ParentCompanyCode)),
+            "IbShipment" => ArmarNodoIbShipment(registro, mapeos),
+            "Order" => ArmarNodoOrder(registro, mapeos),
             _ => throw new InvalidOperationException($"TipoDocumento '{tipoDocumento}' no soportado en WmsCloudConnector."),
         };
 
         return new XDocument(new XElement("LgfData", header, new XElement(nombreLista, nodoItem)));
     }
 
-    private static XElement ArmarNodoIbShipment(IntegrationRecord registro)
+    /// <summary>
+    /// Si hay una fila activa en wms_oracle_field_mappings para (mapperKey, fieldName),
+    /// resuelve su ValueTemplate contra registro; si no, usa valorPorDefecto -- el mismo
+    /// valor que este campo tenía hardcodeado antes de esta entrega, así que sin
+    /// configuración nueva el XML sale idéntico al de siempre.
+    /// </summary>
+    private static XElement CampoXml(
+        IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos,
+        string mapperKey, string fieldName, IntegrationRecord registro, object? valorPorDefecto)
+    {
+        if (mapeos.TryGetValue((mapperKey, fieldName), out var template))
+        {
+            return new XElement(fieldName, WmsFieldTemplateResolver.Resolve(template, registro));
+        }
+        return new XElement(fieldName, valorPorDefecto);
+    }
+
+    private static XElement ArmarNodoIbShipment(IntegrationRecord registro, IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos)
     {
         var lineas = (List<IntegrationRecord>)registro["Lineas"]!;
         var hdr = new XElement("ib_shipment_hdr",
-            new XElement("shipment_nbr", registro["SapDocEntry"]),
-            new XElement("shipment_type", registro["ShipmentType"]));
+            CampoXml(mapeos, "SAPWMS_INBOUND_HDR", "shipment_nbr", registro, registro["SapDocEntry"]),
+            CampoXml(mapeos, "SAPWMS_INBOUND_HDR", "shipment_type", registro, registro["ShipmentType"]));
 
         var detalles = lineas.Select(l => new XElement("ib_shipment_dtl",
-            new XElement("seq_nbr", l["LineNum"]),
-            new XElement("item_alternate_code", l["ItemCode"]),
-            new XElement("shipped_qty", l["Quantity"]),
-            new XElement("facility_code", l["WhsCode"])));
+            CampoXml(mapeos, "SAPWMS_INBOUND_DTL", "seq_nbr", l, l["LineNum"]),
+            CampoXml(mapeos, "SAPWMS_INBOUND_DTL", "item_alternate_code", l, l["ItemCode"]),
+            CampoXml(mapeos, "SAPWMS_INBOUND_DTL", "shipped_qty", l, l["Quantity"]),
+            CampoXml(mapeos, "SAPWMS_INBOUND_DTL", "facility_code", l, l["WhsCode"])));
 
         return new XElement("ib_shipment", hdr, detalles);
     }
 
-    private static XElement ArmarNodoOrder(IntegrationRecord registro)
+    private static XElement ArmarNodoOrder(IntegrationRecord registro, IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos)
     {
         var lineas = (List<IntegrationRecord>)registro["Lineas"]!;
         var hdr = new XElement("order_hdr",
-            new XElement("company_code", "DEPOR"),
-            new XElement("action_code", "CREATE"),
-            new XElement("facility_code", "BO02"),
-            new XElement("order_nbr", registro["OrderNbr"]),
-            new XElement("order_type", registro["OrderType"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "company_code", registro, "DEPOR"),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "action_code", registro, "CREATE"),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "facility_code", registro, "BO02"),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "order_nbr", registro, registro["OrderNbr"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "order_type", registro, registro["OrderType"]),
             new XElement("ord_date", FormatearFecha(registro["OrdDate"])),
             new XElement("exp_date", FormatearFecha(registro["ExpDate"])),
             new XElement("req_ship_date", FormatearFecha(registro["ReqShipDate"])),
-            new XElement("ref_nbr", registro["CustomerPoNbr"]),
-            new XElement("dest_dept_nbr", registro["ShipToCode"]),
-            new XElement("priority", "1"),
-            new XElement("cust_field_2", registro["PickListAbsEntry"]),
-            new XElement("cust_field_3", registro["CardName"]),
-            new XElement("cust_field_4", registro["BaseEntry"]),
-            new XElement("cust_field_5", registro["BaseObjectType"]),
-            new XElement("cust_short_text_1", registro["PickListAbsEntry"]),
-            new XElement("cust_short_text_2", registro["CardCode"]),
-            new XElement("customer_po_nbr", registro["CustomerPoNbr"]));
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "ref_nbr", registro, registro["CustomerPoNbr"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "dest_dept_nbr", registro, registro["ShipToCode"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "priority", registro, "1"),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "cust_field_2", registro, registro["PickListAbsEntry"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "cust_field_3", registro, registro["CardName"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "cust_field_4", registro, registro["BaseEntry"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "cust_field_5", registro, registro["BaseObjectType"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "cust_short_text_1", registro, registro["PickListAbsEntry"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "cust_short_text_2", registro, registro["CardCode"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_HDR", "customer_po_nbr", registro, registro["CustomerPoNbr"]));
 
         var detalles = lineas.Select(l => new XElement("order_dtl",
-            new XElement("order_nbr", registro["OrderNbr"]),
-            new XElement("seq_nbr", l["SeqNbr"]),
-            new XElement("item_alternate_code", l["ItemCode"]),
-            new XElement("ord_qty", l["Quantity"])));
+            CampoXml(mapeos, "SAPWMS_ORDER_DTL", "order_nbr", l, registro["OrderNbr"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_DTL", "seq_nbr", l, l["SeqNbr"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_DTL", "item_alternate_code", l, l["ItemCode"]),
+            CampoXml(mapeos, "SAPWMS_ORDER_DTL", "ord_qty", l, l["Quantity"])));
 
         return new XElement("order", hdr, detalles);
     }

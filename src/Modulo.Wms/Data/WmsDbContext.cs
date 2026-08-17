@@ -37,6 +37,7 @@ public class WmsDbContext : DbContext
     public DbSet<WmsSapStageInboundDtl> WmsSapStageInboundDtls => Set<WmsSapStageInboundDtl>();
     public DbSet<WmsSapStageOrderHdr> WmsSapStageOrderHdrs => Set<WmsSapStageOrderHdr>();
     public DbSet<WmsSapStageOrderDtl> WmsSapStageOrderDtls => Set<WmsSapStageOrderDtl>();
+    public DbSet<WmsExportValidation> WmsExportValidations => Set<WmsExportValidation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -426,6 +427,23 @@ public class WmsDbContext : DbContext
             entity.Property(e => e.LineNum).HasColumnName("line_num");
             entity.Property(e => e.SeqNbr).HasColumnName("seq_nbr");
             entity.HasOne<WmsSapStageOrderHdr>().WithMany().HasForeignKey(e => e.ParentId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WmsExportValidation>(entity =>
+        {
+            entity.ToTable("wms_oracle_export_validations");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.TipoDoc).HasColumnName("tipo_doc").HasMaxLength(20);
+            entity.Property(e => e.Clave).HasColumnName("clave").HasMaxLength(100);
+            entity.Property(e => e.EnviadoEn).HasColumnName("enviado_en");
+            entity.Property(e => e.WmsStatusId).HasColumnName("wms_status_id");
+            entity.Property(e => e.WmsStatusDesc).HasColumnName("wms_status_desc").HasMaxLength(100);
+            entity.Property(e => e.WmsErrorMsg).HasColumnName("wms_error_msg").HasMaxLength(500);
+            entity.Property(e => e.ValidadoEn).HasColumnName("validado_en");
+            entity.Property(e => e.Intentos).HasColumnName("intentos");
+            entity.HasIndex(e => new { e.CompanyId, e.TipoDoc, e.Clave }).IsUnique().HasDatabaseName("ix_wms_oracle_export_validations_company_tipodoc_clave");
         });
     }
 }

@@ -2,25 +2,28 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Modulo.Wms.Data;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Modulo.Wms.Migrations.SqlServer.Migrations
+namespace Modulo.Wms.Migrations.Postgres.Migrations
 {
     [DbContext(typeof(WmsDbContext))]
-    partial class WmsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260817044442_AddWmsExportValidations")]
+    partial class AddWmsExportValidations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "8.0.10")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Modulo.Wms.Models.WmsExportValidation", b =>
                 {
@@ -29,48 +32,48 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Clave")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("clave");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTimeOffset>("EnviadoEn")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("enviado_en");
 
                     b.Property<int>("Intentos")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("intentos");
 
                     b.Property<string>("TipoDoc")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("tipo_doc");
 
                     b.Property<DateTimeOffset?>("ValidadoEn")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("validado_en");
 
                     b.Property<string>("WmsErrorMsg")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("wms_error_msg");
 
                     b.Property<string>("WmsStatusDesc")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("wms_status_desc");
 
                     b.Property<int?>("WmsStatusId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("wms_status_id");
 
                     b.HasKey("Id");
@@ -89,41 +92,41 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("FieldName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("field_name");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("MapperKey")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("mapper_key");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("updated_by");
 
                     b.Property<string>("ValueTemplate")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("value_template");
 
                     b.HasKey("Id");
@@ -145,66 +148,66 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("Contenido")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("contenido");
 
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("estado");
 
                     b.Property<string>("Formato")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("formato");
 
                     b.Property<string>("HashArchivo")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)")
+                        .HasColumnType("character varying(64)")
                         .HasColumnName("hash_archivo");
 
                     b.Property<DateTimeOffset>("InsertedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("inserted_at");
 
                     b.Property<int>("Intentos")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("intentos");
 
                     b.Property<string>("MensajeError")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("mensaje_error");
 
                     b.Property<string>("NombreArchivo")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("nombre_archivo");
 
                     b.Property<DateTimeOffset?>("ProcessedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("processed_at");
 
                     b.Property<string>("SapDocEntry")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("sap_doc_entry");
 
                     b.Property<string>("TipoDoc")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("tipo_doc");
 
                     b.HasKey("Id");
@@ -226,41 +229,41 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("line_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("LineId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("LineId"));
 
                     b.Property<string>("ClientEnvCode")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("client_env_code");
 
                     b.Property<string>("DocumentVersion")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("document_version");
 
                     b.Property<string>("Entity")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("entity");
 
                     b.Property<string>("ErrorMsg")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("error_msg");
 
                     b.Property<string>("MessageId")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("message_id");
 
                     b.Property<string>("OriginSystem")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("origin_system");
 
                     b.Property<string>("ParentCompanyCode")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("parent_company_code");
 
                     b.Property<long>("ParentId")
@@ -268,941 +271,941 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnName("parent_id");
 
                     b.Property<int>("RetryCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("retry_count");
 
                     b.Property<int?>("SapDocEntry")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sap_doc_entry");
 
                     b.Property<int?>("SapObject")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sap_object");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.Property<string>("TimeStamp")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("time_stamp");
 
                     b.Property<string>("action_code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("action_code");
 
                     b.Property<string>("batch_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("batch_nbr");
 
                     b.Property<string>("carrier_account_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("carrier_account_nbr");
 
                     b.Property<string>("carrier_code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("carrier_code");
 
                     b.Property<string>("company_code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("company_code");
 
                     b.Property<string>("cust_addr")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_addr");
 
                     b.Property<string>("cust_addr2")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_addr2");
 
                     b.Property<string>("cust_addr3")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_addr3");
 
                     b.Property<string>("cust_city")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_city");
 
                     b.Property<string>("cust_contact")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_contact");
 
                     b.Property<string>("cust_country")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_country");
 
                     b.Property<string>("cust_email")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_email");
 
                     b.Property<string>("cust_name")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_name");
 
                     b.Property<string>("cust_nbr")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_nbr");
 
                     b.Property<string>("cust_phone_nbr")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_phone_nbr");
 
                     b.Property<string>("cust_state")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_state");
 
                     b.Property<string>("cust_zip")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("cust_zip");
 
                     b.Property<string>("customer_po_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("customer_po_nbr");
 
                     b.Property<string>("customer_po_type")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("customer_po_type");
 
                     b.Property<string>("customer_vendor_code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("customer_vendor_code");
 
                     b.Property<string>("dest_company_code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("dest_company_code");
 
                     b.Property<string>("dest_dept_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("dest_dept_nbr");
 
                     b.Property<string>("dest_facility_code")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("dest_facility_code");
 
                     b.Property<string>("driver")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("driver");
 
                     b.Property<string>("exp_date")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("exp_date");
 
                     b.Property<string>("expiry_date")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("expiry_date");
 
                     b.Property<string>("externally_planned_load_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("externally_planned_load_nbr");
 
                     b.Property<string>("facility_code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("facility_code");
 
                     b.Property<string>("freight_class")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("freight_class");
 
                     b.Property<string>("hazmat")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("hazmat");
 
                     b.Property<string>("hdr_bol_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("hdr_bol_nbr");
 
                     b.Property<string>("host_allocation_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("host_allocation_nbr");
 
                     b.Property<string>("invn_attr_a")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("invn_attr_a");
 
                     b.Property<string>("invn_attr_b")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("invn_attr_b");
 
                     b.Property<string>("invn_attr_c")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("invn_attr_c");
 
                     b.Property<string>("invn_attr_d")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("invn_attr_d");
 
                     b.Property<string>("invn_attr_e")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("invn_attr_e");
 
                     b.Property<string>("invn_attr_f")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("invn_attr_f");
 
                     b.Property<string>("invn_attr_g")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("invn_attr_g");
 
                     b.Property<string>("item_alternate_code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("item_alternate_code");
 
                     b.Property<string>("item_part_a")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("item_part_a");
 
                     b.Property<string>("item_part_b")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("item_part_b");
 
                     b.Property<string>("item_part_c")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("item_part_c");
 
                     b.Property<string>("item_part_d")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("item_part_d");
 
                     b.Property<string>("item_part_e")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("item_part_e");
 
                     b.Property<string>("item_part_f")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("item_part_f");
 
                     b.Property<string>("line_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("line_nbr");
 
                     b.Property<string>("load_manifest_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("load_manifest_nbr");
 
                     b.Property<string>("load_type")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("load_type");
 
                     b.Property<string>("master_tracking_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("master_tracking_nbr");
 
                     b.Property<string>("ob_lpn_asset_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ob_lpn_asset_nbr");
 
                     b.Property<string>("ob_lpn_asset_seal_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ob_lpn_asset_seal_nbr");
 
                     b.Property<string>("ob_lpn_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ob_lpn_nbr");
 
                     b.Property<string>("ob_lpn_shipping_charge")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ob_lpn_shipping_charge");
 
                     b.Property<string>("ob_lpn_type")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ob_lpn_type");
 
                     b.Property<string>("ob_lpn_volume")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ob_lpn_volume");
 
                     b.Property<string>("ob_lpn_weight")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ob_lpn_weight");
 
                     b.Property<string>("ord_date")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ord_date");
 
                     b.Property<string>("order_dtl_cust_date_1")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_date_1");
 
                     b.Property<string>("order_dtl_cust_date_2")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_date_2");
 
                     b.Property<string>("order_dtl_cust_date_3")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_date_3");
 
                     b.Property<string>("order_dtl_cust_date_4")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_date_4");
 
                     b.Property<string>("order_dtl_cust_date_5")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_date_5");
 
                     b.Property<string>("order_dtl_cust_decimal_1")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_decimal_1");
 
                     b.Property<string>("order_dtl_cust_decimal_2")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_decimal_2");
 
                     b.Property<string>("order_dtl_cust_decimal_3")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_decimal_3");
 
                     b.Property<string>("order_dtl_cust_decimal_4")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_decimal_4");
 
                     b.Property<string>("order_dtl_cust_decimal_5")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_decimal_5");
 
                     b.Property<string>("order_dtl_cust_field_1")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_dtl_cust_field_1");
 
                     b.Property<string>("order_dtl_cust_field_2")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_dtl_cust_field_2");
 
                     b.Property<string>("order_dtl_cust_field_3")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_dtl_cust_field_3");
 
                     b.Property<string>("order_dtl_cust_field_4")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_dtl_cust_field_4");
 
                     b.Property<string>("order_dtl_cust_field_5")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_dtl_cust_field_5");
 
                     b.Property<string>("order_dtl_cust_long_text_1")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_long_text_1");
 
                     b.Property<string>("order_dtl_cust_long_text_2")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_long_text_2");
 
                     b.Property<string>("order_dtl_cust_long_text_3")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_long_text_3");
 
                     b.Property<string>("order_dtl_cust_number_1")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_number_1");
 
                     b.Property<string>("order_dtl_cust_number_2")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_number_2");
 
                     b.Property<string>("order_dtl_cust_number_3")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_number_3");
 
                     b.Property<string>("order_dtl_cust_number_4")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_number_4");
 
                     b.Property<string>("order_dtl_cust_number_5")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_dtl_cust_number_5");
 
                     b.Property<string>("order_dtl_cust_short_text_1")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_1");
 
                     b.Property<string>("order_dtl_cust_short_text_10")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_10");
 
                     b.Property<string>("order_dtl_cust_short_text_11")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_11");
 
                     b.Property<string>("order_dtl_cust_short_text_12")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_12");
 
                     b.Property<string>("order_dtl_cust_short_text_2")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_2");
 
                     b.Property<string>("order_dtl_cust_short_text_3")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_3");
 
                     b.Property<string>("order_dtl_cust_short_text_4")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_4");
 
                     b.Property<string>("order_dtl_cust_short_text_5")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_5");
 
                     b.Property<string>("order_dtl_cust_short_text_6")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_6");
 
                     b.Property<string>("order_dtl_cust_short_text_7")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_7");
 
                     b.Property<string>("order_dtl_cust_short_text_8")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_8");
 
                     b.Property<string>("order_dtl_cust_short_text_9")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_dtl_cust_short_text_9");
 
                     b.Property<string>("order_hdr_cust_date_1")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_date_1");
 
                     b.Property<string>("order_hdr_cust_date_2")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_date_2");
 
                     b.Property<string>("order_hdr_cust_date_3")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_date_3");
 
                     b.Property<string>("order_hdr_cust_date_4")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_date_4");
 
                     b.Property<string>("order_hdr_cust_date_5")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_date_5");
 
                     b.Property<string>("order_hdr_cust_decimal_1")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_decimal_1");
 
                     b.Property<string>("order_hdr_cust_decimal_2")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_decimal_2");
 
                     b.Property<string>("order_hdr_cust_decimal_3")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_decimal_3");
 
                     b.Property<string>("order_hdr_cust_decimal_4")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_decimal_4");
 
                     b.Property<string>("order_hdr_cust_decimal_5")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_decimal_5");
 
                     b.Property<string>("order_hdr_cust_field_1")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_hdr_cust_field_1");
 
                     b.Property<string>("order_hdr_cust_field_2")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_hdr_cust_field_2");
 
                     b.Property<string>("order_hdr_cust_field_3")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_hdr_cust_field_3");
 
                     b.Property<string>("order_hdr_cust_field_4")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_hdr_cust_field_4");
 
                     b.Property<string>("order_hdr_cust_field_5")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_hdr_cust_field_5");
 
                     b.Property<string>("order_hdr_cust_long_text_1")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_long_text_1");
 
                     b.Property<string>("order_hdr_cust_long_text_2")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_long_text_2");
 
                     b.Property<string>("order_hdr_cust_long_text_3")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_long_text_3");
 
                     b.Property<string>("order_hdr_cust_number_1")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_number_1");
 
                     b.Property<string>("order_hdr_cust_number_2")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_number_2");
 
                     b.Property<string>("order_hdr_cust_number_3")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_number_3");
 
                     b.Property<string>("order_hdr_cust_number_4")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_number_4");
 
                     b.Property<string>("order_hdr_cust_number_5")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_hdr_cust_number_5");
 
                     b.Property<string>("order_hdr_cust_short_text_1")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_1");
 
                     b.Property<string>("order_hdr_cust_short_text_10")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_10");
 
                     b.Property<string>("order_hdr_cust_short_text_11")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_11");
 
                     b.Property<string>("order_hdr_cust_short_text_12")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_12");
 
                     b.Property<string>("order_hdr_cust_short_text_2")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_2");
 
                     b.Property<string>("order_hdr_cust_short_text_3")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_3");
 
                     b.Property<string>("order_hdr_cust_short_text_4")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_4");
 
                     b.Property<string>("order_hdr_cust_short_text_5")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_5");
 
                     b.Property<string>("order_hdr_cust_short_text_6")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_6");
 
                     b.Property<string>("order_hdr_cust_short_text_7")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_7");
 
                     b.Property<string>("order_hdr_cust_short_text_8")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_8");
 
                     b.Property<string>("order_hdr_cust_short_text_9")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("order_hdr_cust_short_text_9");
 
                     b.Property<string>("order_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_nbr");
 
                     b.Property<string>("order_seq_nbr")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("order_seq_nbr");
 
                     b.Property<string>("order_type")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_type");
 
                     b.Property<string>("package_type")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("package_type");
 
                     b.Property<string>("pallet_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("pallet_nbr");
 
                     b.Property<string>("payment_method")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("payment_method");
 
                     b.Property<string>("pre_pack_code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("pre_pack_code");
 
                     b.Property<string>("pre_pack_ratio")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("pre_pack_ratio");
 
                     b.Property<string>("pre_pack_ratio_seq")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("pre_pack_ratio_seq");
 
                     b.Property<string>("pre_pack_total_units")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("pre_pack_total_units");
 
                     b.Property<string>("pro_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("pro_nbr");
 
                     b.Property<string>("rcvd_trailer_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("rcvd_trailer_nbr");
 
                     b.Property<string>("req_ship_date")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("req_ship_date");
 
                     b.Property<string>("route_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("route_nbr");
 
                     b.Property<string>("sales_channel")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("sales_channel");
 
                     b.Property<string>("sales_order_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("sales_order_nbr");
 
                     b.Property<string>("sched_delivery_date")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("sched_delivery_date");
 
                     b.Property<string>("sched_delivery_date_time")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("sched_delivery_date_time");
 
                     b.Property<string>("seal_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("seal_nbr");
 
                     b.Property<string>("seq_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("seq_nbr");
 
                     b.Property<string>("serial_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("serial_nbr");
 
                     b.Property<string>("ship_date")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ship_date");
 
                     b.Property<string>("ship_date_time")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ship_date_time");
 
                     b.Property<string>("ship_request_line")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ship_request_line");
 
                     b.Property<string>("ship_via_code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("ship_via_code");
 
                     b.Property<string>("shipped_qty")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("shipped_qty");
 
                     b.Property<string>("shipped_uom")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("shipped_uom");
 
                     b.Property<string>("shipto_addr")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_addr");
 
                     b.Property<string>("shipto_addr2")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_addr2");
 
                     b.Property<string>("shipto_addr3")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_addr3");
 
                     b.Property<string>("shipto_city")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_city");
 
                     b.Property<string>("shipto_contact")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_contact");
 
                     b.Property<string>("shipto_country")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_country");
 
                     b.Property<string>("shipto_email")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_email");
 
                     b.Property<string>("shipto_facility_code")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_facility_code");
 
                     b.Property<string>("shipto_name")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_name");
 
                     b.Property<string>("shipto_phone_nbr")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_phone_nbr");
 
                     b.Property<string>("shipto_state")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_state");
 
                     b.Property<string>("shipto_zip")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("shipto_zip");
 
                     b.Property<string>("start_ship_date")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("start_ship_date");
 
                     b.Property<string>("stop_bol_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("stop_bol_nbr");
 
                     b.Property<string>("stop_nbr_of_oblpns")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("stop_nbr_of_oblpns");
 
                     b.Property<string>("stop_seal_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("stop_seal_nbr");
 
                     b.Property<string>("stop_ship_date")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("stop_ship_date");
 
                     b.Property<string>("stop_shipment_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("stop_shipment_nbr");
 
                     b.Property<string>("stop_shipping_charge")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("stop_shipping_charge");
 
                     b.Property<string>("stop_volume")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("stop_volume");
 
                     b.Property<string>("stop_weight")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("stop_weight");
 
                     b.Property<string>("total_nbr_of_oblpns")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("total_nbr_of_oblpns");
 
                     b.Property<string>("total_shipping_charge")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("total_shipping_charge");
 
                     b.Property<string>("total_volume")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("total_volume");
 
                     b.Property<string>("total_weight")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("total_weight");
 
                     b.Property<string>("tracking_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("tracking_nbr");
 
                     b.Property<string>("trailer_nbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("trailer_nbr");
 
                     b.Property<string>("trailer_type")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("trailer_type");
 
                     b.HasKey("LineId");
@@ -1226,16 +1229,16 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("line_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("LineId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("LineId"));
 
                     b.Property<string>("ItemCode")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("item_code");
 
                     b.Property<int>("LineNum")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("line_num");
 
                     b.Property<long>("ParentId")
@@ -1244,13 +1247,13 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
 
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)")
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("quantity");
 
                     b.Property<string>("WhsCode")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("whs_code");
 
                     b.HasKey("LineId");
@@ -1267,47 +1270,47 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("line_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("LineId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("LineId"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("ErrorMsg")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("error_msg");
 
                     b.Property<int>("RetryCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("retry_count");
 
                     b.Property<int>("SapDocEntry")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sap_doc_entry");
 
                     b.Property<string>("ShipmentType")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("shipment_type");
 
                     b.Property<DateTime>("SourceUpdateDate")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("source_update_date");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.Property<DateTimeOffset?>("SyncedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("synced_at");
 
                     b.HasKey("LineId");
@@ -1329,54 +1332,54 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("line_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("LineId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("LineId"));
 
                     b.Property<string>("BarCode")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("bar_code");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("ErrorMsg")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("error_msg");
 
                     b.Property<string>("ItemCode")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("item_code");
 
                     b.Property<string>("ItemName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("item_name");
 
                     b.Property<int>("RetryCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("retry_count");
 
                     b.Property<DateTime>("SourceUpdateDate")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("source_update_date");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.Property<DateTimeOffset?>("SyncedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("synced_at");
 
                     b.HasKey("LineId");
@@ -1398,16 +1401,16 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("line_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("LineId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("LineId"));
 
                     b.Property<string>("ItemCode")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("item_code");
 
                     b.Property<int>("LineNum")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("line_num");
 
                     b.Property<long>("ParentId")
@@ -1416,16 +1419,16 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
 
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)")
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("quantity");
 
                     b.Property<int>("SeqNbr")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("seq_nbr");
 
                     b.Property<string>("WhsCode")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("whs_code");
 
                     b.HasKey("LineId");
@@ -1442,95 +1445,95 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("line_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("LineId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("LineId"));
 
                     b.Property<int>("BaseEntry")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("base_entry");
 
                     b.Property<int>("BaseObjectType")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("base_object_type");
 
                     b.Property<string>("CardCode")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("card_code");
 
                     b.Property<string>("CardName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("card_name");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("CustomerPoNbr")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("customer_po_nbr");
 
                     b.Property<string>("ErrorMsg")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("error_msg");
 
                     b.Property<DateTime?>("ExpDate")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("exp_date");
 
                     b.Property<DateTime?>("OrdDate")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("ord_date");
 
                     b.Property<string>("OrderNbr")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("order_nbr");
 
                     b.Property<string>("OrderType")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("order_type");
 
                     b.Property<int>("PickListAbsEntry")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("pick_list_abs_entry");
 
                     b.Property<DateTime?>("ReqShipDate")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("req_ship_date");
 
                     b.Property<int>("RetryCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("retry_count");
 
                     b.Property<string>("ShipToCode")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("ship_to_code");
 
                     b.Property<DateTime>("SourceUpdateDate")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("source_update_date");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.Property<DateTimeOffset?>("SyncedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("synced_at");
 
                     b.HasKey("LineId");
@@ -1552,64 +1555,64 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("line_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("LineId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("LineId"));
 
                     b.Property<string>("CardCode")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("card_code");
 
                     b.Property<string>("CardName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("card_name");
 
                     b.Property<string>("City")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("city");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("ErrorMsg")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("error_msg");
 
                     b.Property<int>("RetryCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("retry_count");
 
                     b.Property<DateTime>("SourceUpdateDate")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("source_update_date");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.Property<string>("Street")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("street");
 
                     b.Property<DateTimeOffset?>("SyncedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("synced_at");
 
                     b.Property<string>("ZipCode")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("zip_code");
 
                     b.HasKey("LineId");
@@ -1631,34 +1634,34 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("ConfigKey")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("config_key");
 
                     b.Property<string>("ConfigValue")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("config_value");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -1676,31 +1679,31 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
             modelBuilder.Entity("Modulo.Wms.Models.WmsServiceHeartbeat", b =>
                 {
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("ProcessorKey")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("processor_key");
 
                     b.Property<string>("ConfigSourceEffective")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("config_source_effective");
 
                     b.Property<string>("LastError")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("last_error");
 
                     b.Property<DateTimeOffset?>("LastRunAt")
-                        .HasColumnType("datetimeoffset")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_run_at");
 
                     b.Property<string>("Status")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.HasKey("CompanyId", "ProcessorKey");

@@ -22,6 +22,66 @@ namespace Modulo.Wms.Migrations.Postgres.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Modulo.Wms.Models.WmsExportValidation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Clave")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("clave");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTimeOffset>("EnviadoEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enviado_en");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("integer")
+                        .HasColumnName("intentos");
+
+                    b.Property<string>("TipoDoc")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo_doc");
+
+                    b.Property<DateTimeOffset?>("ValidadoEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("validado_en");
+
+                    b.Property<string>("WmsErrorMsg")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("wms_error_msg");
+
+                    b.Property<string>("WmsStatusDesc")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("wms_status_desc");
+
+                    b.Property<int?>("WmsStatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("wms_status_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "TipoDoc", "Clave")
+                        .IsUnique()
+                        .HasDatabaseName("ix_wms_oracle_export_validations_company_tipodoc_clave");
+
+                    b.ToTable("wms_oracle_export_validations", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Wms.Models.WmsFieldMapping", b =>
                 {
                     b.Property<long>("Id")

@@ -97,27 +97,34 @@ public class WmsCloudConnector : IIntegrationConnector
         // (IntegrationSyncHostedService) ya hace MarcarProcesadoAsync por resultado.
         var resultados = new List<IntegrationPushResult>();
 
-        foreach (var registro in registros)
+        var batchSize = config.BatchSize > 0 ? config.BatchSize : 50;
+        foreach (var lote in registros.Chunk(batchSize))
         {
             try
             {
-                var xml = ArmarXml(registro, config, mapeos);
+                var xml = ArmarXmlLote(lote, config, mapeos);
                 await EnviarAsync(xml, config, cancellationToken);
-                resultados.Add(new IntegrationPushResult(registro, Exito: true, MensajeError: null));
+                foreach (var registro in lote)
+                {
+                    resultados.Add(new IntegrationPushResult(registro, Exito: true, MensajeError: null));
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error enviando documento a Oracle WMS Cloud");
-                resultados.Add(new IntegrationPushResult(registro, Exito: false, MensajeError: ex.Message));
+                _logger.LogError(ex, "Error enviando lote de {Cantidad} documento(s) a Oracle WMS Cloud", lote.Length);
+                foreach (var registro in lote)
+                {
+                    resultados.Add(new IntegrationPushResult(registro, Exito: false, MensajeError: ex.Message));
+                }
             }
         }
 
         return resultados;
     }
 
-    private static XDocument ArmarXml(IntegrationRecord registro, WmsCloudConfig config, IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos)
+    private static XDocument ArmarXmlLote(IReadOnlyList<IntegrationRecord> lote, WmsCloudConfig config, IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos)
     {
-        var tipoDocumento = (string)registro["TipoDocumento"]!;
+        var tipoDocumento = (string)lote[0]["TipoDocumento"]!;
         var (entity, nombreLista, nombreItem) = tipoDocumento switch
         {
             "Item" => ("item", "ListOfItems", "item"),
@@ -136,7 +143,7 @@ public class WmsCloudConnector : IIntegrationConnector
             new XElement("TimeStamp", DateTime.UtcNow.ToString("O")),
             new XElement("MessageId", Guid.NewGuid().ToString()));
 
-        var nodoItem = tipoDocumento switch
+        var nodos = lote.Select(registro => tipoDocumento switch
         {
             "Item" => new XElement(nombreItem,
                 CampoXml(mapeos, "SAPWMS_ITEM", "item_alternate_code", registro, registro["ItemCode"]),
@@ -149,9 +156,9 @@ public class WmsCloudConnector : IIntegrationConnector
             "IbShipment" => ArmarNodoIbShipment(registro, mapeos),
             "Order" => ArmarNodoOrder(registro, mapeos),
             _ => throw new InvalidOperationException($"TipoDocumento '{tipoDocumento}' no soportado en WmsCloudConnector."),
-        };
+        });
 
-        return new XDocument(new XElement("LgfData", header, new XElement(nombreLista, nodoItem)));
+        return new XDocument(new XElement("LgfData", header, new XElement(nombreLista, nodos)));
     }
 
     /// <summary>
@@ -245,5 +252,5 @@ public class WmsCloudConnector : IIntegrationConnector
         }
     }
 
-    private sealed record WmsCloudConfig(string ApiUrl, string Usuario, string Clave, string ClientEnvCode, string ParentCompanyCode);
+    private sealed record WmsCloudConfig(string ApiUrl, string Usuario, string Clave, string ClientEnvCode, string ParentCompanyCode, int BatchSize = 50, string? LgfApiBaseUrl = null);
 }

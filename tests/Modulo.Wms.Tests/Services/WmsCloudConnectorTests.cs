@@ -16,12 +16,14 @@ public class WmsCloudConnectorTests
     {
         public HttpRequestMessage? UltimaRequest { get; private set; }
         public string? UltimoContenido { get; private set; }
+        public int CantidadDeRequests { get; private set; }
         private readonly HttpStatusCode _statusCode;
 
         public HttpHandlerFalso(HttpStatusCode statusCode) => _statusCode = statusCode;
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            CantidadDeRequests++;
             UltimaRequest = request;
             UltimoContenido = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             return new HttpResponseMessage(_statusCode) { Content = new StringContent("{}") };
@@ -234,5 +236,56 @@ public class WmsCloudConnectorTests
         // description sin mapeo activo -> cae al valor por defecto (ItemName), no al literal de la fila inactiva.
         Assert.Contains("<description>Art", xmlDecodificado);
         Assert.DoesNotContain("NO DEBE APARECER", xmlDecodificado);
+    }
+
+    [Fact]
+    public async Task PushAsync_ConVariosRegistrosYBatchSizeMenorQueLaCantidad_HaceVariosPosts()
+    {
+        var handlerFalso = new HttpHandlerFalso(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handlerFalso) { BaseAddress = new Uri("https://wms.example.com/") };
+        var conector = CrearConector(httpClient);
+
+        var registros = Enumerable.Range(1, 5).Select(i => new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["TipoDocumento"] = "Item",
+            ["ItemCode"] = $"ITM{i:000}",
+            ["ItemName"] = $"Articulo {i}",
+            ["BarCode"] = "780000000000" + i,
+        })).ToList();
+
+        var config = """{"ApiUrl":"https://wms.example.com/init_stage_interface","Usuario":"wmsuser","Clave":"wmspass","ClientEnvCode":"CLI01","ParentCompanyCode":"COMP01","BatchSize":2}""";
+        var resultado = await conector.PushAsync(config, registros, CancellationToken.None);
+
+        Assert.Equal(5, resultado.Count);
+        Assert.All(resultado, r => Assert.True(r.Exito));
+        // BatchSize=2 sobre 5 registros -> 3 POSTs (2+2+1). El handler falso solo guarda
+        // el ULTIMO request/contenido, así que se cuenta a través de un contador propio.
+        Assert.Equal(3, handlerFalso.CantidadDeRequests);
+    }
+
+    [Fact]
+    public async Task PushAsync_ConVariosRegistrosYBatchSizeSuficiente_HaceUnSoloPostConVariosNodos()
+    {
+        var handlerFalso = new HttpHandlerFalso(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handlerFalso) { BaseAddress = new Uri("https://wms.example.com/") };
+        var conector = CrearConector(httpClient);
+
+        var registros = Enumerable.Range(1, 3).Select(i => new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["TipoDocumento"] = "Item",
+            ["ItemCode"] = $"ITM{i:000}",
+            ["ItemName"] = $"Articulo {i}",
+            ["BarCode"] = "780000000000" + i,
+        })).ToList();
+
+        var config = """{"ApiUrl":"https://wms.example.com/init_stage_interface","Usuario":"wmsuser","Clave":"wmspass","ClientEnvCode":"CLI01","ParentCompanyCode":"COMP01","BatchSize":50}""";
+        var resultado = await conector.PushAsync(config, registros, CancellationToken.None);
+
+        Assert.Equal(3, resultado.Count);
+        Assert.Equal(1, handlerFalso.CantidadDeRequests);
+        var xmlDecodificado = Uri.UnescapeDataString(handlerFalso.UltimoContenido!.Replace('+', ' '));
+        Assert.Contains("ITM001", xmlDecodificado);
+        Assert.Contains("ITM002", xmlDecodificado);
+        Assert.Contains("ITM003", xmlDecodificado);
     }
 }

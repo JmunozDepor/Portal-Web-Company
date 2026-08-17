@@ -69,7 +69,18 @@ public sealed class WmsStageErrorReconciler : BackgroundService
 
         foreach (var compania in companias)
         {
-            await ProcesarCompaniaAsync(compania.CompanyId, cancellationToken);
+            try
+            {
+                await ProcesarCompaniaAsync(compania.CompanyId, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error inesperado al procesar reconciliación WMS para la compañía {CompanyId}", compania.CompanyId);
+            }
         }
     }
 

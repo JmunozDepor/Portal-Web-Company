@@ -42,8 +42,11 @@ public class WmsStageErrorReconcilerTests
     private sealed class FakeIntegrationConnectorConfigService : IIntegrationConnectorConfigService
     {
         private readonly string? _config;
+        private readonly IReadOnlyDictionary<Guid, string?>? _configPorCompania;
         public FakeIntegrationConnectorConfigService(string? config) => _config = config;
-        public Task<string?> GetDecryptedConfigAsync(Guid companyId, string moduloOrigen, string conectorTipo, CancellationToken ct = default) => Task.FromResult(_config);
+        public FakeIntegrationConnectorConfigService(IReadOnlyDictionary<Guid, string?> configPorCompania) => _configPorCompania = configPorCompania;
+        public Task<string?> GetDecryptedConfigAsync(Guid companyId, string moduloOrigen, string conectorTipo, CancellationToken ct = default)
+            => Task.FromResult(_configPorCompania is not null ? _configPorCompania[companyId] : _config);
     }
 
     private sealed class FakeWmsValidationApiClient : IWmsValidationApiClient
@@ -61,6 +64,30 @@ public class WmsStageErrorReconcilerTests
         services.AddScoped<ICurrentCompanyAccessor, FakeCurrentCompanyAccessor>();
         services.AddSingleton<IExternalDatabaseConnectionService>(new FakeExternalDatabaseConnectionService(companiasActivas));
         services.AddSingleton<IIntegrationConnectorConfigService>(new FakeIntegrationConnectorConfigService(configJson));
+        services.AddSingleton<IWmsValidationApiClient>(new FakeWmsValidationApiClient(resultadoLgfApi));
+        services.AddLogging();
+        services.AddSingleton(NullLogger<WmsStageErrorReconciler>.Instance);
+
+        services.AddDbContext<WmsDbContext>((sp, options) =>
+        {
+            var companyAccessor = sp.GetRequiredService<ICurrentCompanyAccessor>();
+            if (!companyAccessor.HasCompany)
+            {
+                throw new InvalidOperationException("Modulo.Wms requiere una compañía activa en la sesión -- seleccioná una compañía antes de continuar.");
+            }
+            options.UseInMemoryDatabase(dbName);
+        });
+
+        return services.BuildServiceProvider();
+    }
+
+    private static ServiceProvider BuildProviderConfigPorCompania(string dbName, IReadOnlyList<ModuleCompanyDto> companiasActivas, IReadOnlyDictionary<Guid, string?> configPorCompania, WmsStageCheckResult resultadoLgfApi)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ICurrentCompanyOverride, FakeCurrentCompanyOverride>();
+        services.AddScoped<ICurrentCompanyAccessor, FakeCurrentCompanyAccessor>();
+        services.AddSingleton<IExternalDatabaseConnectionService>(new FakeExternalDatabaseConnectionService(companiasActivas));
+        services.AddSingleton<IIntegrationConnectorConfigService>(new FakeIntegrationConnectorConfigService(configPorCompania));
         services.AddSingleton<IWmsValidationApiClient>(new FakeWmsValidationApiClient(resultadoLgfApi));
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsStageErrorReconciler>.Instance);
@@ -135,5 +162,49 @@ public class WmsStageErrorReconcilerTests
         await using var verifyContext = new WmsDbContext(seedOptions);
         var fila = await verifyContext.WmsSapStageItems.SingleAsync();
         Assert.Equal(WmsSapStageStatus.Enviado, fila.Status);
+    }
+
+    [Fact]
+    public async Task EjecutarCicloAsync_PrimeraCompaniaFallaConConfigMalformada_SiguienteCompaniaSeProcesaIgual()
+    {
+        var companyId1 = Guid.NewGuid();
+        var companyId2 = Guid.NewGuid();
+        var dbName = Guid.NewGuid().ToString();
+        var configMalformado = "{ esto no es json valido de configuracion ";
+        var configValido = """{"ApiUrl":"https://x","Usuario":"u","Clave":"p","ClientEnvCode":"cli","ParentCompanyCode":"COMP01","LgfApiBaseUrl":"https://x/lgfapi/v10/entity/"}""";
+        var configPorCompania = new Dictionary<Guid, string?>
+        {
+            [companyId1] = configMalformado,
+            [companyId2] = configValido,
+        };
+        var resultadoLgfApi = new WmsStageCheckResult(Found: true, StatusId: 101, ErrorMessage: "Item duplicado");
+
+        await using var provider = BuildProviderConfigPorCompania(
+            dbName,
+            [new(companyId1, Guid.NewGuid()), new(companyId2, Guid.NewGuid())],
+            configPorCompania,
+            resultadoLgfApi);
+
+        var seedOptions = new DbContextOptionsBuilder<WmsDbContext>().UseInMemoryDatabase(dbName).Options;
+        await using (var seedContext = new WmsDbContext(seedOptions))
+        {
+            seedContext.WmsSapStageItems.Add(new WmsSapStageItem { CompanyId = companyId1, ItemCode = "ITM001", ItemName = "A", Status = WmsSapStageStatus.Enviado });
+            seedContext.WmsSapStageItems.Add(new WmsSapStageItem { CompanyId = companyId2, ItemCode = "ITM002", ItemName = "B", Status = WmsSapStageStatus.Enviado });
+            await seedContext.SaveChangesAsync();
+        }
+
+        var reconciler = new WmsStageErrorReconciler(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<WmsStageErrorReconciler>.Instance);
+
+        await reconciler.EjecutarCicloAsync(CancellationToken.None);
+
+        await using var verifyContext = new WmsDbContext(seedOptions);
+        var fila1 = await verifyContext.WmsSapStageItems.SingleAsync(f => f.CompanyId == companyId1);
+        var fila2 = await verifyContext.WmsSapStageItems.SingleAsync(f => f.CompanyId == companyId2);
+
+        Assert.Equal(WmsSapStageStatus.Enviado, fila1.Status);
+        Assert.Equal(WmsSapStageStatus.ErrorWms, fila2.Status);
+        Assert.Equal("Item duplicado", fila2.ErrorMsg);
     }
 }

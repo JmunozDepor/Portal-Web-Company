@@ -9,6 +9,7 @@
         <h1 class="h3 mb-0">Integraciones</h1>
         <span class="text-muted">@Model.Integraciones.Count integración(es) configurada(s)</span>
     </div>
+    <a asp-page="/Admin/Integraciones/Nuevo" class="btn btn-sm btn-primary">+ Nueva integración</a>
 </div>
 
 @if (TempData["Mensaje"] is string mensaje)
@@ -55,6 +56,7 @@ else
                         </td>
                         <td>@(integracion.NextRunAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
                         <td class="text-end">
+                            <a asp-page="/Admin/Integraciones/Nuevo" asp-route-id="@integracion.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
                             <a asp-page="/Admin/Integraciones/Bitacora" asp-route-id="@integracion.Id" class="btn btn-sm btn-outline-secondary">Ver bitácora</a>
                             <form method="post" asp-page-handler="Ejecutar" asp-route-id="@integracion.Id" asp-antiforgery="true" class="d-inline">
                                 <button type="submit" class="btn btn-sm btn-outline-primary" @(integracion.Activo ? "" : "disabled")>Ejecutar ahora</button>

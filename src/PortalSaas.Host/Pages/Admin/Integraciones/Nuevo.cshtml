@@ -1,0 +1,130 @@
+@page "{id:guid?}"
+@model PortalSaas.Host.Pages.Admin.Integraciones.NuevoModel
+@using PortalSaas.Data.Entities.Integraciones
+@{
+    ViewData["Title"] = Model.EsEdicion ? "Editar integración" : "Nueva integración";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">@(Model.EsEdicion ? "Editar integración" : "Nueva integración")</h1>
+    <a asp-page="/Admin/Integraciones/Index" class="btn btn-sm btn-outline-secondary">‹ Volver al listado</a>
+</div>
+
+<div asp-validation-summary="All" class="text-danger"></div>
+
+<form method="post">
+    <input type="hidden" asp-for="Input.Id" />
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="Input.Nombre" class="form-label"></label>
+            <input asp-for="Input.Nombre" class="form-control" />
+            <span asp-validation-for="Input.Nombre" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Input.CompanyId" class="form-label"></label>
+            <select asp-for="Input.CompanyId" class="form-select">
+                <option value="">-- Seleccionar --</option>
+                @foreach (var company in Model.Companies)
+                {
+                    <option value="@company.Id">@company.Name (@company.Code)</option>
+                }
+            </select>
+            <span asp-validation-for="Input.CompanyId" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="Input.ModuloOrigen" class="form-label"></label>
+            <input asp-for="Input.ModuloOrigen" class="form-control" placeholder="Ej. Wms" />
+            <span asp-validation-for="Input.ModuloOrigen" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Input.EntidadNegocio" class="form-label"></label>
+            <input asp-for="Input.EntidadNegocio" class="form-control" placeholder="Ej. SapWms.Item.Subida" />
+            <span asp-validation-for="Input.EntidadNegocio" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="Input.ConectorTipo" class="form-label"></label>
+            <select asp-for="Input.ConectorTipo" class="form-select" id="conector-tipo-select" asp-items="Html.GetEnumSelectList<IntegrationConectorTipo>()"></select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Input.Direccion" class="form-label"></label>
+            <select asp-for="Input.Direccion" class="form-select" asp-items="Html.GetEnumSelectList<IntegrationDireccion>()"></select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Input.ProgramacionCron" class="form-label"></label>
+            <input asp-for="Input.ProgramacionCron" class="form-control" placeholder="No usado por el motor actual" />
+        </div>
+
+        <div class="col-12">
+            <div class="form-check">
+                <input asp-for="Input.Activo" class="form-check-input" />
+                <label asp-for="Input.Activo" class="form-check-label"></label>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-4" />
+
+    <div id="bloque-config-sap" class="row g-3">
+        <h5 class="col-12">Configuración del conector SAP</h5>
+        <div class="col-md-6">
+            <label asp-for="Input.TipoEntidad" class="form-label"></label>
+            <input asp-for="Input.TipoEntidad" class="form-control" placeholder="Items / Stores / Picking / InboundTraslado" />
+            <span asp-validation-for="Input.TipoEntidad" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div id="bloque-config-wmscloud" class="row g-3">
+        <h5 class="col-12">Configuración del conector Oracle WMS Cloud</h5>
+        <div class="col-md-6">
+            <label asp-for="Input.ApiUrl" class="form-label"></label>
+            <input asp-for="Input.ApiUrl" class="form-control" />
+            <span asp-validation-for="Input.ApiUrl" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Input.Usuario" class="form-label"></label>
+            <input asp-for="Input.Usuario" class="form-control" />
+            <span asp-validation-for="Input.Usuario" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Input.Clave" class="form-label"></label>
+            <input asp-for="Input.Clave" type="password" class="form-control" autocomplete="new-password" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.ClientEnvCode" class="form-label"></label>
+            <input asp-for="Input.ClientEnvCode" class="form-control" />
+            <span asp-validation-for="Input.ClientEnvCode" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.ParentCompanyCode" class="form-label"></label>
+            <input asp-for="Input.ParentCompanyCode" class="form-control" />
+            <span asp-validation-for="Input.ParentCompanyCode" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        (function () {
+            var select = document.getElementById('conector-tipo-select');
+            var bloqueSap = document.getElementById('bloque-config-sap');
+            var bloqueWmsCloud = document.getElementById('bloque-config-wmscloud');
+
+            function actualizarVisibilidad() {
+                var esSap = select.value === 'Sap';
+                var esWmsCloud = select.value === 'WmsCloud';
+                bloqueSap.style.display = esSap ? '' : 'none';
+                bloqueWmsCloud.style.display = esWmsCloud ? '' : 'none';
+            }
+
+            select.addEventListener('change', actualizarVisibilidad);
+            actualizarVisibilidad();
+        })();
+    </script>
+}

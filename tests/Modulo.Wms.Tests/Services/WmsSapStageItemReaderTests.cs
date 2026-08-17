@@ -57,6 +57,40 @@ public class WmsSapStageItemReaderTests
     }
 
     [Fact]
+    public async Task MarcarProcesadoAsync_ExitoConValidacionPrevia_ReseteaIntentosYLimpiaError()
+    {
+        var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+        var fila = new WmsSapStageItem { CompanyId = companyId, ItemCode = "ITM001", ItemName = "A", Status = WmsSapStageStatus.Pendiente };
+        contexto.WmsSapStageItems.Add(fila);
+        // Simula un ciclo previo (antes del reenvío) donde el ítem acumuló casi el máximo de
+        // intentos y quedó con error -- el reenvío debe resetear esta fila, no heredarla.
+        contexto.WmsExportValidations.Add(new WmsExportValidation
+        {
+            CompanyId = companyId,
+            TipoDoc = "Item",
+            Clave = "ITM001",
+            Intentos = 15,
+            WmsErrorMsg = "No confirmado en Oracle WMS Cloud tras 15 intentos.",
+            ValidadoEn = DateTimeOffset.UtcNow.AddMinutes(-5),
+            WmsStatusId = 101,
+        });
+        await contexto.SaveChangesAsync();
+
+        var reader = new WmsSapStageItemReader(contexto);
+        var registro = (await reader.LeerPendientesAsync(companyId, CancellationToken.None)).Single();
+
+        await reader.MarcarProcesadoAsync(companyId, registro, exito: true, mensajeError: null, CancellationToken.None);
+
+        var validacion = await contexto.WmsExportValidations
+            .SingleAsync(v => v.CompanyId == companyId && v.TipoDoc == "Item" && v.Clave == "ITM001");
+        Assert.Equal(0, validacion.Intentos);
+        Assert.Null(validacion.WmsErrorMsg);
+        Assert.Null(validacion.ValidadoEn);
+        Assert.Null(validacion.WmsStatusId);
+    }
+
+    [Fact]
     public async Task MarcarProcesadoAsync_Error_ActualizaStatusYErrorMsg()
     {
         var contexto = CrearContexto();

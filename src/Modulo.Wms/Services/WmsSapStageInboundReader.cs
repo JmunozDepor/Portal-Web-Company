@@ -70,8 +70,35 @@ public class WmsSapStageInboundReader : IIntegrationEntityReader
             fila.Status = exito ? WmsSapStageStatus.Enviado : WmsSapStageStatus.ErrorWms;
             fila.ErrorMsg = exito ? null : mensajeError;
             fila.SyncedAt = exito ? DateTimeOffset.UtcNow : fila.SyncedAt;
+
+            if (exito)
+            {
+                await ResetearValidacionAsync(companyId, fila.SapDocEntry.ToString(), cancellationToken);
+            }
         }
 
         await _contexto.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Al (re)enviar exitosamente, resetea la fila de validación existente (clave de negocio
+    /// estable entre reenvíos) para que WmsExistsReconciler no herede Intentos de un ciclo
+    /// anterior y dispare ErrorWms de inmediato en el primer chequeo del reenvío.
+    /// </summary>
+    private async Task ResetearValidacionAsync(Guid companyId, string clave, CancellationToken cancellationToken)
+    {
+        var validacion = await _contexto.WmsExportValidations
+            .FirstOrDefaultAsync(v => v.CompanyId == companyId && v.TipoDoc == "IbShipment" && v.Clave == clave, cancellationToken);
+        if (validacion is null)
+        {
+            validacion = new WmsExportValidation { CompanyId = companyId, TipoDoc = "IbShipment", Clave = clave };
+            _contexto.WmsExportValidations.Add(validacion);
+        }
+
+        validacion.Intentos = 0;
+        validacion.WmsErrorMsg = null;
+        validacion.ValidadoEn = null;
+        validacion.WmsStatusId = null;
+        validacion.EnviadoEn = DateTimeOffset.UtcNow;
     }
 }

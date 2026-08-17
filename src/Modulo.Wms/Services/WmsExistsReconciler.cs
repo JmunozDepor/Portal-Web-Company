@@ -104,22 +104,22 @@ public sealed class WmsExistsReconciler : BackgroundService
         var contexto = scope.ServiceProvider.GetRequiredService<WmsDbContext>();
         var validador = scope.ServiceProvider.GetRequiredService<IWmsValidationApiClient>();
 
-        await ProcesarEntidadAsync(contexto, validador, config, companyId, "Item", "item", "item_alternate_code",
+        await ProcesarEntidadAsync(contexto, validador, config, companyId, "Item", "item", "stage_item", "item_alternate_code",
             contexto.WmsSapStageItems.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
             f => f.ItemCode, (f) => { f.Status = WmsSapStageStatus.ProcesadoWms; f.SyncedAt = DateTimeOffset.UtcNow; },
             (f) => f.Status = WmsSapStageStatus.ErrorWms, cancellationToken);
 
-        await ProcesarEntidadAsync(contexto, validador, config, companyId, "Store", "facility", "code",
+        await ProcesarEntidadAsync(contexto, validador, config, companyId, "Store", "facility", "stage_store", "code",
             contexto.WmsSapStageStores.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
             f => f.CardCode, (f) => { f.Status = WmsSapStageStatus.ProcesadoWms; f.SyncedAt = DateTimeOffset.UtcNow; },
             (f) => f.Status = WmsSapStageStatus.ErrorWms, cancellationToken);
 
-        await ProcesarEntidadAsync(contexto, validador, config, companyId, "Order", "order_hdr", "order_nbr",
+        await ProcesarEntidadAsync(contexto, validador, config, companyId, "Order", "order_hdr", "stage_order_hdr", "order_nbr",
             contexto.WmsSapStageOrderHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
             f => f.OrderNbr, (f) => { f.Status = WmsSapStageStatus.ProcesadoWms; f.SyncedAt = DateTimeOffset.UtcNow; },
             (f) => f.Status = WmsSapStageStatus.ErrorWms, cancellationToken);
 
-        await ProcesarEntidadAsync(contexto, validador, config, companyId, "IbShipment", "ib_shipment", "shipment_nbr",
+        await ProcesarEntidadAsync(contexto, validador, config, companyId, "IbShipment", "ib_shipment", "stage_ib_shipment", "shipment_nbr",
             contexto.WmsSapStageInboundHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
             f => f.SapDocEntry.ToString(), (f) => { f.Status = WmsSapStageStatus.ProcesadoWms; f.SyncedAt = DateTimeOffset.UtcNow; },
             (f) => f.Status = WmsSapStageStatus.ErrorWms, cancellationToken);
@@ -127,7 +127,7 @@ public sealed class WmsExistsReconciler : BackgroundService
 
     private async Task ProcesarEntidadAsync<TFila>(
         WmsDbContext contexto, IWmsValidationApiClient validador, WmsCloudConfigParaReconciliacion config, Guid companyId,
-        string tipoDoc, string entidadFinal, string keyField,
+        string tipoDoc, string entidadFinal, string entidadStage, string keyField,
         Func<List<TFila>> obtenerPendientes, Func<TFila, string> obtenerClave,
         Action<TFila> marcarConfirmado, Action<TFila> marcarErrorDefinitivo,
         CancellationToken cancellationToken)
@@ -137,6 +137,22 @@ public sealed class WmsExistsReconciler : BackgroundService
         foreach (var fila in pendientes)
         {
             var clave = obtenerClave(fila);
+
+            // Paso 1: si el registro TODAVÍA está en stage_* (LGFAPI, filtrado por URL igual
+            // que WmsStageErrorReconciler), Oracle no terminó de procesar este envío/reenvío
+            // -- no hay nada que confirmar todavía. Se salta el ciclo sin tocar Intentos para
+            // no penalizar un reenvío que recién empieza.
+            var enStage = await validador.CheckStageRecordAsync(
+                config.LgfApiBaseUrl!, config.Usuario, config.Clave, entidadStage, keyField, clave, config.ParentCompanyCode,
+                filtrarPorUrl: true, cancellationToken);
+            if (enStage.Found)
+            {
+                continue;
+            }
+
+            // Paso 2: ya no está en stage_* -- Oracle terminó de procesarlo. Recién ahora tiene
+            // sentido confirmar contra la entidad FINAL (o contar como intento fallido si
+            // tampoco aparece ahí).
             var resultado = await validador.CheckStageRecordAsync(
                 config.LgfApiBaseUrl!, config.Usuario, config.Clave, entidadFinal, keyField, clave, config.ParentCompanyCode,
                 filtrarPorUrl: false, cancellationToken);

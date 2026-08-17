@@ -48,10 +48,23 @@ public class WmsExistsReconcilerTests
 
     private sealed class FakeWmsValidationApiClient : IWmsValidationApiClient
     {
-        private readonly WmsStageCheckResult _resultado;
-        public FakeWmsValidationApiClient(WmsStageCheckResult resultado) => _resultado = resultado;
+        private readonly WmsStageCheckResult _resultadoDefault;
+        private readonly Dictionary<string, WmsStageCheckResult> _resultadosPorEntidad;
+
+        public FakeWmsValidationApiClient(WmsStageCheckResult resultado)
+        {
+            _resultadoDefault = resultado;
+            _resultadosPorEntidad = new Dictionary<string, WmsStageCheckResult>();
+        }
+
+        public FakeWmsValidationApiClient(WmsStageCheckResult resultadoDefault, Dictionary<string, WmsStageCheckResult> resultadosPorEntidad)
+        {
+            _resultadoDefault = resultadoDefault;
+            _resultadosPorEntidad = resultadosPorEntidad;
+        }
+
         public Task<WmsStageCheckResult> CheckStageRecordAsync(string lgfApiBaseUrl, string usuario, string clave, string entity, string keyField, string keyValue, string? companyCode, bool filtrarPorUrl, CancellationToken ct = default)
-            => Task.FromResult(_resultado);
+            => Task.FromResult(_resultadosPorEntidad.TryGetValue(entity, out var especifico) ? especifico : _resultadoDefault);
     }
 
     private static ServiceProvider BuildProvider(string dbName, IReadOnlyList<ModuleCompanyDto> companiasActivas, string? configJson, WmsStageCheckResult resultadoLgfApi)
@@ -78,15 +91,46 @@ public class WmsExistsReconcilerTests
         return services.BuildServiceProvider();
     }
 
+    private static ServiceProvider BuildProvider(string dbName, IReadOnlyList<ModuleCompanyDto> companiasActivas, string? configJson, WmsStageCheckResult resultadoDefault, Dictionary<string, WmsStageCheckResult> resultadosPorEntidad)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ICurrentCompanyOverride, FakeCurrentCompanyOverride>();
+        services.AddScoped<ICurrentCompanyAccessor, FakeCurrentCompanyAccessor>();
+        services.AddSingleton<IExternalDatabaseConnectionService>(new FakeExternalDatabaseConnectionService(companiasActivas));
+        services.AddSingleton<IIntegrationConnectorConfigService>(new FakeIntegrationConnectorConfigService(configJson));
+        services.AddSingleton<IWmsValidationApiClient>(new FakeWmsValidationApiClient(resultadoDefault, resultadosPorEntidad));
+        services.AddLogging();
+        services.AddSingleton(NullLogger<WmsExistsReconciler>.Instance);
+
+        services.AddDbContext<WmsDbContext>((sp, options) =>
+        {
+            var companyAccessor = sp.GetRequiredService<ICurrentCompanyAccessor>();
+            if (!companyAccessor.HasCompany)
+            {
+                throw new InvalidOperationException("Modulo.Wms requiere una compañía activa en la sesión -- seleccioná una compañía antes de continuar.");
+            }
+            options.UseInMemoryDatabase(dbName);
+        });
+
+        return services.BuildServiceProvider();
+    }
+
     [Fact]
     public async Task EjecutarCicloAsync_RegistroEncontradoEnEntidadFinal_LoMarcaProcesadoWms()
     {
         var companyId = Guid.NewGuid();
         var dbName = Guid.NewGuid().ToString();
         var configJson = """{"ApiUrl":"https://x","Usuario":"u","Clave":"p","ClientEnvCode":"cli","ParentCompanyCode":"COMP01","LgfApiBaseUrl":"https://x/lgfapi/v10/entity/"}""";
-        var resultadoLgfApi = new WmsStageCheckResult(Found: true, StatusId: 90, ErrorMessage: null);
+        // Ya no está en stage_item (Oracle terminó de procesarlo) y sí aparece en la entidad final "item".
+        var resultadosPorEntidad = new Dictionary<string, WmsStageCheckResult>
+        {
+            ["stage_item"] = new WmsStageCheckResult(Found: false, StatusId: null, ErrorMessage: null),
+            ["item"] = new WmsStageCheckResult(Found: true, StatusId: 90, ErrorMessage: null),
+        };
 
-        await using var provider = BuildProvider(dbName, [new(companyId, Guid.NewGuid())], configJson, resultadoLgfApi);
+        await using var provider = BuildProvider(dbName, [new(companyId, Guid.NewGuid())], configJson,
+            resultadoDefault: new WmsStageCheckResult(Found: false, StatusId: null, ErrorMessage: null),
+            resultadosPorEntidad: resultadosPorEntidad);
 
         var seedOptions = new DbContextOptionsBuilder<WmsDbContext>().UseInMemoryDatabase(dbName).Options;
         await using (var seedContext = new WmsDbContext(seedOptions))
@@ -137,5 +181,45 @@ public class WmsExistsReconcilerTests
 
         var validacion = await verifyContext.WmsExportValidations.SingleAsync();
         Assert.Equal(20, validacion.Intentos);
+    }
+
+    [Fact]
+    public async Task EjecutarCicloAsync_TodaviaEnStage_NoConfirmaNiIncrementaIntentos()
+    {
+        var companyId = Guid.NewGuid();
+        var dbName = Guid.NewGuid().ToString();
+        var configJson = """{"ApiUrl":"https://x","Usuario":"u","Clave":"p","ClientEnvCode":"cli","ParentCompanyCode":"COMP01","LgfApiBaseUrl":"https://x/lgfapi/v10/entity/"}""";
+        // Todavía está en stage_item -- Oracle no terminó de procesar este envío/reenvío.
+        // No debería ni confirmarse contra "item" ni incrementar Intentos.
+        var resultadosPorEntidad = new Dictionary<string, WmsStageCheckResult>
+        {
+            ["stage_item"] = new WmsStageCheckResult(Found: true, StatusId: 50, ErrorMessage: null),
+            ["item"] = new WmsStageCheckResult(Found: true, StatusId: 90, ErrorMessage: null),
+        };
+
+        await using var provider = BuildProvider(dbName, [new(companyId, Guid.NewGuid())], configJson,
+            resultadoDefault: new WmsStageCheckResult(Found: false, StatusId: null, ErrorMessage: null),
+            resultadosPorEntidad: resultadosPorEntidad);
+
+        var seedOptions = new DbContextOptionsBuilder<WmsDbContext>().UseInMemoryDatabase(dbName).Options;
+        await using (var seedContext = new WmsDbContext(seedOptions))
+        {
+            seedContext.WmsSapStageItems.Add(new WmsSapStageItem { CompanyId = companyId, ItemCode = "ITM001", ItemName = "A", Status = WmsSapStageStatus.Enviado });
+            seedContext.WmsExportValidations.Add(new WmsExportValidation { CompanyId = companyId, TipoDoc = "Item", Clave = "ITM001", Intentos = 0 });
+            await seedContext.SaveChangesAsync();
+        }
+
+        var reconciler = new WmsExistsReconciler(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<WmsExistsReconciler>.Instance);
+
+        await reconciler.EjecutarCicloAsync(CancellationToken.None);
+
+        await using var verifyContext = new WmsDbContext(seedOptions);
+        var fila = await verifyContext.WmsSapStageItems.SingleAsync();
+        Assert.Equal(WmsSapStageStatus.Enviado, fila.Status);
+
+        var validacion = await verifyContext.WmsExportValidations.SingleAsync();
+        Assert.Equal(0, validacion.Intentos);
     }
 }

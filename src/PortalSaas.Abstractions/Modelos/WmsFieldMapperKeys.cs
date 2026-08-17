@@ -1,13 +1,14 @@
 namespace PortalSaas.Abstractions.Modelos;
 
 /// <summary>
-/// Los 6 MapperKey fijos que usa WmsSapIntegration.Service (standalone, ver
-/// ARQUITECTURA.md de Modulo.Wms) para resolver el UDF de cada documento SAP
-/// Service Layer contra wms_oracle_field_mappings. Es un contrato manual de
-/// strings entre ese servicio y este módulo -- no hay proyecto compartido
-/// entre las dos soluciones. Portado tal cual desde
+/// MapperKey fijos que usan los consumidores de wms_oracle_field_mappings.
+/// Los primeros 6 (WMS -> SAP, confirmaciones) los usa WmsSapIntegration.Service
+/// (standalone, ver ARQUITECTURA.md de Modulo.Wms) -- contrato manual de strings
+/// entre ese servicio y este módulo, sin proyecto compartido. Portados tal cual desde
 /// WMS_Suite/WmsPortal.Core/Models/FieldMappingModels.cs (FieldMappingKeys.Labels).
-/// Si se agrega un mapeador nuevo del lado del servicio, agregar la entrada
+/// Los 6 SAPWMS_* (SAP -> WMS, Subida) los usa WmsCloudConnector, en este mismo repo --
+/// ver docs/superpowers/specs/2026-08-16-mapeo-campos-sap-wms-design.md de Modulo.Wms.
+/// Si se agrega un mapeador nuevo de cualquiera de los dos lados, agregar la entrada
 /// correspondiente acá también.
 /// </summary>
 public static class WmsFieldMapperKeys
@@ -20,5 +21,11 @@ public static class WmsFieldMapperKeys
         ["RECEIPT_CONFIRM_STOCKTRANSFER"] = "Confirmación Ingreso → Traslado (StockTransfers)",
         ["RECEIPT_CONFIRM_RETURN"] = "Confirmación Ingreso → Devolución (Returns)",
         ["RECEIPT_CONFIRM_PURCHASE_DELIVERY"] = "Confirmación Ingreso → Recepción de Compra (PurchaseDeliveryNotes)",
+        ["SAPWMS_ITEM"] = "SAP → WMS: Item",
+        ["SAPWMS_STORE"] = "SAP → WMS: Sucursal",
+        ["SAPWMS_ORDER_HDR"] = "SAP → WMS: Orden (cabecera)",
+        ["SAPWMS_ORDER_DTL"] = "SAP → WMS: Orden (detalle)",
+        ["SAPWMS_INBOUND_HDR"] = "SAP → WMS: Ingreso (cabecera)",
+        ["SAPWMS_INBOUND_DTL"] = "SAP → WMS: Ingreso (detalle)",
     };
 }

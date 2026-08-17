@@ -36,3 +36,4 @@ graphify-out/cache/
 # Estado interno de Claude Code (lock de sesión, tareas programadas) -- efímero, nunca
 # se versiona.
 .claude/*.lock
+.worktrees/

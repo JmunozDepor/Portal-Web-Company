@@ -1,6 +1,6 @@
 namespace Modulo.Wms.Models;
 
-public enum WmsSapStageStatus { Pendiente, ProcesadoWms, ErrorWms }
+public enum WmsSapStageStatus { Pendiente, Enviado, ProcesadoWms, ErrorWms }
 
 public class WmsSapStageItem
 {

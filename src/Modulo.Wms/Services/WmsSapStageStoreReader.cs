@@ -51,7 +51,7 @@ public class WmsSapStageStoreReader : IIntegrationEntityReader
 
         foreach (var fila in filas)
         {
-            fila.Status = exito ? WmsSapStageStatus.ProcesadoWms : WmsSapStageStatus.ErrorWms;
+            fila.Status = exito ? WmsSapStageStatus.Enviado : WmsSapStageStatus.ErrorWms;
             fila.ErrorMsg = exito ? null : mensajeError;
             fila.SyncedAt = exito ? DateTimeOffset.UtcNow : fila.SyncedAt;
         }

@@ -88,7 +88,7 @@ public class WmsSapStageOrderReaderTests
         await reader.MarcarProcesadoAsync(companyId, registro, exito: true, mensajeError: null, CancellationToken.None);
 
         var actualizada = await contexto.WmsSapStageOrderHdrs.SingleAsync();
-        Assert.Equal(WmsSapStageStatus.ProcesadoWms, actualizada.Status);
+        Assert.Equal(WmsSapStageStatus.Enviado, actualizada.Status);
         Assert.NotNull(actualizada.SyncedAt);
     }
 

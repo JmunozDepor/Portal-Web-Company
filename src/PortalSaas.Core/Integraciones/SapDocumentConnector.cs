@@ -25,7 +25,17 @@ public class SapDocumentConnector : IIntegrationConnector
 
     public string Tipo => "Sap";
 
-    private sealed record SapWmsOutboundConfig(string TipoEntidad);
+    /// <summary>
+    /// Filtro OData opcional -- cada cliente puede tener su propio criterio de "enviar a
+    /// WMS" (otro campo UDF, otra condición). Si viene null/vacío se usa el filtro por
+    /// defecto de cada entidad (ver FiltroPorDefectoItems/Stores), así las
+    /// IntegrationDefinition ya existentes (sin este campo en su JSON) siguen
+    /// funcionando igual que antes sin necesitar ninguna migración de datos.
+    /// </summary>
+    private sealed record SapWmsOutboundConfig(string TipoEntidad, string? Filtro = null);
+
+    private const string FiltroPorDefectoItems = "U_NX_EnviarWMS eq 'Y' and InvntItem eq 'tYES'";
+    private const string FiltroPorDefectoStores = "U_NX_EnviarWMS eq 'Y'";
 
     public async Task<IReadOnlyList<IntegrationRecord>> PullAsync(
         string conectorConfigJson,
@@ -38,17 +48,17 @@ public class SapDocumentConnector : IIntegrationConnector
 
         return config.TipoEntidad switch
         {
-            "Item" => await LeerItemsAsync(session, cancellationToken),
-            "Store" => await LeerStoresAsync(session, cancellationToken),
+            "Item" => await LeerItemsAsync(session, config.Filtro, cancellationToken),
+            "Store" => await LeerStoresAsync(session, config.Filtro, cancellationToken),
             "InboundTraslado" => await LeerTrasladosAsync(session, cancellationToken),
             "Picking" => await LeerPickingAsync(session, cancellationToken),
             _ => throw new InvalidOperationException($"TipoEntidad '{config.TipoEntidad}' no soportado en PullAsync."),
         };
     }
 
-    private static async Task<IReadOnlyList<IntegrationRecord>> LeerItemsAsync(ISapSession session, CancellationToken ct)
+    private static async Task<IReadOnlyList<IntegrationRecord>> LeerItemsAsync(ISapSession session, string? filtroConfigurado, CancellationToken ct)
     {
-        var filtro = "U_NX_EnviarWMS eq 'Y' and InvntItem eq 'tYES'";
+        var filtro = string.IsNullOrWhiteSpace(filtroConfigurado) ? FiltroPorDefectoItems : filtroConfigurado;
         var filas = await session.GetAllAsync<SapWmsItemRow>("Items", filtro, ct: ct);
 
         return filas
@@ -63,9 +73,9 @@ public class SapDocumentConnector : IIntegrationConnector
             .ToList();
     }
 
-    private static async Task<IReadOnlyList<IntegrationRecord>> LeerStoresAsync(ISapSession session, CancellationToken ct)
+    private static async Task<IReadOnlyList<IntegrationRecord>> LeerStoresAsync(ISapSession session, string? filtroConfigurado, CancellationToken ct)
     {
-        var filtro = "U_NX_EnviarWMS eq 'Y'";
+        var filtro = string.IsNullOrWhiteSpace(filtroConfigurado) ? FiltroPorDefectoStores : filtroConfigurado;
         var filas = await session.GetAllAsync<SapWmsStoreRow>("BusinessPartners", filtro, "BPAddresses", ct);
 
         var registros = new List<IntegrationRecord>();

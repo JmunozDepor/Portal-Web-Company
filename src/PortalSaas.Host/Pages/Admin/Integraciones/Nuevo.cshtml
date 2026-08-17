@@ -71,8 +71,13 @@
         <h5 class="col-12">Configuración del conector SAP</h5>
         <div class="col-md-6">
             <label asp-for="Input.TipoEntidad" class="form-label"></label>
-            <input asp-for="Input.TipoEntidad" class="form-control" placeholder="Items / Stores / Picking / InboundTraslado" />
+            <input asp-for="Input.TipoEntidad" class="form-control" placeholder="Item / Store / Picking / InboundTraslado" />
             <span asp-validation-for="Input.TipoEntidad" class="text-danger"></span>
+        </div>
+        <div class="col-md-12">
+            <label asp-for="Input.Filtro" class="form-label"></label>
+            <input asp-for="Input.Filtro" class="form-control" placeholder="Ej. U_NX_EnviarWMS eq 'Y' and InvntItem eq 'tYES' -- solo aplica a Item/Store" />
+            <div class="form-text">Solo se usa para TipoEntidad Item/Store. Dejalo vacío para usar el filtro por defecto del proyecto.</div>
         </div>
     </div>
 

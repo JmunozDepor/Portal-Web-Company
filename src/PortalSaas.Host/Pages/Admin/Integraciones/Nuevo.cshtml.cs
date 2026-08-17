@@ -85,6 +85,7 @@ public class NuevoModel : PageModel
             if (configActual is not null)
             {
                 Input.TipoEntidad = configActual.TipoEntidad;
+                Input.Filtro = configActual.Filtro;
             }
         }
 
@@ -159,7 +160,8 @@ public class NuevoModel : PageModel
     {
         if (Input.ConectorTipo == IntegrationConectorTipo.Sap)
         {
-            var json = JsonSerializer.Serialize(new SapConfigInput(Input.TipoEntidad!.Trim()));
+            var filtro = string.IsNullOrWhiteSpace(Input.Filtro) ? null : Input.Filtro.Trim();
+            var json = JsonSerializer.Serialize(new SapConfigInput(Input.TipoEntidad!.Trim(), filtro));
             return _secretoCifradoService.Encrypt(json);
         }
 
@@ -197,8 +199,8 @@ public class NuevoModel : PageModel
     /// <summary>Espejo de WmsCloudConnector.WmsCloudConfig (record privado en Modulo.Wms) -- no se referencia el tipo del plugin desde Core, se serializa/deserializa por forma.</summary>
     private sealed record WmsCloudConfigInput(string ApiUrl, string Usuario, string Clave, string ClientEnvCode, string ParentCompanyCode);
 
-    /// <summary>Espejo de SapDocumentConnector.SapWmsOutboundConfig (record privado).</summary>
-    private sealed record SapConfigInput(string TipoEntidad);
+    /// <summary>Espejo de SapDocumentConnector.SapWmsOutboundConfig (record privado). Filtro null/vacío = usa el filtro por defecto de la entidad (ver SapDocumentConnector.FiltroPorDefecto*).</summary>
+    private sealed record SapConfigInput(string TipoEntidad, string? Filtro = null);
 
     public sealed class InputModel
     {
@@ -235,6 +237,9 @@ public class NuevoModel : PageModel
         // Bloque Sap
         [Display(Name = "Tipo de entidad SAP")]
         public string? TipoEntidad { get; set; }
+
+        [Display(Name = "Filtro OData (vacío = usar el filtro por defecto)")]
+        public string? Filtro { get; set; }
 
         // Bloque WmsCloud
         [Display(Name = "URL de la API")]

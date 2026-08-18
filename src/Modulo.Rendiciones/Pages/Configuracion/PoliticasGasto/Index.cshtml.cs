@@ -11,13 +11,15 @@ namespace Modulo.Rendiciones.Pages.Configuracion.PoliticasGasto;
 /// duplicados por número de documento no se configura acá -- corre siempre, no es una
 /// política que se pueda activar/desactivar por tipo.
 /// </summary>
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly IExpensePolicyService _policies;
     private readonly IExpenseTypeService _expenseTypes;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IExpensePolicyService policies, IExpenseTypeService expenseTypes, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(IExpensePolicyService policies, IExpenseTypeService expenseTypes,
+        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _policies = policies;
         _expenseTypes = expenseTypes;

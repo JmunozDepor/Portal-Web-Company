@@ -12,13 +12,15 @@ namespace Modulo.Rendiciones.Pages.Configuracion.GruposAprobacion;
 /// seleccionado a la derecha. A diferencia de Compras no hay un intermediario --
 /// miembros y niveles apuntan directo al USUARIO del portal.
 /// </summary>
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly IExpenseApprovalGroupService _groups;
     private readonly ITenantUserAdminService _users;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IExpenseApprovalGroupService groups, ITenantUserAdminService users, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(IExpenseApprovalGroupService groups, ITenantUserAdminService users,
+        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _groups = groups;
         _users = users;

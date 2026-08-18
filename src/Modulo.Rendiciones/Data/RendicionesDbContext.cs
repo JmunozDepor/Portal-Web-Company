@@ -42,6 +42,7 @@ public class RendicionesDbContext : DbContext
     public DbSet<ReminderLog> ReminderLogs => Set<ReminderLog>();
     public DbSet<CostCenter> CostCenters => Set<CostCenter>();
     public DbSet<GlAccount> GlAccounts => Set<GlAccount>();
+    public DbSet<RendicionesUserRole> RendicionesUserRoles => Set<RendicionesUserRole>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -100,6 +101,19 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.CostCenterCode).HasColumnName("cost_center_code").HasMaxLength(50).IsRequired();
             e.Property(x => x.CostCenterName).HasColumnName("cost_center_name").HasMaxLength(200);
             e.HasIndex(x => new { x.CompanyId, x.UserId }).HasDatabaseName("ix_user_cost_centers_company_id_user_id");
+        });
+
+        modelBuilder.Entity<RendicionesUserRole>(e =>
+        {
+            e.ToTable("rendiciones_user_roles");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+            e.Property(x => x.Role).HasColumnName("role").HasMaxLength(20).IsRequired();
+            e.HasIndex(x => new { x.CompanyId, x.UserId, x.Role })
+                .IsUnique()
+                .HasDatabaseName("uq_rendiciones_user_roles_company_id_user_id_role");
         });
 
         modelBuilder.Entity<ExpensePolicy>(e =>

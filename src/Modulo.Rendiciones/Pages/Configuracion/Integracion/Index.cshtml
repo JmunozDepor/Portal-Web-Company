@@ -20,6 +20,10 @@
     {
         <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
     }
+    @if (Model.WarningMessage is not null)
+    {
+        <div class="admin-alert admin-alert-warning">@Model.WarningMessage</div>
+    }
 
     <p class="admin-muted">
         Cuando está activo, los centros de costo y cuentas contables se sincronizan desde SAP.

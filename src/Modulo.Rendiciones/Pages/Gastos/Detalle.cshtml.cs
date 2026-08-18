@@ -13,22 +13,31 @@ namespace Modulo.Rendiciones.Pages.Gastos;
 /// el gasto sigue Loose -- una vez que un informe lo agrupa, hay que desvincularlo
 /// desde el informe primero.
 /// </summary>
-public sealed class DetalleModel : RendicionesPageModelBase
+public sealed class DetalleModel : RendicionesRendidorPageModelBase
 {
     private readonly IExpenseService _expenses;
     private readonly IExpenseTypeService _expenseTypes;
     private readonly IDocumentTypeService _documentTypes;
+    private readonly IExpensePolicyService _policies;
+    private readonly IExpenseApprovalGroupService _approvalGroups;
+    private readonly IUserCostCenterService _userCostCenters;
     private readonly IAttachmentStorageService _attachments;
     private readonly IRoutingService _routing;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
     public DetalleModel(IExpenseService expenses, IExpenseTypeService expenseTypes, IDocumentTypeService documentTypes,
-        IAttachmentStorageService attachments, IRoutingService routing, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        IExpensePolicyService policies, IExpenseApprovalGroupService approvalGroups, IUserCostCenterService userCostCenters,
+        IAttachmentStorageService attachments, IRoutingService routing, IRendicionesUserRoleService roles,
+        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _expenses = expenses;
         _expenseTypes = expenseTypes;
         _documentTypes = documentTypes;
+        _policies = policies;
+        _approvalGroups = approvalGroups;
+        _userCostCenters = userCostCenters;
         _attachments = attachments;
         _routing = routing;
         _currentUser = currentUser;
@@ -37,6 +46,27 @@ public sealed class DetalleModel : RendicionesPageModelBase
 
     public bool IsNew { get; private set; } = true;
     public ExpenseReportLine? Expense { get; private set; }
+
+    /// <summary>"Sin política" / "Tope N" / "Sin tope" -- mismo cálculo que Pages/Gastos/Index, ver
+    /// el comentario de PolicyByExpenseType ahí. Se resuelve una sola vez para el gasto actual,
+    /// no hace falta un diccionario acá (a diferencia del listado, es un solo gasto por página).</summary>
+    public string? PolicyLabel { get; private set; }
+
+    /// <summary>
+    /// "Política" en el sentido amplio (grupo de aprobación + centros de costo del
+    /// usuario actual) -- informativa, NO se persiste en el gasto. La fijación real ya
+    /// existe en el modelo: ExpenseReport.ExpenseApprovalGroupId/CostCenterCode se
+    /// congelan solos al agrupar gastos sueltos en un informe (ver
+    /// RendicionesDbContext, ExpenseReport ya tiene esos dos campos) -- agregar una
+    /// copia más en ExpenseReportLine sería una migración nueva para duplicar un dato
+    /// que el modelo ya fija un paso después, en el lugar correcto. Acá solo se
+    /// muestra "bajo qué política estás hoy" para que el rendidor sepa qué esperar,
+    /// mismo criterio que "1 grupo de aprobación por usuario" ya asumido en
+    /// IExpenseApprovalGroupService.GetUserGroupAsync.
+    /// </summary>
+    public string ApprovalGroupSummary { get; private set; } = "Sin grupo de aprobación asignado (autoaprueba al enviar)";
+
+    public string CostCenterSummary { get; private set; } = "Sin restricción (todos los centros de costo)";
 
     public IReadOnlyList<ExpenseType> ExpenseTypes { get; private set; } = Array.Empty<ExpenseType>();
     public IReadOnlyList<DocumentType> DocumentTypes { get; private set; } = Array.Empty<DocumentType>();
@@ -47,6 +77,7 @@ public sealed class DetalleModel : RendicionesPageModelBase
     public async Task<IActionResult> OnGetAsync(long? id, CancellationToken ct)
     {
         await LoadCatalogsAsync(ct);
+        await ResolvePolicySummaryAsync(ct);
 
         if (id is null)
             return Page();
@@ -57,6 +88,7 @@ public sealed class DetalleModel : RendicionesPageModelBase
 
         IsNew = false;
         Expense = expense;
+        await ResolvePolicyLabelAsync(expense, ct);
         Input = new ExpenseInput
         {
             ExpenseTypeId = expense.ExpenseTypeId ?? 0,
@@ -78,6 +110,7 @@ public sealed class DetalleModel : RendicionesPageModelBase
     public async Task<IActionResult> OnPostGuardarAsync(long? id, CancellationToken ct)
     {
         await LoadCatalogsAsync(ct);
+        await ResolvePolicySummaryAsync(ct);
         IsNew = id is null;
 
         if (id is { } existingId)
@@ -189,12 +222,54 @@ public sealed class DetalleModel : RendicionesPageModelBase
         return RedirectToPage("./Index");
     }
 
+    /// <summary>Botón "Eliminar" del visor de comprobante -- saca el archivo del gasto sin borrar
+    /// el gasto en sí (a diferencia de OnPostEliminarAsync, que borra el gasto completo).</summary>
+    public async Task<IActionResult> OnPostEliminarComprobanteAsync(long id, CancellationToken ct)
+    {
+        try
+        {
+            await _expenses.RemoveReceiptAsync(id, _currentCompany.CompanyId, ct);
+            SuccessMessage = "Comprobante eliminado.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = GetErrorMessage(ex);
+        }
+
+        return RedirectToPage("./Detalle", new { id });
+    }
+
+    private async Task ResolvePolicyLabelAsync(ExpenseReportLine expense, CancellationToken ct)
+    {
+        if (expense.ExpenseTypeId is not { } typeId)
+        {
+            PolicyLabel = null;
+            return;
+        }
+
+        var policies = await _policies.ListAsync(_currentCompany.CompanyId, ct);
+        var policy = policies.Where(p => p.IsActive && p.ExpenseTypeId == typeId).LastOrDefault();
+        PolicyLabel = policy is null ? "Sin política" : (policy.MaxAmount is { } max ? $"Tope {max:N0}" : "Sin tope");
+    }
+
     private async Task<long> SaveReceiptAsync(IFormFile file, CancellationToken ct)
     {
         using var stream = new MemoryStream();
         await file.CopyToAsync(stream, ct);
         return await _attachments.SaveAsync(_currentCompany.CompanyId, _currentUser.UserId,
             file.FileName, file.ContentType, stream.ToArray(), ct);
+    }
+
+    private async Task ResolvePolicySummaryAsync(CancellationToken ct)
+    {
+        var group = await _approvalGroups.GetUserGroupAsync(_currentCompany.CompanyId, _currentUser.UserId, ct);
+        if (group is not null)
+            ApprovalGroupSummary = group.Name;
+
+        var costCenters = await _userCostCenters.GetAvailableAsync(_currentCompany.CompanyId, _currentUser.UserId, ct);
+        var assigned = await _userCostCenters.ListAssignedAsync(_currentCompany.CompanyId, _currentUser.UserId, ct);
+        if (assigned.Count > 0)
+            CostCenterSummary = string.Join(", ", costCenters.Select(c => c.Name));
     }
 
     private async Task LoadCatalogsAsync(CancellationToken ct)

@@ -142,6 +142,18 @@ public sealed class ExpenseService : IExpenseService
         data.Currency = "CLP";
     }
 
+    public async Task RemoveReceiptAsync(long id, Guid companyId, CancellationToken ct = default)
+    {
+        var expense = await RequireLooseAsync(id, companyId, ct);
+        var receiptId = expense.ExpenseReceiptId;
+        if (receiptId is null)
+            return;
+
+        expense.ExpenseReceiptId = null;
+        await _db.SaveChangesAsync(ct);
+        await _attachments.DeleteAsync(receiptId.Value, companyId, ct);
+    }
+
     private async Task<ExpenseReportLine> RequireLooseAsync(long id, Guid companyId, CancellationToken ct)
     {
         var expense = await _db.ExpenseReportLines.FirstOrDefaultAsync(d => d.Id == id && d.CompanyId == companyId, ct)

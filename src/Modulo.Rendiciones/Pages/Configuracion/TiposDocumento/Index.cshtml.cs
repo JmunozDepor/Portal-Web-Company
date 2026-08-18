@@ -6,12 +6,14 @@ using PortalSaas.Abstractions.Contratos;
 
 namespace Modulo.Rendiciones.Pages.Configuracion.TiposDocumento;
 
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly IDocumentTypeService _documentTypes;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IDocumentTypeService documentTypes, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(IDocumentTypeService documentTypes, IRendicionesUserRoleService roles,
+        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _documentTypes = documentTypes;
         _currentCompany = currentCompany;

@@ -30,4 +30,9 @@ public interface IExpenseService
 
     /// <summary>Solo mientras el gasto sigue Loose. Borra también el comprobante adjunto si tiene.</summary>
     Task DeleteAsync(long id, Guid companyId, CancellationToken ct = default);
+
+    /// <summary>Quita el comprobante de un gasto (botón "Eliminar" del visor) sin tocar el resto de
+    /// sus datos ni borrar el gasto mismo -- solo mientras sigue Loose, mismo criterio que
+    /// UpdateAsync/DeleteAsync. Borra también el archivo almacenado.</summary>
+    Task RemoveReceiptAsync(long id, Guid companyId, CancellationToken ct = default);
 }

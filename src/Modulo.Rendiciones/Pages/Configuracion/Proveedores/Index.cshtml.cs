@@ -13,12 +13,14 @@ namespace Modulo.Rendiciones.Pages.Configuracion.Proveedores;
 /// write-only, mismo patrón que Instance/Company del portal: nunca se vuelve a
 /// mostrar una vez guardada, dejarla en blanco al editar no la cambia.
 /// </summary>
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly IExternalServiceProviderService _providers;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IExternalServiceProviderService providers, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(IExternalServiceProviderService providers, IRendicionesUserRoleService roles,
+        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _providers = providers;
         _currentCompany = currentCompany;

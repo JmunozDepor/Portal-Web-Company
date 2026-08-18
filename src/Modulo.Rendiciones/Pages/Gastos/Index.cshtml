@@ -16,6 +16,11 @@
     </div>
 </div>
 
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+
 <div class="rnd-stat-row">
     <div class="rnd-stat-tile rnd-stat-accent">
         <span class="rnd-stat-label">Sueltos</span>
@@ -31,6 +36,31 @@
     </div>
 </div>
 
+<div class="rnd-toolbar">
+    <div class="rnd-search">
+        <i class="bi bi-search"></i>
+        <input type="search" id="rndBuscarGasto" placeholder="Buscar nombre gasto" autocomplete="off" />
+    </div>
+    <div class="rnd-filter-menu">
+        <button type="button" class="rnd-filter-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-funnel"></i> Agregar filtros
+        </button>
+        <div class="dropdown-menu rnd-filter-dropdown">
+            <span class="rnd-filter-title">Estado</span>
+            @foreach (var estado in new[] { "Loose", "En informe" })
+            {
+                <label class="rnd-filter-check">
+                    <input type="checkbox" class="rndFiltroEstado" value="@estado" checked />
+                    @(estado == "Loose" ? "Sueltos" : "En informes")
+                </label>
+            }
+        </div>
+    </div>
+    <button type="button" class="rnd-icon-btn" title="Actualizar" onclick="location.reload()">
+        <i class="bi bi-arrow-clockwise"></i>
+    </button>
+</div>
+
 @if (Model.Expenses.Count == 0)
 {
     <div class="rnd-card-empty">
@@ -40,27 +70,106 @@
 }
 else
 {
-    <div class="rnd-card-list">
-        @foreach (var g in Model.Expenses)
-        {
-            var status = Modulo.Rendiciones.Pages.Gastos.IndexModel.StatusToShow(g);
-            <a href="@(g.Status == "Loose" ? Url.Page("./Detalle", new { id = g.Id }) : Url.Page("/Informes/Detalle", new { id = g.ExpenseReportId }))" class="rnd-card-row">
-                <div class="rnd-card-icon"><i class="bi @RendicionesUi.CategoryIcon(g.ExpenseType?.Name)"></i></div>
-                <div class="rnd-card-main">
-                    <div class="rnd-card-title">@(g.SupplierName ?? g.ExpenseType?.Name ?? "Gasto")</div>
-                    <div class="rnd-card-sub">
-                        @g.Date.ToString("dd-MM-yyyy") · @(g.ExpenseType?.Name ?? "—")
-                        @if (g.ExpenseReceiptId is not null)
-                        {
-                            <i class="bi bi-paperclip" title="Tiene comprobante"></i>
-                        }
-                    </div>
-                </div>
-                <div class="rnd-card-meta">
-                    <span class="rnd-badge @RendicionesUi.BadgeClass(status)">@status</span>
-                    <span class="rnd-card-amount">@g.Currency @g.Amount.ToString("N2")</span>
-                </div>
-            </a>
-        }
+    <div class="rnd-table-wrapper">
+        <table class="rnd-table" id="rndTablaGastos">
+            <thead>
+                <tr>
+                    <th class="rnd-col-check"><input type="checkbox" id="rndMarcarTodos" /></th>
+                    <th>Proveedor / Fecha</th>
+                    <th>Estado</th>
+                    <th>Política</th>
+                    <th>Categoría</th>
+                    <th class="rnd-col-total">Total</th>
+                    <th class="rnd-col-menu"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var g in Model.Expenses)
+                {
+                    var status = Modulo.Rendiciones.Pages.Gastos.IndexModel.StatusToShow(g);
+                    var detailUrl = g.Status == "Loose" ? Url.Page("./Detalle", new { id = g.Id }) : Url.Page("/Informes/Detalle", new { id = g.ExpenseReportId });
+                    var nombre = g.SupplierName ?? g.ExpenseType?.Name ?? "Gasto";
+                    <tr data-status="@g.Status" data-nombre="@nombre.ToLowerInvariant()">
+                        <td class="rnd-col-check"><input type="checkbox" class="rndFilaCheck" /></td>
+                        <td>
+                            <a href="@detailUrl" class="rnd-row-link">
+                                <span class="rnd-card-icon"><i class="bi @RendicionesUi.CategoryIcon(g.ExpenseType?.Name)"></i></span>
+                                <span class="rnd-row-text">
+                                    <span class="rnd-card-title">@nombre</span>
+                                    <span class="rnd-card-sub">
+                                        @g.Date.ToString("dd-MM-yyyy")
+                                        @if (g.ExpenseReceiptId is not null)
+                                        {
+                                            <i class="bi bi-paperclip" title="Tiene comprobante"></i>
+                                        }
+                                    </span>
+                                </span>
+                            </a>
+                        </td>
+                        <td><span class="rnd-badge @RendicionesUi.BadgeClass(status)">@status</span></td>
+                        <td class="rnd-col-muted">@Model.PolicyLabel(g)</td>
+                        <td class="rnd-col-muted">@(g.ExpenseType?.Name ?? "—")</td>
+                        <td class="rnd-col-total rnd-card-amount">@g.Currency @g.Amount.ToString("N2")</td>
+                        <td class="rnd-col-menu">
+                            <div class="rnd-row-menu">
+                                <button type="button" class="rnd-row-menu-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Más acciones">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end rnd-row-menu-list">
+                                    <li><a class="dropdown-item" href="@detailUrl"><i class="bi bi-eye"></i> Ver detalle</a></li>
+                                    @if (g.Status == "Loose")
+                                    {
+                                        <li>
+                                            <form method="post" asp-page-handler="Copy" asp-route-id="@g.Id">
+                                                <button type="submit" class="dropdown-item"><i class="bi bi-files"></i> Copiar gasto</button>
+                                            </form>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <p class="rnd-table-empty-filter" id="rndSinResultados" hidden>Ningún gasto coincide con la búsqueda o los filtros.</p>
     </div>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            const buscador = document.getElementById('rndBuscarGasto');
+            const filtrosEstado = document.querySelectorAll('.rndFiltroEstado');
+            const filas = document.querySelectorAll('#rndTablaGastos tbody tr');
+            const sinResultados = document.getElementById('rndSinResultados');
+            const marcarTodos = document.getElementById('rndMarcarTodos');
+
+            function estadosActivos() {
+                return Array.from(filtrosEstado).filter(f => f.checked).map(f => f.value);
+            }
+
+            function aplicarFiltro() {
+                const texto = (buscador?.value || '').trim().toLowerCase();
+                const estados = estadosActivos();
+                let visibles = 0;
+                filas.forEach(fila => {
+                    const nombreOk = !texto || fila.dataset.nombre.includes(texto);
+                    const estadoFila = fila.dataset.status === 'Loose' ? 'Loose' : 'En informe';
+                    const estadoOk = estados.length === 0 || estados.includes(estadoFila);
+                    const mostrar = nombreOk && estadoOk;
+                    fila.hidden = !mostrar;
+                    if (mostrar) visibles++;
+                });
+                if (sinResultados) sinResultados.hidden = visibles !== 0;
+            }
+
+            buscador?.addEventListener('input', aplicarFiltro);
+            filtrosEstado.forEach(f => f.addEventListener('change', aplicarFiltro));
+
+            marcarTodos?.addEventListener('change', () => {
+                document.querySelectorAll('.rndFilaCheck').forEach(c => { c.checked = marcarTodos.checked; });
+            });
+        })();
+    </script>
 }

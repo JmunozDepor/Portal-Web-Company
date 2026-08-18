@@ -814,6 +814,38 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
                     b.ToTable("rendiciones_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Rendiciones.Models.RendicionesUserRole", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("role");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "UserId", "Role")
+                        .IsUnique()
+                        .HasDatabaseName("uq_rendiciones_user_roles_company_id_user_id_role");
+
+                    b.ToTable("rendiciones_user_roles", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Rendiciones.Models.UserCostCenter", b =>
                 {
                     b.Property<long>("Id")

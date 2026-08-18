@@ -1,0 +1,87 @@
+@page "/rendiciones/configuracion/usuarios-roles"
+@model Modulo.Rendiciones.Pages.Configuracion.UsuariosRoles.IndexModel
+@{
+    ViewData["Title"] = "Usuarios y roles";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Usuarios y roles</h2>
+    </div>
+    <p class="admin-muted">
+        Quién puede declarar gastos (Rendidor), revisar informes (Aprobador) y administrar este módulo (Administrador).
+        Ninguno de los tres es automático -- si un usuario no tiene ningún rol marcado acá, no puede entrar a ninguna pantalla del módulo.
+    </p>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+    }
+
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Rendidor</th>
+                <th>Aprobador</th>
+                <th>Administrador</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td>@row.Username</td>
+                    <td>@row.Email</td>
+                    @if (row.IsPlatformAdmin)
+                    {
+                        <td colspan="3">
+                            <span class="rnd-badge rnd-badge--accent" title="Admin de la organización -- siempre tiene acceso a todo el módulo">Siempre (admin de la organización)</span>
+                        </td>
+                    }
+                    else
+                    {
+                        <td>
+                            <form method="post" asp-antiforgery="true" class="rnd-role-toggle-form">
+                                <input type="hidden" name="userId" value="@row.Id" />
+                                <input type="hidden" name="role" value="Rendidor" />
+                                <input type="hidden" name="granted" value="@(!row.IsRendidor)" />
+                                <label class="rnd-filter-check">
+                                    <input type="checkbox" checked="@row.IsRendidor" onchange="this.form.requestSubmit()" />
+                                </label>
+                            </form>
+                        </td>
+                        <td>
+                            <form method="post" asp-antiforgery="true" class="rnd-role-toggle-form">
+                                <input type="hidden" name="userId" value="@row.Id" />
+                                <input type="hidden" name="role" value="Aprobador" />
+                                <input type="hidden" name="granted" value="@(!row.IsAprobador)" />
+                                <label class="rnd-filter-check">
+                                    <input type="checkbox" checked="@row.IsAprobador" onchange="this.form.requestSubmit()" />
+                                </label>
+                            </form>
+                        </td>
+                        <td>
+                            <form method="post" asp-antiforgery="true" class="rnd-role-toggle-form">
+                                <input type="hidden" name="userId" value="@row.Id" />
+                                <input type="hidden" name="role" value="Administrador" />
+                                <input type="hidden" name="granted" value="@(!row.IsAdministrador)" />
+                                <label class="rnd-filter-check">
+                                    <input type="checkbox" checked="@row.IsAdministrador" onchange="this.form.requestSubmit()" />
+                                </label>
+                            </form>
+                        </td>
+                    }
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="5" class="admin-muted">Sin usuarios en esta organización todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>

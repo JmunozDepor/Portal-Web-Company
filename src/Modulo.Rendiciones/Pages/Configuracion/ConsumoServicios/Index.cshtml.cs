@@ -11,13 +11,15 @@ namespace Modulo.Rendiciones.Pages.Configuracion.ConsumoServicios;
 /// IExternalServiceProviderSelector -- esta pantalla es para poder ver el número sin
 /// tener que ir a mirar la tabla en la base.
 /// </summary>
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly IExternalServiceProviderService _providers;
     private readonly IExternalServiceUsageService _usage;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IExternalServiceProviderService providers, IExternalServiceUsageService usage, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(IExternalServiceProviderService providers, IExternalServiceUsageService usage,
+        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _providers = providers;
         _usage = usage;

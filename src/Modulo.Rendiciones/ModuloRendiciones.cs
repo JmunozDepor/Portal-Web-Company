@@ -133,6 +133,15 @@ public sealed class ModuloRendiciones : IModuloPortal
 
         yield return new MenuItemDefinition
         {
+            Code = "config-usuarios-roles",
+            ParentCode = "grupo-administrador",
+            Name = "Usuarios y Roles",
+            PageRoute = "/rendiciones/configuracion/usuarios-roles",
+            Order = 0,
+        };
+
+        yield return new MenuItemDefinition
+        {
             Code = "config-tipos-gasto",
             ParentCode = "grupo-administrador",
             Name = "Tipos de Gasto",
@@ -261,6 +270,7 @@ public sealed class ModuloRendiciones : IModuloPortal
         services.AddScoped<IExpenseTypeService, ExpenseTypeService>();
         services.AddScoped<IDocumentTypeService, DocumentTypeService>();
         services.AddScoped<IUserCostCenterService, UserCostCenterService>();
+        services.AddScoped<IRendicionesUserRoleService, RendicionesUserRoleService>();
         services.AddScoped<IAttachmentStorageService, AttachmentStorageService>();
         services.AddScoped<IExpensePolicyService, ExpensePolicyService>();
         services.AddScoped<IExpenseService, ExpenseService>();

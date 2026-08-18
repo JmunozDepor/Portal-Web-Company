@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Modulo.Rendiciones.Data;
 using Modulo.Rendiciones.Models;
 using Modulo.Rendiciones.Servicios;
@@ -7,17 +8,21 @@ using PortalSaas.Abstractions.Contratos;
 
 namespace Modulo.Rendiciones.Pages.Configuracion.Integracion;
 
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly RendicionesDbContext _db;
     private readonly ICatalogSyncProvider _sync;
     private readonly ICurrentCompanyAccessor _currentCompany;
+    private readonly ILogger<IndexModel> _logger;
 
-    public IndexModel(RendicionesDbContext db, ICatalogSyncProvider sync, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(RendicionesDbContext db, ICatalogSyncProvider sync, IRendicionesUserRoleService roles,
+        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany, ILogger<IndexModel> logger)
+        : base(roles, currentUser, currentCompany)
     {
         _db = db;
         _sync = sync;
         _currentCompany = currentCompany;
+        _logger = logger;
     }
 
     public bool SapCatalogSyncEnabled { get; private set; }
@@ -67,10 +72,18 @@ public sealed class IndexModel : RendicionesPageModelBase
             var glAccountResult = await _sync.SyncGlAccountsAsync(_currentCompany.CompanyId, ct);
             SuccessMessage = $"Sincronizado. Centros de costo: {costCenterResult.Created} nuevos, {costCenterResult.Updated} actualizados, {costCenterResult.Deactivated} desactivados. " +
                               $"Cuentas contables: {glAccountResult.Created} nuevas, {glAccountResult.Updated} actualizadas, {glAccountResult.Deactivated} desactivadas.";
+
+            var allWarnings = costCenterResult.Warnings.Concat(glAccountResult.Warnings).ToList();
+            if (allWarnings.Count > 0)
+            {
+                _logger.LogWarning("Sincronización SAP con advertencias para la compañía {CompanyId}: {Warnings}", _currentCompany.CompanyId, string.Join(" | ", allWarnings));
+                WarningMessage = string.Join(" ", allWarnings);
+            }
         }
         catch (Exception ex)
         {
-            ErrorMessage = GetErrorMessage(ex);
+            _logger.LogError(ex, "Falló la sincronización de catálogos SAP para la compañía {CompanyId}", _currentCompany.CompanyId);
+            ErrorMessage = "No se pudo sincronizar con SAP. Intentá nuevamente más tarde o contactá a soporte.";
         }
         return RedirectToPage();
     }
@@ -119,6 +132,13 @@ public sealed class IndexModel : RendicionesPageModelBase
 
     public async Task<IActionResult> OnPostDesactivarCentroCostoAsync(long id, CancellationToken ct)
     {
+        var settings = await _db.RendicionesSettings.FirstOrDefaultAsync(x => x.CompanyId == _currentCompany.CompanyId, ct);
+        if (settings?.SapCatalogSyncEnabled ?? true)
+        {
+            ErrorMessage = "No se pueden editar catálogos manuales mientras la sincronización con SAP está activa.";
+            return RedirectToPage();
+        }
+
         var row = await _db.CostCenters.FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == _currentCompany.CompanyId, ct);
         if (row is not null)
         {
@@ -131,6 +151,13 @@ public sealed class IndexModel : RendicionesPageModelBase
 
     public async Task<IActionResult> OnPostDesactivarCuentaAsync(long id, CancellationToken ct)
     {
+        var settings = await _db.RendicionesSettings.FirstOrDefaultAsync(x => x.CompanyId == _currentCompany.CompanyId, ct);
+        if (settings?.SapCatalogSyncEnabled ?? true)
+        {
+            ErrorMessage = "No se pueden editar catálogos manuales mientras la sincronización con SAP está activa.";
+            return RedirectToPage();
+        }
+
         var row = await _db.GlAccounts.FirstOrDefaultAsync(g => g.Id == id && g.CompanyId == _currentCompany.CompanyId, ct);
         if (row is not null)
         {

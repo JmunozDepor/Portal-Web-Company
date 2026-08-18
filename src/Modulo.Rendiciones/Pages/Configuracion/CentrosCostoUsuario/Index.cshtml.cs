@@ -13,7 +13,7 @@ namespace Modulo.Rendiciones.Pages.Configuracion.CentrosCostoUsuario;
 /// (IUserCostCenterService.GetAvailableAsync) -- esta pantalla es para acotarlo cuando
 /// Administración lo necesite, no un requisito para que el resto del módulo funcione.
 /// </summary>
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly IUserCostCenterService _userCostCenters;
     private readonly ITenantUserAdminService _users;
@@ -22,7 +22,9 @@ public sealed class IndexModel : RendicionesPageModelBase
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(IUserCostCenterService userCostCenters, ITenantUserAdminService users,
-        ICostCenterCatalogService costCenters, ICurrentCompanyAccessor currentCompany, ILogger<IndexModel> logger)
+        ICostCenterCatalogService costCenters, IRendicionesUserRoleService roles, ICurrentUserContext currentUser,
+        ICurrentCompanyAccessor currentCompany, ILogger<IndexModel> logger)
+        : base(roles, currentUser, currentCompany)
     {
         _userCostCenters = userCostCenters;
         _users = users;

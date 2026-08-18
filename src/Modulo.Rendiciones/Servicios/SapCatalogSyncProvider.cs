@@ -49,9 +49,37 @@ public sealed class SapCatalogSyncProvider : ICatalogSyncProvider
         where TEntity : class
     {
         int created = 0, updated = 0, deactivated = 0;
-        var sapCodes = new HashSet<string>(sapItems.Select(i => i.Code));
+        var warnings = new List<string>();
+        var seenCodes = new HashSet<string>();
+        var validItems = new List<(string Code, string Name)>();
 
-        foreach (var (code, name) in sapItems)
+        foreach (var (rawCode, rawName) in sapItems)
+        {
+            var code = rawCode?.Trim() ?? "";
+            var name = rawName?.Trim() ?? "";
+
+            if (code.Length == 0)
+            {
+                warnings.Add($"Ítem de SAP omitido: código vacío (nombre: \"{name}\").");
+                continue;
+            }
+            if (name.Length == 0)
+            {
+                warnings.Add($"Ítem de SAP omitido: nombre vacío (código: \"{code}\").");
+                continue;
+            }
+            if (!seenCodes.Add(code))
+            {
+                warnings.Add($"Ítem de SAP omitido: código duplicado \"{code}\" en la respuesta.");
+                continue;
+            }
+
+            validItems.Add((code, name));
+        }
+
+        var sapCodes = new HashSet<string>(validItems.Select(i => i.Code));
+
+        foreach (var (code, name) in validItems)
         {
             var row = existing.FirstOrDefault(e => GetCode(e) == code);
             if (row is null)
@@ -77,7 +105,7 @@ public sealed class SapCatalogSyncProvider : ICatalogSyncProvider
         }
 
         await _db.SaveChangesAsync(ct);
-        return new CatalogSyncResult(created, updated, deactivated, Array.Empty<string>());
+        return new CatalogSyncResult(created, updated, deactivated, warnings);
     }
 
     private static string GetCode(object e) => e switch { CostCenter c => c.Code, GlAccount g => g.Code, _ => throw new NotSupportedException() };

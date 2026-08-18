@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Modulo.Rendiciones.Data;
 
@@ -11,9 +12,11 @@ using Modulo.Rendiciones.Data;
 namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
 {
     [DbContext(typeof(RendicionesDbContext))]
-    partial class RendicionesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260818002316_AddRendicionesUserRoles")]
+    partial class AddRendicionesUserRoles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

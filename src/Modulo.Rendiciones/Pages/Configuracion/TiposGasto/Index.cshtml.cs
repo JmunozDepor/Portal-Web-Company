@@ -8,13 +8,15 @@ using PortalSaas.Abstractions.Contratos;
 
 namespace Modulo.Rendiciones.Pages.Configuracion.TiposGasto;
 
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly IExpenseTypeService _expenseTypes;
     private readonly ICurrentCompanyAccessor _currentCompany;
     private readonly RendicionesDbContext _db;
 
-    public IndexModel(IExpenseTypeService expenseTypes, ICurrentCompanyAccessor currentCompany, RendicionesDbContext db)
+    public IndexModel(IExpenseTypeService expenseTypes, ICurrentCompanyAccessor currentCompany, RendicionesDbContext db,
+        IRendicionesUserRoleService roles, ICurrentUserContext currentUser)
+        : base(roles, currentUser, currentCompany)
     {
         _expenseTypes = expenseTypes;
         _currentCompany = currentCompany;

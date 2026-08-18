@@ -107,4 +107,114 @@ public class SapCatalogSyncProviderTests
         var updated = await db.CostCenters.FirstAsync(c => c.Code == "CC-1" && c.CompanyId == companyId);
         Assert.Equal(CatalogEntrySource.Sap, updated.Source);
     }
+
+    [Fact]
+    public async Task SyncCostCentersAsync_empty_sap_response_deactivates_all_existing_rows()
+    {
+        var companyId = Guid.NewGuid();
+        await using var db = CreateDb(nameof(SyncCostCentersAsync_empty_sap_response_deactivates_all_existing_rows));
+        db.CostCenters.Add(new CostCenter { CompanyId = companyId, Code = "CC-1", Name = "Centro 1", IsActive = true, Source = CatalogEntrySource.Sap });
+        db.CostCenters.Add(new CostCenter { CompanyId = companyId, Code = "CC-2", Name = "Centro 2", IsActive = true, Source = CatalogEntrySource.Sap });
+        await db.SaveChangesAsync();
+
+        var sut = new SapCatalogSyncProvider(db, new FakeCostCenterCatalogService(new List<CostCenterDto>()), new FakeGlAccountCatalogService(new List<GeneralLedgerAccountDto>()));
+
+        var result = await sut.SyncCostCentersAsync(companyId, CancellationToken.None);
+
+        Assert.Equal(0, result.Created);
+        Assert.Equal(2, result.Deactivated);
+        Assert.All(await db.CostCenters.Where(c => c.CompanyId == companyId).ToListAsync(), c => Assert.False(c.IsActive));
+    }
+
+    [Fact]
+    public async Task SyncCostCentersAsync_skips_duplicate_code_in_sap_response_and_warns()
+    {
+        var companyId = Guid.NewGuid();
+        await using var db = CreateDb(nameof(SyncCostCentersAsync_skips_duplicate_code_in_sap_response_and_warns));
+
+        var sapItems = new List<CostCenterDto>
+        {
+            new() { Code = "CC-1", Name = "Primero" },
+            new() { Code = "CC-1", Name = "Duplicado" },
+        };
+        var sut = new SapCatalogSyncProvider(db, new FakeCostCenterCatalogService(sapItems), new FakeGlAccountCatalogService(new List<GeneralLedgerAccountDto>()));
+
+        var result = await sut.SyncCostCentersAsync(companyId, CancellationToken.None);
+
+        Assert.Equal(1, result.Created);
+        Assert.Single(result.Warnings);
+        Assert.Contains("duplicado", result.Warnings[0]);
+
+        var rows = await db.CostCenters.Where(c => c.CompanyId == companyId).ToListAsync();
+        Assert.Single(rows);
+        Assert.Equal("Primero", rows[0].Name);
+    }
+
+    [Fact]
+    public async Task SyncCostCentersAsync_skips_items_with_blank_code_or_name_and_warns()
+    {
+        var companyId = Guid.NewGuid();
+        await using var db = CreateDb(nameof(SyncCostCentersAsync_skips_items_with_blank_code_or_name_and_warns));
+
+        var sapItems = new List<CostCenterDto>
+        {
+            new() { Code = "  ", Name = "Sin código" },
+            new() { Code = "CC-1", Name = " " },
+            new() { Code = "CC-2", Name = "Válido" },
+        };
+        var sut = new SapCatalogSyncProvider(db, new FakeCostCenterCatalogService(sapItems), new FakeGlAccountCatalogService(new List<GeneralLedgerAccountDto>()));
+
+        var result = await sut.SyncCostCentersAsync(companyId, CancellationToken.None);
+
+        Assert.Equal(1, result.Created);
+        Assert.Equal(2, result.Warnings.Count);
+
+        var rows = await db.CostCenters.Where(c => c.CompanyId == companyId).ToListAsync();
+        Assert.Single(rows);
+        Assert.Equal("CC-2", rows[0].Code);
+    }
+
+    [Fact]
+    public async Task SyncGlAccountsAsync_creates_new_and_deactivates_missing()
+    {
+        var companyId = Guid.NewGuid();
+        await using var db = CreateDb(nameof(SyncGlAccountsAsync_creates_new_and_deactivates_missing));
+        db.GlAccounts.Add(new GlAccount { CompanyId = companyId, Code = "GL-OLD", Name = "Ya no existe en SAP", IsActive = true, Source = CatalogEntrySource.Sap });
+        await db.SaveChangesAsync();
+
+        var sapItems = new List<GeneralLedgerAccountDto> { new() { AccountCode = "GL-NEW", AccountName = "Cuenta nueva" } };
+        var sut = new SapCatalogSyncProvider(db, new FakeCostCenterCatalogService(new List<CostCenterDto>()), new FakeGlAccountCatalogService(sapItems));
+
+        var result = await sut.SyncGlAccountsAsync(companyId, CancellationToken.None);
+
+        Assert.Equal(1, result.Created);
+        Assert.Equal(0, result.Updated);
+        Assert.Equal(1, result.Deactivated);
+
+        var created = await db.GlAccounts.FirstAsync(g => g.Code == "GL-NEW" && g.CompanyId == companyId);
+        Assert.Equal(CatalogEntrySource.Sap, created.Source);
+
+        var deactivated = await db.GlAccounts.FirstAsync(g => g.Code == "GL-OLD" && g.CompanyId == companyId);
+        Assert.False(deactivated.IsActive);
+    }
+
+    [Fact]
+    public async Task SyncGlAccountsAsync_flips_manual_row_to_sap_when_code_collides()
+    {
+        var companyId = Guid.NewGuid();
+        await using var db = CreateDb(nameof(SyncGlAccountsAsync_flips_manual_row_to_sap_when_code_collides));
+        db.GlAccounts.Add(new GlAccount { CompanyId = companyId, Code = "GL-1", Name = "Cuenta manual", IsActive = true, Source = CatalogEntrySource.Manual });
+        await db.SaveChangesAsync();
+
+        var sapItems = new List<GeneralLedgerAccountDto> { new() { AccountCode = "GL-1", AccountName = "Cuenta manual" } };
+        var sut = new SapCatalogSyncProvider(db, new FakeCostCenterCatalogService(new List<CostCenterDto>()), new FakeGlAccountCatalogService(sapItems));
+
+        var result = await sut.SyncGlAccountsAsync(companyId, CancellationToken.None);
+
+        Assert.Equal(0, result.Created);
+        Assert.Equal(1, result.Updated);
+
+        var updated = await db.GlAccounts.FirstAsync(g => g.Code == "GL-1" && g.CompanyId == companyId);
+        Assert.Equal(CatalogEntrySource.Sap, updated.Source);
+    }
 }

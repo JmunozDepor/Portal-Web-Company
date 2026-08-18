@@ -3,16 +3,18 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modulo.Rendiciones.Data;
 using Modulo.Rendiciones.Models;
+using Modulo.Rendiciones.Servicios;
 using PortalSaas.Abstractions.Contratos;
 
 namespace Modulo.Rendiciones.Pages.Configuracion.Notificaciones;
 
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly RendicionesDbContext _db;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(RendicionesDbContext db, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(RendicionesDbContext db, IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _db = db;
         _currentCompany = currentCompany;

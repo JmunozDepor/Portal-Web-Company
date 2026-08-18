@@ -15,7 +15,7 @@ namespace Modulo.Rendiciones.Pages.Gastos;
 /// persistido de una, y "revisar" es simplemente editar el gasto recién creado como
 /// cualquier otro.
 /// </summary>
-public sealed class ImportarModel : RendicionesPageModelBase
+public sealed class ImportarModel : RendicionesRendidorPageModelBase
 {
     private const int MaxFiles = 5;
 
@@ -26,7 +26,8 @@ public sealed class ImportarModel : RendicionesPageModelBase
     private readonly ICurrentCompanyAccessor _currentCompany;
 
     public ImportarModel(IReceiptExtractorService extractor, IAttachmentStorageService attachments, IExpenseService expenses,
-        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _extractor = extractor;
         _attachments = attachments;

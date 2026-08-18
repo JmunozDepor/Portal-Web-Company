@@ -46,11 +46,52 @@
 }
 
 .rnd-stat-tile {
+    position: relative;
+    overflow: hidden;
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-md);
     padding: 14px 16px;
     box-shadow: var(--shadow-card);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    /* Anima al aparecer, en cascada por tile (ver @keyframes rnd-fade-up más abajo) --
+       la fila de KPIs es lo primero que ve el rendidor al entrar, un pequeño arranque
+       la distingue del resto de la pantalla, estática. */
+    animation: rnd-fade-up .32s ease backwards;
+}
+
+.rnd-stat-tile:nth-child(1) { animation-delay: 0ms; }
+.rnd-stat-tile:nth-child(2) { animation-delay: 40ms; }
+.rnd-stat-tile:nth-child(3) { animation-delay: 80ms; }
+
+/* Costura de color en el borde superior -- mismo lenguaje que .card-ps::before,
+   pero apagada por defecto (opacity 0) y solo se enciende al pasar el mouse, para
+   no competir con el degradado de marca que ya usa .card-ps en otras pantallas. */
+.rnd-stat-tile::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2.5px;
+    background: var(--text-muted);
+    opacity: 0;
+    transition: opacity .18s ease;
+}
+
+.rnd-stat-tile.rnd-stat-accent::before  { background: var(--accent); }
+.rnd-stat-tile.rnd-stat-success::before { background: var(--bs-success); }
+.rnd-stat-tile.rnd-stat-warning::before { background: var(--bs-warning); }
+.rnd-stat-tile.rnd-stat-danger::before  { background: var(--bs-danger); }
+
+.rnd-stat-tile:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--card-border));
+    box-shadow: 0 20px 40px -24px color-mix(in srgb, var(--text-main) 35%, transparent);
+}
+
+.rnd-stat-tile:hover::before {
+    opacity: 1;
 }
 
 .rnd-stat-tile .rnd-stat-label {
@@ -66,6 +107,7 @@
     font-size: 22px;
     font-weight: 700;
     color: var(--text-main);
+    transition: color .18s ease;
 }
 
 .rnd-stat-tile.rnd-stat-accent .rnd-stat-value { color: var(--accent); }
@@ -101,8 +143,301 @@
 .rnd-badge--warning { background: color-mix(in srgb, var(--bs-warning) 18%, transparent); color: var(--bs-warning); }
 .rnd-badge--danger  { background: color-mix(in srgb, var(--bs-danger) 16%, transparent); color: var(--bs-danger); }
 
-/* Lista en tarjetas -- pantallas de uso diario (Gastos/Informes/Fondos). Las
-   pantallas de configuración/administración usan .document-list-table del portal. */
+/* Barra de búsqueda + filtros + refrescar, arriba del listado. Propia del plugin
+   (no reusa .filter-card del Host -- ver la regla de aislamiento al inicio de este
+   archivo), pero mismo lenguaje visual (--card-bg/--card-border/--radius-sm). */
+.rnd-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.rnd-search {
+    position: relative;
+    flex: 1 1 260px;
+    max-width: 340px;
+}
+
+.rnd-search i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 13px;
+    pointer-events: none;
+}
+
+.rnd-search input {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px 8px 34px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.rnd-search input:focus {
+    outline: none;
+    border-color: var(--accent-soft);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.rnd-filter-menu {
+    position: relative;
+}
+
+.rnd-filter-toggle,
+.rnd-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--input-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color .15s ease, color .15s ease;
+}
+
+.rnd-icon-btn {
+    padding: 8px 10px;
+}
+
+.rnd-filter-toggle:hover,
+.rnd-icon-btn:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--card-border));
+    color: var(--accent);
+}
+
+.rnd-filter-dropdown {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+    padding: 10px 12px;
+    min-width: 200px;
+}
+
+.rnd-filter-title {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.rnd-filter-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 2px;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+/* Tabla de gastos (Proveedor/Fecha, Estado, Política, Categoría, Total) -- alterna
+   al modo tabla pedido explícitamente en vez de .rnd-card-list, misma paleta y el
+   mismo lenguaje de hover ya establecido en .rnd-card-row (barra de acento a la
+   izquierda + icono a color sólido), aplicado ahora por FILA de tabla. */
+.rnd-table-wrapper {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    /* SIN overflow:hidden a propósito -- recortaba el menú "..." de cada fila
+       (dropdown-menu, position:absolute) contra el borde de la tabla, dejándolo
+       invisible en vez de solo clipeado (bug real reportado: "las opciones no se
+       visualizan"). El redondeo de esquinas se logra en su lugar sobre las celdas
+       de esquina de la tabla misma (ver thead th:first/last-child más abajo), sin
+       necesidad de cortar nada que pueda desbordar. Si la tabla necesita scroll
+       horizontal en mobile, ver overflow-x en el media query al final del bloque. */
+    box-shadow: var(--shadow-card);
+}
+
+.rnd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.rnd-table thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--card-border);
+    background: var(--card-bg);
+}
+
+.rnd-table thead th:first-child {
+    border-top-left-radius: var(--radius-md);
+}
+
+.rnd-table thead th:last-child {
+    border-top-right-radius: var(--radius-md);
+}
+
+.rnd-table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: var(--radius-md);
+}
+
+.rnd-table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: var(--radius-md);
+}
+
+@media (max-width: 900px) {
+    .rnd-table-wrapper {
+        overflow-x: auto;
+    }
+}
+
+.rnd-table tbody tr {
+    position: relative;
+    border-bottom: 1px solid var(--card-border);
+    transition: background-color .14s ease;
+    box-shadow: inset 3px 0 0 transparent;
+}
+
+.rnd-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.rnd-table tbody tr:hover {
+    background: color-mix(in srgb, var(--accent) 4%, var(--card-bg));
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.rnd-table td {
+    padding: 8px 14px;
+    vertical-align: middle;
+}
+
+.rnd-col-check,
+.rnd-col-menu {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.rnd-col-total {
+    text-align: right;
+}
+
+.rnd-col-muted {
+    color: var(--text-muted);
+    font-size: 12.5px;
+}
+
+.rnd-row-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    min-width: 220px;
+}
+
+.rnd-row-link .rnd-card-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
+    transition: transform .16s ease, background-color .16s ease;
+}
+
+.rnd-table tbody tr:hover .rnd-row-link .rnd-card-icon {
+    transform: scale(1.08) rotate(-4deg);
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.rnd-row-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.rnd-table tbody tr:hover .rnd-card-title {
+    color: var(--accent);
+}
+
+.rnd-row-menu {
+    position: relative;
+}
+
+.rnd-row-menu-toggle {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: border-color .14s ease, color .14s ease, background-color .14s ease;
+}
+
+.rnd-row-menu-toggle:hover {
+    border-color: var(--card-border);
+    color: var(--text-main);
+    background: color-mix(in srgb, var(--text-main) 8%, transparent);
+}
+
+.rnd-row-menu-list {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+    min-width: 180px;
+}
+
+.rnd-row-menu-list .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-main);
+    font-size: 13px;
+}
+
+.rnd-row-menu-list .dropdown-item:hover,
+.rnd-row-menu-list .dropdown-item:focus {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+}
+
+.rnd-row-menu-list form {
+    margin: 0;
+}
+
+.rnd-row-menu-list form .dropdown-item {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    font-family: inherit;
+}
+
+.rnd-table-empty-filter {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0;
+}
+
+/* Lista en tarjetas -- pantallas de uso diario (Informes/Fondos, y Gastos hasta la
+   entrega del layout de tabla de arriba). Las pantallas de configuración/
+   administración usan .document-list-table del portal. */
 .rnd-card-list {
     display: flex;
     flex-direction: column;
@@ -110,21 +445,60 @@
 }
 
 .rnd-card-row {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 14px;
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-md);
-    padding: 12px 16px;
+    padding: 12px 16px 12px 20px;
     box-shadow: var(--shadow-card);
-    transition: transform .12s ease, box-shadow .12s ease;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
     text-decoration: none;
+    /* Entrada en cascada por fila -- ver @keyframes rnd-fade-up. Se limita a las
+       primeras 10 filas (nth-child) para no acumular medio segundo de delay en
+       listados largos; de la 11 en adelante aparecen ya asentadas. */
+    animation: rnd-fade-up .32s ease backwards;
+}
+
+.rnd-card-row:nth-child(n+1)  { animation-delay: calc(var(--rnd-row-i, 0) * 35ms); }
+.rnd-card-list .rnd-card-row:nth-child(1)  { --rnd-row-i: 0; }
+.rnd-card-list .rnd-card-row:nth-child(2)  { --rnd-row-i: 1; }
+.rnd-card-list .rnd-card-row:nth-child(3)  { --rnd-row-i: 2; }
+.rnd-card-list .rnd-card-row:nth-child(4)  { --rnd-row-i: 3; }
+.rnd-card-list .rnd-card-row:nth-child(5)  { --rnd-row-i: 4; }
+.rnd-card-list .rnd-card-row:nth-child(6)  { --rnd-row-i: 5; }
+.rnd-card-list .rnd-card-row:nth-child(7)  { --rnd-row-i: 6; }
+.rnd-card-list .rnd-card-row:nth-child(8)  { --rnd-row-i: 7; }
+.rnd-card-list .rnd-card-row:nth-child(9)  { --rnd-row-i: 8; }
+.rnd-card-list .rnd-card-row:nth-child(10) { --rnd-row-i: 9; }
+
+/* Barra de acento a la izquierda -- oculta (scaleY 0) por defecto, se despliega
+   desde el centro al pasar el mouse. Junto con el tinte de fondo y el ícono, es la
+   señal de "esta fila es interactiva" que antes solo daba la sombra. */
+.rnd-card-row::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    transform: scaleY(0);
+    transition: transform .16s ease;
 }
 
 .rnd-card-row:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--card-border));
+    background: color-mix(in srgb, var(--accent) 4%, var(--card-bg));
     box-shadow: 0 28px 56px -30px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.rnd-card-row:hover::before {
+    transform: scaleY(1);
 }
 
 .rnd-card-icon {
@@ -138,6 +512,13 @@
     align-items: center;
     justify-content: center;
     font-size: 16px;
+    transition: transform .16s ease, background-color .16s ease;
+}
+
+.rnd-card-row:hover .rnd-card-icon {
+    transform: scale(1.08) rotate(-4deg);
+    background: var(--accent);
+    color: #ffffff;
 }
 
 .rnd-card-main {
@@ -151,6 +532,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: color .16s ease;
+}
+
+.rnd-card-row:hover .rnd-card-title {
+    color: var(--accent);
 }
 
 .rnd-card-sub {
@@ -200,13 +586,87 @@
     align-items: flex-start;
 }
 
+/* Página "Nuevo/Editar gasto" completa -- padding más chico que .admin-card genérico
+   (24px), acercándose al modal de referencia sin tocar las otras 10 pantallas que
+   comparten .admin-card. */
+.rnd-detalle-card.admin-card {
+    padding: 18px 20px;
+}
+
+.rnd-detalle-card .admin-card-header {
+    margin-bottom: 12px;
+}
+
 .rnd-gasto-form {
-    flex: 0 0 380px;
+    flex: 0 0 340px;
     min-width: 0;
 }
 
 .rnd-gasto-form .form-row {
     grid-template-columns: 1fr;
+}
+
+/* Formulario compacto -- pedido explícito de acercarse al tamaño del modal de
+   referencia ("Nuevo gasto"), acotado a .rnd-gasto-form para no tocar .form-group/
+   .form-control genéricos que usan las 11 pantallas de administración del plugin
+   (esas siguen con el tamaño normal). Mismos campos, menos aire entre ellos. */
+.rnd-gasto-form .form-group {
+    margin-bottom: 10px;
+}
+
+.rnd-gasto-form .form-group label {
+    font-size: 10.5px;
+    margin-bottom: 4px;
+}
+
+.rnd-gasto-form .form-control {
+    padding: 7px 10px;
+    font-size: 13px;
+}
+
+.rnd-gasto-form .btn-erp-primary,
+.rnd-gasto-form .btn-module-action {
+    padding: 7px 14px;
+    font-size: 12.5px;
+}
+
+/* Pastilla informativa "Política" arriba del formulario -- grupo de aprobación +
+   centros de costo del usuario ACTUAL, de solo lectura (nunca se postea, no es un
+   campo de Input). Ver el comentario largo de DetalleModel.ApprovalGroupSummary
+   sobre por qué esto no se persiste en el gasto: ExpenseReport ya congela
+   ExpenseApprovalGroupId/CostCenterCode un paso después, al agrupar en un informe. */
+.rnd-policy-chip {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    margin-bottom: 12px;
+}
+
+.rnd-policy-chip-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+}
+
+.rnd-policy-chip-value {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.rnd-policy-chip-sub {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
 }
 
 .rnd-gasto-visor {
@@ -244,6 +704,140 @@
 
 .rnd-gasto-visor-header a:hover {
     color: var(--accent);
+}
+
+/* Botones de acción del visor (reemplazar/expandir/descargar/eliminar) -- header del
+   visor pasó de un solo link a un grupo de iconos, mismo criterio visual que
+   .rnd-row-menu-toggle (botón chico, fondo transparente, se enciende en hover). */
+.rnd-visor-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.rnd-visor-actions a,
+.rnd-visor-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color .14s ease, color .14s ease;
+}
+
+.rnd-visor-actions a:hover,
+.rnd-visor-action-btn:hover {
+    background: color-mix(in srgb, var(--text-main) 10%, transparent);
+    color: var(--accent);
+}
+
+.rnd-visor-action-danger:hover {
+    color: var(--bs-danger);
+    background: color-mix(in srgb, var(--bs-danger) 12%, transparent);
+}
+
+/* Vista de solo lectura de un gasto ya en informe -- alterna al formulario editable
+   (mismo layout rnd-gasto-split/rnd-gasto-visor a la derecha), mismo lenguaje visual
+   que .rnd-card-row/.admin-card, sin ningún control de edición. */
+.rnd-gasto-view {
+    flex: 0 0 380px;
+    min-width: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+}
+
+.rnd-view-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.rnd-view-date {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.rnd-view-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.rnd-view-header h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.rnd-view-amount {
+    flex: 0 0 auto;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.rnd-view-policy {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    background: var(--bs-body-bg);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    margin-bottom: 16px;
+}
+
+.rnd-view-policy strong {
+    color: var(--text-main);
+}
+
+.rnd-view-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+    margin-bottom: 16px;
+}
+
+.rnd-view-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rnd-view-label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+}
+
+.rnd-view-value {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.rnd-view-notes {
+    border-top: 1px solid var(--card-border);
+    padding-top: 12px;
+}
+
+.rnd-view-notes p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--text-main);
 }
 
 .rnd-gasto-visor iframe {
@@ -811,4 +1405,36 @@ span.field-validation-error {
     color: var(--bs-danger);
     font-size: 11.5px;
     margin-top: 4px;
+}
+
+@keyframes rnd-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Quien pide menos movimiento en el sistema operativo lo pide para TODA la web,
+   no solo para video/imagen -- se cortan la animación de entrada en cascada y las
+   transiciones de hover quedan instantáneas (siguen cambiando de color/estado,
+   solo sin desplazamiento ni easing). */
+@media (prefers-reduced-motion: reduce) {
+    .rnd-stat-tile,
+    .rnd-card-row {
+        animation: none;
+        transition-duration: .01ms;
+    }
+
+    .rnd-stat-tile:hover,
+    .rnd-card-row:hover {
+        transform: none;
+    }
+
+    .rnd-card-row:hover .rnd-card-icon {
+        transform: none;
+    }
 }

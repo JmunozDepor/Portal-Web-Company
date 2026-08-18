@@ -1,5 +1,6 @@
 @page "/rendiciones/gastos/detalle/{id:long?}"
 @model Modulo.Rendiciones.Pages.Gastos.DetalleModel
+@using Modulo.Rendiciones.Pages
 @{
     ViewData["Title"] = Model.IsNew ? "Nuevo gasto" : "Editar gasto";
 }
@@ -7,7 +8,7 @@
     <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
 }
 
-<div class="card-ps admin-card">
+<div class="card-ps admin-card rnd-detalle-card">
     <div class="admin-card-header">
         <h2>@(Model.IsNew ? "Nuevo gasto" : "Editar gasto")</h2>
         <a asp-page="/Gastos/Importar" class="btn-module-action">Importar con OCR (PDF/foto)</a>
@@ -28,7 +29,90 @@
 
 @if (Model.Expense is not null && Model.Expense.Status != "Loose")
 {
-    <p class="admin-muted">Este gasto ya pertenece a un informe -- desvinculalo desde el informe primero para poder editarlo.</p>
+    var e = Model.Expense;
+    var status = Modulo.Rendiciones.Pages.Gastos.IndexModel.StatusToShow(e);
+    var hasReceiptView = e.ExpenseReceiptId is not null;
+    var receiptViewUrl = hasReceiptView ? Url.Page("./Comprobante", new { id = e.Id }) : null;
+    <p class="admin-muted"><i class="bi bi-info-circle"></i> Este gasto ya pertenece a un informe -- desvinculalo desde el informe primero para poder editarlo. Por ahora podés revisarlo:</p>
+
+    <div class="@(hasReceiptView ? "rnd-gasto-split" : "")">
+        <div class="rnd-gasto-view">
+            <div class="rnd-view-top">
+                <span class="rnd-view-date">Fecha: @e.Date.ToString("dd/MM/yyyy")</span>
+                <span class="rnd-badge @RendicionesUi.BadgeClass(status)">@status</span>
+            </div>
+            <div class="rnd-view-header">
+                <h3>@(e.SupplierName ?? e.ExpenseType?.Name ?? "Gasto")</h3>
+                <span class="rnd-view-amount">@e.Currency @e.Amount.ToString("N0")</span>
+            </div>
+
+            @if (Model.PolicyLabel is not null)
+            {
+                <div class="rnd-view-policy"><i class="bi bi-shield-check"></i> Política: <strong>@Model.PolicyLabel</strong></div>
+            }
+
+            <div class="rnd-view-grid">
+                <div class="rnd-view-field">
+                    <span class="rnd-view-label">Neto</span>
+                    <span class="rnd-view-value">@((e.Amount - (e.TaxAmount ?? 0)).ToString("N0")) @e.Currency</span>
+                </div>
+                <div class="rnd-view-field">
+                    <span class="rnd-view-label">Impuesto</span>
+                    <span class="rnd-view-value">@((e.TaxAmount ?? 0).ToString("N0")) @e.Currency</span>
+                </div>
+                <div class="rnd-view-field">
+                    <span class="rnd-view-label">Categoría</span>
+                    <span class="rnd-view-value">@(e.ExpenseType?.Name ?? "—")</span>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(e.ExpenseType?.SapGlAccount))
+                {
+                    <div class="rnd-view-field">
+                        <span class="rnd-view-label">Cuenta contable</span>
+                        <span class="rnd-view-value">@e.ExpenseType!.SapGlAccount</span>
+                    </div>
+                }
+                <div class="rnd-view-field">
+                    <span class="rnd-view-label">Tipo de documento</span>
+                    <span class="rnd-view-value">@(e.DocumentType?.Name ?? "—")</span>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(e.DocumentNumber))
+                {
+                    <div class="rnd-view-field">
+                        <span class="rnd-view-label">Número de documento</span>
+                        <span class="rnd-view-value">@e.DocumentNumber</span>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(e.SupplierTaxId))
+                {
+                    <div class="rnd-view-field">
+                        <span class="rnd-view-label">RUT proveedor</span>
+                        <span class="rnd-view-value">@e.SupplierTaxId</span>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(e.Notes))
+            {
+                <div class="rnd-view-notes">
+                    <span class="rnd-view-label">Nota</span>
+                    <p>@e.Notes</p>
+                </div>
+            }
+        </div>
+        @if (hasReceiptView)
+        {
+            <div class="rnd-gasto-visor">
+                <div class="rnd-gasto-visor-header">
+                    <span><i class="bi bi-paperclip"></i> Comprobante</span>
+                    <div class="rnd-visor-actions">
+                        <a href="@receiptViewUrl" target="_blank" title="Expandir / abrir visor completo"><i class="bi bi-arrows-fullscreen"></i></a>
+                        <a href="@Url.Page("./ComprobanteArchivo", new { id = e.Id })" download title="Descargar"><i class="bi bi-download"></i></a>
+                    </div>
+                </div>
+                <iframe src="@receiptViewUrl" title="Comprobante"></iframe>
+            </div>
+        }
+    </div>
 }
 else
 {
@@ -36,6 +120,11 @@ else
     var receiptUrl = hasReceipt ? Url.Page("./Comprobante", new { id = Model.Expense!.Id }) : null;
     <div class="@(hasReceipt ? "rnd-gasto-split" : "")">
         <div class="rnd-gasto-form">
+            <div class="rnd-policy-chip">
+                <span class="rnd-policy-chip-label"><i class="bi bi-shield-check"></i> Política</span>
+                <span class="rnd-policy-chip-value">@Model.ApprovalGroupSummary</span>
+                <span class="rnd-policy-chip-sub">Centros de costo: @Model.CostCenterSummary</span>
+            </div>
             <form method="post" asp-page-handler="Guardar" enctype="multipart/form-data">
                 @* id vía input oculto, no asp-route-id -- asp-route-id="@Model.Expense?.Id" con
                    valor null (gasto nuevo) rompía el FormTagHelper por completo: ni action ni
@@ -146,12 +235,21 @@ else
             <div class="rnd-gasto-visor">
                 <div class="rnd-gasto-visor-header">
                     <span><i class="bi bi-paperclip"></i> Comprobante</span>
-                    <a href="@receiptUrl" target="_blank" title="Abrir en pestaña nueva">
-                        <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
+                    <div class="rnd-visor-actions">
+                        <button type="button" class="rnd-visor-action-btn" id="rnd-btn-reemplazar-comprobante" title="Cargar nueva imagen">
+                            <i class="bi bi-upload"></i>
+                        </button>
+                        <a href="@receiptUrl" target="_blank" title="Expandir / abrir visor completo"><i class="bi bi-arrows-fullscreen"></i></a>
+                        <a href="@Url.Page("./ComprobanteArchivo", new { id = Model.Expense!.Id })" download title="Descargar"><i class="bi bi-download"></i></a>
+                        <button type="submit" form="rnd-form-eliminar-comprobante" class="rnd-visor-action-btn rnd-visor-action-danger" title="Eliminar comprobante"
+                                onclick="return confirm('¿Eliminar el comprobante de este gasto?');">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </div>
                 <iframe src="@receiptUrl" title="Comprobante"></iframe>
             </div>
+            <form method="post" asp-page-handler="EliminarComprobante" asp-route-id="@Model.Expense!.Id" id="rnd-form-eliminar-comprobante"></form>
         }
     </div>
 }
@@ -179,6 +277,21 @@ else
 
         selectTipo.addEventListener('change', actualizarVisibilidad);
         actualizarVisibilidad();
+
+        // Botón "Cargar nueva imagen" del visor -- reusa el <input type="file"> ya presente
+        // en el formulario de metadatos (Input.Receipt) en vez de duplicar la lógica de
+        // subida; al elegir el archivo, se envía el formulario completo de una (mismos datos
+        // ya cargados desde OnGetAsync, el usuario no pierde nada de lo tipeado).
+        var btnReemplazar = document.getElementById('rnd-btn-reemplazar-comprobante');
+        var inputComprobante = document.querySelector('input[name="Input.Receipt"]');
+        if (btnReemplazar && inputComprobante) {
+            btnReemplazar.addEventListener('click', function () { inputComprobante.click(); });
+            inputComprobante.addEventListener('change', function () {
+                if (inputComprobante.files.length > 0) {
+                    inputComprobante.closest('form').submit();
+                }
+            });
+        }
 
         if (btnCalcular) {
             btnCalcular.addEventListener('click', function () {

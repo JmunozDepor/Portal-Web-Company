@@ -6,7 +6,7 @@ using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.Rendiciones.Pages.Informes;
 
-public sealed class DetalleModel : RendicionesPageModelBase
+public sealed class DetalleModel : RendicionesRendidorOAprobadorPageModelBase
 {
     private readonly IExpenseReportService _reports;
     private readonly IExpenseFundService _funds;
@@ -17,8 +17,9 @@ public sealed class DetalleModel : RendicionesPageModelBase
     private readonly ICurrentCompanyAccessor _currentCompany;
 
     public DetalleModel(IExpenseReportService reports, IExpenseFundService funds, IExpenseService expenses,
-        IUserCostCenterService costCenters, IExpenseApprovalGroupService groups, ICurrentUserContext currentUser,
-        ICurrentCompanyAccessor currentCompany)
+        IUserCostCenterService costCenters, IExpenseApprovalGroupService groups, IRendicionesUserRoleService roles,
+        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _reports = reports;
         _funds = funds;

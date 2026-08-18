@@ -11,7 +11,7 @@ namespace Modulo.Rendiciones.Pages.Informes;
 /// permite armar uno nuevo eligiendo entre los gastos SUELTOS del usuario (ver
 /// Pages/Gastos, donde se capturan).
 /// </summary>
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesRendidorPageModelBase
 {
     private readonly IExpenseReportService _reports;
     private readonly IExpenseService _expenses;
@@ -21,7 +21,8 @@ public sealed class IndexModel : RendicionesPageModelBase
     private readonly ICurrentCompanyAccessor _currentCompany;
 
     public IndexModel(IExpenseReportService reports, IExpenseService expenses, IUserCostCenterService costCenters,
-        IExpenseFundService funds, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        IExpenseFundService funds, IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _reports = reports;
         _expenses = expenses;

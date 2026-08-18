@@ -9,13 +9,15 @@ namespace Modulo.Rendiciones.Pages.Aprobaciones;
 /// logueado. Reutiliza Pages/Informes/Detalle para Aprobar/Rechazar, sin duplicar la
 /// pantalla.
 /// </summary>
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesAprobadorPageModelBase
 {
     private readonly IExpenseReportService _reports;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IExpenseReportService reports, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(IExpenseReportService reports, IRendicionesUserRoleService roles,
+        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        : base(roles, currentUser, currentCompany)
     {
         _reports = reports;
         _currentUser = currentUser;

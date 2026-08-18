@@ -8,7 +8,7 @@ using PortalSaas.Abstractions.Modelos;
 namespace Modulo.Rendiciones.Pages.FondosPorRendir;
 
 /// <summary>Listar y crear fondos por rendir del usuario logueado.</summary>
-public sealed class IndexModel : RendicionesPageModelBase
+public sealed class IndexModel : RendicionesRendidorPageModelBase
 {
     private readonly IExpenseFundService _funds;
     private readonly ICurrentUserContext _currentUser;
@@ -16,7 +16,8 @@ public sealed class IndexModel : RendicionesPageModelBase
     private readonly IUserCostCenterService _costCenters;
 
     public IndexModel(IExpenseFundService funds, ICurrentUserContext currentUser,
-        ICurrentCompanyAccessor currentCompany, IUserCostCenterService costCenters)
+        ICurrentCompanyAccessor currentCompany, IUserCostCenterService costCenters, IRendicionesUserRoleService roles)
+        : base(roles, currentUser, currentCompany)
     {
         _funds = funds;
         _currentUser = currentUser;

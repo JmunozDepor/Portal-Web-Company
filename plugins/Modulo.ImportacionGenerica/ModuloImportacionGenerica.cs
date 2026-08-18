@@ -19,7 +19,9 @@ public sealed class ModuloImportacionGenerica : IModuloPortal
 
     public IEnumerable<MenuItemDefinition> GetMenu()
     {
-        yield return new MenuItemDefinition { Code = "raiz", ParentCode = null, Name = "Importación Genérica", Icon = "bi bi-file-earmark-arrow-up", PageRoute = null, Order = 850 };
+        // bi-file-earmark-arrow-up-fill (no la versión outline) -- mismo motivo que
+        // Modulo.Administracion (Icon = "bi bi-gear-fill"), ver ese comentario.
+        yield return new MenuItemDefinition { Code = "raiz", ParentCode = null, Name = "Importación Genérica", Icon = "bi bi-file-earmark-arrow-up-fill", PageRoute = null, Order = 850 };
         yield return new MenuItemDefinition { Code = "importar", ParentCode = "raiz", Name = "Importar documentos", Icon = "bi bi-upload", PageRoute = "/importacion-generica/importar", Order = 1 };
         yield return new MenuItemDefinition { Code = "configuracion", ParentCode = "raiz", Name = "Configuración", Icon = "bi bi-sliders", PageRoute = "/importacion-generica/configuracion", Order = 2 };
         yield return new MenuItemDefinition { Code = "campos-usuario", ParentCode = "raiz", Name = "Campos de usuario", Icon = "bi bi-tags", PageRoute = "/importacion-generica/campos-usuario", Order = 3 };

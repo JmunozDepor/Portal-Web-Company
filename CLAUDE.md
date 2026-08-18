@@ -2674,6 +2674,42 @@ tamaño de fuente, padding, buscador o layout propio por módulo nuevo.
   + `gap: 8px` -- cualquier grupo de botones de acciones nuevo (no solo líneas de
   documento) reusa esta clase en vez de depender del espaciado por defecto entre
   elementos inline.
+- **Patrón ListadoOrganizacion (2026-08-14) -- toda pantalla de listado bajo
+  `/organizacion/*`** (self-service de tenant: `Modulo.Administracion` y cualquier
+  plugin futuro que liste algo del propio tenant, ej. `Usuarios`/`Módulos`/
+  `Grupos de menú`/`Perfiles`) **comparte el mismo esqueleto visual**, tomado tal cual
+  de `/organizacion/usuarios` (`Pages/Usuarios/Index.cshtml`, la referencia original) --
+  nombrado así para poder decir "seguí el patrón ListadoOrganizacion" sin repetir la
+  descripción completa cada vez. Es solo el esqueleto visual (no dicta si la pantalla
+  tiene buscador, botón de acción o creación inline vía formulario -- eso lo define
+  cada pantalla según su propia funcionalidad, sin tocarla al aplicar este patrón):
+  1. **Header**: `<div class="d-flex justify-content-between align-items-center mb-3">`
+     con el `<h1 class="h3 mb-0">` a la izquierda y, si la pantalla tiene una acción
+     primaria que navega a otra página (ej. "Nuevo usuario"), el botón
+     `<a class="btn btn-primary">` a la derecha -- si no hay acción de ese tipo (ej.
+     la creación es un formulario inline más abajo en la misma página, como
+     `Perfiles`/`GruposMenu`), el slot derecho queda vacío, pero el `<div>` contenedor
+     se mantiene igual para que el `h1` no quede pegado al resto del contenido sin el
+     `mb-3` que aporta ese wrapper.
+  2. **Descripción opcional**: un `<p class="text-muted">` directo después del header,
+     solo si la pantalla necesita explicar un concepto no obvio (ej. `Módulos`
+     explica qué significa "ocultar").
+  3. **Alertas**: `@if (Model.MensajeExito...)`/`MensajeError` con
+     `alert alert-success`/`alert alert-danger`, sin cambios -- ya idéntico en las 4
+     pantallas de `Modulo.Administracion` antes de esta entrega.
+  4. **Buscador opcional**: `<form method="get" class="filter-card">`, solo si la
+     pantalla filtra (hoy solo `Usuarios` lo tiene).
+  5. **Tabla**: `<div class="document-list-table-wrapper"><table class="table
+     document-list-table">` -- mismas clases que ya usan los 3 motores genéricos de
+     documento, reusadas acá a propósito (misma cara visual en todo el proyecto, no
+     una tabla nueva por área).
+  6. **Estado vacío**: `<p class="text-muted">` después de la tabla, cuando la lista
+     está vacía.
+  Aplicado (14 ago 2026, solo cambio visual -- ningún `.cs` tocado, ninguna
+  restricción de negocio/permiso cambiada) a `Pages/Modulos/Index.cshtml`,
+  `Pages/Perfiles/Index.cshtml`, `Pages/GruposMenu/Index.cshtml` -- las 3 solo tenían
+  un `<h1 class="h3 mb-3">` suelto sin el wrapper del punto 1; ahora las 4 pantallas
+  de `Modulo.Administracion` comparten exactamente el mismo esqueleto de header.
 
 ## Estilo de código
 

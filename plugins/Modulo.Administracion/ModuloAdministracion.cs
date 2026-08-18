@@ -20,7 +20,10 @@ public sealed class ModuloAdministracion : IModuloPortal
 
     public IEnumerable<MenuItemDefinition> GetMenu()
     {
-        yield return new MenuItemDefinition { Code = "raiz", ParentCode = null, Name = "Administración", Icon = "bi bi-gear", PageRoute = null, Order = 900 };
+        // bi-gear-fill (no bi-gear) -- mismo criterio que Inicio: el glifo outline se
+        // ve más chico que cart/bag/box-seam/truck en la misma caja de 46x46px, la
+        // variante rellena empareja el peso visual (ver "Densidad visual estándar").
+        yield return new MenuItemDefinition { Code = "raiz", ParentCode = null, Name = "Administración", Icon = "bi bi-gear-fill", PageRoute = null, Order = 900 };
         yield return new MenuItemDefinition { Code = "usuarios", ParentCode = "raiz", Name = "Usuarios", Icon = "bi bi-people", PageRoute = "/organizacion/usuarios", Order = 1 };
         yield return new MenuItemDefinition { Code = "modulos", ParentCode = "raiz", Name = "Módulos", Icon = "bi bi-puzzle", PageRoute = "/organizacion/modulos", Order = 2 };
         yield return new MenuItemDefinition { Code = "grupos-menu", ParentCode = "raiz", Name = "Grupos de menú", Icon = "bi bi-diagram-3", PageRoute = "/organizacion/grupos-menu", Order = 3 };

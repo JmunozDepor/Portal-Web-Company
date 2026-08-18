@@ -4,7 +4,12 @@
     ViewData["Title"] = "Módulos";
 }
 
-<h1 class="h3 mb-3">Módulos de tu organización</h1>
+@* Patrón ListadoOrganizacion (ver CLAUDE.md, "Densidad visual estándar") -- header
+   estándar de toda pantalla /organizacion/*: fila flex con el h1 a la izquierda y el
+   slot de acción a la derecha (vacío acá, esta pantalla no tiene acción primaria). *@
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Módulos de tu organización</h1>
+</div>
 <p class="text-muted">
     Estos son los módulos que tu organización tiene contratados. Ocultar un módulo no
     cambia lo que contrataste -- solo lo saca del menú para que no distraiga si no lo usás.

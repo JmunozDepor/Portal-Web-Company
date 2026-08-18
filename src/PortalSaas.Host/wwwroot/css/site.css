@@ -385,6 +385,123 @@ h2.h5, .h5 { font-size: 1rem; }
   font-family: var(--font-sans);
 }
 
+/* Refinamiento "ERP ejecutivo" del navbar de administración -- mismo fondo navy de
+   siempre (.navbar.bg-dark de arriba, decisión ya tomada, no se toca), agrega:
+   wordmark de dos niveles, indicador de sección activa (el navbar nunca marcaba
+   dónde estaba parado el admin), y un cluster de usuario con avatar en vez de texto
+   suelto -- mismo lenguaje visual que .who/.avatar del topbar de tenant. */
+.admin-navbar {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+.admin-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.admin-brand-product {
+  font-weight: 700;
+  font-size: 16.5px;
+  letter-spacing: -0.01em;
+}
+
+.admin-brand-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.28);
+  align-self: center;
+}
+
+.admin-brand-area {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.admin-nav .nav-link {
+  position: relative;
+  padding: 8px 14px !important;
+  margin: 0 1px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.78) !important;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.admin-nav .nav-link:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-nav .nav-link.active {
+  color: #fff !important;
+  font-weight: 600;
+}
+
+/* Indicador de sección activa -- barra inferior, mismo patrón "tab activa" que un
+   ERP real (SAP Fiori/Bloomberg), en vez de solo cambiar el color del texto. */
+.admin-nav .nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -4px;
+  height: 2px;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.admin-user-cluster {
+  gap: 14px;
+}
+
+.admin-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  flex: none;
+}
+
+.admin-user-name {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.admin-logout-btn {
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.admin-logout-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+@media (max-width: 767.98px) {
+  .admin-user-cluster {
+    margin-top: 10px;
+  }
+}
+
 html {
   font-size: 14px;
 }
@@ -537,6 +654,237 @@ body {
 .filter-card .form-control,
 .filter-card .form-select {
   background: var(--card-bg);
+}
+
+/* Panel de KPI (resumen numérico arriba de un listado, ej. /Admin/Organizations) --
+   grid de tarjetas con una franja de color a la izquierda (--kpi-accent, fijada
+   inline por tarjeta) que se lee de un vistazo, mismo criterio de "estado en forma,
+   no solo en texto" que ya rige los badges. Reusa card-bg/card-border/radius-sm --
+   ninguna variable nueva. */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.kpi-tile {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 18px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+}
+
+/* Eyebrow + subtítulo del header de una pantalla de listado -- mismo criterio que
+   .doc-resumen-total-titulo (letra chica, mayúscula, tracking amplio), acá con un
+   filo de --accent2 abajo a modo de firma discreta. Opcional: solo se usa cuando la
+   pantalla necesita ubicar al usuario en la jerarquía (backoffice > área). */
+.page-eyebrow {
+  display: inline-block;
+  margin: 0 0 6px;
+  padding-bottom: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-2);
+  border-bottom: 2px solid var(--accent-2);
+}
+
+.page-subtitle {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  max-width: 640px;
+}
+
+/* Avatar de iniciales de una fila de listado -- relleno SÓLIDO con texto en
+   --on-accent (blanco en los 4 temas), a diferencia de .mode-pill (fondo tenue) --
+   acá necesita más peso visual porque es lo primero que el ojo agarra al escanear la
+   tabla. Mismos dos colores categóricos que .mode-pill/la franja de fila, nunca un
+   tercer color nuevo. */
+.row-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--on-accent);
+  flex: none;
+}
+
+.row-avatar--onprem { background: var(--accent-2); }
+.row-avatar--saas { background: var(--menu-color-2); }
+
+/* Chip de filtro rápido (píldora) -- reemplaza un <button> cuadrado de Bootstrap
+   cuando el conjunto de opciones es chico y mutuamente excluyente (Todas/On-premise/
+   SaaS/Activas). Mismo tratamiento tenue-en-reposo/sólido-activo que ya usan los
+   badges de este archivo. */
+.chip-filter {
+  appearance: none;
+  cursor: pointer;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.chip-filter:hover {
+  border-color: var(--accent-2);
+  color: var(--text-main);
+}
+
+.chip-filter.active {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: var(--on-accent);
+}
+
+.kpi-tile::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--kpi-accent, var(--card-border));
+}
+
+.kpi-tile-label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.kpi-tile-value {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-main);
+}
+
+.kpi-tile-sub {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Pill de Modo (SaaS/On-premise) -- color CATEGÓRICO (identidad), nunca reusado para
+   Estado (ver .status-pill más abajo, que usa los colores de estado reservados
+   --bs-success/--bs-warning/--bs-danger). accent-2 (on-premise) y menu-color-2
+   (SaaS) ya existen en los 4 temas -- ninguna variable nueva, y la franja de fila
+   (tr[data-org-mode]) usa exactamente los mismos dos colores para que el pill y la
+   franja siempre coincidan sin importar el tema activo. */
+.mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.mode-pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.mode-pill--onprem {
+  color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+}
+
+.mode-pill--saas {
+  color: var(--menu-color-2);
+  background: color-mix(in srgb, var(--menu-color-2) 14%, transparent);
+}
+
+/* Pill de Estado -- separado del pill de Modo a propósito (dataviz: color de estado
+   reservado, nunca comparte rol con un color categórico). */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-pill::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-pill--active { color: var(--bs-success); }
+.status-pill--trial { color: var(--bs-warning); }
+.status-pill--suspended,
+.status-pill--cancelled { color: var(--bs-danger); }
+
+/* Franja de 3px a la izquierda de cada fila = mismo color del .mode-pill de esa fila
+   -- permite escanear una lista larga de organizaciones sin leer texto. */
+.document-list-table tbody tr[data-org-mode="on_premise"] {
+  box-shadow: inset 3px 0 0 var(--accent-2);
+}
+
+.document-list-table tbody tr[data-org-mode="saas"] {
+  box-shadow: inset 3px 0 0 var(--menu-color-2);
+}
+
+/* Menú de acciones por fila (Bootstrap dropdown nativo, ya vendored) -- reemplaza la
+   fila de N links separados por "·" que competían por atención; agrupa por Recursos/
+   Comercial con <h6 class="dropdown-header">. */
+.row-actions-menu .btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.row-actions-menu .btn:hover {
+  border-color: var(--card-border);
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--text-main) 8%, transparent);
+}
+
+.row-actions-menu .dropdown-menu {
+  background: var(--card-bg);
+  border-color: var(--card-border);
+  min-width: 220px;
+}
+
+.row-actions-menu .dropdown-item {
+  color: var(--text-main);
+}
+
+.row-actions-menu .dropdown-item:hover,
+.row-actions-menu .dropdown-item:focus {
+  background: color-mix(in srgb, var(--bs-primary) 8%, transparent);
 }
 
 /* Bootstrap 5.1 fija color:#212529 (oscuro) a fuego en .form-control/.form-select --
@@ -1128,6 +1476,7 @@ body {
 .inicio-acceso-icono {
   width: 46px;
   height: 46px;
+  flex: none;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -1143,9 +1492,22 @@ body {
   background: color-mix(in srgb, var(--icon-color, var(--accent)) 26%, transparent);
 }
 
+/* Bug real: sin min-height acá, un nombre de una sola palabra ("Ventas") ocupa una
+   línea y un nombre de dos/tres palabras ("Distribución de Gastos", "Integración
+   WMS", "Importación Genérica") se envuelve a 2 líneas -- esa tarjeta queda más alta
+   que sus vecinas (mismo ancho de columna, .inicio-acceso-card sin altura fija) y el
+   ícono de 46x46px, idéntico en las 9, se ve "más chico" adentro de una tarjeta más
+   grande. line-height*2 reserva SIEMPRE el alto de 2 líneas -- todas las tarjetas
+   miden lo mismo sea cual sea el nombre, sin necesidad de fijar una altura mágica en
+   .inicio-acceso-card (que rompería si un nombre futuro necesita 3 líneas). */
 .inicio-acceso-nombre {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(1.3em * 2);
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.3;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.4px;

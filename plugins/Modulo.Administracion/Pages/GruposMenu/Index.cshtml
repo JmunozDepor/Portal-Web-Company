@@ -4,7 +4,13 @@
     ViewData["Title"] = "Grupos de menú";
 }
 
-<h1 class="h3 mb-3">Grupos de menú de tu organización</h1>
+@* Patrón ListadoOrganizacion (ver CLAUDE.md, "Densidad visual estándar") -- header
+   estándar de toda pantalla /organizacion/*: fila flex con el h1 a la izquierda y el
+   slot de acción a la derecha (vacío acá, la creación es vía el formulario inline de
+   más abajo, no un botón que navegue a otra página). *@
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Grupos de menú de tu organización</h1>
+</div>
 <p class="text-muted">
     Un grupo de menú define qué pantallas ve un usuario -- después le asignás perfil por
     cada una (Ver/Crear/Editar/etc.) desde la ficha del usuario. Las plantillas de

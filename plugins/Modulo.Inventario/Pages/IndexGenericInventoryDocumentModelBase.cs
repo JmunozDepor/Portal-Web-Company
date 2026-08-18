@@ -94,10 +94,11 @@ public abstract class IndexGenericInventoryDocumentModelBase : PageModel
         // genéricos, bug real de subaplicación IIS, 2026-08-02).
         var returnUrl = Uri.EscapeDataString(Request.PathBase + Request.Path + Request.QueryString);
 
-        // DocEntry como primera columna -- paridad con Ventas/Compras y con
+        // DocEntry como primera columna, etiquetada "Id" -- paridad con Ventas/Compras
+        // (mismo label, mismo valor real: DocEntry) y con
         // IndexGenericoInventarioModelBase del original (mismo orden exacto: N.° Socio,
         // Socio de negocios, N.° documento, Almacén destino, Fecha desde, Fecha hasta /
-        // DocEntry, N.° documento, Socio de negocios, Nombre socio, Sucursal entrega,
+        // Id, N.° documento, Socio de negocios, Nombre socio, Sucursal entrega,
         // Fecha, N.° ref., Almacén destino, Estado). Socio de negocios/almacén destino
         // de cabecera SÍ existen en SAP aunque el formulario de creación no los pida
         // (ver el doc-comment de InventoryDocumentSummaryDto) -- un documento creado
@@ -107,7 +108,7 @@ public abstract class IndexGenericInventoryDocumentModelBase : PageModel
             Title = DocumentNamePlural,
             Columns =
             [
-                new DocumentListColumn("DocEntry"),
+                new DocumentListColumn("Id"),
                 new DocumentListColumn("N° documento"),
                 new DocumentListColumn("Socio de negocios"),
                 new DocumentListColumn("Nombre socio"),

@@ -17,12 +17,12 @@
         <form method="post" asp-antiforgery="true">
             <div class="mb-3">
                 <label asp-for="Input.Locale" class="form-label"></label>
-                <input asp-for="Input.Locale" class="form-control" />
+                <select asp-for="Input.Locale" asp-items="Model.LocaleOptions" class="form-select"></select>
             </div>
 
             <div class="mb-3">
                 <label asp-for="Input.Timezone" class="form-label"></label>
-                <input asp-for="Input.Timezone" class="form-control" />
+                <select asp-for="Input.Timezone" asp-items="Model.TimezoneOptions" class="form-select"></select>
             </div>
 
             <div class="mb-3">

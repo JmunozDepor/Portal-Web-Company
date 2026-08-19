@@ -11,6 +11,8 @@ bin/
 obj/
 **/bin/
 **/obj/
+**/dist/
+**/publish/
 node_modules/
 *.user
 

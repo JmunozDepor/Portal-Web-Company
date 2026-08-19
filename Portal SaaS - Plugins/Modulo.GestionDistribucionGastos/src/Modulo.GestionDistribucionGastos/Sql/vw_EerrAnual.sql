@@ -9,6 +9,9 @@
 -- con el signo correcto (Ingresos - Costo - Gastos), sin tener que restar nada a mano. Ojo: este
 -- signo es el inverso del que usan MontoDistribuido/MontoNeto en las tablas base y en
 -- Controllers/EerrController.cs (que sí usan la convención cruda Débito-Crédito).
+-- CodClasificacion/Clasificacion: clasificación de negocio libre asignada en
+-- Agrupacion_Cuenta (mantenedor "Agrupación de Cuentas", solo a nivel de reporte).
+-- NULL si la cuenta no tiene clasificación asignada todavía.
 CREATE OR ALTER VIEW dbo.vw_EerrAnual AS
 WITH Datos AS (
     SELECT
@@ -32,21 +35,25 @@ WITH Datos AS (
     WHERE s.TipoRegistro = 'RESUMEN' AND s.NroCuenta IS NOT NULL
 )
 SELECT
-    Anio, Mes, AnioMes, Grupo,
-    NombreGrupo = CASE Grupo
+    Datos.Anio, Datos.Mes, Datos.AnioMes, Datos.Grupo,
+    NombreGrupo = CASE Datos.Grupo
         WHEN '4' THEN '4 - INGRESOS' WHEN '5' THEN '5 - COSTO DE VENTAS'
         WHEN '6' THEN '6 - GASTOS OPERACIONALES' WHEN '7' THEN '7 - OTROS INGRESOS Y EGRESOS'
         WHEN '8' THEN '8 - OTROS GASTOS' WHEN '9' THEN '9 - IMPUESTOS' END,
-    NroCuenta, NombreCuenta,
-    CodCentroCosto, CentroCosto, CodCanal, Canal, CodSucursal, Sucursal,
-    TipoOrigen, EsGastoIndirecto,
+    Datos.NroCuenta, Datos.NombreCuenta,
+    Datos.CodCentroCosto, Datos.CentroCosto, Datos.CodCanal, Datos.Canal, Datos.CodSucursal, Datos.Sucursal,
+    Datos.TipoOrigen, Datos.EsGastoIndirecto,
     -- Para poder filtrar/agrupar el pivot igual que la pantalla EERR: todo lo que no es gasto
     -- indirecto (ingresos, costo de ventas, gastos directos) queda dentro de Res.Operacional-1;
     -- el gasto indirecto es lo único que recién se resta para llegar a Res.Operacional-2.
-    Resultado = IIF(EsGastoIndirecto = 1, 'Res.Operacional-2', 'Res.Operacional-1'),
-    SUM(Monto) AS Monto
+    Resultado = IIF(Datos.EsGastoIndirecto = 1, 'Res.Operacional-2', 'Res.Operacional-1'),
+    cc.Codigo AS CodClasificacion,
+    cc.Nombre AS Clasificacion,
+    SUM(Datos.Monto) AS Monto
 FROM Datos
-WHERE Grupo IN ('4', '5', '6', '7', '8', '9')
-GROUP BY Anio, Mes, AnioMes, Grupo, NroCuenta, NombreCuenta,
-         CodCentroCosto, CentroCosto, CodCanal, Canal, CodSucursal, Sucursal,
-         TipoOrigen, EsGastoIndirecto;
+LEFT JOIN dbo.Agrupacion_Cuenta ac ON ac.NroCuenta = Datos.NroCuenta
+LEFT JOIN dbo.Clasificacion_Cuenta cc ON cc.Id = ac.ClasificacionId
+WHERE Datos.Grupo IN ('4', '5', '6', '7', '8', '9')
+GROUP BY Datos.Anio, Datos.Mes, Datos.AnioMes, Datos.Grupo, Datos.NroCuenta, Datos.NombreCuenta,
+         Datos.CodCentroCosto, Datos.CentroCosto, Datos.CodCanal, Datos.Canal, Datos.CodSucursal, Datos.Sucursal,
+         Datos.TipoOrigen, Datos.EsGastoIndirecto, cc.Codigo, cc.Nombre;

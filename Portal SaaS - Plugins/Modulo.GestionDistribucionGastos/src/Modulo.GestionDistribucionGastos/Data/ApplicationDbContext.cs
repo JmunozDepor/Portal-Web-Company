@@ -14,6 +14,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<CuentaAprobada> CuentaAprobada => Set<CuentaAprobada>();
     public DbSet<CierreMes> CierreMes => Set<CierreMes>();
     public DbSet<MaestroSucursal> MaestroSucursal => Set<MaestroSucursal>();
+    public DbSet<ClasificacionCuenta> ClasificacionCuenta => Set<ClasificacionCuenta>();
+    public DbSet<AgrupacionCuenta> AgrupacionCuenta => Set<AgrupacionCuenta>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +30,14 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<MaestroSucursal>()
             .HasKey(m => m.CodSucursal);
+
+        modelBuilder.Entity<AgrupacionCuenta>()
+            .HasKey(a => a.NroCuenta);
+
+        modelBuilder.Entity<AgrupacionCuenta>()
+            .HasOne<ClasificacionCuenta>()
+            .WithMany()
+            .HasForeignKey(a => a.ClasificacionId);
 
         base.OnModelCreating(modelBuilder);
     }

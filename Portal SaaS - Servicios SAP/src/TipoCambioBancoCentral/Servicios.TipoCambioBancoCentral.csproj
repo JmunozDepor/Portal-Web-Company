@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- x64 por consistencia con el resto de la familia (ver Servicios.Common.csproj).
+         Este servicio no usa el driver HANA (solo Service Layer/HTTP), pero se mantiene
+         el mismo PlatformTarget que el resto para no bifurcar el perfil de build. -->
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>Servicios.TipoCambioBancoCentral</RootNamespace>
+    <UserSecretsId>servicios-sap-tipocambio-banco-central</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <!-- Mismas versiones que el servicio legado (NX_DEP_TipoCambio.csproj): cliente de
+         SAP Service Layer y HTTP fluido usados para consultar/actualizar ORTT y la API del
+         Banco Central. -->
+    <PackageReference Include="B1SLayer" Version="2.1.1" />
+    <PackageReference Include="Flurl.Http" Version="4.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Servicios.Common\Servicios.Common.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Servicios.Common/Servicios.Common.csproj" />
+  </Folder>
+  <Folder Name="/src/TransferenciaAutomatica/">
+    <Project Path="src/TransferenciaAutomatica/Servicios.TransferenciaAutomatica.csproj" />
+  </Folder>
+  <Folder Name="/src/TransferenciaAutomatica_v2/">
+    <Project Path="src/TransferenciaAutomatica_v2/Servicios.TransferenciaAutomatica_v2.csproj" />
+  </Folder>
+  <Folder Name="/src/TipoCambioBancoCentral/">
+    <Project Path="src/TipoCambioBancoCentral/Servicios.TipoCambioBancoCentral.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Servicios.Common.Tests/Servicios.Common.Tests.csproj" />
+    <Project Path="tests/Servicios.TransferenciaAutomatica.Tests/Servicios.TransferenciaAutomatica.Tests.csproj" />
+    <Project Path="tests/Servicios.TransferenciaAutomatica_v2.Tests/Servicios.TransferenciaAutomatica_v2.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Servicios.CifradorSecretos/Servicios.CifradorSecretos.csproj" />
+  </Folder>
+</Solution>

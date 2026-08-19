@@ -1,0 +1,780 @@
+@page "/gestiongastos/cuentaspendientes/detalle"
+@model Modulo.GestionDistribucionGastos.Pages.GestionGastos.CuentasPendientes.DetalleModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/gestiongastos.css" />
+}
+@{
+    ViewData["Title"] = "Asignar cuenta";
+    string anioMes = Model.AnioMes;
+    string nroCuenta = Model.NroCuenta;
+    bool mesCerrado = Model.MesCerrado;
+    bool cuentaAprobada = Model.CuentaAprobadaBloqueada;
+    bool soloLectura = mesCerrado || cuentaAprobada;
+    var staging = Model.Staging;
+    var centros = Model.CentrosCosto;
+    var canales = Model.Canales;
+    var sucursales = Model.Sucursales;
+    var maestroSucursal = Model.MaestroSucursales;
+
+    string Etiqueta(string? codigo, string? nombre) =>
+        string.IsNullOrWhiteSpace(nombre) ? (codigo ?? "") : $"{codigo} - {nombre}";
+}
+
+<style>
+    /* Anchos en % (no px) para que la tabla siempre ocupe el 100% del ancho disponible, sea cual sea la pantalla.
+       Izquierda = dato tal cual está en SAP (solo lectura). Derecha = lo que se está modificando (editable). */
+    #tablaLineas { font-size: 12.5px; table-layout: fixed; width: 100%; }
+    #tablaLineas th, #tablaLineas td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 6px 8px; }
+    #tablaLineas col.col-chk { width: 2.2%; }
+    #tablaLineas col.col-asiento { width: 6%; }
+    #tablaLineas col.col-glosa { width: 13%; }
+    #tablaLineas col.col-monto { width: 6.8%; }
+    #tablaLineas col.col-actual { width: 8%; }
+    #tablaLineas col.col-destino { width: 15%; }
+    #tablaLineas col.col-indirecto { width: 3%; }
+    #tablaLineas select.sel-destino { width: 100%; padding: 4px 6px; font-size: 12.5px; }
+    #tablaLineas td.col-indirecto-celda { text-align: center; }
+
+    /* Bloque SAP (solo lectura) */
+    #tablaLineas .bloque-sap { background: var(--bs-body-bg); color: var(--text-muted); }
+    /* Bloque de destino (lo que se está modificando) */
+    #tablaLineas .bloque-destino { background: color-mix(in srgb, var(--accent) 8%, var(--card-bg)); }
+    #tablaLineas .divisor-izq { border-left: 2px solid var(--accent); }
+
+    /* Los bloques tienen fondo propio por celda; para que el resaltado de fila siga visible
+       hay que pisar ese fondo explícitamente en vez de depender del fondo de la fila. */
+    #tablaLineas tr.row-changed td.bloque-sap { background: color-mix(in srgb, var(--warning) 20%, var(--bs-body-bg)); }
+    #tablaLineas tr.row-changed td.bloque-destino { background: color-mix(in srgb, var(--warning) 20%, var(--accent-soft) 40%); }
+    #tablaLineas tr.row-selected td.bloque-sap { background: color-mix(in srgb, var(--accent) 18%, var(--bs-body-bg)); }
+    #tablaLineas tr.row-selected td.bloque-destino { background: color-mix(in srgb, var(--accent) 25%, var(--card-bg)); }
+
+    /* Filas ya guardadas (asignación manual aplicada): se mantienen visibles y siguen editables por si hay que corregir */
+    #tablaLineas tr.fila-guardada td.bloque-sap { background: color-mix(in srgb, var(--success) 10%, var(--bs-body-bg)); }
+    #tablaLineas tr.fila-guardada td.bloque-destino { background: color-mix(in srgb, var(--success) 15%, transparent); }
+
+    /* Partidas de una misma línea dividida: la primera fila del grupo lleva el badge, las siguientes
+       se marcan con un borde izquierdo liviano para que se lean como un bloque. */
+    #tablaLineas tr.fila-partida-secundaria td:first-child { border-left: 3px solid var(--accent); }
+    .badge-dividida { background: var(--accent); color: #fff; font-size: 10.5px; padding: 1px 6px; border-radius: 4px; margin-left: 6px; }
+
+    #modalDivision { border: none; border-radius: 8px; padding: 0; max-width: 760px; width: 95%; }
+    #modalDivision::backdrop { background: rgba(0,0,0,0.45); }
+    #modalDivision table input, #modalDivision table select { width: 100%; padding: 4px 6px; font-size: 13px; }
+    #divResumen { font-weight: 600; }
+
+    /* Contenedor propio con scroll vertical acotado para la tabla: el header sticky se ancla
+       a ESTE contenedor (top:0 real), no a la página completa -- así no depende de la altura
+       de nada que haya arriba (toolbar, buscador, panel "Aplicar a marcadas"), que es
+       justamente lo que rompía el header sticky con offsets en pixeles fijos apenas se
+       agregaba/sacaba algo por encima de la tabla (bug real: la primera fila de datos quedaba
+       tapada por el header, invisible pero seleccionable/copiable -- ver conversación 2026-07-20). */
+    #contenedorTablaLineas { max-height: 65vh; overflow: auto; }
+    #tablaLineas thead tr:first-child th { position: sticky; top: 0; z-index: 4; }
+    /* El offset de la segunda fila del header (altura real de la primera) se calcula por JS
+       -- ver ajustarOffsetHeaderTabla() -- en vez de un pixel fijo, para no volver a romperse. */
+    #tablaLineas thead tr:last-child th { position: sticky; z-index: 3; }
+    #tablaLineas thead th:not(.bloque-sap):not(.bloque-destino) { background: var(--card-bg); }
+    #tablaLineas thead tr:last-child th { box-shadow: 0 2px 2px -1px rgba(0,0,0,0.12); }
+
+    /* Barra de período/cuenta fija en la cabecera al desplazarse, para no perder de vista qué mes se está trabajando */
+    #toolbarDetalle { position: sticky; top: 0; z-index: 6; background: var(--card-bg); padding: 4px 0 8px; margin-bottom: 8px; border-bottom: 1px solid var(--card-border); }
+
+    /* Botón flotante de guardado: cuentas largas (ej. Sueldos, 70+ líneas) esconden el
+       "Guardar cambios" de arriba al desplazarse -- este queda siempre visible sin tener que
+       volver al principio de la página. */
+    #btnGuardarFlotante { position: fixed; bottom: 20px; right: 24px; z-index: 20; box-shadow: 0 4px 14px rgba(0,0,0,0.25); padding: 10px 20px; }
+</style>
+
+<partial name="_MensajesGestionGastos" model="Model" />
+<partial name="_NavInterna" />
+
+<div class="card">
+    <div class="toolbar" id="toolbarDetalle">
+        <a asp-page="/GestionGastos/CuentasPendientes/Index" asp-route-anioMes="@anioMes" class="btn">← Volver</a>
+        <span class="badge" style="background:var(--accent); color:#fff;">Período @anioMes</span>
+        <strong>@nroCuenta</strong>
+        @if (mesCerrado)
+        {
+            <span class="badge badge-success">Mes cerrado — solo lectura</span>
+        }
+        else if (cuentaAprobada)
+        {
+            <span class="badge badge-success" title="Aprobada por @Model.UsuarioAprobador el @Model.FechaAprobacionCuenta?.ToString("dd/MM HH:mm")">🔒 Cuenta aprobada — solo lectura</span>
+        }
+        else
+        {
+            <span class="badge badge-warning">Tomada por ti</span>
+            <form asp-page-handler="Liberar" method="post" class="toolbar-right">
+                <input type="hidden" name="anioMes" value="@anioMes" />
+                <input type="hidden" name="nroCuenta" value="@nroCuenta" />
+                <button type="submit">Liberar cuenta</button>
+            </form>
+        }
+    </div>
+
+    <form id="formAsignacion" asp-page-handler="AplicarAsignacion" method="post">
+        <input type="hidden" name="anioMes" value="@anioMes" />
+        <input type="hidden" name="nroCuenta" value="@nroCuenta" />
+
+        @if (!soloLectura)
+        {
+            <div class="card" style="background:var(--input-bg);">
+                <p style="color:var(--text-muted); font-size:13px; margin:0 0 8px;">Aplicar a las líneas marcadas con ☑</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; margin-bottom:12px; align-items:center;">
+                    <select id="panelCentroCosto">
+                        <option value="">Centro de costo</option>
+                        @foreach (var c in centros)
+                        {
+                            <option value="@c.Codigo">@Etiqueta(c.Codigo, c.Nombre)</option>
+                        }
+                    </select>
+                    <select id="panelCanal">
+                        <option value="">Canal</option>
+                        @foreach (var c in canales)
+                        {
+                            <option value="@c.Codigo">@Etiqueta(c.Codigo, c.Nombre)</option>
+                        }
+                    </select>
+                    <select id="panelSucursal">
+                        <option value="">Sucursal</option>
+                        @foreach (var s in sucursales)
+                        {
+                            <option value="@s.Codigo">@Etiqueta(s.Codigo, s.Nombre)</option>
+                        }
+                    </select>
+                    <button type="button" id="btnAplicarMarcadas">Aplicar a marcadas</button>
+                </div>
+                <input type="text" name="Comentario" placeholder="Comentario de justificación" style="width:100%; margin-bottom:12px;" />
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <span id="resumenCambios" style="color:var(--text-muted); font-size:13px;">Sin cambios pendientes</span>
+                    <div style="display:flex; gap:8px;">
+                        <a asp-page="/GestionGastos/CuentasPendientes/Index" asp-route-anioMes="@anioMes" class="btn">Cancelar</a>
+                        <button type="submit" class="btn-primary">Guardar cambios</button>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (mesCerrado)
+        {
+            <div class="alert alert-error">El mes está cerrado: esta cuenta queda solo para consulta, no se pueden guardar cambios.</div>
+        }
+        else
+        {
+            <div class="alert alert-error">La cuenta está aprobada y bloqueada: esta cuenta queda solo para consulta hasta que un aprobador la reabra.</div>
+        }
+
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+            <input type="text" id="buscadorLineas" placeholder="Buscar por asiento, glosa, centro de costo, canal o sucursal (original en SAP o nuevo destino)..." style="flex:1;" autocomplete="off" />
+            <button type="button" id="btnExportarExcel" class="btn">Exportar a Excel</button>
+        </div>
+        <p id="sinResultadosLineas" style="display:none; color:var(--text-muted); font-size:13px;">Ninguna línea coincide con la búsqueda.</p>
+
+        <div id="contenedorTablaLineas">
+        <table class="grid" id="tablaLineas">
+            <colgroup>
+                <col class="col-chk" />
+                <col class="col-asiento" />
+                <col class="col-glosa" />
+                <col class="col-monto" />
+                <col class="col-monto" />
+                <col class="col-actual" />
+                <col class="col-actual" />
+                <col class="col-actual" />
+                <col class="col-destino" />
+                <col class="col-destino" />
+                <col class="col-destino" />
+                <col class="col-indirecto" />
+                <col class="col-actual" />
+            </colgroup>
+            <thead>
+                <tr>
+                    <th rowspan="2"><input type="checkbox" id="chkTodos" disabled="@soloLectura" /></th>
+                    <th rowspan="2">Asiento</th>
+                    <th rowspan="2">Glosa / proveedor</th>
+                    <th rowspan="2">Monto</th>
+                    <th rowspan="2" title="Monto que efectivamente quedó asignado a este destino -- para una línea dividida, cada partida muestra su porción.">Asignado</th>
+                    <th colspan="3" class="bloque-sap divisor-izq" style="text-align:center; font-size:13px;">Actual (en SAP)</th>
+                    <th colspan="3" class="bloque-destino divisor-izq" style="text-align:center; font-size:13px; color:var(--accent); font-weight:600;">Nuevo destino (lo que se modifica)</th>
+                    <th rowspan="2" title="Gasto no directo del canal (ej. costos compartidos/corporativos): se excluye del Resultado Operacional 1 del EERR y recién se resta en el Resultado Operacional 2.">Indirecto ⓘ</th>
+                    <th rowspan="2">División</th>
+                </tr>
+                <tr>
+                    <th class="bloque-sap divisor-izq">Centro costo</th>
+                    <th class="bloque-sap">Canal</th>
+                    <th class="bloque-sap">Sucursal</th>
+                    <th class="bloque-destino divisor-izq">Centro costo</th>
+                    <th class="bloque-destino">Canal</th>
+                    <th class="bloque-destino" title="Al elegir la sucursal se autocompletan canal y centro de costo (siguen siendo editables)">Sucursal ⓘ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int idx = 0; int? grupoAnteriorStagingId = null; }
+                @foreach (var d in Model.Lineas)
+                {
+                    var st = staging.GetValueOrDefault(d.StagingId);
+                    var glosa = $"{st?.Comentarios} {st?.SocioNegocio}".Trim();
+                    var etqCC = Etiqueta(d.CodCentroCostoOriginal, d.CentroCostoOriginal);
+                    var etqCanal = Etiqueta(d.CodCanalOriginal, d.CanalOriginal);
+                    var etqSuc = Etiqueta(d.CodSucursalOriginal, d.SucursalOriginal);
+                    bool resuelta = d.Estado != "PENDIENTE";
+                    string valCC = d.CodCentroCostoDestino ?? "";
+                    string valCanal = d.CodCanalDestino ?? "";
+                    string valSuc = d.CodSucursalDestino ?? "";
+                    int totalEnGrupo = Model.ConteoPorStaging.GetValueOrDefault(d.StagingId, 1);
+                    bool esInicioDeGrupo = grupoAnteriorStagingId != d.StagingId;
+                    grupoAnteriorStagingId = d.StagingId;
+                    // Una división puede terminar en UNA sola fila (repartida 100% a un solo destino
+                    // nuevo, sin remanente pendiente en origen) -- totalEnGrupo==1 no alcanza para
+                    // distinguir "nunca se tocó" de "se dividió y quedó en 1 partida", así que hace
+                    // falta mirar TipoOrigen para que "Editar/Deshacer división" siga disponible en
+                    // ese caso (si no, esa línea queda sin forma de volver al original).
+                    bool grupoDividido = totalEnGrupo > 1 || d.TipoOrigen == "MANUAL";
+                    string montoOriginalInvariante = d.MontoOriginal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                    string busqueda = $"{d.NroAsiento} {d.LineaId} {glosa} {etqCC} {etqCanal} {etqSuc}".ToLowerInvariant();
+                    <tr data-id="@d.Id" data-busqueda="@busqueda"
+                        data-staging-id="@d.StagingId" data-tipo-origen="@d.TipoOrigen"
+                        data-monto-original="@montoOriginalInvariante"
+                        data-monto-distribuido="@d.MontoDistribuido.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+                        class="fila-linea@(resuelta ? " fila-guardada" : "")@(totalEnGrupo > 1 && !esInicioDeGrupo ? " fila-partida-secundaria" : "")">
+                        <td>
+                            <input type="checkbox" class="chkLinea" disabled="@soloLectura" />
+                            @if (resuelta)
+                            {
+                                <span class="badge badge-success" style="margin-left:4px; padding:1px 5px;" title="Guardado por @d.UsuarioResponsable el @d.FechaAsignacion?.ToString("dd/MM HH:mm")">✓</span>
+                            }
+                        </td>
+                        <td title="@d.NroAsiento / @d.LineaId">
+                            @d.NroAsiento / @d.LineaId
+                            @if (totalEnGrupo > 1 && esInicioDeGrupo)
+                            {
+                                <span class="badge-dividida">Dividida en @totalEnGrupo</span>
+                            }
+                        </td>
+                        <td title="@glosa">@glosa</td>
+                        <td title="@d.MontoOriginal.ToString("N0")">@d.MontoOriginal.ToString("N0")</td>
+                        <td title="@d.MontoDistribuido.ToString("N0")">@d.MontoDistribuido.ToString("N0")</td>
+                        <td class="bloque-sap divisor-izq" title="@etqCC">@etqCC</td>
+                        <td class="bloque-sap" title="@etqCanal">@etqCanal</td>
+                        <td class="bloque-sap" title="@etqSuc">@etqSuc</td>
+                        <td class="bloque-destino divisor-izq">
+                            <input type="hidden" name="Lineas[@idx].Id" value="@d.Id" />
+                            <select name="Lineas[@idx].CodCentroCosto" class="sel-destino sel-cc" disabled="@soloLectura">
+                                <option value="">(sin cambio)</option>
+                                @foreach (var c in centros)
+                                {
+                                    <option value="@c.Codigo" selected="@(c.Codigo == valCC)">@Etiqueta(c.Codigo, c.Nombre)</option>
+                                }
+                            </select>
+                        </td>
+                        <td class="bloque-destino">
+                            <select name="Lineas[@idx].CodCanal" class="sel-destino sel-canal" disabled="@soloLectura">
+                                <option value="">(sin cambio)</option>
+                                @foreach (var c in canales)
+                                {
+                                    <option value="@c.Codigo" selected="@(c.Codigo == valCanal)">@Etiqueta(c.Codigo, c.Nombre)</option>
+                                }
+                            </select>
+                        </td>
+                        <td class="bloque-destino">
+                            <select name="Lineas[@idx].CodSucursal" class="sel-destino sel-sucursal" disabled="@soloLectura">
+                                <option value="">(sin cambio)</option>
+                                @foreach (var s in sucursales)
+                                {
+                                    <option value="@s.Codigo" selected="@(s.Codigo == valSuc)">@Etiqueta(s.Codigo, s.Nombre)</option>
+                                }
+                            </select>
+                        </td>
+                        <td class="col-indirecto-celda">
+                            <input type="checkbox" name="Lineas[@idx].EsGastoIndirecto" value="true" class="chk-indirecto" disabled="@soloLectura" checked="@d.EsGastoIndirecto" data-original="@(d.EsGastoIndirecto ? "true" : "false")" />
+                            <input type="hidden" name="Lineas[@idx].EsGastoIndirecto" value="false" />
+                        </td>
+                        <td>
+                            @if (!soloLectura)
+                            {
+                                if (!grupoDividido)
+                                {
+                                    <button type="button" class="btn-dividir"
+                                            data-staging-id="@d.StagingId"
+                                            data-monto="@montoOriginalInvariante"
+                                            data-cc="@valCC" data-canal="@valCanal" data-suc="@valSuc"
+                                            data-indirecto="@(d.EsGastoIndirecto ? "true" : "false")">
+                                        Dividir
+                                    </button>
+                                }
+                                else if (esInicioDeGrupo)
+                                {
+                                    <!--
+                                        No puede ser un <form> propio acá: esta fila ya está dentro de
+                                        #formAsignacion (abre en la línea 115), y un <form> anidado dentro de
+                                        otro <form> es HTML inválido -- el parser del navegador descarta la
+                                        apertura del <form> interno y sus campos/botón terminan asociados al
+                                        <form> exterior (#formAsignacion, handler AplicarAsignacion), así que
+                                        al enviar terminaba ejecutando el handler equivocado con los campos
+                                        equivocados (bug real, 2026-07-30). Mismo criterio que ya usa "Dividir"
+                                        en esta misma tabla: un botón simple que dispara, por JS, el submit de
+                                        #formDeshacerDivision -- un <form> real y separado, definido fuera de
+                                        #formAsignacion (ver más abajo, junto a #formDivision).
+                                    -->
+                                    <!--
+                                        "Editar división" reabre el modal precargado con las partidas ya
+                                        guardadas (lee los data-* de las filas del propio grupo, ya presentes
+                                        en el DOM -- no hace falta ningún endpoint nuevo) para seguir
+                                        repartiendo el saldo que quedó en origen sin perder lo ya guardado.
+                                        Distinto de "Deshacer división", que resetea todo a una sola línea.
+                                    -->
+                                    <button type="button" class="btn-editar-division" data-staging-id="@d.StagingId">
+                                        Editar división
+                                    </button>
+                                    <button type="button" class="btn-deshacer-division" data-staging-id="@d.StagingId">
+                                        Deshacer división
+                                    </button>
+                                }
+                            }
+                        </td>
+                    </tr>
+                    idx++;
+                }
+                @if (!Model.Lineas.Any())
+                {
+                    <tr><td colspan="13">No hay líneas para esta cuenta.</td></tr>
+                }
+            </tbody>
+        </table>
+        </div>
+    </form>
+
+    @if (!soloLectura)
+    {
+        <button type="submit" form="formAsignacion" id="btnGuardarFlotante" class="btn-primary">Guardar cambios</button>
+    }
+
+    @if (!soloLectura)
+    {
+        <!-- Form real y separado (fuera de #formAsignacion) para "Deshacer división" -- ver el comentario
+             en la tabla de arriba. JS setea #deshacerStagingId antes de enviarlo. -->
+        <form id="formDeshacerDivision" asp-page-handler="DeshacerDivision" method="post" style="display:none;">
+            <input type="hidden" name="anioMes" value="@anioMes" />
+            <input type="hidden" name="nroCuenta" value="@nroCuenta" />
+            <input type="hidden" name="stagingId" id="deshacerStagingId" value="" />
+        </form>
+    }
+
+    @if (!soloLectura)
+    {
+        <dialog id="modalDivision">
+            <form id="formDivision" asp-page-handler="DividirLinea" method="post" style="padding:20px;">
+                <input type="hidden" name="anioMes" value="@anioMes" />
+                <input type="hidden" name="nroCuenta" value="@nroCuenta" />
+                <input type="hidden" name="StagingId" id="divStagingId" value="" />
+
+                <h3 id="divTitulo" style="margin-top:0;">Dividir línea</h3>
+                <p style="color:var(--text-muted); font-size:13px;">
+                    Repartí el monto original en varios destinos (centro de costo/canal/sucursal), sin depender de ninguna regla.
+                    Lo que no repartas queda por defecto en el centro de costo/canal/sucursal original de la línea, pendiente de
+                    asignación -- podés guardar así y volver más tarde a repartir el resto (botón "Editar división").
+                </p>
+                <p style="font-size:13px;"><strong>Monto original a repartir: $<span id="divMontoOriginal">0</span></strong></p>
+
+                <div style="overflow-x:auto;">
+                <table style="width:100%; font-size:13px; margin-bottom:8px; border-collapse:collapse;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; padding:4px;">Centro costo</th>
+                            <th style="text-align:left; padding:4px;">Canal</th>
+                            <th style="text-align:left; padding:4px;">Sucursal</th>
+                            <th style="text-align:left; padding:4px; width:120px;">Monto</th>
+                            <th style="width:30px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="divPartidas"></tbody>
+                </table>
+                </div>
+                <button type="button" id="btnAgregarPartida">+ Agregar partida</button>
+
+                <div style="margin:12px 0;">
+                    <span id="divResumen">Repartido: $0 / $0</span>
+                </div>
+
+                <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin-bottom:8px;">
+                    <input type="checkbox" name="EsGastoIndirecto" id="divIndirecto" value="true" />
+                    <input type="hidden" name="EsGastoIndirecto" value="false" />
+                    Gasto indirecto (se aplica a todas las partidas resultantes)
+                </label>
+                <textarea name="Comentario" id="divComentario" placeholder="Comentario de justificación" style="width:100%; margin-bottom:12px;"></textarea>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <!--
+                        Solo visible al reabrir una división existente (ver btn-editar-division) --
+                        en una línea nunca dividida no hay nada guardado que eliminar todavía.
+                        Elimina TODA la división (todas las partidas + el remanente en origen, si lo
+                        hay) y deja la línea como si nunca se hubiera tocado -- mismo resultado que
+                        el botón "Deshacer división" de la tabla, invocado desde acá para no tener
+                        que cerrar el modal y buscarlo aparte.
+                    -->
+                    <button type="button" id="btnEliminarDivisionDesdeModal" style="display:none; color:var(--danger, #c0392b);">Eliminar división</button>
+                    <div style="display:flex; gap:8px; margin-left:auto;">
+                        <button type="button" id="btnCancelarDivision">Cancelar</button>
+                        <button type="submit" id="btnGuardarDivision" class="btn-primary" disabled>Guardar división</button>
+                    </div>
+                </div>
+            </form>
+        </dialog>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/lib/sheetjs/xlsx.full.min.js"></script>
+    <script>
+        // Correlación fija Sucursal -> Canal/Centro de costo (Maestro_Sucursal), usada para autocompletar.
+        const mapaSucursal = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            maestroSucursal.ToDictionary(m => m.CodSucursal, m => new { canal = m.CodCanal, centroCosto = m.CodCentroCosto })
+        ));
+
+        const soloLectura = @Html.Raw(soloLectura ? "true" : "false");
+        const filas = Array.from(document.querySelectorAll('#tablaLineas tbody tr.fila-linea'));
+
+        // Offset real (no un pixel fijo) para que la segunda fila del header sticky quede
+        // justo debajo de la primera -- se recalcula si la ventana cambia de tamaño (el
+        // encabezado puede pasar a 2 líneas de texto en pantallas angostas).
+        function ajustarOffsetHeaderTabla() {
+            const primeraFila = document.querySelector('#tablaLineas thead tr:first-child');
+            const segundaFila = document.querySelector('#tablaLineas thead tr:last-child');
+            if (!primeraFila || !segundaFila || primeraFila === segundaFila) return;
+            const altura = primeraFila.getBoundingClientRect().height;
+            segundaFila.querySelectorAll('th').forEach(th => th.style.top = altura + 'px');
+        }
+        ajustarOffsetHeaderTabla();
+        window.addEventListener('resize', ajustarOffsetHeaderTabla);
+
+        // El servidor (OnPostAplicarAsignacionAsync) ya compara cada línea recibida contra lo
+        // que hay en la base y descarta silenciosamente las que no cambiaron de verdad (ver
+        // el comentario ahí) -- nunca necesitó que le mandemos las 894 líneas completas, solo
+        // las marcadas como 'row-changed' acá. Hasta 2026-08-13 el formulario posteaba TODAS
+        // las líneas igual (con su valor actual, cambiado o no), lo que en cuentas grandes
+        // (900+ líneas) generaba un POST de varios miles de campos que fallaba con un HTTP 400
+        // crudo antes de llegar a la app -- ni ValueCountLimit ni uploadReadAheadSize ni
+        // maxAllowedContentLength, subidos muy por encima de lo necesario, cambiaron nada, así
+        // que el corte pasa en alguna capa fuera de nuestro control (WAF/proxy del servidor
+        // compartido, sin confirmar). Recortar acá el payload a solo lo que realmente cambió
+        // esquiva el problema de raíz Y de paso reduce drásticamente el tráfico en cualquier
+        // escenario, WAF de por medio o no.
+        function deshabilitarCamposDeLineasSinCambios() {
+            let indiceNuevo = 0;
+            filas.forEach(fila => {
+                const camposLinea = fila.querySelectorAll('input[name^="Lineas["], select[name^="Lineas["]');
+                if (!fila.classList.contains('row-changed')) {
+                    camposLinea.forEach(campo => { campo.disabled = true; });
+                    return;
+                }
+                // El model binder de ASP.NET Core para listas indexadas (Lineas[0], Lineas[1]...)
+                // exige índices CONSECUTIVOS desde 0 -- si el índice original de esta fila (su
+                // posición real en las ~900 líneas de la cuenta) queda con huecos porque se
+                // salteó a las filas sin cambios del medio, el binder corta en el primer índice
+                // faltante y ve la lista vacía (bug real: "Debes seleccionar al menos una línea"
+                // con el payload ya recortado y sin ningún 400, 2026-08-13). Se renumera acá,
+                // solo al momento de enviar, a índices 0,1,2... contando nada más las filas que
+                // realmente viajan.
+                camposLinea.forEach(campo => {
+                    campo.name = campo.name.replace(/^Lineas\[\d+\]/, 'Lineas[' + indiceNuevo + ']');
+                });
+                indiceNuevo++;
+            });
+        }
+
+        const formAsignacion = document.getElementById('formAsignacion');
+        if (formAsignacion) {
+            formAsignacion.addEventListener('submit', deshabilitarCamposDeLineasSinCambios);
+        }
+
+        // Exportar a Excel -- toma las filas VISIBLES en ese momento (respeta el filtro del
+        // buscador de arriba, mismo criterio que "exportar lo que estoy mirando"), leyendo
+        // directo del DOM (texto de las celdas + opción seleccionada de cada <select> de
+        // destino) para que el Excel refleje exactamente lo que hay en pantalla, cambios sin
+        // guardar incluidos.
+        const btnExportarExcel = document.getElementById('btnExportarExcel');
+        if (btnExportarExcel) {
+            btnExportarExcel.addEventListener('click', function () {
+                const encabezados = [
+                    'Asiento', 'Glosa / proveedor', 'Monto', 'Asignado',
+                    'Centro costo (SAP)', 'Canal (SAP)', 'Sucursal (SAP)',
+                    'Centro costo (nuevo destino)', 'Canal (nuevo destino)', 'Sucursal (nuevo destino)',
+                    'Indirecto', 'Estado'
+                ];
+                const filasVisibles = filas.filter(fila => fila.style.display !== 'none');
+                const datos = filasVisibles.map(fila => {
+                    const celdas = fila.querySelectorAll(':scope > td');
+                    const textoCelda = i => celdas[i].innerText.trim();
+                    const textoSeleccionado = selector => {
+                        const sel = fila.querySelector(selector);
+                        return sel && sel.selectedIndex > 0 ? sel.options[sel.selectedIndex].text : '';
+                    };
+                    const chkIndirecto = fila.querySelector('.chk-indirecto');
+                    return [
+                        textoCelda(1), textoCelda(2), textoCelda(3), textoCelda(4),
+                        textoCelda(5), textoCelda(6), textoCelda(7),
+                        textoSeleccionado('.sel-cc'), textoSeleccionado('.sel-canal'), textoSeleccionado('.sel-sucursal'),
+                        chkIndirecto && chkIndirecto.checked ? 'Sí' : 'No',
+                        fila.classList.contains('fila-guardada') ? 'Guardado' : (fila.classList.contains('row-changed') ? 'Cambio sin guardar' : 'Pendiente'),
+                    ];
+                });
+
+                const hoja = XLSX.utils.aoa_to_sheet([encabezados, ...datos]);
+                const libro = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(libro, hoja, 'Detalle');
+                XLSX.writeFile(libro, 'cuenta-@(nroCuenta)-@(anioMes).xlsx');
+            });
+        }
+
+        // Buscador por asiento/glosa/centro de costo/canal/sucursal (original en SAP) -- para
+        // cuentas con muchas líneas (ej. Sueldos, 70+) es la única forma práctica de confirmar
+        // a mano si existe alguna línea con determinada dimensión, sin scrollear todo a ojo.
+        const buscadorLineas = document.getElementById('buscadorLineas');
+        if (buscadorLineas) {
+            buscadorLineas.addEventListener('input', function () {
+                const texto = this.value.trim().toLowerCase();
+                let visibles = 0;
+                filas.forEach(fila => {
+                    const coincide = fila.dataset.busqueda.includes(texto);
+                    fila.style.display = coincide ? '' : 'none';
+                    if (coincide) visibles++;
+                });
+                document.getElementById('sinResultadosLineas').style.display = (texto && visibles === 0) ? '' : 'none';
+            });
+        }
+
+        function aplicarCorrelacion(fila, codSucursal) {
+            const info = mapaSucursal[codSucursal];
+            if (!info) return;
+            const selCC = fila.querySelector('.sel-cc');
+            const selCanal = fila.querySelector('.sel-canal');
+            if (info.centroCosto && [...selCC.options].some(o => o.value === info.centroCosto)) selCC.value = info.centroCosto;
+            if (info.canal && [...selCanal.options].some(o => o.value === info.canal)) selCanal.value = info.canal;
+        }
+
+        // data-busqueda se arma en el servidor solo con los valores ORIGINALES de SAP (Asiento/
+        // glosa/CC/Canal/Sucursal) -- el buscador no encontraba nada tipeando un código/nombre
+        // del "Nuevo destino" porque ese texto nunca entraba al índice. Se recalcula acá,
+        // agregando la etiqueta visible de cada <select> de destino elegido, cada vez que algo
+        // cambia (y una vez al cargar, por si la fila ya traía un destino guardado de antes).
+        function actualizarBusquedaDestino(fila) {
+            const textosDestino = Array.from(fila.querySelectorAll('.sel-destino'))
+                .map(sel => sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : '')
+                .join(' ');
+            fila.dataset.busqueda = (fila.dataset.busquedaBase + ' ' + textosDestino).toLowerCase();
+        }
+
+        function actualizarEstadoFila(fila) {
+            const cambiaronDestino = Array.from(fila.querySelectorAll('.sel-destino')).some(s => s.value !== '');
+            const chkIndirecto = fila.querySelector('.chk-indirecto');
+            const cambioIndirecto = chkIndirecto && (String(chkIndirecto.checked) !== chkIndirecto.dataset.original);
+            fila.classList.toggle('row-changed', cambiaronDestino || cambioIndirecto);
+            actualizarBusquedaDestino(fila);
+            actualizarResumen();
+        }
+
+        filas.forEach(fila => {
+            fila.dataset.busquedaBase = fila.dataset.busqueda;
+            actualizarBusquedaDestino(fila);
+        });
+
+        function actualizarResumen() {
+            const el = document.getElementById('resumenCambios');
+            if (!el) return;
+            const total = filas.filter(f => f.classList.contains('row-changed')).length;
+            el.textContent = total === 0 ? 'Sin cambios pendientes' : `${total} línea(s) con cambios sin guardar`;
+        }
+
+        if (!soloLectura) {
+            filas.forEach(fila => {
+                fila.querySelectorAll('.sel-destino').forEach(sel => {
+                    sel.addEventListener('change', () => actualizarEstadoFila(fila));
+                });
+                fila.querySelector('.sel-sucursal').addEventListener('change', function () {
+                    if (this.value) aplicarCorrelacion(fila, this.value);
+                    actualizarEstadoFila(fila);
+                });
+                fila.querySelector('.chk-indirecto').addEventListener('change', () => actualizarEstadoFila(fila));
+                fila.querySelector('.chkLinea').addEventListener('change', function () {
+                    fila.classList.toggle('row-selected', this.checked);
+                });
+            });
+
+            document.getElementById('chkTodos').addEventListener('change', function () {
+                document.querySelectorAll('.chkLinea').forEach(c => {
+                    c.checked = this.checked;
+                    c.dispatchEvent(new Event('change'));
+                });
+            });
+
+            document.getElementById('btnAplicarMarcadas').addEventListener('click', function () {
+                const cc = document.getElementById('panelCentroCosto').value;
+                const canal = document.getElementById('panelCanal').value;
+                const sucursal = document.getElementById('panelSucursal').value;
+                const marcadas = filas.filter(f => f.querySelector('.chkLinea').checked);
+
+                if (marcadas.length === 0) {
+                    alert('Marca al menos una línea con el checkbox.');
+                    return;
+                }
+                if (!cc && !canal && !sucursal) {
+                    alert('Elige al menos un centro de costo, canal o sucursal para aplicar.');
+                    return;
+                }
+
+                marcadas.forEach(fila => {
+                    if (sucursal) fila.querySelector('.sel-sucursal').value = sucursal;
+                    // Si el panel no fijó canal/centro de costo a mano, se derivan de la sucursal elegida.
+                    if (sucursal && !cc && !canal) aplicarCorrelacion(fila, sucursal);
+                    if (cc) fila.querySelector('.sel-cc').value = cc;
+                    if (canal) fila.querySelector('.sel-canal').value = canal;
+                    actualizarEstadoFila(fila);
+                });
+            });
+
+            // División manual de una línea en varias partidas (centro de costo/canal/sucursal + monto propio),
+            // sin depender de ninguna regla -- ver DetalleModel.OnPostDividirLineaAsync. Un solo modal
+            // reutilizado por fila, mismo criterio que el panel compartido "Aplicar a marcadas" de arriba.
+            const centrosOpciones = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(centros.Select(c => new { c.Codigo, c.Nombre })));
+            const canalesOpciones = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(canales.Select(c => new { c.Codigo, c.Nombre })));
+            const sucursalesOpciones = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sucursales.Select(c => new { c.Codigo, c.Nombre })));
+
+            const modalDivision = document.getElementById('modalDivision');
+            const divStagingId = document.getElementById('divStagingId');
+            const divMontoOriginalLabel = document.getElementById('divMontoOriginal');
+            const divPartidasBody = document.getElementById('divPartidas');
+            const divResumen = document.getElementById('divResumen');
+            const btnGuardarDivision = document.getElementById('btnGuardarDivision');
+            const divIndirecto = document.getElementById('divIndirecto');
+            const divComentario = document.getElementById('divComentario');
+            let montoObjetivoDivision = 0;
+
+            function opcionesSelectDivision(seleccionado, opciones) {
+                let html = '<option value="">(sin cambio)</option>';
+                opciones.forEach(o => {
+                    const etiqueta = o.Nombre ? `${o.Codigo} - ${o.Nombre}` : o.Codigo;
+                    html += `<option value="${o.Codigo}"${o.Codigo === seleccionado ? ' selected' : ''}>${etiqueta}</option>`;
+                });
+                return html;
+            }
+
+            function reindexarPartidasDivision() {
+                Array.from(divPartidasBody.querySelectorAll('tr')).forEach((tr, i) => {
+                    tr.querySelector('.sel-p-cc').name = `Partidas[${i}].CodCentroCosto`;
+                    tr.querySelector('.sel-p-canal').name = `Partidas[${i}].CodCanal`;
+                    tr.querySelector('.sel-p-suc').name = `Partidas[${i}].CodSucursal`;
+                    tr.querySelector('.input-monto-partida').name = `Partidas[${i}].Monto`;
+                });
+            }
+
+            function actualizarResumenDivision() {
+                reindexarPartidasDivision();
+                const total = Array.from(divPartidasBody.querySelectorAll('.input-monto-partida'))
+                    .reduce((acc, inp) => acc + (parseFloat(inp.value) || 0), 0);
+                // Redondeado a 2 decimales antes de comparar -- evita que un residuo de coma
+                // flotante (ej. 0.0000000001) marque "sobrepartido" por error de redondeo.
+                const remanente = Math.round((montoObjetivoDivision - total) * 100) / 100;
+                const sobrepartido = montoObjetivoDivision >= 0 ? remanente < 0 : remanente > 0;
+                divResumen.textContent = `Repartido: $${total.toLocaleString('es-CL')} / $${montoObjetivoDivision.toLocaleString('es-CL')}` +
+                    (remanente !== 0
+                        ? ` — ${sobrepartido ? 'sobrepartido en' : 'queda en origen'} $${Math.abs(remanente).toLocaleString('es-CL')}`
+                        : ' — repartido completo');
+                divResumen.style.color = sobrepartido ? 'var(--danger, red)' : (remanente === 0 ? 'var(--success)' : 'var(--warning)');
+                btnGuardarDivision.disabled = sobrepartido || total <= 0;
+            }
+
+            function agregarPartidaDivision(cc, canal, suc, monto) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><select class="sel-p-cc">${opcionesSelectDivision(cc || '', centrosOpciones)}</select></td>
+                    <td><select class="sel-p-canal">${opcionesSelectDivision(canal || '', canalesOpciones)}</select></td>
+                    <td><select class="sel-p-suc">${opcionesSelectDivision(suc || '', sucursalesOpciones)}</select></td>
+                    <td><input type="number" step="0.01" class="input-monto-partida" value="${monto || 0}" /></td>
+                    <td><button type="button" class="btn-quitar-partida">✕</button></td>
+                `;
+                divPartidasBody.appendChild(tr);
+                tr.querySelector('.input-monto-partida').addEventListener('input', actualizarResumenDivision);
+                tr.querySelector('.btn-quitar-partida').addEventListener('click', () => {
+                    if (divPartidasBody.querySelectorAll('tr').length <= 1) {
+                        alert('Una división necesita al menos 1 destino -- el resto queda en origen por defecto.');
+                        return;
+                    }
+                    tr.remove();
+                    actualizarResumenDivision();
+                });
+                actualizarResumenDivision();
+            }
+
+            // Limpia el modal y lo deja listo para arrancar una división nueva (desde "Dividir")
+            // o para precargarlo con partidas existentes (desde "Editar división", más abajo).
+            // esEdicion=true muestra "Eliminar división" dentro del modal (no aplica a una línea
+            // recién llegada, todavía sin nada guardado que eliminar).
+            const btnEliminarDivisionDesdeModal = document.getElementById('btnEliminarDivisionDesdeModal');
+            function reiniciarModalDivision(stagingId, monto, esEdicion) {
+                divPartidasBody.innerHTML = '';
+                montoObjetivoDivision = monto;
+                divStagingId.value = stagingId;
+                divMontoOriginalLabel.textContent = montoObjetivoDivision.toLocaleString('es-CL');
+                btnEliminarDivisionDesdeModal.style.display = esEdicion ? '' : 'none';
+            }
+
+            // Elimina TODA la división de un StagingId (mismo POST que usa el botón "Deshacer
+            // división" de la tabla) -- función compartida para no duplicar el submit del form
+            // oculto en dos lugares (la tabla y, ahora, el botón dentro de este modal).
+            function deshacerDivision(stagingId) {
+                if (!confirm('¿Eliminar toda la división? Se perderán todas las partidas guardadas y la línea volverá a quedar pendiente, con el monto original.')) {
+                    return;
+                }
+                document.getElementById('deshacerStagingId').value = stagingId;
+                document.getElementById('formDeshacerDivision').submit();
+            }
+
+            document.getElementById('btnAgregarPartida').addEventListener('click', () => agregarPartidaDivision('', '', '', 0));
+            document.getElementById('btnCancelarDivision').addEventListener('click', () => modalDivision.close());
+            btnEliminarDivisionDesdeModal.addEventListener('click', () => deshacerDivision(divStagingId.value));
+
+            document.querySelectorAll('.btn-dividir').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    reiniciarModalDivision(btn.dataset.stagingId, parseFloat(btn.dataset.monto) || 0, false);
+                    divIndirecto.checked = btn.dataset.indirecto === 'true';
+                    divComentario.value = '';
+                    agregarPartidaDivision(btn.dataset.cc, btn.dataset.canal, btn.dataset.suc, montoObjetivoDivision);
+                    agregarPartidaDivision('', '', '', 0);
+                    modalDivision.showModal();
+                });
+            });
+
+            // "Editar división": reabre el modal precargado con las partidas ya guardadas de
+            // este StagingId (TipoOrigen=MANUAL, ver OnPostDividirLineaAsync) para seguir
+            // repartiendo el saldo que quedó pendiente en origen sin perder lo ya guardado --
+            // lee los data-* de las filas del grupo, ya presentes en el DOM (Model.Lineas ya
+            // trae todas las partidas de la cuenta), sin ningún endpoint nuevo.
+            document.querySelectorAll('.btn-editar-division').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const stagingId = btn.dataset.stagingId;
+                    const filasGrupo = filas.filter(f => f.dataset.stagingId === stagingId);
+                    const montoOriginal = parseFloat(filasGrupo[0]?.dataset.montoOriginal) || 0;
+
+                    reiniciarModalDivision(stagingId, montoOriginal, true);
+                    divIndirecto.checked = false;
+                    divComentario.value = '';
+
+                    const partidasExplicitas = filasGrupo.filter(f => f.dataset.tipoOrigen === 'MANUAL');
+                    partidasExplicitas.forEach(fila => {
+                        agregarPartidaDivision(
+                            fila.querySelector('.sel-cc').value,
+                            fila.querySelector('.sel-canal').value,
+                            fila.querySelector('.sel-sucursal').value,
+                            parseFloat(fila.dataset.montoDistribuido) || 0
+                        );
+                    });
+                    if (partidasExplicitas.length === 0) agregarPartidaDivision('', '', '', 0);
+                    modalDivision.showModal();
+                });
+            });
+
+            document.querySelectorAll('.btn-deshacer-division').forEach(btn => {
+                btn.addEventListener('click', () => deshacerDivision(btn.dataset.stagingId));
+            });
+        }
+    </script>
+}

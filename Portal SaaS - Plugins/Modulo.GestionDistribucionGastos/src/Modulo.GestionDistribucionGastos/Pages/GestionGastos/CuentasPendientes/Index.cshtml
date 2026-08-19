@@ -1,0 +1,185 @@
+@page "/gestiongastos/cuentaspendientes"
+@model Modulo.GestionDistribucionGastos.Pages.GestionGastos.CuentasPendientes.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/gestiongastos.css" />
+}
+@{
+    ViewData["Title"] = "Cuentas pendientes";
+}
+
+<partial name="_MensajesGestionGastos" model="Model" />
+<partial name="_NavInterna" />
+
+@if (Model.SinPeriodo)
+{
+    <div class="card">
+        <p style="color:var(--text-muted);">No hay un período seleccionado. Elegilo primero en <a asp-page="/GestionGastos/Panel">Período</a>.</p>
+    </div>
+    return;
+}
+
+<div class="card">
+    <div class="toolbar">
+        <a asp-page="/GestionGastos/Panel" asp-route-anioMes="@Model.AnioMes" class="btn">← Volver a períodos</a>
+        <strong>Mes @Model.AnioMes — cuentas con líneas de gasto (grupos 6-9)</strong>
+        @if (Model.MesCerrado)
+        {
+            <span class="badge badge-success">Mes cerrado</span>
+        }
+    </div>
+    <p style="color:var(--text-muted); font-size:13px; margin:0 0 12px;">
+        Se listan todas las cuentas trabajadas este mes, incluidas las ya asignadas — podés reabrirlas para corregir mientras el mes no esté cerrado y la cuenta no esté bloqueada por otra persona.
+    </p>
+
+    <input type="text" id="buscadorCuenta" placeholder="Buscar por número o nombre de cuenta..." style="width:100%; margin-bottom:12px;" autocomplete="off" />
+
+    <table class="grid" id="tablaCuentas">
+        <thead>
+            <tr>
+                <th>Cuenta</th>
+                <th>Líneas</th>
+                <th>Pendientes</th>
+                <th>Monto pendiente</th>
+                <th title="Marca global por cuenta -- alternativa a marcar línea por línea en Detalle, para cuentas con muchos registros">Indirecto (global)</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.Cuentas)
+            {
+                <tr data-busqueda="@($"{c.NroCuenta} {c.NombreCuenta}".ToLowerInvariant())">
+                    <td>@c.NroCuenta @c.NombreCuenta</td>
+                    <td>@c.LineasTotales</td>
+                    <td>
+                        @if (c.LineasPendientes == 0)
+                        {
+                            <span class="badge badge-success">Completa</span>
+                        }
+                        else
+                        {
+                            @c.LineasPendientes
+                        }
+                    </td>
+                    <td>@c.MontoPendiente.ToString("N0")</td>
+                    <td>
+                        @if (Model.MesCerrado || c.TomadaPorOtroUsuario)
+                        {
+                            <span style="color:var(--text-muted); font-size:12px;">@c.LineasIndirectas / @c.LineasTotales</span>
+                        }
+                        else
+                        {
+                            <div style="display:flex; align-items:center; gap:6px; font-size:12px;">
+                                <span style="color:var(--text-muted);">@c.LineasIndirectas / @c.LineasTotales</span>
+                                @if (c.LineasIndirectas < c.LineasTotales)
+                                {
+                                    <form method="post" asp-page-handler="MarcarIndirectoCuenta" style="display:inline;"
+                                          onsubmit="return confirm('¿Marcar las @c.LineasTotales líneas de @c.NroCuenta como gasto indirecto?');">
+                                        <input type="hidden" name="anioMes" value="@Model.AnioMes" />
+                                        <input type="hidden" name="nroCuenta" value="@c.NroCuenta" />
+                                        <input type="hidden" name="indirecto" value="true" />
+                                        <button type="submit">Marcar todas indirectas</button>
+                                    </form>
+                                }
+                                @if (c.LineasIndirectas > 0)
+                                {
+                                    <form method="post" asp-page-handler="MarcarIndirectoCuenta" style="display:inline;"
+                                          onsubmit="return confirm('¿Marcar las @c.LineasTotales líneas de @c.NroCuenta como gasto directo?');">
+                                        <input type="hidden" name="anioMes" value="@Model.AnioMes" />
+                                        <input type="hidden" name="nroCuenta" value="@c.NroCuenta" />
+                                        <input type="hidden" name="indirecto" value="false" />
+                                        <button type="submit">Marcar todas directas</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    </td>
+                    <td>
+                        @if (Model.MesCerrado)
+                        {
+                            <span class="badge badge-success">Cerrada</span>
+                        }
+                        else if (c.Aprobada)
+                        {
+                            <div style="display:flex; flex-wrap:nowrap; align-items:center; gap:6px; white-space:nowrap;">
+                                <span class="badge badge-success" title="Aprobada por @c.UsuarioAprobador el @c.FechaAprobacion?.ToString("dd/MM HH:mm")">🔒 Aprobada</span>
+                                @if (Model.PuedeAprobar)
+                                {
+                                    <form method="post" asp-page-handler="ReabrirCuenta" style="display:inline;"
+                                          onsubmit="return confirm('¿Reabrir @c.NroCuenta? Vuelve a quedar editable.');">
+                                        <input type="hidden" name="anioMes" value="@Model.AnioMes" />
+                                        <input type="hidden" name="nroCuenta" value="@c.NroCuenta" />
+                                        <button type="submit">Reabrir</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                        else if (c.TomadaPorOtroUsuario)
+                        {
+                            <div style="display:flex; flex-wrap:nowrap; align-items:center; gap:6px; white-space:nowrap;">
+                                <span class="badge badge-danger">Bloqueada — @c.UsuarioQueLaTiene</span>
+                                @if (Model.PuedeAprobar)
+                                {
+                                    <form method="post" asp-page-handler="ForzarLiberacion" style="display:inline;"
+                                          onsubmit="return confirm('¿Forzar la liberación de @c.NroCuenta? @c.UsuarioQueLaTiene podría perder cambios sin guardar si todavía la está usando.');">
+                                        <input type="hidden" name="anioMes" value="@Model.AnioMes" />
+                                        <input type="hidden" name="nroCuenta" value="@c.NroCuenta" />
+                                        <button type="submit">Forzar liberación</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div style="display:flex; flex-wrap:nowrap; align-items:center; gap:6px; white-space:nowrap;">
+                                <form method="post" asp-page-handler="Tomar" style="display:inline;">
+                                    <input type="hidden" name="anioMes" value="@Model.AnioMes" />
+                                    <input type="hidden" name="nroCuenta" value="@c.NroCuenta" />
+                                    <button type="submit">Abrir</button>
+                                </form>
+                                @if (c.LineasPendientes > 0)
+                                {
+                                    <form method="post" asp-page-handler="MarcarListaCuenta" style="display:inline;"
+                                          onsubmit="return confirm('¿Marcar las @c.LineasPendientes línea(s) pendientes de @c.NroCuenta como sin cambios?');">
+                                        <input type="hidden" name="anioMes" value="@Model.AnioMes" />
+                                        <input type="hidden" name="nroCuenta" value="@c.NroCuenta" />
+                                        <button type="submit">Marcar lista (sin cambios)</button>
+                                    </form>
+                                }
+                                else if (Model.PuedeAprobar)
+                                {
+                                    <form method="post" asp-page-handler="AprobarCuenta" style="display:inline;"
+                                          onsubmit="return confirm('¿Aprobar @c.NroCuenta? Quedará bloqueada para edición hasta que se reabra.');">
+                                        <input type="hidden" name="anioMes" value="@Model.AnioMes" />
+                                        <input type="hidden" name="nroCuenta" value="@c.NroCuenta" />
+                                        <button type="submit" class="btn-primary">Aprobar</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (!Model.Cuentas.Any())
+            {
+                <tr><td colspan="6">No hay cuentas con líneas de gasto para este mes.</td></tr>
+            }
+        </tbody>
+    </table>
+    <p id="sinResultados" style="display:none; color:var(--text-muted);">Ninguna cuenta coincide con la búsqueda.</p>
+</div>
+
+@section Scripts {
+    <script>
+        const filasCuenta = Array.from(document.querySelectorAll('#tablaCuentas tbody tr[data-busqueda]'));
+        document.getElementById('buscadorCuenta').addEventListener('input', function () {
+            const texto = this.value.trim().toLowerCase();
+            let visibles = 0;
+            filasCuenta.forEach(fila => {
+                const coincide = fila.dataset.busqueda.includes(texto);
+                fila.style.display = coincide ? '' : 'none';
+                if (coincide) visibles++;
+            });
+            document.getElementById('sinResultados').style.display = (texto && visibles === 0) ? '' : 'none';
+        });
+    </script>
+}

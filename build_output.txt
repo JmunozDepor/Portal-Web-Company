@@ -1,0 +1,10 @@
+  Determinando los proyectos que se van a restaurar...
+  Todos los proyectos están actualizados para la restauración.
+  PortalSaas.Abstractions -> C:\PROYECTOS\Proyecto Portal Web-Company\Portal SaaS - Core\src\PortalSaas.Abstractions\bin\Debug\net8.0\PortalSaas.Abstractions.dll
+  Modulo.Wms -> C:\PROYECTOS\Proyecto Portal Web-Company\Portal SaaS - Plugins\Modulo.Wms\src\Modulo.Wms\bin\Debug\net8.0\Modulo.Wms.dll
+
+Compilación correcta.
+    0 Advertencia(s)
+    0 Errores
+
+Tiempo transcurrido 00:00:01.87

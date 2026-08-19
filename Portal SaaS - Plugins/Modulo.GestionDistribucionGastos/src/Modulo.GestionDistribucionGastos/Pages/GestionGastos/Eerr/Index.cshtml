@@ -1,0 +1,128 @@
+@page "/gestiongastos/eerr"
+@model Modulo.GestionDistribucionGastos.Pages.GestionGastos.Eerr.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/gestiongastos.css" />
+}
+@{
+    ViewData["Title"] = "EERR";
+    var vm = Model.Datos;
+}
+
+<partial name="_MensajesGestionGastos" model="Model" />
+<partial name="_NavInterna" />
+
+<div class="card">
+    <div class="toolbar">
+        <strong>Estado de resultados @vm.Anio</strong>
+        <span style="color:var(--text-muted); font-size:13px;">grupos 4-9, con la información ya modificada por el equipo</span>
+    </div>
+
+    @if (vm.AniosDisponibles.Count == 0)
+    {
+        <p style="color:var(--text-muted);">Todavía no hay ningún mes cargado.</p>
+    }
+    else
+    {
+        <form method="get" style="display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:8px; align-items:center; margin-bottom:16px;">
+            <select name="anio">
+                @foreach (var a in vm.AniosDisponibles)
+                {
+                    <option value="@a" selected="@(a == vm.Anio)">@a</option>
+                }
+            </select>
+            <select name="canal">
+                <option value="">Todos los canales</option>
+                @foreach (var c in vm.Canales)
+                {
+                    <option value="@c.Codigo" selected="@(c.Codigo == vm.Canal)">@c.Nombre</option>
+                }
+            </select>
+            <select name="sucursal">
+                <option value="">Todas las sucursales</option>
+                @foreach (var s in vm.Sucursales)
+                {
+                    <option value="@s.Codigo" selected="@(s.Codigo == vm.Sucursal)">@s.Nombre</option>
+                }
+            </select>
+            <select name="centroCosto">
+                <option value="">Todos los centros de costo</option>
+                @foreach (var cc in vm.CentrosCosto)
+                {
+                    <option value="@cc.Codigo" selected="@(cc.Codigo == vm.CentroCosto)">@cc.Nombre</option>
+                }
+            </select>
+            <button type="submit">Filtrar</button>
+        </form>
+
+        @if (!vm.Grupos.Any())
+        {
+            <p style="color:var(--text-muted);">No hay datos para @vm.Anio con estos filtros.</p>
+        }
+        else
+        {
+            <div class="card" style="background:var(--input-bg); max-width:480px; margin-bottom:16px;">
+                <p style="color:var(--text-muted); font-size:13px; margin:0 0 8px;">Estado de resultados (Ingresos - Costo - Gastos)</p>
+                <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                    <tr><td>Ingresos</td><td style="text-align:right;">@vm.Ingresos.ToString("N0")</td></tr>
+                    <tr><td>(-) Costo de ventas</td><td style="text-align:right;">@vm.CostoVentas.ToString("N0")</td></tr>
+                    <tr style="border-top:1px solid var(--card-border); font-weight:600;"><td>= Utilidad bruta</td><td style="text-align:right;">@vm.UtilidadBruta.ToString("N0")</td></tr>
+                    <tr><td>(-) Gastos directos del canal</td><td style="text-align:right;">@vm.GastosDirectos.ToString("N0")</td></tr>
+                    <tr style="border-top:1px solid var(--card-border); font-weight:600;"><td>= Resultado operacional 1</td><td style="text-align:right;">@vm.ResultadoOperacional1.ToString("N0")</td></tr>
+                    <tr><td>(-) Gastos indirectos (no directos del canal)</td><td style="text-align:right;">@vm.GastosIndirectos.ToString("N0")</td></tr>
+                    <tr style="border-top:1px solid var(--card-border); font-weight:600;"><td>= Resultado operacional 2</td><td style="text-align:right;">@vm.ResultadoOperacional2.ToString("N0")</td></tr>
+                    <tr style="border-top:2px solid var(--card-border); font-weight:700; font-size:16px;">
+                        <td>= Resultado final</td>
+                        <td style="text-align:right; color:@(vm.ResultadoFinal >= 0 ? "var(--success)" : "var(--danger)")">@vm.ResultadoFinal.ToString("N0")</td>
+                    </tr>
+                </table>
+                <p style="color:var(--text-muted); font-size:12px; margin:8px 0 0;">
+                    Los gastos "directos"/"indirectos" se marcan por línea en la asignación manual de cada cuenta (columna "Indirecto"). Por defecto toda línea es directa (Resultado Operacional 1).
+                </p>
+            </div>
+
+            @if (vm.ColumnasSonSucursal)
+            {
+                <p style="color:var(--text-muted); font-size:13px; margin:0 0 8px;">
+                    Detalle por sucursal del canal seleccionado
+                    (<a asp-page="/GestionGastos/Eerr/Index" asp-route-anio="@vm.Anio" asp-route-sucursal="@vm.Sucursal" asp-route-centroCosto="@vm.CentroCosto">volver a ver por canal</a>).
+                </p>
+            }
+            <div style="overflow-x:auto;">
+                <table class="grid">
+                    <thead>
+                        <tr>
+                            <th>Grupo</th>
+                            @foreach (var col in vm.Columnas)
+                            {
+                                <th>@col</th>
+                            }
+                            <th>Total general</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var g in vm.Grupos)
+                        {
+                            <tr>
+                                <td><strong>@g</strong></td>
+                                @foreach (var col in vm.Columnas)
+                                {
+                                    <td>@vm.Celdas[g].GetValueOrDefault(col).ToString("N0")</td>
+                                }
+                                <td><strong>@vm.TotalesFila[g].ToString("N0")</strong></td>
+                            </tr>
+                        }
+                        <tr style="font-weight:700; border-top:2px solid var(--card-border);">
+                            <td>= Resultado final</td>
+                            @foreach (var col in vm.Columnas)
+                            {
+                                var valor = vm.TotalesColumna[col];
+                                <td style="color:@(valor >= 0 ? "var(--success)" : "var(--danger)")">@valor.ToString("N0")</td>
+                            }
+                            <td style="color:@(vm.TotalGeneral >= 0 ? "var(--success)" : "var(--danger)")">@vm.TotalGeneral.ToString("N0")</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>

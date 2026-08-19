@@ -1,0 +1,105 @@
+@page "/gestiongastos/reglas"
+@model Modulo.GestionDistribucionGastos.Pages.GestionGastos.Reglas.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/gestiongastos.css" />
+}
+@{ ViewData["Title"] = "Reglas de distribución"; }
+
+<partial name="_MensajesGestionGastos" model="Model" />
+<partial name="_NavInterna" />
+
+<div class="card">
+    <p style="color:var(--text-muted); font-size:13px; margin:0 0 8px;">Estado de las reglas</p>
+    <div class="metric-grid">
+        <div class="metric">
+            <p class="label">Total</p>
+            <p class="value">@Model.Datos.TotalReglas</p>
+        </div>
+        <div class="metric">
+            <p class="label">Activas</p>
+            <p class="value" style="color:var(--success)">@Model.Datos.ReglasActivas</p>
+        </div>
+        <div class="metric">
+            <p class="label">Inactivas</p>
+            <p class="value" style="color:var(--danger)">@Model.Datos.ReglasInactivas</p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="toolbar">
+        <strong>Reglas de distribución automática</strong>
+        <a asp-page="/GestionGastos/Reglas/Form" class="btn-primary toolbar-right">Nueva regla</a>
+    </div>
+
+    <table class="grid">
+        <thead>
+            <tr>
+                <th>Cuenta</th>
+                <th>Centro de costo</th>
+                <th>Base</th>
+                <th title="Cuentas reales (de todo lo cargado alguna vez) que matchean este patrón">Cuentas que matchea</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.Datos.Reglas)
+            {
+                var r = item.Regla;
+                <tr>
+                    <td>@r.NroCuenta</td>
+                    <td>@(r.CodCentroCosto ?? "Toda la cuenta")</td>
+                    <td>@r.BaseDistribucion</td>
+                    <td>@item.CuentasQueMatchea</td>
+                    <td>
+                        @if (r.Activo)
+                        {
+                            <span class="badge badge-success">Activa</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-danger">Inactiva</span>
+                        }
+                    </td>
+                    <td style="display:flex; gap:6px;">
+                        <a asp-page="/GestionGastos/Reglas/Form" asp-route-id="@r.Id">Editar</a>
+                        <form asp-page-handler="ToggleActivo" asp-route-id="@r.Id" method="post">
+                            <button type="submit">@(r.Activo ? "Desactivar" : "Activar")</button>
+                        </form>
+                        <form asp-page-handler="Eliminar" asp-route-id="@r.Id" method="post"
+                              onsubmit="return confirm('¿Eliminar la regla de @r.NroCuenta? No se puede deshacer.');">
+                            <button type="submit" style="color:var(--danger); border-color:var(--danger);">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (!Model.Datos.Reglas.Any())
+            {
+                <tr><td colspan="6">No hay reglas creadas todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="toolbar">
+        <strong>Sucursal Central (IND4)</strong>
+    </div>
+    <p style="color:var(--text-muted); font-size:13px; margin:0 0 8px;">
+        Reparte por venta del mismo canal cualquier línea (manual o pendiente) que haya quedado
+        asignada a un canal real pero sin sucursal específica (Sucursal = IND4). No toca meses
+        cerrados ni cuentas ya aprobadas. Las líneas resultantes quedan como ajuste manual, para
+        que ninguna regla las vuelva a tocar sin que alguien lo pida.
+    </p>
+    <div style="display:flex; gap:8px;">
+        <form asp-page-handler="RepartirSucursalCentral" method="post"
+              onsubmit="return confirm('¿Repartir por venta todas las líneas en Sucursal Central (IND4)? Esta acción también toca ajustes manuales.');">
+            <button type="submit" class="btn-primary">Repartir saldos en Sucursal Central</button>
+        </form>
+        <form asp-page-handler="DeshacerRepartoSucursalCentral" method="post"
+              onsubmit="return confirm('¿Deshacer todos los repartos de Sucursal Central hechos con el botón de arriba? Vuelven a quedar en Sucursal=IND4.');">
+            <button type="submit" style="color:var(--danger); border-color:var(--danger);">Deshacer reparto Sucursal Central</button>
+        </form>
+    </div>
+</div>

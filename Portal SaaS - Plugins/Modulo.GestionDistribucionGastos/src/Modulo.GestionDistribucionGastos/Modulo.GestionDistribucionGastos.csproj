@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Modulo.GestionDistribucionGastos</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <!-- PluginManager carga el .dll directo de una carpeta (AssemblyLoadContext
+         aislado) esperando que Microsoft.EntityFrameworkCore.SqlServer/ClosedXML estén
+         físicamente al lado, mismo motivo que Modulo.Rendiciones. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- REGLA DURA (docs/09-GUIA-DESARROLLO-PLUGINS.md §1 del portal): un plugin
+         referencia SOLO PortalSaas.Abstractions. Nunca PortalSaas.Core ni PortalSaas.Host.
+         TEMPORAL (mismo criterio que Modulo.Rendiciones): ProjectReference relativa
+         cruzando repos hasta que exista un paquete NuGet versionado. -->
+    <ProjectReference Include="..\..\..\..\Portal SaaS - Core\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Módulo a medida de un cliente puntual (Comercial Depor), NO se porta como
+         funcionalidad de plataforma (ver CLAUDE.md). Su base SQL Server externa
+         (CLDEPORFIN) YA EXISTE con datos reales, tablas/vistas/stored procedures fijas
+         que no se pueden modificar. A diferencia de la regla dura de motor dual que
+         exige el resto de la plataforma para un plugin con base propia, este trae SOLO
+         el proveedor SQL Server: no tiene sentido dual cuando el esquema en sí (SPs/
+         vistas T-SQL nativas, ver Sql/) es intrínsecamente específico de ese motor y
+         nunca va a correr contra Postgres. Excepción documentada, no un descuido. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="ClosedXML" Version="0.104.1" />
+    <!-- Trae los targets que arman el recurso embebido a partir de EmbeddedResource
+         wwwroot\**. ServesOwnWwwRoot=true en ModuloGestionDistribucionGastos.cs hace
+         que el host lo sirva embebido. -->
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\**" />
+  </ItemGroup>
+
+  <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo, mismo
+       patrón que Modulo.Rendiciones (junction hacia artifacts/plugins/ del portal). -->
+  <PropertyGroup>
+    <ModuloVersion>1.0.0</ModuloVersion>
+  </PropertyGroup>
+
+  <Target Name="PublicarComoPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <ArchivosDelModulo Include="$(OutputPath)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ArchivosDelModulo)"
+          DestinationFolder="..\..\dist\$(MSBuildProjectName)\$(ModuloVersion)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

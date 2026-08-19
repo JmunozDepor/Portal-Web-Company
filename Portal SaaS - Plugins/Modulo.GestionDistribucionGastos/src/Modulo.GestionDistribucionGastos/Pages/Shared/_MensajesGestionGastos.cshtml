@@ -1,0 +1,9 @@
+@model Modulo.GestionDistribucionGastos.Pages.PageModelBaseGestionGastos
+@if (!string.IsNullOrEmpty(Model.MensajeExito))
+{
+    <div class="alert alert-ok">@Model.MensajeExito</div>
+}
+@if (!string.IsNullOrEmpty(Model.MensajeError))
+{
+    <div class="alert alert-error">@Model.MensajeError</div>
+}

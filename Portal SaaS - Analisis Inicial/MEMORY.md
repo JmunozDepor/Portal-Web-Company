@@ -1,0 +1,1 @@
+- [Proyecto Menoja](proyecto-menoja.md) — evaluación CEO de PortalSAP_v2 + WMS_Suite como producto SaaS/on-premise: veredicto, huecos, seguridad, plan.

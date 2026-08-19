@@ -1,0 +1,32 @@
+@{
+    string? periodoActual = Context.Request.Cookies["GDG_PeriodoTrabajo"];
+    string rutaActual = Context.Request.Path.Value ?? "";
+    bool EsActiva(string prefijo) => rutaActual.StartsWith(prefijo, StringComparison.OrdinalIgnoreCase);
+    string Clase(string prefijo) => "nav-interna-tab" + (EsActiva(prefijo) ? " active" : "");
+}
+<div class="card nav-interna" id="navInterna">
+    <div class="nav-interna-titulo">
+        <strong>Distribución de centros de costo</strong>
+        @if (!string.IsNullOrEmpty(periodoActual))
+        {
+            <span class="badge" style="background:var(--accent); color:#fff;">Período @periodoActual</span>
+        }
+    </div>
+    <nav class="nav-interna-tabs">
+        <a class="@Clase("/gestiongastos/panel")" asp-page="/GestionGastos/Panel" asp-route-anioMes="@periodoActual">
+            <i class="fas fa-calendar-days"></i> Período
+        </a>
+        <a class="@Clase("/gestiongastos/cuentaspendientes")" asp-page="/GestionGastos/CuentasPendientes/Index" asp-route-anioMes="@periodoActual">
+            <i class="fas fa-list-check"></i> Pendientes
+        </a>
+        <a class="@Clase("/gestiongastos/reglas")" asp-page="/GestionGastos/Reglas/Index">
+            <i class="fas fa-sliders"></i> Reglas
+        </a>
+        <a class="@Clase("/gestiongastos/reporte")" asp-page="/GestionGastos/Reporte/Index" asp-route-anioMes="@periodoActual">
+            <i class="fas fa-file-export"></i> Reporte
+        </a>
+        <a class="@Clase("/gestiongastos/eerr")" asp-page="/GestionGastos/Eerr/Index">
+            <i class="fas fa-chart-line"></i> EERR
+        </a>
+    </nav>
+</div>

@@ -1,0 +1,21 @@
+{
+    "folders": [
+        {
+            "name": "Portal SaaS - Core",
+            "path": "Portal SaaS - Core"
+        },
+        {
+            "name": "Modulo.Rendiciones",
+            "path": "Portal SaaS - Plugins/Modulo.Rendiciones"
+        },
+        {
+            "name": "Portal SaaS - Servicios SAP",
+            "path": "Portal SaaS - Servicios SAP"
+        },
+        {
+            "name": "Portal SaaS - Analisis Inicial",
+            "path": "Portal SaaS - Analisis Inicial"
+        }
+    ],
+    "settings": {}
+}

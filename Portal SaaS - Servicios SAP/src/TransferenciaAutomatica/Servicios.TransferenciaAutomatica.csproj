@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- x64 obligatorio: driver nativo Sap.Data.Hana (ver Servicios.Common.csproj). -->
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>Servicios.TransferenciaAutomatica</RootNamespace>
+    <UserSecretsId>servicios-sap-transferencia-automatica</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <!-- SQL Server (Sap/SqlServerRepository.cs): va acá, no en Servicios.Common (regla dura: no referencia drivers concretos). -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Servicios.Common\Servicios.Common.csproj" />
+  </ItemGroup>
+
+  <!--
+    Los scripts de alta/baja del servicio Windows viajan junto al publish, así el
+    servidor del cliente recibe una sola carpeta autocontenida (exe + scripts) y los
+    scripts pueden asumir que el .exe está en su misma carpeta (ver PSScriptRoot en
+    NX_DEP_TransferenciaAutomatica-Install.ps1).
+  -->
+  <ItemGroup>
+    <None Include="public\*.ps1" CopyToPublishDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!--
+    Driver HANA .NET 8 vendorizado bajo lib/ (no existe como paquete NuGet público, SAP lo
+    distribuye solo con la instalación del HANA Client). Es la versión que reemplaza al
+    Sap.Data.Hana.Core.v2.1.dll del servicio legado, que dejó de funcionar tras la
+    actualización del HANA Client del cliente (motivo original de este reemplazo, ver
+    CLAUDE.md). El servidor donde corra este servicio necesita igual el HANA Client
+    instalado: este .dll es el binario administrado, no trae las librerías nativas.
+  -->
+  <ItemGroup>
+    <Reference Include="Sap.Data.Hana.Net.v8.0">
+      <HintPath>lib\Sap.Data.Hana.Net.v8.0.dll</HintPath>
+    </Reference>
+    <None Include="lib\Sap.Data.Hana.Net.v8.0.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="Sap.Data.Hana.Net.v8.0.dll" />
+  </ItemGroup>
+
+</Project>

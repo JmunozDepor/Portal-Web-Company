@@ -1,0 +1,32 @@
+# Secretos y configuración local — NUNCA commitear
+build-secrets.local.ps1
+*.local.ps1
+appsettings.*.local.json
+appsettings.Development.json
+.env
+.env.*
+
+# Build outputs
+bin/
+obj/
+**/bin/
+**/obj/
+node_modules/
+*.user
+
+# Logs y estado de herramientas
+.run-logs/
+.gstack/
+.claude/scheduled_tasks.lock
+
+# IDE
+.vs/
+.idea/
+*.suo
+
+# Auditoría de diseño (artefactos de trabajo, no código de producto)
+.design-audit/
+mockup-master-detail.html
+
+# Repositorio git anidado propio (no se trackea como submódulo desde acá)
+/Portal SaaS - Core/

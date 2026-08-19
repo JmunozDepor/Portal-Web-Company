@@ -1,0 +1,59 @@
+/* Este modulo hereda el shell/tema de PortalSAP (Pages/Shared/_Layout.cshtml del host,
+   igual que cualquier otro plugin Razor Pages) -- estas reglas solo definen el contenido
+   propio (cards, badges, tabla, toolbar), nunca el shell. Usa directo las variables reales
+   de theme.css (--card-bg/--card-border/--text-muted/--accent/--success/--warning/--danger/
+   --input-bg/--bs-body-bg), no una paleta propia -- asi cambia con los 5 temas del portal
+   igual que cualquier pantalla nativa, no solo accent/success/danger/warning como antes. */
+
+.card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-md, 12px); padding: 16px 20px; margin-bottom: 20px; }
+
+/* Nav interna (Periodo/Pendientes/Reglas/Reporte/EERR) -- unica forma de moverse entre las
+   5 pantallas del modulo, no hay una entrada de sidebar por pantalla (ver _NavInterna.cshtml). */
+.nav-interna { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.nav-interna-titulo { display: flex; align-items: center; gap: 12px; }
+.nav-interna-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.nav-interna-tab {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 500;
+    color: var(--text-muted); text-decoration: none; white-space: nowrap;
+    transition: background-color .15s ease, color .15s ease;
+}
+.nav-interna-tab i { font-size: 12px; }
+.nav-interna-tab:hover { background: var(--bs-body-bg); color: var(--text-main); }
+.nav-interna-tab.active { background: var(--accent); color: #ffffff; }
+.nav-interna-tab.active:hover { background: var(--accent-2); }
+
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.metric { background: var(--input-bg); border-radius: 8px; padding: 14px; }
+.metric .label { font-size: 13px; color: var(--text-muted); margin: 0; }
+.metric .value { font-size: 24px; font-weight: 500; margin: 4px 0 0; }
+
+table.grid { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.grid th { text-align: left; font-size: 12px; color: var(--text-muted); padding: 8px 12px; border-bottom: 1px solid var(--card-border); }
+table.grid td { padding: 10px 12px; border-bottom: 1px solid var(--card-border); vertical-align: middle; }
+
+.badge { font-size: 12px; padding: 3px 10px; border-radius: 6px; display: inline-block; }
+.badge-success { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.badge-warning { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
+.badge-danger { background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
+
+button, .btn { border: 1px solid var(--card-border); background: var(--input-bg); color: var(--text-main); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; }
+button:hover, .btn:hover { background: var(--bs-body-bg); }
+.btn-primary { background: var(--accent); color: #ffffff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-2); }
+
+input[type=text], input[type=number], select, textarea {
+    padding: 8px 10px; border: 1px solid var(--card-border); border-radius: 8px; font-size: 14px;
+    background: var(--input-bg); color: var(--text-main);
+}
+
+.toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.toolbar-right { margin-left: auto; }
+
+.alert { padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+.alert-ok { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.alert-error { background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
+
+.row-selected { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.row-changed { background: color-mix(in srgb, var(--warning) 20%, transparent); }
+.row-changed.row-selected { background: color-mix(in srgb, var(--warning) 20%, var(--accent-soft) 40%); }

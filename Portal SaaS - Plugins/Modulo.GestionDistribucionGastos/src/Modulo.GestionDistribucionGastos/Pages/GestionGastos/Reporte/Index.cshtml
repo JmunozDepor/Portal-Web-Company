@@ -1,0 +1,107 @@
+@page "/gestiongastos/reporte"
+@model Modulo.GestionDistribucionGastos.Pages.GestionGastos.Reporte.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/gestiongastos.css" />
+}
+@{
+    ViewData["Title"] = "Reporte final";
+}
+
+<partial name="_MensajesGestionGastos" model="Model" />
+<partial name="_NavInterna" />
+
+@if (Model.SinPeriodo)
+{
+    <div class="card">
+        <p style="color:var(--text-muted);">No hay un período seleccionado. Elegilo primero en <a asp-page="/GestionGastos/Panel">Período</a>.</p>
+    </div>
+    return;
+}
+
+@{
+    decimal diferencia = Model.MontoOriginalTotal - Model.MontoAjustadoTotal;
+}
+
+<div class="card">
+    <form method="get" class="toolbar">
+        <input type="text" name="anioMes" value="@Model.AnioMes" style="width:100px" />
+        <select name="nroCuenta">
+            <option value="">Todas las cuentas</option>
+            @foreach (var c in Model.Cuentas)
+            {
+                <option value="@c">@c</option>
+            }
+        </select>
+        <select name="codCanal">
+            <option value="">Todos los canales</option>
+            @foreach (var c in Model.Canales)
+            {
+                <option value="@c">@c</option>
+            }
+        </select>
+        <button type="submit">Filtrar</button>
+        <a class="btn toolbar-right" asp-page-handler="ExportarResumen"
+           asp-route-anioMes="@Model.AnioMes" asp-route-nroCuenta="@Model.NroCuentaFiltro" asp-route-codCanal="@Model.CodCanalFiltro"
+           title="Exporta la grilla de abajo tal como se ve (agrupada por cuenta/canal/sucursal/centro costo), sin ir al detalle transaccional">Exportar resumen</a>
+    </form>
+
+    <div class="metric-grid" style="margin-bottom:20px;">
+        <div class="metric">
+            <p class="label">Monto original</p>
+            <p class="value">@Model.MontoOriginalTotal.ToString("N0")</p>
+        </div>
+        <div class="metric">
+            <p class="label">Monto ajustado</p>
+            <p class="value">@Model.MontoAjustadoTotal.ToString("N0")</p>
+        </div>
+        <div class="metric">
+            <p class="label">Diferencia</p>
+            <p class="value" style="color:@(diferencia == 0 ? "var(--success)" : "var(--danger)")">@diferencia.ToString("N0")</p>
+        </div>
+    </div>
+
+    <form method="get" asp-page-handler="Exportar">
+        <input type="hidden" name="anioMes" value="@Model.AnioMes" />
+        <div class="toolbar" style="margin-bottom:8px;">
+            <span style="color:var(--text-muted); font-size:13px;">Marcá las cuentas que necesitás y exportá solo su detalle transaccional (más rápido que traer el mes completo)</span>
+            <button type="submit" class="btn-primary toolbar-right">Exportar detalle de seleccionadas</button>
+        </div>
+        <table class="grid">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="chkTodasCuentas" /></th>
+                    <th>Cuenta</th>
+                    <th>Canal</th>
+                    <th>Sucursal</th>
+                    <th>Centro costo</th>
+                    <th>Monto original</th>
+                    <th>Monto ajustado</th>
+                    <th>Origen</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Filas)
+                {
+                    <tr>
+                        <td><input type="checkbox" name="nroCuentas" value="@f.NroCuenta" class="chk-cuenta" /></td>
+                        <td>@f.NroCuenta @f.NombreCuenta</td>
+                        <td>@f.CanalDestino</td>
+                        <td>@f.SucursalDestino</td>
+                        <td>@f.CentroCostoDestino</td>
+                        <td>@f.MontoOriginal.ToString("N0")</td>
+                        <td>@f.MontoDistribuido.ToString("N0")</td>
+                        <td>@f.TipoOrigen</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('chkTodasCuentas').addEventListener('change', function () {
+            document.querySelectorAll('.chk-cuenta').forEach(c => c.checked = this.checked);
+        });
+    </script>
+}

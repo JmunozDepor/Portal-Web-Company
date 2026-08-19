@@ -1,0 +1,110 @@
+@page "/gestiongastos/panel"
+@model Modulo.GestionDistribucionGastos.Pages.GestionGastos.PanelModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/gestiongastos.css" />
+}
+@{
+    ViewData["Title"] = "Período";
+    var badgeClass = Model.Datos.EstadoMes switch
+    {
+        "CERRADO" => "badge-success",
+        "EN_PROCESO" => "badge-warning",
+        _ => "badge-danger"
+    };
+    string anioActual = Model.HaySeleccion ? Model.Datos.AnioMes.Substring(0, 4) : "";
+    string mesActual = Model.HaySeleccion ? Model.Datos.AnioMes.Substring(4, 2) : "";
+}
+
+<partial name="_MensajesGestionGastos" model="Model" />
+<partial name="_NavInterna" />
+
+<div class="card">
+    <div class="toolbar">
+        <form method="get" style="display:flex; gap:8px; align-items:center;">
+            <select name="anioMes">
+                <option value="" selected="@(!Model.HaySeleccion)">Selecciona un mes</option>
+                @foreach (var m in Model.MesesDisponibles)
+                {
+                    <option value="@m.AnioMes" selected="@(m.AnioMes == Model.Datos.AnioMes)">@m.AnioMes — @m.Estado</option>
+                }
+            </select>
+            <button type="submit">Ver</button>
+        </form>
+        @if (Model.HaySeleccion)
+        {
+            <form method="get" asp-page="/GestionGastos/CuentasPendientes/Index">
+                <input type="hidden" name="anioMes" value="@Model.Datos.AnioMes" />
+                <button type="submit">Ver cuentas pendientes →</button>
+            </form>
+        }
+        @if (Model.HaySeleccion)
+        {
+            <span class="badge @badgeClass">@Model.Datos.EstadoMes</span>
+        }
+
+        @if (Model.HaySeleccion && Model.Datos.Pendientes == 0 && Model.Datos.LineasTotales > 0 && Model.Datos.EstadoMes != "CERRADO")
+        {
+            <div class="toolbar-right" style="display:flex; gap:8px;">
+                <form method="post" asp-page-handler="CerrarMes">
+                    <input type="hidden" name="anioMes" value="@Model.Datos.AnioMes" />
+                    <button type="submit">Cerrar mes</button>
+                </form>
+            </div>
+        }
+    </div>
+
+    @if (!Model.HaySeleccion)
+    {
+        <p style="color:var(--text-muted);">Elegí un mes en el combo de arriba para ver su resumen.</p>
+    }
+    else
+    {
+        <div class="metric-grid">
+            <div class="metric">
+                <p class="label">Líneas totales</p>
+                <p class="value">@Model.Datos.LineasTotales.ToString("N0")</p>
+            </div>
+            <div class="metric">
+                <p class="label">Resueltas auto</p>
+                <p class="value" style="color:var(--success)">@Model.Datos.ResueltasAuto.ToString("N0")</p>
+            </div>
+            <div class="metric">
+                <p class="label">Resueltas manual</p>
+                <p class="value">@Model.Datos.ResueltasManual.ToString("N0")</p>
+            </div>
+            <div class="metric">
+                <p class="label">Pendientes</p>
+                <p class="value" style="color:var(--danger)">@Model.Datos.Pendientes.ToString("N0")</p>
+            </div>
+        </div>
+    }
+</div>
+
+<div style="margin-top:48px;">
+    <div class="card">
+        <p style="color:var(--text-muted); font-size:13px; margin:0 0 8px;">
+            Cargar un mes nuevo desde SAP (o volver a cargar el seleccionado, es idempotente — reemplaza el mes si ya existía)
+        </p>
+        <form method="post" asp-page-handler="CargarMes" style="display:flex; gap:8px; align-items:center;"
+              onsubmit="return confirm('¿Cargar / recargar el mes indicado? Si ese mes ya existía, se REEMPLAZA por completo (se pierde cualquier resolución manual ya digitada). ¿Continuar?');">
+            <input type="number" name="anio" placeholder="Año" value="@anioActual" min="2000" max="2100" style="width:90px" required />
+            <input type="number" name="mes" placeholder="Mes" value="@mesActual" min="1" max="12" style="width:70px" required />
+            <button type="submit" class="btn-primary">Cargar / recargar mes</button>
+        </form>
+    </div>
+
+    @if (Model.HaySeleccion && Model.Datos.EstadoMes != "CERRADO")
+    {
+        <div class="card">
+            <p style="color:var(--danger); font-size:13px; margin:0 0 8px;">
+                Zona de riesgo: elimina por completo el staging, el resultado y los bloqueos del mes seleccionado (@Model.Datos.AnioMes). No se puede deshacer.
+            </p>
+            <form method="post" asp-page-handler="EliminarMes"
+                  onsubmit="return confirm('¿Eliminar TODO el registro del mes @Model.Datos.AnioMes? Esto borra el staging, el resultado y los bloqueos de ese mes. No se puede deshacer.');">
+                <input type="hidden" name="anioMes" value="@Model.Datos.AnioMes" />
+                <button type="submit" style="color:var(--danger); border-color:var(--danger);">Eliminar mes</button>
+            </form>
+        </div>
+    }
+</div>
+

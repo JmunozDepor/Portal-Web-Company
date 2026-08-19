@@ -1,0 +1,68 @@
+@page "/gestiongastos/agrupacioncuentas"
+@model Modulo.GestionDistribucionGastos.Pages.GestionGastos.AgrupacionCuentas.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/gestiongastos.css" />
+}
+@{ ViewData["Title"] = "Agrupación de cuentas"; }
+
+<partial name="_MensajesGestionGastos" model="Model" />
+<partial name="_NavInterna" />
+
+<div class="card">
+    <div class="toolbar">
+        <strong>Agrupación de cuentas</strong>
+        <a asp-page="/GestionGastos/Clasificaciones/Index" class="toolbar-right">Gestionar clasificaciones</a>
+    </div>
+    <p style="color:var(--text-muted); font-size:13px; margin:0 0 8px;">
+        Todas las cuentas alguna vez centralizadas, con la clasificación de negocio asignada
+        para reportes (solo afecta CLDEPORFIN..vw_EerrAnual, no la distribución de gastos).
+    </p>
+
+    <form method="get" style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+        <input type="text" name="filtro" value="@Model.Filtro" placeholder="Buscar por cuenta o nombre" style="min-width:260px;" />
+        <label style="display:flex; align-items:center; gap:4px; font-size:13px;">
+            <input type="checkbox" name="soloSinClasificar" value="true" checked="@Model.SoloSinClasificar" />
+            Solo sin clasificar
+        </label>
+        <button type="submit" class="btn-primary">Buscar</button>
+    </form>
+
+    <table class="grid">
+        <thead>
+            <tr>
+                <th>Cuenta</th>
+                <th>Nombre</th>
+                <th>Clasificación</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.Cuentas)
+            {
+                <tr>
+                    <td>@c.NroCuenta</td>
+                    <td>@c.NombreCuenta</td>
+                    <td colspan="2">
+                        <form asp-page-handler="Asignar" method="post" style="display:flex; gap:6px;">
+                            <input type="hidden" name="nroCuenta" value="@c.NroCuenta" />
+                            <input type="hidden" name="filtro" value="@Model.Filtro" />
+                            <input type="hidden" name="soloSinClasificar" value="@Model.SoloSinClasificar" />
+                            <select name="clasificacionId" style="min-width:220px;">
+                                <option value="">(sin clasificar)</option>
+                                @foreach (var cl in Model.ClasificacionesDisponibles)
+                                {
+                                    <option value="@cl.Id" selected="@(cl.Id == c.ClasificacionId)">@cl.Nombre</option>
+                                }
+                            </select>
+                            <button type="submit">Guardar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (!Model.Cuentas.Any())
+            {
+                <tr><td colspan="4">No hay cuentas para mostrar.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>

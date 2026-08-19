@@ -1,0 +1,62 @@
+@page "/gestiongastos/clasificaciones"
+@model Modulo.GestionDistribucionGastos.Pages.GestionGastos.Clasificaciones.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/gestiongastos.css" />
+}
+@{ ViewData["Title"] = "Clasificaciones de cuentas"; }
+
+<partial name="_MensajesGestionGastos" model="Model" />
+<partial name="_NavInterna" />
+
+<div class="card">
+    <div class="toolbar">
+        <strong>Clasificaciones de cuentas (categorías de negocio, solo a nivel de reporte)</strong>
+        <a asp-page="/GestionGastos/Clasificaciones/Form" class="btn-primary toolbar-right">Nueva clasificación</a>
+    </div>
+
+    <table class="grid">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Orden</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.Clasificaciones)
+            {
+                <tr>
+                    <td>@c.Codigo</td>
+                    <td>@c.Nombre</td>
+                    <td>@c.Orden</td>
+                    <td>
+                        @if (c.Activo)
+                        {
+                            <span class="badge badge-success">Activa</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-danger">Inactiva</span>
+                        }
+                    </td>
+                    <td style="display:flex; gap:6px;">
+                        <a asp-page="/GestionGastos/Clasificaciones/Form" asp-route-id="@c.Id">Editar</a>
+                        <form asp-page-handler="ToggleActivo" asp-route-id="@c.Id" method="post">
+                            <button type="submit">@(c.Activo ? "Desactivar" : "Activar")</button>
+                        </form>
+                        <form asp-page-handler="Eliminar" asp-route-id="@c.Id" method="post"
+                              onsubmit="return confirm('¿Eliminar la clasificación @c.Nombre? No se puede deshacer.');">
+                            <button type="submit" style="color:var(--danger); border-color:var(--danger);">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (!Model.Clasificaciones.Any())
+            {
+                <tr><td colspan="5">No hay clasificaciones creadas todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>

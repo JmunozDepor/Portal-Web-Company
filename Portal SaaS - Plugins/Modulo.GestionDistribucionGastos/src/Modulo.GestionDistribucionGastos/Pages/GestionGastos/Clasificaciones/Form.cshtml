@@ -1,0 +1,35 @@
+@page "/gestiongastos/clasificaciones/form"
+@model Modulo.GestionDistribucionGastos.Pages.GestionGastos.Clasificaciones.FormModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/gestiongastos.css" />
+}
+@{ ViewData["Title"] = Model.EsNuevo ? "Nueva clasificación" : "Editar clasificación"; }
+
+<partial name="_MensajesGestionGastos" model="Model" />
+<partial name="_NavInterna" />
+
+<div class="card">
+    <form asp-page-handler="Guardar" asp-route-id="@(Model.EsNuevo ? null : Model.Clasificacion.Id)" method="post">
+        <input type="hidden" asp-for="Clasificacion.Id" />
+        <div style="display:flex; flex-direction:column; gap:12px; max-width:420px;">
+            <div>
+                <label>Código</label><br />
+                <input asp-for="Clasificacion.Codigo" type="text" style="width:100%" />
+                <span asp-validation-for="Clasificacion.Codigo" style="color:var(--danger); font-size:12px;"></span>
+            </div>
+            <div>
+                <label>Nombre</label><br />
+                <input asp-for="Clasificacion.Nombre" type="text" style="width:100%" />
+                <span asp-validation-for="Clasificacion.Nombre" style="color:var(--danger); font-size:12px;"></span>
+            </div>
+            <div>
+                <label>Orden</label><br />
+                <input asp-for="Clasificacion.Orden" type="number" style="width:100%" />
+            </div>
+        </div>
+        <div style="margin-top:16px; display:flex; gap:8px;">
+            <a asp-page="/GestionGastos/Clasificaciones/Index" class="btn">Cancelar</a>
+            <button type="submit" class="btn-primary">@(Model.EsNuevo ? "Guardar" : "Guardar cambios")</button>
+        </div>
+    </form>
+</div>

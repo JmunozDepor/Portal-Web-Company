@@ -27,23 +27,35 @@ original) a repo propio como plugin externo, siguiendo el mismo patrón que
   (motor dual obligatorio aunque en producción CLSELLOUT resuelva siempre a
   SqlServer).
 
+## Hecho
+
+- [x] Repo git propio inicializado con commit inicial (`e573b39`).
+- [x] Junction `Portal SaaS - Core\artifacts\plugins\Modulo.SellOut` →
+      `dist\Modulo.SellOut\1.0.0` de este repo, mismo mecanismo que
+      `Modulo.Rendiciones`.
+- [x] `dotnet build` de verificación (Debug y Release) — compila limpio, 0
+      errores/warnings. `Portal SaaS - Core\PortalSaas.sln` compila igual con
+      el plugin ya cargable vía la junction.
+- [x] Agregado a `build-all.ps1` (raíz del monorepo): limpieza de `dist/`,
+      build Release del plugin, en el mismo paso que `Modulo.Rendiciones`/
+      `Modulo.GestionDistribucionGastos` antes de compilar Core. **Cambio sin
+      commitear todavía en el repo padre** (`Proyecto Portal Web-Company`) —
+      requiere decisión explícita del dueño del repo antes de commitear ahí.
+
 ## Pendiente antes de dar el módulo por operativo
 
-- [ ] Crear la junction `Portal SaaS - Core\artifacts\plugins\Modulo.SellOut` →
-      `dist\Modulo.SellOut\1.0.0` de este repo (mismo mecanismo que
-      `Modulo.Rendiciones`, ver comentario en `publish-dist.ps1`) — o copiar el
-      artefacto manualmente si no se quiere junction.
-- [ ] `dotnet build` de verificación (sin acceso a `Portal SaaS - Core` resuelto
-      todavía en esta sesión de migración — confirmar que el `ProjectReference`
-      relativo resuelve bien).
 - [ ] Dar de alta la fila en `ModuleExternalConnection` (`module_external_connections`)
       para cada `Company` de Comercial Depor que use Sell Out, apuntando a
       CLSELLOUT (motor `sqlserver`) — sin UI todavía, alta directa en base (mismo
-      estado inicial que `Modulo.Rendiciones`).
+      estado inicial que `Modulo.Rendiciones`). Requiere credenciales/acceso a la
+      base de la plataforma, no se hizo en esta sesión.
 - [ ] Confirmar mapeo de permisos: los `Code` de menú (`clientes`, `sucursales`,
       etc.) deben existir en el árbol de menú sincronizado (`MenuSyncService`) con
       perfiles (`UserMenuProfile`/`ProfileAction`) antes de que cualquier usuario
       no-admin pueda ver el módulo.
+- [ ] Prueba end-to-end real: levantar el Host (`build-all.ps1` o `dotnet run`)
+      con la connection string de CLSELLOUT configurada y confirmar que las 8
+      pantallas cargan y el CRUD funciona contra la base real.
 - [ ] Revisar vocabulario/nombres de vista por colisión con otros plugins (§4 de
       la guía) — este módulo no comparte vistas parciales con nombre genérico,
-      pero confirmar tras el primer build real junto al resto de plugins.
+      pero confirmar tras el primer arranque real junto al resto de plugins.

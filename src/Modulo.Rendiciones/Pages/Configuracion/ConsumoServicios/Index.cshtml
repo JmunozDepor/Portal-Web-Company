@@ -7,19 +7,25 @@
     <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
 }
 
-<div class="card-ps admin-card">
-    <div class="admin-card-header">
-        <h2>Consumo de servicios externos</h2>
-        <a asp-page="/Configuracion/Proveedores/Index" class="btn-module-action">Administrar proveedores</a>
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1">
+        <h2 class="mb-0">Consumo de servicios externos</h2>
+        <a asp-page="/Configuracion/Proveedores/Index" class="btn-secondary">Administrar proveedores</a>
     </div>
 
-<p class="admin-muted">
+<p class="text-muted mb-3">
     Uso del mes actual de cada proveedor configurado (podés tener más de una cuenta por
     servicio, ver "Administrar proveedores"). Al llegar al límite de una cuenta, el
     servicio pasa automáticamente a la siguiente por prioridad -- solo cuando TODAS
     las cuentas de un mismo servicio están al límite se deshabilita esa funcionalidad
     hasta el próximo mes (no se cobra de más ni se corta el resto del módulo).
 </p>
+@* Nota de alcance: las .rnd-consumo-tile/.rnd-progreso (barra de progreso por
+   proveedor) siguen viniendo de rendiciones.css a propósito -- son un
+   componente visual (tile con barra de uso) sin equivalente en el set
+   cerrado de 5 componentes; agregarlo ahí sería inventar un componente nuevo
+   fuera de esta pasada de migración. El resto de la página (card/alert/texto)
+   ya usa el Design System unificado. *@
 
 <div class="rnd-consumo-lista">
     @foreach (var c in Model.Usages)
@@ -31,7 +37,7 @@
                     @Model.DisplayName(c.ServiceType) — @c.ProviderName
                     @if (!c.IsActive)
                     {
-                        <span class="admin-muted">(inactivo)</span>
+                        <span class="text-muted">(inactivo)</span>
                     }
                 </span>
                 <span class="rnd-consumo-cifras">@c.Used.ToString("N0") / @c.MonthlyLimit.ToString("N0") @Model.DisplayUnit(c.ServiceType)</span>
@@ -47,7 +53,7 @@
     }
     @if (Model.Usages.Count == 0)
     {
-        <p class="admin-muted">No hay proveedores configurados todavía -- agregá uno en "Administrar proveedores".</p>
+        <p class="text-muted">No hay proveedores configurados todavía -- agregá uno en "Administrar proveedores".</p>
     }
 </div>
 </div>

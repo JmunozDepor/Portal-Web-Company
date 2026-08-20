@@ -3,37 +3,44 @@
 @{
     ViewData["Title"] = "Políticas de gasto";
 }
-@section Styles {
-    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
-}
+@* Migrado al Design System unificado (2026-08-17) -- ya no carga rendiciones.css,
+   consume design-tokens.css/components.css (cargados globalmente por
+   _LayoutMaestro.cshtml). .card-ps ya era alias de .card-surface desde antes;
+   .admin-table -> .table-ps, .btn-erp-primary -> .btn-primary,
+   .btn-module-action/.btn-module-danger -> .btn-secondary/.btn-outline-danger
+   (ambos globales, ya existían en site.css antes de esta migración),
+   .admin-alert -> .alert de Bootstrap (global), .admin-muted -> .text-muted
+   (utilidad de Bootstrap, no CSS de módulo), .form-group -> .mb-3 +
+   .form-label (Bootstrap + core site.css, .form-group solo existía en
+   rendiciones.css). *@
 
-<div class="card-ps admin-card">
-    <div class="admin-card-header">
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
         <h2>Políticas de gasto</h2>
     </div>
 
 @if (Model.SuccessMessage is not null)
 {
-    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+    <div class="alert alert-success">@Model.SuccessMessage</div>
 }
 @if (Model.ErrorMessage is not null)
 {
-    <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
 }
 
-<p class="admin-muted">
+<p class="text-muted">
     Tope de monto por categoría. "Bloqueante" impide guardar el gasto si lo supera;
     si no, solo se muestra una advertencia y se guarda igual. La detección de
     posibles duplicados (mismo número de documento + proveedor repetido) corre
     siempre, para cualquier categoría, y no se configura acá.
 </p>
 
-<table class="admin-table">
-    <thead><tr><th>Tipo de gasto</th><th>Monto máximo</th><th>Bloqueante</th><th>Activo</th><th class="admin-col-accion"></th></tr></thead>
+<table class="table-ps">
+    <thead><tr><th>Tipo de gasto</th><th>Monto máximo</th><th>Bloqueante</th><th>Activo</th><th class="col-actions"></th></tr></thead>
     <tbody>
         @foreach (var p in Model.Policies)
         {
-            <tr class="@(p.IsActive ? "" : "admin-fila-inactiva")">
+            <tr class="@(p.IsActive ? "" : "row-inactive")">
                 <td>@(p.ExpenseType?.Name ?? "—")</td>
                 <td><input type="number" step="0.01" name="montoMaximo" value="@p.MaxAmount" class="form-control" placeholder="Sin tope" form="pol-@p.Id" /></td>
                 <td><input type="checkbox" name="esBloqueante" value="true" checked="@p.IsBlocking" form="pol-@p.Id" /></td>
@@ -41,12 +48,12 @@
                     <input type="hidden" name="activo" value="@p.IsActive" form="pol-@p.Id" />
                     @(p.IsActive ? "Sí" : "No")
                 </td>
-                <td class="admin-col-accion">
+                <td class="col-actions">
                     <div class="admin-row-actions">
-                        <button type="submit" class="btn-module-action" form="pol-@p.Id">Guardar</button>
-                        <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@p.Id" method="post" style="display:inline-block;"
+                        <button type="submit" class="btn-secondary" form="pol-@p.Id">Guardar</button>
+                        <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@p.Id" method="post" class="d-inline-block"
                               onsubmit="return confirm('¿Eliminar esta política?');">
-                            <button type="submit" class="btn-module-action btn-module-danger">Eliminar</button>
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
                         </form>
                     </div>
                 </td>
@@ -54,7 +61,7 @@
         }
         @if (Model.Policies.Count == 0)
         {
-            <tr><td colspan="5" class="admin-muted">Sin políticas configuradas todavía.</td></tr>
+            <tr><td colspan="5" class="text-muted">Sin políticas configuradas todavía.</td></tr>
         }
     </tbody>
 </table>
@@ -64,17 +71,17 @@
     <form id="pol-@p.Id" asp-page="./Index" asp-page-handler="Guardar" asp-route-id="@p.Id"></form>
 }
 
-<span class="admin-subtitulo">Nueva política</span>
+<h3 class="h6 text-muted mt-4">Nueva política</h3>
 @if (Model.ExpenseTypesWithoutPolicy.Count == 0)
 {
-    <p class="admin-muted">Todos los tipos de gasto activos ya tienen una política.</p>
+    <p class="text-muted">Todos los tipos de gasto activos ya tienen una política.</p>
 }
 else
 {
-    <form method="post" asp-page-handler="Crear" class="admin-form-asignar">
+    <form method="post" asp-page-handler="Crear" class="d-flex flex-column gap-2">
         <div asp-validation-summary="All" class="text-danger"></div>
-        <div class="form-group">
-            <label asp-for="New.ExpenseTypeId">Tipo de gasto</label>
+        <div class="mb-3">
+            <label asp-for="New.ExpenseTypeId" class="form-label">Tipo de gasto</label>
             <select asp-for="New.ExpenseTypeId" class="form-control">
                 <option value="">-- Seleccionar --</option>
                 @foreach (var t in Model.ExpenseTypesWithoutPolicy)
@@ -83,14 +90,14 @@ else
                 }
             </select>
         </div>
-        <div class="form-group">
-            <label asp-for="New.MaxAmount">Monto máximo</label>
+        <div class="mb-3">
+            <label asp-for="New.MaxAmount" class="form-label">Monto máximo</label>
             <input asp-for="New.MaxAmount" class="form-control" placeholder="Sin tope" />
         </div>
-        <div class="form-group form-row-check">
-            <label><input asp-for="New.IsBlocking" type="checkbox" /> Bloqueante</label>
+        <div class="mb-3 d-flex align-items-center gap-2">
+            <label class="d-flex align-items-center gap-2"><input asp-for="New.IsBlocking" type="checkbox" /> Bloqueante</label>
         </div>
-        <button type="submit" class="btn-erp-primary btn-erp-primary--sm">Crear</button>
+        <button type="submit" class="btn-primary">Crear</button>
     </form>
 }
 </div>

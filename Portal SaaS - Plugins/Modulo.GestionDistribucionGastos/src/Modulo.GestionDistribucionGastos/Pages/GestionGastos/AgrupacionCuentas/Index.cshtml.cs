@@ -85,13 +85,13 @@ public class IndexModel : PageModelBaseGestionGastos
         }
     }
 
-    public async Task<IActionResult> OnPostAsignarAsync(string nroCuenta, int? clasificacionId)
+    public async Task<IActionResult> OnPostAsignarAsync(string nroCuenta, int? clasificacionId, string? filtro, bool soloSinClasificar = false)
     {
         var fila = await _db.AgrupacionCuenta.FindAsync(nroCuenta);
         if (fila == null)
         {
             MensajeError = $"La cuenta {nroCuenta} ya no existe en la tabla de agrupación.";
-            return RedirectToPage();
+            return RedirectToPage(new { filtro, soloSinClasificar });
         }
 
         fila.ClasificacionId = clasificacionId;
@@ -100,6 +100,6 @@ public class IndexModel : PageModelBaseGestionGastos
         await _db.SaveChangesAsync();
 
         MensajeExito = $"Cuenta {nroCuenta} actualizada.";
-        return RedirectToPage(new { filtro = Filtro, soloSinClasificar = SoloSinClasificar });
+        return RedirectToPage(new { filtro, soloSinClasificar });
     }
 }

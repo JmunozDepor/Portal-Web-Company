@@ -1,0 +1,121 @@
+@page "/sellout/clientes"
+@model Modulo.SellOut.Pages.Clientes.IndexModel
+@{
+    ViewData["Title"] = "Clientes";
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Clientes</h2>
+    </div>
+
+    <partial name="_MensajesSellOut" model="Model" />
+
+    @if (!Model.PuedeVer)
+    {
+        <p class="admin-muted">No tenés permiso para ver esta pantalla.</p>
+    }
+    else
+    {
+        @if (Model.PuedeCrear || Model.PuedeEditar)
+        {
+            <div class="doc-tab-seccion sellout-panel-edicion">
+                <h3>@(Model.EditandoId is null ? "Nuevo cliente" : $"Editar cliente · {Model.Input.NomCliente}")</h3>
+
+                <form asp-page="./Index" asp-page-handler="Guardar" asp-route-editando="@Model.EditandoId" method="post">
+                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
+                    <div asp-validation-summary="All" class="text-danger"></div>
+                    <div class="sellout-grid">
+                        <div class="form-group">
+                            <label asp-for="Input.IdCliente">ID</label>
+                            <input asp-for="Input.IdCliente" type="number" class="form-control" readonly="@(Model.EditandoId is not null)" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.NomCliente">Nombre</label>
+                            <input asp-for="Input.NomCliente" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.ClienteCodigo">Código</label>
+                            <input asp-for="Input.ClienteCodigo" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.OrdenReporte">Orden reporte</label>
+                            <input asp-for="Input.OrdenReporte" type="number" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.Periodo">Período</label>
+                            <input asp-for="Input.Periodo" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.PrimerSemInicio">1er sem. inicio</label>
+                            <input asp-for="Input.PrimerSemInicio" type="number" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.PrimerSemFin">1er sem. fin</label>
+                            <input asp-for="Input.PrimerSemFin" type="number" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.SegundoSemInicio">2do sem. inicio</label>
+                            <input asp-for="Input.SegundoSemInicio" type="number" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.SegundoSemFin">2do sem. fin</label>
+                            <input asp-for="Input.SegundoSemFin" type="number" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <label style="text-transform:none;font-weight:500;"><input asp-for="Input.Activo" type="checkbox" /> Activo</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-erp-primary">@(Model.EditandoId is null ? "Crear" : "Guardar")</button>
+                    @if (Model.EditandoId is not null)
+                    {
+                        <a href="~/sellout/clientes?filtroTexto=@Model.FiltroTexto" class="btn-module-action">Cancelar</a>
+                    }
+                </form>
+            </div>
+        }
+
+        <form method="get" class="doc-list-filtros">
+            <div class="form-group doc-list-busqueda">
+                <label for="filtro-texto">Buscar</label>
+                <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Nombre o código..." />
+            </div>
+            <div class="form-group doc-list-filtros-acciones">
+                <button type="submit" class="btn-module-action">Buscar</button>
+                <a href="~/sellout/clientes" class="btn-module-action">Limpiar</a>
+            </div>
+        </form>
+
+        <table class="admin-table">
+            <thead><tr><th>ID</th><th>Nombre</th><th>Código</th><th>Período</th><th>Activo</th><th class="admin-col-accion"></th></tr></thead>
+            <tbody>
+                @foreach (var c in Model.Clientes)
+                {
+                    <tr class="@((c.Activo ?? true) ? "" : "admin-fila-inactiva")">
+                        <td>@c.IdCliente</td>
+                        <td>@c.NomCliente</td>
+                        <td>@c.ClienteCodigo</td>
+                        <td>@c.Periodo</td>
+                        <td>@((c.Activo ?? true) ? "Sí" : "No")</td>
+                        <td class="admin-col-accion">
+                            <div class="admin-row-actions">
+                                @if (Model.PuedeEditar)
+                                {
+                                    <a href="~/sellout/clientes?editando=@c.IdCliente&filtroTexto=@Model.FiltroTexto" class="btn-module-action">Editar</a>
+                                }
+                                @if (Model.PuedeEliminar)
+                                {
+                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@c.IdCliente" method="post" style="display:inline-block;"
+                                          onsubmit="return confirm('¿Eliminar el cliente &quot;@c.NomCliente&quot;?');">
+                                        <button type="submit" class="btn-module-action btn-module-danger">Eliminar</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

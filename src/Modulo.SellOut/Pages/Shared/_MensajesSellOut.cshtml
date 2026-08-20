@@ -1,0 +1,14 @@
+@model Modulo.SellOut.Pages.PageModelBaseSellOut
+@*
+    Banner de confirmacion/error post-accion (Crear/Editar/Eliminar). MensajeExito y
+    MensajeError son [TempData] en PageModelBaseSellOut -- sobreviven al RedirectToPage()
+    que hacen casi todos los handlers de este modulo tras una operacion exitosa.
+*@
+@if (!string.IsNullOrEmpty(Model.MensajeExito))
+{
+    <div class="admin-alert admin-alert-success">@Model.MensajeExito</div>
+}
+@if (!string.IsNullOrEmpty(Model.MensajeError))
+{
+    <div class="admin-alert admin-alert-danger">@Model.MensajeError</div>
+}

@@ -1,0 +1,116 @@
+@page "/sellout/departamentos"
+@model Modulo.SellOut.Pages.Departamentos.IndexModel
+@{
+    ViewData["Title"] = "Departamentos";
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Departamentos</h2>
+    </div>
+
+    <partial name="_MensajesSellOut" model="Model" />
+
+    @if (!Model.PuedeVer)
+    {
+        <p class="admin-muted">No tenés permiso para ver esta pantalla.</p>
+    }
+    else
+    {
+        @if (Model.PuedeCrear || Model.PuedeEditar)
+        {
+            <div class="doc-tab-seccion sellout-panel-edicion">
+                <h3>@(Model.Editando is null ? "Nuevo departamento" : $"Editar departamento · {Model.Input.ClienteDepartamento}")</h3>
+
+                <form asp-page="./Index" asp-page-handler="Guardar" method="post">
+                    <input type="hidden" name="FiltroIdCliente" value="@Model.FiltroIdCliente" />
+                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
+                    <div asp-validation-summary="All" class="text-danger"></div>
+                    <div class="sellout-grid">
+                        <div class="form-group">
+                            <label asp-for="Input.IdCliente">Cliente</label>
+                            @if (Model.Editando is null)
+                            {
+                                <select asp-for="Input.IdCliente" asp-items="Model.ClientesDisponibles" class="form-control">
+                                    <option value="">Seleccionar...</option>
+                                </select>
+                            }
+                            else
+                            {
+                                <input type="hidden" asp-for="Input.IdCliente" />
+                                <input class="form-control" value="@Model.Input.IdCliente" readonly />
+                            }
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.ClienteDepartamento">Departamento (cliente)</label>
+                            @if (Model.Editando is null)
+                            {
+                                <input asp-for="Input.ClienteDepartamento" class="form-control" />
+                            }
+                            else
+                            {
+                                <input type="hidden" asp-for="Input.ClienteDepartamento" />
+                                <input class="form-control" value="@Model.Input.ClienteDepartamento" readonly />
+                            }
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.DescripcionDeptoLocal">Descripción local</label>
+                            <input asp-for="Input.DescripcionDeptoLocal" class="form-control" />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-erp-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                    @if (Model.Editando is not null)
+                    {
+                        <a href="~/sellout/departamentos?filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto" class="btn-module-action">Cancelar</a>
+                    }
+                </form>
+            </div>
+        }
+
+        <form method="get" class="doc-list-filtros">
+            <div class="form-group">
+                <label for="filtro-cliente">Cliente</label>
+                <select id="filtro-cliente" name="FiltroIdCliente" class="form-control" onchange="this.form.submit()" asp-items="Model.ClientesDisponibles">
+                    <option value="">Todos los clientes</option>
+                </select>
+            </div>
+            <div class="form-group doc-list-busqueda">
+                <label for="filtro-texto">Buscar</label>
+                <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Departamento o descripción..." />
+            </div>
+            <div class="form-group doc-list-filtros-acciones">
+                <button type="submit" class="btn-module-action">Buscar</button>
+                <a href="~/sellout/departamentos" class="btn-module-action">Limpiar</a>
+            </div>
+        </form>
+
+        <table class="admin-table">
+            <thead><tr><th>Cliente</th><th>Departamento (cliente)</th><th>Descripción local</th><th class="admin-col-accion"></th></tr></thead>
+            <tbody>
+                @foreach (var d in Model.Departamentos)
+                {
+                    <tr>
+                        <td>@d.NomCliente</td>
+                        <td>@d.ClienteDepartamento</td>
+                        <td>@d.DescripcionDeptoLocal</td>
+                        <td class="admin-col-accion">
+                            <div class="admin-row-actions">
+                                @if (Model.PuedeEditar)
+                                {
+                                    <a href="~/sellout/departamentos?editandoCliente=@d.IdCliente&editandoDepartamento=@d.ClienteDepartamento&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto" class="btn-module-action">Editar</a>
+                                }
+                                @if (Model.PuedeEliminar)
+                                {
+                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@d.IdCliente" asp-route-clienteDepartamento="@d.ClienteDepartamento" method="post" style="display:inline-block;"
+                                          onsubmit="return confirm('¿Eliminar el departamento &quot;@d.ClienteDepartamento&quot;?');">
+                                        <button type="submit" class="btn-module-action btn-module-danger">Eliminar</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

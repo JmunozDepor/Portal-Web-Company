@@ -1,0 +1,105 @@
+@page "/sellout/gruposretail"
+@model Modulo.SellOut.Pages.GruposRetail.IndexModel
+@{
+    ViewData["Title"] = "Grupos retail";
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Grupos retail</h2>
+    </div>
+
+    <partial name="_MensajesSellOut" model="Model" />
+
+    @if (!Model.PuedeVer)
+    {
+        <p class="admin-muted">No tenés permiso para ver esta pantalla.</p>
+    }
+    else
+    {
+        @if (Model.PuedeCrear || Model.PuedeEditar)
+        {
+            <div class="doc-tab-seccion sellout-panel-edicion">
+                <h3>@(Model.EditandoId is null ? "Nuevo grupo retail" : $"Editar grupo retail · {Model.Input.NombreGrupoRetail}")</h3>
+
+                <form asp-page="./Index" asp-page-handler="Guardar" asp-route-editando="@Model.EditandoId" method="post">
+                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
+                    <input type="hidden" name="FiltroIdLocalizacion" value="@Model.FiltroIdLocalizacion" />
+                    <div asp-validation-summary="All" class="text-danger"></div>
+                    <div class="sellout-grid">
+                        <div class="form-group">
+                            <label asp-for="Input.IDGrupoRetail">ID</label>
+                            <input asp-for="Input.IDGrupoRetail" type="number" class="form-control" readonly="@(Model.EditandoId is not null)" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.NombreGrupoRetail">Nombre</label>
+                            <input asp-for="Input.NombreGrupoRetail" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.Propietario">Propietario</label>
+                            <input asp-for="Input.Propietario" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Input.IDLocalizacion">Localización</label>
+                            <select asp-for="Input.IDLocalizacion" asp-items="Model.LocalizacionesDisponibles" class="form-control">
+                                <option value="">Seleccionar...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-erp-primary">@(Model.EditandoId is null ? "Crear" : "Guardar")</button>
+                    @if (Model.EditandoId is not null)
+                    {
+                        <a href="~/sellout/gruposretail?filtroTexto=@Model.FiltroTexto&filtroIdLocalizacion=@Model.FiltroIdLocalizacion" class="btn-module-action">Cancelar</a>
+                    }
+                </form>
+            </div>
+        }
+
+        <form method="get" class="doc-list-filtros">
+            <div class="form-group doc-list-busqueda">
+                <label for="filtro-texto">Buscar</label>
+                <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Nombre o propietario..." />
+            </div>
+            <div class="form-group">
+                <label for="filtro-localizacion">Localización</label>
+                <select id="filtro-localizacion" name="FiltroIdLocalizacion" class="form-control" asp-items="Model.LocalizacionesDisponibles">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="form-group doc-list-filtros-acciones">
+                <button type="submit" class="btn-module-action">Buscar</button>
+                <a href="~/sellout/gruposretail" class="btn-module-action">Limpiar</a>
+            </div>
+        </form>
+
+        <table class="admin-table">
+            <thead><tr><th>ID</th><th>Nombre</th><th>Propietario</th><th>Localización</th><th class="admin-col-accion"></th></tr></thead>
+            <tbody>
+                @foreach (var g in Model.Grupos)
+                {
+                    <tr>
+                        <td>@g.IDGrupoRetail</td>
+                        <td>@g.NombreGrupoRetail</td>
+                        <td>@g.Propietario</td>
+                        <td>@g.Ciudad</td>
+                        <td class="admin-col-accion">
+                            <div class="admin-row-actions">
+                                @if (Model.PuedeEditar)
+                                {
+                                    <a href="~/sellout/gruposretail?editando=@g.IDGrupoRetail&filtroTexto=@Model.FiltroTexto&filtroIdLocalizacion=@Model.FiltroIdLocalizacion" class="btn-module-action">Editar</a>
+                                }
+                                @if (Model.PuedeEliminar)
+                                {
+                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@g.IDGrupoRetail" method="post" style="display:inline-block;"
+                                          onsubmit="return confirm('¿Eliminar el grupo retail &quot;@g.NombreGrupoRetail&quot;?');">
+                                        <button type="submit" class="btn-module-action btn-module-danger">Eliminar</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

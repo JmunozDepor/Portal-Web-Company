@@ -51,7 +51,7 @@
                                 <option value="">(sin clasificar)</option>
                                 @foreach (var cl in Model.ClasificacionesDisponibles)
                                 {
-                                    <option value="@cl.Id" selected="@(cl.Id == c.ClasificacionId)">@cl.Nombre</option>
+                                    <option value="@cl.Id" selected="@(cl.Id == c.ClasificacionId)">@cl.Nombre@(cl.Activo ? "" : " (inactiva)")</option>
                                 }
                             </select>
                             <button type="submit">Guardar</button>

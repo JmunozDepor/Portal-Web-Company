@@ -11,6 +11,7 @@
 <div class="card">
     <form asp-page-handler="Guardar" asp-route-id="@(Model.EsNuevo ? null : Model.Clasificacion.Id)" method="post">
         <input type="hidden" asp-for="Clasificacion.Id" />
+        <input type="hidden" asp-for="Clasificacion.Activo" />
         <div style="display:flex; flex-direction:column; gap:12px; max-width:420px;">
             <div>
                 <label>Código</label><br />

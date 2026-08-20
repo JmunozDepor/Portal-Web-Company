@@ -509,6 +509,7 @@ public class FormModel : PageModelBaseGestionGastos
 <div class="card">
     <form asp-page-handler="Guardar" asp-route-id="@(Model.EsNuevo ? null : Model.Clasificacion.Id)" method="post">
         <input type="hidden" asp-for="Clasificacion.Id" />
+        <input type="hidden" asp-for="Clasificacion.Activo" />
         <div style="display:flex; flex-direction:column; gap:12px; max-width:420px;">
             <div>
                 <label>Código</label><br />
@@ -602,16 +603,14 @@ public class IndexModel : PageModelBaseGestionGastos
         Filtro = filtro;
         SoloSinClasificar = soloSinClasificar;
 
-        await SincronizarUniversoDeCuentasAsync();
-
-        // Trae también clasificaciones inactivas ya asignadas, para no perderlas de la vista
-        // (se muestran igual en el dropdown de su fila, aunque no aparezcan para nuevas
-        // asignaciones en cuentas sin clasificar).
-        ClasificacionesDisponibles = await _db.ClasificacionCuenta
-            .Where(c => c.Activo)
-            .OrderBy(c => c.Orden)
-            .ThenBy(c => c.Nombre)
-            .ToListAsync();
+        try
+        {
+            await SincronizarUniversoDeCuentasAsync();
+        }
+        catch (Exception ex)
+        {
+            MensajeError = ObtenerMensajeError(ex);
+        }
 
         IQueryable<AgrupacionCuenta> query = _db.AgrupacionCuenta;
         if (!string.IsNullOrWhiteSpace(filtro))
@@ -622,6 +621,22 @@ public class IndexModel : PageModelBaseGestionGastos
         Cuentas = await query
             .OrderBy(a => a.NroCuenta)
             .Select(a => new FilaAgrupacion(a.NroCuenta, a.NombreCuenta, a.ClasificacionId))
+            .ToListAsync();
+
+        // Trae las clasificaciones activas (para nuevas asignaciones) más cualquier
+        // clasificación inactiva que ya esté asignada a una de las filas mostradas, para
+        // no perderla de vista en el dropdown de su fila (evita que se vea/quede como
+        // "(sin clasificar)" y se pierda la asignación real ante un guardado accidental).
+        var idsAsignados = Cuentas
+            .Where(c => c.ClasificacionId != null)
+            .Select(c => c.ClasificacionId!.Value)
+            .Distinct()
+            .ToList();
+
+        ClasificacionesDisponibles = await _db.ClasificacionCuenta
+            .Where(c => c.Activo || idsAsignados.Contains(c.Id))
+            .OrderBy(c => c.Orden)
+            .ThenBy(c => c.Nombre)
             .ToListAsync();
     }
 
@@ -640,11 +655,12 @@ public class IndexModel : PageModelBaseGestionGastos
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 ;WITH Universo AS (
-                    SELECT DISTINCT NroCuenta, NombreCuenta
+                    SELECT NroCuenta, NombreCuenta = MAX(NombreCuenta)
                     FROM dbo.Staging_CentralizacionContable
                     WHERE TipoRegistro = 'DETALLE' AND NroCuenta IS NOT NULL
+                    GROUP BY NroCuenta
                 )
-                MERGE dbo.Agrupacion_Cuenta AS destino
+                MERGE dbo.Agrupacion_Cuenta WITH (HOLDLOCK) AS destino
                 USING Universo AS origen
                 ON destino.NroCuenta = origen.NroCuenta
                 WHEN NOT MATCHED BY TARGET THEN

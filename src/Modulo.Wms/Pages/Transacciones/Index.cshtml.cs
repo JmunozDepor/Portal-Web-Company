@@ -27,6 +27,12 @@ public sealed class IndexModel : WmsPageModelBase
     public string? Documento { get; set; }
 
     [BindProperty(SupportsGet = true)]
+    public DateTime? Desde { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public DateTime? Hasta { get; set; }
+
+    [BindProperty(SupportsGet = true)]
     public int Page { get; set; } = 1;
 
     public WmsPagedResult<WmsTransaccionRow> Resultado { get; private set; } = new();
@@ -40,12 +46,20 @@ public sealed class IndexModel : WmsPageModelBase
             Tipo = Tipo,
             Estado = Estado,
             Documento = Documento,
+            Desde = Desde,
+            Hasta = Hasta,
             Page = Page,
         }, ct);
     }
 
     public async Task<IActionResult> OnPostResetearAsync(WmsTipoTransaccion tipo, long[] lineIds, CancellationToken ct)
     {
+        if (lineIds.Length == 0)
+        {
+            ErrorMessage = "Seleccioná al menos un registro.";
+            return RedirectToPage(new { tipo });
+        }
+
         try
         {
             await _service.ResetearAsync(_currentCompany.CompanyId, tipo, lineIds, ct);

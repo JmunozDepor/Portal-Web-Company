@@ -143,4 +143,114 @@ public class WmsSvshStageParserTests
         Assert.Equal("ITEM-Z", fila.item_part_a);
         Assert.Equal(WmsSvshStatus.Pendiente, fila.Status);
     }
+
+    [Fact]
+    public async Task EjecutarCicloAsync_ProcesaTodasLasCompaniasActivasDelModulo_SinFugaEntreCompanias()
+    {
+        var companyA = Guid.NewGuid();
+        var companyB = Guid.NewGuid();
+        var dbName = Guid.NewGuid().ToString();
+
+        const string xmlCompaniaA = """
+            <Message>
+              <Header></Header>
+              <ib_shipment>
+                <ib_shipment_hdr><shipment_nbr>ASN-A-001</shipment_nbr></ib_shipment_hdr>
+                <ib_shipment_dtl>
+                  <shipment_dtl_cust_field_1>1250000001</shipment_dtl_cust_field_1>
+                  <shipment_dtl_cust_field_2>900</shipment_dtl_cust_field_2>
+                  <item_part_a>ITEM-A</item_part_a>
+                  <received_qty>3</received_qty>
+                </ib_shipment_dtl>
+              </ib_shipment>
+            </Message>
+            """;
+
+        const string xmlCompaniaB = """
+            <Message>
+              <Header></Header>
+              <ib_shipment>
+                <ib_shipment_hdr><shipment_nbr>ASN-B-002</shipment_nbr></ib_shipment_hdr>
+                <ib_shipment_dtl>
+                  <shipment_dtl_cust_field_1>1250000002</shipment_dtl_cust_field_1>
+                  <shipment_dtl_cust_field_2>901</shipment_dtl_cust_field_2>
+                  <item_part_a>ITEM-B</item_part_a>
+                  <received_qty>7</received_qty>
+                </ib_shipment_dtl>
+              </ib_shipment>
+            </Message>
+            """;
+
+        var companiasActivas = new List<ModuleCompanyDto>
+        {
+            new(companyA, Guid.NewGuid()),
+            new(companyB, Guid.NewGuid()),
+        };
+
+        await using var provider = BuildProvider(dbName, companiasActivas);
+
+        // Semilla: un archivo SVSH pendiente por cada compañía, con contenido distinto,
+        // usando la misma base InMemory compartida por nombre que BuildProvider usa
+        // para el contexto real.
+        var seedOptions = new DbContextOptionsBuilder<WmsDbContext>().UseInMemoryDatabase(dbName).Options;
+        await using (var seedContext = new WmsDbContext(seedOptions))
+        {
+            seedContext.WmsOracleInboundStages.AddRange(
+                new WmsOracleInboundStage
+                {
+                    CompanyId = companyA,
+                    TipoDoc = "SVSH",
+                    Formato = WmsInboundFormato.Xml,
+                    NombreArchivo = "svsh_a.xml",
+                    HashArchivo = "hash-svsh-a",
+                    Contenido = xmlCompaniaA,
+                    Estado = WmsInboundEstado.Pendiente,
+                    InsertedAt = DateTimeOffset.UtcNow,
+                },
+                new WmsOracleInboundStage
+                {
+                    CompanyId = companyB,
+                    TipoDoc = "SVSH",
+                    Formato = WmsInboundFormato.Xml,
+                    NombreArchivo = "svsh_b.xml",
+                    HashArchivo = "hash-svsh-b",
+                    Contenido = xmlCompaniaB,
+                    Estado = WmsInboundEstado.Pendiente,
+                    InsertedAt = DateTimeOffset.UtcNow,
+                });
+            await seedContext.SaveChangesAsync();
+        }
+
+        var parser = new WmsSvshStageParser(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<WmsSvshStageParser>.Instance);
+
+        // Llama directo a EjecutarCicloAsync (internal) para que el ciclo itere ambas
+        // compañías, fijando ICurrentCompanyOverride.Set(...) por scope antes de resolver
+        // WmsDbContext en cada una -- así se confirma que no hay fuga de datos ni de
+        // contexto entre compañías.
+        await parser.EjecutarCicloAsync(CancellationToken.None);
+
+        await using var verifyContexto = new WmsDbContext(seedOptions);
+
+        var stages = await verifyContexto.WmsOracleInboundStages.ToListAsync();
+        Assert.Equal(2, stages.Count);
+        Assert.All(stages, s => Assert.Equal(WmsInboundEstado.Aplanado, s.Estado));
+        Assert.All(stages, s => Assert.NotNull(s.ProcessedAt));
+
+        var filas = await verifyContexto.WmsOracleStageSvsh.ToListAsync();
+        Assert.Equal(2, filas.Count);
+
+        var stageA = stages.Single(s => s.CompanyId == companyA);
+        var stageB = stages.Single(s => s.CompanyId == companyB);
+
+        var filaA = filas.Single(f => f.ParentId == stageA.Id);
+        var filaB = filas.Single(f => f.ParentId == stageB.Id);
+
+        Assert.Equal("ASN-A-001", filaA.shipment_nbr);
+        Assert.Equal("ITEM-A", filaA.item_part_a);
+
+        Assert.Equal("ASN-B-002", filaB.shipment_nbr);
+        Assert.Equal("ITEM-B", filaB.item_part_a);
+    }
 }

@@ -1,0 +1,43 @@
+@page
+@model Modulo.Wms.Pages.Confirmaciones.IndexModel
+@{
+    ViewData["Title"] = Model.TipoLabel;
+}
+
+<h1 class="h3 mb-3">@Model.TipoLabel</h1>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="mb-3">
+    <a class="btn btn-sm @(Model.Tipo == Modulo.Wms.Models.WmsTipoTransaccion.ConfirmacionOrdenes ? "btn-primary" : "btn-outline-secondary")" asp-route-Tipo="ConfirmacionOrdenes">Órdenes</a>
+    <a class="btn btn-sm @(Model.Tipo == Modulo.Wms.Models.WmsTipoTransaccion.ConfirmacionIngreso ? "btn-primary" : "btn-outline-secondary")" asp-route-Tipo="ConfirmacionIngreso">Ingreso</a>
+</div>
+
+<table class="table table-sm">
+    <thead><tr><th>Documento</th><th>Estado</th><th>Líneas</th><th>Error</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var fila in Model.Resultado.Items)
+    {
+        <tr>
+            <td>@fila.Documento</td>
+            <td>@fila.Status</td>
+            <td>@fila.LineasCount</td>
+            <td>@fila.ErrorMsg</td>
+            <td>
+                <form method="post" asp-page-handler="Resetear" class="d-inline">
+                    <input type="hidden" name="tipo" value="@((int)Model.Tipo)" />
+                    <input type="hidden" name="documento" value="@fila.Documento" />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Resetear</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

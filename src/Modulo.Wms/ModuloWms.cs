@@ -56,6 +56,15 @@ public sealed class ModuloWms : IModuloPortal
 
         yield return new MenuItemDefinition
         {
+            Code = "confirmaciones",
+            ParentCode = "raiz",
+            Name = "Confirmaciones",
+            PageRoute = "/wms/confirmaciones",
+            Order = 2,
+        };
+
+        yield return new MenuItemDefinition
+        {
             Code = "mapeo-campos",
             ParentCode = "raiz",
             Name = "Mapeo de Campos",
@@ -132,6 +141,7 @@ public sealed class ModuloWms : IModuloPortal
         services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
         services.AddScoped<IWmsDashboardService, WmsDashboardService>();
         services.AddScoped<IWmsTransaccionService, WmsTransaccionService>();
+        services.AddScoped<IWmsConfirmacionService, WmsConfirmacionService>();
         services.AddHostedService<WmsSlshStageParser>();
         services.AddHostedService<WmsSvshStageParser>();
         services.AddHostedService<WmsStageErrorReconciler>();

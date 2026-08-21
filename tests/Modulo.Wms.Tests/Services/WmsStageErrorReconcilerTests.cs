@@ -137,6 +137,11 @@ public class WmsStageErrorReconcilerTests
 
         var validacion = await verifyContext.WmsExportValidations.SingleAsync();
         Assert.Equal(101, validacion.WmsStatusId);
+
+        var heartbeat = await verifyContext.ServiceHeartbeats.SingleAsync();
+        Assert.Equal(companyId, heartbeat.CompanyId);
+        Assert.Equal("Wms.StageErrorReconciler", heartbeat.ProcessorKey);
+        Assert.Equal("OK", heartbeat.Status);
     }
 
     [Fact]
@@ -164,6 +169,14 @@ public class WmsStageErrorReconcilerTests
         await using var verifyContext = new WmsDbContext(seedOptions);
         var fila = await verifyContext.WmsSapStageItems.SingleAsync();
         Assert.Equal(WmsSapStageStatus.Enviado, fila.Status);
+
+        // Sin config activa para la compañía, el ciclo no debe quedar mudo -- el heartbeat
+        // se registra con un status distintivo ("SIN_CONFIG") para que la pantalla "Estado
+        // del Servicio" (Task 12) distinga "sin config" de "servicio caído".
+        var heartbeat = await verifyContext.ServiceHeartbeats.SingleAsync();
+        Assert.Equal(companyId, heartbeat.CompanyId);
+        Assert.Equal("Wms.StageErrorReconciler", heartbeat.ProcessorKey);
+        Assert.Equal("SIN_CONFIG", heartbeat.Status);
     }
 
     [Fact]
@@ -208,5 +221,15 @@ public class WmsStageErrorReconcilerTests
         Assert.Equal(WmsSapStageStatus.Enviado, fila1.Status);
         Assert.Equal(WmsSapStageStatus.ErrorWms, fila2.Status);
         Assert.Equal("Item duplicado", fila2.ErrorMsg);
+
+        // El heartbeat de cada compañía es independiente: la 1 que revienta con config
+        // malformada queda en ERROR (con el detalle de la excepción), la 2 sigue
+        // procesándose con normalidad y queda en OK -- confirma que el catch nuevo del
+        // heartbeat no interrumpe el resto del ciclo (issue Important #1 de la revisión).
+        var heartbeat1 = await verifyContext.ServiceHeartbeats.SingleAsync(h => h.CompanyId == companyId1);
+        var heartbeat2 = await verifyContext.ServiceHeartbeats.SingleAsync(h => h.CompanyId == companyId2);
+        Assert.Equal("ERROR", heartbeat1.Status);
+        Assert.NotNull(heartbeat1.LastError);
+        Assert.Equal("OK", heartbeat2.Status);
     }
 }

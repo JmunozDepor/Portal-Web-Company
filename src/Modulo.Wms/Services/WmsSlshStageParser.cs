@@ -60,7 +60,18 @@ public sealed class WmsSlshStageParser : BackgroundService
 
         foreach (var compania in companias)
         {
-            await ProcesarCompaniaAsync(compania.CompanyId, cancellationToken);
+            try
+            {
+                await ProcesarCompaniaAsync(compania.CompanyId, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error inesperado al procesar el ciclo de aplanado SLSH de la compañía {CompanyId}", compania.CompanyId);
+            }
         }
     }
 

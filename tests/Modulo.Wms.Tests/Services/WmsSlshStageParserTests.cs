@@ -163,5 +163,16 @@ public class WmsSlshStageParserTests
         Assert.Equal(2, actualizadas.Count);
         Assert.All(actualizadas, s => Assert.Equal(WmsInboundEstado.ErrorEstructura, s.Estado));
         Assert.All(actualizadas, s => Assert.NotNull(s.ProcessedAt));
+
+        // El heartbeat debe quedar en OK para cada compañía procesada -- es lo que
+        // consume la pantalla "Estado del Servicio" (Task 12) para saber que el
+        // processor sigue vivo.
+        var heartbeats = await verifyContext.ServiceHeartbeats.ToListAsync();
+        Assert.Equal(2, heartbeats.Count);
+        Assert.All(heartbeats, h => Assert.Equal("Wms.SlshStageParser", h.ProcessorKey));
+        Assert.All(heartbeats, h => Assert.Equal("OK", h.Status));
+        Assert.All(heartbeats, h => Assert.NotNull(h.LastRunAt));
+        Assert.Contains(heartbeats, h => h.CompanyId == companyA);
+        Assert.Contains(heartbeats, h => h.CompanyId == companyB);
     }
 }

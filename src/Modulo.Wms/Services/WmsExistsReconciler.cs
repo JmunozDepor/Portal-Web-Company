@@ -96,12 +96,14 @@ public sealed class WmsExistsReconciler : BackgroundService
             var configJson = await configService.GetDecryptedConfigAsync(companyId, "Wms", "WmsCloud", cancellationToken);
             if (configJson is null)
             {
+                await heartbeat.RecordAsync(companyId, "Wms.ExistsReconciler", "SIN_CONFIG", cancellationToken: cancellationToken);
                 return;
             }
 
             var config = System.Text.Json.JsonSerializer.Deserialize<WmsCloudConfigParaReconciliacion>(configJson);
             if (config is null || string.IsNullOrWhiteSpace(config.LgfApiBaseUrl))
             {
+                await heartbeat.RecordAsync(companyId, "Wms.ExistsReconciler", "SIN_CONFIG", cancellationToken: cancellationToken);
                 return;
             }
 

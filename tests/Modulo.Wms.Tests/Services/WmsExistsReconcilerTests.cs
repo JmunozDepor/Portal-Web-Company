@@ -151,6 +151,46 @@ public class WmsExistsReconcilerTests
         var fila = await verifyContext.WmsSapStageItems.SingleAsync();
         Assert.Equal(WmsSapStageStatus.ProcesadoWms, fila.Status);
         Assert.NotNull(fila.SyncedAt);
+
+        var heartbeat = await verifyContext.ServiceHeartbeats.SingleAsync();
+        Assert.Equal(companyId, heartbeat.CompanyId);
+        Assert.Equal("Wms.ExistsReconciler", heartbeat.ProcessorKey);
+        Assert.Equal("OK", heartbeat.Status);
+    }
+
+    [Fact]
+    public async Task EjecutarCicloAsync_SinConfigParaLaCompania_RegistraHeartbeatSinConfig()
+    {
+        var companyId = Guid.NewGuid();
+        var dbName = Guid.NewGuid().ToString();
+        var resultadoLgfApi = new WmsStageCheckResult(Found: false, StatusId: null, ErrorMessage: null);
+
+        await using var provider = BuildProvider(dbName, [new(companyId, Guid.NewGuid())], configJson: null, resultadoLgfApi);
+
+        var seedOptions = new DbContextOptionsBuilder<WmsDbContext>().UseInMemoryDatabase(dbName).Options;
+        await using (var seedContext = new WmsDbContext(seedOptions))
+        {
+            seedContext.WmsSapStageItems.Add(new WmsSapStageItem { CompanyId = companyId, ItemCode = "ITM001", ItemName = "A", Status = WmsSapStageStatus.Enviado });
+            await seedContext.SaveChangesAsync();
+        }
+
+        var reconciler = new WmsExistsReconciler(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<WmsExistsReconciler>.Instance);
+
+        await reconciler.EjecutarCicloAsync(CancellationToken.None);
+
+        await using var verifyContext = new WmsDbContext(seedOptions);
+        var fila = await verifyContext.WmsSapStageItems.SingleAsync();
+        Assert.Equal(WmsSapStageStatus.Enviado, fila.Status);
+
+        // Sin config activa, el ciclo no debe quedar mudo -- el heartbeat se registra con
+        // un status distintivo ("SIN_CONFIG") para que la pantalla "Estado del Servicio"
+        // (Task 12) distinga "sin config" de "servicio caído".
+        var heartbeat = await verifyContext.ServiceHeartbeats.SingleAsync();
+        Assert.Equal(companyId, heartbeat.CompanyId);
+        Assert.Equal("Wms.ExistsReconciler", heartbeat.ProcessorKey);
+        Assert.Equal("SIN_CONFIG", heartbeat.Status);
     }
 
     [Fact]

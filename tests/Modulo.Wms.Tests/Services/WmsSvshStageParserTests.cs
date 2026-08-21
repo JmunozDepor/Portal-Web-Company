@@ -143,6 +143,12 @@ public class WmsSvshStageParserTests
         Assert.Equal("ASN2001", fila.shipment_nbr);
         Assert.Equal("ITEM-Z", fila.item_part_a);
         Assert.Equal(WmsSvshStatus.Pendiente, fila.Status);
+
+        var heartbeat = await verifyContexto.ServiceHeartbeats.SingleAsync();
+        Assert.Equal(companyId, heartbeat.CompanyId);
+        Assert.Equal("Wms.SvshStageParser", heartbeat.ProcessorKey);
+        Assert.Equal("OK", heartbeat.Status);
+        Assert.NotNull(heartbeat.LastRunAt);
     }
 
     [Fact]
@@ -253,5 +259,12 @@ public class WmsSvshStageParserTests
 
         Assert.Equal("ASN-B-002", filaB.shipment_nbr);
         Assert.Equal("ITEM-B", filaB.item_part_a);
+
+        var heartbeats = await verifyContexto.ServiceHeartbeats.ToListAsync();
+        Assert.Equal(2, heartbeats.Count);
+        Assert.All(heartbeats, h => Assert.Equal("Wms.SvshStageParser", h.ProcessorKey));
+        Assert.All(heartbeats, h => Assert.Equal("OK", h.Status));
+        Assert.Contains(heartbeats, h => h.CompanyId == companyA);
+        Assert.Contains(heartbeats, h => h.CompanyId == companyB);
     }
 }

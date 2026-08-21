@@ -1,0 +1,29 @@
+@page "/wms/estado-servicio"
+@model Modulo.Wms.Pages.EstadoServicio.IndexModel
+@{
+    ViewData["Title"] = "Estado del Servicio";
+}
+
+<h1 class="h3 mb-3">Estado del Servicio</h1>
+
+@if (Model.Heartbeats.Count == 0)
+{
+    <p class="text-muted">Todavía no hay ciclos registrados. Los procesos del plugin reportan su estado en cada ciclo (cada 15-60s según el proceso).</p>
+}
+
+<table class="table table-sm">
+    <thead><tr><th>Proceso</th><th>Estado</th><th>Última ejecución</th><th>Último error</th></tr></thead>
+    <tbody>
+    @foreach (var hb in Model.Heartbeats)
+    {
+        <tr>
+            <td>@hb.ProcessorKey</td>
+            <td>
+                <span class="badge @(hb.Status == "OK" ? "bg-success" : hb.Status == "ERROR" ? "bg-danger" : "bg-secondary")">@hb.Status</span>
+            </td>
+            <td>@(hb.LastRunAt?.ToString("dd-MM HH:mm:ss") ?? "—")</td>
+            <td>@hb.LastError</td>
+        </tr>
+    }
+    </tbody>
+</table>

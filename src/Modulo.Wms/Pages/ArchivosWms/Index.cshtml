@@ -1,4 +1,4 @@
-@page
+@page "/wms/archivos-wms"
 @model Modulo.Wms.Pages.ArchivosWms.IndexModel
 @{
     ViewData["Title"] = "Archivos WMS";
@@ -17,11 +17,25 @@
 
 <form method="get" class="row g-2 mb-3">
     <div class="col-auto">
+        @* Dominio actual de TipoDoc para WmsOracleInboundStage: solo SLSH (órdenes) y
+           SVSH (ingreso), que son los únicos tipos que WmsSlshStageParser/
+           WmsSvshStageParser insertan vía WmsInboundIngestionService. Otros TipoDoc
+           ("Item", "Order", "Store", "IbShipment") existen en WmsExportValidation
+           (staging de salida SAP->Oracle), no en esta tabla de entrada cruda. *@
         <select name="TipoDoc" class="form-select form-select-sm">
             <option value="">Todos</option>
             @foreach (var tipo in new[] { "SLSH", "SVSH" })
             {
                 <option value="@tipo" selected="@(Model.TipoDoc == tipo ? "selected" : null)">@tipo</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="Estado" class="form-select form-select-sm">
+            <option value="">Todos</option>
+            @foreach (var estado in Enum.GetNames(typeof(Modulo.Wms.Models.WmsInboundEstado)))
+            {
+                <option value="@estado" selected="@(Model.Estado == estado ? "selected" : null)">@estado</option>
             }
         </select>
     </div>

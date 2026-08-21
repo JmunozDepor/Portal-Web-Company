@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Modulo.Wms.Data;
 using Modulo.Wms.Models;
@@ -85,8 +86,9 @@ public class WmsSlshInventoryReader : IIntegrationEntityReader
         await _contexto.SaveChangesAsync(cancellationToken);
     }
 
-    private static int? ParseIntOrNull(string? valor) => int.TryParse(valor, out var resultado) ? resultado : null;
+    private static int? ParseIntOrNull(string? valor) =>
+        int.TryParse(valor, NumberStyles.Any, CultureInfo.InvariantCulture, out var resultado) ? resultado : null;
 
     private static DateTime? ParseDateOrNull(string? valor) =>
-        !string.IsNullOrWhiteSpace(valor) && DateTime.TryParse(valor, out var resultado) ? resultado : null;
+        !string.IsNullOrWhiteSpace(valor) && DateTime.TryParse(valor, CultureInfo.InvariantCulture, DateTimeStyles.None, out var resultado) ? resultado : null;
 }

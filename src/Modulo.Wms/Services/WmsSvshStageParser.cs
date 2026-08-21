@@ -76,7 +76,6 @@ public sealed class WmsSvshStageParser : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         scope.ServiceProvider.GetRequiredService<ICurrentCompanyOverride>().Set(companyId);
         var contexto = scope.ServiceProvider.GetRequiredService<WmsDbContext>();
-        var heartbeat = scope.ServiceProvider.GetRequiredService<IWmsServiceHeartbeatRecorder>();
 
         try
         {
@@ -127,12 +126,33 @@ public sealed class WmsSvshStageParser : BackgroundService
                 }
             }
 
-            await heartbeat.RecordAsync(companyId, "Wms.SvshStageParser", "OK", cancellationToken: cancellationToken);
+            await RegistrarHeartbeatAsync(companyId, "OK", null, cancellationToken);
         }
         catch (Exception ex)
         {
-            await heartbeat.RecordAsync(companyId, "Wms.SvshStageParser", "ERROR", ex.Message, cancellationToken);
+            await RegistrarHeartbeatAsync(companyId, "ERROR", ex.Message, cancellationToken);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Registra el heartbeat usando un scope/WmsDbContext NUEVO y separado del que se usó
+    /// para el trabajo de parseo. Si contexto.SaveChangesAsync falló dentro del loop de
+    /// entries, contexto queda con entidades rotas trackeadas y reintentar la escritura del
+    /// heartbeat con ese mismo contexto fallaría también, perdiendo el heartbeat de ERROR.
+    /// </summary>
+    private async Task RegistrarHeartbeatAsync(Guid companyId, string estado, string? mensaje, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var heartbeatScope = _scopeFactory.CreateScope();
+            heartbeatScope.ServiceProvider.GetRequiredService<ICurrentCompanyOverride>().Set(companyId);
+            var heartbeat = heartbeatScope.ServiceProvider.GetRequiredService<IWmsServiceHeartbeatRecorder>();
+            await heartbeat.RecordAsync(companyId, "Wms.SvshStageParser", estado, mensaje, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error registrando el heartbeat '{Estado}' del SvshStageParser", estado);
         }
     }
 

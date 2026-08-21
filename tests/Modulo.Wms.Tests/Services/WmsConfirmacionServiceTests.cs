@@ -64,6 +64,30 @@ public class WmsConfirmacionServiceTests
     }
 
     [Fact]
+    public async Task BuscarAsync_ExcluyeFilasDeOtraCompania()
+    {
+        var companyId = Guid.NewGuid();
+        var otraCompanyId = Guid.NewGuid();
+        var contexto = CrearContexto();
+
+        var stage = new WmsOracleInboundStage { CompanyId = companyId, TipoDoc = "SVSH", Formato = WmsInboundFormato.Xml, NombreArchivo = "a.xml", HashArchivo = "hh1", Contenido = "" };
+        var otroStage = new WmsOracleInboundStage { CompanyId = otraCompanyId, TipoDoc = "SVSH", Formato = WmsInboundFormato.Xml, NombreArchivo = "z.xml", HashArchivo = "hhz", Contenido = "" };
+        contexto.WmsOracleInboundStages.AddRange(stage, otroStage);
+        await contexto.SaveChangesAsync();
+
+        contexto.WmsOracleStageSvsh.AddRange(
+            new WmsOracleStageSvsh { ParentId = stage.Id, shipment_nbr = "ASN9", item_part_a = "X", Status = WmsSvshStatus.ErrorSap, ErrorMsg = "falló" },
+            new WmsOracleStageSvsh { ParentId = otroStage.Id, shipment_nbr = "ASN-OTRA", item_part_a = "Y", Status = WmsSvshStatus.ErrorSap, ErrorMsg = "falló" });
+        await contexto.SaveChangesAsync();
+
+        var service = new WmsConfirmacionService(contexto);
+        var resultado = await service.BuscarAsync(companyId, new WmsConfirmacionFiltro { Tipo = WmsTipoTransaccion.ConfirmacionIngreso }, CancellationToken.None);
+
+        Assert.Single(resultado.Items);
+        Assert.Equal("ASN9", resultado.Items[0].Documento);
+    }
+
+    [Fact]
     public async Task ResetearAsync_VuelveElDocumentoAPendienteYLimpiaError()
     {
         var companyId = Guid.NewGuid();

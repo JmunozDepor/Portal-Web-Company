@@ -6,6 +6,12 @@ using Xunit;
 
 namespace Modulo.Wms.Tests.Services;
 
+// Limitación conocida: estos tests corren contra el proveedor InMemory de EF Core, que
+// evalúa `Where` del lado del cliente de forma más permisiva que Postgres/SqlServer reales.
+// En particular, WmsTransaccionService.cs filtra sobre `Status = x.Status.ToString()` (una
+// proyección) y sobre `Documento = x.SapDocEntry.ToString()` con `.Contains()`; ambos
+// funcionan aquí pero podrían comportarse distinto (o no traducirse a SQL) contra un motor
+// real. Migrar estos tests a un proveedor real está fuera de alcance de este fix.
 public class WmsTransaccionServiceTests
 {
     private static WmsDbContext CrearContexto()
@@ -29,6 +35,25 @@ public class WmsTransaccionServiceTests
 
         var service = new WmsTransaccionService(contexto);
         var resultado = await service.BuscarAsync(companyId, new WmsTransaccionFiltro { Tipo = WmsTipoTransaccion.EnvioProducto, Estado = "ErrorWms" }, CancellationToken.None);
+
+        Assert.Single(resultado.Items);
+        Assert.Equal("I1", resultado.Items[0].Documento);
+    }
+
+    [Fact]
+    public async Task BuscarAsync_ExcluyeFilasDeOtraCompania()
+    {
+        var companyId = Guid.NewGuid();
+        var otraCompanyId = Guid.NewGuid();
+        var contexto = CrearContexto();
+
+        contexto.WmsSapStageItems.AddRange(
+            new WmsSapStageItem { CompanyId = companyId, ItemCode = "I1", ItemName = "Item 1", Status = WmsSapStageStatus.ErrorWms },
+            new WmsSapStageItem { CompanyId = otraCompanyId, ItemCode = "I2", ItemName = "Item 2", Status = WmsSapStageStatus.ErrorWms });
+        await contexto.SaveChangesAsync();
+
+        var service = new WmsTransaccionService(contexto);
+        var resultado = await service.BuscarAsync(companyId, new WmsTransaccionFiltro { Tipo = WmsTipoTransaccion.EnvioProducto }, CancellationToken.None);
 
         Assert.Single(resultado.Items);
         Assert.Equal("I1", resultado.Items[0].Documento);

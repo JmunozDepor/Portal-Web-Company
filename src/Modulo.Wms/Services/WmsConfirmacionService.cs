@@ -25,9 +25,10 @@ public class WmsConfirmacionService : IWmsConfirmacionService
 
         if (filtro.Tipo == WmsTipoTransaccion.ConfirmacionOrdenes)
         {
+            var desde = DateTimeOffset.UtcNow.AddDays(-7);
             var filas = await (from f in _contexto.WmsOracleStageSlsh
                                 join s in _contexto.WmsOracleInboundStages on f.ParentId equals s.Id
-                                where s.CompanyId == companyId
+                                where s.CompanyId == companyId && s.InsertedAt >= desde
                                 select f).ToListAsync(cancellationToken);
 
             agrupado = filas.GroupBy(f => f.order_hdr_cust_field_4 ?? "(sin número)")
@@ -42,9 +43,10 @@ public class WmsConfirmacionService : IWmsConfirmacionService
         }
         else if (filtro.Tipo == WmsTipoTransaccion.ConfirmacionIngreso)
         {
+            var desde = DateTimeOffset.UtcNow.AddDays(-7);
             var filas = await (from f in _contexto.WmsOracleStageSvsh
                                 join s in _contexto.WmsOracleInboundStages on f.ParentId equals s.Id
-                                where s.CompanyId == companyId
+                                where s.CompanyId == companyId && s.InsertedAt >= desde
                                 select f).ToListAsync(cancellationToken);
 
             agrupado = filas.GroupBy(f => f.shipment_nbr ?? "(sin número)")
@@ -70,6 +72,8 @@ public class WmsConfirmacionService : IWmsConfirmacionService
         {
             agrupado = agrupado.Where(r => r.Documento.Contains(filtro.Documento, StringComparison.OrdinalIgnoreCase)).ToList();
         }
+
+        agrupado = agrupado.Take(200).ToList();
 
         return new WmsPagedResult<WmsConfirmacionRow> { Items = agrupado, TotalCount = agrupado.Count, Page = 1, PageSize = Math.Max(agrupado.Count, 1) };
     }

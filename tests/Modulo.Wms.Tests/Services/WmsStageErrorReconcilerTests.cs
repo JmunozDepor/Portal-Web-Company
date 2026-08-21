@@ -67,6 +67,7 @@ public class WmsStageErrorReconcilerTests
         services.AddSingleton<IWmsValidationApiClient>(new FakeWmsValidationApiClient(resultadoLgfApi));
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsStageErrorReconciler>.Instance);
+        services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
 
         services.AddDbContext<WmsDbContext>((sp, options) =>
         {
@@ -91,6 +92,7 @@ public class WmsStageErrorReconcilerTests
         services.AddSingleton<IWmsValidationApiClient>(new FakeWmsValidationApiClient(resultadoLgfApi));
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsStageErrorReconciler>.Instance);
+        services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
 
         services.AddDbContext<WmsDbContext>((sp, options) =>
         {

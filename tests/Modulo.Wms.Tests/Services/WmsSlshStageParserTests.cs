@@ -69,6 +69,7 @@ public class WmsSlshStageParserTests
         services.AddSingleton<IExternalDatabaseConnectionService>(new FakeExternalDatabaseConnectionService(companiasActivas));
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsSlshStageParser>.Instance);
+        services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
 
         services.AddDbContext<WmsDbContext>((sp, options) =>
         {

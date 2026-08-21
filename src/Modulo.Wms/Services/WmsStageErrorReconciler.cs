@@ -87,38 +87,50 @@ public sealed class WmsStageErrorReconciler : BackgroundService
     private async Task ProcesarCompaniaAsync(Guid companyId, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var configService = scope.ServiceProvider.GetRequiredService<IIntegrationConnectorConfigService>();
-        var configJson = await configService.GetDecryptedConfigAsync(companyId, "Wms", "WmsCloud", cancellationToken);
-        if (configJson is null)
-        {
-            return;
-        }
-
-        var config = System.Text.Json.JsonSerializer.Deserialize<WmsCloudConfigParaReconciliacion>(configJson);
-        if (config is null || string.IsNullOrWhiteSpace(config.LgfApiBaseUrl))
-        {
-            return;
-        }
-
         scope.ServiceProvider.GetRequiredService<ICurrentCompanyOverride>().Set(companyId);
-        var contexto = scope.ServiceProvider.GetRequiredService<WmsDbContext>();
-        var validador = scope.ServiceProvider.GetRequiredService<IWmsValidationApiClient>();
+        var heartbeat = scope.ServiceProvider.GetRequiredService<IWmsServiceHeartbeatRecorder>();
 
-        await ProcesarEntidadAsync(contexto, validador, config, companyId, "Item", "stage_item", "item_alternate_code",
-            contexto.WmsSapStageItems.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
-            f => f.ItemCode, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+        try
+        {
+            var configService = scope.ServiceProvider.GetRequiredService<IIntegrationConnectorConfigService>();
+            var configJson = await configService.GetDecryptedConfigAsync(companyId, "Wms", "WmsCloud", cancellationToken);
+            if (configJson is null)
+            {
+                return;
+            }
 
-        await ProcesarEntidadAsync(contexto, validador, config, companyId, "Store", "stage_store", "code",
-            contexto.WmsSapStageStores.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
-            f => f.CardCode, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+            var config = System.Text.Json.JsonSerializer.Deserialize<WmsCloudConfigParaReconciliacion>(configJson);
+            if (config is null || string.IsNullOrWhiteSpace(config.LgfApiBaseUrl))
+            {
+                return;
+            }
 
-        await ProcesarEntidadAsync(contexto, validador, config, companyId, "Order", "stage_order_hdr", "order_nbr",
-            contexto.WmsSapStageOrderHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
-            f => f.OrderNbr, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+            var contexto = scope.ServiceProvider.GetRequiredService<WmsDbContext>();
+            var validador = scope.ServiceProvider.GetRequiredService<IWmsValidationApiClient>();
 
-        await ProcesarEntidadAsync(contexto, validador, config, companyId, "IbShipment", "stage_ib_shipment", "shipment_nbr",
-            contexto.WmsSapStageInboundHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
-            f => f.SapDocEntry.ToString(), (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+            await ProcesarEntidadAsync(contexto, validador, config, companyId, "Item", "stage_item", "item_alternate_code",
+                contexto.WmsSapStageItems.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
+                f => f.ItemCode, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+
+            await ProcesarEntidadAsync(contexto, validador, config, companyId, "Store", "stage_store", "code",
+                contexto.WmsSapStageStores.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
+                f => f.CardCode, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+
+            await ProcesarEntidadAsync(contexto, validador, config, companyId, "Order", "stage_order_hdr", "order_nbr",
+                contexto.WmsSapStageOrderHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
+                f => f.OrderNbr, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+
+            await ProcesarEntidadAsync(contexto, validador, config, companyId, "IbShipment", "stage_ib_shipment", "shipment_nbr",
+                contexto.WmsSapStageInboundHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
+                f => f.SapDocEntry.ToString(), (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+
+            await heartbeat.RecordAsync(companyId, "Wms.StageErrorReconciler", "OK", cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await heartbeat.RecordAsync(companyId, "Wms.StageErrorReconciler", "ERROR", ex.Message, cancellationToken);
+            throw;
+        }
     }
 
     private async Task ProcesarEntidadAsync<TFila>(

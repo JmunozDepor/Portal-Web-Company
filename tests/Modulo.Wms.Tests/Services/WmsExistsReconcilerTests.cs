@@ -77,6 +77,7 @@ public class WmsExistsReconcilerTests
         services.AddSingleton<IWmsValidationApiClient>(new FakeWmsValidationApiClient(resultadoLgfApi));
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsExistsReconciler>.Instance);
+        services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
 
         services.AddDbContext<WmsDbContext>((sp, options) =>
         {
@@ -101,6 +102,7 @@ public class WmsExistsReconcilerTests
         services.AddSingleton<IWmsValidationApiClient>(new FakeWmsValidationApiClient(resultadoDefault, resultadosPorEntidad));
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsExistsReconciler>.Instance);
+        services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
 
         services.AddDbContext<WmsDbContext>((sp, options) =>
         {

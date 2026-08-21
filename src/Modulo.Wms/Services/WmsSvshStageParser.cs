@@ -76,52 +76,63 @@ public sealed class WmsSvshStageParser : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         scope.ServiceProvider.GetRequiredService<ICurrentCompanyOverride>().Set(companyId);
         var contexto = scope.ServiceProvider.GetRequiredService<WmsDbContext>();
+        var heartbeat = scope.ServiceProvider.GetRequiredService<IWmsServiceHeartbeatRecorder>();
 
-        var pendientes = await contexto.WmsOracleInboundStages
-            .Where(s => s.Estado == WmsInboundEstado.Pendiente && s.TipoDoc == "SVSH" && s.Formato == WmsInboundFormato.Xml)
-            .ToListAsync(cancellationToken);
-
-        foreach (var entry in pendientes)
+        try
         {
-            try
-            {
-                var filas = WmsSvshXmlParser.Parse(entry.Contenido);
+            var pendientes = await contexto.WmsOracleInboundStages
+                .Where(s => s.Estado == WmsInboundEstado.Pendiente && s.TipoDoc == "SVSH" && s.Formato == WmsInboundFormato.Xml)
+                .ToListAsync(cancellationToken);
 
-                if (filas.Count == 0)
+            foreach (var entry in pendientes)
+            {
+                try
                 {
-                    entry.Estado = WmsInboundEstado.ErrorEstructura;
-                    entry.MensajeError = "No se encontraron nodos ib_shipment_dtl válidos.";
-                }
-                else
-                {
-                    foreach (var fila in filas)
+                    var filas = WmsSvshXmlParser.Parse(entry.Contenido);
+
+                    if (filas.Count == 0)
                     {
-                        fila.ParentId = entry.Id;
-                        contexto.WmsOracleStageSvsh.Add(fila);
+                        entry.Estado = WmsInboundEstado.ErrorEstructura;
+                        entry.MensajeError = "No se encontraron nodos ib_shipment_dtl válidos.";
                     }
-                    entry.Estado = WmsInboundEstado.Aplanado;
+                    else
+                    {
+                        foreach (var fila in filas)
+                        {
+                            fila.ParentId = entry.Id;
+                            contexto.WmsOracleStageSvsh.Add(fila);
+                        }
+                        entry.Estado = WmsInboundEstado.Aplanado;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    entry.Estado = WmsInboundEstado.ErrorStaging;
+                    entry.MensajeError = ex.Message;
+                    _logger.LogError(ex, "Error aplanando el archivo {NombreArchivo}", entry.NombreArchivo);
+                }
+                finally
+                {
+                    entry.ProcessedAt = DateTimeOffset.UtcNow;
+                }
+
+                try
+                {
+                    await contexto.SaveChangesAsync(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error guardando el resultado del aplanado SVSH para el archivo {NombreArchivo}", entry.NombreArchivo);
+                    await RegistrarFalloDePersistenciaAsync(companyId, entry.Id, ex, cancellationToken);
                 }
             }
-            catch (Exception ex)
-            {
-                entry.Estado = WmsInboundEstado.ErrorStaging;
-                entry.MensajeError = ex.Message;
-                _logger.LogError(ex, "Error aplanando el archivo {NombreArchivo}", entry.NombreArchivo);
-            }
-            finally
-            {
-                entry.ProcessedAt = DateTimeOffset.UtcNow;
-            }
 
-            try
-            {
-                await contexto.SaveChangesAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error guardando el resultado del aplanado SVSH para el archivo {NombreArchivo}", entry.NombreArchivo);
-                await RegistrarFalloDePersistenciaAsync(companyId, entry.Id, ex, cancellationToken);
-            }
+            await heartbeat.RecordAsync(companyId, "Wms.SvshStageParser", "OK", cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await heartbeat.RecordAsync(companyId, "Wms.SvshStageParser", "ERROR", ex.Message, cancellationToken);
+            throw;
         }
     }
 

@@ -106,12 +106,14 @@ public sealed class ModuloWms : IModuloPortal
         services.AddScoped<IIntegrationEntityReader, WmsSapStageStoreReader>();
         services.AddScoped<IIntegrationEntityReader, WmsSapStageInboundReader>();
         services.AddScoped<IIntegrationEntityReader, WmsSapStageOrderReader>();
+        services.AddScoped<IIntegrationEntityReader, WmsSvshInventoryReader>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageItemWriter>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageStoreWriter>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageInboundWriter>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageOrderWriter>();
         services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
         services.AddHostedService<WmsSlshStageParser>();
+        services.AddHostedService<WmsSvshStageParser>();
         services.AddHostedService<WmsStageErrorReconciler>();
         services.AddHostedService<WmsExistsReconciler>();
 

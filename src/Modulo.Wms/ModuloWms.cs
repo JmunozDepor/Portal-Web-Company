@@ -38,11 +38,20 @@ public sealed class ModuloWms : IModuloPortal
 
         yield return new MenuItemDefinition
         {
+            Code = "dashboard",
+            ParentCode = "raiz",
+            Name = "Dashboard",
+            PageRoute = "/wms/dashboard",
+            Order = 0,
+        };
+
+        yield return new MenuItemDefinition
+        {
             Code = "mapeo-campos",
             ParentCode = "raiz",
             Name = "Mapeo de Campos",
             PageRoute = "/wms/mapeo-campos",
-            Order = 1,
+            Order = 4,
         };
 
         yield return new MenuItemDefinition
@@ -51,7 +60,7 @@ public sealed class ModuloWms : IModuloPortal
             ParentCode = "raiz",
             Name = "Configuración del Servicio",
             PageRoute = "/wms/configuracion-servicio",
-            Order = 2,
+            Order = 5,
         };
 
         yield return new MenuItemDefinition
@@ -60,7 +69,7 @@ public sealed class ModuloWms : IModuloPortal
             ParentCode = "raiz",
             Name = "Estado del Servicio",
             PageRoute = "/wms/estado-servicio",
-            Order = 3,
+            Order = 6,
         };
     }
 

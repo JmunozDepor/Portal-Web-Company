@@ -1,0 +1,37 @@
+@page
+@model Modulo.Wms.Pages.Dashboard.IndexModel
+@{
+    ViewData["Title"] = "Dashboard WMS";
+}
+
+<h1 class="h3 mb-3">Dashboard de Integración WMS</h1>
+
+<div class="mb-3">
+    <a class="btn btn-sm @(Model.DiasAtras == 1 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="1">Hoy</a>
+    <a class="btn btn-sm @(Model.DiasAtras == 7 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="7">7 días</a>
+    <a class="btn btn-sm @(Model.DiasAtras == 30 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="30">30 días</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Total transacciones</div><div class="h3 mb-0">@Model.Resumen.TotalTransacciones</div></div></div>
+    <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Procesadas OK</div><div class="h3 mb-0 text-success">@Model.Resumen.TotalOk</div></div></div>
+    <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Con error</div><div class="h3 mb-0 text-danger">@Model.Resumen.TotalError</div></div></div>
+    <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Pendientes</div><div class="h3 mb-0 text-warning">@Model.Resumen.TotalPendiente</div></div></div>
+</div>
+
+<table class="table table-sm">
+    <thead><tr><th>Tipo</th><th>OK</th><th>Error</th><th>Pend.</th><th>Última ejecución</th><th>Estado</th></tr></thead>
+    <tbody>
+    @foreach (var fila in Model.Resumen.PorTipo)
+    {
+        <tr>
+            <td>@fila.Label</td>
+            <td class="text-success">@fila.Ok</td>
+            <td class="text-danger">@fila.Error</td>
+            <td class="text-warning">@fila.Pendiente</td>
+            <td>@(fila.UltimaEjecucion?.ToString("dd-MM HH:mm") ?? "—")</td>
+            <td>@(fila.UltimoEstado ?? "—")</td>
+        </tr>
+    }
+    </tbody>
+</table>

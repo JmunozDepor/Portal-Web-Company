@@ -1219,6 +1219,241 @@ namespace Modulo.Wms.Migrations.Postgres.Migrations
                     b.ToTable("wms_oracle_stage_slsh", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Wms.Models.WmsOracleStageSvsh", b =>
+                {
+                    b.Property<long>("LineId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("line_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("LineId"));
+
+                    b.Property<string>("ClientEnvCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("client_env_code");
+
+                    b.Property<string>("DocumentVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("document_version");
+
+                    b.Property<string>("Entity")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("entity");
+
+                    b.Property<string>("ErrorMsg")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("error_msg");
+
+                    b.Property<string>("MessageId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("message_id");
+
+                    b.Property<string>("OriginSystem")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("origin_system");
+
+                    b.Property<string>("ParentCompanyCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("parent_company_code");
+
+                    b.Property<long>("ParentId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("parent_id");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<int?>("SapDocEntry")
+                        .HasColumnType("integer")
+                        .HasColumnName("sap_doc_entry");
+
+                    b.Property<int?>("SapObject")
+                        .HasColumnType("integer")
+                        .HasColumnName("sap_object");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TimeStamp")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("time_stamp");
+
+                    b.Property<string>("asn_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("asn_nbr");
+
+                    b.Property<string>("batch_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("batch_nbr");
+
+                    b.Property<string>("carrier_code")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("carrier_code");
+
+                    b.Property<string>("company_code")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("company_code");
+
+                    b.Property<string>("cust_nbr")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("cust_nbr");
+
+                    b.Property<string>("customer_po_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("customer_po_nbr");
+
+                    b.Property<string>("expiry_date")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("expiry_date");
+
+                    b.Property<string>("facility_code")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("facility_code");
+
+                    b.Property<string>("ib_lpn_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("ib_lpn_nbr");
+
+                    b.Property<string>("item_alternate_code")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("item_alternate_code");
+
+                    b.Property<string>("item_part_a")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("item_part_a");
+
+                    b.Property<string>("item_part_b")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("item_part_b");
+
+                    b.Property<string>("line_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("line_nbr");
+
+                    b.Property<string>("load_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("load_nbr");
+
+                    b.Property<string>("manifest_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("manifest_nbr");
+
+                    b.Property<string>("order_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("order_nbr");
+
+                    b.Property<string>("rcvd_date")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("rcvd_date");
+
+                    b.Property<string>("rcvd_date_time")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("rcvd_date_time");
+
+                    b.Property<string>("received_qty")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("received_qty");
+
+                    b.Property<string>("seal_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("seal_nbr");
+
+                    b.Property<string>("seq_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("seq_nbr");
+
+                    b.Property<string>("serial_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("serial_nbr");
+
+                    b.Property<string>("shipment_dtl_cust_field_1")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("shipment_dtl_cust_field_1");
+
+                    b.Property<string>("shipment_dtl_cust_field_2")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("shipment_dtl_cust_field_2");
+
+                    b.Property<string>("shipment_dtl_cust_field_3")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("shipment_dtl_cust_field_3");
+
+                    b.Property<string>("shipment_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("shipment_nbr");
+
+                    b.Property<string>("shipped_qty")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("shipped_qty");
+
+                    b.Property<string>("shipped_uom")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("shipped_uom");
+
+                    b.Property<string>("trailer_nbr")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("trailer_nbr");
+
+                    b.Property<string>("vendor_nbr")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("vendor_nbr");
+
+                    b.HasKey("LineId");
+
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("ix_wms_oracle_stage_svsh_parent");
+
+                    b.HasIndex("shipment_nbr")
+                        .HasDatabaseName("ix_wms_oracle_stage_svsh_shipment");
+
+                    b.HasIndex("Status", "RetryCount")
+                        .HasDatabaseName("ix_wms_oracle_stage_svsh_status_retry");
+
+                    b.ToTable("wms_oracle_stage_svsh", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Wms.Models.WmsSapStageInboundDtl", b =>
                 {
                     b.Property<long>("LineId")
@@ -1709,6 +1944,15 @@ namespace Modulo.Wms.Migrations.Postgres.Migrations
                 });
 
             modelBuilder.Entity("Modulo.Wms.Models.WmsOracleStageSlsh", b =>
+                {
+                    b.HasOne("Modulo.Wms.Models.WmsOracleInboundStage", null)
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Modulo.Wms.Models.WmsOracleStageSvsh", b =>
                 {
                     b.HasOne("Modulo.Wms.Models.WmsOracleInboundStage", null)
                         .WithMany()

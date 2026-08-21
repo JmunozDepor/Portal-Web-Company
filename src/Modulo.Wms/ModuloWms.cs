@@ -112,6 +112,7 @@ public sealed class ModuloWms : IModuloPortal
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageInboundWriter>();
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageOrderWriter>();
         services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
+        services.AddScoped<IWmsDashboardService, WmsDashboardService>();
         services.AddHostedService<WmsSlshStageParser>();
         services.AddHostedService<WmsSvshStageParser>();
         services.AddHostedService<WmsStageErrorReconciler>();

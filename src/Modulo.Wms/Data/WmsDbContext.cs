@@ -31,6 +31,7 @@ public class WmsDbContext : DbContext
     public DbSet<WmsServiceHeartbeat> ServiceHeartbeats => Set<WmsServiceHeartbeat>();
     public DbSet<WmsOracleInboundStage> WmsOracleInboundStages => Set<WmsOracleInboundStage>();
     public DbSet<WmsOracleStageSlsh> WmsOracleStageSlsh => Set<WmsOracleStageSlsh>();
+    public DbSet<WmsOracleStageSvsh> WmsOracleStageSvsh => Set<WmsOracleStageSvsh>();
     public DbSet<WmsSapStageItem> WmsSapStageItems => Set<WmsSapStageItem>();
     public DbSet<WmsSapStageStore> WmsSapStageStores => Set<WmsSapStageStore>();
     public DbSet<WmsSapStageInboundHdr> WmsSapStageInboundHdrs => Set<WmsSapStageInboundHdr>();
@@ -314,6 +315,60 @@ public class WmsDbContext : DbContext
             entity.HasIndex(e => e.ParentId).HasDatabaseName("ix_wms_oracle_stage_slsh_parent");
             entity.HasIndex(e => new { e.Status, e.RetryCount }).HasDatabaseName("ix_wms_oracle_stage_slsh_status_retry");
             entity.HasIndex(e => e.ob_lpn_nbr).HasDatabaseName("ix_wms_oracle_stage_slsh_lpn");
+        });
+
+        modelBuilder.Entity<WmsOracleStageSvsh>(entity =>
+        {
+            entity.ToTable("wms_oracle_stage_svsh");
+            entity.HasKey(e => e.LineId);
+            entity.Property(e => e.LineId).HasColumnName("line_id");
+            entity.Property(e => e.ParentId).HasColumnName("parent_id");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ErrorMsg).HasColumnName("error_msg").HasMaxLength(500);
+            entity.Property(e => e.RetryCount).HasColumnName("retry_count");
+            entity.Property(e => e.SapDocEntry).HasColumnName("sap_doc_entry");
+            entity.Property(e => e.SapObject).HasColumnName("sap_object");
+            entity.Property(e => e.DocumentVersion).HasColumnName("document_version").HasMaxLength(50);
+            entity.Property(e => e.OriginSystem).HasColumnName("origin_system").HasMaxLength(50);
+            entity.Property(e => e.ClientEnvCode).HasColumnName("client_env_code").HasMaxLength(50);
+            entity.Property(e => e.ParentCompanyCode).HasColumnName("parent_company_code").HasMaxLength(50);
+            entity.Property(e => e.Entity).HasColumnName("entity").HasMaxLength(50);
+            entity.Property(e => e.TimeStamp).HasColumnName("time_stamp").HasMaxLength(50);
+            entity.Property(e => e.MessageId).HasColumnName("message_id").HasMaxLength(50);
+            entity.Property(e => e.shipment_nbr).HasColumnName("shipment_nbr").HasMaxLength(50);
+            entity.Property(e => e.manifest_nbr).HasColumnName("manifest_nbr").HasMaxLength(50);
+            entity.Property(e => e.load_nbr).HasColumnName("load_nbr").HasMaxLength(50);
+            entity.Property(e => e.facility_code).HasColumnName("facility_code").HasMaxLength(50);
+            entity.Property(e => e.company_code).HasColumnName("company_code").HasMaxLength(50);
+            entity.Property(e => e.asn_nbr).HasColumnName("asn_nbr").HasMaxLength(50);
+            entity.Property(e => e.carrier_code).HasColumnName("carrier_code").HasMaxLength(50);
+            entity.Property(e => e.trailer_nbr).HasColumnName("trailer_nbr").HasMaxLength(50);
+            entity.Property(e => e.seal_nbr).HasColumnName("seal_nbr").HasMaxLength(50);
+            entity.Property(e => e.rcvd_date).HasColumnName("rcvd_date").HasMaxLength(50);
+            entity.Property(e => e.rcvd_date_time).HasColumnName("rcvd_date_time").HasMaxLength(50);
+            entity.Property(e => e.cust_nbr).HasColumnName("cust_nbr").HasMaxLength(100);
+            entity.Property(e => e.vendor_nbr).HasColumnName("vendor_nbr").HasMaxLength(100);
+            entity.Property(e => e.order_nbr).HasColumnName("order_nbr").HasMaxLength(50);
+            entity.Property(e => e.customer_po_nbr).HasColumnName("customer_po_nbr").HasMaxLength(50);
+            entity.Property(e => e.shipment_dtl_cust_field_1).HasColumnName("shipment_dtl_cust_field_1").HasMaxLength(200);
+            entity.Property(e => e.shipment_dtl_cust_field_2).HasColumnName("shipment_dtl_cust_field_2").HasMaxLength(200);
+            entity.Property(e => e.shipment_dtl_cust_field_3).HasColumnName("shipment_dtl_cust_field_3").HasMaxLength(200);
+            entity.Property(e => e.item_part_a).HasColumnName("item_part_a").HasMaxLength(50);
+            entity.Property(e => e.item_part_b).HasColumnName("item_part_b").HasMaxLength(50);
+            entity.Property(e => e.item_alternate_code).HasColumnName("item_alternate_code").HasMaxLength(50);
+            entity.Property(e => e.received_qty).HasColumnName("received_qty").HasMaxLength(50);
+            entity.Property(e => e.shipped_qty).HasColumnName("shipped_qty").HasMaxLength(50);
+            entity.Property(e => e.shipped_uom).HasColumnName("shipped_uom").HasMaxLength(50);
+            entity.Property(e => e.ib_lpn_nbr).HasColumnName("ib_lpn_nbr").HasMaxLength(50);
+            entity.Property(e => e.batch_nbr).HasColumnName("batch_nbr").HasMaxLength(50);
+            entity.Property(e => e.expiry_date).HasColumnName("expiry_date").HasMaxLength(50);
+            entity.Property(e => e.serial_nbr).HasColumnName("serial_nbr").HasMaxLength(50);
+            entity.Property(e => e.line_nbr).HasColumnName("line_nbr").HasMaxLength(50);
+            entity.Property(e => e.seq_nbr).HasColumnName("seq_nbr").HasMaxLength(50);
+            entity.HasOne<WmsOracleInboundStage>().WithMany().HasForeignKey(e => e.ParentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => e.ParentId).HasDatabaseName("ix_wms_oracle_stage_svsh_parent");
+            entity.HasIndex(e => new { e.Status, e.RetryCount }).HasDatabaseName("ix_wms_oracle_stage_svsh_status_retry");
+            entity.HasIndex(e => e.shipment_nbr).HasDatabaseName("ix_wms_oracle_stage_svsh_shipment");
         });
 
         modelBuilder.Entity<WmsSapStageItem>(entity =>

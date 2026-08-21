@@ -1,0 +1,57 @@
+@page
+@model Modulo.Wms.Pages.Transacciones.IndexModel
+@using Modulo.Wms.Models
+@{
+    ViewData["Title"] = Model.TipoLabel;
+}
+
+<h1 class="h3 mb-3">@Model.TipoLabel</h1>
+
+<form method="get" class="row g-2 mb-3">
+    <input type="hidden" name="Tipo" value="@((int)Model.Tipo)" />
+    <div class="col-auto">
+        <select name="Estado" class="form-select form-select-sm">
+            <option value="">Todos los estados</option>
+            @foreach (var estado in new[] { "Pendiente", "Enviado", "ProcesadoWms", "ErrorWms" })
+            {
+                <option value="@estado" selected="@(Model.Estado == estado ? "selected" : null)">@estado</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <input type="text" name="Documento" value="@Model.Documento" class="form-control form-control-sm" placeholder="Buscar documento..." />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Buscar</button>
+    </div>
+</form>
+
+<form method="post" asp-page-handler="Resetear">
+    <input type="hidden" name="tipo" value="@((int)Model.Tipo)" />
+    <table class="table table-sm">
+        <thead><tr><th></th><th>Documento</th><th>Estado</th><th>Reintentos</th><th>Error</th><th>Creado</th><th>Sincronizado</th></tr></thead>
+        <tbody>
+        @foreach (var fila in Model.Resultado.Items)
+        {
+            <tr>
+                <td><input type="checkbox" name="lineIds" value="@fila.LineId" /></td>
+                <td>@fila.Documento</td>
+                <td>@fila.Status</td>
+                <td>@fila.RetryCount</td>
+                <td>@fila.ErrorMsg</td>
+                <td>@fila.CreatedAt.ToString("dd-MM HH:mm")</td>
+                <td>@(fila.SyncedAt?.ToString("dd-MM HH:mm") ?? "—")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <button type="submit" class="btn btn-sm btn-outline-secondary">Resetear seleccionados a Pendiente</button>
+</form>
+
+<nav>
+    @for (var p = 1; p <= Model.Resultado.TotalPages; p++)
+    {
+        <a class="btn btn-sm @(p == Model.Resultado.Page ? "btn-primary" : "btn-outline-secondary")"
+           asp-route-Tipo="@Model.Tipo" asp-route-Page="@p" asp-route-Estado="@Model.Estado" asp-route-Documento="@Model.Documento">@p</a>
+    }
+</nav>

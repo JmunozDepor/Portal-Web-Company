@@ -47,6 +47,15 @@ public sealed class ModuloWms : IModuloPortal
 
         yield return new MenuItemDefinition
         {
+            Code = "transacciones",
+            ParentCode = "raiz",
+            Name = "Transacciones",
+            PageRoute = "/wms/transacciones",
+            Order = 1,
+        };
+
+        yield return new MenuItemDefinition
+        {
             Code = "mapeo-campos",
             ParentCode = "raiz",
             Name = "Mapeo de Campos",
@@ -122,6 +131,7 @@ public sealed class ModuloWms : IModuloPortal
         services.AddScoped<IIntegrationEntityWriter, WmsSapStageOrderWriter>();
         services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
         services.AddScoped<IWmsDashboardService, WmsDashboardService>();
+        services.AddScoped<IWmsTransaccionService, WmsTransaccionService>();
         services.AddHostedService<WmsSlshStageParser>();
         services.AddHostedService<WmsSvshStageParser>();
         services.AddHostedService<WmsStageErrorReconciler>();

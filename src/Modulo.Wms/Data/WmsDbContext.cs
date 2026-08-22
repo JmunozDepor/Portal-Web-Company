@@ -386,6 +386,7 @@ public class WmsDbContext : DbContext
             entity.Property(e => e.ErrorMsg).HasColumnName("error_msg").HasMaxLength(500);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.SyncedAt).HasColumnName("synced_at");
+            entity.Property(e => e.ExtraFieldsJson).HasColumnName("extra_fields");
             entity.HasIndex(e => new { e.CompanyId, e.ItemCode }).IsUnique().HasDatabaseName("ix_wms_sap_stage_item_company_itemcode");
             entity.HasIndex(e => e.Status).HasDatabaseName("ix_wms_sap_stage_item_status");
         });

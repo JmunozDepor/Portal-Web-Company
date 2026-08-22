@@ -1584,6 +1584,10 @@ namespace Modulo.Wms.Migrations.Postgres.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("error_msg");
 
+                    b.Property<string>("ExtraFieldsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("extra_fields");
+
                     b.Property<string>("ItemCode")
                         .IsRequired()
                         .HasMaxLength(50)

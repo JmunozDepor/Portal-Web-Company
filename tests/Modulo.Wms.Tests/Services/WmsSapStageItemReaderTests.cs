@@ -34,7 +34,34 @@ public class WmsSapStageItemReaderTests
 
         var registro = Assert.Single(resultado);
         Assert.Equal("Item", registro["TipoDocumento"]);
-        Assert.Equal("ITM001", registro["ItemCode"]);
+        Assert.Equal("ITM001", registro["item_alternate_code"]);
+    }
+
+    [Fact]
+    public async Task LeerPendientesAsync_ConExtraFields_IncluyeCadaClaveEnElRegistro()
+    {
+        var companyId = Guid.NewGuid();
+        var contexto = CrearContexto();
+        contexto.WmsSapStageItems.Add(new WmsSapStageItem
+        {
+            CompanyId = companyId,
+            ItemCode = "ITM1",
+            ItemName = "Nombre",
+            BarCode = "123",
+            Status = WmsSapStageStatus.Pendiente,
+            ExtraFieldsJson = """{"brand_code":"NIKE","putaway_type":"A"}""",
+        });
+        await contexto.SaveChangesAsync();
+
+        var reader = new WmsSapStageItemReader(contexto);
+        var resultado = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+
+        var registro = Assert.Single(resultado);
+        Assert.Equal("NIKE", registro.Fields["brand_code"]?.ToString());
+        Assert.Equal("A", registro.Fields["putaway_type"]?.ToString());
+        Assert.Equal("ITM1", registro["item_alternate_code"]);
+        Assert.Equal("Nombre", registro["description"]);
+        Assert.Equal("123", registro["barcode"]);
     }
 
     [Fact]

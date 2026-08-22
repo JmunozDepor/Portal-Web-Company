@@ -30,14 +30,28 @@ public class WmsSapStageItemReader : IIntegrationEntityReader
             .ToListAsync(cancellationToken);
 
         return filas
-            .Select(f => new IntegrationRecord(new Dictionary<string, object?>
+            .Select(f =>
             {
-                ["TipoDocumento"] = "Item",
-                ["ItemCode"] = f.ItemCode,
-                ["ItemName"] = f.ItemName,
-                ["BarCode"] = f.BarCode,
-                ["_StagingLineIds"] = new List<long> { f.LineId },
-            }))
+                var campos = new Dictionary<string, object?>
+                {
+                    ["TipoDocumento"] = "Item",
+                    ["item_alternate_code"] = f.ItemCode,
+                    ["description"] = f.ItemName,
+                    ["barcode"] = f.BarCode,
+                    ["_StagingLineIds"] = new List<long> { f.LineId },
+                };
+
+                if (!string.IsNullOrEmpty(f.ExtraFieldsJson))
+                {
+                    var extra = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(f.ExtraFieldsJson)!;
+                    foreach (var (clave, valor) in extra)
+                    {
+                        campos[clave] = valor;
+                    }
+                }
+
+                return new IntegrationRecord(campos);
+            })
             .ToList();
     }
 

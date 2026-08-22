@@ -82,6 +82,51 @@ public sealed class HanaService : IHanaService
         return result;
     }
 
+    public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> QueryDynamicAsync(
+        string sqlParametrizado, object? parametros = null, CancellationToken ct = default)
+    {
+        var connection = await ResolveConnectionAsync(ct);
+        var result = new List<IReadOnlyDictionary<string, object?>>();
+
+        if (connection.EngineType == SapEngineType.SqlServer)
+        {
+            var translatedSql = HanaToSqlServerTranslator.Translate(sqlParametrizado);
+            using var conn = new SqlConnection(connection.ConnectionString);
+            using var cmd = new SqlCommand(translatedSql, conn);
+            AddParametersSqlServer(cmd, parametros);
+
+            await conn.OpenAsync(ct);
+            using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                result.Add(MapRowToDictionary(reader));
+            }
+            return result;
+        }
+
+        using var connHana = new HanaConnection(connection.ConnectionString);
+        using var cmdHana = new HanaCommand(sqlParametrizado, connHana);
+        AddParametersHana(cmdHana, parametros);
+
+        await connHana.OpenAsync(ct);
+        using var readerHana = (HanaDataReader)await cmdHana.ExecuteReaderAsync(ct);
+        while (await readerHana.ReadAsync(ct))
+        {
+            result.Add(MapRowToDictionary(readerHana));
+        }
+        return result;
+    }
+
+    private static IReadOnlyDictionary<string, object?> MapRowToDictionary(System.Data.Common.DbDataReader reader)
+    {
+        var fila = new Dictionary<string, object?>(reader.FieldCount, StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            fila[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+        }
+        return fila;
+    }
+
     public async Task<int> ExecuteAsync(string sqlParametrizado, object? parametros = null, CancellationToken ct = default)
     {
         var connection = await ResolveConnectionAsync(ct);

@@ -13,6 +13,14 @@ public interface IHanaService
 {
     Task<IReadOnlyList<T>> QueryAsync<T>(string sqlParametrizado, object? parametros = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// Igual que QueryAsync&lt;T&gt; pero sin DTO fijo -- cada fila se devuelve como
+    /// diccionario columna→valor, para conectores que no conocen de antemano el set de
+    /// columnas (ver SqlDirectConnector, Ronda de ingesta SQL directa a staging).
+    /// </summary>
+    Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> QueryDynamicAsync(
+        string sqlParametrizado, object? parametros = null, CancellationToken ct = default);
+
     Task<int> ExecuteAsync(string sqlParametrizado, object? parametros = null, CancellationToken ct = default);
 
     /// <summary>

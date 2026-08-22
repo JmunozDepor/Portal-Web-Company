@@ -28,6 +28,9 @@ file sealed class HanaServiceFalso : IHanaService
     public Task<IReadOnlyList<T>> QueryAsync<T>(string sqlParametrizado, object? parametros = null, CancellationToken ct = default) =>
         Task.FromResult((IReadOnlyList<T>)_filas.Cast<T>().ToList());
 
+    public Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> QueryDynamicAsync(string sqlParametrizado, object? parametros = null, CancellationToken ct = default) =>
+        throw new NotSupportedException("No usado por catálogos de solo lectura.");
+
     public Task<int> ExecuteAsync(string sqlParametrizado, object? parametros = null, CancellationToken ct = default) =>
         throw new NotSupportedException("No usado por catálogos de solo lectura.");
 

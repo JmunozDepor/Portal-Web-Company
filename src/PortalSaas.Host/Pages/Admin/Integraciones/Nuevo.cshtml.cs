@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Core.Integraciones;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 using PortalSaas.Data.Entities.Integraciones;
@@ -32,6 +33,42 @@ public class NuevoModel : PageModel
 
     public bool EsEdicion { get; private set; }
     public List<Company> Companies { get; private set; } = [];
+    public List<string> ModulosOrigen { get; private set; } = [];
+
+    /// <summary>Entidades de negocio realmente registradas -- para Bajada el motor resuelve un
+    /// Writer por EntidadNegocio (IntegrationSyncHostedService.cs), para Subida un Reader. Se
+    /// hardcodean acá (en vez de inyectar IEnumerable&lt;IIntegrationEntity{Writer,Reader}&gt; y
+    /// leer la propiedad en runtime) porque esta página es cross-compañía (PlatformAdmin, sin
+    /// compañía activa en sesión) y las implementaciones de Modulo.Wms construyen su
+    /// WmsDbContext en el constructor, que exige ICurrentCompanyAccessor.HasCompany -- inyectar
+    /// el IEnumerable tumbaba la página entera con "Modulo.Wms requiere una compañía activa".
+    /// Si se agrega un writer/reader nuevo, hay que sumarlo acá a mano (fuente de verdad real:
+    /// grep "EntidadNegocio =>" en Portal SaaS - Plugins/Modulo.Wms/src/Modulo.Wms/Services/).
+    /// Un valor guardado que no esté en esta lista igual se muestra (ver Nuevo.cshtml), nunca se
+    /// pierde silenciosamente.</summary>
+    public List<string> EntidadesNegocioBajada { get; } =
+    [
+        "SapWms.Item",
+        "SapWms.Store",
+        "SapWms.Traslado",
+        "SapWms.Order",
+    ];
+
+    public List<string> EntidadesNegocioSubida { get; } =
+    [
+        "SapWms.Item.Subida",
+        "SapWms.Store.Subida",
+        "SapWms.Traslado.Subida",
+        "SapWms.Order.Subida",
+        "Wms.ConfirmacionTraslado",
+        "Wms.ConfirmacionIngreso",
+    ];
+
+    /// <summary>Filtro OData efectivo que corre cuando Input.Filtro queda vacío -- el mismo valor
+    /// que usa SapDocumentConnector.PullAsync, mostrado en pantalla para que el usuario sepa
+    /// exactamente qué se ejecuta y pueda sobreescribirlo sin adivinar.</summary>
+    public string FiltroPorDefectoItems => SapDocumentConnector.FiltroPorDefectoItems;
+    public string FiltroPorDefectoStores => SapDocumentConnector.FiltroPorDefectoStores;
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
@@ -88,6 +125,15 @@ public class NuevoModel : PageModel
             {
                 Input.TipoEntidad = configActual.TipoEntidad;
                 Input.Filtro = configActual.Filtro;
+                Input.PageSize = configActual.PageSize ?? SapDocumentConnector.PageSizePorDefecto;
+            }
+        }
+        else if (definicion.ConectorTipo == IntegrationConectorTipo.Sql && !string.IsNullOrEmpty(definicion.ConectorConfigCifrado))
+        {
+            var configActual = JsonSerializer.Deserialize<SqlConfigInput>(_secretoCifradoService.Decrypt(definicion.ConectorConfigCifrado));
+            if (configActual is not null)
+            {
+                Input.Query = configActual.Query;
             }
         }
 
@@ -102,6 +148,10 @@ public class NuevoModel : PageModel
         if (Input.ConectorTipo == IntegrationConectorTipo.Sap && string.IsNullOrWhiteSpace(Input.TipoEntidad))
         {
             ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.TipoEntidad)}", "Ingresá el tipo de entidad SAP.");
+        }
+        if (Input.ConectorTipo == IntegrationConectorTipo.Sql && string.IsNullOrWhiteSpace(Input.Query))
+        {
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Query)}", "Ingresá la query SQL.");
         }
         if (Input.ConectorTipo == IntegrationConectorTipo.WmsCloud)
         {
@@ -163,7 +213,8 @@ public class NuevoModel : PageModel
         if (Input.ConectorTipo == IntegrationConectorTipo.Sap)
         {
             var filtro = string.IsNullOrWhiteSpace(Input.Filtro) ? null : Input.Filtro.Trim();
-            var json = JsonSerializer.Serialize(new SapConfigInput(Input.TipoEntidad!.Trim(), filtro));
+            var pageSize = Input.PageSize > 0 ? Input.PageSize : (int?)null;
+            var json = JsonSerializer.Serialize(new SapConfigInput(Input.TipoEntidad!.Trim(), filtro, pageSize));
             return _secretoCifradoService.Encrypt(json);
         }
 
@@ -188,6 +239,12 @@ public class NuevoModel : PageModel
             return _secretoCifradoService.Encrypt(json);
         }
 
+        if (Input.ConectorTipo == IntegrationConectorTipo.Sql)
+        {
+            var json = JsonSerializer.Serialize(new SqlConfigInput(Input.Query!.Trim()));
+            return _secretoCifradoService.Encrypt(json);
+        }
+
         // Rest/Archivo: sin conector implementado todavía (ver spec, "fuera de alcance") --
         // se guarda vacío en vez de forzar un formulario para un tipo que el motor no sabe
         // ejecutar.
@@ -197,13 +254,21 @@ public class NuevoModel : PageModel
     private async Task LoadCompaniesAsync()
     {
         Companies = await _db.Companies.OrderBy(c => c.Name).ToListAsync();
+
+        ModulosOrigen = await _db.PlatformModules
+            .Select(m => m.Code)
+            .OrderBy(c => c)
+            .ToListAsync();
     }
 
     /// <summary>Espejo de WmsCloudConnector.WmsCloudConfig (record privado en Modulo.Wms) -- no se referencia el tipo del plugin desde Core, se serializa/deserializa por forma.</summary>
     private sealed record WmsCloudConfigInput(string ApiUrl, string Usuario, string Clave, string ClientEnvCode, string ParentCompanyCode, int BatchSize = 50, string? LgfApiBaseUrl = null);
 
     /// <summary>Espejo de SapDocumentConnector.SapWmsOutboundConfig (record privado). Filtro null/vacío = usa el filtro por defecto de la entidad (ver SapDocumentConnector.FiltroPorDefecto*).</summary>
-    private sealed record SapConfigInput(string TipoEntidad, string? Filtro = null);
+    private sealed record SapConfigInput(string TipoEntidad, string? Filtro = null, int? PageSize = null);
+
+    /// <summary>Espejo de SqlDirectConnector.SqlDirectConfig (record privado, ver PortalSaas.Core/Integraciones/SqlDirectConnector.cs).</summary>
+    private sealed record SqlConfigInput(string Query);
 
     public sealed class InputModel
     {
@@ -244,6 +309,9 @@ public class NuevoModel : PageModel
         [Display(Name = "Filtro OData (vacío = usar el filtro por defecto)")]
         public string? Filtro { get; set; }
 
+        [Display(Name = "Tamaño de página SAP (filas por request, no un límite total)")]
+        public int PageSize { get; set; } = SapDocumentConnector.PageSizePorDefecto;
+
         // Bloque WmsCloud
         [Display(Name = "URL de la API")]
         public string? ApiUrl { get; set; }
@@ -266,5 +334,9 @@ public class NuevoModel : PageModel
 
         [Display(Name = "URL base de LGFAPI (consulta de status, opcional)")]
         public string? LgfApiBaseUrl { get; set; }
+
+        // Bloque Sql
+        [Display(Name = "Query SQL (HANA/SQL Server, con :cursor en el WHERE si aplica)")]
+        public string? Query { get; set; }
     }
 }

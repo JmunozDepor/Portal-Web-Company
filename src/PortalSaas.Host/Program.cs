@@ -77,6 +77,7 @@ builder.Services.AddScoped<IApiKeyAuthenticator, ApiKeyAuthenticator>();
 builder.Services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
 builder.Services.AddScoped<IIntegrationConnectorConfigService, IntegrationConnectorConfigService>();
 builder.Services.AddScoped<IIntegrationConnector, SapDocumentConnector>();
+builder.Services.AddScoped<IIntegrationConnector, SqlDirectConnector>();
 builder.Services.AddHostedService<IntegrationSyncHostedService>();
 builder.Services.AddScoped<PortalSaas.Abstractions.Contratos.IAuthenticationService, PortalSaas.Core.Seguridad.AuthenticationService>();
 builder.Services.AddScoped<IPlatformAdminAuthenticationService, PlatformAdminAuthenticationService>();

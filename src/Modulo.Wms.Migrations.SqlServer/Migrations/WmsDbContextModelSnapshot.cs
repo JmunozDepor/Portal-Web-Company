@@ -1947,6 +1947,44 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                     b.ToTable("wms_oracle_service_heartbeats", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Wms.Models.WmsValidationField", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("FieldName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("field_name");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("TipoEntidad")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("tipo_entidad");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "TipoEntidad", "FieldName")
+                        .IsUnique()
+                        .HasDatabaseName("uk_wms_validation_fields_key");
+
+                    b.ToTable("wms_validation_fields", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Wms.Models.WmsOracleStageSlsh", b =>
                 {
                     b.HasOne("Modulo.Wms.Models.WmsOracleInboundStage", null)

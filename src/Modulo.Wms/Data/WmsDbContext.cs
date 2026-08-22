@@ -27,6 +27,7 @@ public class WmsDbContext : DbContext
     }
 
     public DbSet<WmsFieldMapping> FieldMappings => Set<WmsFieldMapping>();
+    public DbSet<WmsValidationField> ValidationFields => Set<WmsValidationField>();
     public DbSet<WmsServiceConfig> ServiceConfigs => Set<WmsServiceConfig>();
     public DbSet<WmsServiceHeartbeat> ServiceHeartbeats => Set<WmsServiceHeartbeat>();
     public DbSet<WmsOracleInboundStage> WmsOracleInboundStages => Set<WmsOracleInboundStage>();
@@ -58,6 +59,20 @@ public class WmsDbContext : DbContext
             e.HasIndex(x => new { x.CompanyId, x.MapperKey, x.FieldName })
                 .IsUnique()
                 .HasDatabaseName("uk_wms_oracle_field_mappings_key");
+        });
+
+        modelBuilder.Entity<WmsValidationField>(e =>
+        {
+            e.ToTable("wms_validation_fields");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.TipoEntidad).HasColumnName("tipo_entidad").HasMaxLength(50).IsRequired();
+            e.Property(x => x.FieldName).HasColumnName("field_name").HasMaxLength(100).IsRequired();
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.HasIndex(x => new { x.CompanyId, x.TipoEntidad, x.FieldName })
+                .IsUnique()
+                .HasDatabaseName("uk_wms_validation_fields_key");
         });
 
         modelBuilder.Entity<WmsServiceConfig>(e =>

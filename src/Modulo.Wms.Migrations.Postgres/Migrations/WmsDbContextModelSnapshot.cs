@@ -1585,7 +1585,7 @@ namespace Modulo.Wms.Migrations.Postgres.Migrations
                         .HasColumnName("error_msg");
 
                     b.Property<string>("ExtraFieldsJson")
-                        .HasColumnType("text")
+                        .HasColumnType("jsonb")
                         .HasColumnName("extra_fields");
 
                     b.Property<string>("ItemCode")

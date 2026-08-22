@@ -202,7 +202,7 @@ public class WmsCloudConnectorTests
                 CompanyId = CompanyIdDePrueba,
                 MapperKey = "SAPWMS_ITEM",
                 FieldName = "item_alternate_code",
-                ValueTemplate = "PREFIX-{ItemCode}",
+                ValueTemplate = "PREFIX-{item_alternate_code}",
                 IsActive = true,
             },
             // Fila inactiva -- no debe aplicarse, confirma que el filtro IsActive del
@@ -218,12 +218,14 @@ public class WmsCloudConnectorTests
         };
         var conector = CrearConector(httpClient, mapeos);
 
+        // Claves snake_case -- así es como WmsSapStageItemReader (Task 8) puebla el
+        // registro real para los 3 campos identidad, consistentes con extra_fields.
         var registro = new IntegrationRecord(new Dictionary<string, object?>
         {
             ["TipoDocumento"] = "Item",
-            ["ItemCode"] = "ITM001",
-            ["ItemName"] = "Artículo de prueba",
-            ["BarCode"] = "7801234567890",
+            ["item_alternate_code"] = "ITM001",
+            ["description"] = "Artículo de prueba",
+            ["barcode"] = "7801234567890",
         });
 
         var config = """{"ApiUrl":"https://wms.example.com/init_stage_interface","Usuario":"wmsuser","Clave":"wmspass","ClientEnvCode":"CLI01","ParentCompanyCode":"COMP01"}""";
@@ -233,9 +235,80 @@ public class WmsCloudConnectorTests
 
         Assert.True(resultado[0].Exito);
         Assert.Contains("<item_alternate_code>PREFIX-ITM001</item_alternate_code>", xmlDecodificado);
-        // description sin mapeo activo -> cae al valor por defecto (ItemName), no al literal de la fila inactiva.
+        // description sin mapeo activo -> cae al valor por defecto (la propia clave del registro), no al literal de la fila inactiva.
         Assert.Contains("<description>Art", xmlDecodificado);
         Assert.DoesNotContain("NO DEBE APARECER", xmlDecodificado);
+    }
+
+    [Fact]
+    public async Task PushAsync_ConTipoDocumentoItemYCamposExtra_GeneraUnNodoPorCadaCampo()
+    {
+        var handlerFalso = new HttpHandlerFalso(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handlerFalso) { BaseAddress = new Uri("https://wms.example.com/") };
+        var conector = CrearConector(httpClient);
+
+        // brand_code/putaway_type simulan extra_fields deserializados como JsonElement
+        // (Task 8): acá se pasan como string nativo porque IntegrationRecord se construye
+        // a mano en el test, pero ArmarNodoItemDinamico debe funcionar igual con ambos.
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["TipoDocumento"] = "Item",
+            ["item_alternate_code"] = "ITM1",
+            ["description"] = "Nombre",
+            ["barcode"] = "123",
+            ["brand_code"] = "NIKE",
+            ["putaway_type"] = "A",
+            ["_StagingLineIds"] = new List<long> { 1 },
+        });
+
+        var config = """{"ApiUrl":"https://wms.example.com/init_stage_interface","Usuario":"wmsuser","Clave":"wmspass","ClientEnvCode":"CLI01","ParentCompanyCode":"COMP01"}""";
+        var resultado = await conector.PushAsync(config, [registro], CancellationToken.None);
+
+        Assert.True(resultado[0].Exito);
+        var xmlDecodificado = Uri.UnescapeDataString(handlerFalso.UltimoContenido!.Replace('+', ' '));
+
+        Assert.Contains("<item_alternate_code>ITM1</item_alternate_code>", xmlDecodificado);
+        Assert.Contains("<description>Nombre</description>", xmlDecodificado);
+        Assert.Contains("<barcode>123</barcode>", xmlDecodificado);
+        Assert.Contains("<brand_code>NIKE</brand_code>", xmlDecodificado);
+        Assert.Contains("<putaway_type>A</putaway_type>", xmlDecodificado);
+        // Claves internas del motor genérico no deben aparecer como nodos XML.
+        Assert.DoesNotContain("TipoDocumento", xmlDecodificado);
+        Assert.DoesNotContain("_StagingLineIds", xmlDecodificado);
+    }
+
+    [Fact]
+    public async Task PushAsync_ConTipoDocumentoItemYCampoExtraComoJsonElement_ConvierteAStringLimpio()
+    {
+        var handlerFalso = new HttpHandlerFalso(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handlerFalso) { BaseAddress = new Uri("https://wms.example.com/") };
+        var conector = CrearConector(httpClient);
+
+        // Reproduce el shape real que entrega WmsSapStageItemReader tras deserializar
+        // ExtraFieldsJson: los valores llegan como System.Text.Json.JsonElement, no como
+        // string/int nativos de C#.
+        using var documentoJson = System.Text.Json.JsonDocument.Parse("""{"brand_code":"NIKE","putaway_type":"A"}""");
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["TipoDocumento"] = "Item",
+            ["item_alternate_code"] = "ITM1",
+            ["description"] = "Nombre",
+            ["barcode"] = "123",
+            ["brand_code"] = documentoJson.RootElement.GetProperty("brand_code"),
+            ["putaway_type"] = documentoJson.RootElement.GetProperty("putaway_type"),
+        });
+
+        var config = """{"ApiUrl":"https://wms.example.com/init_stage_interface","Usuario":"wmsuser","Clave":"wmspass","ClientEnvCode":"CLI01","ParentCompanyCode":"COMP01"}""";
+        var resultado = await conector.PushAsync(config, [registro], CancellationToken.None);
+
+        Assert.True(resultado[0].Exito);
+        var xmlDecodificado = Uri.UnescapeDataString(handlerFalso.UltimoContenido!.Replace('+', ' '));
+
+        // Sin la normalización, un JsonElement de tipo string produciría "NIKE" con comillas
+        // de más (p.ej. vía GetRawText/ToString por defecto).
+        Assert.Contains("<brand_code>NIKE</brand_code>", xmlDecodificado);
+        Assert.Contains("<putaway_type>A</putaway_type>", xmlDecodificado);
+        Assert.DoesNotContain("\"NIKE\"", xmlDecodificado);
     }
 
     [Fact]

@@ -61,8 +61,28 @@ public class WmsCloudConnector : IIntegrationConnector
 
     public string Tipo => "WmsCloud";
 
-    public Task<IReadOnlyList<IntegrationRecord>> PullAsync(string conectorConfigJson, CancellationToken cancellationToken) =>
+    public Task<IReadOnlyList<IntegrationRecord>> PullAsync(string conectorConfigJson, DateTimeOffset? cursorIncremental, CancellationToken cancellationToken) =>
         throw new NotSupportedException("WmsCloudConnector.PullAsync no está implementado -- este conector solo envía (Subida), nunca lee de Oracle WMS Cloud.");
+
+    public string DescribirConsulta(string conectorConfigJson, DateTimeOffset? cursorIncremental = null)
+    {
+        WmsCloudConfig? config;
+        try
+        {
+            config = JsonSerializer.Deserialize<WmsCloudConfig>(conectorConfigJson);
+        }
+        catch (Exception ex)
+        {
+            return $"Config de conector WmsCloud inválida: {ex.Message}";
+        }
+
+        if (config is null)
+        {
+            return "Config de conector WmsCloud vacía.";
+        }
+
+        return $"POST {config.ApiUrl} (form-urlencoded xml_data=LgfData, ClientEnvCode={config.ClientEnvCode}, ParentCompanyCode={config.ParentCompanyCode}, BatchSize={(config.BatchSize > 0 ? config.BatchSize : 50)}) -- la entidad (item/store/ib_shipment/order) depende del campo 'TipoDocumento' de cada registro leído del staging.";
+    }
 
     public async Task<IReadOnlyList<IntegrationPushResult>> PushAsync(
         string conectorConfigJson,
@@ -145,10 +165,7 @@ public class WmsCloudConnector : IIntegrationConnector
 
         var nodos = lote.Select(registro => tipoDocumento switch
         {
-            "Item" => new XElement(nombreItem,
-                CampoXml(mapeos, "SAPWMS_ITEM", "item_alternate_code", registro, registro["ItemCode"]),
-                CampoXml(mapeos, "SAPWMS_ITEM", "description", registro, registro["ItemName"]),
-                CampoXml(mapeos, "SAPWMS_ITEM", "barcode", registro, registro["BarCode"])),
+            "Item" => ArmarNodoItemDinamico(registro, mapeos),
             "Store" => new XElement(nombreItem,
                 CampoXml(mapeos, "SAPWMS_STORE", "code", registro, registro["CardCode"]),
                 CampoXml(mapeos, "SAPWMS_STORE", "name", registro, registro["CardName"]),
@@ -175,8 +192,48 @@ public class WmsCloudConnector : IIntegrationConnector
         {
             return new XElement(fieldName, WmsFieldTemplateResolver.Resolve(template, registro));
         }
-        return new XElement(fieldName, valorPorDefecto);
+        return new XElement(fieldName, NormalizarValor(valorPorDefecto));
     }
+
+    /// <summary>
+    /// Item pasa a ser el único caso dinámico -- itera TODAS las claves del registro salvo
+    /// las internas del motor genérico, generando un XElement por cada una. Reemplaza las 3
+    /// líneas fijas (item_alternate_code/description/barcode) que existían antes de la
+    /// ronda de ingesta SQL directa (ver spec 2026-08-21-ingesta-sql-directa-staging-items-design.md).
+    /// El mecanismo de wms_oracle_field_mappings (override de plantilla) se mantiene: se
+    /// aplica por cada clave dinámica bajo el MapperKey "SAPWMS_ITEM", no solo sobre las 3
+    /// de antes.
+    /// </summary>
+    private static readonly HashSet<string> ClavesInternasExcluidas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "TipoDocumento", "_StagingLineIds",
+    };
+
+    private static XElement ArmarNodoItemDinamico(IntegrationRecord registro, IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos)
+    {
+        var elementos = registro.Fields
+            .Where(kvp => !ClavesInternasExcluidas.Contains(kvp.Key))
+            .Select(kvp => CampoXml(mapeos, "SAPWMS_ITEM", kvp.Key.ToLowerInvariant(), registro, kvp.Value));
+
+        return new XElement("item", elementos);
+    }
+
+    /// <summary>
+    /// Los valores que llegan desde extra_fields (Task 8) se deserializaron como
+    /// Dictionary&lt;string, object?&gt; con destino object?, así que System.Text.Json los
+    /// entrega como JsonElement en vez de string/int nativos. Pasar un JsonElement crudo a
+    /// XElement produce texto con comillas de más (para strings) o el GetRawText() del
+    /// value kind correspondiente -- acá se normaliza a un string limpio antes de armar el
+    /// nodo. Los valores nativos (los de los 3 campos identidad y los de Store/Order/etc.)
+    /// pasan sin cambios.
+    /// </summary>
+    private static object? NormalizarValor(object? valor) => valor switch
+    {
+        JsonElement { ValueKind: JsonValueKind.String } je => je.GetString(),
+        JsonElement { ValueKind: JsonValueKind.Null } => null,
+        JsonElement je => je.ToString(),
+        _ => valor,
+    };
 
     private static XElement ArmarNodoIbShipment(IntegrationRecord registro, IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos)
     {

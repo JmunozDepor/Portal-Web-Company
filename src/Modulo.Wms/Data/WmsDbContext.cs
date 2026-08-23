@@ -412,18 +412,21 @@ public class WmsDbContext : DbContext
             entity.HasKey(e => e.LineId);
             entity.Property(e => e.LineId).HasColumnName("line_id");
             entity.Property(e => e.CompanyId).HasColumnName("company_id");
-            entity.Property(e => e.CardCode).HasColumnName("card_code").HasMaxLength(50);
-            entity.Property(e => e.CardName).HasColumnName("card_name").HasMaxLength(200);
-            entity.Property(e => e.Street).HasColumnName("street").HasMaxLength(200);
-            entity.Property(e => e.City).HasColumnName("city").HasMaxLength(100);
-            entity.Property(e => e.ZipCode).HasColumnName("zip_code").HasMaxLength(20);
+            entity.Property(e => e.Pk).HasColumnName("pk").HasMaxLength(50);
             entity.Property(e => e.SourceUpdateDate).HasColumnName("source_update_date");
             entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20);
             entity.Property(e => e.RetryCount).HasColumnName("retry_count");
             entity.Property(e => e.ErrorMsg).HasColumnName("error_msg").HasMaxLength(500);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.SyncedAt).HasColumnName("synced_at");
-            entity.HasIndex(e => new { e.CompanyId, e.CardCode }).IsUnique().HasDatabaseName("ix_wms_sap_stage_store_company_cardcode");
+            var extraFields = entity.Property(e => e.ExtraFieldsJson).HasColumnName("extra_fields");
+            // Misma razón que WmsSapStageItem.ExtraFieldsJson (ver comentario ahí) -- sin esto Npgsql
+            // manda el parámetro como texto plano y Postgres rechaza el INSERT/UPDATE.
+            if (Database.IsNpgsql())
+            {
+                extraFields.HasColumnType("jsonb");
+            }
+            entity.HasIndex(e => new { e.CompanyId, e.Pk }).IsUnique().HasDatabaseName("ix_wms_sap_stage_store_company_pk");
             entity.HasIndex(e => e.Status).HasDatabaseName("ix_wms_sap_stage_store_status");
         });
 

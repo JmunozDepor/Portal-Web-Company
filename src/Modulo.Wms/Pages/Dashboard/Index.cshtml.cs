@@ -18,6 +18,7 @@ public sealed class IndexModel : WmsPageModelBase
     }
 
     public WmsDashboardResumen Resumen { get; private set; } = new();
+    public WmsDashboardResumen Historico { get; private set; } = new();
 
     [BindProperty(SupportsGet = true)]
     public int DiasAtras { get; set; } = 1;
@@ -26,5 +27,6 @@ public sealed class IndexModel : WmsPageModelBase
     {
         var desde = DateTime.UtcNow.AddDays(-Math.Max(1, DiasAtras));
         Resumen = await _dashboard.ObtenerResumenAsync(_currentCompany.CompanyId, desde, ct);
+        Historico = await _dashboard.ObtenerResumenAsync(_currentCompany.CompanyId, DateTime.UtcNow.AddYears(-5), ct);
     }
 }

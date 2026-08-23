@@ -4,34 +4,199 @@
     ViewData["Title"] = "Dashboard WMS";
 }
 
-<h1 class="h3 mb-3">Dashboard de Integración WMS</h1>
-
-<div class="mb-3">
-    <a class="btn btn-sm @(Model.DiasAtras == 1 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="1">Hoy</a>
-    <a class="btn btn-sm @(Model.DiasAtras == 7 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="7">7 días</a>
-    <a class="btn btn-sm @(Model.DiasAtras == 30 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="30">30 días</a>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Total transacciones</div><div class="h3 mb-0">@Model.Resumen.TotalTransacciones</div></div></div>
-    <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Procesadas OK</div><div class="h3 mb-0 text-success">@Model.Resumen.TotalOk</div></div></div>
-    <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Con error</div><div class="h3 mb-0 text-danger">@Model.Resumen.TotalError</div></div></div>
-    <div class="col-md-3"><div class="card p-3"><div class="text-muted small">Pendientes</div><div class="h3 mb-0 text-warning">@Model.Resumen.TotalPendiente</div></div></div>
-</div>
-
-<table class="table table-sm">
-    <thead><tr><th>Tipo</th><th>OK</th><th>Error</th><th>Pend.</th><th>Última ejecución</th><th>Estado</th></tr></thead>
-    <tbody>
-    @foreach (var fila in Model.Resumen.PorTipo)
-    {
-        <tr>
-            <td>@fila.Label</td>
-            <td class="text-success">@fila.Ok</td>
-            <td class="text-danger">@fila.Error</td>
-            <td class="text-warning">@fila.Pendiente</td>
-            <td>@(fila.UltimaEjecucion?.ToString("dd-MM HH:mm") ?? "—")</td>
-            <td>@(fila.UltimoEstado ?? "—")</td>
-        </tr>
+<style>
+    :root {
+        --wms-primary: #0d6efd; --wms-success: #198754; --wms-warning: #b3790a; --wms-danger: #dc3545;
+        --wms-accent: #6f42c1; --wms-muted: #6c757d; --wms-border: #dee2e6; --wms-tint: #f8f9fa;
     }
-    </tbody>
-</table>
+    .wms-kpi { border-left: 4px solid var(--wms-border); }
+    .wms-kpi.wms-total { border-left-color: var(--wms-muted); }
+    .wms-kpi.wms-ok { border-left-color: var(--wms-success); }
+    .wms-kpi.wms-primary { border-left-color: var(--wms-accent); }
+    .wms-kpi.wms-warn { border-left-color: var(--wms-warning); }
+    .wms-kpi.wms-err { border-left-color: var(--wms-danger); }
+    .wms-kpi .value { font-variant-numeric: tabular-nums; }
+    .wms-pill { display: inline-flex; align-items: center; gap: .4rem; font-size: .75rem; font-weight: 600; padding: .2rem .55rem; border-radius: 999px; }
+    .wms-pill .dot { width: .4rem; height: .4rem; border-radius: 50%; background: currentColor; }
+    .wms-pill.ok { color: var(--wms-success); background: rgba(25, 135, 84, .12); }
+    .wms-pill.warn { color: var(--wms-warning); background: rgba(255, 193, 7, .2); }
+    .wms-pill.err { color: var(--wms-danger); background: rgba(220, 53, 69, .12); }
+    .wms-pill.off { color: var(--wms-muted); background: #e9ecef; }
+    .wms-proc-cell { background: #fff; border: 1px solid var(--wms-border); border-radius: .4rem; padding: .75rem 1rem; height: 100%; }
+    .wms-proc-cell .name { font-size: .82rem; font-weight: 600; }
+    .wms-proc-cell .key { font-size: .72rem; color: var(--wms-muted); font-family: var(--wms-mono, ui-monospace, monospace); }
+    .table-tabular td, .table-tabular th { font-variant-numeric: tabular-nums; }
+    .wms-panel-title { font-size: .85rem; font-weight: 600; }
+    .wms-panel-tag { font-size: .72rem; color: var(--wms-muted); }
+</style>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h3 mb-0">Dashboard de Integración WMS</h1>
+    <div class="btn-group">
+        <a class="btn btn-sm @(Model.DiasAtras == 1 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="1">Hoy</a>
+        <a class="btn btn-sm @(Model.DiasAtras == 7 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="7">7 días</a>
+        <a class="btn btn-sm @(Model.DiasAtras == 30 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="30">30 días</a>
+    </div>
+</div>
+
+@if (Model.Resumen.ItemsEnviadosSinConfirmarProximosAFallar > 0)
+{
+    <div class="alert alert-warning d-flex gap-2 py-2 px-3 small mb-3">
+        <span>&#9888;</span>
+        <div>
+            <strong>@Model.Resumen.ItemsEnviadosSinConfirmarProximosAFallar producto(s) enviados</strong> siguen sin confirmación
+            de Oracle WMS Cloud tras 15 o más reintentos (de 20 máximo) &mdash; puede ser backlog normal de Oracle procesando el
+            envío, pero si llegan a 20 intentos pasan automáticamente a <strong>Error WMS</strong>.
+            <a asp-page="/Transacciones/Index" asp-route-Tipo="EnvioProducto" asp-route-Estado="Enviado">Ver en Transacciones</a>.
+        </div>
+    </div>
+}
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-5 g-3 mb-3">
+    <div class="col">
+        <div class="card wms-kpi wms-total h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Total transacciones</div>
+                <div class="h3 mb-0 value">@Model.Resumen.TotalTransacciones.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card wms-kpi wms-ok h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Confirmadas en WMS</div>
+                <div class="h3 mb-0 value text-success">@Model.Resumen.TotalOk.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card wms-kpi wms-primary h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Enviadas, sin confirmar</div>
+                <div class="h3 mb-0 value" style="color: var(--wms-accent);">@Model.Resumen.TotalEnviado.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card wms-kpi wms-warn h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Pendientes de enviar</div>
+                <div class="h3 mb-0 value" style="color: var(--wms-warning);">@Model.Resumen.TotalPendiente.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card wms-kpi wms-err h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Con error</div>
+                <div class="h3 mb-0 value text-danger">@Model.Resumen.TotalError.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                <span class="wms-panel-title">Transacciones por tipo</span>
+                <span class="wms-panel-tag">@(Model.DiasAtras == 1 ? "Hoy" : $"últimos {Model.DiasAtras} días")</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover table-tabular mb-0 align-middle">
+                    <thead><tr><th>Tipo</th><th class="text-end">OK</th><th class="text-end" style="color: var(--wms-accent);">Enviado</th><th class="text-end">Error</th><th class="text-end">Pend.</th><th>Últ. ejec.</th></tr></thead>
+                    <tbody>
+                    @foreach (var fila in Model.Resumen.PorTipo)
+                    {
+                        <tr>
+                            <td>@fila.Label</td>
+                            <td class="text-end text-success">@fila.Ok.ToString("N0")</td>
+                            <td class="text-end" style="color: var(--wms-accent);">@fila.Enviado.ToString("N0")</td>
+                            <td class="text-end text-danger">@fila.Error.ToString("N0")</td>
+                            <td class="text-end" style="color: var(--wms-warning);">@fila.Pendiente.ToString("N0")</td>
+                            <td>
+                                @if (fila.UltimaEjecucion is null)
+                                {
+                                    <span class="wms-pill off"><span class="dot"></span>sin datos</span>
+                                }
+                                else if (fila.UltimoEstado == "ERROR")
+                                {
+                                    <span class="wms-pill err"><span class="dot"></span>error &middot; @fila.UltimaEjecucion.Value.ToLocalTime().ToString("dd-MM HH:mm")</span>
+                                }
+                                else if (fila.Total == 0)
+                                {
+                                    <span class="wms-pill off"><span class="dot"></span>sin actividad &middot; corrió @fila.UltimaEjecucion.Value.ToLocalTime().ToString("dd-MM HH:mm")</span>
+                                }
+                                else
+                                {
+                                    <span class="wms-pill ok"><span class="dot"></span>@fila.UltimaEjecucion.Value.ToLocalTime().ToString("dd-MM HH:mm")</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                <span class="wms-panel-title">Panorama general</span>
+                <span class="wms-panel-tag">todo el histórico</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover table-tabular mb-0 align-middle">
+                    <thead><tr><th>Tipo</th><th class="text-end">Confirmado</th><th class="text-end" style="color: var(--wms-accent);">Enviado</th><th class="text-end">Error</th><th class="text-end">Pend.</th></tr></thead>
+                    <tbody>
+                    @foreach (var fila in Model.Historico.PorTipo)
+                    {
+                        <tr>
+                            <td>@fila.Label</td>
+                            <td class="text-end text-success">@fila.Ok.ToString("N0")</td>
+                            <td class="text-end" style="color: var(--wms-accent);">@fila.Enviado.ToString("N0")</td>
+                            <td class="text-end text-danger">@fila.Error.ToString("N0")</td>
+                            <td class="text-end" style="color: var(--wms-warning);">@fila.Pendiente.ToString("N0")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+        <span class="wms-panel-title">Estado de los procesadores</span>
+        <span class="wms-panel-tag">heartbeat en vivo</span>
+    </div>
+    <div class="card-body">
+        @if (Model.Resumen.Procesadores.Count == 0)
+        {
+            <div class="text-muted small">Todavía no hay heartbeats registrados para esta compañía.</div>
+        }
+        else
+        {
+            <div class="row g-2">
+                @foreach (var proc in Model.Resumen.Procesadores)
+                {
+                    var esError = string.Equals(proc.Status, "ERROR", StringComparison.OrdinalIgnoreCase);
+                    <div class="col-md-4 col-lg-3">
+                        <div class="wms-proc-cell">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <span class="name">@proc.ProcessorKey</span>
+                                <span class="wms-pill @(esError ? "err" : "ok")"><span class="dot"></span>@(proc.Status ?? "—")</span>
+                            </div>
+                            <div class="key mt-1">@(proc.LastRunAt?.ToLocalTime().ToString("dd-MM HH:mm:ss") ?? "sin ejecutar")</div>
+                            @if (esError && !string.IsNullOrEmpty(proc.LastError))
+                            {
+                                <div class="text-danger small mt-1">@proc.LastError</div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

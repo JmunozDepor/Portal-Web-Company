@@ -22,25 +22,25 @@ public class WmsDashboardService : IWmsDashboardService
         var porTipo = new List<WmsEstadisticaTipo>
         {
             await ContarAsync(WmsTipoTransaccion.EnvioProducto,
-                await _contexto.WmsSapStageItems.Where(x => x.CompanyId == companyId && x.CreatedAt >= desde).Select(x => (int)x.Status).ToListAsync(cancellationToken)),
+                (await _contexto.WmsSapStageItems.Where(x => x.CompanyId == companyId && x.CreatedAt >= desde).Select(x => x.Status).ToListAsync(cancellationToken)).Select(s => (int)s).ToList()),
             await ContarAsync(WmsTipoTransaccion.EnvioSucursal,
-                await _contexto.WmsSapStageStores.Where(x => x.CompanyId == companyId && x.CreatedAt >= desde).Select(x => (int)x.Status).ToListAsync(cancellationToken)),
+                (await _contexto.WmsSapStageStores.Where(x => x.CompanyId == companyId && x.CreatedAt >= desde).Select(x => x.Status).ToListAsync(cancellationToken)).Select(s => (int)s).ToList()),
             await ContarAsync(WmsTipoTransaccion.EnvioOrdenes,
-                await _contexto.WmsSapStageOrderHdrs.Where(x => x.CompanyId == companyId && x.CreatedAt >= desde).Select(x => (int)x.Status).ToListAsync(cancellationToken)),
+                (await _contexto.WmsSapStageOrderHdrs.Where(x => x.CompanyId == companyId && x.CreatedAt >= desde).Select(x => x.Status).ToListAsync(cancellationToken)).Select(s => (int)s).ToList()),
             await ContarAsync(WmsTipoTransaccion.EnvioIngresoAsn,
-                await _contexto.WmsSapStageInboundHdrs.Where(x => x.CompanyId == companyId && x.CreatedAt >= desde).Select(x => (int)x.Status).ToListAsync(cancellationToken)),
+                (await _contexto.WmsSapStageInboundHdrs.Where(x => x.CompanyId == companyId && x.CreatedAt >= desde).Select(x => x.Status).ToListAsync(cancellationToken)).Select(s => (int)s).ToList()),
         };
 
         var confirmacionOrdenes = await ContarConfirmacionAsync(WmsTipoTransaccion.ConfirmacionOrdenes,
-            await (from f in _contexto.WmsOracleStageSlsh
+            (await (from f in _contexto.WmsOracleStageSlsh
                    join s in _contexto.WmsOracleInboundStages on f.ParentId equals s.Id
                    where s.CompanyId == companyId && s.InsertedAt >= desde
-                   select (int)f.Status).ToListAsync(cancellationToken));
+                   select f.Status).ToListAsync(cancellationToken)).Select(s => (int)s).ToList());
         var confirmacionIngreso = await ContarConfirmacionAsync(WmsTipoTransaccion.ConfirmacionIngreso,
-            await (from f in _contexto.WmsOracleStageSvsh
+            (await (from f in _contexto.WmsOracleStageSvsh
                    join s in _contexto.WmsOracleInboundStages on f.ParentId equals s.Id
                    where s.CompanyId == companyId && s.InsertedAt >= desde
-                   select (int)f.Status).ToListAsync(cancellationToken));
+                   select f.Status).ToListAsync(cancellationToken)).Select(s => (int)s).ToList());
 
         porTipo.Add(confirmacionOrdenes);
         porTipo.Add(confirmacionIngreso);
@@ -55,13 +55,22 @@ public class WmsDashboardService : IWmsDashboardService
             }
         }
 
+        var itemsProximosAFallar = await _contexto.WmsExportValidations
+            .CountAsync(v => v.CompanyId == companyId && v.TipoDoc == "Item" && v.ValidadoEn == null && v.Intentos >= 15, cancellationToken);
+
         return new WmsDashboardResumen
         {
             TotalTransacciones = porTipo.Sum(t => t.Total),
             TotalOk = porTipo.Sum(t => t.Ok),
             TotalError = porTipo.Sum(t => t.Error),
             TotalPendiente = porTipo.Sum(t => t.Pendiente),
+            TotalEnviado = porTipo.Sum(t => t.Enviado),
             PorTipo = porTipo,
+            Procesadores = heartbeats.Values
+                .OrderBy(h => h.ProcessorKey)
+                .Select(h => new WmsProcesadorEstado { ProcessorKey = h.ProcessorKey, Status = h.Status, LastRunAt = h.LastRunAt, LastError = h.LastError })
+                .ToList(),
+            ItemsEnviadosSinConfirmarProximosAFallar = itemsProximosAFallar,
         };
     }
 
@@ -71,7 +80,8 @@ public class WmsDashboardService : IWmsDashboardService
         var resultado = new WmsEstadisticaTipo
         {
             Tipo = tipo,
-            Pendiente = statuses.Count(s => s == (int)WmsSapStageStatus.Pendiente || s == (int)WmsSapStageStatus.Enviado),
+            Pendiente = statuses.Count(s => s == (int)WmsSapStageStatus.Pendiente),
+            Enviado = statuses.Count(s => s == (int)WmsSapStageStatus.Enviado),
             Ok = statuses.Count(s => s == (int)WmsSapStageStatus.ProcesadoWms),
             Error = statuses.Count(s => s == (int)WmsSapStageStatus.ErrorWms),
         };
@@ -81,6 +91,7 @@ public class WmsDashboardService : IWmsDashboardService
     private static Task<WmsEstadisticaTipo> ContarConfirmacionAsync(WmsTipoTransaccion tipo, List<int> statuses)
     {
         // WmsSlshStatus/WmsSvshStatus comparten forma: Pendiente=0, ProcesadoSap=1, ErrorSap=2.
+        // No tienen un estado "Enviado" intermedio propio (ver enums), por eso Enviado queda en 0 acá.
         var resultado = new WmsEstadisticaTipo
         {
             Tipo = tipo,

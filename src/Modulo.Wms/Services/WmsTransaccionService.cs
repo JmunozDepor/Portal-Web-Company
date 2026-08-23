@@ -15,23 +15,29 @@ public class WmsTransaccionService : IWmsTransaccionService
 
     public async Task<WmsPagedResult<WmsTransaccionRow>> BuscarAsync(Guid companyId, WmsTransaccionFiltro filtro, CancellationToken cancellationToken)
     {
+        // El filtro de Estado se aplica ANTES del Select, comparando el enum directamente
+        // (x.Status == estado) -- así Npgsql lo traduce como "status = 'Enviado'" usando el
+        // HasConversion<string> de la columna. Si en cambio se compara después de proyectar
+        // a WmsTransaccionRow.Status (string), EF necesita traducir un x.Status.ToString()
+        // explícito para poder filtrar, y esa traducción no existe: "Translation of method
+        // 'object.ToString' failed" (confirmado en producción al filtrar por "Enviado").
+        WmsSapStageStatus? estado = !string.IsNullOrWhiteSpace(filtro.Estado) && Enum.TryParse<WmsSapStageStatus>(filtro.Estado, out var parsed)
+            ? parsed
+            : null;
+
         var query = filtro.Tipo switch
         {
-            WmsTipoTransaccion.EnvioProducto => _contexto.WmsSapStageItems.Where(x => x.CompanyId == companyId)
-                .Select(x => new WmsTransaccionRow { LineId = x.LineId, Documento = x.ItemCode, Status = x.Status.ToString(), RetryCount = x.RetryCount, ErrorMsg = x.ErrorMsg, CreatedAt = x.CreatedAt, SyncedAt = x.SyncedAt }),
-            WmsTipoTransaccion.EnvioSucursal => _contexto.WmsSapStageStores.Where(x => x.CompanyId == companyId)
+            WmsTipoTransaccion.EnvioProducto => _contexto.WmsSapStageItems.Where(x => x.CompanyId == companyId && (estado == null || x.Status == estado))
+                .Select(x => new WmsTransaccionRow { LineId = x.LineId, Documento = x.ItemCode, Status = x.Status.ToString(), RetryCount = x.RetryCount, ErrorMsg = x.ErrorMsg, CreatedAt = x.CreatedAt, SyncedAt = x.SyncedAt, ItemName = x.ItemName, BarCode = x.BarCode }),
+            WmsTipoTransaccion.EnvioSucursal => _contexto.WmsSapStageStores.Where(x => x.CompanyId == companyId && (estado == null || x.Status == estado))
                 .Select(x => new WmsTransaccionRow { LineId = x.LineId, Documento = x.Pk, Status = x.Status.ToString(), RetryCount = x.RetryCount, ErrorMsg = x.ErrorMsg, CreatedAt = x.CreatedAt, SyncedAt = x.SyncedAt }),
-            WmsTipoTransaccion.EnvioOrdenes => _contexto.WmsSapStageOrderHdrs.Where(x => x.CompanyId == companyId)
+            WmsTipoTransaccion.EnvioOrdenes => _contexto.WmsSapStageOrderHdrs.Where(x => x.CompanyId == companyId && (estado == null || x.Status == estado))
                 .Select(x => new WmsTransaccionRow { LineId = x.LineId, Documento = x.OrderNbr, Status = x.Status.ToString(), RetryCount = x.RetryCount, ErrorMsg = x.ErrorMsg, CreatedAt = x.CreatedAt, SyncedAt = x.SyncedAt }),
-            WmsTipoTransaccion.EnvioIngresoAsn => _contexto.WmsSapStageInboundHdrs.Where(x => x.CompanyId == companyId)
+            WmsTipoTransaccion.EnvioIngresoAsn => _contexto.WmsSapStageInboundHdrs.Where(x => x.CompanyId == companyId && (estado == null || x.Status == estado))
                 .Select(x => new WmsTransaccionRow { LineId = x.LineId, Documento = x.SapDocEntry.ToString(), Status = x.Status.ToString(), RetryCount = x.RetryCount, ErrorMsg = x.ErrorMsg, CreatedAt = x.CreatedAt, SyncedAt = x.SyncedAt }),
             _ => throw new NotSupportedException($"WmsTransaccionService no soporta el tipo '{filtro.Tipo}' (usar WmsConfirmacionService para confirmaciones)."),
         };
 
-        if (!string.IsNullOrWhiteSpace(filtro.Estado))
-        {
-            query = query.Where(r => r.Status == filtro.Estado);
-        }
         if (!string.IsNullOrWhiteSpace(filtro.Documento))
         {
             query = query.Where(r => r.Documento.Contains(filtro.Documento));
@@ -54,7 +60,43 @@ public class WmsTransaccionService : IWmsTransaccionService
             .Take(filtro.PageSize)
             .ToListAsync(cancellationToken);
 
+        if (filtro.Tipo == WmsTipoTransaccion.EnvioProducto && items.Count > 0)
+        {
+            await PoblarMarcaAsync(companyId, items, cancellationToken);
+        }
+
         return new WmsPagedResult<WmsTransaccionRow> { Items = items, TotalCount = total, Page = filtro.Page, PageSize = filtro.PageSize };
+    }
+
+    /// <summary>
+    /// La marca (brand_code) vive dentro de extra_fields (jsonb, campos dinámicos de la Query SQL --
+    /// ver WmsSapStageItemWriter). No se puede proyectar en la misma consulta LINQ de arriba sin forzar
+    /// a Postgres a traer y parsear el jsonb completo de TODA la tabla antes de paginar, así que se
+    /// resuelve en una segunda consulta acotada solo a las filas de la página actual (25-100 líneas).
+    /// </summary>
+    private async Task PoblarMarcaAsync(Guid companyId, List<WmsTransaccionRow> items, CancellationToken cancellationToken)
+    {
+        var lineIds = items.Select(r => r.LineId).ToList();
+        var extras = await _contexto.WmsSapStageItems
+            .Where(x => x.CompanyId == companyId && lineIds.Contains(x.LineId))
+            .Select(x => new { x.LineId, x.ExtraFieldsJson })
+            .ToListAsync(cancellationToken);
+
+        var marcaPorLineId = new Dictionary<long, string?>();
+        foreach (var extra in extras)
+        {
+            if (string.IsNullOrEmpty(extra.ExtraFieldsJson)) continue;
+            var campos = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(extra.ExtraFieldsJson)!;
+            if (campos.TryGetValue("brand_code", out var valor))
+            {
+                marcaPorLineId[extra.LineId] = valor.ValueKind == System.Text.Json.JsonValueKind.String ? valor.GetString() : valor.ToString();
+            }
+        }
+
+        foreach (var row in items)
+        {
+            row.Marca = marcaPorLineId.GetValueOrDefault(row.LineId);
+        }
     }
 
     public async Task ResetearAsync(Guid companyId, WmsTipoTransaccion tipo, IReadOnlyList<long> lineIds, CancellationToken cancellationToken)

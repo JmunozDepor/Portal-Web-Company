@@ -20,6 +20,11 @@ public class WmsTransaccionRow
     public string? ErrorMsg { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? SyncedAt { get; set; }
+
+    /// <summary>Solo pobladas para WmsTipoTransaccion.EnvioProducto -- ver WmsTransaccionService.</summary>
+    public string? ItemName { get; set; }
+    public string? BarCode { get; set; }
+    public string? Marca { get; set; }
 }
 
 public class WmsPagedResult<T>

@@ -29,7 +29,7 @@ public class WmsSapStageOrderReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageOrderReader(contexto);
-        var resultado = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var resultado = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
 
         var registro = Assert.Single(resultado);
         Assert.Equal("Order", registro["TipoDocumento"]);
@@ -64,7 +64,7 @@ public class WmsSapStageOrderReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageOrderReader(contexto);
-        var registro = (await reader.LeerPendientesAsync(companyId, CancellationToken.None)).Single();
+        var registro = (await reader.LeerPendientesAsync(companyId, null, CancellationToken.None)).Single();
 
         Assert.Equal(100, registro["PickListAbsEntry"]);
         Assert.Equal(17, registro["BaseObjectType"]);
@@ -83,7 +83,7 @@ public class WmsSapStageOrderReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageOrderReader(contexto);
-        var registro = (await reader.LeerPendientesAsync(companyId, CancellationToken.None)).Single();
+        var registro = (await reader.LeerPendientesAsync(companyId, null, CancellationToken.None)).Single();
 
         await reader.MarcarProcesadoAsync(companyId, registro, exito: true, mensajeError: null, CancellationToken.None);
 
@@ -102,7 +102,7 @@ public class WmsSapStageOrderReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageOrderReader(contexto);
-        var registro = (await reader.LeerPendientesAsync(companyId, CancellationToken.None)).Single();
+        var registro = (await reader.LeerPendientesAsync(companyId, null, CancellationToken.None)).Single();
 
         await reader.MarcarProcesadoAsync(companyId, registro, exito: false, mensajeError: "Rechazado por WMS", CancellationToken.None);
 

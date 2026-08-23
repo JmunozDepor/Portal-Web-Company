@@ -14,6 +14,25 @@ namespace Modulo.Wms.Services;
 /// </summary>
 public class WmsSapStageItemReader : IIntegrationEntityReader
 {
+    /// <summary>
+    /// El legado (WmsOutbound_ItemProcessor) nunca procesaba el backlog completo de una
+    /// sola vez -- cada ciclo de su propio loop (cada MasterDataIntervalSeconds, ej. 300s)
+    /// traía como máximo BatchSize filas (`LIMIT {batchSize}` en el SQL) y dejaba el resto
+    /// para el ciclo siguiente, repartiendo la carga en el tiempo. El motor genérico nuevo
+    /// no tiene un loop propio por entidad -- usa el mismo timeout de 300s compartido con
+    /// Bajada (IntegrationSyncHostedService.TimeoutPorIntegracion) para TODA la corrida de
+    /// PushAsync. Sin este límite, un backlog grande (ej. 29.387 items tras un backfill
+    /// completo) hace que PushAsync nunca retorne dentro de los 300s -- el timeout aborta
+    /// la corrida ANTES de que se llame MarcarProcesadoAsync ni una sola vez, así que
+    /// ningún envío exitoso queda registrado aunque Oracle WMS Cloud ya los haya aceptado
+    /// (confirmado 22 ago 2026: ~14.850 HTTP 200 reales, 0 filas marcadas Enviado). Topar
+    /// acá replica la misma filosofía del legado -- el polling de 1 minuto ya existente
+    /// reparte un backlog grande en varios ciclos en vez de intentar vaciarlo de una vez.
+    /// Configurable por integración (WmsCloudConfig.MaxRecordsPerCycle, ver
+    /// IntegrationSyncHostedService); este valor es solo el fallback cuando no se configuró.
+    /// </summary>
+    private const int MaximoPorCicloPorDefecto = 500;
+
     private readonly WmsDbContext _contexto;
 
     public WmsSapStageItemReader(WmsDbContext contexto)
@@ -23,10 +42,13 @@ public class WmsSapStageItemReader : IIntegrationEntityReader
 
     public string EntidadNegocio => "SapWms.Item.Subida";
 
-    public async Task<IReadOnlyList<IntegrationRecord>> LeerPendientesAsync(Guid companyId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<IntegrationRecord>> LeerPendientesAsync(Guid companyId, int? limiteMaximo, CancellationToken cancellationToken)
     {
+        var maximoPorCiclo = limiteMaximo is > 0 ? limiteMaximo.Value : MaximoPorCicloPorDefecto;
         var filas = await _contexto.WmsSapStageItems
             .Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Pendiente)
+            .OrderBy(f => f.CreatedAt)
+            .Take(maximoPorCiclo)
             .ToListAsync(cancellationToken);
 
         return filas

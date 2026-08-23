@@ -62,7 +62,7 @@ public class WmsSlshInventoryReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSlshInventoryReader(contexto);
-        var registros = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var registros = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
 
         Assert.Single(registros);
         var lineas = (List<IntegrationRecord>)registros[0]["Lineas"]!;
@@ -90,7 +90,7 @@ public class WmsSlshInventoryReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSlshInventoryReader(contexto);
-        var registros = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var registros = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
 
         Assert.Single(registros);
         Assert.Equal(new DateTime(2026, 8, 10, 10, 0, 0), registros[0]["DocDate"]);
@@ -115,7 +115,7 @@ public class WmsSlshInventoryReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSlshInventoryReader(contexto);
-        var registros = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var registros = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
 
         Assert.Single(registros);
         Assert.Equal(new DateTime(2026, 8, 1), registros[0]["DocDate"]);
@@ -135,7 +135,7 @@ public class WmsSlshInventoryReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSlshInventoryReader(contexto);
-        var registros = await reader.LeerPendientesAsync(companyA, CancellationToken.None);
+        var registros = await reader.LeerPendientesAsync(companyA, null, CancellationToken.None);
 
         Assert.Single(registros);
     }
@@ -151,7 +151,7 @@ public class WmsSlshInventoryReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSlshInventoryReader(contexto);
-        var registros = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var registros = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
         await reader.MarcarProcesadoAsync(companyId, registros[0], exito: true, mensajeError: null, CancellationToken.None);
 
         var filaActualizada = await contexto.WmsOracleStageSlsh.FirstAsync(f => f.LineId == fila.LineId);
@@ -169,7 +169,7 @@ public class WmsSlshInventoryReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSlshInventoryReader(contexto);
-        var registros = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var registros = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
         await reader.MarcarProcesadoAsync(companyId, registros[0], exito: false, mensajeError: "SAP rechazó el documento", CancellationToken.None);
 
         var filaActualizada = await contexto.WmsOracleStageSlsh.FirstAsync(f => f.LineId == fila.LineId);

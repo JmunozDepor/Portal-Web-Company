@@ -30,11 +30,40 @@ public class WmsSapStageItemReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageItemReader(contexto);
-        var resultado = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var resultado = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
 
         var registro = Assert.Single(resultado);
         Assert.Equal("Item", registro["TipoDocumento"]);
         Assert.Equal("ITM001", registro["item_alternate_code"]);
+    }
+
+    [Fact]
+    public async Task LeerPendientesAsync_ConMasDe500PendientesDelMismoTipo_TopaEn500PorCiclo()
+    {
+        // Regresión confirmada 22 ago 2026 contra Oracle WMS Cloud real: sin este tope, un
+        // backlog grande (29.387 items tras un backfill completo) hacía que PushAsync nunca
+        // retornara dentro del timeout de 300s, y ningún envío exitoso quedaba registrado
+        // aunque Oracle ya los hubiera aceptado. Ver doc-comment de MaximoPorCiclo.
+        var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+
+        for (var i = 0; i < 501; i++)
+        {
+            contexto.WmsSapStageItems.Add(new WmsSapStageItem
+            {
+                CompanyId = companyId,
+                ItemCode = $"ITM{i:0000}",
+                ItemName = "N",
+                Status = WmsSapStageStatus.Pendiente,
+                CreatedAt = DateTimeOffset.UtcNow.AddSeconds(i),
+            });
+        }
+        await contexto.SaveChangesAsync();
+
+        var reader = new WmsSapStageItemReader(contexto);
+        var resultado = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
+
+        Assert.Equal(500, resultado.Count);
     }
 
     [Fact]
@@ -54,7 +83,7 @@ public class WmsSapStageItemReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageItemReader(contexto);
-        var resultado = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var resultado = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
 
         var registro = Assert.Single(resultado);
         Assert.Equal("NIKE", registro.Fields["brand_code"]?.ToString());
@@ -74,7 +103,7 @@ public class WmsSapStageItemReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageItemReader(contexto);
-        var registro = (await reader.LeerPendientesAsync(companyId, CancellationToken.None)).Single();
+        var registro = (await reader.LeerPendientesAsync(companyId, null, CancellationToken.None)).Single();
 
         await reader.MarcarProcesadoAsync(companyId, registro, exito: true, mensajeError: null, CancellationToken.None);
 
@@ -105,7 +134,7 @@ public class WmsSapStageItemReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageItemReader(contexto);
-        var registro = (await reader.LeerPendientesAsync(companyId, CancellationToken.None)).Single();
+        var registro = (await reader.LeerPendientesAsync(companyId, null, CancellationToken.None)).Single();
 
         await reader.MarcarProcesadoAsync(companyId, registro, exito: true, mensajeError: null, CancellationToken.None);
 
@@ -127,7 +156,7 @@ public class WmsSapStageItemReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageItemReader(contexto);
-        var registro = (await reader.LeerPendientesAsync(companyId, CancellationToken.None)).Single();
+        var registro = (await reader.LeerPendientesAsync(companyId, null, CancellationToken.None)).Single();
 
         await reader.MarcarProcesadoAsync(companyId, registro, exito: false, mensajeError: "Rechazado por WMS", CancellationToken.None);
 

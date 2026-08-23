@@ -278,6 +278,37 @@ public class WmsCloudConnectorTests
     }
 
     [Fact]
+    public async Task PushAsync_ConSourceUpdateDateEnElRegistro_NoLoIncluyeComoNodoXml()
+    {
+        // Regresión confirmada 22 ago 2026 contra Oracle WMS Cloud real (cd_test):
+        // SourceUpdateDate es un alias que SqlDirectConnector agrega solo para el cursor
+        // incremental -- si se filtra al XML, Oracle rechaza el lote COMPLETO con
+        // "Error parsing XML: sourceupdatedate is not a valid field.", tumbando el 100%
+        // de los envíos.
+        var handlerFalso = new HttpHandlerFalso(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handlerFalso) { BaseAddress = new Uri("https://wms.example.com/") };
+        var conector = CrearConector(httpClient);
+
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["TipoDocumento"] = "Item",
+            ["item_alternate_code"] = "ITM1",
+            ["description"] = "Nombre",
+            ["barcode"] = "123",
+            ["SourceUpdateDate"] = new DateTime(2026, 8, 22),
+        });
+
+        var config = """{"ApiUrl":"https://wms.example.com/init_stage_interface","Usuario":"wmsuser","Clave":"wmspass","ClientEnvCode":"CLI01","ParentCompanyCode":"COMP01"}""";
+        var resultado = await conector.PushAsync(config, [registro], CancellationToken.None);
+
+        Assert.True(resultado[0].Exito);
+        var xmlDecodificado = Uri.UnescapeDataString(handlerFalso.UltimoContenido!.Replace('+', ' '));
+
+        Assert.DoesNotContain("sourceupdatedate", xmlDecodificado, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<item_alternate_code>ITM1</item_alternate_code>", xmlDecodificado);
+    }
+
+    [Fact]
     public async Task PushAsync_ConTipoDocumentoStoreYCamposExtra_GeneraUnNodoPorCadaCampoMasCodeYParentCompanyId()
     {
         var handlerFalso = new HttpHandlerFalso(HttpStatusCode.OK);

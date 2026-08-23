@@ -29,7 +29,7 @@ public class WmsSapStageInboundReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageInboundReader(contexto);
-        var resultado = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var resultado = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
 
         var registro = Assert.Single(resultado);
         Assert.Equal("IbShipment", registro["TipoDocumento"]);
@@ -49,7 +49,7 @@ public class WmsSapStageInboundReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSapStageInboundReader(contexto);
-        var registro = (await reader.LeerPendientesAsync(companyId, CancellationToken.None)).Single();
+        var registro = (await reader.LeerPendientesAsync(companyId, null, CancellationToken.None)).Single();
 
         await reader.MarcarProcesadoAsync(companyId, registro, exito: false, mensajeError: "BaseEntry inválido", CancellationToken.None);
 

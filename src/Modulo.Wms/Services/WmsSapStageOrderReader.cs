@@ -22,7 +22,7 @@ public class WmsSapStageOrderReader : IIntegrationEntityReader
 
     public string EntidadNegocio => "SapWms.Order.Subida";
 
-    public async Task<IReadOnlyList<IntegrationRecord>> LeerPendientesAsync(Guid companyId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<IntegrationRecord>> LeerPendientesAsync(Guid companyId, int? limiteMaximo, CancellationToken cancellationToken)
     {
         var hdrs = await _contexto.WmsSapStageOrderHdrs
             .Where(h => h.CompanyId == companyId && h.Status == WmsSapStageStatus.Pendiente)

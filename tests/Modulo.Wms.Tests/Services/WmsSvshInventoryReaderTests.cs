@@ -47,7 +47,7 @@ public class WmsSvshInventoryReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSvshInventoryReader(contexto);
-        var registros = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var registros = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
 
         Assert.Single(registros);
         Assert.Equal("Inventory", registros[0]["TipoDocumento"]);
@@ -75,7 +75,7 @@ public class WmsSvshInventoryReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSvshInventoryReader(contexto);
-        var registros = await reader.LeerPendientesAsync(companyId, CancellationToken.None);
+        var registros = await reader.LeerPendientesAsync(companyId, null, CancellationToken.None);
 
         Assert.Single(registros);
         Assert.Equal("Purchase", registros[0]["TipoDocumento"]);
@@ -95,7 +95,7 @@ public class WmsSvshInventoryReaderTests
         await contexto.SaveChangesAsync();
 
         var reader = new WmsSvshInventoryReader(contexto);
-        var registros = await reader.LeerPendientesAsync(companyA, CancellationToken.None);
+        var registros = await reader.LeerPendientesAsync(companyA, null, CancellationToken.None);
 
         Assert.Single(registros);
     }

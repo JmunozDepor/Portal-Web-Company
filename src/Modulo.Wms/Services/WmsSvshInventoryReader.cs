@@ -28,7 +28,7 @@ public class WmsSvshInventoryReader : IIntegrationEntityReader
 
     public string EntidadNegocio => "Wms.ConfirmacionIngreso";
 
-    public async Task<IReadOnlyList<IntegrationRecord>> LeerPendientesAsync(Guid companyId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<IntegrationRecord>> LeerPendientesAsync(Guid companyId, int? limiteMaximo, CancellationToken cancellationToken)
     {
         var filas = await (
             from linea in _contexto.WmsOracleStageSvsh

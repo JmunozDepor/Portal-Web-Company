@@ -201,9 +201,18 @@ public class WmsCloudConnector : IIntegrationConnector
     /// aplica por cada clave dinámica bajo el MapperKey "SAPWMS_ITEM", no solo sobre las 3
     /// de antes.
     /// </summary>
+    /// <summary>
+    /// "SourceUpdateDate" es un alias que la Query de SqlDirectConnector agrega solo para
+    /// que WmsSapStageItemWriter/el cursor incremental lo puedan usar -- viaja dentro de
+    /// extra_fields como cualquier otro campo, así que sin esta exclusión termina como un
+    /// nodo XML más. Oracle WMS Cloud valida el payload completo y rechaza TODO el lote
+    /// si aparece un campo que no reconoce (confirmado 22 ago 2026 contra el ambiente real
+    /// cd_test: "Error parsing XML: sourceupdatedate is not a valid field.", tumbando el
+    /// 100% de los lotes hasta este fix).
+    /// </summary>
     private static readonly HashSet<string> ClavesInternasExcluidas = new(StringComparer.OrdinalIgnoreCase)
     {
-        "TipoDocumento", "_StagingLineIds", "PK",
+        "TipoDocumento", "_StagingLineIds", "SourceUpdateDate", "PK",
     };
 
     private static XElement ArmarNodoItemDinamico(IntegrationRecord registro, IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos)
@@ -327,5 +336,12 @@ public class WmsCloudConnector : IIntegrationConnector
         }
     }
 
-    private sealed record WmsCloudConfig(string ApiUrl, string Usuario, string Clave, string ClientEnvCode, string ParentCompanyCode, int BatchSize = 50, string? LgfApiBaseUrl = null);
+    /// <summary>
+    /// MaxRecordsPerCycle: tope de filas Pendiente que el reader trae por corrida (ver
+    /// IntegrationSyncHostedService.LeerLimiteMaximoDeConfig / WmsSapStageItemReader) -- no
+    /// afecta BatchSize (tamaño de cada request HTTP a WMS Cloud), es un límite aparte sobre
+    /// cuánto backlog se intenta procesar en una sola corrida antes de dejar el resto para el
+    /// próximo ciclo de polling. Null = usa el default del reader.
+    /// </summary>
+    private sealed record WmsCloudConfig(string ApiUrl, string Usuario, string Clave, string ClientEnvCode, string ParentCompanyCode, int BatchSize = 50, string? LgfApiBaseUrl = null, int? MaxRecordsPerCycle = null);
 }

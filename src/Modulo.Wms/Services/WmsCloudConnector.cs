@@ -166,10 +166,7 @@ public class WmsCloudConnector : IIntegrationConnector
         var nodos = lote.Select(registro => tipoDocumento switch
         {
             "Item" => ArmarNodoItemDinamico(registro, mapeos),
-            "Store" => new XElement(nombreItem,
-                CampoXml(mapeos, "SAPWMS_STORE", "code", registro, registro["CardCode"]),
-                CampoXml(mapeos, "SAPWMS_STORE", "name", registro, registro["CardName"]),
-                CampoXml(mapeos, "SAPWMS_STORE", "parent_company_id", registro, config.ParentCompanyCode)),
+            "Store" => ArmarNodoStoreDinamico(registro, config, mapeos),
             "IbShipment" => ArmarNodoIbShipment(registro, mapeos),
             "Order" => ArmarNodoOrder(registro, mapeos),
             _ => throw new InvalidOperationException($"TipoDocumento '{tipoDocumento}' no soportado en WmsCloudConnector."),
@@ -206,7 +203,7 @@ public class WmsCloudConnector : IIntegrationConnector
     /// </summary>
     private static readonly HashSet<string> ClavesInternasExcluidas = new(StringComparer.OrdinalIgnoreCase)
     {
-        "TipoDocumento", "_StagingLineIds",
+        "TipoDocumento", "_StagingLineIds", "PK",
     };
 
     private static XElement ArmarNodoItemDinamico(IntegrationRecord registro, IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos)
@@ -216,6 +213,27 @@ public class WmsCloudConnector : IIntegrationConnector
             .Select(kvp => CampoXml(mapeos, "SAPWMS_ITEM", kvp.Key.ToLowerInvariant(), registro, kvp.Value));
 
         return new XElement("item", elementos);
+    }
+
+    /// <summary>
+    /// Igual que ArmarNodoItemDinamico, pero Sucursal tiene dos casos especiales que no son
+    /// claves de extra_fields: "code" sale de la clave de motor PK (no es un campo de negocio, es
+    /// la clave de upsert -- ver WmsSapStageStoreWriter), y "parent_company_id" sale de la config
+    /// del conector, no del registro.
+    /// </summary>
+    private static XElement ArmarNodoStoreDinamico(IntegrationRecord registro, WmsCloudConfig config, IReadOnlyDictionary<(string MapperKey, string FieldName), string> mapeos)
+    {
+        var elementos = new List<XElement>
+        {
+            CampoXml(mapeos, "SAPWMS_STORE", "code", registro, registro["PK"]),
+            CampoXml(mapeos, "SAPWMS_STORE", "parent_company_id", registro, config.ParentCompanyCode),
+        };
+
+        elementos.AddRange(registro.Fields
+            .Where(kvp => !ClavesInternasExcluidas.Contains(kvp.Key))
+            .Select(kvp => CampoXml(mapeos, "SAPWMS_STORE", kvp.Key.ToLowerInvariant(), registro, kvp.Value)));
+
+        return new XElement("store", elementos);
     }
 
     /// <summary>

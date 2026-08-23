@@ -278,6 +278,65 @@ public class WmsCloudConnectorTests
     }
 
     [Fact]
+    public async Task PushAsync_ConTipoDocumentoStoreYCamposExtra_GeneraUnNodoPorCadaCampoMasCodeYParentCompanyId()
+    {
+        var handlerFalso = new HttpHandlerFalso(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handlerFalso) { BaseAddress = new Uri("https://wms.example.com/") };
+        var conector = CrearConector(httpClient);
+
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["TipoDocumento"] = "Store",
+            ["PK"] = "SUC001",
+            ["name"] = "Sucursal Central",
+            ["address_1"] = "Av. Siempre Viva 123",
+            ["city"] = "Santiago",
+            ["state"] = "RM",
+            ["postal_code"] = "8320000",
+        });
+
+        var config = """{"ApiUrl":"https://wms.example.com/init_stage_interface","Usuario":"wmsuser","Clave":"wmspass","ClientEnvCode":"CLI01","ParentCompanyCode":"COMP01"}""";
+        var resultado = await conector.PushAsync(config, [registro], CancellationToken.None);
+
+        Assert.True(resultado[0].Exito);
+        var xmlDecodificado = Uri.UnescapeDataString(handlerFalso.UltimoContenido!.Replace('+', ' '));
+
+        Assert.Contains("<code>SUC001</code>", xmlDecodificado);
+        Assert.Contains("<parent_company_id>COMP01</parent_company_id>", xmlDecodificado);
+        Assert.Contains("<name>Sucursal Central</name>", xmlDecodificado);
+        Assert.Contains("<address_1>Av. Siempre Viva 123</address_1>", xmlDecodificado);
+        Assert.Contains("<city>Santiago</city>", xmlDecodificado);
+        Assert.Contains("<state>RM</state>", xmlDecodificado);
+        Assert.Contains("<postal_code>8320000</postal_code>", xmlDecodificado);
+    }
+
+    [Fact]
+    public async Task PushAsync_ConTipoDocumentoStore_NoIncluyePkComoNodoXmlLiteral()
+    {
+        // Regresión análoga a SourceUpdateDate en Item: "PK" es la clave de motor usada para
+        // calcular "code", no un campo de negocio -- no debe aparecer como nodo <PK> propio.
+        var handlerFalso = new HttpHandlerFalso(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handlerFalso) { BaseAddress = new Uri("https://wms.example.com/") };
+        var conector = CrearConector(httpClient);
+
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["TipoDocumento"] = "Store",
+            ["PK"] = "SUC001",
+            ["name"] = "Sucursal Central",
+        });
+
+        var config = """{"ApiUrl":"https://wms.example.com/init_stage_interface","Usuario":"wmsuser","Clave":"wmspass","ClientEnvCode":"CLI01","ParentCompanyCode":"COMP01"}""";
+        var resultado = await conector.PushAsync(config, [registro], CancellationToken.None);
+
+        Assert.True(resultado[0].Exito);
+        var xmlDecodificado = Uri.UnescapeDataString(handlerFalso.UltimoContenido!.Replace('+', ' '));
+
+        Assert.DoesNotContain("<pk>", xmlDecodificado, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<code>SUC001</code>", xmlDecodificado);
+    }
+
+    [Fact]
     public async Task PushAsync_ConTipoDocumentoItemYCampoExtraComoJsonElement_ConvierteAStringLimpio()
     {
         var handlerFalso = new HttpHandlerFalso(HttpStatusCode.OK);

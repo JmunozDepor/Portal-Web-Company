@@ -6,10 +6,11 @@ using PortalSaas.Abstractions.Contratos.Integraciones;
 namespace Modulo.Wms.Services;
 
 /// <summary>
-/// Escritor del motor genérico de integración (IIntegrationEntityWriter) para
-/// Tiendas/Clientes (CardCode) que llegan desde SAP hacia el staging local -- mismo
-/// criterio de upsert por clave natural que WmsSapStageItemWriter (ver ese archivo),
-/// sobre (CompanyId, CardCode).
+/// Escritor del motor genérico (IIntegrationEntityWriter) para Sucursales/Tiendas que llegan
+/// desde SAP vía SqlDirectConnector -- upsert por Pk (clave de negocio que la propia Query SQL
+/// calcula, ver plan 2026-08-23-ingesta-sql-directa-sucursal.md). Mismo criterio que
+/// WmsSapStageItemWriter: Pendiente si nuevo, reenvío solo si cambió un campo listado en
+/// wms_validation_fields (TipoEntidad="Store").
 /// </summary>
 public class WmsSapStageStoreWriter : IIntegrationEntityWriter
 {
@@ -24,46 +25,66 @@ public class WmsSapStageStoreWriter : IIntegrationEntityWriter
 
     public async Task EscribirAsync(Guid companyId, IReadOnlyList<IntegrationRecord> registros, CancellationToken cancellationToken)
     {
+        var pks = registros.Select(r => (string)r["PK"]!).ToList();
+        var existentes = await _contexto.WmsSapStageStores
+            .Where(f => f.CompanyId == companyId && pks.Contains(f.Pk))
+            .ToDictionaryAsync(f => f.Pk, cancellationToken);
+
+        var camposValidacion = (await _contexto.ValidationFields
+            .Where(v => v.CompanyId == companyId && v.TipoEntidad == "Store" && v.IsActive)
+            .Select(v => v.FieldName)
+            .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         foreach (var registro in registros)
         {
-            var cardCode = (string)registro["CardCode"]!;
+            var pk = (string)registro["PK"]!;
             var sourceUpdateDate = (DateTime)registro["SourceUpdateDate"]!;
+            var existente = existentes.GetValueOrDefault(pk);
 
-            var existente = await _contexto.WmsSapStageStores
-                .FirstOrDefaultAsync(f => f.CompanyId == companyId && f.CardCode == cardCode, cancellationToken);
+            var extra = registro.Fields
+                .Where(kvp => kvp.Key is not ("PK" or "SourceUpdateDate"))
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            var extraFieldsJson = System.Text.Json.JsonSerializer.Serialize(extra);
 
             if (existente is null)
             {
                 _contexto.WmsSapStageStores.Add(new WmsSapStageStore
                 {
                     CompanyId = companyId,
-                    CardCode = cardCode,
-                    CardName = (string)registro["CardName"]!,
-                    Street = (string?)registro["Street"],
-                    City = (string?)registro["City"],
-                    ZipCode = (string?)registro["ZipCode"],
+                    Pk = pk,
+                    ExtraFieldsJson = extraFieldsJson,
                     SourceUpdateDate = sourceUpdateDate,
                     Status = WmsSapStageStatus.Pendiente,
                 });
                 continue;
             }
 
-            var debeResincronizar = (existente.Status == WmsSapStageStatus.ProcesadoWms && sourceUpdateDate > existente.SourceUpdateDate)
-                || existente.Status == WmsSapStageStatus.ErrorWms;
+            var extraFieldsExistentes = string.IsNullOrEmpty(existente.ExtraFieldsJson)
+                ? new Dictionary<string, object?>()
+                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(existente.ExtraFieldsJson)!;
+            var extraFieldsNuevos = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(extraFieldsJson)!;
 
-            if (debeResincronizar)
+            var cambioAlgunCampoDeValidacion = camposValidacion.Any(campo => ValorCambio(extraFieldsExistentes, extraFieldsNuevos, campo));
+
+            if (cambioAlgunCampoDeValidacion || existente.Status == WmsSapStageStatus.ErrorWms)
             {
                 existente.Status = WmsSapStageStatus.Pendiente;
                 existente.ErrorMsg = null;
             }
 
-            existente.CardName = (string)registro["CardName"]!;
-            existente.Street = (string?)registro["Street"];
-            existente.City = (string?)registro["City"];
-            existente.ZipCode = (string?)registro["ZipCode"];
+            existente.ExtraFieldsJson = extraFieldsJson;
             existente.SourceUpdateDate = sourceUpdateDate;
         }
 
         await _contexto.SaveChangesAsync(cancellationToken);
+    }
+
+    private static bool ValorCambio(Dictionary<string, object?> existentes, Dictionary<string, object?> nuevos, string campo)
+    {
+        var tieneExistente = existentes.TryGetValue(campo, out var valorExistente);
+        var tieneNuevo = nuevos.TryGetValue(campo, out var valorNuevo);
+        if (!tieneExistente && !tieneNuevo) return false;
+        return valorExistente?.ToString() != valorNuevo?.ToString();
     }
 }

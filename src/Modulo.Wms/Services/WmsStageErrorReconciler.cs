@@ -116,7 +116,7 @@ public sealed class WmsStageErrorReconciler : BackgroundService
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "Store", "stage_store", "code",
                 contexto.WmsSapStageStores.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
-                f => f.CardCode, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+                f => f.Pk, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "Order", "stage_order_hdr", "order_nbr",
                 contexto.WmsSapStageOrderHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,

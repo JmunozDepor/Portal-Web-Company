@@ -20,7 +20,7 @@ public class WmsTransaccionService : IWmsTransaccionService
             WmsTipoTransaccion.EnvioProducto => _contexto.WmsSapStageItems.Where(x => x.CompanyId == companyId)
                 .Select(x => new WmsTransaccionRow { LineId = x.LineId, Documento = x.ItemCode, Status = x.Status.ToString(), RetryCount = x.RetryCount, ErrorMsg = x.ErrorMsg, CreatedAt = x.CreatedAt, SyncedAt = x.SyncedAt }),
             WmsTipoTransaccion.EnvioSucursal => _contexto.WmsSapStageStores.Where(x => x.CompanyId == companyId)
-                .Select(x => new WmsTransaccionRow { LineId = x.LineId, Documento = x.CardCode, Status = x.Status.ToString(), RetryCount = x.RetryCount, ErrorMsg = x.ErrorMsg, CreatedAt = x.CreatedAt, SyncedAt = x.SyncedAt }),
+                .Select(x => new WmsTransaccionRow { LineId = x.LineId, Documento = x.Pk, Status = x.Status.ToString(), RetryCount = x.RetryCount, ErrorMsg = x.ErrorMsg, CreatedAt = x.CreatedAt, SyncedAt = x.SyncedAt }),
             WmsTipoTransaccion.EnvioOrdenes => _contexto.WmsSapStageOrderHdrs.Where(x => x.CompanyId == companyId)
                 .Select(x => new WmsTransaccionRow { LineId = x.LineId, Documento = x.OrderNbr, Status = x.Status.ToString(), RetryCount = x.RetryCount, ErrorMsg = x.ErrorMsg, CreatedAt = x.CreatedAt, SyncedAt = x.SyncedAt }),
             WmsTipoTransaccion.EnvioIngresoAsn => _contexto.WmsSapStageInboundHdrs.Where(x => x.CompanyId == companyId)

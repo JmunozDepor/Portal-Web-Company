@@ -5,13 +5,10 @@ using PortalSaas.Abstractions.Contratos.Integraciones;
 
 namespace Modulo.Wms.Services;
 
-/// <summary>
-/// Lector del motor genérico (IIntegrationEntityReader) para el staging de Bodegas/Clientes
-/// (Store) pendientes de enviar a Oracle WMS Cloud (etapa Subida de la Ronda C). Mismo
-/// patrón que WmsSapStageItemReader.
-/// </summary>
 public class WmsSapStageStoreReader : IIntegrationEntityReader
 {
+    private const int MaximoPorCicloPorDefecto = 500;
+
     private readonly WmsDbContext _contexto;
 
     public WmsSapStageStoreReader(WmsDbContext contexto)
@@ -21,23 +18,36 @@ public class WmsSapStageStoreReader : IIntegrationEntityReader
 
     public string EntidadNegocio => "SapWms.Store.Subida";
 
-    public async Task<IReadOnlyList<IntegrationRecord>> LeerPendientesAsync(Guid companyId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<IntegrationRecord>> LeerPendientesAsync(Guid companyId, int? limiteMaximo, CancellationToken cancellationToken)
     {
+        var maximoPorCiclo = limiteMaximo is > 0 ? limiteMaximo.Value : MaximoPorCicloPorDefecto;
         var filas = await _contexto.WmsSapStageStores
             .Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Pendiente)
+            .OrderBy(f => f.CreatedAt)
+            .Take(maximoPorCiclo)
             .ToListAsync(cancellationToken);
 
         return filas
-            .Select(f => new IntegrationRecord(new Dictionary<string, object?>
+            .Select(f =>
             {
-                ["TipoDocumento"] = "Store",
-                ["CardCode"] = f.CardCode,
-                ["CardName"] = f.CardName,
-                ["Street"] = f.Street,
-                ["City"] = f.City,
-                ["ZipCode"] = f.ZipCode,
-                ["_StagingLineIds"] = new List<long> { f.LineId },
-            }))
+                var campos = new Dictionary<string, object?>
+                {
+                    ["TipoDocumento"] = "Store",
+                    ["PK"] = f.Pk,
+                    ["_StagingLineIds"] = new List<long> { f.LineId },
+                };
+
+                if (!string.IsNullOrEmpty(f.ExtraFieldsJson))
+                {
+                    var extra = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(f.ExtraFieldsJson)!;
+                    foreach (var (clave, valor) in extra)
+                    {
+                        campos[clave] = valor;
+                    }
+                }
+
+                return new IntegrationRecord(campos);
+            })
             .ToList();
     }
 
@@ -57,18 +67,13 @@ public class WmsSapStageStoreReader : IIntegrationEntityReader
 
             if (exito)
             {
-                await ResetearValidacionAsync(companyId, fila.CardCode, cancellationToken);
+                await ResetearValidacionAsync(companyId, fila.Pk, cancellationToken);
             }
         }
 
         await _contexto.SaveChangesAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// Al (re)enviar exitosamente, resetea la fila de validación existente (clave de negocio
-    /// estable entre reenvíos) para que WmsExistsReconciler no herede Intentos de un ciclo
-    /// anterior y dispare ErrorWms de inmediato en el primer chequeo del reenvío.
-    /// </summary>
     private async Task ResetearValidacionAsync(Guid companyId, string clave, CancellationToken cancellationToken)
     {
         var validacion = await _contexto.WmsExportValidations

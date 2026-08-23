@@ -18,7 +18,7 @@ public class WmsSapStageStoreWriterTests
     }
 
     [Fact]
-    public async Task EscribirAsync_StoreNuevo_InsertaPendiente()
+    public async Task EscribirAsync_StoreNuevo_InsertaPendienteConExtraFields()
     {
         var contexto = CrearContexto();
         var writer = new WmsSapStageStoreWriter(contexto);
@@ -26,7 +26,7 @@ public class WmsSapStageStoreWriterTests
 
         var registro = new IntegrationRecord(new Dictionary<string, object?>
         {
-            ["CardCode"] = "C001",
+            ["PK"] = "C001",
             ["CardName"] = "Tienda de prueba",
             ["Street"] = "Calle 123",
             ["City"] = "Santiago",
@@ -37,52 +37,25 @@ public class WmsSapStageStoreWriterTests
         await writer.EscribirAsync(companyId, [registro], CancellationToken.None);
 
         var fila = Assert.Single(contexto.WmsSapStageStores);
-        Assert.Equal("C001", fila.CardCode);
+        Assert.Equal("C001", fila.Pk);
         Assert.Equal(WmsSapStageStatus.Pendiente, fila.Status);
         Assert.Equal(companyId, fila.CompanyId);
+        Assert.Contains("\"CardName\":\"Tienda de prueba\"", fila.ExtraFieldsJson);
+        Assert.Contains("\"Street\":\"Calle 123\"", fila.ExtraFieldsJson);
+        Assert.DoesNotContain("PK", fila.ExtraFieldsJson!.Replace("\"CardName\"", ""));
     }
 
     [Fact]
-    public async Task EscribirAsync_StoreYaPendienteSinCambios_NoDuplica()
+    public async Task EscribirAsync_CambiaCampoQueEstaEnValidationFields_MarcaPendiente()
     {
         var contexto = CrearContexto();
         var companyId = Guid.NewGuid();
+        contexto.ValidationFields.Add(new WmsValidationField { CompanyId = companyId, TipoEntidad = "Store", FieldName = "City", IsActive = true });
         contexto.WmsSapStageStores.Add(new WmsSapStageStore
         {
             CompanyId = companyId,
-            CardCode = "C001",
-            CardName = "Tienda de prueba",
-            SourceUpdateDate = new DateTime(2026, 8, 15),
-            Status = WmsSapStageStatus.Pendiente,
-        });
-        await contexto.SaveChangesAsync();
-
-        var writer = new WmsSapStageStoreWriter(contexto);
-        var registro = new IntegrationRecord(new Dictionary<string, object?>
-        {
-            ["CardCode"] = "C001",
-            ["CardName"] = "Tienda de prueba",
-            ["Street"] = null,
-            ["City"] = null,
-            ["ZipCode"] = null,
-            ["SourceUpdateDate"] = new DateTime(2026, 8, 15),
-        });
-
-        await writer.EscribirAsync(companyId, [registro], CancellationToken.None);
-
-        Assert.Single(contexto.WmsSapStageStores);
-    }
-
-    [Fact]
-    public async Task EscribirAsync_StoreYaProcesadoConCambioEnSap_VuelveAPendiente()
-    {
-        var contexto = CrearContexto();
-        var companyId = Guid.NewGuid();
-        contexto.WmsSapStageStores.Add(new WmsSapStageStore
-        {
-            CompanyId = companyId,
-            CardCode = "C001",
-            CardName = "Nombre viejo",
+            Pk = "C001",
+            ExtraFieldsJson = """{"CardName":"Tienda","City":"Santiago"}""",
             SourceUpdateDate = new DateTime(2026, 8, 10),
             Status = WmsSapStageStatus.ProcesadoWms,
             SyncedAt = DateTimeOffset.UtcNow,
@@ -92,11 +65,9 @@ public class WmsSapStageStoreWriterTests
         var writer = new WmsSapStageStoreWriter(contexto);
         var registro = new IntegrationRecord(new Dictionary<string, object?>
         {
-            ["CardCode"] = "C001",
-            ["CardName"] = "Nombre nuevo",
-            ["Street"] = null,
-            ["City"] = null,
-            ["ZipCode"] = null,
+            ["PK"] = "C001",
+            ["CardName"] = "Tienda",
+            ["City"] = "Valparaiso", // cambió y está en ValidationFields
             ["SourceUpdateDate"] = new DateTime(2026, 8, 15),
         });
 
@@ -104,7 +75,40 @@ public class WmsSapStageStoreWriterTests
 
         var fila = Assert.Single(contexto.WmsSapStageStores);
         Assert.Equal(WmsSapStageStatus.Pendiente, fila.Status);
-        Assert.Equal("Nombre nuevo", fila.CardName);
+        Assert.Contains("Valparaiso", fila.ExtraFieldsJson);
+    }
+
+    [Fact]
+    public async Task EscribirAsync_CambiaCampoQueNoEstaEnValidationFields_NoMarcaPendientePeroActualizaDato()
+    {
+        var contexto = CrearContexto();
+        var companyId = Guid.NewGuid();
+        contexto.ValidationFields.Add(new WmsValidationField { CompanyId = companyId, TipoEntidad = "Store", FieldName = "City", IsActive = true });
+        contexto.WmsSapStageStores.Add(new WmsSapStageStore
+        {
+            CompanyId = companyId,
+            Pk = "C001",
+            ExtraFieldsJson = """{"CardName":"Tienda","City":"Santiago"}""",
+            SourceUpdateDate = new DateTime(2026, 8, 10),
+            Status = WmsSapStageStatus.ProcesadoWms,
+            SyncedAt = DateTimeOffset.UtcNow,
+        });
+        await contexto.SaveChangesAsync();
+
+        var writer = new WmsSapStageStoreWriter(contexto);
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["PK"] = "C001",
+            ["CardName"] = "Tienda Nueva", // cambió, NO está en ValidationFields
+            ["City"] = "Santiago",
+            ["SourceUpdateDate"] = new DateTime(2026, 8, 15),
+        });
+
+        await writer.EscribirAsync(companyId, [registro], CancellationToken.None);
+
+        var fila = Assert.Single(contexto.WmsSapStageStores);
+        Assert.Equal(WmsSapStageStatus.ProcesadoWms, fila.Status); // no cambió
+        Assert.Contains("Tienda Nueva", fila.ExtraFieldsJson); // pero el dato sí se actualizó
     }
 
     [Fact]
@@ -119,8 +123,8 @@ public class WmsSapStageStoreWriterTests
         contexto.WmsSapStageStores.Add(new WmsSapStageStore
         {
             CompanyId = companyId,
-            CardCode = "C001",
-            CardName = "Tienda con error",
+            Pk = "C001",
+            ExtraFieldsJson = """{"CardName":"Tienda con error"}""",
             SourceUpdateDate = new DateTime(2026, 8, 10),
             Status = WmsSapStageStatus.ErrorWms,
             ErrorMsg = "Error al postear en WMS",
@@ -130,13 +134,10 @@ public class WmsSapStageStoreWriterTests
         var writer = new WmsSapStageStoreWriter(contexto);
         var registro = new IntegrationRecord(new Dictionary<string, object?>
         {
-            ["CardCode"] = "C001",
+            ["PK"] = "C001",
             ["CardName"] = "Tienda con error",
-            ["Street"] = null,
-            ["City"] = null,
-            ["ZipCode"] = null,
             // Misma fecha que ya tenía -- ErrorWms siempre debe reintentarse sin
-            // importar la fecha.
+            // importar la fecha ni si hubo cambio de valor.
             ["SourceUpdateDate"] = new DateTime(2026, 8, 10),
         });
 

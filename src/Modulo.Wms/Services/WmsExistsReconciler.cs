@@ -117,7 +117,7 @@ public sealed class WmsExistsReconciler : BackgroundService
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "Store", "facility", "stage_store", "code",
                 contexto.WmsSapStageStores.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
-                f => f.CardCode, (f) => { f.Status = WmsSapStageStatus.ProcesadoWms; f.SyncedAt = DateTimeOffset.UtcNow; },
+                f => f.Pk, (f) => { f.Status = WmsSapStageStatus.ProcesadoWms; f.SyncedAt = DateTimeOffset.UtcNow; },
                 (f) => f.Status = WmsSapStageStatus.ErrorWms, cancellationToken);
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "Order", "order_hdr", "stage_order_hdr", "order_nbr",

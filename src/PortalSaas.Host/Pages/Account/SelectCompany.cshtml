@@ -100,9 +100,9 @@
                         <button type="submit" class="login-submit">Continuar</button>
                     </form>
                 }
-                else if (Model.ErrorMessage is not null)
+                else
                 {
-                    <p class="text-muted" style="font-size: 12.5px;">No tenés acceso a ninguna compañía todavía.</p>
+                    <p class="text-muted" style="font-size: 12.5px;">No tenés acceso a ninguna compañía todavía. Contacta a tu administrador.</p>
                 }
 
                 <form method="post" asp-page="/Account/Logout" class="text-center mt-3 mb-0">

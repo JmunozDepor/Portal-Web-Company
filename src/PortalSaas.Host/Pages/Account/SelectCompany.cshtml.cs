@@ -27,12 +27,14 @@ public class SelectCompanyModel : PageModel
     private readonly PortalSaasDbContext _db;
     private readonly ICompanySessionActivator _activator;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<SelectCompanyModel> _logger;
 
-    public SelectCompanyModel(PortalSaasDbContext db, ICompanySessionActivator activator, IConfiguration configuration)
+    public SelectCompanyModel(PortalSaasDbContext db, ICompanySessionActivator activator, IConfiguration configuration, ILogger<SelectCompanyModel> logger)
     {
         _db = db;
         _activator = activator;
         _configuration = configuration;
+        _logger = logger;
     }
 
     [BindProperty]
@@ -83,9 +85,27 @@ public class SelectCompanyModel : PageModel
             // para el usuario -- ver CompanySessionActivator.TryActivateAsync). Antes esto
             // caía en silencio al selector normal con un mensaje genérico recién al
             // postear -- ahora se explica la causa acá mismo, apenas se detecta.
-            var companiaDefault = await _db.Companies.FindAsync(companyId);
+            var organizationId = Guid.Parse(User.FindFirstValue("OrganizationId")!);
+            var companiaDefault = await _db.Companies
+                .FirstOrDefaultAsync(c => c.Id == companyId && c.OrganizationId == organizationId);
             var nombreDefault = companiaDefault is not null ? $"{companiaDefault.Code} — {companiaDefault.Name}" : "configurada";
-            ErrorMessage = $"Tu compañía por defecto ({nombreDefault}) no tiene permisos configurados. Contacta a tu administrador.";
+
+            _logger.LogWarning(
+                "Usuario {UserId} no pudo activar su compañía por defecto {CompanyId} al loguearse.",
+                userId, companyId);
+
+            // TryActivateAsync devuelve null tanto por falta de acceso (sin fila en
+            // UserMenuGroups/UserMenuProfiles) como porque la compañía está inactiva o fue
+            // borrada -- distinguimos acá para no atribuir siempre "falta de permisos" a un
+            // fallo que puede deberse a otra causa.
+            if (companiaDefault is null || !companiaDefault.IsActive)
+            {
+                ErrorMessage = $"Tu compañía por defecto ({nombreDefault}) ya no está disponible. Contacta a tu administrador.";
+            }
+            else
+            {
+                ErrorMessage = $"Tu compañía por defecto ({nombreDefault}) no tiene permisos configurados. Contacta a tu administrador.";
+            }
         }
 
         Input.ReturnUrl = returnUrl;

@@ -149,14 +149,73 @@ public sealed class Worker : BackgroundService
                 continue;
             }
 
-            var lineasTransferir = new List<StockTransferLine>();
-            // Si alguna línea con necesidad real no queda 100% cubierta (stock insuficiente
-            // en las bodegas origen de la cascada, o bodega destino sin cascada configurada),
-            // el documento NO se marca completado -- debe reintentarse en el próximo ciclo
-            // para transferir el faltante en cuanto haya stock disponible.
-            var necesidadTotalmenteCubierta = true;
+            try
+            {
+                await ProcesarDocumentoAsync(compania, repositorio, connectionString, serviceLayer, warehousePriorityTable, pickingQuery, tipoDocumento, documento, ledgerCiclo, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Aislamiento por documento: un rechazo de SAP (ej. "Quantity falls into
+                // negative inventory" -- el stock de la bodega origen cambió entre nuestra
+                // lectura y el POST a Service Layer, condición de carrera inherente a
+                // trabajar contra inventario en vivo) o cualquier otra falla puntual de UN
+                // documento no debe abortar el resto de los pendientes de la compañía en
+                // este ciclo -- mismo criterio que el aislamiento por compañía en
+                // ExecuteAsync, pero a nivel de documento.
+                _logger.LogError(ex,
+                    "Falló el procesamiento de DocEntry {DocEntry} (DocNum {DocNum}, compañía {CompanyCode}) -- se continúa con el siguiente documento",
+                    documento.DocEntry, documento.DocNum, compania.CompanyCode);
+                await _logSink.WriteAsync(new LogEntry
+                {
+                    FechaHora = DateTimeOffset.Now,
+                    Nivel = NivelLog.Error,
+                    CompanyCode = compania.CompanyCode,
+                    Mensaje = $"Falló el procesamiento de DocEntry {documento.DocEntry} (DocNum {documento.DocNum}): {ex.Message}",
+                    Detalle = ex.ToString()
+                }, ct);
 
-            foreach (var linea in repositorio.ObtenerLineas(connectionString, tipoDocumento.TablaDetalle, tipoDocumento.ColumnaBodegaDestino, documento.DocEntry))
+                var intentos = _intentosStore.RegistrarIntentoParcial(compania.CompanyCode, documento.ObjType, documento.DocEntry);
+                if (intentos >= _asignacionParcialOptions.MaxIntentos)
+                {
+                    _logger.LogWarning(
+                        "DocEntry {DocEntry} (DocNum {DocNum}, compañía {CompanyCode}) alcanzó el máximo de {MaxIntentos} intentos fallando -- requiere revisión manual, se deja de reintentar",
+                        documento.DocEntry, documento.DocNum, compania.CompanyCode, _asignacionParcialOptions.MaxIntentos);
+                    await _logSink.WriteAsync(new LogEntry
+                    {
+                        FechaHora = DateTimeOffset.Now,
+                        Nivel = NivelLog.Error,
+                        CompanyCode = compania.CompanyCode,
+                        Mensaje = $"DocEntry {documento.DocEntry} (DocNum {documento.DocNum}) alcanzó el máximo de {_asignacionParcialOptions.MaxIntentos} intentos fallando -- requiere revisión manual",
+                        Detalle = null
+                    }, ct);
+
+                    repositorio.MarcarDocumentoCompletado(connectionString, tipoDocumento.TablaCabecera, compania.CompletionUdfFieldName, documento.DocEntry);
+                    _intentosStore.Limpiar(compania.CompanyCode, documento.ObjType, documento.DocEntry);
+                }
+            }
+        }
+    }
+
+    private async Task ProcesarDocumentoAsync(
+        CompanyConnectionConfig compania,
+        IStockRepository repositorio,
+        string connectionString,
+        ServiceLayerClient serviceLayer,
+        string warehousePriorityTable,
+        string pickingQuery,
+        TipoDocumento tipoDocumento,
+        HeaderDocument documento,
+        Dictionary<(string WhsCode, string ItemCode), decimal> ledgerCiclo,
+        CancellationToken ct)
+    {
+        var lineasTransferir = new List<StockTransferLine>();
+        // Si alguna línea con necesidad real no queda 100% cubierta (stock insuficiente
+        // en las bodegas origen de la cascada, o bodega destino sin cascada configurada),
+        // el documento NO se marca completado -- debe reintentarse en el próximo ciclo
+        // para transferir el faltante en cuanto haya stock disponible.
+        var necesidadTotalmenteCubierta = true;
+
+        foreach (var linea in repositorio.ObtenerLineas(connectionString, tipoDocumento.TablaDetalle, tipoDocumento.ColumnaBodegaDestino, documento.DocEntry))
             {
                 var disponibleDestino = repositorio
                     .ObtenerDisponible(connectionString, linea.ItemCode, [linea.WhsCode])
@@ -291,9 +350,8 @@ public sealed class Worker : BackgroundService
                         Detalle = null
                     }, ct);
 
-                    repositorio.MarcarDocumentoCompletado(connectionString, tipoDocumento.TablaCabecera, compania.CompletionUdfFieldName, documento.DocEntry);
-                    _intentosStore.Limpiar(compania.CompanyCode, documento.ObjType, documento.DocEntry);
-                }
+                repositorio.MarcarDocumentoCompletado(connectionString, tipoDocumento.TablaCabecera, compania.CompletionUdfFieldName, documento.DocEntry);
+                _intentosStore.Limpiar(compania.CompanyCode, documento.ObjType, documento.DocEntry);
             }
         }
     }

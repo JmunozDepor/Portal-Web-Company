@@ -12,6 +12,18 @@ namespace Servicios.TransferenciaAutomatica_v2.Db;
 /// </summary>
 public sealed class HanaStockRepository : IStockRepository
 {
+    /// <summary>
+    /// Sin esto, un query que queda esperando un lock de tabla (ej. otro proceso SAP con
+    /// una transacción larga sobre ORDR/OITW) bloquea indefinidamente el hilo único del
+    /// Worker -- nada vuelve a correr, ni siquiera el próximo ciclo, hasta que algo externo
+    /// libere el lock. El driver Sap.Data.Hana no trae un default acotado como SqlClient,
+    /// así que hay que fijarlo explícito. 30s acota el peor caso a "el documento falla y se
+    /// reintenta" (cae en el aislamiento por documento de Worker.cs) en vez de "el servicio
+    /// queda pegado". No se toca la connection string (a diferencia de SqlServerStockRepository)
+    /// para no repetir la clase de bug de plomería que este driver ya tuvo con el ";" final.
+    /// </summary>
+    private const int ComandoTimeoutSegundos = 30;
+
     // confiaCertificado no aplica a HANA (ver IStockRepository.ConnectionString) -- este
     // motor ya resuelve la validación de certificado vía "encriptada".
     public string ConnectionString(string host, int port, string schema, string userId, string password, bool encriptada, bool confiaCertificado)
@@ -26,7 +38,7 @@ public sealed class HanaStockRepository : IStockRepository
 
         using var conexion = new HanaConnection(connectionString);
         conexion.Open();
-        using var comando = new HanaCommand(HanaQueries.Cabecera(headerQuerySource), conexion);
+        using var comando = new HanaCommand(HanaQueries.Cabecera(headerQuerySource), conexion) { CommandTimeout = ComandoTimeoutSegundos };
         using var lector = comando.ExecuteReader();
         var ordDocEntry = lector.GetOrdinal("DocEntry");
         var ordDocNum = lector.GetOrdinal("DocNum");
@@ -49,7 +61,7 @@ public sealed class HanaStockRepository : IStockRepository
     {
         using var conexion = new HanaConnection(connectionString);
         conexion.Open();
-        using var comando = new HanaCommand(pickingPendingQuery, conexion);
+        using var comando = new HanaCommand(pickingPendingQuery, conexion) { CommandTimeout = ComandoTimeoutSegundos };
         comando.Parameters.Add(new HanaParameter("docEntry", docEntry));
         var cantidad = Convert.ToInt32(comando.ExecuteScalar());
         return cantidad > 0;
@@ -61,7 +73,7 @@ public sealed class HanaStockRepository : IStockRepository
 
         using var conexion = new HanaConnection(connectionString);
         conexion.Open();
-        using var comando = new HanaCommand(HanaQueries.Lineas(tablaDetalle, columnaBodegaDestino), conexion);
+        using var comando = new HanaCommand(HanaQueries.Lineas(tablaDetalle, columnaBodegaDestino), conexion) { CommandTimeout = ComandoTimeoutSegundos };
         comando.Parameters.Add(new HanaParameter("docEntry", docEntry));
 
         using var lector = comando.ExecuteReader();
@@ -91,7 +103,7 @@ public sealed class HanaStockRepository : IStockRepository
 
         using var conexion = new HanaConnection(connectionString);
         conexion.Open();
-        using var comando = new HanaCommand(HanaQueries.PrioridadBodegas(warehousePriorityTable), conexion);
+        using var comando = new HanaCommand(HanaQueries.PrioridadBodegas(warehousePriorityTable), conexion) { CommandTimeout = ComandoTimeoutSegundos };
         comando.Parameters.Add(new HanaParameter("whsCodeDestino", whsCodeDestino));
 
         using var lector = comando.ExecuteReader();
@@ -122,7 +134,7 @@ public sealed class HanaStockRepository : IStockRepository
 
         using var conexion = new HanaConnection(connectionString);
         conexion.Open();
-        using var comando = new HanaCommand(HanaQueries.Disponible(whsCodes.Count), conexion);
+        using var comando = new HanaCommand(HanaQueries.Disponible(whsCodes.Count), conexion) { CommandTimeout = ComandoTimeoutSegundos };
         comando.Parameters.Add(new HanaParameter("itemCode", itemCode));
         foreach (var whsCode in whsCodes)
         {
@@ -145,7 +157,7 @@ public sealed class HanaStockRepository : IStockRepository
     {
         using var conexion = new HanaConnection(connectionString);
         conexion.Open();
-        using var comando = new HanaCommand(HanaQueries.MarcarCompletado(tablaCabecera, completionUdfFieldName), conexion);
+        using var comando = new HanaCommand(HanaQueries.MarcarCompletado(tablaCabecera, completionUdfFieldName), conexion) { CommandTimeout = ComandoTimeoutSegundos };
         comando.Parameters.Add(new HanaParameter("docEntry", docEntry));
         comando.ExecuteNonQuery();
     }

@@ -13,6 +13,15 @@ namespace Servicios.TransferenciaAutomatica_v2.Db;
 /// </summary>
 public sealed class SqlServerStockRepository : IStockRepository
 {
+    /// <summary>
+    /// Sin esto, un query que queda esperando un lock de tabla (ej. otro proceso SAP con
+    /// una transacción larga sobre ORDR/OITW) bloquea indefinidamente el hilo único del
+    /// Worker -- nada vuelve a correr, ni siquiera el próximo ciclo, hasta que algo externo
+    /// libere el lock. 30s acota el peor caso a "el documento falla y se reintenta" (cae en
+    /// el aislamiento por documento de Worker.cs) en vez de "el servicio queda pegado".
+    /// </summary>
+    private const int ComandoTimeoutSegundos = 30;
+
     public string ConnectionString(string host, int port, string schema, string userId, string password, bool encriptada, bool confiaCertificado)
     {
         var builder = new SqlConnectionStringBuilder
@@ -22,7 +31,12 @@ public sealed class SqlServerStockRepository : IStockRepository
             UserID = userId,
             Password = password,
             Encrypt = encriptada,
-            TrustServerCertificate = confiaCertificado
+            TrustServerCertificate = confiaCertificado,
+            // Mismo criterio que ComandoTimeoutSegundos, pero para la fase de conexión
+            // (ej. el servidor SQL inalcanzable por un corte de red) -- sin esto el
+            // default de SqlClient (15s) igual aplica, pero lo dejamos explícito acá para
+            // que quede documentado junto al resto de los timeouts de este repositorio.
+            ConnectTimeout = 15
         };
 
         return builder.ConnectionString;
@@ -34,7 +48,7 @@ public sealed class SqlServerStockRepository : IStockRepository
 
         using var conexion = new SqlConnection(connectionString);
         conexion.Open();
-        using var comando = new SqlCommand(SqlServerQueries.Cabecera(headerQuerySource), conexion);
+        using var comando = new SqlCommand(SqlServerQueries.Cabecera(headerQuerySource), conexion) { CommandTimeout = ComandoTimeoutSegundos };
         using var lector = comando.ExecuteReader();
         var ordDocEntry = lector.GetOrdinal("DocEntry");
         var ordDocNum = lector.GetOrdinal("DocNum");
@@ -57,7 +71,7 @@ public sealed class SqlServerStockRepository : IStockRepository
     {
         using var conexion = new SqlConnection(connectionString);
         conexion.Open();
-        using var comando = new SqlCommand(pickingPendingQuery, conexion);
+        using var comando = new SqlCommand(pickingPendingQuery, conexion) { CommandTimeout = ComandoTimeoutSegundos };
         comando.Parameters.AddWithValue("@docEntry", docEntry);
         var cantidad = Convert.ToInt32(comando.ExecuteScalar());
         return cantidad > 0;
@@ -69,7 +83,7 @@ public sealed class SqlServerStockRepository : IStockRepository
 
         using var conexion = new SqlConnection(connectionString);
         conexion.Open();
-        using var comando = new SqlCommand(SqlServerQueries.Lineas(tablaDetalle, columnaBodegaDestino), conexion);
+        using var comando = new SqlCommand(SqlServerQueries.Lineas(tablaDetalle, columnaBodegaDestino), conexion) { CommandTimeout = ComandoTimeoutSegundos };
         comando.Parameters.AddWithValue("@docEntry", docEntry);
 
         using var lector = comando.ExecuteReader();
@@ -99,7 +113,7 @@ public sealed class SqlServerStockRepository : IStockRepository
 
         using var conexion = new SqlConnection(connectionString);
         conexion.Open();
-        using var comando = new SqlCommand(SqlServerQueries.PrioridadBodegas(warehousePriorityTable), conexion);
+        using var comando = new SqlCommand(SqlServerQueries.PrioridadBodegas(warehousePriorityTable), conexion) { CommandTimeout = ComandoTimeoutSegundos };
         comando.Parameters.AddWithValue("@whsCodeDestino", whsCodeDestino);
 
         using var lector = comando.ExecuteReader();
@@ -132,7 +146,7 @@ public sealed class SqlServerStockRepository : IStockRepository
 
         using var conexion = new SqlConnection(connectionString);
         conexion.Open();
-        using var comando = new SqlCommand(SqlServerQueries.Disponible(nombresParametros), conexion);
+        using var comando = new SqlCommand(SqlServerQueries.Disponible(nombresParametros), conexion) { CommandTimeout = ComandoTimeoutSegundos };
         comando.Parameters.AddWithValue("@itemCode", itemCode);
         for (var i = 0; i < whsCodes.Count; i++)
         {
@@ -155,7 +169,7 @@ public sealed class SqlServerStockRepository : IStockRepository
     {
         using var conexion = new SqlConnection(connectionString);
         conexion.Open();
-        using var comando = new SqlCommand(SqlServerQueries.MarcarCompletado(tablaCabecera, completionUdfFieldName), conexion);
+        using var comando = new SqlCommand(SqlServerQueries.MarcarCompletado(tablaCabecera, completionUdfFieldName), conexion) { CommandTimeout = ComandoTimeoutSegundos };
         comando.Parameters.AddWithValue("@docEntry", docEntry);
         comando.ExecuteNonQuery();
     }

@@ -68,7 +68,12 @@ public sealed class ServiceLayerClient : IDisposable
 
         _http = new HttpClient(handler)
         {
-            BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/")
+            BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/"),
+            // Explícito en vez de confiar en el default de HttpClient (100s): si Service
+            // Layer se degrada, un login o un POST colgado no debe poder acaparar el hilo
+            // único del Worker por más de esto -- cae en el aislamiento por documento de
+            // Worker.cs en vez de arrastrar el resto del ciclo.
+            Timeout = TimeSpan.FromSeconds(60)
         };
     }
 

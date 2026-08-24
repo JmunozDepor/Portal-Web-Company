@@ -1,5 +1,5 @@
-# Compila los plugins externos (Modulo.Rendiciones, Modulo.GestionDistribucionGastos) y
-# luego Portal SaaS - Core, en ese orden -- los plugins primero porque su output se
+# Compila los plugins externos (Modulo.Rendiciones, Modulo.GestionDistribucionGastos,
+# Modulo.SellOut) y luego Portal SaaS - Core, en ese orden -- los plugins primero porque su output se
 # copia (por el junction de cada uno) a Core\artifacts\plugins\{Modulo} antes de que el
 # Host los cargue. Para el Host antes de compilar Core (mismo motivo que
 # .vscode/stop-host.ps1): el DLL queda bloqueado mientras el proceso corre.
@@ -64,10 +64,11 @@ Start-Sleep -Seconds 1
 # siempre el output real del build de hoy, nunca una mezcla con uno anterior. No se
 # toca el junction en Core\artifacts\plugins\{Modulo} -- apunta a la carpeta por
 # nombre, no por inodo, así que sigue resolviendo bien apenas el build la recrea.
-Write-Host "== Limpiando dist\ de ambos plugins ==" -ForegroundColor Cyan
+Write-Host "== Limpiando dist\ de los plugins externos ==" -ForegroundColor Cyan
 @(
     "$root\Portal SaaS - Plugins\Modulo.Rendiciones\dist\Modulo.Rendiciones",
-    "$root\Portal SaaS - Plugins\Modulo.GestionDistribucionGastos\dist\Modulo.GestionDistribucionGastos"
+    "$root\Portal SaaS - Plugins\Modulo.GestionDistribucionGastos\dist\Modulo.GestionDistribucionGastos",
+    "$root\Portal SaaS - Plugins\Modulo.SellOut\dist\Modulo.SellOut"
 ) | ForEach-Object {
     if (Test-Path $_) {
         Write-Host "Borrando $_"
@@ -82,6 +83,10 @@ if ($LASTEXITCODE -ne 0) { throw "Falló el build de Modulo.Rendiciones" }
 Write-Host "== Compilando Modulo.GestionDistribucionGastos (Release) ==" -ForegroundColor Cyan
 dotnet build "$root\Portal SaaS - Plugins\Modulo.GestionDistribucionGastos\src\Modulo.GestionDistribucionGastos\Modulo.GestionDistribucionGastos.csproj" -c Release
 if ($LASTEXITCODE -ne 0) { throw "Falló el build de Modulo.GestionDistribucionGastos" }
+
+Write-Host "== Compilando Modulo.SellOut (Release) ==" -ForegroundColor Cyan
+dotnet build "$root\Portal SaaS - Plugins\Modulo.SellOut\src\Modulo.SellOut\Modulo.SellOut.csproj" -c Release
+if ($LASTEXITCODE -ne 0) { throw "Falló el build de Modulo.SellOut" }
 
 Write-Host "== Compilando Portal SaaS - Core ==" -ForegroundColor Cyan
 dotnet build "$root\Portal SaaS - Core\PortalSaas.sln"
@@ -170,7 +175,7 @@ function Start-PortalSaasInstance {
 }
 
 Start-PortalSaasInstance -Nombre "Central" -Url "http://localhost:6001" -EnvVars @{
-    "Database__Provider"              = "sqlserver"
+    "Database__Provider"              = "postgresql"
     "ConnectionStrings__Default"      = $Secrets.Central.ConnectionString
     "Security__MasterSecretKey"       = $Secrets.Central.MasterSecretKey
     "Licensing__Role"                 = "Central"
@@ -179,10 +184,19 @@ Start-PortalSaasInstance -Nombre "Central" -Url "http://localhost:6001" -EnvVars
 }
 
 Start-PortalSaasInstance -Nombre "Comercial Depor (OnPremise)" -Url "http://localhost:6002" -EnvVars @{
-    "Database__Provider"          = "sqlserver"
+    "Database__Provider"          = "postgresql"
     "ConnectionStrings__Default"  = $Secrets.ComercialDepor.ConnectionString
     "Security__MasterSecretKey"   = $Secrets.ComercialDepor.MasterSecretKey
     "Licensing__CentralPublicKey" = $Secrets.ComercialDepor.LicensingPublicKey
+    # Rol OnPremise real -- sin esto LicenseActivatorBackgroundService nunca se
+    # registra (ver Program.cs) y on_premise_licenses.signed_status_token queda
+    # siempre vacío, bloqueando cualquier operación con límite de plan (ver
+    # ContractLimitService.GetLimitsFromSignedLicenseAsync) con el mensaje "La
+    # organización no tiene un plan vigente" aunque la fila de licencia exista y esté
+    # activa -- encontrado 20 ago 2026 al migrar Depor a Postgres.
+    "Licensing__Role"             = "OnPremise"
+    "Licensing__ActivationKey"    = $Secrets.ComercialDepor.LicensingActivationKey
+    "Licensing__CentralServerUrl" = "http://localhost:6001"
     # Instalación OnPremise de una sola organización/compañía real -- el Login precarga
     # y bloquea el campo Organización, y el selector de compañía (SelectCompany.cshtml)
     # hace lo mismo un paso más adelante, en vez de dejar "elegir" entre opciones que no

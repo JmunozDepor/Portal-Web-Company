@@ -56,47 +56,54 @@
                     </div>
                 }
 
-                @* asp-antiforgery="true" explícito -- un <form method="post"> sin NINGÚN
-                   otro atributo asp-* no dispara la inyección automática del token del
-                   FormTagHelper, ver el comentario histórico de esta página (ya
-                   corregido antes, se preserva acá). *@
-                <form method="post" asp-antiforgery="true">
-                    <input type="hidden" asp-for="Input.ReturnUrl" />
-                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                @if (Model.Companies.Count > 0)
+                {
+                    @* asp-antiforgery="true" explícito -- un <form method="post"> sin NINGÚN
+                       otro atributo asp-* no dispara la inyección automática del token del
+                       FormTagHelper, ver el comentario histórico de esta página (ya
+                       corregido antes, se preserva acá). *@
+                    <form method="post" asp-antiforgery="true">
+                        <input type="hidden" asp-for="Input.ReturnUrl" />
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-                    <div class="form-group mb-3">
-                        <label asp-for="Input.CompanyId" class="form-label">Compañía</label>
-                        @if (Model.CompanyLocked)
-                        {
-                            @* Tenant:DefaultCompanyCode (appsettings) resolvió a una compañía real --
-                               instalación OnPremise de una sola compañía (ej. Comercial Depor), no
-                               tiene sentido dejar "elegir" entre opciones que no existen. Un <select
-                               disabled> no viaja en el body del POST, así que el valor real se manda
-                               por un hidden aparte -- el server igual lo vuelve a resolver desde
-                               Tenant:DefaultCompanyCode en el POST (ver AplicarCompaniaBloqueadaSiCorresponde),
-                               nunca confía en este valor. *@
-                            <select class="form-control form-select" disabled>
-                                <option selected>@Model.Companies.First(c => c.Value == Model.Input.CompanyId.ToString()).Text</option>
-                            </select>
-                            <input type="hidden" asp-for="Input.CompanyId" />
-                            <div class="form-text">Compañía fija de esta instalación.</div>
-                        }
-                        else
-                        {
-                            <select asp-for="Input.CompanyId" class="form-control form-select" asp-items="Model.Companies">
-                                <option value="">Seleccionar…</option>
-                            </select>
-                        }
-                        <span asp-validation-for="Input.CompanyId" class="text-danger"></span>
-                    </div>
+                        <div class="form-group mb-3">
+                            <label asp-for="Input.CompanyId" class="form-label">Compañía</label>
+                            @if (Model.CompanyLocked)
+                            {
+                                @* Tenant:DefaultCompanyCode (appsettings) resolvió a una compañía real --
+                                   instalación OnPremise de una sola compañía (ej. Comercial Depor), no
+                                   tiene sentido dejar "elegir" entre opciones que no existen. Un <select
+                                   disabled> no viaja en el body del POST, así que el valor real se manda
+                                   por un hidden aparte -- el server igual lo vuelve a resolver desde
+                                   Tenant:DefaultCompanyCode en el POST (ver AplicarCompaniaBloqueadaSiCorresponde),
+                                   nunca confía en este valor. *@
+                                <select class="form-control form-select" disabled>
+                                    <option selected>@Model.Companies.First(c => c.Value == Model.Input.CompanyId.ToString()).Text</option>
+                                </select>
+                                <input type="hidden" asp-for="Input.CompanyId" />
+                                <div class="form-text">Compañía fija de esta instalación.</div>
+                            }
+                            else
+                            {
+                                <select asp-for="Input.CompanyId" class="form-control form-select" asp-items="Model.Companies">
+                                    <option value="">Seleccionar…</option>
+                                </select>
+                            }
+                            <span asp-validation-for="Input.CompanyId" class="text-danger"></span>
+                        </div>
 
-                    <div class="form-check mb-3">
-                        <input asp-for="Input.Recordar" class="form-check-input" />
-                        <label asp-for="Input.Recordar" class="form-check-label">Recordar esta compañía la próxima vez que entre</label>
-                    </div>
+                        <div class="form-check mb-3">
+                            <input asp-for="Input.Recordar" class="form-check-input" />
+                            <label asp-for="Input.Recordar" class="form-check-label">Recordar esta compañía la próxima vez que entre</label>
+                        </div>
 
-                    <button type="submit" class="login-submit">Continuar</button>
-                </form>
+                        <button type="submit" class="login-submit">Continuar</button>
+                    </form>
+                }
+                else if (Model.ErrorMessage is not null)
+                {
+                    <p class="text-muted" style="font-size: 12.5px;">No tenés acceso a ninguna compañía todavía.</p>
+                }
 
                 <form method="post" asp-page="/Account/Logout" class="text-center mt-3 mb-0">
                     <button type="submit" class="btn btn-link p-0" style="font-size: 12.5px;">Cerrar sesión</button>

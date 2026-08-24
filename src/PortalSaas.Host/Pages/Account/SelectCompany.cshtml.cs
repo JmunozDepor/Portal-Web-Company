@@ -77,12 +77,19 @@ public class SelectCompanyModel : PageModel
             {
                 return LocalRedirect(Url.IsLocalUrl(returnUrl) && returnUrl is not null ? returnUrl : Url.Content("~/Home/Index"));
             }
-            // Default inválido hoy (compañía desactivada/borrada o acceso revocado) --
-            // sigue al selector normal en vez de romper el login.
+
+            // Default configurado (UserPreference.DefaultCompanyId) pero sin acceso real
+            // (compañía desactivada/borrada, o sin fila en UserMenuGroups/UserMenuProfiles
+            // para el usuario -- ver CompanySessionActivator.TryActivateAsync). Antes esto
+            // caía en silencio al selector normal con un mensaje genérico recién al
+            // postear -- ahora se explica la causa acá mismo, apenas se detecta.
+            var companiaDefault = await _db.Companies.FindAsync(companyId);
+            var nombreDefault = companiaDefault is not null ? $"{companiaDefault.Code} — {companiaDefault.Name}" : "configurada";
+            ErrorMessage = $"Tu compañía por defecto ({nombreDefault}) no tiene permisos configurados. Contacta a tu administrador.";
         }
 
         Input.ReturnUrl = returnUrl;
-        await CargarCompaniasAsync();
+        await CargarCompaniasConAccesoAsync(userId);
         AplicarCompaniaBloqueadaSiCorresponde();
         return Page();
     }
@@ -94,7 +101,8 @@ public class SelectCompanyModel : PageModel
             return LocalRedirect(Url.IsLocalUrl(Input.ReturnUrl) && Input.ReturnUrl is not null ? Input.ReturnUrl : Url.Content("~/Home/Index"));
         }
 
-        await CargarCompaniasAsync();
+        var userIdPost = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await CargarCompaniasConAccesoAsync(userIdPost);
 
         // Con el selector bloqueado, el valor real NUNCA se toma de lo que mandó el POST
         // (un <select disabled> no viaja en el body, pero igual no hay que confiar en un
@@ -155,13 +163,25 @@ public class SelectCompanyModel : PageModel
         CompanyLocked = true;
     }
 
-    private async Task CargarCompaniasAsync()
+    private async Task CargarCompaniasConAccesoAsync(Guid userId)
     {
         var organizationId = Guid.Parse(User.FindFirstValue("OrganizationId")!);
-        _companyEntities = await _db.Companies
-            .Where(c => c.OrganizationId == organizationId && c.IsActive)
-            .OrderBy(c => c.Code)
-            .ToListAsync();
+        var isAdmin = bool.Parse(User.FindFirstValue("IsAdmin")!);
+
+        var query = _db.Companies.Where(c => c.OrganizationId == organizationId && c.IsActive);
+
+        // Mismo criterio que CompanySessionActivator/CompanySwitcherViewComponent -- un
+        // admin ve todas, un usuario normal solo las que tiene acceso real vía
+        // UserMenuGroups/UserMenuProfiles. Sin esto, el selector mostraría compañías que
+        // igual rechazaría OnPostAsync al intentar activarlas.
+        if (!isAdmin)
+        {
+            query = query.Where(c =>
+                _db.UserMenuGroups.Any(g => g.UserId == userId && g.CompanyId == c.Id) ||
+                _db.UserMenuProfiles.Any(p => p.UserId == userId && p.CompanyId == c.Id));
+        }
+
+        _companyEntities = await query.OrderBy(c => c.Code).ToListAsync();
         Companies = _companyEntities
             .Select(c => new SelectListItem($"{c.Code} — {c.Name}", c.Id.ToString()))
             .ToList();

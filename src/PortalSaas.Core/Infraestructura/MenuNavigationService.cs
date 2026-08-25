@@ -84,6 +84,18 @@ public sealed class MenuNavigationService : IMenuNavigationService
             activeMenus = activeMenus.Where(m => !hiddenModules.Contains(m.OriginModule)).ToList();
         }
 
+        // Personalización por organización (rename/reorder/hide de un nodo puntual) --
+        // igual que el filtro de módulos ocultos de arriba, corre ANTES del bypass de
+        // administrador: es preferencia de la organización sobre qué se ve, no permiso
+        // individual, así que también alcanza a los admins de esa organización.
+        var overrides = await _db.OrganizationMenuOverrides
+            .Where(o => o.OrganizationId == _currentUser.OrganizationId)
+            .ToDictionaryAsync(o => o.MenuId, ct);
+        if (overrides.Count > 0)
+        {
+            activeMenus = ApplyOverrides(activeMenus, overrides);
+        }
+
         if (_currentUser.IsAdmin)
         {
             return MenuTreeHelper.BuildTree(activeMenus);
@@ -151,5 +163,71 @@ public sealed class MenuNavigationService : IMenuNavigationService
         }
 
         return visible;
+    }
+
+    /// <summary>
+    /// Aplica rename/reorder de OrganizationMenuOverride y remueve los nodos ocultos
+    /// junto con TODO su subárbol (para no dejar hijos huérfanos visibles sin su
+    /// carpeta contenedora) -- todo en memoria sobre `nodes` ya cargado, sin consultas
+    /// adicionales. MenuNodeDto tiene propiedades `init`, así que un nodo con override
+    /// de nombre/orden se reconstruye entero en vez de mutarse.
+    /// </summary>
+    private static List<MenuNodeDto> ApplyOverrides(List<MenuNodeDto> nodes, Dictionary<long, Data.Entities.OrganizationMenuOverride> overridesByMenuId)
+    {
+        var hiddenRootIds = overridesByMenuId.Where(kv => kv.Value.IsHidden).Select(kv => kv.Key).ToHashSet();
+        var hiddenWithDescendants = hiddenRootIds.Count == 0 ? hiddenRootIds : ExpandWithDescendants(nodes, hiddenRootIds);
+
+        return nodes
+            .Where(n => !hiddenWithDescendants.Contains(n.Id))
+            .Select(n =>
+            {
+                if (!overridesByMenuId.TryGetValue(n.Id, out var ov))
+                {
+                    return n;
+                }
+
+                return new MenuNodeDto
+                {
+                    Id = n.Id,
+                    ParentMenuId = n.ParentMenuId,
+                    OriginModule = n.OriginModule,
+                    Code = n.Code,
+                    Name = ov.CustomLabel ?? n.Name,
+                    Icon = n.Icon,
+                    PagePath = n.PagePath,
+                    Order = ov.CustomOrder ?? n.Order,
+                };
+            })
+            .ToList();
+    }
+
+    /// <summary>Baja por Children (vía ParentMenuId) desde cada id raíz hasta las hojas -- mismo criterio sin-N+1 que ExpandWithAncestors, pero en la dirección opuesta.</summary>
+    private static HashSet<long> ExpandWithDescendants(List<MenuNodeDto> allNodes, HashSet<long> rootIds)
+    {
+        var childrenByParent = allNodes
+            .Where(n => n.ParentMenuId is not null)
+            .GroupBy(n => n.ParentMenuId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(n => n.Id).ToList());
+
+        var result = new HashSet<long>(rootIds);
+        var queue = new Queue<long>(rootIds);
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (!childrenByParent.TryGetValue(current, out var children))
+            {
+                continue;
+            }
+
+            foreach (var childId in children)
+            {
+                if (result.Add(childId))
+                {
+                    queue.Enqueue(childId);
+                }
+            }
+        }
+
+        return result;
     }
 }

@@ -46,6 +46,30 @@ public class WmsSapStageStoreWriterTests
     }
 
     [Fact]
+    public async Task EscribirAsync_ConSourceUpdateDateComoStringDeHana_LoParseaSinExplotar()
+    {
+        // U_NX_UPDATEDATE en OCRD es un UDF tipado "nvarchar" en HANA, no timestamp nativo
+        // (confirmado 24 ago 2026 contra CLPRDDEPOR) -- SqlDirectConnector/QueryDynamicAsync
+        // entrega el valor como System.String, no DateTime. Un cast directo tira
+        // InvalidCastException; regresión de ese bug real.
+        var contexto = CrearContexto();
+        var writer = new WmsSapStageStoreWriter(contexto);
+        var companyId = Guid.NewGuid();
+
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["PK"] = "C001",
+            ["CardName"] = "Tienda de prueba",
+            ["SourceUpdateDate"] = "2025-02-08 13:52:59.1690000",
+        });
+
+        await writer.EscribirAsync(companyId, [registro], CancellationToken.None);
+
+        var fila = Assert.Single(contexto.WmsSapStageStores);
+        Assert.Equal(new DateTime(2025, 2, 8, 13, 52, 59, 169), fila.SourceUpdateDate);
+    }
+
+    [Fact]
     public async Task EscribirAsync_CambiaCampoQueEstaEnValidationFields_MarcaPendiente()
     {
         var contexto = CrearContexto();

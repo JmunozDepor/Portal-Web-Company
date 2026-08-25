@@ -39,7 +39,7 @@ public class WmsSapStageStoreWriter : IIntegrationEntityWriter
         foreach (var registro in registros)
         {
             var pk = (string)registro["PK"]!;
-            var sourceUpdateDate = (DateTime)registro["SourceUpdateDate"]!;
+            var sourceUpdateDate = ConvertirFecha(registro["SourceUpdateDate"]);
             var existente = existentes.GetValueOrDefault(pk);
 
             var extra = registro.Fields
@@ -79,6 +79,20 @@ public class WmsSapStageStoreWriter : IIntegrationEntityWriter
 
         await _contexto.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// A diferencia de Item, "U_NX_UPDATEDATE" en OCRD es un UDF tipado "nvarchar" en HANA
+    /// (confirmado 24 ago 2026 contra CLPRDDEPOR: GetDataTypeName devuelve "nvarchar", el
+    /// valor llega como System.String con formato "2025-02-08 13:52:59.1690000"), no un
+    /// timestamp nativo -- un cast directo a DateTime tira InvalidCastException. Se acepta
+    /// tanto DateTime (si algún día la columna cambia de tipo) como el string actual.
+    /// </summary>
+    private static DateTime ConvertirFecha(object? valor) => valor switch
+    {
+        DateTime dt => dt,
+        string s => DateTime.Parse(s, System.Globalization.CultureInfo.InvariantCulture),
+        _ => throw new InvalidOperationException($"SourceUpdateDate con tipo inesperado: {valor?.GetType().FullName ?? "null"}"),
+    };
 
     private static bool ValorCambio(Dictionary<string, object?> existentes, Dictionary<string, object?> nuevos, string campo)
     {

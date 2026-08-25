@@ -46,13 +46,20 @@
                                     @row.Name <span class="text-muted" style="font-size:11px;">(@($"{row.OriginModule}.{row.Code}"))</span>
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control form-control-sm" name="Input.CustomLabel[@row.MenuId]" value="@row.CustomLabel" placeholder="@row.Name" />
+                                    <input type="text" class="form-control form-control-sm" name="Input.CustomLabel[@row.MenuId]" value="@row.CustomLabel" placeholder="@row.Name" maxlength="200" />
                                 </td>
                                 <td>
                                     <input type="number" class="form-control form-control-sm" name="Input.CustomOrder[@row.MenuId]" value="@row.CustomOrder" />
                                 </td>
                                 <td class="text-center">
-                                    <input type="checkbox" name="Input.HiddenMenuIds" value="@row.MenuId" checked="@row.IsHidden" />
+                                    @if (row.OriginModule == "Administracion")
+                                    {
+                                        <input type="checkbox" name="Input.HiddenMenuIds" value="@row.MenuId" checked="@row.IsHidden" disabled="disabled" title="No se puede ocultar la administración." />
+                                    }
+                                    else
+                                    {
+                                        <input type="checkbox" name="Input.HiddenMenuIds" value="@row.MenuId" checked="@row.IsHidden" />
+                                    }
                                 </td>
                             </tr>
                         }

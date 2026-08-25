@@ -40,7 +40,16 @@ public sealed class IndexModel : AdminPageModelBase
                 Input.CustomOrder.GetValueOrDefault(menuId),
                 hiddenSet.Contains(menuId)));
 
-        await _overrides.SaveOverridesAsync(overridesByMenuId);
+        try
+        {
+            await _overrides.SaveOverridesAsync(overridesByMenuId);
+        }
+        catch (Exception ex)
+        {
+            MensajeError = ObtenerMensajeError(ex);
+            Rows = await _overrides.ListAsync();
+            return Page();
+        }
 
         MensajeExito = "Menús actualizados correctamente.";
         return RedirectToPage();

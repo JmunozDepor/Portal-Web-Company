@@ -2,81 +2,38 @@
 @model Modulo.SellOut.Pages.Geografias.IndexModel
 @{
     ViewData["Title"] = "Geografías";
+    var puedeAbrirFormulario = Model.PuedeVer && (Model.PuedeCrear || Model.PuedeEditar);
+    var formularioAbierto = Model.EditandoId is not null || !ViewData.ModelState.IsValid;
 }
 
-<div class="card-ps admin-card">
-    <div class="admin-card-header">
-        <h2>Geografías</h2>
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Geografías</h2>
+        @if (Model.PuedeVer && Model.PuedeCrear)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-geografia">+ Nueva geografía</button>
+        }
     </div>
 
     <partial name="_MensajesSellOut" model="Model" />
 
     @if (!Model.PuedeVer)
     {
-        <p class="admin-muted">No tenés permiso para ver esta pantalla.</p>
+        <p class="text-muted">No tenés permiso para ver esta pantalla.</p>
     }
     else
     {
-        @if (Model.PuedeCrear || Model.PuedeEditar)
-        {
-            <div class="doc-tab-seccion sellout-panel-edicion">
-                <h3>@(Model.EditandoId is null ? "Nueva geografía" : $"Editar geografía · {Model.Input.Region}")</h3>
-
-                <form asp-page="./Index" asp-page-handler="Guardar" asp-route-editando="@Model.EditandoId" method="post">
-                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
-                    <div asp-validation-summary="All" class="text-danger"></div>
-                    <div class="sellout-grid">
-                        <div class="form-group">
-                            <label asp-for="Input.IDGeografia">ID</label>
-                            <input asp-for="Input.IDGeografia" type="number" class="form-control" readonly="@(Model.EditandoId is not null)" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.Region">Región</label>
-                            <input asp-for="Input.Region" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.RegionCorto">Región corto</label>
-                            <input asp-for="Input.RegionCorto" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.GrupoRegion">Grupo región</label>
-                            <input asp-for="Input.GrupoRegion" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.CodigoPais">Código país</label>
-                            <input asp-for="Input.CodigoPais" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.Pais">País</label>
-                            <input asp-for="Input.Pais" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.CodigoPostal">Código postal</label>
-                            <input asp-for="Input.CodigoPostal" class="form-control" />
-                        </div>
-                    </div>
-                    <button type="submit" class="btn-erp-primary">@(Model.EditandoId is null ? "Crear" : "Guardar")</button>
-                    @if (Model.EditandoId is not null)
-                    {
-                        <a href="~/sellout/geografias?filtroTexto=@Model.FiltroTexto" class="btn-module-action">Cancelar</a>
-                    }
-                </form>
-            </div>
-        }
-
-        <form method="get" class="doc-list-filtros">
-            <div class="form-group doc-list-busqueda">
-                <label for="filtro-texto">Buscar</label>
+        <form method="get" class="d-flex align-items-end gap-3 flex-wrap mb-3">
+            <div class="mb-0 flex-grow-1" style="max-width:320px;">
+                <label for="filtro-texto" class="form-label">Buscar</label>
                 <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Región, región corto o país..." />
             </div>
-            <div class="form-group doc-list-filtros-acciones">
-                <button type="submit" class="btn-module-action">Buscar</button>
-                <a href="~/sellout/geografias" class="btn-module-action">Limpiar</a>
-            </div>
+            <button type="submit" class="btn-secondary">Buscar</button>
+            <a href="~/sellout/geografias" class="btn-ghost">Limpiar</a>
         </form>
 
-        <table class="admin-table">
-            <thead><tr><th>ID</th><th>Región</th><th>Región corto</th><th>Grupo región</th><th>País</th><th>Código postal</th><th class="admin-col-accion"></th></tr></thead>
+        <table class="table-ps">
+            <thead><tr><th>ID</th><th>Región</th><th>Región corto</th><th>Grupo región</th><th>País</th><th>Código postal</th><th class="col-actions"></th></tr></thead>
             <tbody>
                 @foreach (var g in Model.Geografias)
                 {
@@ -87,24 +44,78 @@
                         <td>@g.GrupoRegion</td>
                         <td>@g.Pais (@g.CodigoPais)</td>
                         <td>@g.CodigoPostal</td>
-                        <td class="admin-col-accion">
-                            <div class="admin-row-actions">
-                                @if (Model.PuedeEditar)
-                                {
-                                    <a href="~/sellout/geografias?editando=@g.IDGeografia&filtroTexto=@Model.FiltroTexto" class="btn-module-action">Editar</a>
-                                }
-                                @if (Model.PuedeEliminar)
-                                {
-                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@g.IDGeografia" method="post" style="display:inline-block;"
-                                          onsubmit="return confirm('¿Eliminar la geografía &quot;@g.Region&quot;?');">
-                                        <button type="submit" class="btn-module-action btn-module-danger">Eliminar</button>
-                                    </form>
-                                }
-                            </div>
+                        <td class="col-actions">
+                            @if (Model.PuedeEditar)
+                            {
+                                <a href="~/sellout/geografias?editando=@g.IDGeografia&filtroTexto=@Model.FiltroTexto" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                            }
+                            @if (Model.PuedeEliminar)
+                            {
+                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@g.IDGeografia" method="post" class="d-inline-block"
+                                      onsubmit="return confirm('¿Eliminar la geografía &quot;@g.Region&quot;?');">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
                         </td>
                     </tr>
                 }
+                @if (Model.Geografias.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-muted">Sin geografías todavía.</td></tr>
+                }
             </tbody>
         </table>
+    }
+
+    @if (puedeAbrirFormulario)
+    {
+        <div id="drawer-geografia" class="drawer-overlay @(formularioAbierto ? "is-open" : "")" data-drawer>
+            <aside class="drawer-panel @(formularioAbierto ? "is-open" : "")">
+                <div class="drawer-header">
+                    <h3>@(Model.EditandoId is null ? "Nueva geografía" : $"Editar geografía · {Model.Input.Region}")</h3>
+                    <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <form asp-page="./Index" asp-page-handler="Guardar" asp-route-editando="@Model.EditandoId" method="post">
+                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
+                    <div class="drawer-body">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <div class="drawer-grid">
+                            <div class="mb-3">
+                                <label asp-for="Input.IDGeografia" class="form-label">ID</label>
+                                <input asp-for="Input.IDGeografia" type="number" class="form-control" readonly="@(Model.EditandoId is not null)" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Region" class="form-label">Región</label>
+                                <input asp-for="Input.Region" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.RegionCorto" class="form-label">Región corto</label>
+                                <input asp-for="Input.RegionCorto" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.GrupoRegion" class="form-label">Grupo región</label>
+                                <input asp-for="Input.GrupoRegion" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.CodigoPais" class="form-label">Código país</label>
+                                <input asp-for="Input.CodigoPais" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Pais" class="form-label">País</label>
+                                <input asp-for="Input.Pais" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.CodigoPostal" class="form-label">Código postal</label>
+                                <input asp-for="Input.CodigoPostal" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="drawer-footer">
+                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn-primary">@(Model.EditandoId is null ? "Crear" : "Guardar")</button>
+                    </div>
+                </form>
+            </aside>
+        </div>
     }
 </div>

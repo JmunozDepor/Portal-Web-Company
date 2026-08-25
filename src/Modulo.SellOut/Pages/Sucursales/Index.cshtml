@@ -2,150 +2,62 @@
 @model Modulo.SellOut.Pages.Sucursales.IndexModel
 @{
     ViewData["Title"] = "Sucursales";
+    var puedeAbrirFormulario = Model.PuedeVer && (Model.PuedeCrear || Model.PuedeEditar);
+    var formularioAbierto = Model.Editando is not null || !ViewData.ModelState.IsValid;
 
     string ConstruirUrlPagina(int pagina) =>
         $"~/sellout/sucursales?pagina={pagina}&tamanoPagina={Model.TamanoPagina}&filtroIdCliente={Model.FiltroIdCliente}&filtroTexto={Uri.EscapeDataString(Model.FiltroTexto ?? string.Empty)}";
 }
 
-<div class="card-ps admin-card">
-    <div class="admin-card-header">
-        <h2>Sucursales</h2>
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Sucursales</h2>
+        @if (Model.PuedeVer && Model.PuedeCrear)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-sucursal">+ Nueva sucursal</button>
+        }
     </div>
 
     <partial name="_MensajesSellOut" model="Model" />
 
     @if (!Model.PuedeVer)
     {
-        <p class="admin-muted">No tenés permiso para ver esta pantalla.</p>
+        <p class="text-muted">No tenés permiso para ver esta pantalla.</p>
     }
     else
     {
-        @if (Model.PuedeCrear || Model.PuedeEditar)
-        {
-            <div class="doc-tab-seccion sellout-panel-edicion">
-                <h3>@(Model.Editando is null ? "Nueva sucursal" : $"Editar sucursal · {Model.Input.NomSucursal}")</h3>
-
-                <form asp-page="./Index" asp-page-handler="Guardar" method="post">
-                    <input type="hidden" name="FiltroIdCliente" value="@Model.FiltroIdCliente" />
-                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
-                    <input type="hidden" name="Pagina" value="@Model.Pagina" />
-                    <input type="hidden" name="TamanoPagina" value="@Model.TamanoPagina" />
-                    <div asp-validation-summary="All" class="text-danger"></div>
-                    <div class="sellout-grid">
-                        <div class="form-group">
-                            <label asp-for="Input.IdCliente">Cliente</label>
-                            @if (Model.Editando is null)
-                            {
-                                <select asp-for="Input.IdCliente" asp-items="Model.ClientesDisponibles" class="form-control">
-                                    <option value="">Seleccionar...</option>
-                                </select>
-                            }
-                            else
-                            {
-                                <input type="hidden" asp-for="Input.IdCliente" />
-                                <input class="form-control" value="@Model.Input.IdCliente" readonly />
-                            }
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.IdSucursal">ID sucursal</label>
-                            <input asp-for="Input.IdSucursal" type="number" class="form-control" readonly="@(Model.Editando is not null)" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.NomSucursal">Nombre sucursal</label>
-                            <input asp-for="Input.NomSucursal" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.NomSucursalCliente">Nombre en cliente</label>
-                            <input asp-for="Input.NomSucursalCliente" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.Canal">Canal</label>
-                            <input asp-for="Input.Canal" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.SubCanal">Subcanal</label>
-                            <input asp-for="Input.SubCanal" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.Cadena">Cadena</label>
-                            <input asp-for="Input.Cadena" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.SubCadena">Subcadena</label>
-                            <input asp-for="Input.SubCadena" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.IDLocalizacion">Localización</label>
-                            <select asp-for="Input.IDLocalizacion" asp-items="Model.LocalizacionesDisponibles" class="form-control">
-                                <option value="">Sin asignar</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.IDGrupoRetail">Grupo retail</label>
-                            <select asp-for="Input.IDGrupoRetail" asp-items="Model.GruposRetailDisponibles" class="form-control">
-                                <option value="">Sin asignar</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.SubCliente">Subcliente</label>
-                            <input asp-for="Input.SubCliente" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.GrupoSell">Grupo sell</label>
-                            <input asp-for="Input.GrupoSell" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label asp-for="Input.Supervisor">Supervisor</label>
-                            <input asp-for="Input.Supervisor" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label>&nbsp;</label>
-                            <label style="text-transform:none;font-weight:500;"><input asp-for="Input.Activo" type="checkbox" /> Activo</label>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn-erp-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
-                    @if (Model.Editando is not null)
-                    {
-                        <a href="@ConstruirUrlPagina(Model.Pagina)" class="btn-module-action">Cancelar</a>
-                    }
-                </form>
-            </div>
-        }
-
-        <form method="get" class="doc-list-filtros">
-            <div class="form-group">
-                <label for="filtro-cliente">Cliente</label>
-                <select id="filtro-cliente" name="FiltroIdCliente" class="form-control" onchange="this.form.submit()" asp-items="Model.ClientesDisponibles">
+        <form method="get" class="d-flex align-items-end gap-3 flex-wrap mb-3">
+            <div class="mb-0" style="min-width:220px;">
+                <label for="filtro-cliente" class="form-label">Cliente</label>
+                <select id="filtro-cliente" name="FiltroIdCliente" class="form-select" onchange="this.form.submit()" asp-items="Model.ClientesDisponibles">
                     <option value="">Todos los clientes</option>
                 </select>
             </div>
-            <div class="form-group doc-list-busqueda">
-                <label for="filtro-texto">Buscar</label>
+            <div class="mb-0 flex-grow-1" style="max-width:320px;">
+                <label for="filtro-texto" class="form-label">Buscar</label>
                 <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Nombre, canal o cadena..." />
             </div>
-            <div class="form-group">
-                <label for="tamano-pagina">Por página</label>
-                <select id="tamano-pagina" name="TamanoPagina" class="form-control">
+            <div class="mb-0" style="min-width:120px;">
+                <label for="tamano-pagina" class="form-label">Por página</label>
+                <select id="tamano-pagina" name="TamanoPagina" class="form-select">
                     @foreach (var tamano in Model.AvailablePageSizes)
                     {
                         <option value="@tamano" selected="@(tamano == Model.TamanoPagina)">@tamano</option>
                     }
                 </select>
             </div>
-            <div class="form-group doc-list-filtros-acciones">
-                <button type="submit" class="btn-module-action">Buscar</button>
-                <a href="~/sellout/sucursales" class="btn-module-action">Limpiar</a>
-            </div>
+            <button type="submit" class="btn-secondary">Buscar</button>
+            <a href="~/sellout/sucursales" class="btn-ghost">Limpiar</a>
         </form>
 
-        <div class="doc-list-contador">@Model.TotalRegistros registro(s) -- página @Model.Pagina de @Model.TotalPaginas</div>
+        <p class="text-muted mb-2">@Model.TotalRegistros registro(s) · página @Model.Pagina de @Model.TotalPaginas</p>
 
-        <table class="admin-table">
-            <thead><tr><th>Cliente</th><th>ID Suc.</th><th>Sucursal</th><th>Nombre en cliente</th><th>Canal</th><th>Cadena</th><th>Activo</th><th class="admin-col-accion"></th></tr></thead>
+        <table class="table-ps">
+            <thead><tr><th>Cliente</th><th>ID Suc.</th><th>Sucursal</th><th>Nombre en cliente</th><th>Canal</th><th>Cadena</th><th>Activo</th><th class="col-actions"></th></tr></thead>
             <tbody>
                 @foreach (var s in Model.Sucursales)
                 {
-                    <tr class="@((s.Activo ?? true) ? "" : "admin-fila-inactiva")">
+                    <tr class="@((s.Activo ?? true) ? "" : "row-inactive")">
                         <td>@s.NomCliente</td>
                         <td>@s.IdSucursal</td>
                         <td>@s.NomSucursal</td>
@@ -153,32 +65,131 @@
                         <td>@s.Canal</td>
                         <td>@s.Cadena</td>
                         <td>@((s.Activo ?? true) ? "Sí" : "No")</td>
-                        <td class="admin-col-accion">
-                            <div class="admin-row-actions">
-                                @if (Model.PuedeEditar)
-                                {
-                                    <a href="~/sellout/sucursales?editandoCliente=@s.IdCliente&editandoSucursal=@s.IdSucursal&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto&pagina=@Model.Pagina&tamanoPagina=@Model.TamanoPagina" class="btn-module-action">Editar</a>
-                                }
-                                @if (Model.PuedeEliminar)
-                                {
-                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@s.IdCliente" asp-route-idSucursal="@s.IdSucursal" method="post" style="display:inline-block;"
-                                          onsubmit="return confirm('¿Eliminar la sucursal &quot;@s.NomSucursal&quot;?');">
-                                        <button type="submit" class="btn-module-action btn-module-danger">Eliminar</button>
-                                    </form>
-                                }
-                            </div>
+                        <td class="col-actions">
+                            @if (Model.PuedeEditar)
+                            {
+                                <a href="~/sellout/sucursales?editandoCliente=@s.IdCliente&editandoSucursal=@s.IdSucursal&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto&pagina=@Model.Pagina&tamanoPagina=@Model.TamanoPagina" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                            }
+                            @if (Model.PuedeEliminar)
+                            {
+                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@s.IdCliente" asp-route-idSucursal="@s.IdSucursal" method="post" class="d-inline-block"
+                                      onsubmit="return confirm('¿Eliminar la sucursal &quot;@s.NomSucursal&quot;?');">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
                         </td>
                     </tr>
+                }
+                @if (Model.Sucursales.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-muted">Sin sucursales todavía.</td></tr>
                 }
             </tbody>
         </table>
 
-        <div class="doc-list-paginacion">
-            <a class="btn-module-action @(Model.Pagina <= 1 ? "disabled" : "")"
+        <div class="d-flex align-items-center justify-content-center gap-3 mt-3">
+            <a class="btn-secondary @(Model.Pagina <= 1 ? "disabled" : "")"
                href="@(Model.Pagina <= 1 ? "#" : ConstruirUrlPagina(Model.Pagina - 1))">« Anterior</a>
-            <span>Página @Model.Pagina de @Model.TotalPaginas</span>
-            <a class="btn-module-action @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")"
+            <span class="text-muted">Página @Model.Pagina de @Model.TotalPaginas</span>
+            <a class="btn-secondary @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")"
                href="@(Model.Pagina >= Model.TotalPaginas ? "#" : ConstruirUrlPagina(Model.Pagina + 1))">Siguiente »</a>
+        </div>
+    }
+
+    @if (puedeAbrirFormulario)
+    {
+        <div id="drawer-sucursal" class="drawer-overlay @(formularioAbierto ? "is-open" : "")" data-drawer>
+            <aside class="drawer-panel @(formularioAbierto ? "is-open" : "")">
+                <div class="drawer-header">
+                    <h3>@(Model.Editando is null ? "Nueva sucursal" : $"Editar sucursal · {Model.Input.NomSucursal}")</h3>
+                    <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <form asp-page="./Index" asp-page-handler="Guardar" method="post">
+                    <input type="hidden" name="FiltroIdCliente" value="@Model.FiltroIdCliente" />
+                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
+                    <input type="hidden" name="Pagina" value="@Model.Pagina" />
+                    <input type="hidden" name="TamanoPagina" value="@Model.TamanoPagina" />
+                    <div class="drawer-body">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <div class="drawer-grid">
+                            <div class="mb-3">
+                                <label asp-for="Input.IdCliente" class="form-label">Cliente</label>
+                                @if (Model.Editando is null)
+                                {
+                                    <select asp-for="Input.IdCliente" asp-items="Model.ClientesDisponibles" class="form-select">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                }
+                                else
+                                {
+                                    <input type="hidden" asp-for="Input.IdCliente" />
+                                    <input class="form-control" value="@Model.Input.IdCliente" readonly />
+                                }
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.IdSucursal" class="form-label">ID sucursal</label>
+                                <input asp-for="Input.IdSucursal" type="number" class="form-control" readonly="@(Model.Editando is not null)" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.NomSucursal" class="form-label">Nombre sucursal</label>
+                                <input asp-for="Input.NomSucursal" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.NomSucursalCliente" class="form-label">Nombre en cliente</label>
+                                <input asp-for="Input.NomSucursalCliente" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Canal" class="form-label">Canal</label>
+                                <input asp-for="Input.Canal" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.SubCanal" class="form-label">Subcanal</label>
+                                <input asp-for="Input.SubCanal" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Cadena" class="form-label">Cadena</label>
+                                <input asp-for="Input.Cadena" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.SubCadena" class="form-label">Subcadena</label>
+                                <input asp-for="Input.SubCadena" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.IDLocalizacion" class="form-label">Localización</label>
+                                <select asp-for="Input.IDLocalizacion" asp-items="Model.LocalizacionesDisponibles" class="form-select">
+                                    <option value="">Sin asignar</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.IDGrupoRetail" class="form-label">Grupo retail</label>
+                                <select asp-for="Input.IDGrupoRetail" asp-items="Model.GruposRetailDisponibles" class="form-select">
+                                    <option value="">Sin asignar</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.SubCliente" class="form-label">Subcliente</label>
+                                <input asp-for="Input.SubCliente" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.GrupoSell" class="form-label">Grupo sell</label>
+                                <input asp-for="Input.GrupoSell" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Supervisor" class="form-label">Supervisor</label>
+                                <input asp-for="Input.Supervisor" class="form-control" />
+                            </div>
+                            <div class="mb-3 span-2 form-check">
+                                <input asp-for="Input.Activo" type="checkbox" class="form-check-input" />
+                                <label asp-for="Input.Activo" class="form-check-label">Activo</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="drawer-footer">
+                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                    </div>
+                </form>
+            </aside>
         </div>
     }
 </div>

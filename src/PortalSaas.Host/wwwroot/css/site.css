@@ -42,172 +42,11 @@
    sobreescribir explícitamente los componentes que Bootstrap no parametrizó con
    variables (.btn-primary, paginación). */
 
-/* "claro" (Light) -- tema por defecto, valores reales de theme.css líneas 21-49.
-   También en :root (mismos valores) para que la página no se vea sin estilo en el
-   instante entre el primer paint y que el script de _Layout.cshtml fije data-theme
-   (solo pasa en la primera visita jamás, sin nada todavía en localStorage). */
-:root,
-[data-theme="claro"] {
-  --bs-body-bg: #e4e7ec;
-  --bs-body-color: #1a1a1a;
-  --card-bg: #ffffff;
-  --card-border: #cbd1db;
-  --text-main: #1a1a1a;
-  --text-muted: #6b7280;
-  --bs-primary: #2c5282;
-  --bs-primary-rgb: 44, 82, 130;
-  --accent: #2c5282;
-  --accent-rgb: 44, 82, 130;
-  --accent-2: #1e3a5f;
-  --accent-soft: #e8f0fb;
-  --bs-success: #2d7d4e;
-  --bs-success-rgb: 45, 125, 78;
-  --bs-danger: #c0392b;
-  --bs-danger-rgb: 192, 57, 43;
-  --bs-warning: #d4880e;
-  --bs-warning-rgb: 212, 136, 14;
-  --input-bg: #ffffff;
-  --shadow-card: 0 24px 60px -28px rgba(30, 58, 95, 0.25);
-  /* Texto sobre una superficie pintada con --accent/--bs-primary (botón primario,
-     avatar de usuario, ícono de categoría raíz del sidebar) -- antes hardcodeado a
-     "#fff"/"color:#fff" directo en cada regla (site.css/sidebar.css), sin variable
-     propia. Blanco en los 4 temas porque los 4 acentos son medio-oscuros, pero queda
-     como configuración del tema (cambia acá, no en cada regla que lo consume). */
-  --on-accent: #ffffff;
-  /* Focus ring de Bootstrap (.btn:focus/.form-control:focus, ver más abajo) -- estaba
-     hardcodeado a "white"/"#258cfb" sin relación con el tema activo. */
-  --focus-ring-color: var(--accent);
-  --menu-color-1: var(--accent);
-  --menu-color-2: #0f9b8e;
-  --menu-color-3: #7c3aed;
-  --menu-color-4: #d97706;
-  --menu-color-5: #db2777;
-  --menu-color-6: #16a34a;
-}
-
-/* "oscuro" (Dark) -- theme.css líneas 51-74 ("marino"/"oscuro" comparten paleta ahí,
-   acá solo se porta "oscuro" -- "marino" no es un botón real del selector). */
-[data-theme="oscuro"] {
-  --bs-body-bg: #111827;
-  --bs-body-color: #f3f4f6;
-  --card-bg: #1f2937;
-  --card-border: #4b5563;
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
-  --bs-primary: #3b82f6;
-  --bs-primary-rgb: 59, 130, 246;
-  --accent: #3b82f6;
-  --accent-rgb: 59, 130, 246;
-  --accent-2: #2563eb;
-  --accent-soft: #93c5fd;
-  --bs-success: #34d399;
-  --bs-success-rgb: 52, 211, 153;
-  --bs-danger: #f87171;
-  --bs-danger-rgb: 248, 113, 113;
-  --bs-warning: #fbbf24;
-  --bs-warning-rgb: 251, 191, 36;
-  --input-bg: #374151;
-  --shadow-card: 0 24px 70px -24px rgba(0, 0, 0, 0.75);
-  --on-accent: #ffffff;
-  --focus-ring-color: var(--accent);
-  --menu-color-1: var(--accent);
-  --menu-color-2: #2dd4bf;
-  --menu-color-3: #a78bfa;
-  --menu-color-4: #fbbf24;
-  --menu-color-5: #f472b6;
-  --menu-color-6: #4ade80;
-}
-
-/* "teal" (Ocean) -- theme.css líneas 76-98. */
-[data-theme="teal"] {
-  --bs-body-bg: #ddeef8;
-  --bs-body-color: #0a2a3c;
-  --card-bg: #f4f9fd;
-  --card-border: #a8d4e8;
-  --text-main: #0a2a3c;
-  --text-muted: #5c7a8a;
-  --bs-primary: #0096c7;
-  --bs-primary-rgb: 0, 150, 199;
-  --accent: #0096c7;
-  --accent-rgb: 0, 150, 199;
-  --accent-2: #0077b6;
-  --accent-soft: #caf0f8;
-  --bs-success: #2a9d8f;
-  --bs-success-rgb: 42, 157, 143;
-  --bs-danger: #c0392b;
-  --bs-danger-rgb: 192, 57, 43;
-  --bs-warning: #e76f51;
-  --bs-warning-rgb: 231, 111, 81;
-  --input-bg: #ffffff;
-  --shadow-card: 0 24px 60px -28px rgba(10, 74, 110, 0.2);
-  --on-accent: #ffffff;
-  --focus-ring-color: var(--accent);
-  --menu-color-1: var(--accent);
-  --menu-color-2: #2a9d8f;
-  --menu-color-3: #7c3aed;
-  --menu-color-4: #e76f51;
-  --menu-color-5: #e63946;
-  --menu-color-6: #3a86ff;
-}
-
-/* "violeta" (Violet) -- theme.css líneas 100-122. */
-[data-theme="violeta"] {
-  --bs-body-bg: #ede9fe;
-  --bs-body-color: #1e1b4b;
-  --card-bg: #ffffff;
-  --card-border: #ddd6fe;
-  --text-main: #1e1b4b;
-  --text-muted: #7c70a0;
-  --bs-primary: #7c3aed;
-  --bs-primary-rgb: 124, 58, 237;
-  --accent: #7c3aed;
-  --accent-rgb: 124, 58, 237;
-  --accent-2: #6d28d9;
-  --accent-soft: #ede9fe;
-  --bs-success: #059669;
-  --bs-success-rgb: 5, 150, 105;
-  --bs-danger: #dc2626;
-  --bs-danger-rgb: 220, 38, 38;
-  --bs-warning: #d97706;
-  --bs-warning-rgb: 217, 119, 6;
-  --input-bg: #faf8ff;
-  --shadow-card: 0 24px 60px -28px rgba(30, 27, 75, 0.2);
-  --on-accent: #ffffff;
-  --focus-ring-color: var(--accent);
-  --menu-color-1: var(--accent);
-  --menu-color-2: #0891b2;
-  --menu-color-3: #db2777;
-  --menu-color-4: #d97706;
-  --menu-color-5: #059669;
-  --menu-color-6: #4f46e5;
-}
-
-:root {
-  /* DESIGN.md §1.1/§1.2 -- IBM Plex Sans (texto) / IBM Plex Mono (códigos SAP,
-     ver .sap-code más abajo). Fallback a la fuente de sistema si el @import de
-     Google Fonts de arriba no llega a cargar (red bloqueada, offline). */
-  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "IBM Plex Mono", "Cascadia Code", "Consolas", monospace;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  /* Swatches del selector de tema (.theme-row en _Layout.cshtml) -- antes cada botón
-     tenía su color hardcodeado en un atributo style="background:#..." en el cshtml,
-     duplicando (y pudiendo desincronizarse de) el --accent real de cada tema definido
-     arriba. Un swatch representa un tema que NO es necesariamente el activo, así que
-     no puede leer var(--accent) (esa siempre refleja el tema actual) -- necesita su
-     propio token siempre disponible en :root, uno por tema, con el MISMO valor que su
-     --accent respectivo. Única config de estos 4 colores; _Layout.cshtml ya no tiene
-     ningún color propio, solo la clase .theme-swatch-{tema}. */
-  --theme-preview-claro: #2c5282;
-  /* "Oscuro" muestra su --bs-body-bg (#111827), no su --accent (#3b82f6) -- a
-     propósito, mismo criterio que ya traía el markup original: un swatch azul ahí se
-     confundiría con "claro"/"teal" (los 3 tienen acento azulado), mientras que el
-     fondo oscuro es lo que distingue a este tema de un vistazo. */
-  --theme-preview-oscuro: #111827;
-  --theme-preview-teal: #0096c7;
-  --theme-preview-violeta: #7c3aed;
-}
+/* Tokens de color/tipografía/radio/sombra/transición -- movidos a
+   design-tokens.css (2026-08-17, gobernanza UI). Este archivo (site.css)
+   los consume vía var(--token), nunca redefine un valor -- design-tokens.css
+   es la ÚNICA fuente de verdad, ver su cabecera para la regla dura completa. */
+@import url("design-tokens.css");
 
 /* ==========================================================================
    Compactación global -- regla de diseño del proyecto (ver CLAUDE.md "Densidad
@@ -527,10 +366,12 @@ html {
 }
 
 body {
-  margin-bottom: 60px;
-  /* DESIGN.md §1.1 -- tabular-nums alinea verticalmente columnas de
-     Total/Cantidad/Precio Unitario en .document-list-table/.line-items-table
-     (cada dígito ocupa el mismo ancho), sin necesitar CSS por columna. */
+  /* margin-bottom: 60px eliminado (2026-08-17, fix de scrollbar global) --
+     era un scaffold del template default de "dotnet new webapp" pensado
+     para un footer fijo que este proyecto nunca tuvo; con .app-shell ahora
+     fijo a 100dvh + overflow:hidden, ese margen sumaba altura extra real
+     causando scroll vertical de la página completa además del interno de
+     .content. */
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
@@ -624,7 +465,17 @@ body {
   border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
   overflow: auto;
-  max-height: 60vh;
+  /* REVISADO (2026-08-19, pedido explícito -- "que los submódulos utilicen el
+     largo completo de la pantalla"): el tope fijo de 60vh dejaba una franja
+     gris grande sin usar debajo de la paginación en viewports altos. Ahora
+     .doc-list (el card-ps que envuelve TODO el listado) es un flex column
+     con su alto atado al de .content (ver esa regla más abajo) -- este
+     wrapper crece con flex:1 hasta ocupar lo que sobra, min-height:0 es
+     necesario para que un hijo flex con overflow:auto pueda encogerse por
+     debajo de su contenido intrínseco (si no, el flex item nunca reduce su
+     alto y el scroll interno no aparece). */
+  flex: 1;
+  min-height: 0;
 }
 
 .document-list-table-wrapper .document-list-table {
@@ -978,8 +829,17 @@ body {
   border-radius: var(--radius-md);
 }
 
+/* flex column con height:100% (2026-08-19, ver el comentario en
+   .document-list-table-wrapper) -- .content (_LayoutMaestro/sidebar.css) ya
+   es flex:1 dentro de .shell-main con altura real de viewport (100dvh menos
+   topbar), así que .doc-list heredándola al 100% + repartiendo con flex:1 al
+   wrapper de la tabla es lo que hace que el listado "use el largo completo
+   de la pantalla" en vez de un tope arbitrario en vh. */
 .doc-list {
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 /* Formulario de documento -- portado de .doc-form/.doc-form-volver/.doc-form-header
@@ -997,14 +857,13 @@ body {
 /* Costura de marca -- elemento de firma (DESIGN.md, hallazgo "sin ningún
    elemento de firma"), mismo degradado que .login-brand-panel y
    .sidebar::before (sidebar.css). Colgada de .doc-form (la tarjeta completa,
-   <div class="card-ps doc-form">), NO de .doc-form-header -- .doc-form-volver
-   ("← Volver") se renderiza ANTES del header cuando Model.BackUrl no es null
-   (el caso común, ver DocumentForm/Default.cshtml), así que un margen negativo
-   colgado del header habría quedado flotando sobre ese link en vez de pegado
-   al borde real de la tarjeta. position:absolute no agrega alto/ancho a
+   <div class="card-ps doc-form">). position:absolute no agrega alto/ancho a
    .doc-form -- la densidad ya calibrada (padding 10px 12px) no cambia.
    border-radius replica el redondeo superior de .card-ps (var(--radius-md))
-   para no romper la esquina con un rectángulo cuadrado asomando. */
+   para no romper la esquina con un rectángulo cuadrado asomando.
+   .doc-form-volver ELIMINADA (2026-08-19, ver DocumentForm/Default.cshtml) --
+   el "← Volver" propio de un documento ahora es parte de .modulo-breadcrumb,
+   más abajo. */
 .doc-form::before {
   content: "";
   position: absolute;
@@ -1016,19 +875,57 @@ body {
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
 }
 
-.doc-form-volver {
-  display: inline-flex;
+/* Breadcrumb genérico de módulo (REVISADO 2026-08-19, ver _ModuloBackLink.cshtml
+   -- "el volver se repite, debería quedar una sola ruta tipo Venta > Órdenes de
+   Venta > Detalle"). Una sola línea compacta, mínimo alto vertical -- reemplaza
+   los 2 links apilados de la versión anterior (.modulo-back-link + .doc-form-
+   volver, este último ya eliminado de DocumentForm/Default.cshtml). */
+.modulo-breadcrumb {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  color: var(--text-muted);
-  text-decoration: none;
+  gap: 5px;
   font-size: 12px;
   font-weight: 600;
-  margin-bottom: 8px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
-.doc-form-volver:hover {
+.modulo-breadcrumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.modulo-breadcrumb a:hover {
   color: var(--accent);
+}
+
+.modulo-breadcrumb-sep {
+  font-size: 9px;
+  color: var(--card-border);
+}
+
+.modulo-breadcrumb-current {
+  color: var(--text-main);
+}
+
+/* Envuelve .doc-form-header + .doc-tabs en UN solo sticky (ver comentario real en
+   DocumentForm/Default.cshtml, bug 2026-08-20: título y tabs stickeaban cada uno por
+   su cuenta -- el título no era sticky, así que se iba de pantalla y dejaba un hueco
+   donde las filas de la tabla de abajo se veían pasar por encima del borde de
+   .doc-tabs). Fondo sólido + el mismo margen negativo que .doc-form::before usa para
+   la costura de arriba, para que el bloque llegue EXACTO al borde de la tarjeta
+   ("el título debe quedar justo en el borde superior"), no a 10px/12px de padding
+   adentro. z-index por encima de .doc-form::before (que no tiene z propio, stacking
+   por orden de documento) y de cualquier tabla de líneas debajo. */
+.doc-form-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: var(--card-bg);
+  margin: -10px -12px 0;
+  padding: 13px 12px 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 .doc-form-header {
@@ -1157,6 +1054,12 @@ body {
   border-color: var(--accent);
 }
 
+/* .lang-row (selector rápido ES/EN del dropdown de usuario, /SetLanguage) ELIMINADO
+   (2026-08-19, consolidación de preferencias) -- duplicaba /Home/Preferences sin
+   sincronizarse con esa preferencia. Idioma para sesión de tenant ahora se cambia
+   SOLO desde ahí (UserProfileCultureProvider lee IUserPreferenceService.Locale en
+   cada request, ver Program.cs) -- ver CLAUDE.md para el detalle completo. */
+
 /* ==========================================================================
    (C) Formulario de documento -- portado de theme.css .doc-tabs/.doc-tab-btn/
    .doc-tab-seccion/.form-row/.doc-columnas-2/.doc-badge-* /.doc-resumen-total.
@@ -1173,10 +1076,18 @@ body {
    de solo cambiar el color de un subrayado de 2px. Conviven con nav-tabs/nav-link de
    Bootstrap (mismo <ul>/<button>, dos clases cada uno) -- se anulan explícitamente
    los estilos propios de Bootstrap. */
+/* RE-CORREGIDO (2026-08-19, pedido explícito del dueño del proyecto -- "que se
+   mantenga fijo al seleccionar"): sticky vuelve, esta vez sin el bug de
+   overlap de la entrega anterior.
+   RE-CORREGIDO OTRA VEZ (2026-08-20): el sticky propio acá (top:0 independiente
+   del título de arriba) volvió a producir overlap -- .doc-form-header NO era
+   sticky, así que al scrollear el título desaparecía y dejaba un hueco donde el
+   contenido de abajo se veía pasar por encima del borde de .doc-tabs. Fix real:
+   .doc-tabs ya NO es sticky por sí solo -- vive dentro de .doc-form-sticky (ver
+   esa regla, más arriba), que envuelve título+tabs en un solo bloque sticky con
+   fondo sólido. .doc-tab-seccion ya tenía scroll-margin-top -- sigue evitando que
+   el título de una sección quede tapado al saltar con doc-tabs.js. */
 .doc-tabs {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
@@ -1618,20 +1529,27 @@ body {
 }
 
 /* ==========================================================================
-   Login (Account/Login.cshtml) -- estructura split-screen portada de
-   referencia-original/PortalSAP_v2 (theme.css .login-*): panel de marca a la
-   izquierda (degradado --accent/--accent-2) + tarjeta de formulario a la derecha.
-   Solo la ESTRUCTURA, nunca colores propios -- todo sale de las variables de tema ya
-   definidas arriba (--on-accent para texto sobre el degradado, en vez del blanco fijo
-   que usaba el original ahí). A diferencia del original (single-tenant, selecciona
-   "Empresa" en el mismo formulario), acá el login no conoce la organización todavía
-   (se resuelve por Input.OrganizationSlug recién al enviar el form) -- el panel de
-   marca es branding genérico de la plataforma, no de un cliente puntual, y no hay
-   selector de compañía acá (ese paso vive aparte, ver Account/SelectCompany.cshtml.cs).
+   Login (Account/Login.cshtml) -- rediseño Fase 3 (2026-08-17, plan de
+   gobernanza UI). Split-screen fijo al 100% del viewport (min-height: 100dvh
+   + overflow: hidden en .login-bg -- CERO scrollbar horizontal/vertical, sin
+   importar la altura de la ventana): panel izquierdo slate oscuro fijo
+   (#0F172A, no el degradado --accent/--accent-2 de temas -- el branding de
+   login es deliberadamente constante entre los 4 temas, el selector de tema
+   solo afecta la tarjeta de la derecha) con patrón de malla sutil; panel
+   derecho tarjeta blanca (var(--card-bg)) con inputs de focus-ring azul
+   (#2563EB) y botón primario con elevación al hover. A diferencia del
+   original (single-tenant, selecciona "Empresa" en el mismo formulario), acá
+   el login no conoce la organización todavía (se resuelve por
+   Input.OrganizationSlug recién al enviar el form) -- no hay selector de
+   compañía acá (ese paso vive aparte, ver Account/SelectCompany.cshtml.cs).
    ========================================================================== */
 
 .login-bg {
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   font-family: var(--font-sans, inherit);
@@ -1648,27 +1566,125 @@ body {
   }
 }
 
+/* Azul marino (no slate casi-negro) -- no consume --accent/--accent-2 del
+   tema activo a propósito: el panel de marca es la identidad constante de
+   la plataforma, el selector de 4 temas (claro/oscuro/teal/violeta) solo
+   debe afectar el panel de formulario a la derecha.
+
+   REDISEÑO (2026-08-20, pedido explícito -- "se ve sólido, sin vida" contra
+   el login de referencia de PortalSAP_v2): un solo gradiente plano de 3 stops
+   más un glow radial no alcanzaba la sensación de profundidad/textura de la
+   referencia. Ahora son 5 capas apiladas, cada una en su propio elemento para
+   poder ajustar una sin pisar las otras (todas aria-hidden, puramente
+   decorativas, el contenido real -- logo/pitch/footer -- vive en hermanos con
+   position:relative vía ".login-brand-panel > *"):
+     1. .login-brand-panel (fondo base) -- gradiente diagonal de 4 stops, más
+        rango tonal que el anterior de 3 (agrega un stop medio más cálido/
+        saturado a los 2/3 del recorrido en vez de una interpolación lineal
+        directa oscuro->claro->oscuro, que es lo que leía "plano").
+     2. .login-brand-mesh -- grilla fina + halo arriba-izquierda (sin cambios).
+     3. .login-brand-glow -- dos orbes radiales grandes y difusos (arriba-
+        derecha frío, abajo-izquierda cálido) -- la fuente real de "vida": dos
+        fuentes de luz asimétricas en vez de una sola, como un fondo de
+        producto real en vez de un degradado de plantilla.
+     4. .login-brand-shine -- el brillo diagonal en sí (banda de luz angosta a
+        ~35°, como la referencia), con una animación ambiental MUY lenta
+        (18s, respeta prefers-reduced-motion) que la hace desplazarse apenas --
+        movimiento perceptible solo si uno se queda mirando, nunca llamativo.
+     5. .login-brand-grain -- textura de grano (SVG feTurbulence en data-URI,
+        blend-mode:overlay, opacidad bajísima) -- el detalle táctil que le
+        faltaba a la superficie lisa original, mismo truco que un fondo de
+        producto con textura de papel/tela en vez de un flat color. */
 .login-brand-panel {
   position: relative;
-  background:
-    radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--on-accent) 10%, transparent), transparent 40%),
-    linear-gradient(165deg, var(--accent) 0%, var(--accent-2) 78%, var(--bs-body-bg) 100%);
-  color: var(--on-accent);
-  padding: 56px 48px;
+  background: linear-gradient(145deg, #1f4571 0%, #17335c 32%, #12274a 62%, #0a1930 100%);
+  color: #ffffff;
+  padding: 40px 48px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   overflow: hidden;
 }
 
-/* Textura fina de líneas diagonales, casi imperceptible -- portada tal cual del
-   original, da profundidad de "material" sin competir con el texto. */
-.login-brand-panel::before {
-  content: "";
+/* REDISTRIBUCIÓN (2026-08-20, pedido explícito -- "las letras se ven más abajo,
+   distribuye mejor el diseño"): con justify-content:space-between puro, 3 hijos
+   parejos (brand/pitch/footer) dejaban un tercio de aire arriba del logo y todo
+   el contenido "hundido" hacia la mitad/abajo en viewports altos -- se veía
+   descentrado, no como una portada de producto real. Ahora: .login-brand queda
+   pegado arriba (padding reducido de 56px a 40px, más cerca del borde, look
+   moderno de app -- no centrado en el medio de un slab vacío); .login-pitch-wrap
+   es el ÚNICO flex:1 -- centra el pitch verticalmente en TODO el espacio que
+   sobra entre el logo y el footer, que ahora sí queda pegado abajo por ser el
+   último hijo sin flex-grow. */
+.login-pitch-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 0;
+}
+
+.login-brand-glow {
   position: absolute;
   inset: 0;
-  background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--on-accent) 3.5%, transparent) 0px, color-mix(in srgb, var(--on-accent) 3.5%, transparent) 1px, transparent 1px, transparent 34px);
   pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 60% 50% at 92% -6%, rgba(96, 165, 250, 0.4), transparent 65%),
+    radial-gradient(ellipse 65% 55% at -8% 96%, rgba(249, 168, 133, 0.16), transparent 62%);
+}
+
+.login-brand-shine {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background-image: linear-gradient(35deg,
+    transparent 42%,
+    rgba(255, 255, 255, 0.05) 48%,
+    rgba(255, 255, 255, 0.14) 51%,
+    rgba(255, 255, 255, 0.05) 54%,
+    transparent 60%);
+  animation: login-shine-drift 18s ease-in-out infinite;
+}
+
+@keyframes login-shine-drift {
+  0%, 100% { transform: translate(-3%, -2%); }
+  50% { transform: translate(3%, 2%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-brand-shine {
+    animation: none;
+  }
+}
+
+.login-brand-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+.login-brand-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(ellipse 90% 70% at 88% 108%, rgba(147, 197, 253, 0.22), transparent 60%);
+}
+
+/* Patrón de malla/cuadrícula sutil -- dos gradientes lineales finos formando
+   una grilla, casi imperceptible, más un halo radial de profundidad arriba a
+   la izquierda. Puramente decorativo (aria-hidden en el markup), var(--transition-fast)
+   no aplica acá porque no hay interacción, es estática a propósito. */
+.login-brand-mesh {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    radial-gradient(circle at 12% 8%, rgba(37, 99, 235, 0.25), transparent 42%);
+  background-size: 42px 42px, 42px 42px, 100% 100%;
+  mask-image: linear-gradient(180deg, black 0%, black 55%, transparent 100%);
 }
 
 .login-brand-panel > * {
@@ -1685,8 +1701,8 @@ body {
   width: 42px;
   height: 42px;
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--on-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--on-accent) 28%, transparent);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1697,51 +1713,94 @@ body {
 }
 
 .login-brand-text h1 {
-  font-size: 18px;
+  font-size: 19px;
   margin: 0;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
 .login-brand-text p {
   margin: 3px 0 0;
   font-size: 11.5px;
-  color: color-mix(in srgb, var(--on-accent) 68%, transparent);
+  color: rgba(255, 255, 255, 0.6);
   letter-spacing: 0.2px;
 }
 
+/* Eyebrow + regla -- ancla el pitch como una sección deliberada (no texto
+   flotando en el fondo) y le da al bloque un punto de partida tipográfico
+   antes del headline, mismo lenguaje "kicker" que un producto SaaS real. */
+.login-pitch-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+  color: rgba(147, 197, 253, 0.85);
+  margin-bottom: 14px;
+}
+
+.login-pitch-rule {
+  display: block;
+  width: 36px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #93c5fd, #60a5fa);
+  margin-bottom: 22px;
+}
+
 .login-pitch h2 {
-  font-size: 28px;
-  line-height: 1.3;
-  margin: 0 0 14px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  max-width: 22ch;
+  font-size: 34px;
+  line-height: 1.22;
+  margin: 0 0 16px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  max-width: 20ch;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
 }
 
 .login-pitch p {
-  font-size: 13.5px;
-  line-height: 1.65;
-  color: color-mix(in srgb, var(--on-accent) 78%, transparent);
-  max-width: 40ch;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.72);
+  max-width: 38ch;
   margin: 0;
 }
 
+/* Tags de módulo -- reemplazan el párrafo suelto por un resumen escaneable de
+   un vistazo, mismo lenguaje visual que un selector de módulos real del
+   propio portal (pill switcher), no una lista de viñetas genérica. */
+.login-pitch-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.login-pitch-tags span {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .login-brand-panel .login-footer {
-  color: color-mix(in srgb, var(--on-accent) 60%, transparent);
+  color: rgba(255, 255, 255, 0.5);
   text-align: left;
   margin: 0;
 }
 
 .login-form-panel {
-  background:
-    radial-gradient(circle at 85% 15%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 45%),
-    var(--bs-body-bg);
+  background: var(--bs-body-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  min-height: 100vh;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .login-shell {
@@ -1770,9 +1829,30 @@ body {
   margin: 0 0 28px;
 }
 
-/* Botón de envío -- mismo degradado que .btn-erp-primary.btn-block del original
-   (--accent -> --accent-2), distinto del .btn-primary plano del resto del portal a
-   propósito: es la única acción de toda la pantalla, se destaca con el degradado. */
+/* Focus-ring azul fijo (#2563EB) en los inputs del formulario de login --
+   deliberadamente distinto de --focus-ring-color (que sigue al tema activo
+   en el resto del portal): el login es la única pantalla donde el foco de
+   input usa un azul de marca constante, no el acento del tema elegido. */
+.login-card .form-control:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.login-error-banner {
+  display: block;
+  color: var(--bs-danger);
+  font-size: 12.5px;
+  background: color-mix(in srgb, var(--bs-danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bs-danger) 35%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  margin: -6px 0 16px;
+}
+
+/* Botón primario con ligera elevación al hover (translateY + sombra), sobre
+   el degradado --accent/--accent-2 del tema activo -- distinto del
+   .btn-primary plano del resto del portal a propósito: es la única acción de
+   toda la pantalla. Transición SOLO con --transition-fast (regla dura). */
 .login-submit {
   width: 100%;
   padding: 12px 16px;
@@ -1784,12 +1864,14 @@ body {
   border: none;
   border-radius: var(--radius-sm);
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 14px 28px -16px color-mix(in srgb, var(--accent-2) 70%, transparent);
-  transition: filter 0.15s ease;
+  box-shadow: 0 10px 20px -14px color-mix(in srgb, var(--accent-2) 70%, transparent);
+  transition: filter var(--transition-fast) ease, transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
 
 .login-submit:hover {
   filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px -14px color-mix(in srgb, var(--accent-2) 78%, transparent);
 }
 
 .login-footer {
@@ -1797,4 +1879,3 @@ body {
   font-size: 11.5px;
   color: var(--text-muted);
   margin-top: 22px;
-}

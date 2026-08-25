@@ -31,52 +31,82 @@ public class SapDocumentConnector : IIntegrationConnector
     /// defecto de cada entidad (ver FiltroPorDefectoItems/Stores), así las
     /// IntegrationDefinition ya existentes (sin este campo en su JSON) siguen
     /// funcionando igual que antes sin necesitar ninguna migración de datos.
+    ///
+    /// PageSize (Top, opcional): cuántas filas trae Service Layer por página HTTP dentro de
+    /// una misma corrida de GetAllAsync (que igual sigue "odata.nextLink" hasta agotar TODO lo
+    /// que matchea el filtro -- esto no es un límite de filas totales, es tamaño de lote por
+    /// request). Encontrado 21 ago 2026: sin $select, un filtro que matchea ~29.000 Items sin
+    /// límite de página se cuelga (Service Layer nunca termina de responder una página con
+    /// TODAS las columnas del Item, que son cientos). Default 200 si no viene.
     /// </summary>
-    private sealed record SapWmsOutboundConfig(string TipoEntidad, string? Filtro = null);
+    private sealed record SapWmsOutboundConfig(string TipoEntidad, string? Filtro = null, int? PageSize = null);
 
-    private const string FiltroPorDefectoItems = "U_NX_EnviarWMS eq 'Y' and InvntItem eq 'tYES'";
-    private const string FiltroPorDefectoStores = "U_NX_EnviarWMS eq 'Y'";
+    /// <summary>Expuestos como public para que Admin/Integraciones/Nuevo pueda mostrar el filtro
+    /// EFECTIVO que corre cuando el usuario deja Filtro vacío -- ver comentario de SapWmsOutboundConfig.</summary>
+    public const string FiltroPorDefectoItems = "U_NX_EnviarWMS eq 'Y' and BarCode ne null and BarCode ne ''";
+    public const string FiltroPorDefectoStores = "U_NX_EnviarWMS eq 'Y'";
+    public const int PageSizePorDefecto = 200;
 
     public async Task<IReadOnlyList<IntegrationRecord>> PullAsync(
         string conectorConfigJson,
+        DateTimeOffset? cursorIncremental,
         CancellationToken cancellationToken)
     {
         var config = System.Text.Json.JsonSerializer.Deserialize<SapWmsOutboundConfig>(conectorConfigJson)
             ?? throw new InvalidOperationException("Config de conector Sap (Bajada) inválida o vacía.");
+        var pageSize = config.PageSize is > 0 ? config.PageSize.Value : PageSizePorDefecto;
 
         var session = await _sapConnectionProvider.GetConnectionAsync(cancellationToken);
 
         return config.TipoEntidad switch
         {
-            "Item" => await LeerItemsAsync(session, config.Filtro, cancellationToken),
-            "Store" => await LeerStoresAsync(session, config.Filtro, cancellationToken),
+            "Item" => await LeerItemsAsync(session, config.Filtro, pageSize, cursorIncremental, cancellationToken),
+            "Store" => await LeerStoresAsync(session, config.Filtro, pageSize, cursorIncremental, cancellationToken),
             "InboundTraslado" => await LeerTrasladosAsync(session, cancellationToken),
             "Picking" => await LeerPickingAsync(session, cancellationToken),
             _ => throw new InvalidOperationException($"TipoEntidad '{config.TipoEntidad}' no soportado en PullAsync."),
         };
     }
 
-    private static async Task<IReadOnlyList<IntegrationRecord>> LeerItemsAsync(ISapSession session, string? filtroConfigurado, CancellationToken ct)
+    /// <summary>Formato de literal fecha/hora de SAP Service Layer (OData v2) confirmado
+    /// contra el ambiente real 22 ago 2026: "UpdateDate ge datetime'2020-01-01T00:00:00'" trajo
+    /// filas, la misma condición con una fecha futura trajo 0 -- el filtro sí filtra, no lo
+    /// ignora silenciosamente en este recurso.</summary>
+    private static string ConCursorIncremental(string filtroBase, DateTimeOffset? cursor) =>
+        cursor is null
+            ? filtroBase
+            : $"{filtroBase} and UpdateDate ge datetime'{cursor.Value.UtcDateTime:yyyy-MM-ddTHH:mm:ss}'";
+
+    /// <summary>"BarCode" es una propiedad plana normal de Items en Service Layer -- confirmado
+    /// 21 ago 2026 contra SAP real, $select y $filter la aceptan sin problema. (Se había asumido
+    /// antes que el campo se llamaba "CodeBars" -- Service Layer lo rechaza con "Property
+    /// 'CodeBars' of 'Item' is invalid"; ese nombre nunca existió en este recurso, así que la
+    /// sincronización de Items nunca trajo código de barras hasta este fix.)</summary>
+    private const string SelectItems = "ItemCode,ItemName,BarCode,UpdateDate";
+
+    private static async Task<IReadOnlyList<IntegrationRecord>> LeerItemsAsync(ISapSession session, string? filtroConfigurado, int pageSize, DateTimeOffset? cursorIncremental, CancellationToken ct)
     {
-        var filtro = string.IsNullOrWhiteSpace(filtroConfigurado) ? FiltroPorDefectoItems : filtroConfigurado;
-        var filas = await session.GetAllAsync<SapWmsItemRow>("Items", filtro, ct: ct);
+        var filtroBase = string.IsNullOrWhiteSpace(filtroConfigurado) ? FiltroPorDefectoItems : filtroConfigurado;
+        var filtro = ConCursorIncremental(filtroBase, cursorIncremental);
+        var filas = await session.GetAllAsync<SapWmsItemRow>("Items", filtro, selectOData: SelectItems, topPorPagina: pageSize, ct: ct);
 
         return filas
-            .Where(f => !string.IsNullOrWhiteSpace(f.CodeBars) && f.CodeBars != "0")
+            .Where(f => !string.IsNullOrWhiteSpace(f.BarCode) && f.BarCode != "0")
             .Select(f => new IntegrationRecord(new Dictionary<string, object?>
             {
                 ["ItemCode"] = f.ItemCode,
                 ["ItemName"] = f.ItemName,
-                ["BarCode"] = f.CodeBars,
+                ["BarCode"] = f.BarCode,
                 ["SourceUpdateDate"] = f.UpdateDate,
             }))
             .ToList();
     }
 
-    private static async Task<IReadOnlyList<IntegrationRecord>> LeerStoresAsync(ISapSession session, string? filtroConfigurado, CancellationToken ct)
+    private static async Task<IReadOnlyList<IntegrationRecord>> LeerStoresAsync(ISapSession session, string? filtroConfigurado, int pageSize, DateTimeOffset? cursorIncremental, CancellationToken ct)
     {
-        var filtro = string.IsNullOrWhiteSpace(filtroConfigurado) ? FiltroPorDefectoStores : filtroConfigurado;
-        var filas = await session.GetAllAsync<SapWmsStoreRow>("BusinessPartners", filtro, "BPAddresses", ct);
+        var filtroBase = string.IsNullOrWhiteSpace(filtroConfigurado) ? FiltroPorDefectoStores : filtroConfigurado;
+        var filtro = ConCursorIncremental(filtroBase, cursorIncremental);
+        var filas = await session.GetAllAsync<SapWmsStoreRow>("BusinessPartners", filtro, "BPAddresses", topPorPagina: pageSize, ct: ct);
 
         var registros = new List<IntegrationRecord>();
         foreach (var fila in filas)
@@ -104,7 +134,7 @@ public class SapDocumentConnector : IIntegrationConnector
     private static async Task<IReadOnlyList<IntegrationRecord>> LeerTrasladosAsync(ISapSession session, CancellationToken ct)
     {
         var filtro = "(U_NX_WMS_SEND eq 'Y' or U_NX_WMS_SEND eq 'EN PROCESO ENVIO WMS' or U_NX_WMS_SEND eq 'EN PROCESO RE-ENVIO WMS') and U_NX_shipment_type ne ''";
-        var filas = await session.GetAllAsync<SapWmsTrasladoRow>("InventoryTransferRequests", filtro, "StockTransferLines", ct);
+        var filas = await session.GetAllAsync<SapWmsTrasladoRow>("InventoryTransferRequests", filtro, "StockTransferLines", ct: ct);
 
         return filas
             .Select(f => new IntegrationRecord(new Dictionary<string, object?>
@@ -136,7 +166,7 @@ public class SapDocumentConnector : IIntegrationConnector
         // otros recursos, ej. bo_ShipTo en BPAddresses.AddressType de Ronda C) -- ESTO
         // DEBE VERIFICARSE CONTRA UN AMBIENTE SAP REAL ANTES DE PRODUCCIÓN.
         var filtro = "Status eq 'psReleased'";
-        var pickLists = await session.GetAllAsync<SapWmsPickListRow>("PickLists", filtro, "PickListsLines", ct);
+        var pickLists = await session.GetAllAsync<SapWmsPickListRow>("PickLists", filtro, "PickListsLines", ct: ct);
 
         // PickListsLines no trae ItemCode/almacén -- solo BaseObjectType/OrderEntry/OrderLine.
         // Se agrupa por documento base distinto (BaseObjectType, OrderEntry) para consultar
@@ -239,6 +269,36 @@ public class SapDocumentConnector : IIntegrationConnector
         }
 
         return registros;
+    }
+
+    public string DescribirConsulta(string conectorConfigJson, DateTimeOffset? cursorIncremental = null)
+    {
+        SapWmsOutboundConfig? config;
+        try
+        {
+            config = System.Text.Json.JsonSerializer.Deserialize<SapWmsOutboundConfig>(conectorConfigJson);
+        }
+        catch (Exception ex)
+        {
+            return $"Config de conector Sap inválida: {ex.Message}";
+        }
+
+        if (config is null)
+        {
+            return "Config de conector Sap vacía.";
+        }
+
+        var pageSize = config.PageSize is > 0 ? config.PageSize.Value : PageSizePorDefecto;
+
+        return config.TipoEntidad switch
+        {
+            "Item" => $"GET Items?$filter={ConCursorIncremental(string.IsNullOrWhiteSpace(config.Filtro) ? FiltroPorDefectoItems : config.Filtro, cursorIncremental)}&$select={SelectItems}&$top={pageSize} (por página, sigue paginando hasta agotar el filtro)",
+            "Store" => $"GET BusinessPartners?$filter={ConCursorIncremental(string.IsNullOrWhiteSpace(config.Filtro) ? FiltroPorDefectoStores : config.Filtro, cursorIncremental)}&$expand=BPAddresses&$top={pageSize} (por página, sigue paginando hasta agotar el filtro)",
+            "InboundTraslado" => "GET InventoryTransferRequests?$filter=(U_NX_WMS_SEND eq 'Y' or U_NX_WMS_SEND eq 'EN PROCESO ENVIO WMS' or U_NX_WMS_SEND eq 'EN PROCESO RE-ENVIO WMS') and U_NX_shipment_type ne ''&$expand=StockTransferLines",
+            "Picking" => "GET PickLists?$filter=Status eq 'psReleased'&$expand=PickListsLines (+ GET del documento base por cada línea: Orders/Invoices/InventoryTransferRequests)",
+            _ when config.TipoEntidad is null => "POST hacia SAP (Subida) -- destino real (Sales/Purchase/Inventory) depende del campo 'TipoDocumento' de cada registro, no de esta config.",
+            _ => $"TipoEntidad '{config.TipoEntidad}' no reconocido para Bajada Sap.",
+        };
     }
 
     public async Task<IReadOnlyList<IntegrationPushResult>> PushAsync(
@@ -366,7 +426,7 @@ internal sealed class SapWmsItemRow
 {
     public string ItemCode { get; set; } = string.Empty;
     public string ItemName { get; set; } = string.Empty;
-    public string? CodeBars { get; set; }
+    public string? BarCode { get; set; }
     public DateTime UpdateDate { get; set; }
 }
 

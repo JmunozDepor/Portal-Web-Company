@@ -3,11 +3,17 @@
 @{
     ViewData["Title"] = "Usuarios";
 }
+@* Migrado al Design System unificado (2026-08-19) -- .table-ps + .badge-status +
+   drawer de creación. "Editar" sigue siendo página completa a propósito: esa
+   vista tiene 3 secciones (datos del usuario + compañía por defecto + matriz
+   de permisos por menú), demasiado contenido para un panel de 420px -- el
+   drawer es para el alta rápida, no para la edición completa. *@
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Usuarios de tu organización</h1>
-    <a href="~/organizacion/usuarios/editar" class="btn btn-primary">Nuevo usuario</a>
-</div>
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Usuarios de tu organización</h2>
+        <button type="button" class="btn-primary" data-drawer-open="drawer-nuevo-usuario">+ Nuevo usuario</button>
+    </div>
 
 @if (Model.MensajeExito is not null)
 {
@@ -18,20 +24,19 @@
     <div class="alert alert-danger">@Model.MensajeError</div>
 }
 
-<form method="get" class="filter-card">
+<form method="get" class="filter-card mb-3">
     <div class="col-auto">
         <label class="form-label">Buscar</label>
         <input type="text" name="Texto" value="@Model.Texto" class="form-control" placeholder="Usuario o correo..." />
     </div>
-    <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+    <button type="submit" class="btn-secondary">Buscar</button>
     @if (!string.IsNullOrWhiteSpace(Model.Texto))
     {
-        <a href="~/organizacion/usuarios" class="btn btn-outline-secondary">Limpiar</a>
+        <a href="~/organizacion/usuarios" class="btn-secondary">Limpiar</a>
     }
 </form>
 
-<div class="document-list-table-wrapper">
-    <table class="table document-list-table">
+<table class="table-ps">
     <thead>
         <tr>
             <th>Usuario</th>
@@ -39,7 +44,7 @@
             <th>Admin</th>
             <th>Estado</th>
             <th>Último acceso</th>
-            <th></th>
+            <th class="col-actions"></th>
         </tr>
     </thead>
     <tbody>
@@ -52,33 +57,76 @@
                 <td>
                     @if (!u.IsActive)
                     {
-                        <span class="text-muted">Inactivo</span>
+                        <span class="badge-status badge-status--neutral">Inactivo</span>
                     }
                     else if (u.IsLocked)
                     {
-                        <span class="text-danger">Bloqueado</span>
+                        <span class="badge-status badge-status--danger">Bloqueado</span>
                     }
                     else
                     {
-                        <span class="text-success">Activo</span>
+                        <span class="badge-status badge-status--success">Activo</span>
                     }
                 </td>
                 <td>@(u.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Nunca")</td>
-                <td>
-                    <a href="~/organizacion/usuarios/editar/@u.Id">Editar</a>
-                    ·
-                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@u.Id" method="post" class="d-inline"
-                          onsubmit="return confirm('¿Eliminar a @u.Username definitivamente?');">
-                        <button type="submit" class="btn btn-link p-0 text-danger align-baseline">Eliminar</button>
-                    </form>
+                <td class="col-actions">
+                    <div class="admin-row-actions">
+                        <a href="~/organizacion/usuarios/editar/@u.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                        <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@u.Id" method="post" class="d-inline-block"
+                              onsubmit="return confirm('¿Eliminar a @u.Username definitivamente?');">
+                            <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
                 </td>
             </tr>
         }
     </tbody>
 </table>
-</div>
 
 @if (Model.Usuarios.Count == 0)
 {
     <p class="text-muted">Todavía no hay usuarios en tu organización.</p>
 }
+</div>
+
+@* Slide-over drawer -- "Nuevo usuario". Postea directo al handler "Guardar"
+   de Editar.cshtml.cs (sin id -> EsNuevo=true, mismo código de servidor, sin
+   duplicar lógica de creación acá) -- al guardar redirige a la página de
+   edición completa del usuario nuevo para continuar con compañía/permisos. *@
+<div id="drawer-nuevo-usuario" class="drawer-overlay" data-drawer>
+    <aside class="drawer-panel">
+        <div class="drawer-header">
+            <h3>Nuevo usuario</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" asp-page="/Usuarios/Editar" asp-page-handler="Guardar">
+            <div class="drawer-body">
+                <div class="drawer-grid">
+                    <div class="mb-3 span-2">
+                        <label class="form-label">Usuario</label>
+                        <input name="Input.Username" class="form-control" />
+                    </div>
+                    <div class="mb-3 span-2">
+                        <label class="form-label">Correo</label>
+                        <input name="Input.Email" type="email" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña</label>
+                        <input name="Input.Password" type="password" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Confirmar contraseña</label>
+                        <input name="Input.ConfirmPassword" type="password" class="form-control" />
+                    </div>
+                    <div class="mb-3 span-2 d-flex align-items-center gap-2">
+                        <label class="d-flex align-items-center gap-2"><input name="Input.IsAdmin" type="checkbox" value="true" /> Administrador de la organización</label>
+                    </div>
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn-primary">Crear usuario</button>
+            </div>
+        </form>
+    </aside>
+</div>

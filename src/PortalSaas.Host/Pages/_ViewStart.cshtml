@@ -1,5 +1,10 @@
 ﻿@{
+    // 2026-08-17: "_Layout" -> "_ModuloLayout" (hereda de _LayoutMaestro.cshtml,
+    // ver ese archivo para las reglas duras de gobernanza UI). Todas las páginas
+    // del Host y de los plugins (core + externos) resuelven este mismo
+    // _ViewStart por convención -- este es el único cambio necesario para que
+    // todo el portal adopte el rail de 64px + sub-nav contextual de una vez.
     Layout = Context.Request.Headers["X-Requested-With"] == "XMLHttpRequest"
         ? null // fetch parcial de DocumentList (ver doc-list.js) -- sin layout, sin sidebar
-        : "_Layout";
+        : "_ModuloLayout";
 }

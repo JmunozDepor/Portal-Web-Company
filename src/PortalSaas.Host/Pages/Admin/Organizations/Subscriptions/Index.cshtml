@@ -4,11 +4,9 @@
     ViewData["Title"] = $"Suscripción · {Model.Organization.LegalName}";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h1 class="h3 mb-0">Suscripción de @Model.Organization.LegalName</h1>
-        <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
-    </div>
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "License" })" />
+
+<div class="d-flex justify-content-end mb-3">
     <a asp-page="/Admin/Organizations/Subscriptions/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Asignar plan</a>
 </div>
 

@@ -18,8 +18,8 @@ public sealed class UserPreference
     /// <summary>Ej. "America/Santiago" (IANA time zone).</summary>
     public string Timezone { get; set; } = "America/Santiago";
 
-    /// <summary>"light" | "dark" | "system" -- ver UserThemePreference.</summary>
-    public string Theme { get; set; } = UserThemePreference.System;
+    /// <summary>"claro" | "oscuro" | "teal" | "violeta" -- ver UserThemePreference.</summary>
+    public string Theme { get; set; } = UserThemePreference.Claro;
 
     public bool EmailNotificationsEnabled { get; set; } = true;
 
@@ -32,11 +32,22 @@ public sealed class UserPreference
     public Guid? DefaultCompanyId { get; set; }
 }
 
+/// <summary>
+/// REVISADO (2026-08-19, consolidación de preferencias): antes tenía 3 valores
+/// (light/dark/system) que ningún lado de la UI aplicaba de verdad -- el tema
+/// que SÍ se veía en pantalla lo controlaba un selector aparte en el topbar
+/// (theme-switcher.js, 4 temas reales vía localStorage, nunca sincronizado con
+/// esto). Se unificó a los 4 temas reales que site.css/sidebar.css ya
+/// implementan (data-theme="claro|oscuro|teal|violeta") -- este es AHORA el
+/// único mecanismo, aplicado server-side en _LayoutMaestro.cshtml para
+/// cualquier sesión autenticada (anclado a la cuenta, no al navegador).
+/// </summary>
 public static class UserThemePreference
 {
-    public const string Light = "light";
-    public const string Dark = "dark";
-    public const string System = "system";
+    public const string Claro = "claro";
+    public const string Oscuro = "oscuro";
+    public const string Teal = "teal";
+    public const string Violeta = "violeta";
 
-    public static readonly IReadOnlyCollection<string> All = [Light, Dark, System];
+    public static readonly IReadOnlyCollection<string> All = [Claro, Oscuro, Teal, Violeta];
 }

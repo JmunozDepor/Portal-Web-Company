@@ -28,6 +28,7 @@ else
                     <th>Procesados</th>
                     <th>Con error</th>
                     <th>Disparado por</th>
+                    <th>Consulta ejecutada</th>
                     <th>Detalle del error</th>
                 </tr>
             </thead>
@@ -54,6 +55,7 @@ else
                         <td>@ejecucion.RegistrosProcesados</td>
                         <td>@ejecucion.RegistrosConError</td>
                         <td>@ejecucion.DisparadoPor</td>
+                        <td><code>@(ejecucion.DetalleConsulta ?? "-")</code></td>
                         <td>@(ejecucion.DetalleError ?? "-")</td>
                     </tr>
                 }

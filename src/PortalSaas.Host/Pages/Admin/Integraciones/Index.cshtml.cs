@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Data;
+using PortalSaas.Data.Entities;
 using PortalSaas.Data.Entities.Integraciones;
 
 namespace PortalSaas.Host.Pages.Admin.Integraciones;
@@ -17,11 +18,25 @@ public class IndexModel : PageModel
         _db = db;
     }
 
+    [BindProperty(SupportsGet = true)]
+    public Guid? CompanyId { get; set; }
+
     public List<IntegrationDefinition> Integraciones { get; private set; } = [];
+    public List<Company> Companies { get; private set; } = [];
+    public Dictionary<Guid, string> CompanyNames { get; private set; } = [];
 
     public async Task OnGetAsync(CancellationToken ct)
     {
-        Integraciones = await _db.IntegrationDefinitions
+        Companies = await _db.Companies.OrderBy(c => c.Name).ToListAsync(ct);
+        CompanyNames = Companies.ToDictionary(c => c.Id, c => c.Name);
+
+        var query = _db.IntegrationDefinitions.AsQueryable();
+        if (CompanyId is { } companyId)
+        {
+            query = query.Where(d => d.CompanyId == companyId);
+        }
+
+        Integraciones = await query
             .OrderBy(d => d.Nombre)
             .ToListAsync(ct);
     }

@@ -30,8 +30,15 @@ public class IntegrationSyncHostedServiceTests
         public bool PushLlamado { get; private set; }
         public IReadOnlyList<IntegrationRecord>? RegistrosRecibidos { get; private set; }
 
-        public Task<IReadOnlyList<IntegrationRecord>> PullAsync(string conectorConfigJson, CancellationToken cancellationToken)
-            => Task.FromResult(_registrosPull ?? Array.Empty<IntegrationRecord>());
+        public DateTimeOffset? CursorRecibido { get; private set; }
+
+        public Task<IReadOnlyList<IntegrationRecord>> PullAsync(string conectorConfigJson, DateTimeOffset? cursorIncremental, CancellationToken cancellationToken)
+        {
+            CursorRecibido = cursorIncremental;
+            return Task.FromResult(_registrosPull ?? Array.Empty<IntegrationRecord>());
+        }
+
+        public string DescribirConsulta(string conectorConfigJson, DateTimeOffset? cursorIncremental = null) => "ConectorFalso (test)";
 
         public Task<IReadOnlyList<IntegrationPushResult>> PushAsync(string conectorConfigJson, IReadOnlyList<IntegrationRecord> registros, CancellationToken cancellationToken)
         {
@@ -63,7 +70,7 @@ public class IntegrationSyncHostedServiceTests
 
         public string EntidadNegocio { get; }
 
-        public Task<IReadOnlyList<IntegrationRecord>> LeerPendientesAsync(Guid companyId, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<IntegrationRecord>> LeerPendientesAsync(Guid companyId, int? limiteMaximo, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<IntegrationRecord>>(_registros);
 
         public Task MarcarProcesadoAsync(Guid companyId, IntegrationRecord registro, bool exito, string? mensajeError, CancellationToken cancellationToken)
@@ -290,6 +297,54 @@ public class IntegrationSyncHostedServiceTests
 
         Assert.Equal(IntegrationRunResultado.Exito, log.Resultado);
         Assert.Equal(2, log.RegistrosProcesados);
+    }
+
+    [Fact]
+    public async Task EjecutarCicloAsync_DireccionBajadaExitosa_PasaCursorAlConectorYLoAvanzaTrasElExito()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var conectorFalso = new ConectorFalso(registrosPull: new List<IntegrationRecord>());
+        var writerFalso = new WriterFalso(entidadNegocio: "SapWms.Item");
+
+        var services = new ServiceCollection();
+        services.AddDbContext<PortalSaasDbContext>(o => o.UseInMemoryDatabase(dbName));
+        services.AddSingleton<IIntegrationConnector>(conectorFalso);
+        services.AddSingleton<IIntegrationEntityWriter>(writerFalso);
+        services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
+        services.AddScoped<ISecretoCifradoService, SecretoCifradoServiceFalso>();
+        services.AddScoped<ICurrentCompanyOverride, CurrentCompanyOverride>();
+        services.AddSingleton<Microsoft.Extensions.Logging.ILogger<IntegrationSyncHostedService>>(NullLogger<IntegrationSyncHostedService>.Instance);
+        var proveedor = services.BuildServiceProvider();
+
+        var cursorPrevio = DateTimeOffset.UtcNow.AddDays(-1);
+        var definicion = new IntegrationDefinition
+        {
+            Nombre = "Test", ModuloOrigen = "Wms", EntidadNegocio = "SapWms.Item",
+            ConectorTipo = IntegrationConectorTipo.Sap, ConectorConfigCifrado = "{}",
+            Direccion = IntegrationDireccion.Bajada, Activo = true,
+            NextRunAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+            UltimaSincronizacionExitosa = cursorPrevio,
+        };
+
+        using (var scope = proveedor.CreateScope())
+        {
+            var contexto = scope.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+            contexto.IntegrationDefinitions.Add(definicion);
+            await contexto.SaveChangesAsync();
+        }
+
+        var antesDeCorrer = DateTimeOffset.UtcNow;
+        var servicio = new IntegrationSyncHostedService(proveedor.GetRequiredService<IServiceScopeFactory>(), NullLogger<IntegrationSyncHostedService>.Instance);
+        await servicio.EjecutarCicloAsync(CancellationToken.None);
+
+        Assert.Equal(cursorPrevio, conectorFalso.CursorRecibido);
+
+        using var scopeVerificacion = proveedor.CreateScope();
+        var contextoVerificacion = scopeVerificacion.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+        var definicionActualizada = await contextoVerificacion.IntegrationDefinitions.SingleAsync(d => d.Id == definicion.Id);
+
+        Assert.NotNull(definicionActualizada.UltimaSincronizacionExitosa);
+        Assert.True(definicionActualizada.UltimaSincronizacionExitosa >= antesDeCorrer);
     }
 
     [Fact]

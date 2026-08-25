@@ -26,6 +26,8 @@ public class CreateModel : PageModel
 
     public Company Company { get; private set; } = null!;
 
+    public Organization Organization { get; private set; } = null!;
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
@@ -49,6 +51,7 @@ public class CreateModel : PageModel
         }
 
         Company = company;
+        Organization = (await _db.Organizations.FindAsync(company.OrganizationId))!;
         await LoadAvailablePluginsAsync(companyId);
         return Page();
     }
@@ -62,6 +65,7 @@ public class CreateModel : PageModel
         }
 
         Company = company;
+        Organization = (await _db.Organizations.FindAsync(company.OrganizationId))!;
         await LoadAvailablePluginsAsync(companyId);
 
         if (!ModelState.IsValid)

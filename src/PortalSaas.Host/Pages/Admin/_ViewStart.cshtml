@@ -1,3 +1,8 @@
 @{
-    Layout = "_AdminLayout";
+    // 2026-08-17: migrado de "_AdminLayout" (navbar horizontal navy propio) al
+    // Layout Contextual Secundario compartido con el resto del portal -- ver
+    // _LayoutMaestro.cshtml para las reglas duras de gobernanza UI y el
+    // detalle de por qué el shell de Admin ya no invoca SidebarMenu/
+    // CompanySwitcher (claims de sesión distintos a los de tenant).
+    Layout = "_ModuloLayout";
 }

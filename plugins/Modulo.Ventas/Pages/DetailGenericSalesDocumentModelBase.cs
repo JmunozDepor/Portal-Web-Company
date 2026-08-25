@@ -427,6 +427,13 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
             AccountingView = "~/Pages/Shared/_TabFinanzasVentas.cshtml",
             AccountingTitle = "Finanzas",
         };
+
+        // Consumido por _ModuloBackLink.cshtml (breadcrumb del layout) -- así el
+        // último tramo clicable del breadcrumb ("Órdenes de Venta") usa este MISMO
+        // BackUrl con filtros/página preservados, en vez de la ruta genérica plana
+        // del árbol de menú (ver comentario de BackUrl arriba y CLAUDE.md,
+        // consolidación de navegación 2026-08-19).
+        ViewData["ModuleBreadcrumbBackUrl"] = Document.BackUrl;
     }
 
     private string DocumentNameLowerWithArticle() => DocumentName.ToLowerInvariant();

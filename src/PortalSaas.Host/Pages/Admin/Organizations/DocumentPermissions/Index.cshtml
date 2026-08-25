@@ -4,10 +4,7 @@
     ViewData["Title"] = $"Permisos de documentos · {Model.Organization.LegalName}";
 }
 
-<div class="mb-3">
-    <h1 class="h3 mb-0">Permisos de creación de documentos de @Model.Organization.LegalName</h1>
-    <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
-</div>
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "DocumentPermissions" })" />
 
 @if (TempData["Mensaje"] is string mensaje)
 {

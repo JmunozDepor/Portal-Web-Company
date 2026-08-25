@@ -13,10 +13,8 @@
     <div class="alert alert-danger">@Model.MensajeError</div>
 }
 
-<div class="card-ps doc-form doc-tab-seccion mb-4">
-    <div class="doc-form-header">
-        <h2>Importar plugin</h2>
-    </div>
+<div class="card-surface mb-4">
+    <h2 class="h5 mb-3">Importar plugin</h2>
     <p class="text-muted">
         Subí el .zip generado por el target <code>PublicarComoPlugin</code> del plugin (o armado a mano
         con el mismo contenido de <code>artifacts/plugins/{Codigo}/{Version}/</code>) -- se extrae directo
@@ -26,40 +24,44 @@
     <form method="post" enctype="multipart/form-data" asp-antiforgery="true">
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-        <div class="form-row">
-            <div class="form-group">
+        <div class="row g-3">
+            <div class="col-md-4">
                 <label asp-for="Input.Code" class="form-label"></label>
                 <input asp-for="Input.Code" class="form-control" autofocus />
                 <span asp-validation-for="Input.Code" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-4">
                 <label asp-for="Input.Name" class="form-label"></label>
                 <input asp-for="Input.Name" class="form-control" />
                 <span asp-validation-for="Input.Name" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-4">
                 <label asp-for="Input.Version" class="form-label"></label>
                 <input asp-for="Input.Version" class="form-control" value="1.0.0" />
                 <span asp-validation-for="Input.Version" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-8">
                 <label asp-for="Input.Package" class="form-label"></label>
                 <input asp-for="Input.Package" type="file" accept=".zip" class="form-control" />
                 <span asp-validation-for="Input.Package" class="text-danger"></span>
             </div>
 
-            <div class="form-group form-check">
-                <input asp-for="Input.Overwrite" class="form-check-input" />
-                <label asp-for="Input.Overwrite" class="form-check-label"></label>
+            <div class="col-md-4 d-flex align-items-center">
+                <div class="form-check">
+                    <input asp-for="Input.Overwrite" class="form-check-input" />
+                    <label asp-for="Input.Overwrite" class="form-check-label"></label>
+                </div>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary mt-3">Importar</button>
-        <a asp-page="/Admin/Sistema/Index" class="btn btn-outline-secondary mt-3">Ir a reiniciar servidor</a>
-        <a asp-page="/Admin/PlatformModules/Index" class="btn btn-link mt-3">Volver</a>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-primary">Importar</button>
+            <a asp-page="/Admin/Sistema/Index" class="btn-secondary">Ir a reiniciar servidor</a>
+            <a asp-page="/Admin/PlatformModules/Index" class="btn-ghost">Volver</a>
+        </div>
     </form>
 </div>
 

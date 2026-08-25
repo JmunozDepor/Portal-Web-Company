@@ -548,6 +548,10 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("cron_schedule");
 
+                    b.Property<DateTimeOffset?>("UltimaSincronizacionExitosa")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("last_successful_sync_at");
+
                     b.HasKey("Id")
                         .HasName("pk_integration_definitions");
 
@@ -556,7 +560,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
                     b.ToTable("integration_definitions", null, t =>
                         {
-                            t.HasCheckConstraint("ck_integration_definitions_connector_type", "connector_type in ('sap', 'rest', 'file', 'wmscloud')");
+                            t.HasCheckConstraint("ck_integration_definitions_connector_type", "connector_type in ('sap', 'rest', 'file', 'wmscloud', 'sql')");
 
                             t.HasCheckConstraint("ck_integration_definitions_direction", "direction in ('upload', 'download', 'both')");
                         });
@@ -611,6 +615,10 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnName("id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("DetalleConsulta")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("detalle_consulta");
 
                     b.Property<string>("DetalleError")
                         .HasColumnType("nvarchar(max)")
@@ -1846,7 +1854,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
                     b.ToTable("user_preferences", null, t =>
                         {
-                            t.HasCheckConstraint("ck_user_preferences_theme", "theme in ('light', 'dark', 'system')");
+                            t.HasCheckConstraint("ck_user_preferences_theme", "theme in ('claro', 'oscuro', 'teal', 'violeta')");
                         });
                 });
 

@@ -1,34 +1,105 @@
 @page
 @model PortalSaas.Host.Pages.Admin.LoginModel
 @{
-    ViewData["Title"] = "Administración de plataforma";
+    // Layout = null -- mismo criterio que Pages/Account/Login.cshtml (ver el
+    // comentario ahí): esta es una segunda pantalla de login TOTALMENTE
+    // independiente de la sesión de tenant, no una página más del shell de
+    // administración. BUG REAL CORREGIDO (2026-08-24): antes usaba
+    // _ViewStart.cshtml -> _ModuloLayout -> _LayoutMaestro (el shell
+    // compartido) -- como el esquema de autenticación DEFAULT es el de
+    // tenant (ver Program.cs, AddAuthentication(CookieAuthenticationDefaults
+    // .AuthenticationScheme)), _LayoutMaestro detectaba una sesión de tenant
+    // ya activa en el mismo navegador como "autenticado" y pintaba el shell
+    // completo de tenant (sidebar operativo, CompanySwitcher, etc.) encima
+    // del formulario -- el login de plataforma quedaba enterrado bajo un
+    // menú que no debía operar ahí. Con Layout = null, /Admin/Login siempre
+    // muestra solo el formulario, sin importar qué sesión (tenant o
+    // PlatformAdmin) ya exista.
+    Layout = null;
 }
-
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <h1 class="h3 mb-3">Administración de plataforma</h1>
-
-        @if (Model.ErrorMessage is not null)
-        {
-            <div class="alert alert-danger">@Model.ErrorMessage</div>
-        }
-
-        <form method="post" asp-antiforgery="true">
-            <input type="hidden" asp-for="Input.ReturnUrl" />
-
-            <div class="mb-3">
-                <label asp-for="Input.Email" class="form-label"></label>
-                <input asp-for="Input.Email" class="form-control" autocomplete="username" autofocus />
-                <span asp-validation-for="Input.Email" class="text-danger"></span>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Administración de plataforma — Portal SaaS</title>
+    <script>
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('ps-theme') || 'claro');
+    </script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/design-tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="login-bg">
+    <div class="login-brand-panel">
+        <div class="login-brand-mesh" aria-hidden="true"></div>
+        <div class="login-brand-glow" aria-hidden="true"></div>
+        <div class="login-brand-shine" aria-hidden="true"></div>
+        <div class="login-brand-grain" aria-hidden="true"></div>
+        <div class="login-brand-sheen" aria-hidden="true"></div>
+        <div class="login-brand">
+            <div class="login-brand-mark">PS</div>
+            <div class="login-brand-text">
+                <h1>Portal SaaS</h1>
+                <p>Administración de plataforma</p>
             </div>
+        </div>
 
-            <div class="mb-3">
-                <label asp-for="Input.Password" class="form-label"></label>
-                <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
-                <span asp-validation-for="Input.Password" class="text-danger"></span>
+        <div class="login-pitch-wrap">
+            <div class="login-pitch">
+                <span class="login-pitch-eyebrow">Backoffice</span>
+                <span class="login-pitch-rule" aria-hidden="true"></span>
+                <h2>Gestión de organizaciones, planes y módulos</h2>
+                <p>Acceso reservado a administradores de la plataforma -- una sesión totalmente aparte de la de cualquier organización.</p>
             </div>
+        </div>
 
-            <button type="submit" class="btn btn-primary w-100">Entrar</button>
-        </form>
+        <p class="login-footer">&copy; @DateTime.Now.Year Portal SaaS — Acceso restringido a administradores de plataforma.</p>
     </div>
-</div>
+
+    <div class="login-form-panel">
+        <div class="login-shell">
+            <div class="login-card">
+                <h2>Administración de plataforma</h2>
+                <p class="login-subtitle">Ingresá con tu cuenta de administrador de plataforma.</p>
+
+                @if (Model.ErrorMessage is not null)
+                {
+                    <div class="login-error-banner">
+                        @Model.ErrorMessage
+                    </div>
+                }
+
+                <form method="post" asp-antiforgery="true">
+                    <input type="hidden" asp-for="Input.ReturnUrl" />
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Input.Email" class="form-label">Correo</label>
+                        <input asp-for="Input.Email" class="form-control" autocomplete="username" autofocus />
+                        <span asp-validation-for="Input.Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Input.Password" class="form-label">Contraseña</label>
+                        <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
+                        <span asp-validation-for="Input.Password" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="login-submit">Entrar</button>
+                </form>
+
+                <div class="theme-row justify-content-center">
+                    <button type="button" data-theme-switch="claro" title="Claro"></button>
+                    <button type="button" data-theme-switch="oscuro" title="Oscuro"></button>
+                    <button type="button" data-theme-switch="teal" title="Teal"></button>
+                    <button type="button" data-theme-switch="violeta" title="Violeta"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/js/theme-switcher.js" asp-append-version="true"></script>
+</body>
+</html>

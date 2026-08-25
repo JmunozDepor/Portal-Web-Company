@@ -4,29 +4,29 @@
     ViewData["Title"] = "Nuevo perfil";
 }
 
-<div class="card-ps doc-form doc-tab-seccion mb-4">
-    <div class="doc-form-header">
-        <h2>Nuevo perfil</h2>
-    </div>
+<div class="card-surface mb-4">
+    <h2 class="h5 mb-3">Nuevo perfil</h2>
     <form method="post" asp-antiforgery="true">
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-        <div class="form-row">
-            <div class="form-group">
+        <div class="row g-3">
+            <div class="col-md-4">
                 <label asp-for="Input.Name" class="form-label"></label>
                 <input asp-for="Input.Name" class="form-control" autofocus />
                 <span asp-validation-for="Input.Name" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-8">
                 <label asp-for="Input.Description" class="form-label"></label>
                 <input asp-for="Input.Description" class="form-control" />
                 <span asp-validation-for="Input.Description" class="text-danger"></span>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary mt-3">Crear</button>
-        <a asp-page="/Admin/Profiles/Index" class="btn btn-link mt-3">Cancelar</a>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-primary">Crear</button>
+            <a asp-page="/Admin/Profiles/Index" class="btn-secondary">Cancelar</a>
+        </div>
     </form>
 </div>
 

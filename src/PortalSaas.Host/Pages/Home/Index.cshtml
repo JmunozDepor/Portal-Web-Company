@@ -1,7 +1,8 @@
 @page
 @model PortalSaas.Host.Pages.Home.IndexModel
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<PortalSaas.Host.Resources.SharedResources> Localizer
 @{
-    ViewData["Title"] = "Inicio";
+    ViewData["Title"] = Localizer["Inicio"].Value;
 }
 
 <div class="card-ps" style="padding: 20px;">

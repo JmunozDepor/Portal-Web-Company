@@ -1,8 +1,22 @@
-// Selector de tema -- persistencia por navegador (localStorage), no por usuario --
-// portado tal cual de referencia-original/PortalSAP_v2 (mismo patrón, mismos 4 temas:
-// claro/oscuro/teal/violeta -- ver site.css [data-theme="..."]). Cualquier módulo
-// nuevo hereda el tema activo sin hacer nada porque solo usa variables CSS, nunca
-// colores literales.
+// Selector de tema -- portado tal cual de referencia-original/PortalSAP_v2 (mismos 4
+// temas: claro/oscuro/teal/violeta -- ver site.css [data-theme="..."]). Cualquier
+// módulo nuevo hereda el tema activo sin hacer nada porque solo usa variables CSS,
+// nunca colores literales.
+//
+// BUG REAL CORREGIDO (2026-08-19, "no funciona el tema al cambiarlo en
+// preferencias"): este archivo asumía que localStorage era SIEMPRE la fuente de
+// verdad -- en cada DOMContentLoaded pisaba `data-theme` con
+// `localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME`, sin importar qué hubiera
+// puesto ahí el script inline de <head> (_LayoutMaestro.cshtml). Desde la
+// consolidación de preferencias, ese script YA fija el tema correcto ANTES de que
+// este archivo corra -- para una sesión de tenant, desde IUserPreferenceService
+// (la cuenta), nunca desde localStorage. Este archivo terminaba revirtiendo esa
+// elección al valor local del navegador (o "claro" si nunca se había tocado el
+// selector viejo) apenas terminaba de cargar el DOM -- el cambio en Preferences se
+// guardaba en la base, pero la página seguía mostrando el tema anterior SIEMPRE.
+// Fix: solo aplicar el fallback de localStorage si `data-theme` todavía no tiene
+// ningún valor (anónimo/PlatformAdmin, ver el script inline) -- si ya viene fijado
+// (sesión de tenant), se respeta tal cual.
 (function () {
     const STORAGE_KEY = "ps-theme";
     const DEFAULT_THEME = "claro";
@@ -20,8 +34,13 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-        var savedTheme = localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME;
-        applyTheme(savedTheme);
+        if (!document.documentElement.getAttribute("data-theme")) {
+            applyTheme(localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME);
+        } else {
+            // Ya viene fijado por el script inline -- solo sincroniza qué swatch
+            // se marca "activo" (Login/SelectCompany siguen usando esos botones).
+            applyTheme(document.documentElement.getAttribute("data-theme"));
+        }
 
         document.querySelectorAll("[data-theme-switch]").forEach(function (button) {
             button.addEventListener("click", function () {

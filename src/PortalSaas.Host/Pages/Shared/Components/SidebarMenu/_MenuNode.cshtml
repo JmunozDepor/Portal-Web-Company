@@ -1,4 +1,5 @@
 @model PortalSaas.Abstractions.Modelos.MenuNodeDto
+@inject Microsoft.Extensions.Localization.IStringLocalizer<PortalSaas.Host.Resources.SharedResources> Localizer
 @{
     var isFolder = Model.PagePath is null;
     var currentPath = Context.Request.Path.Value ?? "/";
@@ -24,11 +25,22 @@
     // misma sesión del navegador -- confirmado con curl que el servidor ya devolvía el
     // HTML correcto, el problema era 100% esa persistencia del lado del cliente).
     var parentContainerId = ViewData["ParentContainerId"] as string;
+
+    // Traducción de nombres de módulo raíz (2026-08-19, pedido explícito -- "los
+    // menús y módulos siguen en español"): SOLO nivel 1 (esGrupoRaiz), acotado a
+    // propósito -- traducir cada hoja de submenú (Órdenes de Venta, Notas de
+    // Crédito, etc.) de los 8 plugins es un trabajo mucho más grande, fuera de
+    // este alcance (confirmado con el dueño del proyecto). El nombre real sigue
+    // viniendo de `menus.name` (español, cargado por cada plugin) -- acá se usa
+    // como CLAVE de SharedResources; si no hay traducción para esa clave en el
+    // idioma activo, IStringLocalizer devuelve la clave tal cual (mismo nombre en
+    // español, comportamiento de fallback estándar, no un error).
 }
 @if (isFolder)
 {
     var collapseId = $"menu-node-{Model.Id}";
     var childrenContainerId = $"menu-children-{Model.Id}";
+    var displayName = esGrupoRaiz ? Localizer[Model.Name].Value : Model.Name;
 
     // Server-side: si la página activa está en algún nivel de este árbol, la carpeta
     // arranca YA abierta (class="show" + aria-expanded="true"). Sin esto, el <div
@@ -41,9 +53,10 @@
     var collapseClass = estaActivo ? "collapse show" : "collapse";
     <li class="sidebar-nav-item">
         <a class="sidebar-nav-grupo @(esGrupoRaiz ? "sidebar-nav-grupo-raiz" : "")" data-bs-toggle="collapse" href="#@collapseId" role="button"
+           title="@displayName"
            aria-expanded="@(estaActivo ? "true" : "false")" aria-controls="@collapseId" data-bs-parent="@(parentContainerId is not null ? "#" + parentContainerId : null)" style="@rootIconStyle">
             <span class="nav-icon"><i class="@(Model.Icon ?? "bi bi-folder")"></i></span>
-            <span class="nav-texto">@Model.Name</span>
+            <span class="nav-texto">@displayName</span>
             <i class="bi bi-chevron-down sidebar-grupo-chevron"></i>
         </a>
         <div class="@collapseClass" id="@collapseId">
@@ -60,10 +73,11 @@
 else
 {
     var href = Url.Content("~" + Model.PagePath);
+    var displayName = esGrupoRaiz ? Localizer[Model.Name].Value : Model.Name;
     <li>
-        <a href="@href" class="@(EsRutaActivaOSubruta(Model.PagePath, currentPath) ? "active" : "")">
+        <a href="@href" title="@displayName" class="@(EsRutaActivaOSubruta(Model.PagePath, currentPath) ? "active" : "")">
             <span class="nav-icon"><i class="@(Model.Icon ?? "bi bi-circle")"></i></span>
-            <span class="nav-texto">@Model.Name</span>
+            <span class="nav-texto">@displayName</span>
         </a>
     </li>
 }

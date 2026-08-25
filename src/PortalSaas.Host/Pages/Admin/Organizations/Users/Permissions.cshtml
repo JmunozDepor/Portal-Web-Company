@@ -4,7 +4,7 @@
     ViewData["Title"] = $"Permisos · {Model.TargetUser.Username}";
 }
 
-<a asp-page="/Admin/Organizations/Users/Index" asp-route-organizationId="@Model.Organization.Id" class="doc-form-volver"><i class="bi bi-arrow-left"></i> Volver a usuarios</a>
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "Users" })" />
 
 @if (!Model.TieneCompanies)
 {
@@ -16,10 +16,8 @@
     return;
 }
 
-<div class="card-ps doc-form doc-tab-seccion mb-4">
-    <div class="doc-form-header">
-        <h2>Permisos de @Model.TargetUser.Username</h2>
-    </div>
+<div class="card-surface mb-4">
+    <h2 class="h5 mb-3">Permisos de @Model.TargetUser.Username</h2>
 
     <form method="get" class="filter-card">
         <div class="col-auto">
@@ -106,6 +104,6 @@
             </div>
         }
 
-        <button type="submit" class="btn btn-primary mt-3">Guardar</button>
+        <button type="submit" class="btn-primary mt-4">Guardar</button>
     </form>
 </div>

@@ -311,8 +311,12 @@ public sealed class PortalSaasDbContext : DbContext
 
         modelBuilder.Entity<UserPreference>(entity =>
         {
+            // Valores revisados 2026-08-19 (consolidación de preferencias, ver
+            // Entities/UserPreference.cs) -- antes light/dark/system, ninguno de
+            // los 3 aplicado de verdad en ningún lado; ahora los 4 temas reales
+            // que site.css/sidebar.css implementan.
             entity.ToTable("user_preferences", t => t.HasCheckConstraint("ck_user_preferences_theme",
-                $"theme in ('{UserThemePreference.Light}', '{UserThemePreference.Dark}', '{UserThemePreference.System}')"));
+                $"theme in ('{UserThemePreference.Claro}', '{UserThemePreference.Oscuro}', '{UserThemePreference.Teal}', '{UserThemePreference.Violeta}')"));
             // 1:1 con User -- comparte PK, no tiene id propio (ver Entities/UserPreference.cs).
             entity.HasKey(e => e.UserId);
             entity.Property(e => e.Locale).HasMaxLength(10);
@@ -528,6 +532,7 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.Activo).HasColumnName("is_active");
             entity.Property(e => e.ProgramacionCron).HasColumnName("cron_schedule").HasMaxLength(100);
             entity.Property(e => e.NextRunAt).HasColumnName("next_run_at");
+            entity.Property(e => e.UltimaSincronizacionExitosa).HasColumnName("last_successful_sync_at");
             entity.HasIndex(e => new { e.CompanyId, e.Activo });
         });
 

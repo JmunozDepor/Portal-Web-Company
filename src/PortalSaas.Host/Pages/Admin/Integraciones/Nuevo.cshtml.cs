@@ -116,6 +116,7 @@ public class NuevoModel : PageModel
                 Input.ParentCompanyCode = configActual.ParentCompanyCode;
                 Input.BatchSize = configActual.BatchSize;
                 Input.LgfApiBaseUrl = configActual.LgfApiBaseUrl;
+                Input.MaxRecordsPerCycle = configActual.MaxRecordsPerCycle ?? 0;
             }
         }
         else if (definicion.ConectorTipo == IntegrationConectorTipo.Sap && !string.IsNullOrEmpty(definicion.ConectorConfigCifrado))
@@ -235,7 +236,8 @@ public class NuevoModel : PageModel
 
             var json = JsonSerializer.Serialize(new WmsCloudConfigInput(
                 Input.ApiUrl!.Trim(), Input.Usuario!.Trim(), clave ?? string.Empty, Input.ClientEnvCode!.Trim(), Input.ParentCompanyCode!.Trim(),
-                Input.BatchSize > 0 ? Input.BatchSize : 50, string.IsNullOrWhiteSpace(Input.LgfApiBaseUrl) ? null : Input.LgfApiBaseUrl.Trim()));
+                Input.BatchSize > 0 ? Input.BatchSize : 50, string.IsNullOrWhiteSpace(Input.LgfApiBaseUrl) ? null : Input.LgfApiBaseUrl.Trim(),
+                Input.MaxRecordsPerCycle > 0 ? Input.MaxRecordsPerCycle : null));
             return _secretoCifradoService.Encrypt(json);
         }
 
@@ -262,7 +264,7 @@ public class NuevoModel : PageModel
     }
 
     /// <summary>Espejo de WmsCloudConnector.WmsCloudConfig (record privado en Modulo.Wms) -- no se referencia el tipo del plugin desde Core, se serializa/deserializa por forma.</summary>
-    private sealed record WmsCloudConfigInput(string ApiUrl, string Usuario, string Clave, string ClientEnvCode, string ParentCompanyCode, int BatchSize = 50, string? LgfApiBaseUrl = null);
+    private sealed record WmsCloudConfigInput(string ApiUrl, string Usuario, string Clave, string ClientEnvCode, string ParentCompanyCode, int BatchSize = 50, string? LgfApiBaseUrl = null, int? MaxRecordsPerCycle = null);
 
     /// <summary>Espejo de SapDocumentConnector.SapWmsOutboundConfig (record privado). Filtro null/vacío = usa el filtro por defecto de la entidad (ver SapDocumentConnector.FiltroPorDefecto*).</summary>
     private sealed record SapConfigInput(string TipoEntidad, string? Filtro = null, int? PageSize = null);
@@ -331,6 +333,9 @@ public class NuevoModel : PageModel
 
         [Display(Name = "Tamaño de lote (BatchSize)")]
         public int BatchSize { get; set; } = 50;
+
+        [Display(Name = "Máximo de registros pendientes a traer por corrida (0 = usar el default del sistema)")]
+        public int MaxRecordsPerCycle { get; set; }
 
         [Display(Name = "URL base de LGFAPI (consulta de status, opcional)")]
         public string? LgfApiBaseUrl { get; set; }

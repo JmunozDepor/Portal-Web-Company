@@ -17,6 +17,21 @@
     <div class="alert alert-success">@mensaje</div>
 }
 
+<form method="get" class="row g-2 align-items-center mb-3">
+    <div class="col-auto">
+        <label for="CompanyId" class="col-form-label">Compañía</label>
+    </div>
+    <div class="col-auto">
+        <select name="CompanyId" id="CompanyId" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">Todas</option>
+            @foreach (var company in Model.Companies)
+            {
+                <option value="@company.Id" selected="@(Model.CompanyId == company.Id)">@company.Name</option>
+            }
+        </select>
+    </div>
+</form>
+
 @if (Model.Integraciones.Count == 0)
 {
     <p class="text-muted">No hay integraciones configuradas.</p>
@@ -28,6 +43,7 @@ else
             <thead>
                 <tr>
                     <th>Nombre</th>
+                    <th>Compañía</th>
                     <th>Módulo origen</th>
                     <th>Conector</th>
                     <th>Dirección</th>
@@ -41,6 +57,7 @@ else
                 {
                     <tr>
                         <td>@integracion.Nombre</td>
+                        <td>@(Model.CompanyNames.GetValueOrDefault(integracion.CompanyId, integracion.CompanyId.ToString()))</td>
                         <td>@integracion.ModuloOrigen</td>
                         <td>@integracion.ConectorTipo</td>
                         <td>@integracion.Direccion</td>

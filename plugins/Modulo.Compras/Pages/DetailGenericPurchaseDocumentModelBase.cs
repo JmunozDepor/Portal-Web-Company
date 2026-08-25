@@ -345,6 +345,10 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             GeneralView = "~/Pages/Shared/_TabGeneralCompras.cshtml",
             ContentView = "~/Pages/Shared/_TabContentCompras.cshtml",
         };
+
+        // Consumido por _ModuloBackLink.cshtml (breadcrumb del layout) -- ver el
+        // comentario equivalente en DetailGenericSalesDocumentModelBase.cs.
+        ViewData["ModuleBreadcrumbBackUrl"] = Document.BackUrl;
     }
 
     public sealed class InputModel

@@ -30,6 +30,16 @@ public sealed class SapConnectionProvider : ISapConnectionProvider
         _cache = cache;
     }
 
+    /// <summary>SLConnection.LoginAsync no acepta CancellationToken y puede colgarse
+    /// indefinidamente (ej. handshake TLS lento, SAP no responde) -- IntegrationSyncHostedService
+    /// procesa las integraciones en un único loop secuencial, así que sin este límite una
+    /// conexión colgada congela TODAS las integraciones de la compañía para siempre (encontrado
+    /// 21 ago 2026: el ciclo hizo una sola pasada al arrancar y nunca más volvió a hacer
+    /// polling). Task.WaitAsync no cancela la llamada colgada en sí (LoginAsync sigue corriendo
+    /// en segundo plano), pero libera el loop para que siga con el resto y marque esta
+    /// integración como Error en vez de trabarse para siempre.</summary>
+    private static readonly TimeSpan TimeoutLogin = TimeSpan.FromSeconds(30);
+
     public async Task<ISapSession> GetConnectionAsync(CancellationToken ct = default)
     {
         var companyId = _currentCompany.CompanyId;
@@ -42,7 +52,15 @@ public sealed class SapConnectionProvider : ISapConnectionProvider
             var password = _secrets.Decrypt(company.IntegrationSecretKey);
 
             var slConnection = new SLConnection(company.ServiceLayerUrl, company.DatabaseName, company.IntegrationUsername, password);
-            await slConnection.LoginAsync();
+            try
+            {
+                await slConnection.LoginAsync().WaitAsync(TimeoutLogin, ct);
+            }
+            catch (TimeoutException)
+            {
+                throw new TimeoutException(
+                    $"SAP Service Layer no respondió el login en {TimeoutLogin.TotalSeconds}s (compañía '{companyId}', URL '{company.ServiceLayerUrl}').");
+            }
             return slConnection;
         });
 

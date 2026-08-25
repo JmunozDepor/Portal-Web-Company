@@ -16,20 +16,20 @@ public class PreferencesModel : PageModel
     private readonly IUserPreferenceService _preferenceService;
 
     /// <summary>
-    /// Acotado a los países reales de este proyecto (Chile/México, ver CLAUDE.md) más
-    /// los vecinos típicos de una instalación SAP Business One LatAm -- no un selector
-    /// exhaustivo de idiomas del mundo, mismo criterio YAGNI del resto del proyecto.
-    /// "Punto de partida, no cerrado" (docs/06-AUTENTICACION-Y-PREFERENCIAS.md §4) --
-    /// agregar acá si una organización real necesita otro.
+    /// Solo los 2 idiomas que la app realmente traduce (SharedResources.es/en.resx,
+    /// ver PortalSaas.Host/Resources) -- antes había 6 opciones regionales de español
+    /// (MX/CO/AR/PE) hardcodeadas acá, pero SharedResources solo tiene contenido "es"/
+    /// "en", así que esas 4 elegían un valor que igual caía al mismo recurso "es" por
+    /// herencia de CultureInfo -- una elección sin efecto real, confusa para el
+    /// usuario. Si el día de mañana se agrega contenido específico por país (formato
+    /// de fecha/moneda distinto, no solo idioma), recién ahí vuelve a tener sentido
+    /// separarlos -- hasta entonces, elegir entre 6 variantes que producen el mismo
+    /// resultado es peor que elegir entre 2 que sí hacen algo.
     /// </summary>
     private static readonly (string Value, string Label)[] LocaleChoices =
     [
-        ("es-CL", "Español (Chile)"),
-        ("es-MX", "Español (México)"),
-        ("es-CO", "Español (Colombia)"),
-        ("es-AR", "Español (Argentina)"),
-        ("es-PE", "Español (Perú)"),
-        ("en-US", "English (US)"),
+        ("es-CL", "Español"),
+        ("en-US", "English"),
     ];
 
     /// <summary>Mismo criterio de acotado que LocaleChoices -- zonas IANA reales, no una lista mundial.</summary>
@@ -88,6 +88,15 @@ public class PreferencesModel : PageModel
         await _preferenceService.UpdateAsync(CurrentUserId, new UserPreferenceDto(
             Input.Locale, Input.Timezone, Input.Theme, Input.EmailNotificationsEnabled));
 
+        // CONSOLIDACIÓN (2026-08-19, "dejar amarrado" idioma/tema acá): no hace
+        // falta escribir ninguna cookie de cultura -- UserProfileCultureProvider
+        // (PortalSaas.Core.Infraestructura, primer proveedor de la cadena en
+        // Program.cs) YA resuelve el idioma leyendo IUserPreferenceService.Locale
+        // en cada request para cualquier usuario autenticado, con prioridad sobre
+        // la cookie. Guardar acá ya alcanza -- el cambio se ve desde el próximo
+        // request, sin re-login. El selector rápido ES/EN que vivía en el topbar
+        // (SetLanguage.cshtml, eliminado en este mismo cambio) escribía esa
+        // cookie porque él SÍ corría fuera de esta página; ya no hace falta.
         Saved = true;
     }
 
@@ -129,7 +138,7 @@ public class PreferencesModel : PageModel
 
         [Required]
         [Display(Name = "Tema")]
-        public string Theme { get; set; } = UserThemePreference.System;
+        public string Theme { get; set; } = UserThemePreference.Claro;
 
         [Display(Name = "Recibir notificaciones por correo")]
         public bool EmailNotificationsEnabled { get; set; } = true;

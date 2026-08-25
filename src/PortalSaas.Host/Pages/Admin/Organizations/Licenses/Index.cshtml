@@ -4,13 +4,27 @@
     ViewData["Title"] = $"Licencia · {Model.Organization.LegalName}";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h1 class="h3 mb-0">Licencia de @Model.Organization.LegalName</h1>
-        <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
-    </div>
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "License" })" />
+
+<div class="d-flex justify-content-end mb-3">
     <a asp-page="/Admin/Organizations/Licenses/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Emitir licencia</a>
+    <a asp-page="/Admin/Organizations/Licenses/Activate" asp-route-organizationId="@Model.Organization.Id" class="btn btn-outline-primary">Activar licencia (on-premise)</a>
+    @if (Model.PuedeValidarManualmente)
+    {
+        <form method="post" asp-page-handler="Validar" asp-route-organizationId="@Model.Organization.Id" class="d-inline">
+            <button type="submit" class="btn btn-outline-secondary">Validar licencia manualmente</button>
+        </form>
+    }
 </div>
+
+@if (TempData["MensajeExito"] is string mensajeExito)
+{
+    <div class="alert alert-success">@mensajeExito</div>
+}
+@if (TempData["MensajeError"] is string mensajeError)
+{
+    <div class="alert alert-danger">@mensajeError</div>
+}
 
 <div class="document-list-table-wrapper">
     <table class="table document-list-table">

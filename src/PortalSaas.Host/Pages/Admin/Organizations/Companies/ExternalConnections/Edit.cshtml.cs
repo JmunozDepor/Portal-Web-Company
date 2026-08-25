@@ -26,6 +26,8 @@ public class EditModel : PageModel
 
     public Company Company { get; private set; } = null!;
 
+    public Organization Organization { get; private set; } = null!;
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
@@ -46,6 +48,7 @@ public class EditModel : PageModel
         }
 
         Company = (await _db.Companies.FindAsync(connection.CompanyId))!;
+        Organization = (await _db.Organizations.FindAsync(Company.OrganizationId))!;
 
         Input = new InputModel
         {
@@ -73,6 +76,7 @@ public class EditModel : PageModel
         }
 
         Company = (await _db.Companies.FindAsync(connection.CompanyId))!;
+        Organization = (await _db.Organizations.FindAsync(Company.OrganizationId))!;
         await LoadAvailablePluginsAsync(connection.CompanyId, connection.Id);
 
         if (!ModelState.IsValid)

@@ -27,8 +27,15 @@ public interface ISapSession
     /// ~20 filas por default en un GetAsync&lt;List&lt;T&gt;&gt; simple, así que cualquier
     /// consulta que pueda traer más de una página (ej. PullAsync de un conector de
     /// integración) debe usar este método, nunca GetAsync&lt;List&lt;T&gt;&gt;.
+    ///
+    /// selectOData: lista de columnas separadas por coma ($select) -- sin esto, cada fila trae
+    /// TODAS las columnas del recurso (en Items de SAP B1, cientos), lo que puede colgar la
+    /// respuesta con filtros que matchean muchas filas (encontrado 21 ago 2026: ~29.000 Items
+    /// sin $select nunca terminaba de responder). topPorPagina: tamaño de página HTTP ($top) --
+    /// NO es un límite de filas totales, GetAllAsync sigue trayendo páginas hasta agotar el
+    /// filtro; controla cuántas filas trae cada request individual.
     /// </summary>
-    Task<IReadOnlyList<T>> GetAllAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default);
+    Task<IReadOnlyList<T>> GetAllAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, string? selectOData = null, int? topPorPagina = null, CancellationToken ct = default);
 
     Task<T?> PostAsync<T>(string recurso, object cuerpo, CancellationToken ct = default);
 

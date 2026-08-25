@@ -29,7 +29,39 @@ using PortalSaas.Core.Integraciones;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages()
+    // Sin esto, IHtmlLocalizer<T>/IStringLocalizer<T> inyectados en una vista nunca
+    // resuelven -- AddLocalization (más abajo) solo registra la fábrica de
+    // localizadores en el contenedor de DI, AddViewLocalization es lo que conecta esa
+    // fábrica a las vistas Razor Pages/MVC (@inject IHtmlLocalizer<...>).
+    .AddViewLocalization();
+
+// Localización (español/inglés) -- infraestructura únicamente en esta entrega: el
+// selector del topbar + SharedResources con las llaves de navegación/acciones base.
+// NO traduce el contenido de los plugins (Ventas/Compras/Inventario/Rendiciones/
+// Administración siguen 100% en español, texto hardcodeado en cada .cshtml) ni el
+// sidebar real (los nombres de menú vienen de MenuItemDefinition.Name, sincronizados
+// a la tabla `menus` por cada plugin -- traducirlos es una entrega aparte, fuera de
+// alcance acá). Ver UserProfileCultureProvider (PortalSaas.Core.Infraestructura) para
+// el proveedor de cultura por preferencia de usuario.
+// BUG REAL CORREGIDO (2026-08-19, "no funciona el idioma"): con `ResourcesPath =
+// "Resources"` Y el marker `SharedResources` viviendo DENTRO de esa misma carpeta
+// (namespace `PortalSaas.Host.Resources`, ver Resources/SharedResources.cs),
+// `ResourceManagerStringLocalizerFactory` computaba el nombre base ESPERADO como
+// "PortalSaas.Host.Resources.Resources.SharedResources" (dobla "Resources": lo
+// antepone desde ResourcesPath Y otra vez desde el namespace del propio tipo) --
+// no coincide con el nombre real embebido ("PortalSaas.Host.Resources.
+// SharedResources", uno solo, el que generan los .resx tal como están ubicados).
+// Con eso, CUALQUIER key de CUALQUIER cultura no-neutral fallaba en silencio
+// (ResourceNotFound=true, LocalizedString.Value cae al key mismo) -- pasaba
+// desapercibido porque el key en español ("Inicio") coincide por casualidad con
+// el valor real en español, pero para inglés mostraba igual "Inicio" en vez de
+// "Home". Confirmado agregando un marcador de depuración temporal que expuso
+// ResourceNotFound=true incluso para es-CL (la cultura default). Fix: quitar
+// ResourcesPath -- el marker ya sigue la convención de namespace/carpeta
+// (Resources/SharedResources.cs = namespace PortalSaas.Host.Resources), la
+// localización de ASP.NET Core resuelve bien SOLA sin el override.
+builder.Services.AddLocalization();
 
 // Límite de tamaño de request: el default de ASP.NET Core (~28.6MB, tanto en Kestrel
 // como en el hosting in-process de IIS) alcanza para un formulario normal, pero no para
@@ -104,6 +136,10 @@ var licensingRole = builder.Configuration["Licensing:Role"];
 if (licensingRole == "OnPremise")
 {
     builder.Services.AddSingleton<IInstallationFingerprintProvider, InstallationFingerprintProvider>();
+    // ILicenseHeartbeatService también lo usa el botón "Validar licencia manualmente"
+    // de Pages/Admin/Organizations/Licenses/Index.cshtml.cs -- registrado acá porque
+    // depende de IInstallationFingerprintProvider, exclusivo de este rol.
+    builder.Services.AddScoped<ILicenseHeartbeatService, LicenseHeartbeatService>();
     builder.Services.AddHostedService<LicenseActivatorBackgroundService>();
 }
 
@@ -381,8 +417,41 @@ foreach (var assembly in pluginManager.AssembliesConWwwRootPropio.Values)
     });
 }
 
+// Culturas soportadas: español (default) e inglés. La cadena de proveedores corre en
+// orden hasta que uno devuelva una cultura -- UserProfileCultureProvider primero (lee
+// IUserPreferenceService.Locale para un usuario ya autenticado, ver ese archivo --
+// ÚNICO mecanismo real desde la consolidación de 2026-08-19, /Home/Preferences es el
+// único lugar que lo cambia), después la cookie estándar ".AspNetCore.Culture" (queda
+// como fallback para un visitante anónimo, aunque hoy nada la escribe todavía -- el
+// selector rápido que la escribía, SetLanguage.cshtml, se eliminó por quedar
+// duplicado/desincronizado con Preferences), por último el default "es" si ninguno de
+// los dos aplicó. DESPUÉS de UseAuthentication a propósito -- UserProfileCultureProvider
+// necesita HttpContext.User ya poblado por el middleware de autenticación para saber
+// si hay sesión.
+// Bug real encontrado (19 ago 2026): esta lista tenía solo "es"/"en" (neutras), pero
+// Pages/Home/Preferences.cshtml.cs (LocaleChoices) guarda códigos REGIONALES
+// ("es-CL"/"en-US") -- RequestLocalizationMiddleware descarta cualquier cultura
+// devuelta por un provider que no esté LITERAL en SupportedCultures/SupportedUICultures
+// (sin fallback automático de "en-US" a "en" en esa validación, aunque el fallback de
+// recursos satélite sí resuelva "en-US" -> SharedResources.en.resx por herencia de
+// CultureInfo normal). Con la lista vieja, UserProfileCultureProvider devolvía "en-US"
+// desde la base, la validación lo rechazaba en silencio, y el middleware caía siempre
+// al default "es" -- por eso el selector de Preferencias no cambiaba nada visible pese
+// a guardar bien el dato. Se agregan acá los 2 códigos reales de LocaleChoices (los
+// únicos 2 idiomas que SharedResources realmente traduce, ver el comentario de
+// LocaleChoices sobre por qué se sacaron las variantes regionales de español que no
+// tenían efecto), más "es"/"en" neutras (por si algún proveedor futuro devuelve la
+// forma corta).
+var supportedCultures = new[] { "es", "en", "es-CL", "en-US" };
+var localizationOptions = new Microsoft.AspNetCore.Builder.RequestLocalizationOptions()
+    .SetDefaultCulture("es-CL")
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+localizationOptions.RequestCultureProviders.Insert(0, new UserProfileCultureProvider());
+
 app.UseRouting();
 app.UseAuthentication();
+app.UseRequestLocalization(localizationOptions);
 
 // Sin esto, el patrón POST /Account/SwitchCompany -> redirect -> GET puede volver a
 // mostrar una respuesta cacheada por el navegador de ANTES del cambio de compañía --

@@ -13,6 +13,29 @@ public sealed class IntegrationSyncHostedService : BackgroundService
 {
     private static readonly TimeSpan IntervaloCiclo = TimeSpan.FromMinutes(1);
 
+    /// <summary>Red de seguridad: un conector puede colgarse en cualquier punto de la llamada
+    /// externa (login SAP, GetAllAsync paginado, POST a WMS Cloud, etc.) sin respetar
+    /// CancellationToken ni tener su propio timeout -- encontrado 21 ago 2026: el ciclo quedó
+    /// congelado para siempre procesando una sola IntegrationDefinition, bloqueando TODAS las
+    /// demás de la compañía porque este es un loop secuencial único. En vez de perseguir cada
+    /// punto de la cadena de llamadas (SapConnectionProvider ya tiene su propio timeout de login
+    /// de 30s, pero no alcanzó), este timeout global por integración es la garantía real de que
+    /// el ciclo siempre sigue adelante. 5 minutos (no 90s, valor inicial insuficiente) porque
+    /// una sincronización real de Items puede traer decenas de miles de filas (confirmado 21 ago
+    /// 2026: 29.087 filas, ~50s solo el fetch a SAP + escritura a staging) -- 90s cortaba
+    /// corridas legítimas, no solo cuelgues reales.</summary>
+    private static readonly TimeSpan TimeoutPorIntegracion = TimeSpan.FromMinutes(5);
+
+    /// <summary>El PageSize configurable del conector Sap (ver SapDocumentConnector) solo
+    /// controla el $top de la consulta HTTP contra SAP -- PullAsync igual acumula TODAS las
+    /// filas (ej. 29.083) en una sola lista antes de devolverlas. Sin este chunking, ese único
+    /// lote completo se pasaba de una sola vez a writer.EscribirAsync, que hace un solo
+    /// SaveChangesAsync con miles de filas -- exactamente el escenario "saturar la BD" que se
+    /// pidió evitar con lotes (22 ago 2026). Se trocea acá, en el único punto donde se invoca
+    /// EscribirAsync, para que aplique a cualquier writer de Bajada sin que cada uno tenga que
+    /// implementarlo.</summary>
+    private const int TamanoLoteEscritura = 200;
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<IntegrationSyncHostedService> _logger;
 
@@ -96,7 +119,53 @@ public sealed class IntegrationSyncHostedService : BackgroundService
             var readers = scope.ServiceProvider.GetServices<IIntegrationEntityReader>().ToList();
             var writers = scope.ServiceProvider.GetServices<IIntegrationEntityWriter>().ToList();
 
-            await EjecutarIntegracionAsync(contexto, secretoServicio, conectores, readers, writers, definicion, cancellationToken);
+            try
+            {
+                await EjecutarIntegracionAsync(contexto, secretoServicio, conectores, readers, writers, definicion, cancellationToken)
+                    .WaitAsync(TimeoutPorIntegracion, cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                // WaitAsync no cancela la tarea abandonada -- sigue corriendo en segundo plano
+                // contra 'contexto' (no thread-safe), así que a partir de acá 'contexto' queda
+                // envenenado y NO se debe volver a usar. Se abre uno nuevo, en un scope aparte,
+                // solo para dejar constancia y destrabar la próxima corrida.
+                _logger.LogError(
+                    "La integración '{Nombre}' ({Id}) no terminó en {Segundos}s -- se abandona esta corrida para no bloquear el resto del ciclo. Puede seguir un proceso huérfano en segundo plano.",
+                    definicion.Nombre, definicion.Id, TimeoutPorIntegracion.TotalSeconds);
+                await RegistrarTimeoutEnScopeNuevoAsync(definicion.Id, TimeoutPorIntegracion, cancellationToken);
+            }
+        }
+    }
+
+    private async Task RegistrarTimeoutEnScopeNuevoAsync(Guid definicionId, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var contexto = scope.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+
+            var definicion = await contexto.IntegrationDefinitions.FirstOrDefaultAsync(d => d.Id == definicionId, cancellationToken);
+            if (definicion is not null)
+            {
+                definicion.NextRunAt = null;
+            }
+
+            contexto.IntegrationRunLogs.Add(new IntegrationRunLog
+            {
+                IntegrationDefinitionId = definicionId,
+                IniciadoEn = DateTimeOffset.UtcNow,
+                FinalizadoEn = DateTimeOffset.UtcNow,
+                Resultado = IntegrationRunResultado.Error,
+                DetalleError = $"Timeout: no terminó en {timeout.TotalSeconds}s. Ver logs del Host para más detalle.",
+                DisparadoPor = IntegrationRunDisparadoPor.Programado,
+            });
+
+            await contexto.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error registrando el timeout de la integración {IntegrationDefinitionId}", definicionId);
         }
     }
 
@@ -134,24 +203,37 @@ public sealed class IntegrationSyncHostedService : BackgroundService
             if (definicion.Direccion is IntegrationDireccion.Bajada)
             {
                 var conectorConfigJson = DescifrarConfigConector(secretoServicio, definicion);
+                var cursorIncremental = definicion.UltimaSincronizacionExitosa;
+                log.DetalleConsulta = DescribirConsultaSinFallar(conector, conectorConfigJson, cursorIncremental);
 
                 var writer = writers.FirstOrDefault(w => w.EntidadNegocio == definicion.EntidadNegocio)
                     ?? throw new InvalidOperationException($"No hay writer registrado para entidad '{definicion.EntidadNegocio}'.");
 
-                var registrosExternos = await conector.PullAsync(conectorConfigJson, cancellationToken);
-                await writer.EscribirAsync(definicion.CompanyId, registrosExternos, cancellationToken);
+                var registrosExternos = await conector.PullAsync(conectorConfigJson, cursorIncremental, cancellationToken);
+                foreach (var lote in registrosExternos.Chunk(TamanoLoteEscritura))
+                {
+                    await writer.EscribirAsync(definicion.CompanyId, lote, cancellationToken);
+                }
 
                 log.RegistrosProcesados = registrosExternos.Count;
+
+                // Cursor de sincronización incremental (ver IntegrationDefinition.UltimaSincronizacionExitosa
+                // y IIntegrationConnector.PullAsync) -- se avanza SOLO si esta corrida llega hasta acá sin
+                // excepción (si el catch de abajo se dispara, esta línea nunca corrió y el cursor no avanza,
+                // así la próxima corrida reintenta desde el mismo punto en vez de perder el rango con error).
+                definicion.UltimaSincronizacionExitosa = DateTimeOffset.UtcNow;
             }
 
             if (definicion.Direccion is IntegrationDireccion.Subida)
             {
                 var conectorConfigJson = DescifrarConfigConector(secretoServicio, definicion);
+                log.DetalleConsulta = DescribirConsultaSinFallar(conector, conectorConfigJson);
 
                 var reader = readers.FirstOrDefault(r => r.EntidadNegocio == definicion.EntidadNegocio)
                     ?? throw new InvalidOperationException($"No hay reader registrado para entidad '{definicion.EntidadNegocio}'.");
 
-                var registrosLocales = await reader.LeerPendientesAsync(definicion.CompanyId, cancellationToken);
+                var limiteMaximo = LeerLimiteMaximoDeConfig(conectorConfigJson);
+                var registrosLocales = await reader.LeerPendientesAsync(definicion.CompanyId, limiteMaximo, cancellationToken);
 
                 // NO se pasa por IIntegrationFieldMappingService acá -- el mapeo campo-a-campo
                 // (IntegrationFieldMapping en BD) sirve para traducir NOMBRES de campo entre el
@@ -213,6 +295,47 @@ public sealed class IntegrationSyncHostedService : BackgroundService
                 // arriba vía _logger.LogError. Este es un fallo aparte, de persistencia.
                 _logger.LogError(saveEx, "Error guardando el log de ejecución para la integración {IntegrationDefinitionId}", definicion.Id);
             }
+        }
+    }
+
+    /// <summary>IIntegrationConnector.DescribirConsulta no debería lanzar (ver contrato de la
+    /// interfaz), pero un conector de terceros podría no respetarlo -- no dejar que describir
+    /// la consulta para el log tumbe la ejecución real.</summary>
+    private string? DescribirConsultaSinFallar(IIntegrationConnector conector, string conectorConfigJson, DateTimeOffset? cursorIncremental = null)
+    {
+        try
+        {
+            return conector.DescribirConsulta(conectorConfigJson, cursorIncremental);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error describiendo la consulta del conector '{Tipo}'", conector.Tipo);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// "MaxRecordsPerCycle" es un campo opcional dentro de la config del conector de Subida
+    /// (ej. WmsCloudConfig, definido en el plugin -- no accesible como tipo desde Core). Se
+    /// lee genéricamente vía JsonDocument en vez de un tipo fuerte, mismo criterio que
+    /// DescribirConsultaSinFallar de arriba: nunca debe tumbar la corrida real si la config no
+    /// trae el campo o no es JSON válido, y no es propiedad de este proyecto conocer el shape
+    /// completo de la config de cada conector. Null si no está configurado -- cada reader
+    /// (ver WmsSapStageItemReader.MaximoPorCicloPorDefecto) decide su propio default.
+    /// </summary>
+    private int? LeerLimiteMaximoDeConfig(string conectorConfigJson)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(conectorConfigJson);
+            return doc.RootElement.TryGetProperty("MaxRecordsPerCycle", out var prop) && prop.TryGetInt32(out var valor)
+                ? valor
+                : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error leyendo MaxRecordsPerCycle de la config del conector, se usa el default del reader.");
+            return null;
         }
     }
 

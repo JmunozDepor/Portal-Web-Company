@@ -3,19 +3,19 @@
 @{
     ViewData["Title"] = "Perfiles";
 }
+@* Migrado al Design System unificado (2026-08-19) -- mismo patrón que GruposMenu. *@
+@{ var perfilDrawerAbierto = Model.EditId is not null || !ViewData.ModelState.IsValid; }
 
-@* Patrón ListadoOrganizacion (ver CLAUDE.md, "Densidad visual estándar") -- header
-   estándar de toda pantalla /organizacion/*: fila flex con el h1 a la izquierda y el
-   slot de acción a la derecha (vacío acá, la creación es vía el formulario inline de
-   más abajo, no un botón que navegue a otra página). *@
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Perfiles de tu organización</h1>
-</div>
-<p class="text-muted">
-    Un perfil agrupa acciones (Ver/Crear/Editar/Eliminar/Aprobar/Exportar) -- después lo
-    asignás a un usuario para una pantalla puntual desde su ficha. Las plantillas de
-    plataforma (sin organización) son de solo lectura.
-</p>
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1">
+        <h2 class="mb-0">Perfiles de tu organización</h2>
+        <button type="button" class="btn-primary" data-drawer-open="drawer-perfil">+ Nuevo perfil</button>
+    </div>
+    <p class="text-muted mb-3">
+        Un perfil agrupa acciones (Ver/Crear/Editar/Eliminar/Aprobar/Exportar) -- después lo
+        asignás a un usuario para una pantalla puntual desde su ficha. Las plantillas de
+        plataforma (sin organización) son de solo lectura.
+    </p>
 
 @if (Model.MensajeExito is not null)
 {
@@ -26,62 +26,12 @@
     <div class="alert alert-danger">@Model.MensajeError</div>
 }
 
-<div class="card-ps doc-form doc-tab-seccion mb-4">
-    <div class="doc-form-header">
-        <h2>@(Model.EditId is null ? "Nuevo perfil" : Model.IsEditingGlobalTemplate ? "Plantilla de plataforma" : "Editar perfil")</h2>
-        @if (Model.EditId is not null && Model.IsEditingGlobalTemplate)
-        {
-            <span class="badge bg-secondary doc-status-badge">Solo lectura</span>
-        }
-    </div>
-
-    @if (Model.EditId is not null && Model.IsEditingGlobalTemplate)
-    {
-        <p class="text-muted">Esta es una plantilla global de plataforma -- no se puede editar desde acá. Creá un perfil propio si necesitás algo distinto.</p>
-    }
-    else
-    {
-        <form method="post" asp-page-handler="Save" asp-route-editId="@Model.EditId" asp-antiforgery="true">
-            <div class="form-row">
-                <div class="form-group">
-                    <label asp-for="Input.Name" class="form-label"></label>
-                    <input asp-for="Input.Name" class="form-control" />
-                    <span asp-validation-for="Input.Name" class="text-danger"></span>
-                </div>
-                <div class="form-group form-group-ancho-completo">
-                    <label asp-for="Input.Description" class="form-label"></label>
-                    <input asp-for="Input.Description" class="form-control" />
-                </div>
-            </div>
-
-            <span class="doc-resumen-total-titulo mt-3 d-block">Acciones incluidas</span>
-            <div class="menu-perfil-panel">
-                @foreach (var action in Model.AllActions)
-                {
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" name="Input.SelectedActionIds" value="@action.Id"
-                               checked="@Model.Input.SelectedActionIds.Contains(action.Id)" id="action-@action.Id" />
-                        <label class="form-check-label" for="action-@action.Id">@action.Name</label>
-                    </div>
-                }
-            </div>
-
-            <button type="submit" class="btn btn-primary mt-3">@(Model.EditId is null ? "Crear" : "Guardar")</button>
-            @if (Model.EditId is not null)
-            {
-                <a asp-page="/Perfiles/Index" class="btn btn-outline-secondary mt-3">Cancelar</a>
-            }
-        </form>
-    }
-</div>
-
-<div class="document-list-table-wrapper">
-    <table class="table document-list-table">
+<table class="table-ps">
     <thead>
         <tr>
             <th>Nombre</th>
             <th>Origen</th>
-            <th></th>
+            <th class="col-actions"></th>
         </tr>
     </thead>
     <tbody>
@@ -90,23 +40,75 @@
             <tr>
                 <td>@profile.Name</td>
                 <td>@(profile.IsGlobalTemplate ? "Plantilla de plataforma" : "Propio")</td>
-                <td>
-                    <a asp-page="/Perfiles/Index" asp-route-editId="@profile.Id">@(profile.IsGlobalTemplate ? "Ver" : "Editar")</a>
-                    @if (!profile.IsGlobalTemplate)
-                    {
-                        <form method="post" asp-page-handler="Delete" asp-antiforgery="true" style="display:inline" onsubmit="return confirm('¿Eliminar este perfil?');">
-                            <input type="hidden" name="id" value="@profile.Id" />
-                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2">Eliminar</button>
-                        </form>
-                    }
+                <td class="col-actions">
+                    <div class="admin-row-actions">
+                        <a asp-page="/Perfiles/Index" asp-route-editId="@profile.Id" class="btn-ghost" title="@(profile.IsGlobalTemplate ? "Ver" : "Editar")">
+                            <i class="bi @(profile.IsGlobalTemplate ? "bi-eye" : "bi-pencil")"></i>
+                        </a>
+                        @if (!profile.IsGlobalTemplate)
+                        {
+                            <form method="post" asp-page-handler="Delete" asp-antiforgery="true" class="d-inline-block" onsubmit="return confirm('¿Eliminar este perfil?');">
+                                <input type="hidden" name="id" value="@profile.Id" />
+                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                            </form>
+                        }
+                    </div>
                 </td>
             </tr>
         }
     </tbody>
 </table>
-</div>
 
 @if (Model.Profiles.Count == 0)
 {
     <p class="text-muted">Todavía no hay perfiles.</p>
 }
+</div>
+
+<div id="drawer-perfil" class="drawer-overlay @(perfilDrawerAbierto ? "is-open" : "")" data-drawer>
+    <aside class="drawer-panel @(perfilDrawerAbierto ? "is-open" : "")">
+        <div class="drawer-header">
+            <h3>@(Model.EditId is null ? "Nuevo perfil" : Model.IsEditingGlobalTemplate ? "Plantilla de plataforma" : "Editar perfil")</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        @if (Model.EditId is not null && Model.IsEditingGlobalTemplate)
+        {
+            <div class="drawer-body">
+                <p class="text-muted">Esta es una plantilla global de plataforma -- no se puede editar desde acá. Creá un perfil propio si necesitás algo distinto.</p>
+            </div>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Save" asp-route-editId="@Model.EditId" asp-antiforgery="true">
+                <div class="drawer-body">
+                    <div class="mb-3">
+                        <label asp-for="Input.Name" class="form-label"></label>
+                        <input asp-for="Input.Name" class="form-control" />
+                        <span asp-validation-for="Input.Name" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.Description" class="form-label"></label>
+                        <input asp-for="Input.Description" class="form-control" />
+                    </div>
+
+                    <span class="d-block mt-2 mb-2 fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);">Acciones incluidas</span>
+                    <div class="menu-perfil-panel">
+                        @foreach (var action in Model.AllActions)
+                        {
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="Input.SelectedActionIds" value="@action.Id"
+                                       checked="@Model.Input.SelectedActionIds.Contains(action.Id)" id="action-@action.Id" />
+                                <label class="form-check-label" for="action-@action.Id">@action.Name</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary">@(Model.EditId is null ? "Crear" : "Guardar")</button>
+                </div>
+            </form>
+        }
+    </aside>
+</div>

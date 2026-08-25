@@ -4,43 +4,45 @@
     ViewData["Title"] = $"Editar licencia · {Model.Organization.LegalName}";
 }
 
-<div class="card-ps doc-form doc-tab-seccion mb-4">
-    <div class="doc-form-header">
-        <h2>Editar licencia de @Model.Organization.LegalName</h2>
-    </div>
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "License" })" />
+
+<div class="card-surface mb-4">
+    <h2 class="h5 mb-3">Editar licencia de @Model.Organization.LegalName</h2>
     <p class="text-muted">Clave de activación: <code>@Model.ActivationKey</code> (no se cambia acá).</p>
     <form method="post" asp-antiforgery="true">
         <input type="hidden" asp-for="Input.Id" />
         <input type="hidden" asp-for="Input.OrganizationId" />
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-        <div class="form-row">
-            <div class="form-group">
+        <div class="row g-3">
+            <div class="col-md-4">
                 <label asp-for="Input.PlanId" class="form-label"></label>
                 <select asp-for="Input.PlanId" class="form-select" asp-items="Model.Plans"></select>
                 <span asp-validation-for="Input.PlanId" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-4">
                 <label asp-for="Input.Status" class="form-label"></label>
                 <select asp-for="Input.Status" class="form-select" asp-items="PortalSaas.Data.Entities.OnPremiseLicenseStatus.All.Select(s => new SelectListItem(s, s))"></select>
                 <span asp-validation-for="Input.Status" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-4">
                 <label asp-for="Input.ExpiresAt" class="form-label"></label>
                 <input asp-for="Input.ExpiresAt" type="date" class="form-control" />
                 <span asp-validation-for="Input.ExpiresAt" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-12">
                 <label asp-for="Input.InstallationFingerprint" class="form-label"></label>
                 <input asp-for="Input.InstallationFingerprint" class="form-control" />
                 <span asp-validation-for="Input.InstallationFingerprint" class="text-danger"></span>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary mt-3">Guardar</button>
-        <a asp-page="/Admin/Organizations/Licenses/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-link mt-3">Cancelar</a>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <a asp-page="/Admin/Organizations/Licenses/Index" asp-route-organizationId="@Model.Organization.Id" class="btn-secondary">Cancelar</a>
+        </div>
     </form>
 </div>

@@ -1,0 +1,354 @@
+@*
+    ============================================================================
+    _LayoutMaestro.cshtml -- Layout Maestro Global (renombrado de _Layout.cshtml,
+    2026-08-17, plan de gobernanza y rediseño UI/UX de toda la plataforma).
+
+    REGLAS DURAS DE UI (INVIOLABLES PARA TODO EL PROYECTO -- ver
+    Portal SaaS - Core/CLAUDE.md para el detalle completo):
+
+    1. CERO CSS POR MÓDULO. Ningún módulo (core o plugin) declara un archivo
+       CSS independiente con clases con prefijo local (.rnd-*, .btn-erp-*,
+       .admin-card, etc.). Toda vista consume el set cerrado de componentes de
+       wwwroot/css/components.css.
+    2. CERO ESTILOS INLINE. Prohibido style="..." en cualquier .cshtml/.razor.
+    3. ÚNICA FUENTE DE VERDAD: wwwroot/css/design-tokens.css. Todo color,
+       margen, sombra y tipografía se consume vía var(--token), nunca un valor
+       literal repetido en otro archivo.
+    4. TRANSICIONES ESTANDARIZADAS: solo var(--transition-fast) (150ms) y
+       var(--drawer-transition) (300ms). Cero animaciones pesadas/keyframes
+       decorativos.
+    5. COMPONENTES CERRADOS: .btn-primary/.btn-secondary/.card-surface/
+       .table-ps/.badge-status (wwwroot/css/components.css) son el único
+       vocabulario visual permitido -- no crear un componente equivalente con
+       otro nombre.
+
+    Este archivo:
+    - Carga design-tokens.css + components.css (antes que site.css).
+    - Define el Sidebar Principal Nivel 1: rail angosto de 64px, solo íconos
+      con tooltip flotante al hover (.rail-item/.rail-tooltip, ver
+      components.css) -- reemplaza el sidebar ancho con texto anterior.
+    - Define la Topbar Global unificada (selector de compañía, buscador,
+      perfil) -- compartida por sesión de tenant Y de administrador de
+      plataforma.
+    - Sirve tanto al shell de tenant (esquema de cookie default,
+      IMenuNavigationService) como al backoffice /Admin/* (esquema de cookie
+      "PlatformAdmin", SIN acceso a OrganizationId/CompanyId) -- rama
+      explícita más abajo (isPlatformAdmin) para no invocar
+      SidebarMenuViewComponent/CompanySwitcher en contexto Admin, porque esos
+      componentes leen claims que la sesión de PlatformAdmin no tiene.
+    ============================================================================
+*@
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<PortalSaas.Host.Resources.SharedResources> Localizer
+@inject PortalSaas.Abstractions.Contratos.IUserPreferenceService UserPreferences
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var isPlatformAdmin = isAuthenticated && User.Identity?.AuthenticationType == "PlatformAdmin";
+    var username = User.Identity?.Name ?? "Usuario";
+    var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+    var organizationSlug = User.FindFirst("OrganizationSlug")?.Value;
+    var companyCode = User.FindFirst("CompanyCode")?.Value;
+    var initials = username.Length > 0 ? char.ToUpperInvariant(username[0]).ToString() : "?";
+
+    var currentPath = Context.Request.Path.Value ?? "";
+    bool IsActiveSection(string prefix) => currentPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+
+    // CONSOLIDACIÓN (2026-08-19, pedido explícito -- "dejar amarrado" el tema
+    // e idioma en /Home/Preferences): antes el tema visible en pantalla
+    // dependía SOLO de localStorage (por navegador, se perdía al cambiar de
+    // equipo); ahora, para cualquier sesión de TENANT, se lee de la
+    // preferencia persistida de la cuenta y se aplica server-side -- ya no
+    // hace falta el selector rápido duplicado que vivía acá (ver
+    // theme-row/lang-row eliminados más abajo). PlatformAdmin no tiene fila
+    // de UserPreference (es una entidad distinta a User) -- sigue con el
+    // fallback de localStorage, igual que un visitante anónimo.
+    string? serverTheme = null;
+    if (isAuthenticated && !isPlatformAdmin)
+    {
+        var currentUserId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        var preferences = await UserPreferences.GetOrCreateDefaultAsync(currentUserId);
+        serverTheme = preferences.Theme;
+    }
+}
+<!DOCTYPE html>
+<html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Portal SaaS</title>
+    <script>
+        // BUG REAL CORREGIDO (2026-08-19): el rail de 64px recursaba el árbol
+        // completo de sub-menús (SidebarMenu/Default.cshtml, ver ese archivo)
+        // cuando quedaba expandido -- eso SÍ es lo que se eliminó (regla dura
+        // "PROHIBIDO desplegar el árbol de sub-menús en el sidebar", sigue
+        // vigente). El toggle expandir/colapsar EN SÍ se restauró el mismo día
+        // a pedido explícito del dueño del proyecto: con Default.cshtml ya
+        // no-recursivo (solo nodos de nivel 1), expandir a 250px únicamente
+        // muestra el nombre de cada ícono raíz, nunca un árbol anidado -- ya no
+        // hay riesgo de duplicar la sub-barra de Nivel 2.
+        document.documentElement.setAttribute('data-sidebar', localStorage.getItem('portalsaas-sidebar-collapsed') === 'expanded' ? 'expanded' : 'collapsed');
+        var savedSidebarWidth = localStorage.getItem('portalsaas-sidebar-width');
+        if (savedSidebarWidth) {
+            document.documentElement.style.setProperty('--sidebar-width', savedSidebarWidth + 'px');
+        }
+        // Tema: para sesión de tenant, la cuenta manda (ver comentario arriba,
+        // @@inject IUserPreferenceService) -- localStorage solo es el fallback
+        // para anónimo/PlatformAdmin, que no tienen esta preferencia.
+        var serverTheme = @Html.Raw(serverTheme is not null ? System.Text.Json.JsonSerializer.Serialize(serverTheme) : "null");
+        if (serverTheme) {
+            document.documentElement.setAttribute('data-theme', serverTheme);
+        } else {
+            var savedTheme = localStorage.getItem('ps-theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    @* Única fuente de verdad primero, luego el set cerrado de componentes,
+       luego site.css (compactación global + reglas puntuales que aún no
+       migraron a components.css). *@
+    <link rel="stylesheet" href="~/css/design-tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @* BUG REAL CORREGIDO (2026-08-17): sidebar.css no es "CSS del menú dinámico
+       de tenant" -- ahí vive el CSS ESTRUCTURAL del shell entero (.app-shell,
+       .topbar, .content, .shell-main, el rail). Excluirlo para PlatformAdmin
+       (como se hizo al escribir este archivo, asumiendo que Admin no necesita
+       "el sidebar dinámico") dejaba /Admin/* con .sidebar-nav renderizando
+       como una lista <ul> sin absolutamente ningún estilo de layout -- todo
+       apilado verticalmente en vez del shell rail+topbar+content. Debe
+       cargarse para CUALQUIER sesión autenticada, tenant o admin. *@
+    @if (isAuthenticated)
+    {
+        <link rel="stylesheet" href="~/css/sidebar.css" asp-append-version="true" />
+    }
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    @if (isPlatformAdmin)
+    {
+        @* ---- Shell de Administración de plataforma: mismo rail + topbar,
+               menú estático (los 8 links que antes vivían en el navbar navy de
+               _AdminLayout.cshtml), sin SidebarMenuViewComponent/CompanySwitcher
+               (esos requieren OrganizationId, que esta sesión no tiene). ---- *@
+        <div class="app-shell">
+            <aside class="sidebar rail-sidebar">
+                <div class="sidebar-brand">
+                    <div class="sidebar-brand-mark">PS</div>
+                    <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Expandir/colapsar menú">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                </div>
+                <ul class="sidebar-nav" id="sidebar-nav-root">
+                    <li class="rail-item">
+                        <a asp-page="/Admin/Organizations/Index" class="@(IsActiveSection("/Admin/Organizations") ? "active" : "")">
+                            <span class="nav-icon"><i class="bi bi-buildings"></i></span>
+                            <span class="nav-texto">Organizaciones</span>
+                        </a>
+                        <span class="rail-tooltip">Organizaciones</span>
+                    </li>
+                    <li class="rail-item">
+                        <a asp-page="/Admin/Plans/Index" class="@(IsActiveSection("/Admin/Plans") ? "active" : "")">
+                            <span class="nav-icon"><i class="bi bi-credit-card"></i></span>
+                            <span class="nav-texto">Planes</span>
+                        </a>
+                        <span class="rail-tooltip">Planes</span>
+                    </li>
+                    <li class="rail-item">
+                        <a asp-page="/Admin/Profiles/Index" class="@(IsActiveSection("/Admin/Profiles") ? "active" : "")">
+                            <span class="nav-icon"><i class="bi bi-person-badge"></i></span>
+                            <span class="nav-texto">Perfiles</span>
+                        </a>
+                        <span class="rail-tooltip">Perfiles</span>
+                    </li>
+                    <li class="rail-item">
+                        <a asp-page="/Admin/MenuGroups/Index" class="@(IsActiveSection("/Admin/MenuGroups") ? "active" : "")">
+                            <span class="nav-icon"><i class="bi bi-diagram-3"></i></span>
+                            <span class="nav-texto">Grupos de menú</span>
+                        </a>
+                        <span class="rail-tooltip">Grupos de menú</span>
+                    </li>
+                    <li class="rail-item">
+                        <a asp-page="/Admin/PlatformModules/Index" class="@(IsActiveSection("/Admin/PlatformModules") ? "active" : "")">
+                            <span class="nav-icon"><i class="bi bi-puzzle"></i></span>
+                            <span class="nav-texto">Módulos</span>
+                        </a>
+                        <span class="rail-tooltip">Módulos</span>
+                    </li>
+                    <li class="rail-item">
+                        <a asp-page="/Admin/Sessions/Index" class="@(IsActiveSection("/Admin/Sessions") ? "active" : "")">
+                            <span class="nav-icon"><i class="bi bi-hdd-network"></i></span>
+                            <span class="nav-texto">Clientes conectados</span>
+                        </a>
+                        <span class="rail-tooltip">Clientes conectados</span>
+                    </li>
+                    <li class="rail-item">
+                        <a asp-page="/Admin/Integraciones/Index" class="@(IsActiveSection("/Admin/Integraciones") ? "active" : "")">
+                            <span class="nav-icon"><i class="bi bi-plug"></i></span>
+                            <span class="nav-texto">Integraciones</span>
+                        </a>
+                        <span class="rail-tooltip">Integraciones</span>
+                    </li>
+                    <li class="rail-item">
+                        <a asp-page="/Admin/Sistema/Index" class="@(IsActiveSection("/Admin/Sistema") ? "active" : "")">
+                            <span class="nav-icon"><i class="bi bi-gear-wide-connected"></i></span>
+                            <span class="nav-texto">Sistema</span>
+                        </a>
+                        <span class="rail-tooltip">Sistema</span>
+                    </li>
+                </ul>
+            </aside>
+            <div class="shell-main">
+                <header class="topbar">
+                    <span class="topbar-title">@ViewData["Title"] <span class="badge-status badge-status--neutral">Administración</span></span>
+                    <div class="topbar-right">
+                        <details class="user-menu">
+                            <summary>
+                                <span class="user-avatar">@initials</span>
+                                <span class="user-name">@username</span>
+                            </summary>
+                            <div class="user-menu-panel">
+                                <form method="post" asp-page="/Admin/Logout" asp-antiforgery="true">
+                                    <button type="submit" class="btn-logout">Cerrar sesión</button>
+                                </form>
+                            </div>
+                        </details>
+                    </div>
+                </header>
+                <main class="content">
+                    @RenderBody()
+                </main>
+            </div>
+        </div>
+    }
+    else if (isAuthenticated)
+    {
+        <div class="app-shell">
+            <aside class="sidebar rail-sidebar">
+                <div class="sidebar-brand">
+                    <div class="sidebar-brand-mark">PS</div>
+                    <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Expandir/colapsar menú">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                </div>
+                @* Selector de compañía movido acá arriba del árbol (2026-08-19, pedido
+                   explícito de layout tipo "rindegastos") -- antes vivía en topbar-right.
+                   El componente en sí (CompanySwitcherViewComponent) no cambió, solo la
+                   ubicación + el wrapper .sidebar-company que le da el tratamiento visual
+                   de "pill" con ícono de edificio, igual que la referencia. *@
+                <div class="sidebar-company">
+                    <i class="bi bi-building"></i>
+                    @await Component.InvokeAsync("CompanySwitcher")
+                </div>
+                <ul class="sidebar-nav" id="sidebar-nav-root">
+                    <li class="rail-item">
+                        <a asp-page="/Home/Index"><span class="nav-icon"><i class="bi bi-house"></i></span><span class="nav-texto">@Localizer["Inicio"]</span></a>
+                        <span class="rail-tooltip">@Localizer["Inicio"]</span>
+                    </li>
+                    @await Component.InvokeAsync("SidebarMenu")
+                </ul>
+                <div class="sidebar-resize-handle" id="sidebar-resize-handle" title="Arrastrar para ajustar el ancho"></div>
+            </aside>
+            <div class="shell-main">
+                <header class="topbar">
+                    <span class="topbar-title">@ViewData["Title"]</span>
+                    @* Buscador + iconos de nivel superior (2026-08-19, layout tipo
+                       "rindegastos") -- son PLACEHOLDERS visuales por ahora: no hay
+                       backend de búsqueda global ni de notificaciones/mensajes en esta
+                       plataforma todavía, así que quedan deshabilitados (disabled) con
+                       tooltip "Próximamente" en vez de simular una función que no existe
+                       de verdad -- ver CLAUDE.md, criterio de no fingir funcionalidad. *@
+                    <div class="topbar-search">
+                        <i class="bi bi-search"></i>
+                        <input type="search" placeholder="Buscar" disabled title="Próximamente" />
+                    </div>
+                    <div class="topbar-right">
+                        <button type="button" class="topbar-icon-btn" disabled title="Notificaciones (próximamente)"><i class="bi bi-bell"></i></button>
+                        <button type="button" class="topbar-icon-btn" disabled title="Mensajes (próximamente)"><i class="bi bi-chat-dots"></i></button>
+                        <button type="button" class="topbar-icon-btn" disabled title="Crear (próximamente)"><i class="bi bi-plus-lg"></i></button>
+                        <details class="user-menu">
+                            <summary>
+                                <span class="user-avatar">@initials</span>
+                                <span class="user-name">@username</span>
+                            </summary>
+                            <div class="user-menu-panel">
+                                <div class="user-menu-identity">
+                                    <span class="user-avatar user-avatar-lg">@initials</span>
+                                    <div>
+                                        <div class="user-menu-fullname">@username</div>
+                                        @if (!string.IsNullOrEmpty(userEmail))
+                                        {
+                                            <div class="user-menu-email">@userEmail</div>
+                                        }
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(organizationSlug))
+                                {
+                                    <div class="user-menu-org">@organizationSlug</div>
+                                }
+                                @* CONSOLIDACIÓN (2026-08-19, pedido explícito del dueño del
+                                   proyecto): los selectores rápidos de tema (theme-row) e
+                                   idioma (lang-row) que vivían acá se eliminaron -- eran un
+                                   segundo mecanismo (localStorage + cookie de cultura, sin
+                                   relación con la fila de UserPreference) que duplicaba y
+                                   podía desincronizarse con /Home/Preferences, la pantalla
+                                   que YA tenía estos mismos 2 campos guardados en la cuenta
+                                   del usuario. Ahora Preferences es el único lugar para
+                                   cambiarlos -- este panel solo linkea para allá. *@
+                                <a asp-page="/Home/Preferences" class="user-menu-link"><i class="bi bi-gear"></i> Mis preferencias</a>
+                                <form method="post" asp-page="/Account/Logout">
+                                    <button type="submit" class="btn-logout">Cerrar sesión</button>
+                                </form>
+                            </div>
+                        </details>
+                    </div>
+                </header>
+                <main class="content">
+                    @if (TempData["Error"] is string errorMensaje && !string.IsNullOrEmpty(errorMensaje))
+                    {
+                        <div class="alert alert-danger">@errorMensaje</div>
+                    }
+                    @RenderBody()
+                </main>
+            </div>
+        </div>
+    }
+    else
+    {
+        <header>
+            <nav class="navbar navbar-light bg-white border-bottom mb-4">
+                <div class="container">
+                    <a class="navbar-brand" asp-page="/Index">Portal SaaS</a>
+                </div>
+            </nav>
+        </header>
+        <div class="container">
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
+        </div>
+    }
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @if (isAuthenticated)
+    {
+        @* Drawer disponible para cualquier sesión autenticada (tenant o admin) --
+           componente de UI puro, sin dependencia del menú dinámico de tenant. *@
+        <script src="~/js/drawer.js" asp-append-version="true"></script>
+    }
+    @if (isAuthenticated && !isPlatformAdmin)
+    {
+        @* sidebar.js restaurado (2026-08-19) -- toggle expandir/colapsar, ver
+           el comentario del script inline arriba y sidebar.js mismo. *@
+        <script src="~/js/sidebar.js" asp-append-version="true"></script>
+        <script src="~/js/sidebar-resize.js" asp-append-version="true"></script>
+        <script src="~/js/doc-list.js" asp-append-version="true"></script>
+        <script src="~/js/doc-tabs.js" asp-append-version="true"></script>
+        <script src="~/js/theme-switcher.js" asp-append-version="true"></script>
+    }
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

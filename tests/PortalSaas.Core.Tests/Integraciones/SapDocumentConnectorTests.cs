@@ -78,7 +78,7 @@ public class SapDocumentConnectorTests
         public Task<T?> GetAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default)
             => Task.FromResult((T?)_resultado);
 
-        public Task<IReadOnlyList<T>> GetAllAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default)
+        public Task<IReadOnlyList<T>> GetAllAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, string? selectOData = null, int? topPorPagina = null, CancellationToken ct = default)
         {
             // Simula lo que B1SLayer.SLRequest.GetAllAsync<T>() ya hace internamente:
             // agota la paginación de Service Layer (odata.nextLink) y devuelve TODAS
@@ -131,7 +131,7 @@ public class SapDocumentConnectorTests
             return Task.FromResult(default(T));
         }
 
-        public Task<IReadOnlyList<T>> GetAllAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, CancellationToken ct = default)
+        public Task<IReadOnlyList<T>> GetAllAsync<T>(string recurso, string? filtroOData = null, string? expandOData = null, string? selectOData = null, int? topPorPagina = null, CancellationToken ct = default)
         {
             LlamadasPorRecurso[recurso] = LlamadasPorRecurso.GetValueOrDefault(recurso) + 1;
 
@@ -173,14 +173,14 @@ public class SapDocumentConnectorTests
     {
         var filas = new List<SapWmsItemRow>
         {
-            new() { ItemCode = "ITM001", ItemName = "Artículo de prueba", CodeBars = "7801234567890", UpdateDate = new DateTime(2026, 8, 15) },
+            new() { ItemCode = "ITM001", ItemName = "Artículo de prueba", BarCode = "7801234567890", UpdateDate = new DateTime(2026, 8, 15) },
         };
         var sesionFalsa = new SapSessionFalsa(filas);
         var proveedorFalso = new SapConnectionProviderFalso(sesionFalsa);
         var conector = CrearConector(proveedorFalso);
 
         var config = """{"TipoEntidad":"Item"}""";
-        var resultado = await conector.PullAsync(config, CancellationToken.None);
+        var resultado = await conector.PullAsync(config, null, CancellationToken.None);
 
         var registro = Assert.Single(resultado);
         Assert.Equal("ITM001", registro["ItemCode"]);
@@ -195,15 +195,15 @@ public class SapDocumentConnectorTests
         // combinadas por GetAllAsync -- si PullAsync siguiera usando GetAsync<List<T>>
         // (una sola página), este total (25) nunca se vería reflejado completo.
         var primeraPagina = Enumerable.Range(1, 20)
-            .Select(i => new SapWmsItemRow { ItemCode = $"ITM{i:000}", ItemName = $"Artículo {i}", CodeBars = $"780000000{i:0000}", UpdateDate = DateTime.Today });
+            .Select(i => new SapWmsItemRow { ItemCode = $"ITM{i:000}", ItemName = $"Artículo {i}", BarCode = $"780000000{i:0000}", UpdateDate = DateTime.Today });
         var segundaPagina = Enumerable.Range(21, 5)
-            .Select(i => new SapWmsItemRow { ItemCode = $"ITM{i:000}", ItemName = $"Artículo {i}", CodeBars = $"780000000{i:0000}", UpdateDate = DateTime.Today });
+            .Select(i => new SapWmsItemRow { ItemCode = $"ITM{i:000}", ItemName = $"Artículo {i}", BarCode = $"780000000{i:0000}", UpdateDate = DateTime.Today });
         var filas = primeraPagina.Concat(segundaPagina).ToList();
 
         var sesionFalsa = new SapSessionFalsa(filas);
         var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
 
-        var resultado = await conector.PullAsync("""{"TipoEntidad":"Item"}""", CancellationToken.None);
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Item"}""", null, CancellationToken.None);
 
         Assert.Equal(25, resultado.Count);
     }
@@ -213,14 +213,14 @@ public class SapDocumentConnectorTests
     {
         var filas = new List<SapWmsItemRow>
         {
-            new() { ItemCode = "ITM001", ItemName = "Con barra", CodeBars = "7801234567890", UpdateDate = DateTime.Today },
-            new() { ItemCode = "ITM002", ItemName = "Sin barra", CodeBars = null, UpdateDate = DateTime.Today },
-            new() { ItemCode = "ITM003", ItemName = "Barra cero", CodeBars = "0", UpdateDate = DateTime.Today },
+            new() { ItemCode = "ITM001", ItemName = "Con barra", BarCode = "7801234567890", UpdateDate = DateTime.Today },
+            new() { ItemCode = "ITM002", ItemName = "Sin barra", BarCode = null, UpdateDate = DateTime.Today },
+            new() { ItemCode = "ITM003", ItemName = "Barra cero", BarCode = "0", UpdateDate = DateTime.Today },
         };
         var sesionFalsa = new SapSessionFalsa(filas);
         var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
 
-        var resultado = await conector.PullAsync("""{"TipoEntidad":"Item"}""", CancellationToken.None);
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Item"}""", null, CancellationToken.None);
 
         var registro = Assert.Single(resultado);
         Assert.Equal("ITM001", registro["ItemCode"]);
@@ -256,7 +256,7 @@ public class SapDocumentConnectorTests
         var sesionFalsa = new SapSessionFalsa(filas);
         var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
 
-        var resultado = await conector.PullAsync("""{"TipoEntidad":"Store"}""", CancellationToken.None);
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Store"}""", null, CancellationToken.None);
 
         var registro = Assert.Single(resultado);
         Assert.Equal("C001", registro["CardCode"]);
@@ -286,7 +286,7 @@ public class SapDocumentConnectorTests
         var sesionFalsa = new SapSessionFalsa(filas);
         var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
 
-        var resultado = await conector.PullAsync("""{"TipoEntidad":"InboundTraslado"}""", CancellationToken.None);
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"InboundTraslado"}""", null, CancellationToken.None);
 
         var registro = Assert.Single(resultado);
         Assert.Equal(1001, registro["SapDocEntry"]);
@@ -336,7 +336,7 @@ public class SapDocumentConnectorTests
         var conector = CrearConector(proveedorFalso);
 
         var config = """{"TipoEntidad":"Picking"}""";
-        var resultado = await conector.PullAsync(config, CancellationToken.None);
+        var resultado = await conector.PullAsync(config, null, CancellationToken.None);
 
         var registro = Assert.Single(resultado);
         Assert.Equal("C001", registro["CardCode"]);
@@ -379,7 +379,7 @@ public class SapDocumentConnectorTests
             ordenes: new List<SapWmsOrderBaseRow> { ordenBase });
         var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
 
-        var resultado = await conector.PullAsync("""{"TipoEntidad":"Picking"}""", CancellationToken.None);
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Picking"}""", null, CancellationToken.None);
 
         var registro = Assert.Single(resultado);
         var lineas = Assert.IsType<List<IntegrationRecord>>(registro["Lineas"]);
@@ -434,7 +434,7 @@ public class SapDocumentConnectorTests
             ordenes: new List<SapWmsOrderBaseRow> { ordenBase });
         var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
 
-        var resultado = await conector.PullAsync("""{"TipoEntidad":"Picking"}""", CancellationToken.None);
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Picking"}""", null, CancellationToken.None);
 
         Assert.Equal(2, resultado.Count);
         var absEntries = resultado.Select(r => (int)r["PickListAbsEntry"]!).OrderBy(x => x).ToList();
@@ -493,7 +493,7 @@ public class SapDocumentConnectorTests
             ordenes: new List<SapWmsOrderBaseRow> { ordenBase });
         var conector = CrearConector(new SapConnectionProviderFalso(sesionFalsa));
 
-        var resultado = await conector.PullAsync("""{"TipoEntidad":"Picking"}""", CancellationToken.None);
+        var resultado = await conector.PullAsync("""{"TipoEntidad":"Picking"}""", null, CancellationToken.None);
 
         Assert.Equal(2, resultado.Count);
         var orderNbrs = resultado.Select(r => (string)r["OrderNbr"]!).ToList();
@@ -506,8 +506,29 @@ public class SapDocumentConnectorTests
         var conector = CrearConector();
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => conector.PullAsync("""{"TipoEntidad":"Desconocido"}""", CancellationToken.None));
+            () => conector.PullAsync("""{"TipoEntidad":"Desconocido"}""", null, CancellationToken.None));
         Assert.Contains("Desconocido", ex.Message);
+    }
+
+    [Fact]
+    public void DescribirConsulta_TipoEntidadItemConCursorIncremental_AgregaCondicionUpdateDateAlFiltro()
+    {
+        var conector = CrearConector();
+        var cursor = new DateTimeOffset(2026, 8, 21, 15, 30, 0, TimeSpan.Zero);
+
+        var descripcion = conector.DescribirConsulta("""{"TipoEntidad":"Item"}""", cursor);
+
+        Assert.Contains("and UpdateDate ge datetime'2026-08-21T15:30:00'", descripcion);
+    }
+
+    [Fact]
+    public void DescribirConsulta_TipoEntidadItemSinCursor_NoAgregaCondicionUpdateDate()
+    {
+        var conector = CrearConector();
+
+        var descripcion = conector.DescribirConsulta("""{"TipoEntidad":"Item"}""");
+
+        Assert.DoesNotContain("UpdateDate ge", descripcion);
     }
 
     [Fact]

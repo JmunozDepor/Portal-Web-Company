@@ -12,6 +12,15 @@ artifacts/
 # copiar a IIS) -- regenerable, no es código fuente.
 dist/
 
+# Credenciales reales del contenedor Postgres de producción -- nunca versionar,
+# solo .env.prod.example (placeholders) sí se versiona.
+.env.prod
+
+# Dump de base de datos usado para inicializar el contenedor Postgres de
+# producción -- contiene datos reales de clientes, nunca se versiona.
+db/init/*.sql
+db/init/*.sql.gz
+
 # appsettings.Development.json SÍ se versiona -- solo trae credenciales de
 # docker-compose.yml (desarrollo local, no secretos reales). appsettings.Production.json
 # y cualquier override personal *.local.json nunca se versionan.
@@ -37,3 +46,4 @@ graphify-out/cache/
 # se versiona.
 .claude/*.lock
 .worktrees/
+.gstack/

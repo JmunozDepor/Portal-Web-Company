@@ -8,34 +8,46 @@
    corregido acá, mismo componente compartido por los 3 motores genéricos (Venta/Compra/
    Inventario), así que el fix alcanza a los 3 sin tocar nada más. *@
 
+@* "Volver" propio ELIMINADO (2026-08-19, "el volver se repite... solo existir una
+   ruta") -- Model.BackUrl ahora se consume desde _ModuloBackLink.cshtml (breadcrumb
+   único del layout, ver ViewData["ModuleBreadcrumbBackUrl"] en
+   DetailGeneric*ModelBase.BuildDocumentViewModel), no acá. La propiedad BackUrl del
+   view model se conserva -- sigue siendo la fuente real del dato, solo cambió quién
+   la renderiza. *@
 <div class="card-ps doc-form">
-    @if (Model.BackUrl is not null)
-    {
-        <a href="@Model.BackUrl" class="doc-form-volver"><i class="bi bi-arrow-left"></i> Volver</a>
-    }
-    <div class="doc-form-header">
-        <h2>@Model.Title</h2>
-        @if (Model.StatusText is not null)
-        {
-            <span class="badge doc-status-badge @(Model.StatusClass ?? "bg-secondary")">@Model.StatusText</span>
-        }
-    </div>
+    @* Título + tabs comparten UN SOLO contenedor sticky (.doc-form-sticky) -- antes
+       cada uno tenía su propio "top: 0" (el título no era sticky y .doc-tabs sí),
+       así que al scrollear el título se iba de la pantalla mientras las filas de la
+       tabla de abajo quedaban visibles "detrás" del borde superior de .doc-tabs
+       (bug real reportado, 2026-08-20: "el título debe quedar justo en el borde
+       superior, hoy queda sobrepuesto y se ve el detalle detrás al hacer scroll").
+       Un solo wrapper sticky con fondo sólido evita el hueco donde el contenido se
+       veía pasar por encima. *@
+    <div class="doc-form-sticky">
+        <div class="doc-form-header">
+            <h2>@Model.Title</h2>
+            @if (Model.StatusText is not null)
+            {
+                <span class="badge doc-status-badge @(Model.StatusClass ?? "bg-secondary")">@Model.StatusText</span>
+            }
+        </div>
 
-    <div class="doc-tabs">
-        <a href="#doc-tab-general" class="doc-tab-btn active" data-tab-anchor="doc-tab-general">General</a>
-        <a href="#doc-tab-content" class="doc-tab-btn" data-tab-anchor="doc-tab-content">Contenido</a>
-        @if (Model.LogisticsView is not null)
-        {
-            <a href="#doc-tab-logistics" class="doc-tab-btn" data-tab-anchor="doc-tab-logistics">Logística</a>
-        }
-        @if (Model.AccountingView is not null)
-        {
-            <a href="#doc-tab-accounting" class="doc-tab-btn" data-tab-anchor="doc-tab-accounting">@Model.AccountingTitle</a>
-        }
-        @if (Model.UserFieldsView is not null)
-        {
-            <a href="#doc-tab-userfields" class="doc-tab-btn" data-tab-anchor="doc-tab-userfields">Campos de usuario</a>
-        }
+        <div class="doc-tabs">
+            <a href="#doc-tab-general" class="doc-tab-btn active" data-tab-anchor="doc-tab-general">General</a>
+            <a href="#doc-tab-content" class="doc-tab-btn" data-tab-anchor="doc-tab-content">Contenido</a>
+            @if (Model.LogisticsView is not null)
+            {
+                <a href="#doc-tab-logistics" class="doc-tab-btn" data-tab-anchor="doc-tab-logistics">Logística</a>
+            }
+            @if (Model.AccountingView is not null)
+            {
+                <a href="#doc-tab-accounting" class="doc-tab-btn" data-tab-anchor="doc-tab-accounting">@Model.AccountingTitle</a>
+            }
+            @if (Model.UserFieldsView is not null)
+            {
+                <a href="#doc-tab-userfields" class="doc-tab-btn" data-tab-anchor="doc-tab-userfields">Campos de usuario</a>
+            }
+        </div>
     </div>
 
     <section id="doc-tab-general" class="doc-tab-seccion">

@@ -1,0 +1,342 @@
+/* ==========================================================================
+   components.css -- Set CERRADO de componentes base (regla dura 2026-08-17).
+   Todo módulo (core o plugin) consume EXCLUSIVAMENTE estas clases para botón/
+   tarjeta/tabla/badge -- prohibido declarar un componente equivalente propio
+   (.btn-erp-primary, .rnd-badge, .admin-card, etc.). Construido enteramente
+   sobre var(--token) de design-tokens.css, nunca un color/radio/sombra literal.
+
+   Alias deliberados: .card-ps/.document-list-table/.line-items-table
+   (site.css) ya eran, en los hechos, la implementación real de "tarjeta" y
+   "tabla" del proyecto (ver CLAUDE.md, entregas de rediseño 26-27 jul 2026) --
+   en vez de duplicar sus reglas bajo un nombre nuevo (que dejaría dos fuentes
+   de verdad divergiendo con el tiempo), .card-surface/.table-ps se declaran
+   como selector compuesto junto al nombre histórico. El nombre nuevo es la
+   forma oficial para markup nuevo; el nombre viejo sigue funcionando para no
+   romper las ~262 vistas existentes que ya lo usan -- no se migra markup
+   existente en este pase, ver el plan de migración por fases. */
+
+/* ---------------------------------------------------------------------
+   Botones -- .btn-primary/.btn-secondary son las DOS únicas variantes de
+   botón con relleno; site.css ya define .btn-primary (var(--bs-primary)) y
+   .btn-outline-secondary (fondo tenue + fill sólido en hover) -- .btn-secondary
+   es el nombre de gobernanza que consume esa misma implementación. */
+.btn-secondary {
+  color: var(--text-main);
+  border-color: var(--card-border);
+  background-color: var(--input-bg);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast) ease,
+    border-color var(--transition-fast) ease,
+    color var(--transition-fast) ease,
+    box-shadow var(--transition-fast) ease;
+}
+
+.btn-secondary:hover {
+  color: var(--on-accent);
+  background-color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Botón "fantasma" -- sin relleno ni borde en reposo, para una acción de
+   icono suelta dentro de una fila de tabla (editar/ver/más opciones). Fondo
+   tenue solo en hover, nunca un tercer color de relleno permanente (el set
+   cerrado de botones CON relleno sigue siendo solo .btn-primary/.btn-secondary). */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+
+.btn-ghost:hover {
+  background: color-mix(in srgb, var(--bs-primary) 8%, transparent);
+  color: var(--bs-primary);
+}
+
+.btn-ghost--danger:hover {
+  background: color-mix(in srgb, var(--bs-danger) 10%, transparent);
+  color: var(--bs-danger);
+}
+
+/* ---------------------------------------------------------------------
+   Tarjeta -- alias de .card-ps (site.css), la tarjeta blanca con sombra
+   suave sobre fondo neutro ya estándar en todo el portal. */
+.card-surface,
+.card-ps {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+}
+
+/* ---------------------------------------------------------------------
+   Tabla -- alias de .document-list-table (site.css), encabezado mayúscula
+   chico gris + fila con hover sutil, ya el único patrón real de listado. */
+.table-ps {
+  width: 100%;
+  font-size: 13px;
+}
+
+.table-ps thead th {
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid var(--card-border);
+  padding: 8px 10px;
+}
+
+.table-ps tbody tr {
+  transition: background-color var(--transition-fast) ease;
+}
+
+.table-ps tbody tr:hover {
+  background: color-mix(in srgb, var(--bs-primary) 6%, transparent);
+}
+
+.table-ps > :not(caption) > * > * {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+/* ---------------------------------------------------------------------
+   Badge de estado -- único componente de "estado" (activo/pendiente/error/
+   inactivo). Reemplaza cualquier .badge bg-* armado a mano por color -- el
+   tono se elige por MODIFICADOR semántico (.badge-status--success, etc.),
+   nunca por una clase de utilidad de color suelta. */
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.badge-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge-status--success {
+  color: var(--bs-success);
+  background: color-mix(in srgb, var(--bs-success) 14%, transparent);
+}
+
+.badge-status--warning {
+  color: var(--bs-warning);
+  background: color-mix(in srgb, var(--bs-warning) 16%, transparent);
+}
+
+.badge-status--danger {
+  color: var(--bs-danger);
+  background: color-mix(in srgb, var(--bs-danger) 14%, transparent);
+}
+
+.badge-status--neutral {
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-muted) 14%, transparent);
+}
+
+/* ---------------------------------------------------------------------
+   Utilidades chicas de .table-ps -- columna de acciones (ancho mínimo,
+   pegada a la derecha) y fila inactiva/deshabilitada (atenuada). Genéricas
+   a cualquier tabla de administración del portal, no específicas de un
+   módulo -- reemplazan equivalentes que antes vivían duplicados por módulo
+   (ej. .admin-col-accion/.admin-fila-inactiva de rendiciones.css). */
+.table-ps .col-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.table-ps .row-inactive {
+  opacity: 0.55;
+}
+
+/* ---------------------------------------------------------------------
+   Slide-over drawer -- panel deslizante estándar (Fase 3, patrón
+   Master-Detail). Cualquier módulo que necesite crear/editar sin navegar a
+   otra página usa ESTE marcado (.drawer-overlay/.drawer-panel), nunca un
+   modal de Bootstrap ni un panel propio. */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1040;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--drawer-transition) ease;
+}
+
+.drawer-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 100%;
+  max-width: 420px;
+  background: var(--card-bg);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform var(--drawer-transition) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.drawer-panel.is-open {
+  transform: translateX(0);
+}
+
+/* Bloquea el scroll de fondo (.content, ver sidebar.css) mientras el drawer
+   está abierto -- drawer.js agrega/quita esta clase en <body>. */
+body.drawer-locked .content {
+  overflow: hidden;
+}
+
+/* Estructura interna estándar del drawer -- header fijo, body con scroll
+   propio, footer fijo con las acciones (Cancelar/Guardar). */
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--card-border);
+  flex-shrink: 0;
+}
+
+.drawer-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--card-border);
+  flex-shrink: 0;
+}
+
+/* Grilla de 2 columnas para campos de formulario dentro del drawer -- label
+   arriba del input (ya es el default de .form-label/.form-control de
+   site.css), colapsa a 1 columna en viewport angosto (el drawer mismo mide
+   máx. 420px, así que esto solo importa si se usa fuera de un drawer). */
+.drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.drawer-grid .span-2 {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 480px) {
+  .drawer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Focus-ring azul fijo (#2563EB) en los campos del drawer -- mismo criterio
+   ya usado en el login (Fase 3): el drawer es una superficie de acción
+   puntual, con foco de marca constante en vez del acento del tema activo. */
+.drawer-body .form-control:focus,
+.drawer-body .form-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+/* ---------------------------------------------------------------------
+   Tooltip flotante -- usado por el rail del sidebar principal (Nivel 1,
+   64px, solo íconos) para mostrar el nombre del módulo al hacer hover. */
+.rail-tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background: var(--text-main);
+  color: var(--card-bg);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast) ease, transform var(--transition-fast) ease;
+  z-index: 1060;
+}
+
+.rail-item:hover .rail-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ---------------------------------------------------------------------
+   Sub-barra contextual (Nivel 2) -- pills horizontales del módulo activo,
+   justo debajo del Topbar. Ver _ModuloLayout.cshtml. */
+.subnav-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 18px;
+  height: 44px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--card-border);
+  overflow-x: auto;
+}
+
+.subnav-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+
+.subnav-pill:hover {
+  background: color-mix(in srgb, var(--bs-primary) 8%, transparent);
+  color: var(--text-main);
+}
+
+.subnav-pill.active {
+  background: color-mix(in srgb, var(--bs-primary) 12%, transparent);
+  color: var(--bs-primary);
+}

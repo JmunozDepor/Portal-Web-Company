@@ -36,7 +36,7 @@ public class UserPreferenceServiceTests
         var preferencias = await servicio.GetOrCreateDefaultAsync(user.Id);
 
         Assert.Equal("es-CL", preferencias.Locale);
-        Assert.Equal(UserThemePreference.System, preferencias.Theme);
+        Assert.Equal(UserThemePreference.Claro, preferencias.Theme);
         Assert.True(preferencias.EmailNotificationsEnabled);
     }
 
@@ -59,11 +59,11 @@ public class UserPreferenceServiceTests
         var servicio = new UserPreferenceService(db);
         await servicio.GetOrCreateDefaultAsync(user.Id);
 
-        await servicio.UpdateAsync(user.Id, new UserPreferenceDto("en-US", "UTC", UserThemePreference.Dark, false));
+        await servicio.UpdateAsync(user.Id, new UserPreferenceDto("en-US", "UTC", UserThemePreference.Oscuro, false));
 
         var actualizado = await servicio.GetOrCreateDefaultAsync(user.Id);
         Assert.Equal("en-US", actualizado.Locale);
-        Assert.Equal(UserThemePreference.Dark, actualizado.Theme);
+        Assert.Equal(UserThemePreference.Oscuro, actualizado.Theme);
         Assert.False(actualizado.EmailNotificationsEnabled);
     }
 }

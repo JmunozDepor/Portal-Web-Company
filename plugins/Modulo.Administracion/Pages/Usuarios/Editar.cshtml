@@ -2,7 +2,18 @@
 @model Modulo.Administracion.Pages.Usuarios.EditarModel
 @{
     ViewData["Title"] = Model.EsNuevo ? "Nuevo usuario" : $"Editar · {Model.Detalle?.Username}";
+    var iniciales = Model.EsNuevo ? "+" : (Model.Detalle?.Username.Length > 0 ? Model.Detalle.Username[0].ToString().ToUpperInvariant() : "?");
 }
+@* Mockup confirmado (2026-08-19, ver .design-audit/mockups/mockup-organizacion-usuarios-editar.html):
+   reemplaza las 3 tarjetas apiladas (Editar usuario / Compañía por defecto / Permisos --
+   pantalla "muy extensa", subgrupos de funciones que deberían estar separados) por
+   pestañas -- una sección visible a la vez, no todo el formulario de una sola vez.
+   Mismo componente .doc-tabs/.doc-tab-btn ya usado en los motores de documento, pero
+   SIN el modo "todas las secciones apiladas, tabs como ancla de scroll" (eso aplica a
+   un documento con tabs Logística/Finanzas que son parte del MISMO registro; acá son 3
+   tareas administrativas independientes -- Datos/Compañía/Permisos -- que no necesitan
+   verse a la vez). data-tab-panel/data-tab-btn son un patrón nuevo, chico, solo para
+   este caso -- ver el script al final. *@
 
 <a href="~/organizacion/usuarios" class="doc-form-volver"><i class="bi bi-arrow-left"></i> Volver a usuarios</a>
 
@@ -15,27 +26,62 @@
     <div class="alert alert-danger">@Model.MensajeError</div>
 }
 
-<div class="card-ps doc-form doc-tab-seccion mb-4">
-    <div class="doc-form-header">
-        <h2>@(Model.EsNuevo ? "Nuevo usuario" : $"Editar usuario: {Model.Detalle?.Username}")</h2>
+@if (!Model.EsNuevo)
+{
+    <div class="card-surface mb-3 d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center justify-content-center flex-shrink-0"
+             style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);font-size:20px;font-weight:700;">
+            @iniciales
+        </div>
+        <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <h1 class="h4 mb-0">@Model.Detalle!.Username</h1>
+                @if (Model.Detalle.IsActive)
+                {
+                    <span class="badge-status badge-status--success">Activo</span>
+                }
+                else
+                {
+                    <span class="badge-status badge-status--neutral">Inactivo</span>
+                }
+                @if (Model.Detalle.IsAdmin)
+                {
+                    <span class="badge-status badge-status--warning">Administrador</span>
+                }
+            </div>
+            <p class="text-muted mb-0" style="font-size:13px;">@Model.Detalle.Email</p>
+        </div>
     </div>
+}
+
+<div class="doc-tabs" style="position:static;display:inline-flex;width:auto;">
+    <button type="button" class="doc-tab-btn active" data-tab-btn="datos">Datos</button>
+    @if (!Model.EsNuevo)
+    {
+        <button type="button" class="doc-tab-btn" data-tab-btn="compania">Compañía por defecto</button>
+        <button type="button" class="doc-tab-btn" data-tab-btn="permisos">Permisos</button>
+    }
+</div>
+
+<div data-tab-panel="datos" class="card-surface" style="max-width:640px;">
+    <h2 class="h5 mb-3">@(Model.EsNuevo ? "Nuevo usuario" : "Datos de la cuenta")</h2>
     <form method="post" asp-page-handler="Guardar">
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-        <div class="form-row">
-            <div class="form-group">
+        <div class="drawer-grid">
+            <div class="mb-3">
                 <label asp-for="Input.Username" class="form-label"></label>
                 <input asp-for="Input.Username" class="form-control" />
                 <span asp-validation-for="Input.Username" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="mb-3">
                 <label asp-for="Input.Email" class="form-label"></label>
                 <input asp-for="Input.Email" class="form-control" />
                 <span asp-validation-for="Input.Email" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="mb-3">
                 <label asp-for="Input.Password" class="form-label"></label>
                 <input asp-for="Input.Password" class="form-control" />
                 <span asp-validation-for="Input.Password" class="text-danger"></span>
@@ -45,40 +91,31 @@
                 }
             </div>
 
-            <div class="form-group">
+            <div class="mb-3">
                 <label asp-for="Input.ConfirmPassword" class="form-label"></label>
                 <input asp-for="Input.ConfirmPassword" class="form-control" />
                 <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
             </div>
+        </div>
 
-            <div class="form-group form-check">
-                <input asp-for="Input.IsAdmin" class="form-check-input" />
-                <label asp-for="Input.IsAdmin" class="form-check-label"></label>
-            </div>
-
+        <div class="d-flex flex-wrap gap-4 pt-2 mt-2 border-top">
+            <label class="d-flex align-items-center gap-2 mt-3"><input asp-for="Input.IsAdmin" type="checkbox" /> Administrador de la organización</label>
             @if (!Model.EsNuevo)
             {
-                <div class="form-group form-check">
-                    <input asp-for="Input.IsActive" class="form-check-input" />
-                    <label asp-for="Input.IsActive" class="form-check-label"></label>
-                </div>
-                <div class="form-group form-check">
-                    <input asp-for="Input.IsLocked" class="form-check-input" />
-                    <label asp-for="Input.IsLocked" class="form-check-label"></label>
-                </div>
+                <label class="d-flex align-items-center gap-2 mt-3"><input asp-for="Input.IsActive" type="checkbox" /> Activo</label>
+                <label class="d-flex align-items-center gap-2 mt-3"><input asp-for="Input.IsLocked" type="checkbox" /> Bloqueado</label>
             }
         </div>
 
-        <button type="submit" class="btn btn-primary mt-3">Guardar</button>
+        <button type="submit" class="btn-primary mt-3">@(Model.EsNuevo ? "Crear usuario" : "Guardar cambios")</button>
     </form>
 </div>
 
 @if (!Model.EsNuevo)
 {
-    <div class="card-ps doc-form doc-tab-seccion mb-4">
-        <div class="doc-form-header">
-            <h2>Compañía por defecto</h2>
-        </div>
+    <div data-tab-panel="compania" class="card-surface" style="max-width:640px;display:none;">
+        <h2 class="h5 mb-1">Compañía por defecto</h2>
+        <p class="text-muted mb-3">Con qué compañía entra automáticamente este usuario al loguearse, sin tener que elegirla cada vez.</p>
 
         @if (!Model.TieneCompanies)
         {
@@ -86,9 +123,9 @@
         }
         else
         {
-            <form method="post" asp-page-handler="GuardarCompaniaDefault" asp-route-id="@Model.Detalle!.Id" class="filter-card">
-                <div class="col-auto">
-                    <label class="form-label">Compañía con la que entra automáticamente al loguearse</label>
+            <form method="post" asp-page-handler="GuardarCompaniaDefault" asp-route-id="@Model.Detalle!.Id" class="d-flex align-items-end gap-3">
+                <div class="mb-0 flex-grow-1">
+                    <label class="form-label">Compañía</label>
                     <select name="DefaultCompanyId" class="form-select">
                         <option value="">Sin compañía por defecto (elige cada vez)</option>
                         @foreach (var company in Model.Companies)
@@ -97,14 +134,30 @@
                         }
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary">Guardar compañía por defecto</button>
+                <button type="submit" class="btn-primary">Guardar</button>
             </form>
         }
     </div>
 
-    <div class="card-ps doc-form doc-tab-seccion mb-4">
-        <div class="doc-form-header">
-            <h2>Permisos</h2>
+    <div data-tab-panel="permisos" class="card-surface" style="display:none;">
+        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+            <div>
+                <h2 class="h5 mb-1">Permisos por compañía</h2>
+                <p class="text-muted mb-0">El acceso se asigna compañía por compañía dentro de la organización.</p>
+            </div>
+            @if (Model.TieneCompanies)
+            {
+                <form method="get" style="width:260px;">
+                    <input type="hidden" name="id" value="@Model.Detalle!.Id" />
+                    <label class="form-label">Compañía</label>
+                    <select name="companyId" class="form-select" onchange="this.form.submit()">
+                        @foreach (var company in Model.Companies)
+                        {
+                            <option value="@company.Value" selected="@(company.Value == Model.SelectedCompanyId.ToString())">@company.Text</option>
+                        }
+                    </select>
+                </form>
+            }
         </div>
 
         @if (!Model.TieneCompanies)
@@ -113,30 +166,17 @@
         }
         else
         {
-            <form method="get" class="filter-card">
-                <input type="hidden" name="id" value="@Model.Detalle!.Id" />
-                <div class="col-auto">
-                    <label class="form-label">Compañía</label>
-                    <select name="companyId" class="form-select" onchange="this.form.submit()">
-                        @foreach (var company in Model.Companies)
-                        {
-                            <option value="@company.Value" selected="@(company.Value == Model.SelectedCompanyId.ToString())">@company.Text</option>
-                        }
-                    </select>
-                </div>
-            </form>
-
             <form method="post" asp-page-handler="GuardarPermisos" asp-route-id="@Model.Detalle!.Id">
                 <input type="hidden" asp-for="Permissions.CompanyId" />
 
-                <span class="doc-resumen-total-titulo d-block">Grupos de menú</span>
+                <span class="d-block mb-2 fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);">Grupos de menú</span>
                 @if (Model.AllMenuGroups.Count == 0)
                 {
                     <p class="text-muted">Todavía no hay grupos de menú creados (los crea el operador de plataforma).</p>
                 }
                 else
                 {
-                    <div class="menu-perfil-panel">
+                    <div class="menu-perfil-panel mb-3">
                         @foreach (var group in Model.AllMenuGroups)
                         {
                             <div class="form-check">
@@ -148,27 +188,21 @@
                     </div>
                 }
 
-                <span class="doc-resumen-total-titulo d-block mt-3">Perfil por nodo de menú</span>
+                <span class="d-block mb-2 fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);">Perfil por nodo de menú</span>
                 @if (Model.LeafMenus.Count == 0)
                 {
                     <p class="text-muted">Todavía no hay nodos de menú finales.</p>
                 }
                 else
                 {
-                    <div class="document-list-table-wrapper">
-                        <table class="table document-list-table mb-0">
-                        <thead>
-                            <tr>
-                                <th>Menú</th>
-                                <th>Perfil</th>
-                            </tr>
-                        </thead>
+                    <table class="table-ps">
+                        <thead><tr><th>Menú</th><th style="width:220px;">Perfil</th></tr></thead>
                         <tbody>
                             @foreach (var menu in Model.LeafMenus)
                             {
                                 var actual = Model.Permissions.ProfileByMenu.GetValueOrDefault(menu.Id);
                                 <tr>
-                                    <td>@menu.Name <span class="text-muted">(@($"{menu.OriginModule}.{menu.Code}"))</span></td>
+                                    <td>@menu.Name <span class="text-muted" style="font-size:11px;">(@($"{menu.OriginModule}.{menu.Code}"))</span></td>
                                     <td>
                                         <select name="Permissions.ProfileByMenu[@menu.Id]" class="form-select form-select-sm">
                                             <option value="" selected="@(actual is null or 0)">Sin asignar</option>
@@ -182,10 +216,9 @@
                             }
                         </tbody>
                     </table>
-                    </div>
                 }
 
-                <button type="submit" class="btn btn-primary mt-3">Guardar permisos</button>
+                <button type="submit" class="btn-primary mt-3">Guardar permisos</button>
             </form>
         }
     </div>
@@ -193,4 +226,23 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Pestañas independientes (Datos/Compañía/Permisos) -- una sola visible a
+        // la vez, sin scroll compartido. Patrón chico y local a esta página: NO
+        // reusa doc-tabs.js (ese hace scroll-into-view + scrollspy porque ahí TODAS
+        // las secciones están apiladas y visibles a la vez; acá son 3 tareas
+        // independientes que se ocultan entre sí).
+        (function () {
+            var botones = document.querySelectorAll('[data-tab-btn]');
+            botones.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    botones.forEach(function (b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    document.querySelectorAll('[data-tab-panel]').forEach(function (p) {
+                        p.style.display = (p.getAttribute('data-tab-panel') === btn.dataset.tabBtn) ? 'block' : 'none';
+                    });
+                });
+            });
+        })();
+    </script>
 }

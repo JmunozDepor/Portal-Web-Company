@@ -18,6 +18,12 @@
   <ItemGroup>
     <Content Include="appsettings.Development.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <!-- Nunca se publica: solo lo usa DesignTimeDbContextFactory (dotnet ef con
+           este proyecto como startup), nunca el Host en runtime. Sin este flag,
+           colisiona en el publish de Host contra su propio appsettings.Development.json
+           y el del proyecto de migraciones SQL Server (los 3 comparten la misma ruta
+           relativa de salida, NETSDK1152). -->
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
 

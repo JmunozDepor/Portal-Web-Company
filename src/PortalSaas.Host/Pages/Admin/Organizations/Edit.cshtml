@@ -4,54 +4,62 @@
     ViewData["Title"] = "Editar organización";
 }
 
-<div class="card-ps doc-form doc-tab-seccion mb-4">
-    <div class="doc-form-header">
-        <h2>Editar organización</h2>
-    </div>
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Input.Id, OrganizationName = Model.Input.LegalName, Mode = Model.Input.Mode, ActivePage = "Edit" })" />
+
+@* Sin <h2> propio -- la pill activa "Editar organización" del subnav de arriba ya
+   dice de qué pantalla se trata, un título repetido acá era ruido puro (hallazgo
+   real, 2026-08-20). .card-surface + grid Bootstrap en vez de .doc-form/.doc-tab-seccion
+   (esos son el patrón denso tipo SAP B1 de los motores de documento -- Ventas/Compras/
+   Inventario -- pensado para 15+ campos cortos por fila; acá son 6 campos anchos, forzar
+   ese patrón produce las celdas angostas y descuadradas reportadas por el dueño del
+   proyecto). *@
+<div class="card-surface mb-4">
     <form method="post" asp-antiforgery="true">
         <input type="hidden" asp-for="Input.Id" />
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-        <div class="form-row">
-            <div class="form-group">
+        <div class="row g-3">
+            <div class="col-md-4">
                 <label asp-for="Input.LegalName" class="form-label"></label>
                 <input asp-for="Input.LegalName" class="form-control" autofocus />
                 <span asp-validation-for="Input.LegalName" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-4">
                 <label asp-for="Input.Slug" class="form-label"></label>
                 <input asp-for="Input.Slug" class="form-control" />
                 <span asp-validation-for="Input.Slug" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-4">
                 <label asp-for="Input.TaxId" class="form-label"></label>
                 <input asp-for="Input.TaxId" class="form-control" />
                 <span asp-validation-for="Input.TaxId" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-4">
                 <label asp-for="Input.Country" class="form-label"></label>
                 <input asp-for="Input.Country" class="form-control" />
                 <span asp-validation-for="Input.Country" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-4">
                 <label asp-for="Input.Mode" class="form-label"></label>
                 <select asp-for="Input.Mode" class="form-select" asp-items="Model.Modes.Select(m => new SelectListItem(m, m))"></select>
                 <span asp-validation-for="Input.Mode" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="col-md-4">
                 <label asp-for="Input.Status" class="form-label"></label>
                 <select asp-for="Input.Status" class="form-select" asp-items="Model.Statuses.Select(s => new SelectListItem(s, s))"></select>
                 <span asp-validation-for="Input.Status" class="text-danger"></span>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary mt-3">Guardar</button>
-        <a asp-page="/Admin/Organizations/Index" class="btn btn-link mt-3">Cancelar</a>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <a asp-page="/Admin/Organizations/Index" class="btn-secondary">Cancelar</a>
+        </div>
     </form>
 </div>
 

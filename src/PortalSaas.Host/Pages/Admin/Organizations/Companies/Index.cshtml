@@ -4,16 +4,14 @@
     ViewData["Title"] = $"Compañías · {Model.Organization.LegalName}";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h1 class="h3 mb-0">Compañías de @Model.Organization.LegalName</h1>
-        <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
-    </div>
-    @if (Model.TieneInstancias)
-    {
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "Companies" })" />
+
+@if (Model.TieneInstancias)
+{
+    <div class="d-flex justify-content-end mb-3">
         <a asp-page="/Admin/Organizations/Companies/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Nueva compañía</a>
-    }
-</div>
+    </div>
+}
 
 @if (Model.ErrorMessage is not null)
 {

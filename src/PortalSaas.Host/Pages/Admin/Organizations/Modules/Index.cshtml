@@ -4,10 +4,7 @@
     ViewData["Title"] = $"Módulos · {Model.Organization.LegalName}";
 }
 
-<div class="mb-3">
-    <h1 class="h3 mb-0">Módulos contratados por @Model.Organization.LegalName</h1>
-    <a asp-page="/Admin/Organizations/Index">Volver a organizaciones</a>
-</div>
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "Modules" })" />
 
 @if (TempData["Mensaje"] is string mensaje)
 {

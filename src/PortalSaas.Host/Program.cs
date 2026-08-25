@@ -121,6 +121,7 @@ builder.Services.AddScoped<IUserContactLookupService, UserContactLookupService>(
 // menú (sin cambiar lo contratado), y CRUD de sus propios grupos de menú/perfiles
 // (ver CLAUDE.md, "Grupos de Menú + Perfiles", 27 jul 2026).
 builder.Services.AddScoped<IOrganizationModuleVisibilityService, OrganizationModuleVisibilityService>();
+builder.Services.AddScoped<IOrganizationMenuOverrideService, OrganizationMenuOverrideService>();
 builder.Services.AddScoped<IOrganizationMenuGroupService, OrganizationMenuGroupService>();
 builder.Services.AddScoped<IOrganizationProfileService, OrganizationProfileService>();
 

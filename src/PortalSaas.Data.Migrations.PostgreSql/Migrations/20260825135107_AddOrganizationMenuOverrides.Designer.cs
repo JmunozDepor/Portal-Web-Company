@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PortalSaas.Data;
@@ -11,9 +12,11 @@ using PortalSaas.Data;
 namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 {
     [DbContext(typeof(PortalSaasDbContext))]
-    partial class PortalSaasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260825135107_AddOrganizationMenuOverrides")]
+    partial class AddOrganizationMenuOverrides
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,54 +24,6 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("PortalSaas.Data.Entities.ApiClientCredential", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<string>("ApiKeyHash")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("api_key_hash");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("company_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTimeOffset?>("LastUsedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_used_at");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.HasKey("Id")
-                        .HasName("pk_api_client_credentials");
-
-                    b.HasIndex("ApiKeyHash")
-                        .IsUnique()
-                        .HasDatabaseName("ix_api_client_credentials_api_key_hash");
-
-                    b.HasIndex("CompanyId", "Activo")
-                        .HasDatabaseName("ix_api_client_credentials_company_id_is_active");
-
-                    b.ToTable("api_client_credentials", (string)null);
-                });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.AuditLog", b =>
                 {
@@ -485,179 +440,6 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.ToTable("instances", null, t =>
                         {
                             t.HasCheckConstraint("ck_instances_engine_type", "engine_type in ('hana', 'sqlserver')");
-                        });
-                });
-
-            modelBuilder.Entity("PortalSaas.Data.Entities.Integraciones.IntegrationDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("company_id");
-
-                    b.Property<string>("ConectorConfigCifrado")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("encrypted_connector_config");
-
-                    b.Property<string>("ConectorTipo")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("connector_type");
-
-                    b.Property<string>("Direccion")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("direction");
-
-                    b.Property<string>("EntidadNegocio")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("business_entity");
-
-                    b.Property<string>("ModuloOrigen")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("source_module");
-
-                    b.Property<DateTimeOffset?>("NextRunAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("next_run_at");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("ProgramacionCron")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("cron_schedule");
-
-                    b.HasKey("Id")
-                        .HasName("pk_integration_definitions");
-
-                    b.HasIndex("CompanyId", "Activo")
-                        .HasDatabaseName("ix_integration_definitions_company_id_is_active");
-
-                    b.ToTable("integration_definitions", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_integration_definitions_connector_type", "connector_type in ('sap', 'rest', 'file', 'wmscloud')");
-
-                            t.HasCheckConstraint("ck_integration_definitions_direction", "direction in ('upload', 'download', 'both')");
-                        });
-                });
-
-            modelBuilder.Entity("PortalSaas.Data.Entities.Integraciones.IntegrationFieldMapping", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("CampoExterno")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("external_field");
-
-                    b.Property<string>("CampoLocal")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("local_field");
-
-                    b.Property<Guid>("IntegrationDefinitionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("integration_definition_id");
-
-                    b.Property<bool>("Obligatorio")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_required");
-
-                    b.Property<string>("Transformacion")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("transformation");
-
-                    b.HasKey("Id")
-                        .HasName("pk_integration_field_mappings");
-
-                    b.HasIndex("IntegrationDefinitionId")
-                        .HasDatabaseName("ix_integration_field_mappings_integration_definition_id");
-
-                    b.ToTable("integration_field_mappings", (string)null);
-                });
-
-            modelBuilder.Entity("PortalSaas.Data.Entities.Integraciones.IntegrationRunLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("DetalleError")
-                        .HasColumnType("text")
-                        .HasColumnName("error_detail");
-
-                    b.Property<string>("DisparadoPor")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("triggered_by");
-
-                    b.Property<DateTimeOffset?>("FinalizadoEn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("finished_at");
-
-                    b.Property<DateTimeOffset>("IniciadoEn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("started_at");
-
-                    b.Property<Guid>("IntegrationDefinitionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("integration_definition_id");
-
-                    b.Property<int>("RegistrosConError")
-                        .HasColumnType("integer")
-                        .HasColumnName("records_failed");
-
-                    b.Property<int>("RegistrosProcesados")
-                        .HasColumnType("integer")
-                        .HasColumnName("records_processed");
-
-                    b.Property<string>("Resultado")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("status");
-
-                    b.HasKey("Id")
-                        .HasName("pk_integration_run_logs");
-
-                    b.HasIndex("IntegrationDefinitionId")
-                        .HasDatabaseName("ix_integration_run_logs_integration_definition_id");
-
-                    b.ToTable("integration_run_logs", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_integration_run_logs_status", "status in ('success', 'error', 'partial')");
-
-                            t.HasCheckConstraint("ck_integration_run_logs_triggered_by", "triggered_by in ('scheduled', 'manual')");
                         });
                 });
 
@@ -1915,16 +1697,6 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.ToTable("user_sessions", (string)null);
                 });
 
-            modelBuilder.Entity("PortalSaas.Data.Entities.ApiClientCredential", b =>
-                {
-                    b.HasOne("PortalSaas.Data.Entities.Company", null)
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_api_client_credentials_companies_company_id");
-                });
-
             modelBuilder.Entity("PortalSaas.Data.Entities.AuditLog", b =>
                 {
                     b.HasOne("PortalSaas.Data.Entities.Company", "Company")
@@ -2029,18 +1801,6 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasConstraintName("fk_instances_organizations_organization_id");
 
                     b.Navigation("Organization");
-                });
-
-            modelBuilder.Entity("PortalSaas.Data.Entities.Integraciones.IntegrationFieldMapping", b =>
-                {
-                    b.HasOne("PortalSaas.Data.Entities.Integraciones.IntegrationDefinition", "IntegrationDefinition")
-                        .WithMany("Mapeos")
-                        .HasForeignKey("IntegrationDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_integration_field_mappings_integration_definitions_integrat");
-
-                    b.Navigation("IntegrationDefinition");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.Menu", b =>
@@ -2492,11 +2252,6 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
             modelBuilder.Entity("PortalSaas.Data.Entities.Instance", b =>
                 {
                     b.Navigation("Companies");
-                });
-
-            modelBuilder.Entity("PortalSaas.Data.Entities.Integraciones.IntegrationDefinition", b =>
-                {
-                    b.Navigation("Mapeos");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.Menu", b =>

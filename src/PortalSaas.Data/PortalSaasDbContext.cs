@@ -47,6 +47,7 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<UsageMetric> UsageMetrics => Set<UsageMetric>();
     public DbSet<MenuGroup> MenuGroups => Set<MenuGroup>();
     public DbSet<OrganizationModuleVisibility> OrganizationModuleVisibilities => Set<OrganizationModuleVisibility>();
+    public DbSet<OrganizationMenuOverride> OrganizationMenuOverrides => Set<OrganizationMenuOverride>();
     public DbSet<Menu> Menus => Set<Menu>();
     public DbSet<Profile> Profiles => Set<Profile>();
     public DbSet<PermissionAction> Actions => Set<PermissionAction>();
@@ -406,6 +407,15 @@ public sealed class PortalSaasDbContext : DbContext
             entity.HasKey(e => new { e.OrganizationId, e.ModuleId });
             entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
             entity.HasOne(e => e.Module).WithMany().HasForeignKey(e => e.ModuleId);
+        });
+
+        modelBuilder.Entity<OrganizationMenuOverride>(entity =>
+        {
+            entity.ToTable("organization_menu_overrides");
+            entity.HasKey(e => new { e.OrganizationId, e.MenuId });
+            entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId);
+            entity.HasOne(e => e.Menu).WithMany().HasForeignKey(e => e.MenuId);
+            entity.Property(e => e.CustomLabel).HasMaxLength(200);
         });
 
         modelBuilder.Entity<PermissionAction>(entity =>

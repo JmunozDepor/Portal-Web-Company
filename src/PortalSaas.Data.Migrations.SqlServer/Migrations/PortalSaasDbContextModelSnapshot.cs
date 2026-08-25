@@ -1100,6 +1100,38 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.ToTable("organization_document_permissions", (string)null);
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationMenuOverride", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("organization_id");
+
+                    b.Property<long>("MenuId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("menu_id");
+
+                    b.Property<string>("CustomLabel")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("custom_label");
+
+                    b.Property<int?>("CustomOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("custom_order");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_hidden");
+
+                    b.HasKey("OrganizationId", "MenuId")
+                        .HasName("pk_organization_menu_overrides");
+
+                    b.HasIndex("MenuId")
+                        .HasDatabaseName("ix_organization_menu_overrides_menu_id");
+
+                    b.ToTable("organization_menu_overrides", (string)null);
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationModule", b =>
                 {
                     b.Property<Guid>("OrganizationId")
@@ -2123,6 +2155,27 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_organization_document_permissions_organizations_organization_id");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.OrganizationMenuOverride", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Menu", "Menu")
+                        .WithMany()
+                        .HasForeignKey("MenuId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_menu_overrides_menus_menu_id");
+
+                    b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_menu_overrides_organizations_organization_id");
+
+                    b.Navigation("Menu");
 
                     b.Navigation("Organization");
                 });

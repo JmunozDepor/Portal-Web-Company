@@ -58,6 +58,16 @@ viendo únicamente `PortalSaas.Abstractions`.
 
 ## 4. Modelo de datos
 
+> Convenciones del repo (verificadas en código): las tablas de infraestructura
+> como `module_external_connections` usan PK `long` (bigint identity) y los
+> "tipos" se modelan como **clase estática de constantes `string`** + check
+> constraint, no como `enum` C#. El modelo nuevo sigue esa convención:
+> `Id` es `long`; `Tipo` es `string` (`ExternalConnectionType.*`); el "engine"
+> que hoy expone `ExternalDatabaseConnection.EngineType` sigue siendo el `string`
+> `"postgres"` / `"sqlserver"` (se añade `"hana"`). No hay `enum`
+> `ExternalDatabaseEngineType`: es `ExternalDatabaseEngineType` clase estática de
+> constantes.
+
 ### 4.1 `company_external_connections`
 
 Una fila por conexión válida de una compañía.

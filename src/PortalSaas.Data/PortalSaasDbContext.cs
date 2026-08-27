@@ -38,6 +38,8 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<OnPremiseLicenseConflict> OnPremiseLicenseConflicts => Set<OnPremiseLicenseConflict>();
     public DbSet<Instance> Instances => Set<Instance>();
     public DbSet<ModuleExternalConnection> ModuleExternalConnections => Set<ModuleExternalConnection>();
+    public DbSet<CompanyExternalConnection> CompanyExternalConnections => Set<CompanyExternalConnection>();
+    public DbSet<CompanyModuleConnection> CompanyModuleConnections => Set<CompanyModuleConnection>();
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<User> Users => Set<User>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
@@ -244,6 +246,36 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.TechnicalUsername).HasMaxLength(100);
             entity.Property(e => e.TechnicalSecretKey).HasMaxLength(200);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId);
+        });
+
+        modelBuilder.Entity<CompanyExternalConnection>(entity =>
+        {
+            entity.ToTable("company_external_connections", t => t.HasCheckConstraint(
+                "ck_company_external_connections_tipo",
+                "tipo in ('db_postgres', 'db_sqlserver', 'db_hana', 'http_api')"));
+            entity.HasIndex(e => new { e.CompanyId, e.Nombre })
+                .IsUnique()
+                .HasDatabaseName("uq_company_external_connections_company_nombre");
+            entity.Property(e => e.Nombre).HasMaxLength(100);
+            entity.Property(e => e.Tipo).HasMaxLength(20);
+            entity.Property(e => e.Host).HasMaxLength(200);
+            entity.Property(e => e.BaseUrl).HasMaxLength(500);
+            entity.Property(e => e.DatabaseName).HasMaxLength(100);
+            entity.Property(e => e.TechnicalUsername).HasMaxLength(100);
+            entity.Property(e => e.TechnicalSecretKey).HasMaxLength(500);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CompanyModuleConnection>(entity =>
+        {
+            entity.ToTable("company_module_connection");
+            entity.HasIndex(e => new { e.CompanyId, e.ModuleCode, e.Purpose })
+                .IsUnique()
+                .HasDatabaseName("uq_company_module_connection_company_module_purpose");
+            entity.Property(e => e.ModuleCode).HasMaxLength(50);
+            entity.Property(e => e.Purpose).HasMaxLength(50);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Connection).WithMany(c => c.ModuleBindings).HasForeignKey(e => e.ConnectionId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Company>(entity =>

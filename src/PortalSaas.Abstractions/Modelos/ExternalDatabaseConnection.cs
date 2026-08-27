@@ -18,4 +18,5 @@ public static class ExternalDatabaseEngineType
 {
     public const string Postgres = "postgres";
     public const string SqlServer = "sqlserver";
+    public const string Hana = "hana";
 }

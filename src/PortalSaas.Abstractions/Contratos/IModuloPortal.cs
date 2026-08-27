@@ -42,4 +42,10 @@ public interface IModuloPortal
     /// mecanismo completo, portado igual el día que haga falta.
     /// </summary>
     bool ServesOwnWwwRoot => false;
+
+    /// <summary>
+    /// Conexiones externas que el módulo necesita configurar. Vacío = un único
+    /// requisito implícito Purpose="Default", Kind=Database, Required=true.
+    /// </summary>
+    IReadOnlyList<ExternalConnectionRequirement> ExternalConnectionRequirements => Array.Empty<ExternalConnectionRequirement>();
 }

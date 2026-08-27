@@ -140,12 +140,84 @@ public sealed class CompanyExternalConnectionService : ICompanyExternalConnectio
     public async Task<ConnectionTestResultDto> TestAsync(Guid organizationId, Guid companyId, long id, CancellationToken ct = default)
     {
         await EnsureCompanyAsync(organizationId, companyId, ct);
-        _ = await _db.CompanyExternalConnections.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == companyId, ct)
+        var c = await _db.CompanyExternalConnections.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct)
             ?? throw new InvalidOperationException("Conexión no encontrada en la compañía.");
 
-        // La prueba real de conexión se implementa en la Task 5.
-        return new ConnectionTestResultDto(false, "no implementado", null);
+        var password = string.IsNullOrEmpty(c.TechnicalSecretKey) ? "" : _secretos.Decrypt(c.TechnicalSecretKey);
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(5));
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            switch (c.Tipo)
+            {
+                case ExternalConnectionType.DbPostgres:
+                {
+                    var cs = new Npgsql.NpgsqlConnectionStringBuilder
+                    {
+                        Host = c.Host,
+                        Port = c.Port ?? 5432,
+                        Database = c.DatabaseName,
+                        Username = c.TechnicalUsername,
+                        Password = password,
+                        Timeout = 5,
+                    }.ConnectionString;
+                    await using var conn = new Npgsql.NpgsqlConnection(cs);
+                    await conn.OpenAsync(cts.Token);
+                    break;
+                }
+                case ExternalConnectionType.DbSqlServer:
+                {
+                    var cs = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder
+                    {
+                        DataSource = $"{c.Host},{c.Port}",
+                        InitialCatalog = c.DatabaseName,
+                        UserID = c.TechnicalUsername,
+                        Password = password,
+                        ConnectTimeout = 5,
+                        TrustServerCertificate = true,
+                    }.ConnectionString;
+                    await using var conn = new Microsoft.Data.SqlClient.SqlConnection(cs);
+                    await conn.OpenAsync(cts.Token);
+                    break;
+                }
+                case ExternalConnectionType.DbHana:
+                {
+                    // No hay un helper de connection string HANA reutilizable en Core para
+                    // host/puerto/usuario sueltos -- SapConnectionStringFactory arma la
+                    // cadena a partir de Company.Instance, no de estos campos. Se usa el
+                    // shape del brief (Server=host:port;UID=...;PWD=...).
+                    var cs = $"Server={c.Host}:{c.Port};UID={c.TechnicalUsername};PWD={password}";
+                    await using var conn = new global::Sap.Data.Hana.HanaConnection(cs);
+                    await conn.OpenAsync(cts.Token);
+                    break;
+                }
+                case ExternalConnectionType.HttpApi:
+                {
+                    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                    using var resp = await http.GetAsync(c.BaseUrl, cts.Token);
+                    if ((int)resp.StatusCode >= 500)
+                    {
+                        return new ConnectionTestResultDto(false, $"HTTP {(int)resp.StatusCode}", sw.ElapsedMilliseconds);
+                    }
+                    break;
+                }
+                default:
+                    return new ConnectionTestResultDto(false, $"Tipo no soportado: {c.Tipo}", sw.ElapsedMilliseconds);
+            }
+
+            return new ConnectionTestResultDto(true, null, sw.ElapsedMilliseconds);
+        }
+        catch (Exception ex)
+        {
+            // Error admin-only. La contraseña descifrada nunca se incluye en ninguna
+            // cadena de conexión que aparezca en ex.Message (los builders no vuelcan
+            // credenciales), pero se sanea por si acaso.
+            var mensaje = string.IsNullOrEmpty(password) ? ex.Message : ex.Message.Replace(password, "***");
+            return new ConnectionTestResultDto(false, mensaje, sw.ElapsedMilliseconds);
+        }
     }
 
     public async Task<IReadOnlyList<ModuleConnectionBindingDto>> ListBindingsAsync(Guid organizationId, Guid companyId, CancellationToken ct = default)

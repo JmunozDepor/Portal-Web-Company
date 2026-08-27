@@ -153,6 +153,24 @@ public sealed class CompanyExternalConnectionServiceTests
     }
 
     [Fact]
+    public async Task Test_ConHostInalcanzable_DevuelveOkFalseYNoFiltraSecreto()
+    {
+        await using var db = NuevoContexto();
+        var (orgId, companyId) = await SembrarCompaniaAsync(db);
+        var svc = Crear(db);
+        var m = ModeloDb("BD");
+        m.Host = "10.255.255.1"; m.Port = 1; m.TechnicalSecretKey = "P4ssw0rd-secreta";
+        var id = await svc.CreateAsync(orgId, companyId, m);
+
+        var r = await svc.TestAsync(orgId, companyId, id);
+
+        Assert.False(r.Ok);
+        Assert.NotNull(r.Error);
+        Assert.DoesNotContain("P4ssw0rd-secreta", r.Error);
+        Assert.NotNull(r.ElapsedMs);
+    }
+
+    [Fact]
     public async Task Create_CompaniaDeOtraOrganizacion_Rechaza()
     {
         await using var db = NuevoContexto();

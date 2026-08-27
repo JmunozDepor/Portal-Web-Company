@@ -161,6 +161,10 @@ builder.Services.AddScoped<IOrganizationMenuOverrideService, OrganizationMenuOve
 builder.Services.AddScoped<IOrganizationMenuGroupService, OrganizationMenuGroupService>();
 builder.Services.AddScoped<IOrganizationProfileService, OrganizationProfileService>();
 
+// Catálogo de conexiones externas por compañía + bindings módulo→conexión
+// (self-service /organizacion + backoffice /Admin) -- ver ICompanyExternalConnectionService.
+builder.Services.AddScoped<ICompanyExternalConnectionService, CompanyExternalConnectionService>();
+
 // Árbol de menús visible del sidebar (Pages/Shared/_Layout.cshtml vía
 // SidebarMenuViewComponent) -- ver IMenuNavigationService.
 builder.Services.AddScoped<IMenuNavigationService, MenuNavigationService>();

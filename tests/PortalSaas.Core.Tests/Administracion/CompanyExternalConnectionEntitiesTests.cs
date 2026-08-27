@@ -17,13 +17,11 @@ public sealed class CompanyExternalConnectionEntitiesTests
     public async Task PuedePersistirYLeerConexionConBinding()
     {
         var companyId = Guid.NewGuid();
-        var orgId = Guid.NewGuid();
 
         await using (var db = NuevoContexto())
         {
             var conn = new CompanyExternalConnection
             {
-                OrganizationId = orgId,
                 CompanyId = companyId,
                 Nombre = "BD WMS",
                 Tipo = ExternalConnectionType.DbSqlServer,
@@ -38,7 +36,6 @@ public sealed class CompanyExternalConnectionEntitiesTests
 
             db.CompanyModuleConnections.Add(new CompanyModuleConnection
             {
-                OrganizationId = orgId,
                 CompanyId = companyId,
                 ModuleCode = "Wms",
                 Purpose = "Default",

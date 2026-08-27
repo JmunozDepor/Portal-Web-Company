@@ -13,6 +13,7 @@
 - El plugin `Modulo.Administracion` **solo** puede referenciar `PortalSaas.Abstractions` (nunca `PortalSaas.Core` / `PortalSaas.Data` / `PortalSaas.Host`).
 - Toda migración nueva se genera en **ambos** proyectos: `src/PortalSaas.Data.Migrations.PostgreSql` y `src/PortalSaas.Data.Migrations.SqlServer`, con `--context PortalSaasDbContext`. Aplicar contra las 4 bases reales de `172.16.122.171` tras validar en local; preguntar si alguna queda pendiente.
 - PK `long` (bigint identity) para las tablas nuevas, igual que `module_external_connections`. Los "tipos" se modelan como clase estática de constantes `string` + check constraint, no `enum` C#.
+- **Las tablas nuevas (`company_external_connections`, `company_module_connection`) NO llevan columna `OrganizationId`** — regla dura del repo (CLAUDE.md 2026-08-08): `Company.OrganizationId` ya la resuelve, y `module_external_connections` la eliminó a propósito en la migración `EnforceCompanyScopeOnExternalConnections`. Donde CUALQUIER snippet de este plan (Tasks 1/3/4/6/7) asigne o lea `OrganizationId` en esas dos entidades, **omitirlo**: el scoping por organización se valida/deriva por join a `companies` (`c.OrganizationId == organizationId` en el servicio; `b.Company.OrganizationId` en el resolver). Los métodos del servicio siguen recibiendo `organizationId` como parámetro (para validar pertenencia de la compañía), pero no se persiste en fila.
 - Secretos: siempre write-only. Ningún DTO de lectura expone `TechnicalSecretKey`. En edición, secreto en blanco = conservar el existente. Cifrado vía `ISecretoCifradoService.Encrypt` / `.Decrypt`.
 - `IExternalDatabaseConnectionService.ResolveConnectionAsync(string moduleCode, Guid companyId, CancellationToken)` **no cambia de firma**. Se agrega un overload con `string purpose`.
 - Tests: DbContext `UseInMemoryDatabase(Guid.NewGuid().ToString())`. El provider InMemory NO valida check constraints ni índices únicos: las pruebas de unicidad verifican la validación explícita del servicio, no una excepción de EF.
@@ -35,8 +36,8 @@
 - Produces:
   - `ExternalConnectionType.DbPostgres|DbSqlServer|DbHana|HttpApi` (`const string`), `ExternalConnectionType.All`.
   - `ExternalDatabaseEngineType.Hana = "hana"` (`const string`).
-  - Entities `CompanyExternalConnection` (PK `long Id`, props: `Guid OrganizationId`, `Guid CompanyId`, `Company Company`, `string Nombre`, `string Tipo`, `string? Host`, `string? BaseUrl`, `int? Port`, `string? DatabaseName`, `string? TechnicalUsername`, `string? TechnicalSecretKey`, `string? ConfiguracionExtra`, `bool IsActive`, `DateTimeOffset CreatedAt`, `DateTimeOffset UpdatedAt`, `ICollection<CompanyModuleConnection> ModuleBindings`).
-  - `CompanyModuleConnection` (PK `long Id`, props: `Guid OrganizationId`, `Guid CompanyId`, `Company Company`, `string ModuleCode`, `string Purpose` (default `"Default"`), `long ConnectionId`, `CompanyExternalConnection Connection`, `DateTimeOffset UpdatedAt`).
+  - Entities `CompanyExternalConnection` (PK `long Id`, props: `Guid CompanyId`, `Company Company`, `string Nombre`, `string Tipo`, `string? Host`, `string? BaseUrl`, `int? Port`, `string? DatabaseName`, `string? TechnicalUsername`, `string? TechnicalSecretKey`, `string? ConfiguracionExtra`, `bool IsActive`, `DateTimeOffset CreatedAt`, `DateTimeOffset UpdatedAt`, `ICollection<CompanyModuleConnection> ModuleBindings`). **No `OrganizationId`.**
+  - `CompanyModuleConnection` (PK `long Id`, props: `Guid CompanyId`, `Company Company`, `string ModuleCode`, `string Purpose` (default `"Default"`), `long ConnectionId`, `CompanyExternalConnection Connection`, `DateTimeOffset UpdatedAt`). **No `OrganizationId`.**
   - `PortalSaasDbContext.CompanyExternalConnections`, `.CompanyModuleConnections` (`DbSet<>`).
 
 - [ ] **Step 1: Write the failing test**
@@ -62,13 +63,11 @@ public sealed class CompanyExternalConnectionEntitiesTests
     public async Task PuedePersistirYLeerConexionConBinding()
     {
         var companyId = Guid.NewGuid();
-        var orgId = Guid.NewGuid();
 
         await using (var db = NuevoContexto())
         {
             var conn = new CompanyExternalConnection
             {
-                OrganizationId = orgId,
                 CompanyId = companyId,
                 Nombre = "BD WMS",
                 Tipo = ExternalConnectionType.DbSqlServer,
@@ -83,7 +82,6 @@ public sealed class CompanyExternalConnectionEntitiesTests
 
             db.CompanyModuleConnections.Add(new CompanyModuleConnection
             {
-                OrganizationId = orgId,
                 CompanyId = companyId,
                 ModuleCode = "Wms",
                 Purpose = "Default",
@@ -143,8 +141,7 @@ public sealed class CompanyExternalConnection
 {
     public long Id { get; set; }
 
-    public Guid OrganizationId { get; set; }
-
+    // Sin OrganizationId: se deriva de Company.OrganizationId (regla dura CLAUDE.md 2026-08-08).
     public Guid CompanyId { get; set; }
     public Company Company { get; set; } = null!;
 
@@ -185,8 +182,7 @@ public sealed class CompanyModuleConnection
 {
     public long Id { get; set; }
 
-    public Guid OrganizationId { get; set; }
-
+    // Sin OrganizationId: se deriva de Company.OrganizationId (regla dura CLAUDE.md 2026-08-08).
     public Guid CompanyId { get; set; }
     public Company Company { get; set; } = null!;
 
@@ -783,7 +779,6 @@ public async Task<long> CreateAsync(Guid organizationId, Guid companyId, Externa
 
     var entity = new CompanyExternalConnection
     {
-        OrganizationId = organizationId,
         CompanyId = companyId,
         Nombre = nombreNormalizado,
         Tipo = model.Tipo,
@@ -1017,7 +1012,7 @@ git commit -m "feat: TestAsync prueba conexion real por tipo (pg/mssql/hana/http
         var companyId = Guid.NewGuid();
         var conn = new CompanyExternalConnection
         {
-            OrganizationId = Guid.NewGuid(), CompanyId = companyId, Nombre = "BD",
+            CompanyId = companyId, Nombre = "BD",
             Tipo = ExternalConnectionType.DbPostgres, Host = "h", Port = 5432,
             DatabaseName = "d", TechnicalUsername = "u", TechnicalSecretKey = "enc:p", IsActive = true,
         };
@@ -1025,7 +1020,7 @@ git commit -m "feat: TestAsync prueba conexion real por tipo (pg/mssql/hana/http
         await db.SaveChangesAsync();
         db.CompanyModuleConnections.Add(new CompanyModuleConnection
         {
-            OrganizationId = conn.OrganizationId, CompanyId = companyId,
+            CompanyId = companyId,
             ModuleCode = "Wms", Purpose = "Default", ConnectionId = conn.Id,
         });
         await db.SaveChangesAsync();
@@ -1053,7 +1048,7 @@ git commit -m "feat: TestAsync prueba conexion real por tipo (pg/mssql/hana/http
         var companyId = Guid.NewGuid();
         var sap = new CompanyExternalConnection
         {
-            OrganizationId = Guid.NewGuid(), CompanyId = companyId, Nombre = "SAP",
+            CompanyId = companyId, Nombre = "SAP",
             Tipo = ExternalConnectionType.DbSqlServer, Host = "sap", Port = 1433,
             DatabaseName = "SBO", TechnicalUsername = "u", TechnicalSecretKey = "enc:p", IsActive = true,
         };
@@ -1061,7 +1056,7 @@ git commit -m "feat: TestAsync prueba conexion real por tipo (pg/mssql/hana/http
         await db.SaveChangesAsync();
         db.CompanyModuleConnections.Add(new CompanyModuleConnection
         {
-            OrganizationId = sap.OrganizationId, CompanyId = companyId,
+            CompanyId = companyId,
             ModuleCode = "Wms", Purpose = "SapSource", ConnectionId = sap.Id,
         });
         await db.SaveChangesAsync();
@@ -1072,7 +1067,7 @@ git commit -m "feat: TestAsync prueba conexion real por tipo (pg/mssql/hana/http
     }
 ```
 
-> Reusar/crear `FakeSecretos` (identidad) y `NuevoContexto()` como en el resto del archivo. Mantener el test existente `ListActiveCompanyIdsAsync_devuelve_solo_filas_activas_del_modulo_pedido` pero adaptando su siembra al nuevo modelo (binding + catálogo, `Connection.IsActive`).
+> Reusar/crear `FakeSecretos` (identidad) y `NuevoContexto()` como en el resto del archivo. Mantener el test existente `ListActiveCompanyIdsAsync_devuelve_solo_filas_activas_del_modulo_pedido` pero adaptando su siembra al nuevo modelo (binding + catálogo, `Connection.IsActive`). Como `ListActiveCompanyIdsAsync` proyecta `b.Company.OrganizationId`, ese test **debe sembrar también una entidad `Company`** (`new Company { Id = companyId, OrganizationId = ..., Code, Name }`) para cada `companyId` usado, o el `Select` con el join a `companies` devolverá `OrganizationId` vacío / fallará. Los tests `ResolveConnectionAsync_*` no llaman ese método y no necesitan `Company`.
 
 - [ ] **Step 2: Run tests, verify they fail**
 
@@ -1144,7 +1139,7 @@ public async Task<IReadOnlyList<ModuleCompanyDto>> ListActiveCompanyIdsAsync(str
 {
     return await _db.CompanyModuleConnections.AsNoTracking()
         .Where(b => b.ModuleCode == moduleCode && b.Purpose == "Default" && b.Connection.IsActive)
-        .Select(b => new ModuleCompanyDto(b.CompanyId, b.OrganizationId))
+        .Select(b => new ModuleCompanyDto(b.CompanyId, b.Company.OrganizationId))
         .Distinct()
         .ToListAsync(ct);
 }
@@ -1179,7 +1174,7 @@ git commit -m "feat: ExternalDatabaseConnectionService resuelve contra binding+c
 
 **Comportamiento:**
 - Para cada `ModuleExternalConnection` (`me`) sin `CompanyModuleConnection` existente con `(me.CompanyId, me.ModuleCode, "Default")`:
-  - Buscar/crear `CompanyExternalConnection` en la misma compañía con misma tupla `(Tipo, Host, Port, DatabaseName)` — dedupe. `Tipo`: `"postgres"→db_postgres`, `"sqlserver"→db_sqlserver`. `OrganizationId` = `me.Company.OrganizationId`. `Nombre` = `me.ModuleCode`; si choca con una existente de esa compañía, sufijo ` (2)`, ` (3)`… `TechnicalSecretKey` = `me.TechnicalSecretKey` **tal cual** (ya cifrado con el mismo servicio). `IsActive = me.IsActive`.
+  - Buscar/crear `CompanyExternalConnection` en la misma compañía con misma tupla `(Tipo, Host, Port, DatabaseName)` — dedupe. `Tipo`: `"postgres"→db_postgres`, `"sqlserver"→db_sqlserver`. (Sin `OrganizationId` — la entidad no lo tiene.) `Nombre` = `me.ModuleCode`; si choca con una existente de esa compañía, sufijo ` (2)`, ` (3)`… `TechnicalSecretKey` = `me.TechnicalSecretKey` **tal cual** (ya cifrado con el mismo servicio). `IsActive = me.IsActive`.
   - Crear `CompanyModuleConnection` `(me.CompanyId, me.ModuleCode, "Default")` → esa conexión.
 - Si ya existe un binding `(CompanyId, ModuleCode, "Default")` apuntando a otra conexión distinta a la que resolvería `me` → `logger.LogWarning("Backfill: binding en conflicto para company {CompanyId} module {ModuleCode}: se conserva {ExistingId}, se ignora {LegacyId}", ...)` y no tocar.
 - `module_external_connections` no se modifica ni se borra.

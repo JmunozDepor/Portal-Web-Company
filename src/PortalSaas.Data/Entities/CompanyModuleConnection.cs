@@ -4,8 +4,6 @@ public sealed class CompanyModuleConnection
 {
     public long Id { get; set; }
 
-    public Guid OrganizationId { get; set; }
-
     public Guid CompanyId { get; set; }
     public Company Company { get; set; } = null!;
 

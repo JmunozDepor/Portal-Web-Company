@@ -381,6 +381,19 @@ if (args is ["seed-admin", var seedAdminEmail])
     return;
 }
 
+// Backfill one-shot idempotente: copia las filas legadas de module_external_connections
+// al modelo nuevo (catálogo company_external_connections + binding
+// company_module_connection). El Host no aplica migraciones automáticamente en este
+// entorno, así que corre acá, tras Build() -- es no-op si no hay filas legadas o si ya
+// se migraron (idempotente por el binding (CompanyId, ModuleCode, "Default")).
+using (var backfillScope = app.Services.CreateScope())
+{
+    var backfill = new LegacyExternalConnectionBackfill(
+        backfillScope.ServiceProvider.GetRequiredService<PortalSaasDbContext>(),
+        backfillScope.ServiceProvider.GetRequiredService<ILogger<LegacyExternalConnectionBackfill>>());
+    await backfill.RunAsync(default);
+}
+
 // La página de error propia (Pages/Error.cshtml) corre en TODOS los entornos, no solo
 // producción -- antes solo estaba activa fuera de Development, así que cualquier
 // excepción no manejada en local mostraba la pantalla cruda de desarrollo de ASP.NET

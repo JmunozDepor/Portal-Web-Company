@@ -3,16 +3,17 @@ using Npgsql;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 using PortalSaas.Data;
-using PortalSaas.Data.Entities;
 
 namespace PortalSaas.Core.Infraestructura;
 
 /// <summary>
-/// Implementación real de IExternalDatabaseConnectionService -- resuelve contra
-/// PortalSaasDbContext.ModuleExternalConnections (base propia de la plataforma, motor
-/// dual), nunca contra HANA/SAP. Sin caché por ahora (primer consumidor real,
-/// Modulo.Rendiciones, YAGNI hasta que el volumen de resoluciones lo justifique --
-/// a diferencia del SqlServerService de PortalSAP_v2, que sí cacheaba 10 minutos).
+/// Implementación real de IExternalDatabaseConnectionService -- resuelve el runtime
+/// contra el binding PortalSaasDbContext.CompanyModuleConnections (slot lógico por
+/// módulo + compañía) y el catálogo CompanyExternalConnections (base propia de la
+/// plataforma, motor dual), nunca contra HANA/SAP. Sin caché por ahora (primer
+/// consumidor real, Modulo.Rendiciones, YAGNI hasta que el volumen de resoluciones lo
+/// justifique -- a diferencia del SqlServerService de PortalSAP_v2, que sí cacheaba 10
+/// minutos).
 /// </summary>
 public sealed class ExternalDatabaseConnectionService : IExternalDatabaseConnectionService
 {
@@ -25,48 +26,63 @@ public sealed class ExternalDatabaseConnectionService : IExternalDatabaseConnect
         _secretos = secretos;
     }
 
-    public async Task<ExternalDatabaseConnection> ResolveConnectionAsync(
+    public Task<ExternalDatabaseConnection> ResolveConnectionAsync(
         string moduleCode,
         Guid companyId,
         CancellationToken ct = default)
+        => ResolveConnectionAsync(moduleCode, companyId, "Default", ct);
+
+    public async Task<ExternalDatabaseConnection> ResolveConnectionAsync(
+        string moduleCode,
+        Guid companyId,
+        string purpose,
+        CancellationToken ct = default)
     {
-        var connection = await _db.ModuleExternalConnections
+        var binding = await _db.CompanyModuleConnections
                 .AsNoTracking()
-                .Where(x => x.ModuleCode == moduleCode && x.CompanyId == companyId && x.IsActive)
-                .FirstOrDefaultAsync(ct)
+                .Include(b => b.Connection)
+                .FirstOrDefaultAsync(b => b.ModuleCode == moduleCode
+                                          && b.CompanyId == companyId
+                                          && b.Purpose == purpose
+                                          && b.Connection.IsActive, ct)
             ?? throw new InvalidOperationException(
-                $"No hay una base de datos externa asociada al módulo '{moduleCode}' para esta compañía -- " +
-                "configurarla desde Administración.");
+                $"No hay una base de datos externa asociada al módulo '{moduleCode}' " +
+                $"(propósito '{purpose}') para esta compañía -- configurarla desde Administración.");
 
-        var password = _secretos.Decrypt(connection.TechnicalSecretKey);
+        var c = binding.Connection;
+        var password = string.IsNullOrEmpty(c.TechnicalSecretKey) ? "" : _secretos.Decrypt(c.TechnicalSecretKey);
 
-        var connectionString = connection.EngineType switch
+        (string engine, string connectionString) = c.Tipo switch
         {
-            ModuleExternalConnectionEngineType.Postgres => new NpgsqlConnectionStringBuilder
+            ExternalConnectionType.DbPostgres => (ExternalDatabaseEngineType.Postgres, new NpgsqlConnectionStringBuilder
             {
-                Host = connection.Host,
-                Port = connection.Port,
-                Database = connection.DatabaseName,
-                Username = connection.TechnicalUsername,
+                Host = c.Host,
+                Port = c.Port ?? 5432,
+                Database = c.DatabaseName,
+                Username = c.TechnicalUsername,
                 Password = password,
-            }.ConnectionString,
-            ModuleExternalConnectionEngineType.SqlServer => new Microsoft.Data.SqlClient.SqlConnectionStringBuilder
+            }.ConnectionString),
+            ExternalConnectionType.DbSqlServer => (ExternalDatabaseEngineType.SqlServer, new Microsoft.Data.SqlClient.SqlConnectionStringBuilder
             {
-                DataSource = $"{connection.Host},{connection.Port}",
-                InitialCatalog = connection.DatabaseName,
-                UserID = connection.TechnicalUsername,
+                DataSource = $"{c.Host},{c.Port}",
+                InitialCatalog = c.DatabaseName,
+                UserID = c.TechnicalUsername,
                 Password = password,
                 // Mismo motivo que Sap/SapConnectionStringFactory: instalaciones con
                 // certificado propio (self-signed/CA interna) rechazan el login sin
                 // esto, Microsoft.Data.SqlClient exige Encrypt por default.
                 TrustServerCertificate = true,
-            }.ConnectionString,
-            _ => throw new InvalidOperationException($"Motor de base de datos externa no soportado: '{connection.EngineType}'."),
+            }.ConnectionString),
+            ExternalConnectionType.DbHana => (ExternalDatabaseEngineType.Hana,
+                $"Server={c.Host}:{c.Port};UID={c.TechnicalUsername};PWD={password}"),
+            _ => throw new InvalidOperationException(
+                $"El módulo '{moduleCode}' requiere una conexión de base de datos, " +
+                $"pero '{c.Nombre}' es de tipo '{c.Tipo}'."),
         };
 
         return new ExternalDatabaseConnection
         {
-            EngineType = connection.EngineType,
+            EngineType = engine,
             ConnectionString = connectionString,
         };
     }
@@ -75,10 +91,10 @@ public sealed class ExternalDatabaseConnectionService : IExternalDatabaseConnect
         string moduleCode,
         CancellationToken ct = default)
     {
-        return await _db.ModuleExternalConnections
+        return await _db.CompanyModuleConnections
             .AsNoTracking()
-            .Where(x => x.ModuleCode == moduleCode && x.IsActive)
-            .Select(x => new ModuleCompanyDto(x.CompanyId, x.Company.OrganizationId))
+            .Where(b => b.ModuleCode == moduleCode && b.Purpose == "Default" && b.Connection.IsActive)
+            .Select(b => new ModuleCompanyDto(b.CompanyId, b.Company.OrganizationId))
             .Distinct()
             .ToListAsync(ct);
     }

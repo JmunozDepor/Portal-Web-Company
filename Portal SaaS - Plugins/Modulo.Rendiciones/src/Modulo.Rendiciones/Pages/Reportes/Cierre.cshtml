@@ -1,0 +1,70 @@
+@page "/rendiciones/reportes/cierre"
+@model Modulo.Rendiciones.Pages.Reportes.CierreModel
+@{
+    ViewData["Title"] = "Cierre y reportes";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Cierre de rendiciones</h2>
+    </div>
+
+    <form method="get" class="admin-form-asignar">
+        <div class="form-group">
+            <label asp-for="From">Desde</label>
+            <input asp-for="From" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label asp-for="To">Hasta</label>
+            <input asp-for="To" class="form-control" />
+        </div>
+        <button type="submit" class="btn-module-action">Filtrar</button>
+        <a asp-page-handler="Exportar" asp-route-desde="@Model.From.ToString("yyyy-MM-dd")" asp-route-hasta="@Model.To.ToString("yyyy-MM-dd")" class="btn-erp-primary btn-erp-primary--sm">
+            Exportar CSV
+        </a>
+    </form>
+
+    <table class="admin-table">
+    <thead>
+        <tr>
+            <th>Rendición</th>
+            <th>Colaborador</th>
+            <th>Centro de costo</th>
+            <th>Tipo de gasto</th>
+            <th>Fecha</th>
+            <th>Monto</th>
+            <th>Glosa</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var l in Model.Lines)
+        {
+            <tr>
+                <td>#@l.ExpenseReportId @(l.Round > 1 ? $"(ronda {l.Round})" : "")</td>
+                <td>@l.EmployeeName</td>
+                <td>@(l.CostCenterName ?? l.CostCenterCode ?? "—")</td>
+                <td>@l.ExpenseTypeName</td>
+                <td>@l.Date.ToString("dd-MM-yyyy")</td>
+                <td>@l.Currency @l.Amount.ToString("N2")</td>
+                <td>@l.Notes</td>
+            </tr>
+        }
+        @if (Model.Lines.Count == 0)
+        {
+            <tr><td colspan="7" class="admin-muted">Sin rendiciones aprobadas en el período seleccionado.</td></tr>
+        }
+    </tbody>
+    @if (Model.Lines.Count > 0)
+    {
+        <tfoot>
+            <tr>
+                <td colspan="5"><strong>Total</strong></td>
+                <td colspan="2"><strong>@Model.Lines.Sum(l => l.Amount).ToString("N2")</strong></td>
+            </tr>
+        </tfoot>
+    }
+    </table>
+</div>

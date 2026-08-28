@@ -1,0 +1,77 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Modulo.Rendiciones</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <!-- PluginManager carga el .dll directo de una carpeta (AssemblyLoadContext
+         aislado) esperando que Microsoft.EntityFrameworkCore.SqlServer esté
+         físicamente al lado. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- REGLA DURA (ver docs/09-GUIA-DESARROLLO-PLUGINS.md §1 del portal): un plugin
+         referencia SOLO PortalSaas.Abstractions. Nunca PortalSaas.Core ni PortalSaas.Host.
+
+         TEMPORAL: esto es una ProjectReference relativa cruzando repos (asume que este
+         repo y "Portal SaaS - Core" viven como carpetas hermanas bajo
+         "Proyecto Portal Web-Company"). Reemplazar por un PackageReference a un paquete
+         NuGet versionado de PortalSaas.Abstractions apenas ese paquete exista: una
+         ProjectReference entre repos separados rompe la premisa de "build realmente
+         independiente" que motivó extraer este módulo como plugin externo. Ver
+         docs/09-GUIA-DESARROLLO-PLUGINS.md §1 del portal para el detalle. -->
+    <ProjectReference Include="..\..\..\..\Portal SaaS - Core\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Base de datos propia del módulo, motor dual (Postgres/SQL Server), resuelta
+         self-service vía IExternalDatabaseConnectionService (PortalSaas.Abstractions),
+         que decide en
+         runtime cuál de los dos proveedores de EF Core usar según lo que la
+         organización tenga configurado. REGLA para cualquier plugin de esta
+         plataforma (ver docs/09-GUIA-DESARROLLO-PLUGINS.md §1/§6 del portal): un
+         plugin con base propia NUNCA asume un solo motor: referencia los DOS
+         proveedores y elige en runtime, nunca en tiempo de compilación. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+    <!-- OCR de comprobantes (fase de servicios, no portado todavía): endpoint/clave se
+         leen de configuración en runtime, nunca en appsettings.json en texto plano. -->
+    <PackageReference Include="Azure.AI.DocumentIntelligence" Version="1.0.0" />
+    <!-- Trae los targets que arman el recurso embebido a partir de EmbeddedResource
+         wwwroot\**. ServesOwnWwwRoot=true en ModuloRendiciones.cs hace que el host lo
+         sirva embebido. -->
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\**" />
+  </ItemGroup>
+
+  <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo. El
+       artefacto se copia manualmente (o vía pipeline propio en el futuro) a
+       artifacts/plugins/Modulo.Rendiciones/{Version}/ del portal, ver
+       docs/09-GUIA-DESARROLLO-PLUGINS.md §7 del portal. -->
+  <PropertyGroup>
+    <ModuloVersion>1.0.0</ModuloVersion>
+  </PropertyGroup>
+
+  <Target Name="PublicarComoPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <ArchivosDelModulo Include="$(OutputPath)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ArchivosDelModulo)"
+          DestinationFolder="..\..\dist\$(MSBuildProjectName)\$(ModuloVersion)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

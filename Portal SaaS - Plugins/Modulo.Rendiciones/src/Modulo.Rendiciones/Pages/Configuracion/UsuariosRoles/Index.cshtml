@@ -1,0 +1,79 @@
+@page "/rendiciones/configuracion/usuarios-roles"
+@model Modulo.Rendiciones.Pages.Configuracion.UsuariosRoles.IndexModel
+@{
+    ViewData["Title"] = "Usuarios y roles";
+}
+@* Migrado al Design System unificado (2026-08-19) -- ya no carga rendiciones.css.
+   Sin drawer: es una matriz de permisos pura (checkboxes que se auto-envían),
+   no hay formulario de creación. *@
+
+<div class="card-surface">
+    <h2 class="mb-1">Usuarios y roles</h2>
+    <p class="text-muted mb-3">
+        Quién puede declarar gastos (Rendidor), revisar informes (Aprobador) y administrar este módulo (Administrador).
+        Ninguno de los tres es automático -- si un usuario no tiene ningún rol marcado acá, no puede entrar a ninguna pantalla del módulo.
+    </p>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+
+    <table class="table-ps">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Rendidor</th>
+                <th>Aprobador</th>
+                <th>Administrador</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td>@row.Username</td>
+                    <td>@row.Email</td>
+                    @if (row.IsPlatformAdmin)
+                    {
+                        <td colspan="3">
+                            <span class="badge-status badge-status--neutral" title="Admin de la organización -- siempre tiene acceso a todo el módulo">Siempre (admin de la organización)</span>
+                        </td>
+                    }
+                    else
+                    {
+                        <td>
+                            <form method="post" asp-antiforgery="true">
+                                <input type="hidden" name="userId" value="@row.Id" />
+                                <input type="hidden" name="role" value="Rendidor" />
+                                <input type="hidden" name="granted" value="@(!row.IsRendidor)" />
+                                <input type="checkbox" checked="@row.IsRendidor" onchange="this.form.requestSubmit()" />
+                            </form>
+                        </td>
+                        <td>
+                            <form method="post" asp-antiforgery="true">
+                                <input type="hidden" name="userId" value="@row.Id" />
+                                <input type="hidden" name="role" value="Aprobador" />
+                                <input type="hidden" name="granted" value="@(!row.IsAprobador)" />
+                                <input type="checkbox" checked="@row.IsAprobador" onchange="this.form.requestSubmit()" />
+                            </form>
+                        </td>
+                        <td>
+                            <form method="post" asp-antiforgery="true">
+                                <input type="hidden" name="userId" value="@row.Id" />
+                                <input type="hidden" name="role" value="Administrador" />
+                                <input type="hidden" name="granted" value="@(!row.IsAdministrador)" />
+                                <input type="checkbox" checked="@row.IsAdministrador" onchange="this.form.requestSubmit()" />
+                            </form>
+                        </td>
+                    }
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="5" class="text-muted">Sin usuarios en esta organización todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>

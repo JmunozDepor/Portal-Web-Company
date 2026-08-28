@@ -1,0 +1,185 @@
+@page "/rendiciones/configuracion/proveedores"
+@model Modulo.Rendiciones.Pages.Configuracion.Proveedores.IndexModel
+@{
+    ViewData["Title"] = "Proveedores de servicios externos";
+}
+@* Migrado al Design System unificado (2026-08-19) -- ya no carga rendiciones.css.
+   Dos drawers separados (Nuevo/Editar) porque usan modelos y handlers
+   distintos (New vs Edit, Crear vs Guardar) -- el de Editar se auto-abre
+   cuando Model.Selected viene seteado (?id=X). *@
+@{ var proveedorEditarAbierto = Model.Selected is not null; }
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1">
+        <h2 class="mb-0">Proveedores de servicios externos</h2>
+        <div class="d-flex gap-2">
+            <a asp-page="/Configuracion/ConsumoServicios/Index" class="btn-secondary">Ver consumo</a>
+            <button type="button" class="btn-primary" data-drawer-open="drawer-nuevo-proveedor">+ Nuevo proveedor</button>
+        </div>
+    </div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<p class="text-muted mb-3">
+    Cada tipo de servicio (Azure Maps, Azure Document Intelligence) puede tener más de
+    una cuenta configurada -- cuando la de mayor prioridad (número más bajo) agota su
+    cuota mensual gratuita, el sistema prueba automáticamente la siguiente antes de
+    dar el servicio por no disponible. La clave se guarda cifrada y nunca se vuelve a
+    mostrar -- dejar el campo en blanco al editar no la cambia.
+</p>
+
+<table class="table-ps">
+    <thead>
+        <tr>
+            <th>Servicio</th>
+            <th>Nombre</th>
+            <th>Límite mensual</th>
+            <th>Prioridad</th>
+            <th>Estado</th>
+            <th class="col-actions"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in Model.Providers)
+        {
+            <tr class="@(p.IsActive ? "" : "row-inactive")">
+                <td>@p.ServiceType</td>
+                <td>@p.Name</td>
+                <td>@p.MonthlyLimit</td>
+                <td>@p.Priority</td>
+                <td>
+                    @if (p.IsActive)
+                    {
+                        <span class="badge-status badge-status--success">Activo</span>
+                    }
+                    else
+                    {
+                        <span class="badge-status badge-status--neutral">Inactivo</span>
+                    }
+                </td>
+                <td class="col-actions">
+                    <a asp-page="./Index" asp-route-id="@p.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                </td>
+            </tr>
+        }
+        @if (Model.Providers.Count == 0)
+        {
+            <tr><td colspan="6" class="text-muted">Sin proveedores configurados todavía.</td></tr>
+        }
+    </tbody>
+</table>
+</div>
+
+@* Drawer -- Editar proveedor seleccionado *@
+<div id="drawer-editar-proveedor" class="drawer-overlay @(proveedorEditarAbierto ? "is-open" : "")" data-drawer>
+    <aside class="drawer-panel @(proveedorEditarAbierto ? "is-open" : "")">
+        @if (Model.Selected is { } selected)
+        {
+            <div class="drawer-header">
+                <h3>Editar: @selected.Name</h3>
+                <a href="~/rendiciones/configuracion/proveedores" class="btn-ghost" aria-label="Cerrar"><i class="bi bi-x-lg"></i></a>
+            </div>
+            <form method="post" asp-page-handler="Guardar" asp-route-id="@selected.Id">
+                <div class="drawer-body">
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                    <div class="drawer-grid">
+                        <div class="mb-3">
+                            <label class="form-label">Servicio</label>
+                            <input type="text" value="@selected.ServiceType" class="form-control" disabled />
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Edit.Name" class="form-label"></label>
+                            <input asp-for="Edit.Name" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Edit.Endpoint" class="form-label"></label>
+                            <input asp-for="Edit.Endpoint" class="form-control" placeholder="Solo Document Intelligence" />
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Edit.ApiKey" class="form-label"></label>
+                            <input asp-for="Edit.ApiKey" type="password" class="form-control" placeholder="Dejar en blanco para no cambiar" autocomplete="new-password" />
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Edit.MonthlyLimit" class="form-label"></label>
+                            <input asp-for="Edit.MonthlyLimit" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Edit.Priority" class="form-label"></label>
+                            <input asp-for="Edit.Priority" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2">
+                        <label class="d-flex align-items-center gap-2"><input asp-for="Edit.IsActive" type="checkbox" /> Activo</label>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@selected.Id" method="post"
+                          onsubmit="return confirm('¿Eliminar este proveedor?');" class="me-auto">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
+                    </form>
+                    <a href="~/rendiciones/configuracion/proveedores" class="btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn-primary">Guardar</button>
+                </div>
+            </form>
+        }
+    </aside>
+</div>
+
+@* Drawer -- Nuevo proveedor *@
+@{ var proveedorNuevoAbierto = !ViewData.ModelState.IsValid && Model.Selected is null; }
+<div id="drawer-nuevo-proveedor" class="drawer-overlay @(proveedorNuevoAbierto ? "is-open" : "")" data-drawer>
+    <aside class="drawer-panel @(proveedorNuevoAbierto ? "is-open" : "")">
+        <div class="drawer-header">
+            <h3>Nuevo proveedor</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" asp-page-handler="Crear">
+            <div class="drawer-body">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div class="mb-3">
+                    <label asp-for="New.ServiceType" class="form-label">Servicio</label>
+                    <select asp-for="New.ServiceType" class="form-select">
+                        <option value="">-- Seleccionar --</option>
+                        @foreach (var s in Model.ServiceTypes)
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="New.Name" class="form-label">Nombre</label>
+                    <input asp-for="New.Name" class="form-control" placeholder="Ej. Azure Maps - Cuenta 1" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="New.Endpoint" class="form-label">Endpoint</label>
+                    <input asp-for="New.Endpoint" class="form-control" placeholder="Solo Document Intelligence" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="New.ApiKey" class="form-label">Clave</label>
+                    <input asp-for="New.ApiKey" type="password" class="form-control" autocomplete="new-password" />
+                </div>
+                <div class="drawer-grid">
+                    <div class="mb-3">
+                        <label asp-for="New.MonthlyLimit" class="form-label">Límite mensual</label>
+                        <input asp-for="New.MonthlyLimit" class="form-control" placeholder="Ej. 250000" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="New.Priority" class="form-label">Prioridad</label>
+                        <input asp-for="New.Priority" class="form-control" placeholder="0 = primero" />
+                    </div>
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn-primary">Crear</button>
+            </div>
+        </form>
+    </aside>
+</div>

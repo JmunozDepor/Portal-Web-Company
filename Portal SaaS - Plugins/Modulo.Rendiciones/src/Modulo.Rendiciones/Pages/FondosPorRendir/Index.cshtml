@@ -1,0 +1,98 @@
+@page "/rendiciones/fondos"
+@model Modulo.Rendiciones.Pages.FondosPorRendir.IndexModel
+@using Modulo.Rendiciones.Pages
+@{
+    ViewData["Title"] = "Fondos por rendir";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="rnd-header">
+    <h2><i class="bi bi-wallet2"></i> Mis Fondos</h2>
+</div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="rnd-stat-row">
+    <div class="rnd-stat-tile rnd-stat-warning">
+        <span class="rnd-stat-label">Abiertos</span>
+        <span class="rnd-stat-value">@Model.Funds.Count(f => f.Status == "Open")</span>
+    </div>
+    <div class="rnd-stat-tile rnd-stat-success">
+        <span class="rnd-stat-label">Rendidos</span>
+        <span class="rnd-stat-value">@Model.Funds.Count(f => f.Status == "Settled")</span>
+    </div>
+</div>
+
+@if (Model.Funds.Count == 0)
+{
+    <div class="rnd-card-empty">
+        <i class="bi bi-wallet2"></i>
+        Todavía no tenés fondos por rendir registrados.
+    </div>
+}
+else
+{
+    <div class="rnd-card-list mb-4">
+        @foreach (var f in Model.Funds)
+        {
+            <div class="rnd-card-row">
+                <div class="rnd-card-icon"><i class="bi bi-wallet2"></i></div>
+                <div class="rnd-card-main">
+                    <div class="rnd-card-title">@(f.CostCenterName ?? f.CostCenterCode ?? "Fondo por rendir")</div>
+                    <div class="rnd-card-sub">
+                        Entregado @f.DeliveredAt.ToString("dd-MM-yyyy")
+                        @(f.SettlementDueAt is { } fc ? $"· compromiso {fc:dd-MM-yyyy}" : "")
+                    </div>
+                </div>
+                <div class="rnd-card-meta">
+                    <span class="rnd-badge @RendicionesUi.BadgeClass(f.Status)">@f.Status</span>
+                    <span class="rnd-card-amount">@f.Currency @f.Amount.ToString("N2")</span>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div class="admin-subcard">
+    <h3>Nuevo fondo por rendir</h3>
+    <form method="post" asp-page-handler="Crear">
+        <div asp-validation-summary="All" class="text-danger"></div>
+        <div class="form-group">
+            <label asp-for="New.Amount">Monto</label>
+            <input asp-for="New.Amount" class="form-control" />
+            <span asp-validation-for="New.Amount" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="New.Currency">Moneda</label>
+            <input asp-for="New.Currency" class="form-control" maxlength="3" />
+        </div>
+        <div class="form-group">
+            <label asp-for="New.DeliveredAt">Fecha de entrega</label>
+            <input asp-for="New.DeliveredAt" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label asp-for="New.SettlementDueAt">Compromiso de rendición</label>
+            <input asp-for="New.SettlementDueAt" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label asp-for="New.CostCenterCode">Centro de costo</label>
+            <select asp-for="New.CostCenterCode" class="form-control">
+                <option value="">-- Sin especificar --</option>
+                @foreach (var c in Model.CostCenters)
+                {
+                    <option value="@c.Code">@c.Code - @c.Name</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn-erp-primary">Registrar fondo</button>
+    </form>
+</div>

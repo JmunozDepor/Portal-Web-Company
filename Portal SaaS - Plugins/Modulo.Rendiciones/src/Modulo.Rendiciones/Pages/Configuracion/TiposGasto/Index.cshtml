@@ -1,0 +1,136 @@
+@page "/rendiciones/configuracion/tipos-gasto"
+@model Modulo.Rendiciones.Pages.Configuracion.TiposGasto.IndexModel
+@{
+    ViewData["Title"] = "Tipos de gasto";
+}
+@* Migrado al Design System unificado (2026-08-19) -- ya no carga rendiciones.css.
+   "Nuevo tipo de gasto" pasó de formulario inline gigante a slide-over drawer
+   (drawer.js/components.css, patrón único de creación en todo el portal). *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Tipos de gasto</h2>
+        <button type="button" class="btn-primary" data-drawer-open="drawer-nuevo-tipo-gasto">+ Nuevo tipo de gasto</button>
+    </div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<table class="table-ps">
+    <thead><tr><th>Nombre</th><th>Cuenta contable SAP</th><th>Kilometraje</th><th>Tarifa/km</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+    <tbody>
+        @foreach (var t in Model.Types)
+        {
+            var formId = $"tipo-{t.Id}";
+            <tr class="@(t.IsActive ? "" : "row-inactive")">
+                <td><input type="text" name="nombre" value="@t.Name" class="form-control" form="@formId" /></td>
+                <td><input type="text" name="cuentaContableSap" value="@t.SapGlAccount" class="form-control tipo-gasto-cuenta-sap" list="tipos-gasto-cuentas-datalist" placeholder="Buscar…" form="@formId" /></td>
+                <td><input type="checkbox" name="esKilometraje" value="true" checked="@t.IsMileage" form="@formId" /></td>
+                <td><input type="number" step="0.01" name="tarifaPorKm" value="@t.RatePerKm" class="form-control" placeholder="CLP/km" form="@formId" /></td>
+                <td>
+                    <input type="hidden" name="activo" value="@t.IsActive" form="@formId" />
+                    @if (t.IsActive)
+                    {
+                        <span class="badge-status badge-status--success">Activo</span>
+                    }
+                    else
+                    {
+                        <span class="badge-status badge-status--neutral">Inactivo</span>
+                    }
+                </td>
+                <td class="col-actions">
+                    <div class="admin-row-actions">
+                        <button type="submit" class="btn-ghost" title="Guardar" form="@formId"><i class="bi bi-check-lg"></i></button>
+                        @if (t.IsActive)
+                        {
+                            <form asp-page="./Index" asp-page-handler="Desactivar" asp-route-id="@t.Id" asp-route-nombre="@t.Name" asp-route-cuentaContableSap="@t.SapGlAccount" asp-route-esKilometraje="@t.IsMileage" asp-route-tarifaPorKm="@t.RatePerKm" method="post" class="d-inline-block">
+                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Desactivar"><i class="bi bi-slash-circle"></i></button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-page="./Index" asp-page-handler="Activar" asp-route-id="@t.Id" asp-route-nombre="@t.Name" asp-route-cuentaContableSap="@t.SapGlAccount" asp-route-esKilometraje="@t.IsMileage" asp-route-tarifaPorKm="@t.RatePerKm" method="post" class="d-inline-block">
+                                <button type="submit" class="btn-ghost" title="Activar"><i class="bi bi-check-circle"></i></button>
+                            </form>
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (Model.Types.Count == 0)
+        {
+            <tr><td colspan="6" class="text-muted">Sin tipos de gasto todavía.</td></tr>
+        }
+    </tbody>
+</table>
+
+@* Un <form> no puede abrirse en una <td> y cerrarse en otra (el parser lo corta en
+   el primer </td>), y tampoco puede ser hijo directo de <tr> -- por eso viven acá
+   afuera, vacíos, y los inputs/botones de cada fila se asocian por id vía form="...". *@
+@foreach (var t in Model.Types)
+{
+    <form id="tipo-@t.Id" asp-page="./Index" asp-page-handler="Guardar" asp-route-id="@t.Id"></form>
+}
+</div>
+
+<datalist id="tipos-gasto-cuentas-datalist"></datalist>
+
+@* Slide-over drawer -- "Nuevo tipo de gasto". Se auto-abre si el POST a
+   "Crear" falló validación (ModelState inválido) y la página se re-renderiza
+   con los errores -- si no, el usuario nunca vería por qué falló. *@
+@{ var tipoGastoFormInvalido = !ViewData.ModelState.IsValid; }
+<div id="drawer-nuevo-tipo-gasto" class="drawer-overlay @(tipoGastoFormInvalido ? "is-open" : "")" data-drawer>
+    <aside class="drawer-panel @(tipoGastoFormInvalido ? "is-open" : "")">
+        <div class="drawer-header">
+            <h3>Nuevo tipo de gasto</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" asp-page-handler="Crear" id="form-nuevo-tipo-gasto">
+            <div class="drawer-body">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div class="drawer-grid">
+                    <div class="mb-3 span-2">
+                        <label asp-for="New.Name" class="form-label">Nombre</label>
+                        <input asp-for="New.Name" class="form-control" placeholder="Ej. Combustible, Peaje..." />
+                    </div>
+                    <div class="mb-3 span-2">
+                        <label asp-for="New.SapGlAccount" class="form-label">Cuenta contable SAP</label>
+                        <input asp-for="New.SapGlAccount" class="form-control tipo-gasto-cuenta-sap" list="tipos-gasto-cuentas-datalist" placeholder="Buscar…" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="New.RatePerKm" class="form-label">Tarifa/km (CLP)</label>
+                        <input asp-for="New.RatePerKm" class="form-control" placeholder="Ej. 500" />
+                    </div>
+                    <div class="mb-3 d-flex align-items-end">
+                        <label class="d-flex align-items-center gap-2"><input asp-for="New.IsMileage" type="checkbox" /> Es kilometraje</label>
+                    </div>
+                </div>
+                <p class="text-muted">Marcá "Es kilometraje" para un tipo como "Uso vehículo particular" -- el gasto se captura con origen/destino en vez de comprobante, y el monto se calcula solo (distancia de ruta × tarifa).</p>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn-primary">Crear</button>
+            </div>
+        </form>
+    </aside>
+</div>
+
+@section Scripts {
+    <script src="~/js/catalog-search.js"></script>
+    <script>
+        wireCatalogSearch({
+            inputSelector: '.tipo-gasto-cuenta-sap',
+            datalistId: 'tipos-gasto-cuentas-datalist',
+            handlerName: 'SearchAccounts',
+            minChars: 0,
+            getValue: function (item) { return item.accountCode; },
+            getLabel: function (item) { return item.accountCode + ' — ' + item.accountName; },
+        });
+    </script>
+}

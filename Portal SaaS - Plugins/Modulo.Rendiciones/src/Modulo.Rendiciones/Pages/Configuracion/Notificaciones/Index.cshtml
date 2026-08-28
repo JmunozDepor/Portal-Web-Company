@@ -1,0 +1,29 @@
+@page "/rendiciones/configuracion/notificaciones"
+@model Modulo.Rendiciones.Pages.Configuracion.Notificaciones.IndexModel
+@{
+    ViewData["Title"] = "Notificaciones";
+}
+@* Migrado al Design System unificado (2026-08-19) -- ya no carga rendiciones.css.
+   Sin drawer: es una pantalla de settings simple (1 form corto), no una lista. *@
+
+<div class="card-surface" style="max-width:520px;">
+    <h2 class="mb-3">Notificaciones</h2>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+
+<p class="text-muted mb-3">Recordatorio diario por correo a cada aprobador con informes pendientes -- un solo correo resumen por día, agrupando todos sus pendientes.</p>
+
+<form method="post">
+    <div class="mb-3">
+        <label asp-for="Settings.ReminderHour" class="form-label">Hora de envío</label>
+        <input asp-for="Settings.ReminderHour" type="time" class="form-control" />
+    </div>
+    <div class="mb-3 d-flex align-items-center gap-2">
+        <label class="d-flex align-items-center gap-2"><input asp-for="Settings.ReminderEnabled" type="checkbox" /> Recordatorio diario habilitado</label>
+    </div>
+    <button type="submit" class="btn-primary">Guardar</button>
+</form>
+</div>

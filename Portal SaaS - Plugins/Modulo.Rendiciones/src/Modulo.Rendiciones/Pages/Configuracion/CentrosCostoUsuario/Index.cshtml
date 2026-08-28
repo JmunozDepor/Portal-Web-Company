@@ -1,0 +1,90 @@
+@page "/rendiciones/configuracion/centros-costo-usuario"
+@model Modulo.Rendiciones.Pages.Configuracion.CentrosCostoUsuario.IndexModel
+@{
+    ViewData["Title"] = "Centros de Costo por Usuario";
+}
+@* Migrado al Design System unificado (2026-08-19) -- ya no carga rendiciones.css.
+   Sin drawer: es un master-detail puro (elegir usuario -> asignar centros),
+   no hay formulario de creación que mover a un panel. *@
+
+<div class="card-surface">
+    <h2 class="mb-1">Centros de Costo por Usuario</h2>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<p class="text-muted mb-3">
+    Sin ninguna asignación acá, el colaborador ve el catálogo completo de centros de
+    costo de SAP al declarar gastos o fondos. Asigná acá solo si necesitás acotarlo.
+</p>
+
+<table class="table-ps">
+    <thead><tr><th>Usuario</th><th>Correo</th><th>Centros asignados</th><th class="col-actions"></th></tr></thead>
+    <tbody>
+        @foreach (var u in Model.Users)
+        {
+            <tr>
+                <td>@u.Username</td>
+                <td>@u.Email</td>
+                <td>@Model.AssignedCountByUserId.GetValueOrDefault(u.Id, 0)</td>
+                <td class="col-actions">
+                    <a asp-page="./Index" asp-route-UserId="@u.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                </td>
+            </tr>
+        }
+        @if (Model.Users.Count == 0)
+        {
+            <tr><td colspan="4" class="text-muted">Sin usuarios en esta organización.</td></tr>
+        }
+    </tbody>
+</table>
+</div>
+
+@if (Model.UserId is { Length: > 0 })
+{
+    <div class="card-surface mt-3">
+        <p class="mb-1"><a asp-page="./Index" class="text-decoration-none">‹ Volver al listado</a></p>
+        <h3 class="h6 mb-3">Asignados a @Model.SelectedUserName</h3>
+        <table class="table-ps mb-3">
+            <thead><tr><th>Código</th><th>Nombre</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var a in Model.Assigned)
+                {
+                    <tr>
+                        <td>@a.CostCenterCode</td>
+                        <td>@a.CostCenterName</td>
+                        <td class="col-actions">
+                            <form asp-page="./Index" asp-page-handler="Quitar" asp-route-id="@a.Id" asp-route-UserId="@Model.UserId" method="post">
+                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-x-lg"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Assigned.Count == 0)
+                {
+                    <tr><td colspan="3" class="text-muted">Sin asignaciones -- usa el catálogo completo de SAP.</td></tr>
+                }
+            </tbody>
+        </table>
+
+        <form asp-page="./Index" asp-page-handler="Asignar" asp-route-UserId="@Model.UserId" method="post" class="d-flex align-items-end gap-3">
+            <div class="mb-0 flex-grow-1" style="max-width:320px;">
+                <label asp-for="SelectedCostCenterCode" class="form-label">Agregar centro de costo</label>
+                <select asp-for="SelectedCostCenterCode" class="form-select">
+                    <option value="">-- Seleccionar --</option>
+                    @foreach (var c in Model.SapCostCenters)
+                    {
+                        <option value="@c.Code">@c.Code - @c.Name</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn-secondary">+ Asignar</button>
+        </form>
+    </div>
+}

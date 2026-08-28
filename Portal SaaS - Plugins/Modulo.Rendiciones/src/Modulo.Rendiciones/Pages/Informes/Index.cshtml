@@ -1,0 +1,103 @@
+@page "/rendiciones/informes"
+@model Modulo.Rendiciones.Pages.Informes.IndexModel
+@using Modulo.Rendiciones.Pages
+@{
+    ViewData["Title"] = "Informes";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="rnd-header">
+    <h2><i class="bi bi-file-earmark-spreadsheet"></i> Informes</h2>
+</div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+}
+
+@if (Model.Reports.Count == 0)
+{
+    <div class="rnd-card-empty">
+        <i class="bi bi-file-earmark-spreadsheet"></i>
+        Todavía no tenés informes creados.
+    </div>
+}
+else
+{
+    <div class="rnd-card-list mb-4">
+        @foreach (var r in Model.Reports)
+        {
+            <a asp-page="./Detalle" asp-route-id="@r.Id" class="rnd-card-row">
+                <div class="rnd-card-icon"><i class="bi bi-folder2-open"></i></div>
+                <div class="rnd-card-main">
+                    <div class="rnd-card-title">Informe #@r.Id @(r.Round > 1 ? $"· ronda {r.Round}" : "")</div>
+                    <div class="rnd-card-sub">@r.CreatedAt.ToString("dd-MM-yyyy") · @(r.CostCenterName ?? r.CostCenterCode ?? "sin centro de costo") · @r.Lines.Count gasto(s)</div>
+                </div>
+                <div class="rnd-card-meta">
+                    <span class="rnd-badge @RendicionesUi.BadgeClass(r.Status)">@r.Status</span>
+                    <span class="rnd-card-amount">@r.Lines.Sum(d => d.Amount).ToString("N2")</span>
+                </div>
+            </a>
+        }
+    </div>
+}
+
+<div class="admin-subcard">
+    <h3>Nuevo informe</h3>
+    <p class="admin-muted">Elegí los gastos sueltos que querés agrupar y enviar a aprobación.</p>
+
+    <form method="post" asp-page-handler="Crear">
+        @if (Model.LooseExpenses.Count == 0)
+        {
+            <p class="admin-muted">No tenés gastos sueltos todavía -- registrá alguno en "Mis Gastos" primero.</p>
+        }
+        else
+        {
+            <div class="rnd-card-list mb-3">
+                @foreach (var g in Model.LooseExpenses)
+                {
+                    <label class="rnd-card-row" style="cursor:pointer;">
+                        <input type="checkbox" name="SelectedExpenseIds" value="@g.Id" style="flex:0 0 auto;" />
+                        <div class="rnd-card-icon"><i class="bi @RendicionesUi.CategoryIcon(g.ExpenseType?.Name)"></i></div>
+                        <div class="rnd-card-main">
+                            <div class="rnd-card-title">@(g.SupplierName ?? g.ExpenseType?.Name ?? "Gasto")</div>
+                            <div class="rnd-card-sub">@g.Date.ToString("dd-MM-yyyy") · @(g.ExpenseType?.Name ?? "—")</div>
+                        </div>
+                        <div class="rnd-card-meta">
+                            <span class="rnd-card-amount">@g.Currency @g.Amount.ToString("N2")</span>
+                        </div>
+                    </label>
+                }
+            </div>
+
+            <div class="form-group">
+                <label asp-for="CostCenterCode">Centro de costo</label>
+                <select asp-for="CostCenterCode" class="form-control">
+                    <option value="">-- Sin especificar --</option>
+                    @foreach (var c in Model.CostCenters)
+                    {
+                        <option value="@c.Code">@c.Code - @c.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label asp-for="ExpenseFundId">Fondo por rendir asociado</label>
+                <select asp-for="ExpenseFundId" class="form-control">
+                    <option value="">-- Sin fondo (reembolso directo) --</option>
+                    @foreach (var f in Model.OpenFunds)
+                    {
+                        <option value="@f.Id">@f.Currency @f.Amount.ToString("N2") - @f.DeliveredAt.ToString("dd-MM-yyyy")</option>
+                    }
+                </select>
+            </div>
+
+            <button type="submit" class="btn-erp-primary">Crear informe</button>
+        }
+    </form>
+</div>

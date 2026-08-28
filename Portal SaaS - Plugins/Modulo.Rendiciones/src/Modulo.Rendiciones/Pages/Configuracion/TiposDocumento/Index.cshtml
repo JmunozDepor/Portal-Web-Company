@@ -1,0 +1,104 @@
+@page "/rendiciones/configuracion/tipos-documento"
+@model Modulo.Rendiciones.Pages.Configuracion.TiposDocumento.IndexModel
+@{
+    ViewData["Title"] = "Tipos de documento";
+}
+@* Migrado al Design System unificado (2026-08-19) -- mismo patrón que TiposGasto. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Tipos de documento</h2>
+        <button type="button" class="btn-primary" data-drawer-open="drawer-nuevo-tipo-doc">+ Nuevo tipo de documento</button>
+    </div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<table class="table-ps">
+    <thead><tr><th>Nombre</th><th>Aplica IVA</th><th>% IVA</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+    <tbody>
+        @foreach (var t in Model.Types)
+        {
+            var formId = $"tipo-{t.Id}";
+            <tr class="@(t.IsActive ? "" : "row-inactive")">
+                <td><input type="text" name="nombre" value="@t.Name" class="form-control" form="@formId" /></td>
+                <td><input type="checkbox" name="aplicaIva" value="true" checked="@t.AppliesTax" form="@formId" /></td>
+                <td><input type="number" step="0.01" name="porcentajeIva" value="@t.TaxPercentage" class="form-control" form="@formId" /></td>
+                <td>
+                    <input type="hidden" name="activo" value="@t.IsActive" form="@formId" />
+                    @if (t.IsActive)
+                    {
+                        <span class="badge-status badge-status--success">Activo</span>
+                    }
+                    else
+                    {
+                        <span class="badge-status badge-status--neutral">Inactivo</span>
+                    }
+                </td>
+                <td class="col-actions">
+                    <div class="admin-row-actions">
+                        <button type="submit" class="btn-ghost" title="Guardar" form="@formId"><i class="bi bi-check-lg"></i></button>
+                        @if (t.IsActive)
+                        {
+                            <form asp-page="./Index" asp-page-handler="Desactivar" asp-route-id="@t.Id" asp-route-nombre="@t.Name" asp-route-aplicaIva="@t.AppliesTax" asp-route-porcentajeIva="@t.TaxPercentage" method="post" class="d-inline-block">
+                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Desactivar"><i class="bi bi-slash-circle"></i></button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-page="./Index" asp-page-handler="Activar" asp-route-id="@t.Id" asp-route-nombre="@t.Name" asp-route-aplicaIva="@t.AppliesTax" asp-route-porcentajeIva="@t.TaxPercentage" method="post" class="d-inline-block">
+                                <button type="submit" class="btn-ghost" title="Activar"><i class="bi bi-check-circle"></i></button>
+                            </form>
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (Model.Types.Count == 0)
+        {
+            <tr><td colspan="5" class="text-muted">Sin tipos de documento todavía.</td></tr>
+        }
+    </tbody>
+</table>
+
+@foreach (var t in Model.Types)
+{
+    <form id="tipo-@t.Id" asp-page="./Index" asp-page-handler="Guardar" asp-route-id="@t.Id"></form>
+}
+</div>
+
+@{ var tipoDocDrawerAbierto = !ViewData.ModelState.IsValid; }
+<div id="drawer-nuevo-tipo-doc" class="drawer-overlay @(tipoDocDrawerAbierto ? "is-open" : "")" data-drawer>
+    <aside class="drawer-panel @(tipoDocDrawerAbierto ? "is-open" : "")">
+        <div class="drawer-header">
+            <h3>Nuevo tipo de documento</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" asp-page-handler="Crear">
+            <div class="drawer-body">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div class="mb-3">
+                    <label asp-for="New.Name" class="form-label">Nombre</label>
+                    <input asp-for="New.Name" class="form-control" placeholder="Ej. Boleta, Factura..." />
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <label class="d-flex align-items-center gap-2"><input asp-for="New.AppliesTax" type="checkbox" /> Aplica IVA</label>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="New.TaxPercentage" class="form-label">% IVA</label>
+                    <input asp-for="New.TaxPercentage" class="form-control" />
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn-primary">Crear</button>
+            </div>
+        </form>
+    </aside>
+</div>

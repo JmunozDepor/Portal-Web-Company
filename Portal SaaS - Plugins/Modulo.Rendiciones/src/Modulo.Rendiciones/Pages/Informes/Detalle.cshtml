@@ -1,0 +1,224 @@
+@page "/rendiciones/informes/{id:long}"
+@model Modulo.Rendiciones.Pages.Informes.DetalleModel
+@{
+    ViewData["Title"] = $"Informe #{Model.Report.Id}";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="card-ps admin-card">
+    <div class="admin-card-header">
+        <h2>Informe #@Model.Report.Id</h2>
+        <a asp-page="./Index" class="btn-module-action">&larr; Volver</a>
+        <span class="admin-muted">@Model.Report.Status @(Model.Report.Round > 1 ? $"· ronda {Model.Report.Round}" : "")</span>
+    </div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="admin-subcard">
+    <h3>Cabecera</h3>
+    <form method="post" asp-page-handler="GuardarCabecera" asp-route-id="@Model.Report.Id">
+        <div class="form-group">
+            <label asp-for="Header.CostCenterCode">Centro de costo</label>
+            <select asp-for="Header.CostCenterCode" class="form-control" disabled="@(!Model.IsEditable)">
+                <option value="">-- Sin especificar --</option>
+                @foreach (var c in Model.CostCenters)
+                {
+                    <option value="@c.Code">@c.Code - @c.Name</option>
+                }
+            </select>
+        </div>
+        <div class="form-group">
+            <label asp-for="Header.ExpenseFundId">Fondo por rendir asociado</label>
+            <select asp-for="Header.ExpenseFundId" class="form-control" disabled="@(!Model.IsEditable)">
+                <option value="">-- Sin fondo (reembolso directo) --</option>
+                @foreach (var f in Model.OpenFunds)
+                {
+                    <option value="@f.Id">@f.Currency @f.Amount.ToString("N2") - @f.DeliveredAt.ToString("dd-MM-yyyy")</option>
+                }
+            </select>
+        </div>
+        @if (Model.IsEditable)
+        {
+            <button type="submit" class="btn-module-action">Guardar cabecera</button>
+        }
+    </form>
+</div>
+
+<div class="admin-subcard">
+    <h3>Gastos incluidos</h3>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Categoría</th>
+                <th>Proveedor</th>
+                <th>Monto</th>
+                <th>Comprobante</th>
+                @if (Model.IsEditable)
+                {
+                    <th class="admin-col-accion"></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var d in Model.Report.Lines.OrderBy(d => d.Date))
+            {
+                <tr>
+                    <td>@d.Date.ToString("dd-MM-yyyy")</td>
+                    <td>@(d.ExpenseType?.Name ?? "—")</td>
+                    <td>@d.SupplierName</td>
+                    <td>@d.Currency @d.Amount.ToString("N2")</td>
+                    <td>
+                        @if (d.ExpenseReceiptId is not null)
+                        {
+                            <a asp-page="/Gastos/Comprobante" asp-route-id="@d.Id" target="_blank" class="btn-module-action"><i class="bi bi-paperclip"></i> Ver</a>
+                            @if (Model.IsEditable)
+                            {
+                                <form asp-page="./Detalle" asp-page-handler="QuitarComprobante" asp-route-id="@Model.Report.Id" asp-route-lineId="@d.Id" method="post" style="display:inline-block;"
+                                      onsubmit="return confirm('¿Quitar el documento adjunto de este gasto?');">
+                                    <button type="submit" class="btn-module-action btn-module-danger"><i class="bi bi-x"></i> Quitar documento</button>
+                                </form>
+                            }
+                        }
+                        else
+                        {
+                            <span class="admin-muted">—</span>
+                        }
+                    </td>
+                    @if (Model.IsEditable)
+                    {
+                        <td class="admin-col-accion">
+                            <form asp-page="./Detalle" asp-page-handler="DesvincularGasto" asp-route-id="@Model.Report.Id" asp-route-lineId="@d.Id" method="post" style="display:inline-block;">
+                                <button type="submit" class="btn-module-action btn-module-danger">Quitar</button>
+                            </form>
+                        </td>
+                    }
+                </tr>
+            }
+            @if (Model.Report.Lines.Count == 0)
+            {
+                <tr><td colspan="@(Model.IsEditable ? 6 : 5)" class="admin-muted">Sin gastos todavía.</td></tr>
+            }
+        </tbody>
+        @if (Model.Report.Lines.Count > 0)
+        {
+            <tfoot>
+                <tr>
+                    <td colspan="3"><strong>Total</strong></td>
+                    <td colspan="@(Model.IsEditable ? 3 : 2)"><strong>@Model.Report.Lines.Sum(d => d.Amount).ToString("N2")</strong></td>
+                </tr>
+            </tfoot>
+        }
+    </table>
+
+    @if (Model.IsEditable)
+    {
+        <div class="admin-subcard">
+            <h4>Agregar gastos sueltos</h4>
+            @if (Model.LooseExpensesToAdd.Count > 0)
+            {
+                <form method="post" asp-page-handler="AgregarGastos" asp-route-id="@Model.Report.Id">
+                    <table class="admin-table">
+                        <thead><tr><th></th><th>Fecha</th><th>Categoría</th><th>Proveedor</th><th>Monto</th></tr></thead>
+                        <tbody>
+                            @foreach (var g in Model.LooseExpensesToAdd)
+                            {
+                                <tr>
+                                    <td><input type="checkbox" name="ExpenseIdsToAdd" value="@g.Id" /></td>
+                                    <td>@g.Date.ToString("dd-MM-yyyy")</td>
+                                    <td>@(g.ExpenseType?.Name ?? "—")</td>
+                                    <td>@g.SupplierName</td>
+                                    <td>@g.Currency @g.Amount.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <button type="submit" class="btn-module-action">+ Agregar seleccionados</button>
+                </form>
+            }
+            else
+            {
+                <p class="admin-muted">No tenés más gastos sueltos para agregar -- registrá uno nuevo en "Mis Gastos".</p>
+            }
+        </div>
+    }
+</div>
+
+@if (Model.IsEditable)
+{
+    <div class="admin-row-actions">
+        <form method="post" asp-page-handler="Enviar" asp-route-id="@Model.Report.Id"
+              onsubmit="return confirm('¿Enviar el informe a aprobación? No vas a poder editarlo mientras esté pendiente.');" style="display:inline-block;">
+            <button type="submit" class="btn-erp-primary">Enviar a aprobación</button>
+        </form>
+        @if (Model.IsOwner)
+        {
+            <form method="post" asp-page-handler="Eliminar" asp-route-id="@Model.Report.Id"
+                  onsubmit="return confirm('¿Eliminar este informe borrador? Los gastos incluidos volverán a \"Mis Gastos\" como sueltos.');" style="display:inline-block;">
+                <button type="submit" class="btn-module-action btn-module-danger">Eliminar informe</button>
+            </form>
+        }
+    </div>
+}
+
+@if (Model.IsCurrentApprover)
+{
+    <div class="admin-subcard">
+        <h3>Decisión — nivel @Model.Report.CurrentLevel</h3>
+        <div class="admin-row-actions">
+            <form method="post" asp-page-handler="Aprobar" asp-route-id="@Model.Report.Id">
+                <div class="form-group">
+                    <label>Comentario (opcional)</label>
+                    <input name="Comment" class="form-control" />
+                </div>
+                <button type="submit" class="btn-erp-primary">Aprobar</button>
+            </form>
+            <form method="post" asp-page-handler="Rechazar" asp-route-id="@Model.Report.Id"
+                  onsubmit="return confirm('¿Rechazar este informe? El dueño va a poder corregirlo y reenviarlo.');">
+                <div class="form-group">
+                    <label>Comentario (opcional)</label>
+                    <input name="Comment" class="form-control" />
+                </div>
+                <button type="submit" class="btn-module-action btn-module-danger">Rechazar</button>
+            </form>
+        </div>
+    </div>
+}
+
+@if (Model.CanReopen)
+{
+    <form method="post" asp-page-handler="Reabrir" asp-route-id="@Model.Report.Id">
+        <button type="submit" class="btn-module-action">Corregir y reenviar</button>
+    </form>
+}
+
+@if (Model.History.Count > 0)
+{
+    <div class="admin-subcard">
+        <h3>Historial de aprobación</h3>
+        <table class="admin-table">
+            <thead><tr><th>Fecha</th><th>Nivel</th><th>Decisión</th><th>Comentario</th></tr></thead>
+            <tbody>
+                @foreach (var a in Model.History)
+                {
+                    <tr>
+                        <td>@a.OccurredAt.ToString("dd-MM-yyyy HH:mm")</td>
+                        <td>@a.Level</td>
+                        <td>@a.Decision</td>
+                        <td>@a.Comment</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+</div>

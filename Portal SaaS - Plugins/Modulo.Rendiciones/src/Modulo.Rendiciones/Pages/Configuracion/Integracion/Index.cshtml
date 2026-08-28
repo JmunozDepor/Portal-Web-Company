@@ -1,0 +1,210 @@
+@page "/rendiciones/configuracion/integracion"
+@model Modulo.Rendiciones.Pages.Configuracion.Integracion.IndexModel
+@{
+    ViewData["Title"] = "Integración";
+}
+@* Migrado al patrón de pestañas (2026-08-19, mismo mockup confirmado que
+   Usuarios/Editar): 3 secciones independientes (Sincronización SAP / Centros
+   de costo / Cuentas contables) que antes vivían apiladas en 3 cards
+   separadas -- ahora una pestaña a la vez. *@
+
+<div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <h1 class="h4 mb-0">Integración con SAP</h1>
+</div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+@if (Model.WarningMessage is not null)
+{
+    <div class="alert alert-warning">@Model.WarningMessage</div>
+}
+
+<div class="doc-tabs" style="position:static;display:inline-flex;width:auto;">
+    <button type="button" class="doc-tab-btn active" data-tab-btn="sync">Sincronización SAP</button>
+    <button type="button" class="doc-tab-btn" data-tab-btn="centros">Centros de costo</button>
+    <button type="button" class="doc-tab-btn" data-tab-btn="cuentas">Cuentas contables</button>
+</div>
+
+<div data-tab-panel="sync" class="card-surface" style="max-width:640px;">
+    <p class="text-muted">
+        Cuando está activo, los centros de costo y cuentas contables se sincronizan desde SAP.
+        Cuando está desactivado, se editan a mano desde las otras 2 pestañas.
+        @if (Model.SettingsUpdatedAt is { } updated)
+        {
+            <text>Último cambio: @updated.ToLocalTime().ToString("g").</text>
+        }
+    </p>
+
+    <form method="post" asp-page-handler="Toggle">
+        <input type="hidden" name="enabled" value="@(!Model.SapCatalogSyncEnabled)" />
+        <button type="submit" class="btn-primary">
+            @(Model.SapCatalogSyncEnabled ? "Desactivar sincronización SAP" : "Activar sincronización SAP")
+        </button>
+    </form>
+
+    @if (Model.SapCatalogSyncEnabled)
+    {
+        <form method="post" asp-page-handler="Sincronizar" class="mt-2">
+            <button type="submit" class="btn-secondary">Sincronizar ahora</button>
+        </form>
+    }
+</div>
+
+<div data-tab-panel="centros" class="card-surface" style="display:none;">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="h6 mb-0">Centros de costo</h2>
+        @if (!Model.SapCatalogSyncEnabled)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-nuevo-centro-costo">+ Agregar</button>
+        }
+    </div>
+    <table class="table-ps">
+        <thead><tr><th>Código</th><th>Nombre</th><th>Origen</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var c in Model.CostCenters)
+            {
+                <tr>
+                    <td>@c.Code</td>
+                    <td>@c.Name</td>
+                    <td>@(c.Source == Modulo.Rendiciones.Models.CatalogEntrySource.Sap ? "SAP" : "Manual")</td>
+                    <td>
+                        @if (c.IsActive)
+                        {
+                            <span class="badge-status badge-status--success">Activo</span>
+                        }
+                        else
+                        {
+                            <span class="badge-status badge-status--neutral">Inactivo</span>
+                        }
+                    </td>
+                    <td class="col-actions">
+                        @if (!Model.SapCatalogSyncEnabled)
+                        {
+                            <form method="post" asp-page-handler="DesactivarCentroCosto" asp-route-id="@c.Id">
+                                <button type="submit" class="btn-ghost" title="@(c.IsActive ? "Desactivar" : "Reactivar")">
+                                    <i class="bi @(c.IsActive ? "bi-slash-circle" : "bi-check-circle")"></i>
+                                </button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div data-tab-panel="cuentas" class="card-surface" style="display:none;">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="h6 mb-0">Cuentas contables</h2>
+        @if (!Model.SapCatalogSyncEnabled)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-nueva-cuenta">+ Agregar</button>
+        }
+    </div>
+    <table class="table-ps">
+        <thead><tr><th>Código</th><th>Nombre</th><th>Origen</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var g in Model.GlAccounts)
+            {
+                <tr>
+                    <td>@g.Code</td>
+                    <td>@g.Name</td>
+                    <td>@(g.Source == Modulo.Rendiciones.Models.CatalogEntrySource.Sap ? "SAP" : "Manual")</td>
+                    <td>
+                        @if (g.IsActive)
+                        {
+                            <span class="badge-status badge-status--success">Activo</span>
+                        }
+                        else
+                        {
+                            <span class="badge-status badge-status--neutral">Inactivo</span>
+                        }
+                    </td>
+                    <td class="col-actions">
+                        @if (!Model.SapCatalogSyncEnabled)
+                        {
+                            <form method="post" asp-page-handler="DesactivarCuenta" asp-route-id="@g.Id">
+                                <button type="submit" class="btn-ghost" title="@(g.IsActive ? "Desactivar" : "Reactivar")">
+                                    <i class="bi @(g.IsActive ? "bi-slash-circle" : "bi-check-circle")"></i>
+                                </button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div id="drawer-nuevo-centro-costo" class="drawer-overlay" data-drawer>
+    <aside class="drawer-panel">
+        <div class="drawer-header">
+            <h3>Nuevo centro de costo</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" asp-page-handler="AgregarCentroCosto">
+            <div class="drawer-body">
+                <div class="mb-3">
+                    <label asp-for="NewCostCenter.Code" class="form-label">Código</label>
+                    <input asp-for="NewCostCenter.Code" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="NewCostCenter.Name" class="form-label">Nombre</label>
+                    <input asp-for="NewCostCenter.Name" class="form-control" />
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn-primary">Agregar</button>
+            </div>
+        </form>
+    </aside>
+</div>
+
+<div id="drawer-nueva-cuenta" class="drawer-overlay" data-drawer>
+    <aside class="drawer-panel">
+        <div class="drawer-header">
+            <h3>Nueva cuenta contable</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" asp-page-handler="AgregarCuenta">
+            <div class="drawer-body">
+                <div class="mb-3">
+                    <label asp-for="NewGlAccount.Code" class="form-label">Código</label>
+                    <input asp-for="NewGlAccount.Code" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="NewGlAccount.Name" class="form-label">Nombre</label>
+                    <input asp-for="NewGlAccount.Name" class="form-control" />
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn-primary">Agregar</button>
+            </div>
+        </form>
+    </aside>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var botones = document.querySelectorAll('[data-tab-btn]');
+            botones.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    botones.forEach(function (b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    document.querySelectorAll('[data-tab-panel]').forEach(function (p) {
+                        p.style.display = (p.getAttribute('data-tab-panel') === btn.dataset.tabBtn) ? 'block' : 'none';
+                    });
+                });
+            });
+        })();
+    </script>
+}

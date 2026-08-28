@@ -1,0 +1,11 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Adjuntar a PortalSaas.Host (Core)",
+            "type": "coreclr",
+            "request": "attach",
+            "processName": "PortalSaas.Host"
+        }
+    ]
+}

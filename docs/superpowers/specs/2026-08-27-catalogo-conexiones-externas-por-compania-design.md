@@ -1,7 +1,7 @@
 # Catálogo general de conexiones externas por compañía — Diseño
 
 Fecha: 2026-08-27
-Estado: aprobado para plan
+Estado: implementado (rama feature/catalogo-conexiones-externas, 2026-08-28)
 
 ## 1. Contexto y problema
 

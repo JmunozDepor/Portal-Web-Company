@@ -2513,6 +2513,63 @@ que lo usa.
   `RendicionesDbContext` se registre de verdad; el trabajo pendiente ahí es la fase de
   servicios/páginas (ver su propio `PENDIENTE.md`), no infraestructura de conexión.
 
+## Catálogo general de conexiones externas por compañía -- 28 ago 2026
+
+Reemplaza el modelo `module_external_connections` de la entrega anterior (una fila
+`(companyId, moduleCode)` que repetía host/puerto/base/usuario/secreto por cada módulo)
+por un **catálogo por compañía + binding**. Spec:
+`docs/superpowers/specs/2026-08-27-catalogo-conexiones-externas-por-compania-design.md`
+(estado: implementado). Rama `feature/catalogo-conexiones-externas`.
+
+- **`company_external_connections`** (`CompanyExternalConnection`,
+  `PortalSaas.Data.Entities`) -- una conexión reusable por compañía: `Nombre` (único por
+  compañía), `Tipo` ∈ `{db_postgres, db_sqlserver, db_hana, http_api}`
+  (`ExternalConnectionType`, `PortalSaas.Abstractions.Modelos`), `Host`/`BaseUrl`/`Port`/
+  `DatabaseName`/`TechnicalUsername`, `TechnicalSecretKey` (cifrado AES-256-GCM,
+  write-only, mismo patrón que `Instance`/`Company`), `ConfiguracionExtra` (JSON con
+  parámetros específicos del tipo/módulo), `IsActive`. **Sin `organization_id`** --
+  resuelve vía `Company.OrganizationId` (regla dura del proyecto: personalización por
+  `CompanyId`, nunca por `OrganizationId` directo).
+- **`company_module_connection`** (`CompanyModuleConnection`) -- binding
+  `(CompanyId, ModuleCode, Purpose)` → `ConnectionId`. `Purpose` es un slot lógico
+  dentro del módulo (default `"Default"`), permite que un mismo módulo use varias
+  conexiones. Varios bindings pueden apuntar a la misma fila del catálogo (ese es el
+  punto: no duplicar la config).
+- **`IExternalDatabaseConnectionService.ResolveConnectionAsync(moduleCode, companyId)`**
+  -- firma **sin cambios** respecto a la entrega anterior (`companyId` obligatorio, sin
+  fallback a fila global). **Overload nuevo**
+  `ResolveConnectionAsync(moduleCode, companyId, purpose)` para elegir el slot lógico.
+  Ahora resuelve contra el binding + el catálogo, no contra `module_external_connections`.
+  `ExternalDatabaseEngineType` ganó `Hana` (además de `Postgres`/`SqlServer`).
+- **`ICompanyExternalConnectionService`** (`PortalSaas.Abstractions.Contratos`,
+  implementado en `PortalSaas.Core`) -- CRUD del catálogo + upsert/borrado de bindings,
+  scoping por compañía, secreto write-only, validación por tipo, unicidad de `Nombre`
+  por compañía, borrado bloqueado si la conexión está en uso por un binding.
+  `TestAsync` prueba la conexión real por tipo (pg / mssql / hana / http).
+- **Gestión**: `/Admin/Organizations/Companies/ExternalConnections` (backoffice,
+  PlatformAdmin -- refactorizado para usar `ICompanyExternalConnectionService` +
+  bindings) y **self-service** `/organizacion/conexiones-externas` (plugin
+  `Modulo.Administracion`, gate `Modulo.Administracion`/admin de tenant, selector de
+  compañía de solo lectura) -- nodo de menú nuevo.
+- **`LegacyExternalConnectionBackfill`** (`PortalSaas.Core.Administracion`) -- migrador
+  one-shot idempotente enganchado al arranque del Host (`Program.cs`): copia las filas
+  de `module_external_connections` al catálogo + binding, deduplicando conexiones
+  equivalentes dentro de la misma compañía. Correr de nuevo no crea nada
+  (detecta el binding `(CompanyId, ModuleCode, "Default")` ya existente). Loguea `WARN`
+  ante un conflicto que haya que resolver a mano.
+- **`module_external_connections` queda obsoleta** -- ya no tiene ningún lector de
+  runtime (el resolver dejó de leerla en esta entrega). Se conserva en el esquema
+  (DbSet + migración `AddModuleExternalConnections` + `LegacyExternalConnectionBackfill`
+  que la lee para migrarla, y un chequeo de dependientes en `Companies/Index` al
+  borrar una compañía) solo por seguridad de rollback -- se elimina en un spec
+  posterior.
+- Migración nueva: `AddCompanyExternalConnections` (Postgres + SQL Server).
+- **Verificado**: `dotnet test tests/PortalSaas.Core.Tests` → 200/200 en verde;
+  `dotnet build -c Release PortalSaas.sln` → 0 advertencias / 0 errores. **Pendiente de
+  despliegue**: aplicar `AddCompanyExternalConnections` a las 4 bases Postgres reales
+  (`172.16.122.171`) y reiniciar el Host una vez para que corra el backfill; revisar el
+  log por líneas `WARN`.
+
 ## Bug real de plataforma: `PluginLoadContext` duplicaba ensamblados del framework compartido -- 27 jul 2026
 
 Encontrado recién al verificar `Modulo.Rendiciones` (repo externo) cargando de verdad

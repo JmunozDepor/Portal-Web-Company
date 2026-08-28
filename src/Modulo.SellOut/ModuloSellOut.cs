@@ -34,7 +34,11 @@ public sealed class ModuloSellOut : IModuloPortal
             Code = "raiz",
             ParentCode = null,
             Name = "Sell Out",
-            Icon = "fas fa-chart-line",
+            // bi-graph-up-arrow: venta y stock hacia el cliente retail (evolución/reporte
+            // OLAP de venta sell-out), distinto del bi-truck de Modulo.Wms (logística
+            // interna). El "fas fa-chart-line" anterior era Font Awesome -- el sidebar
+            // solo carga bootstrap-icons, por eso el ícono no se veía.
+            Icon = "bi bi-graph-up-arrow",
             PageRoute = null,
             Order = 110,
         };
@@ -44,6 +48,7 @@ public sealed class ModuloSellOut : IModuloPortal
             Code = "clientes",
             ParentCode = "raiz",
             Name = "Clientes",
+            Icon = "bi bi-people",
             PageRoute = "/sellout/clientes",
             Order = 1,
         };
@@ -53,6 +58,7 @@ public sealed class ModuloSellOut : IModuloPortal
             Code = "sucursales",
             ParentCode = "raiz",
             Name = "Sucursales",
+            Icon = "bi bi-shop",
             PageRoute = "/sellout/sucursales",
             Order = 2,
         };
@@ -62,6 +68,7 @@ public sealed class ModuloSellOut : IModuloPortal
             Code = "clientesku",
             ParentCode = "raiz",
             Name = "SKU por cliente",
+            Icon = "bi bi-upc-scan",
             PageRoute = "/sellout/clientesku",
             Order = 3,
         };
@@ -71,6 +78,7 @@ public sealed class ModuloSellOut : IModuloPortal
             Code = "departamentos",
             ParentCode = "raiz",
             Name = "Departamentos",
+            Icon = "bi bi-diagram-3",
             PageRoute = "/sellout/departamentos",
             Order = 4,
         };
@@ -80,6 +88,7 @@ public sealed class ModuloSellOut : IModuloPortal
             Code = "gruposretail",
             ParentCode = "raiz",
             Name = "Grupos retail",
+            Icon = "bi bi-collection",
             PageRoute = "/sellout/gruposretail",
             Order = 5,
         };
@@ -89,6 +98,7 @@ public sealed class ModuloSellOut : IModuloPortal
             Code = "localizaciones",
             ParentCode = "raiz",
             Name = "Localizaciones",
+            Icon = "bi bi-pin-map",
             PageRoute = "/sellout/localizaciones",
             Order = 6,
         };
@@ -98,6 +108,7 @@ public sealed class ModuloSellOut : IModuloPortal
             Code = "geografias",
             ParentCode = "raiz",
             Name = "Geografías",
+            Icon = "bi bi-globe-americas",
             PageRoute = "/sellout/geografias",
             Order = 7,
         };
@@ -107,6 +118,7 @@ public sealed class ModuloSellOut : IModuloPortal
             Code = "layouts",
             ParentCode = "raiz",
             Name = "Configuración de layouts",
+            Icon = "bi bi-sliders",
             PageRoute = "/sellout/layouts",
             Order = 8,
         };

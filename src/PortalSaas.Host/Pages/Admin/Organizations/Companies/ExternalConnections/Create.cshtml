@@ -12,71 +12,82 @@
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
         <div class="row g-3">
-            <div class="col-md-4">
-                <label asp-for="Input.ModuleCode" class="form-label"></label>
-                @if (Model.AvailablePlugins.Count > 0)
-                {
-                    <select asp-for="Input.ModuleCode" class="form-select" autofocus>
-                        <option value="">Seleccionar…</option>
-                        @foreach (var plugin in Model.AvailablePlugins)
-                        {
-                            <option value="@plugin.ModuleCode">@plugin.ModuleCode — @plugin.Name</option>
-                        }
-                    </select>
-                }
-                else
-                {
-                    <p class="text-muted small mb-0">
-                        No hay plugins cargados sin conexión configurada para esta compañía todavía.
-                    </p>
-                }
-                <span asp-validation-for="Input.ModuleCode" class="text-danger"></span>
+            <div class="col-md-6">
+                <label asp-for="Input.Nombre" class="form-label">Nombre</label>
+                <input asp-for="Input.Nombre" class="form-control" autofocus />
+                <span asp-validation-for="Input.Nombre" class="text-danger"></span>
             </div>
 
-            <div class="col-md-4">
-                <label asp-for="Input.EngineType" class="form-label"></label>
-                <select asp-for="Input.EngineType" class="form-select" asp-items="Model.EngineTypes.Select(e => new SelectListItem(e, e))"></select>
-                <span asp-validation-for="Input.EngineType" class="text-danger"></span>
+            <div class="col-md-6">
+                <label asp-for="Input.Tipo" class="form-label">Tipo</label>
+                <select asp-for="Input.Tipo" id="Input_Tipo" class="form-select"
+                        asp-items="Model.Tipos.Select(t => new SelectListItem(t, t))"></select>
+                <span asp-validation-for="Input.Tipo" class="text-danger"></span>
             </div>
 
-            <div class="col-md-4">
-                <label asp-for="Input.Port" class="form-label"></label>
+            <div class="col-md-8 conn-db">
+                <label asp-for="Input.Host" class="form-label">Host (base de datos)</label>
+                <input asp-for="Input.Host" class="form-control" />
+            </div>
+
+            <div class="col-md-4 conn-db">
+                <label asp-for="Input.Port" class="form-label">Puerto</label>
                 <input asp-for="Input.Port" class="form-control" />
-                <span asp-validation-for="Input.Port" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6 conn-db">
+                <label asp-for="Input.DatabaseName" class="form-label">Nombre de la base de datos</label>
+                <input asp-for="Input.DatabaseName" class="form-control" />
+            </div>
+
+            <div class="col-md-6 conn-db">
+                <label asp-for="Input.TechnicalUsername" class="form-label">Usuario técnico</label>
+                <input asp-for="Input.TechnicalUsername" class="form-control" />
+            </div>
+
+            <div class="col-12 conn-http">
+                <label asp-for="Input.BaseUrl" class="form-label">URL base (API HTTP)</label>
+                <input asp-for="Input.BaseUrl" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Input.TechnicalSecretKey" class="form-label">Secreto / contraseña</label>
+                <input asp-for="Input.TechnicalSecretKey" type="password" class="form-control" autocomplete="new-password" />
             </div>
 
             <div class="col-12">
-                <label asp-for="Input.Host" class="form-label"></label>
-                <input asp-for="Input.Host" class="form-control" />
-                <span asp-validation-for="Input.Host" class="text-danger"></span>
+                <label asp-for="Input.ConfiguracionExtra" class="form-label">Configuración extra (JSON crudo)</label>
+                <textarea asp-for="Input.ConfiguracionExtra" class="form-control" rows="4"></textarea>
             </div>
 
-            <div class="col-md-4">
-                <label asp-for="Input.DatabaseName" class="form-label"></label>
-                <input asp-for="Input.DatabaseName" class="form-control" />
-                <span asp-validation-for="Input.DatabaseName" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-4">
-                <label asp-for="Input.TechnicalUsername" class="form-label"></label>
-                <input asp-for="Input.TechnicalUsername" class="form-control" />
-                <span asp-validation-for="Input.TechnicalUsername" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-4">
-                <label asp-for="Input.TechnicalSecretKey" class="form-label"></label>
-                <input asp-for="Input.TechnicalSecretKey" class="form-control" autocomplete="new-password" />
-                <span asp-validation-for="Input.TechnicalSecretKey" class="text-danger"></span>
+            <div class="col-12">
+                <div class="form-check">
+                    <input asp-for="Input.IsActive" class="form-check-input" />
+                    <label asp-for="Input.IsActive" class="form-check-label">Activa</label>
+                </div>
             </div>
         </div>
 
         <div class="d-flex gap-2 mt-4">
             <button type="submit" class="btn-primary">Crear</button>
-            <a asp-page="/Admin/Organizations/Companies/ExternalConnections/Index" asp-route-companyId="@Model.Company.Id" class="btn-secondary">Cancelar</a>
+            <a asp-page="./Index" asp-route-companyId="@Model.Company.Id" class="btn-secondary">Cancelar</a>
         </div>
     </form>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var tipo = document.getElementById('Input_Tipo');
+            if (!tipo) { return; }
+            function apply() {
+                var isDb = tipo.value.indexOf('db_') === 0;
+                document.querySelectorAll('.conn-db').forEach(function (el) { el.style.display = isDb ? '' : 'none'; });
+                document.querySelectorAll('.conn-http').forEach(function (el) { el.style.display = isDb ? 'none' : ''; });
+            }
+            tipo.addEventListener('change', apply);
+            apply();
+        })();
+    </script>
 }

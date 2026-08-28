@@ -1,4 +1,5 @@
 @page "{companyId:guid}"
+@using PortalSaas.Abstractions.Modelos
 @model PortalSaas.Host.Pages.Admin.Organizations.Companies.ExternalConnections.IndexModel
 @{
     ViewData["Title"] = $"Conexiones externas · {Model.Company.Code}";
@@ -9,7 +10,7 @@
         <h1 class="h3 mb-0">Conexiones externas de @Model.Company.Code &mdash; @Model.Company.Name</h1>
         <a asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@Model.Company.OrganizationId">Volver a compañías</a>
     </div>
-    <a asp-page="/Admin/Organizations/Companies/ExternalConnections/Create" asp-route-companyId="@Model.Company.Id" class="btn btn-primary">Nueva conexión</a>
+    <a asp-page="./Create" asp-route-companyId="@Model.Company.Id" class="btn btn-primary">Nueva conexión</a>
 </div>
 
 @if (Model.ErrorMessage is not null)
@@ -18,46 +19,39 @@
 }
 
 <p class="text-muted">
-    Conexión propia de un plugin a una base de datos EXTERNA (ajena al SAP de la
-    organización) -- ej. <code>GestionGastos</code>, <code>Rendiciones</code>. El
-    código de módulo debe coincidir exactamente con el <code>ModuleCode</code> del
-    plugin que la resuelve.
+    Catálogo de conexiones de la compañía a bases de datos o APIs EXTERNAS (ajenas al
+    SAP de la organización). La asociación de cada módulo a una conexión concreta se
+    hace en la grilla <strong>Asignación por módulo</strong>, más abajo.
 </p>
 
 <div class="document-list-table-wrapper">
     <table class="table document-list-table">
-    <thead>
-        <tr>
-            <th>Módulo</th>
-            <th>Motor</th>
-            <th>Host</th>
-            <th>Puerto</th>
-            <th>Base de datos</th>
-            <th>Usuario técnico</th>
-            <th>Estado</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Host / URL</th>
+                <th>Activa</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
         @foreach (var connection in Model.Connections)
         {
             <tr>
-                <td>@connection.ModuleCode</td>
-                <td>@connection.EngineType</td>
-                <td>@connection.Host</td>
-                <td>@connection.Port</td>
-                <td>@connection.DatabaseName</td>
-                <td>@connection.TechnicalUsername</td>
+                <td>@connection.Nombre</td>
+                <td>@connection.Tipo</td>
+                <td>@(ExternalConnectionType.IsDatabase(connection.Tipo) ? connection.Host : connection.BaseUrl)</td>
                 <td>@(connection.IsActive ? "Activa" : "Inactiva")</td>
                 <td>
-                    <a asp-page="/Admin/Organizations/Companies/ExternalConnections/Edit" asp-route-id="@connection.Id">Editar</a>
-                    ·
                     <form method="post" asp-page-handler="TestConnection" asp-route-companyId="@Model.Company.Id" asp-route-id="@connection.Id" class="d-inline">
-                        <button type="submit" class="btn btn-link p-0 align-baseline">Probar conexión</button>
+                        <button type="submit" class="btn btn-link p-0 align-baseline">Probar</button>
                     </form>
                     ·
-                    <form asp-page="./Index" asp-page-handler="Delete" asp-route-companyId="@Model.Company.Id" asp-route-id="@connection.Id" method="post" class="d-inline"
-                          onsubmit="return confirm('¿Eliminar la conexión @connection.ModuleCode?');">
+                    <a asp-page="./Edit" asp-route-companyId="@Model.Company.Id" asp-route-id="@connection.Id">Editar</a>
+                    ·
+                    <form method="post" asp-page-handler="Delete" asp-route-companyId="@Model.Company.Id" asp-route-id="@connection.Id" class="d-inline"
+                          onsubmit="return confirm('¿Eliminar la conexión @connection.Nombre?');">
                         <button type="submit" class="btn btn-link text-danger p-0 align-baseline">Eliminar</button>
                     </form>
                 </td>
@@ -65,11 +59,11 @@
             @if (Model.TestedConnectionId == connection.Id && Model.TestSuccess is not null)
             {
                 <tr>
-                    <td colspan="8">
+                    <td colspan="5">
                         <div class="alert @(Model.TestSuccess == true ? "alert-success" : "alert-warning") mb-0">
                             @if (Model.TestSuccess == true)
                             {
-                                <strong class="text-success">OK</strong> <span>&mdash; conexión abierta correctamente.</span>
+                                <strong class="text-success">OK</strong> <span>&mdash; conexión probada correctamente.</span>
                             }
                             else
                             {
@@ -80,11 +74,59 @@
                 </tr>
             }
         }
-    </tbody>
-</table>
+        </tbody>
+    </table>
 </div>
 
 @if (Model.Connections.Count == 0)
 {
     <p class="text-muted">Todavía no hay conexiones externas para esta compañía.</p>
+}
+
+<h2 class="h4 mt-4 mb-3">Asignación por módulo</h2>
+
+@if (Model.Bindings.Count == 0)
+{
+    <p class="text-muted">No hay módulos cargados que declaren una conexión externa.</p>
+}
+else
+{
+    <div class="document-list-table-wrapper">
+        <table class="table document-list-table">
+            <thead>
+                <tr>
+                    <th>Módulo</th>
+                    <th>Propósito</th>
+                    <th>Requerida</th>
+                    <th>Conexión asignada</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var binding in Model.Bindings)
+            {
+                var faltante = binding.Required && binding.ConnectionId is null;
+                <tr class="@(faltante ? "table-warning" : null)">
+                    <td>@binding.ModuleName <span class="text-muted">(@binding.ModuleCode)</span></td>
+                    <td>@binding.PurposeDisplayName</td>
+                    <td>@(binding.Required ? "Sí" : "No")</td>
+                    <td>
+                        <form method="post" asp-page-handler="SetBinding" class="d-flex gap-2 align-items-center">
+                            <input type="hidden" name="companyId" value="@Model.Company.Id" />
+                            <input type="hidden" name="moduleCode" value="@binding.ModuleCode" />
+                            <input type="hidden" name="purpose" value="@binding.Purpose" />
+                            <select name="connectionId" class="form-select form-select-sm" style="max-width: 22rem;">
+                                <option value="">— sin asignar —</option>
+                                @foreach (var connection in Model.Connections)
+                                {
+                                    <option value="@connection.Id" selected="@(binding.ConnectionId == connection.Id)">@connection.Nombre</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Guardar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
 }

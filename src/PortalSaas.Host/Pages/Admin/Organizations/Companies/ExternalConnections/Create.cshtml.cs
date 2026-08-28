@@ -1,10 +1,8 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 using PortalSaas.Abstractions.Contratos;
-using PortalSaas.Core.Infraestructura;
+using PortalSaas.Abstractions.Modelos;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 
@@ -14,14 +12,12 @@ namespace PortalSaas.Host.Pages.Admin.Organizations.Companies.ExternalConnection
 public class CreateModel : PageModel
 {
     private readonly PortalSaasDbContext _db;
-    private readonly ISecretoCifradoService _secretoCifradoService;
-    private readonly PluginManager _pluginManager;
+    private readonly ICompanyExternalConnectionService _svc;
 
-    public CreateModel(PortalSaasDbContext db, ISecretoCifradoService secretoCifradoService, PluginManager pluginManager)
+    public CreateModel(PortalSaasDbContext db, ICompanyExternalConnectionService svc)
     {
         _db = db;
-        _secretoCifradoService = secretoCifradoService;
-        _pluginManager = pluginManager;
+        _svc = svc;
     }
 
     public Company Company { get; private set; } = null!;
@@ -29,114 +25,55 @@ public class CreateModel : PageModel
     public Organization Organization { get; private set; } = null!;
 
     [BindProperty]
-    public InputModel Input { get; set; } = new();
+    public ExternalConnectionEditModel Input { get; set; } = new();
 
-    public IEnumerable<string> EngineTypes => ModuleExternalConnectionEngineType.All;
-
-    /// <summary>
-    /// Plugins REALMENTE cargados en este proceso (PluginManager.ModulosCargados, incluye
-    /// externos tipo Modulo.Rendiciones/Modulo.GestionDistribucionGastos) que todavía no
-    /// tienen conexión externa configurada para esta Company -- antes ModuleCode era
-    /// texto libre ("Ingresa el código de módulo (IModuloPortal.ModuleCode)"), mismo
-    /// riesgo de typo ya corregido en Pages/Admin/PlatformModules/Create.
-    /// </summary>
-    public List<IModuloPortal> AvailablePlugins { get; private set; } = [];
+    public IReadOnlyCollection<string> Tipos => ExternalConnectionType.All;
 
     public async Task<IActionResult> OnGetAsync(Guid companyId)
     {
-        var company = await _db.Companies.FindAsync(companyId);
-        if (company is null)
+        if (!await LoadHeaderAsync(companyId))
         {
             return NotFound();
         }
 
-        Company = company;
-        Organization = (await _db.Organizations.FindAsync(company.OrganizationId))!;
-        await LoadAvailablePluginsAsync(companyId);
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync(Guid companyId)
     {
-        var company = await _db.Companies.FindAsync(companyId);
-        if (company is null)
+        if (!await LoadHeaderAsync(companyId))
         {
             return NotFound();
         }
-
-        Company = company;
-        Organization = (await _db.Organizations.FindAsync(company.OrganizationId))!;
-        await LoadAvailablePluginsAsync(companyId);
 
         if (!ModelState.IsValid)
         {
             return Page();
         }
 
-        var moduleCode = Input.ModuleCode.Trim();
-        var enUso = await _db.ModuleExternalConnections.AnyAsync(c => c.CompanyId == companyId && c.ModuleCode == moduleCode);
-        if (enUso)
+        try
         {
-            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.ModuleCode)}", "Ya existe una conexión para ese módulo en esta compañía.");
+            await _svc.CreateAsync(Company.OrganizationId, companyId, Input);
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
             return Page();
         }
 
-        _db.ModuleExternalConnections.Add(new ModuleExternalConnection
+        return RedirectToPage("Index", new { companyId });
+    }
+
+    private async Task<bool> LoadHeaderAsync(Guid companyId)
+    {
+        var company = await _db.Companies.FindAsync(companyId);
+        if (company is null)
         {
-            CompanyId = companyId,
-            ModuleCode = moduleCode,
-            EngineType = Input.EngineType,
-            Host = Input.Host.Trim(),
-            Port = Input.Port,
-            DatabaseName = Input.DatabaseName.Trim(),
-            TechnicalUsername = Input.TechnicalUsername.Trim(),
-            TechnicalSecretKey = _secretoCifradoService.Encrypt(Input.TechnicalSecretKey),
-        });
+            return false;
+        }
 
-        await _db.SaveChangesAsync();
-
-        return RedirectToPage("/Admin/Organizations/Companies/ExternalConnections/Index", new { companyId });
-    }
-
-    private async Task LoadAvailablePluginsAsync(Guid companyId)
-    {
-        var codesEnUso = await _db.ModuleExternalConnections.Where(c => c.CompanyId == companyId).Select(c => c.ModuleCode).ToListAsync();
-        AvailablePlugins = _pluginManager.ModulosCargados
-            .Where(p => !codesEnUso.Contains(p.ModuleCode, StringComparer.OrdinalIgnoreCase))
-            .OrderBy(p => p.Name)
-            .ToList();
-    }
-
-    public sealed class InputModel
-    {
-        [Required(ErrorMessage = "Elegí el plugin.")]
-        [Display(Name = "Código de módulo")]
-        public string ModuleCode { get; set; } = string.Empty;
-
-        [Required]
-        [Display(Name = "Motor")]
-        public string EngineType { get; set; } = ModuleExternalConnectionEngineType.SqlServer;
-
-        [Required(ErrorMessage = "Ingresa el host.")]
-        [Display(Name = "Host")]
-        public string Host { get; set; } = string.Empty;
-
-        [Required]
-        [Range(1, 65535, ErrorMessage = "Puerto inválido.")]
-        [Display(Name = "Puerto")]
-        public int Port { get; set; } = 1433;
-
-        [Required(ErrorMessage = "Ingresa el nombre de la base de datos.")]
-        [Display(Name = "Base de datos")]
-        public string DatabaseName { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Ingresa el usuario técnico.")]
-        [Display(Name = "Usuario técnico")]
-        public string TechnicalUsername { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Ingresa la clave técnica.")]
-        [DataType(DataType.Password)]
-        [Display(Name = "Clave técnica")]
-        public string TechnicalSecretKey { get; set; } = string.Empty;
+        Company = company;
+        Organization = (await _db.Organizations.FindAsync(company.OrganizationId))!;
+        return true;
     }
 }

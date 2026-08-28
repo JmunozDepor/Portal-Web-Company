@@ -49,6 +49,18 @@ dotnet tool run dotnet-ef database update \
   --connection "Host=172.16.122.171;Port=5432;Database=<db>;Username=admin_saas;Password=<real>"
 ```
 
+## Historial de aplicación de `AddCompanyExternalConnections` (2026-08-28)
+
+Catálogo de conexiones externas por compañía (`company_external_connections` +
+`company_module_connections`), ver
+`docs/superpowers/specs/2026-08-27-catalogo-conexiones-externas-por-compania-design.md`.
+Aplicada con éxito contra las **4 bases operativas** (`portalsaas_saas_qa`,
+`portalsaas_saas_prod`, `ps_comdepor`, `ps_comdepor_qa`) el 2026-08-28 —
+`20260827220011_AddCompanyExternalConnections`, la única `(Pending)` en cada una
+(todas ya tenían el resto al día). Pendiente: primer arranque del Host contra cada
+base para que corra `LegacyExternalConnectionBackfill` (idempotente, envuelto en
+try/catch) — revisar el log por líneas `WARN` que empiecen con `Backfill:`.
+
 ## Historial de aplicación de `AddOrganizationMenuOverrides` (2026-08-25)
 
 Primera vez que se ejecuta este proceso contra las 4 bases — sirvió para descubrir

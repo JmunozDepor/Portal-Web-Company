@@ -28,26 +28,31 @@
             <div class="col-md-8 conn-db">
                 <label asp-for="Input.Host" class="form-label">Host (base de datos)</label>
                 <input asp-for="Input.Host" class="form-control" />
+                <span asp-validation-for="Input.Host" class="text-danger"></span>
             </div>
 
             <div class="col-md-4 conn-db">
                 <label asp-for="Input.Port" class="form-label">Puerto</label>
                 <input asp-for="Input.Port" class="form-control" />
+                <span asp-validation-for="Input.Port" class="text-danger"></span>
             </div>
 
             <div class="col-md-6 conn-db">
                 <label asp-for="Input.DatabaseName" class="form-label">Nombre de la base de datos</label>
                 <input asp-for="Input.DatabaseName" class="form-control" />
+                <span asp-validation-for="Input.DatabaseName" class="text-danger"></span>
             </div>
 
             <div class="col-md-6 conn-db">
                 <label asp-for="Input.TechnicalUsername" class="form-label">Usuario técnico</label>
                 <input asp-for="Input.TechnicalUsername" class="form-control" />
+                <span asp-validation-for="Input.TechnicalUsername" class="text-danger"></span>
             </div>
 
             <div class="col-12 conn-http">
                 <label asp-for="Input.BaseUrl" class="form-label">URL base (API HTTP)</label>
                 <input asp-for="Input.BaseUrl" class="form-control" />
+                <span asp-validation-for="Input.BaseUrl" class="text-danger"></span>
             </div>
 
             <div class="col-md-6">

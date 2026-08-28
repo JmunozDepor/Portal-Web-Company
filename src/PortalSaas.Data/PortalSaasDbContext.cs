@@ -263,18 +263,24 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.DatabaseName).HasMaxLength(100);
             entity.Property(e => e.TechnicalUsername).HasMaxLength(100);
             entity.Property(e => e.TechnicalSecretKey).HasMaxLength(500);
-            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Cascade);
+            // Restrict, no Cascade -- Company ya es alcanzable en cascada vía
+            // Instance; un segundo camino en cascada rompe SQL Server (1785). El
+            // borrado de una compañía con conexiones se bloquea con un chequeo
+            // explícito de dependientes (ver Companies/Index), no en cascada.
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CompanyModuleConnection>(entity =>
         {
-            entity.ToTable("company_module_connection");
+            entity.ToTable("company_module_connections");
             entity.HasIndex(e => new { e.CompanyId, e.ModuleCode, e.Purpose })
                 .IsUnique()
-                .HasDatabaseName("uq_company_module_connection_company_module_purpose");
+                .HasDatabaseName("uq_company_module_connections_company_module_purpose");
+            entity.HasIndex(e => e.ConnectionId)
+                .HasDatabaseName("ix_company_module_connections_connection_id");
             entity.Property(e => e.ModuleCode).HasMaxLength(50);
             entity.Property(e => e.Purpose).HasMaxLength(50);
-            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Connection).WithMany(c => c.ModuleBindings).HasForeignKey(e => e.ConnectionId).OnDelete(DeleteBehavior.Restrict);
         });
 

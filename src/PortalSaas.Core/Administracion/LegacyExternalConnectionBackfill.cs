@@ -46,6 +46,13 @@ public sealed class LegacyExternalConnectionBackfill(PortalSaasDbContext db, ILo
         foreach (var me in legadas)
         {
             var tipo = MapTipo(me.EngineType);
+            if (tipo is null)
+            {
+                logger.LogWarning(
+                    "Backfill: engine_type no soportado '{Engine}' en module_external_connections id {Id}, fila omitida",
+                    me.EngineType, me.Id);
+                continue;
+            }
 
             var bindingExistente = bindings.FirstOrDefault(b =>
                 b.CompanyId == me.CompanyId
@@ -139,10 +146,10 @@ public sealed class LegacyExternalConnectionBackfill(PortalSaasDbContext db, ILo
         }
     }
 
-    private static string MapTipo(string engineType) => engineType switch
+    private static string? MapTipo(string engineType) => engineType switch
     {
         ModuleExternalConnectionEngineType.Postgres => ExternalConnectionType.DbPostgres,
         ModuleExternalConnectionEngineType.SqlServer => ExternalConnectionType.DbSqlServer,
-        _ => throw new InvalidOperationException($"Motor legado no soportado: '{engineType}'."),
+        _ => null,
     };
 }

@@ -78,6 +78,8 @@ public class IndexModel : PageModel
         var inUse = await _db.UserMenuGroups.AnyAsync(g => g.CompanyId == id)
             || await _db.UserMenuProfiles.AnyAsync(p => p.CompanyId == id)
             || await _db.ModuleExternalConnections.AnyAsync(c => c.CompanyId == id)
+            || await _db.CompanyExternalConnections.AnyAsync(c => c.CompanyId == id)
+            || await _db.CompanyModuleConnections.AnyAsync(b => b.CompanyId == id)
             || await _db.ApiClientCredentials.AnyAsync(c => c.CompanyId == id && c.Activo);
         if (inUse)
         {

@@ -388,10 +388,20 @@ if (args is ["seed-admin", var seedAdminEmail])
 // se migraron (idempotente por el binding (CompanyId, ModuleCode, "Default")).
 using (var backfillScope = app.Services.CreateScope())
 {
-    var backfill = new LegacyExternalConnectionBackfill(
-        backfillScope.ServiceProvider.GetRequiredService<PortalSaasDbContext>(),
-        backfillScope.ServiceProvider.GetRequiredService<ILogger<LegacyExternalConnectionBackfill>>());
-    await backfill.RunAsync(default);
+    var backfillLogger = backfillScope.ServiceProvider.GetRequiredService<ILogger<LegacyExternalConnectionBackfill>>();
+    try
+    {
+        var backfill = new LegacyExternalConnectionBackfill(
+            backfillScope.ServiceProvider.GetRequiredService<PortalSaasDbContext>(),
+            backfillLogger);
+        using var backfillCts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        await backfill.RunAsync(backfillCts.Token);
+    }
+    catch (Exception ex)
+    {
+        // Nunca abortar el arranque del Host por el backfill legado -- se registra y se continúa.
+        backfillLogger.LogError(ex, "El backfill de conexiones externas legadas falló; el Host continúa el arranque.");
+    }
 }
 
 // La página de error propia (Pages/Error.cshtml) corre en TODOS los entornos, no solo

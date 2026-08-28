@@ -316,16 +316,16 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_company_module_connection");
+                        .HasName("pk_company_module_connections");
 
                     b.HasIndex("ConnectionId")
-                        .HasDatabaseName("ix_company_module_connection_connection_id");
+                        .HasDatabaseName("ix_company_module_connections_connection_id");
 
                     b.HasIndex("CompanyId", "ModuleCode", "Purpose")
                         .IsUnique()
-                        .HasDatabaseName("uq_company_module_connection_company_module_purpose");
+                        .HasDatabaseName("uq_company_module_connections_company_module_purpose");
 
-                    b.ToTable("company_module_connection", (string)null);
+                    b.ToTable("company_module_connections", (string)null);
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.EmailSettings", b =>
@@ -2106,7 +2106,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.HasOne("PortalSaas.Data.Entities.Company", "Company")
                         .WithMany()
                         .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_company_external_connections_company_company_id");
 
@@ -2118,16 +2118,16 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.HasOne("PortalSaas.Data.Entities.Company", "Company")
                         .WithMany()
                         .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_company_module_connection_company_company_id");
+                        .HasConstraintName("fk_company_module_connections_company_company_id");
 
                     b.HasOne("PortalSaas.Data.Entities.CompanyExternalConnection", "Connection")
                         .WithMany("ModuleBindings")
                         .HasForeignKey("ConnectionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_company_module_connection_company_external_connection_connection_id");
+                        .HasConstraintName("fk_company_module_connections_company_external_connections_connection_id");
 
                     b.Navigation("Company");
 

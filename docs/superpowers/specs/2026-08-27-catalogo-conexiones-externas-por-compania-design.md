@@ -29,7 +29,7 @@ usa y para qué propósito.
 
 Entra en este spec:
 
-1. Modelo de datos nuevo (`company_external_connections` + `company_module_connection`).
+1. Modelo de datos nuevo (`company_external_connections` + `company_module_connections`).
 2. Migración de datos desde `module_external_connections` (desduplicando).
 3. Cambio interno de `IExternalDatabaseConnectionService` para resolver contra el
    modelo nuevo, **manteniendo su firma pública**.
@@ -70,52 +70,56 @@ viendo únicamente `PortalSaas.Abstractions`.
 
 ### 4.1 `company_external_connections`
 
-Una fila por conexión válida de una compañía.
+Una fila por conexión válida de una compañía. **No lleva `organization_id`**: el
+ámbito de organización se deriva vía `Company.OrganizationId` (regla dura del
+proyecto — personalización por `CompanyId`, nunca por `OrganizationId` directo).
 
-| Columna | Tipo | Notas |
+| Columna (entidad / BD) | Tipo | Notas |
 |---|---|---|
-| `Id` | Guid (PK) | |
-| `OrganizationId` | Guid (FK `organizations`) | ámbito |
-| `CompanyId` | Guid (FK `companies`) | obligatorio |
-| `Nombre` | string(100) | único por `CompanyId` (índice único `(CompanyId, Nombre)`) |
-| `Tipo` | int (`ExternalConnectionType`) | `DbPostgres`, `DbSqlServer`, `DbHana`, `HttpApi` |
-| `Host` | string(256) null | host de BD; null para `HttpApi` |
-| `BaseUrl` | string(512) null | URL base de API; null para `Db*` |
-| `Port` | int null | solo `Db*` |
-| `Database` | string(256) null | solo `Db*` |
-| `Username` | string(256) null | usuario técnico / usuario Basic |
-| `SecretCifrado` | string null | write-only, AES-256-GCM vía `ISecretoCifradoService` |
-| `ConfiguracionExtra` | jsonb / nvarchar(max) null | parámetros específicos del tipo/módulo (timeouts, `ClientEnvCode`, etc.) |
-| `Activo` | bool (default true) | |
-| `CreatedAtUtc` / `UpdatedAtUtc` | timestamptz | |
+| `Id` / `id` | `long` (bigint identity, PK) | |
+| `CompanyId` / `company_id` | Guid (FK `companies`, `DeleteBehavior.Restrict`) | obligatorio |
+| `Nombre` / `nombre` | string(100) | único por `CompanyId` (índice único `uq_company_external_connections_company_nombre`) |
+| `Tipo` / `tipo` | string(20) (`ExternalConnectionType.*`) + check constraint | `db_postgres`, `db_sqlserver`, `db_hana`, `http_api` |
+| `Host` / `host` | string(200) null | host de BD; null para `http_api` |
+| `BaseUrl` / `base_url` | string(500) null | URL base de API; null para `db_*` |
+| `Port` / `port` | int null | solo `db_*` |
+| `DatabaseName` / `database_name` | string(100) null | solo `db_*` |
+| `TechnicalUsername` / `technical_username` | string(100) null | usuario técnico / usuario Basic |
+| `TechnicalSecretKey` / `technical_secret_key` | string(500) null | write-only, AES-256-GCM vía `ISecretoCifradoService` |
+| `ConfiguracionExtra` / `configuracion_extra` | `text` / `nvarchar(max)` null | parámetros específicos del tipo/módulo (timeouts, `ClientEnvCode`, etc.) |
+| `IsActive` / `is_active` | bool (default true) | |
+| `CreatedAt` / `created_at`, `UpdatedAt` / `updated_at` | timestamptz / datetimeoffset | inicializados en C# |
 
-Reglas de validación (en el servicio, no solo DataAnnotations):
+Reglas de validación (en el servicio + DataAnnotations en `ExternalConnectionEditModel`):
 
-- `Nombre` no vacío y único por compañía.
-- Según `Tipo`:
-  - `Db*`: `Host`, `Port`, `Database`, `Username` obligatorios.
-  - `HttpApi`: `BaseUrl` obligatorio.
-- `SecretCifrado` nunca se devuelve en DTOs de lectura. Se escribe solo si el
+- `Nombre` `[Required]`/`[StringLength(100)]` y único por compañía.
+- `Tipo` `[Required]`; `Host`/`BaseUrl`/`DatabaseName`/`TechnicalUsername`
+  `[StringLength]`, `Port` `[Range(1, 65535)]`.
+- Según `Tipo` (solo en el servicio, no expresable en anotaciones):
+  - `db_*`: `Host`, `Port`, `DatabaseName`, `TechnicalUsername` obligatorios.
+  - `http_api`: `BaseUrl` obligatorio.
+- `TechnicalSecretKey` nunca se devuelve en DTOs de lectura. Se escribe solo si el
   formulario envía un secreto nuevo (write-only); si viene vacío en edición, se
   conserva el existente.
-- Toda entidad leída/escrita se valida contra `OrganizationId` +
-  `CompanyId` del contexto antes de operar (defensa en profundidad).
+- Toda entidad leída/escrita se valida contra la `CompanyId` del contexto (que ya
+  resuelve a la organización) antes de operar (defensa en profundidad).
 
-### 4.2 `company_module_connection` (binding)
+### 4.2 `company_module_connections` (binding)
 
-Qué conexión usa cada módulo/propósito en cada compañía.
+Qué conexión usa cada módulo/propósito en cada compañía. **Sin `organization_id`**
+(mismo criterio que 4.1).
 
-| Columna | Tipo | Notas |
+| Columna (entidad / BD) | Tipo | Notas |
 |---|---|---|
-| `Id` | Guid (PK) | |
-| `OrganizationId` | Guid | |
-| `CompanyId` | Guid (FK `companies`) | |
-| `ModuleCode` | string(64) | código del módulo (`"Wms"`, …) |
-| `Purpose` | string(64) (default `"Default"`) | permite varias conexiones por módulo |
-| `ConnectionId` | Guid (FK `company_external_connections`) | |
-| `UpdatedAtUtc` | timestamptz | |
+| `Id` / `id` | `long` (bigint identity, PK) | |
+| `CompanyId` / `company_id` | Guid (FK `companies`, `DeleteBehavior.Restrict`) | |
+| `ModuleCode` / `module_code` | string(50) | código del módulo (`"Wms"`, …) |
+| `Purpose` / `purpose` | string(50) (default `"Default"`) | permite varias conexiones por módulo |
+| `ConnectionId` / `connection_id` | `long` (FK `company_external_connections`, `DeleteBehavior.Restrict`) | |
+| `UpdatedAt` / `updated_at` | timestamptz / datetimeoffset | |
 
-Índice único `(CompanyId, ModuleCode, Purpose)`.
+Índice único `uq_company_module_connections_company_module_purpose`
+`(CompanyId, ModuleCode, Purpose)`; índice `ix_company_module_connections_connection_id`.
 
 `Purpose` es un string libre declarado por cada módulo (ver 4.3). Ejemplo: WMS
 podría exponer `Default` (su base propia) y `SapSource` (base SAP de origen).
@@ -165,7 +169,7 @@ Modelos/ConnectionTestResultDto.cs        // { bool Ok; string? Error; long? Ela
 
 - `Task<IReadOnlyList<ExternalConnectionDto>> ListAsync(orgId, companyId, ct)`
 - `Task<ExternalConnectionDto?> GetAsync(orgId, companyId, id, ct)`
-- `Task<Guid> CreateAsync(orgId, companyId, ExternalConnectionEditModel m, ct)`
+- `Task<long> CreateAsync(orgId, companyId, ExternalConnectionEditModel m, ct)`
 - `Task UpdateAsync(orgId, companyId, id, ExternalConnectionEditModel m, ct)`
 - `Task DeleteAsync(orgId, companyId, id, ct)` — falla si hay bindings que la usan
 - `Task<ConnectionTestResultDto> TestAsync(orgId, companyId, id, ct)`
@@ -190,7 +194,7 @@ Modelos/ConnectionTestResultDto.cs        // { bool Ok; string? Error; long? Ela
 
 `ResolveConnectionAsync(moduleCode, companyId)` pasa a:
 
-1. Buscar `company_module_connection` por `(companyId, moduleCode, Purpose="Default")`.
+1. Buscar `company_module_connections` por `(companyId, moduleCode, Purpose="Default")`.
    Overload nuevo `ResolveConnectionAsync(moduleCode, companyId, purpose)` para
    módulos que necesitan varias; el existente delega con `purpose="Default"`.
 2. Cargar la `company_external_connections` referenciada, descifrar secreto, armar
@@ -213,13 +217,14 @@ Datos (en la misma migración o script idempotente posterior):
 1. Por cada fila de `module_external_connections`, agrupar por
    `(company_id, engine_type, host, port, database)` y crear **una**
    `company_external_connections`:
-   - `Tipo` = `DbPostgres` / `DbSqlServer` según `engine_type`
+   - `Tipo` = `db_postgres` / `db_sqlserver` según `engine_type` (una fila con
+     `engine_type` no soportado se omite con `WARN`, nunca aborta el backfill)
    - copiar host/port/database/username/secreto tal cual (el secreto ya está
      cifrado con el mismo `ISecretoCifradoService`, se copia el blob)
    - `Nombre` = `"{moduleCode}"` de la primera fila, o `"{host}/{database}"` si
      colisiona; garantizar unicidad por compañía con sufijo incremental
-   - `OrganizationId` = el de la compañía
-2. Por cada fila original crear un `company_module_connection` con
+   - sin `organization_id` (se deriva de `Company.OrganizationId`)
+2. Por cada fila original crear un `company_module_connections` con
    `Purpose="Default"` apuntando a la conexión creada/compartida.
 3. Si dos filas del mismo `(company_id, module_code)` resolvieran a conexiones
    distintas (no debería ocurrir con el modelo actual, pero se valida): tomar la

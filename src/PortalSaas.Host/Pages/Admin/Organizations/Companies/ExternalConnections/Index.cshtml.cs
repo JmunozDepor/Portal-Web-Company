@@ -56,9 +56,16 @@ public class IndexModel : PageModel
         }
 
         TestedConnectionId = id;
-        var r = await _svc.TestAsync(Company.OrganizationId, companyId, id);
-        TestSuccess = r.Ok;
-        TestError = r.Error;
+        try
+        {
+            var r = await _svc.TestAsync(Company.OrganizationId, companyId, id);
+            TestSuccess = r.Ok;
+            TestError = r.Error;
+        }
+        catch (InvalidOperationException ex)
+        {
+            ErrorMessage = ex.Message;
+        }
 
         return Page();
     }

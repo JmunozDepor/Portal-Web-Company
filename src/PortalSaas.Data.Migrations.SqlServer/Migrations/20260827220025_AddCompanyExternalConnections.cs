@@ -40,11 +40,11 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         column: x => x.company_id,
                         principalTable: "companies",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
-                name: "company_module_connection",
+                name: "company_module_connections",
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
@@ -57,15 +57,15 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_company_module_connection", x => x.id);
+                    table.PrimaryKey("pk_company_module_connections", x => x.id);
                     table.ForeignKey(
-                        name: "fk_company_module_connection_company_company_id",
+                        name: "fk_company_module_connections_company_company_id",
                         column: x => x.company_id,
                         principalTable: "companies",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_company_module_connection_company_external_connection_connection_id",
+                        name: "fk_company_module_connections_company_external_connections_connection_id",
                         column: x => x.connection_id,
                         principalTable: "company_external_connections",
                         principalColumn: "id",
@@ -79,13 +79,13 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ix_company_module_connection_connection_id",
-                table: "company_module_connection",
+                name: "ix_company_module_connections_connection_id",
+                table: "company_module_connections",
                 column: "connection_id");
 
             migrationBuilder.CreateIndex(
-                name: "uq_company_module_connection_company_module_purpose",
-                table: "company_module_connection",
+                name: "uq_company_module_connections_company_module_purpose",
+                table: "company_module_connections",
                 columns: new[] { "company_id", "module_code", "purpose" },
                 unique: true);
         }
@@ -94,7 +94,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "company_module_connection");
+                name: "company_module_connections");
 
             migrationBuilder.DropTable(
                 name: "company_external_connections");

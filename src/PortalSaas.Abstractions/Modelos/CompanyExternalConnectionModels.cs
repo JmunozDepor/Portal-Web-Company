@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace PortalSaas.Abstractions.Modelos;
 
 public enum ExternalConnectionKind
@@ -30,12 +32,26 @@ public sealed record ExternalConnectionDto(
 /// <summary>Entrada de alta/edición. Secreto write-only: null o vacío en edición = conservar.</summary>
 public sealed class ExternalConnectionEditModel
 {
+    [Required]
+    [StringLength(100)]
     public string Nombre { get; set; } = string.Empty;
+
+    [Required]
     public string Tipo { get; set; } = ExternalConnectionType.DbSqlServer;
+
+    [StringLength(200)]
     public string? Host { get; set; }
+
+    [StringLength(500)]
     public string? BaseUrl { get; set; }
+
+    [Range(1, 65535)]
     public int? Port { get; set; }
+
+    [StringLength(100)]
     public string? DatabaseName { get; set; }
+
+    [StringLength(100)]
     public string? TechnicalUsername { get; set; }
     public string? TechnicalSecretKey { get; set; }
     public string? ConfiguracionExtra { get; set; }

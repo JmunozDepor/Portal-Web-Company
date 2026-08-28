@@ -1,0 +1,84 @@
+@page "/organizacion/conexiones-externas/editar/{id:long?}"
+@model Modulo.Administracion.Pages.ConexionesExternas.EditarModel
+@{
+    ViewData["Title"] = Model.EsNuevo ? "Nueva conexión externa" : $"Editar · {Model.Input.Nombre}";
+}
+
+<a href="~/organizacion/conexiones-externas?companyId=@Model.CompanyId" class="doc-form-volver"><i class="bi bi-arrow-left"></i> Volver a conexiones externas</a>
+
+@if (Model.MensajeError is not null)
+{
+    <div class="alert alert-danger">@Model.MensajeError</div>
+}
+
+<div class="card-surface" style="max-width:680px;">
+    <h2 class="h5 mb-3">@(Model.EsNuevo ? "Nueva conexión" : "Editar conexión")</h2>
+
+    <form method="post">
+        <div asp-validation-summary="All" class="text-danger"></div>
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="CompanyId" />
+
+        <div class="mb-3">
+            <label asp-for="Input.Nombre" class="form-label">Nombre</label>
+            <input asp-for="Input.Nombre" class="form-control" />
+            <span asp-validation-for="Input.Nombre" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Input.Tipo" class="form-label">Tipo</label>
+            <select asp-for="Input.Tipo" class="form-select">
+                @foreach (var t in Model.Tipos)
+                {
+                    <option value="@t">@t</option>
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Input.Host" class="form-label">Host</label>
+            <input asp-for="Input.Host" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Input.Port" class="form-label">Puerto</label>
+            <input asp-for="Input.Port" class="form-control" type="number" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Input.DatabaseName" class="form-label">Base de datos</label>
+            <input asp-for="Input.DatabaseName" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Input.TechnicalUsername" class="form-label">Usuario técnico</label>
+            <input asp-for="Input.TechnicalUsername" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Input.BaseUrl" class="form-label">URL base (APIs HTTP)</label>
+            <input asp-for="Input.BaseUrl" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Input.TechnicalSecretKey" class="form-label">Contraseña / clave técnica</label>
+            <input asp-for="Input.TechnicalSecretKey" class="form-control" type="password" autocomplete="new-password" />
+            <div class="form-text">Dejar en blanco para no cambiarla.</div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Input.ConfiguracionExtra" class="form-label">Configuración extra (JSON)</label>
+            <textarea asp-for="Input.ConfiguracionExtra" class="form-control" rows="4"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label class="d-flex align-items-center gap-2"><input asp-for="Input.IsActive" type="checkbox" /> Activa</label>
+        </div>
+
+        <button type="submit" class="btn-primary">@(Model.EsNuevo ? "Crear conexión" : "Guardar cambios")</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

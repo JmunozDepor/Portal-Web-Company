@@ -36,3 +36,7 @@ mockup-master-detail.html
 **/.claude/worktrees/
 **/worktrees/
 **/.claude/Portal SaaS - Core/
+
+# repos hijos neutralizados -- borrar a mano con VS Code cerrado
+_git_OLD_DELETEME/
+**/_git_OLD_DELETEME/

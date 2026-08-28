@@ -42,8 +42,12 @@ public sealed class IndexModel : AdminPageModelBase
         return Page();
     }
 
+    private async Task<bool> EsCompaniaValidaAsync(Guid companyId)
+        => (await _tenant.ListCompaniesAsync()).Any(c => c.Id == companyId);
+
     public async Task<IActionResult> OnPostTestAsync(Guid companyId, long id)
     {
+        if (!await EsCompaniaValidaAsync(companyId)) return Forbid();
         try
         {
             var r = await _svc.TestAsync(CurrentUser.OrganizationId, companyId, id);
@@ -56,6 +60,7 @@ public sealed class IndexModel : AdminPageModelBase
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid companyId, long id)
     {
+        if (!await EsCompaniaValidaAsync(companyId)) return Forbid();
         try { await _svc.DeleteAsync(CurrentUser.OrganizationId, companyId, id); MensajeExito = "Conexión eliminada."; }
         catch (Exception ex) { MensajeError = ObtenerMensajeError(ex); }
         return RedirectToPage(new { companyId });
@@ -63,6 +68,7 @@ public sealed class IndexModel : AdminPageModelBase
 
     public async Task<IActionResult> OnPostSetBindingAsync(Guid companyId, string moduleCode, string purpose, long? connectionId)
     {
+        if (!await EsCompaniaValidaAsync(companyId)) return Forbid();
         try
         {
             if (connectionId is null or 0)

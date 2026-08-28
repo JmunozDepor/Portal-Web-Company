@@ -21,7 +21,7 @@ public sealed class EditarModel : AdminPageModelBase
 
     public async Task<IActionResult> OnGetAsync(long? id)
     {
-        await ValidarCompaniaAsync();
+        if (!await EsCompaniaValidaAsync()) return RedirectToPage("Index");
         if (id is not null)
         {
             var dto = await _svc.GetAsync(CurrentUser.OrganizationId, CompanyId, id.Value);
@@ -39,7 +39,7 @@ public sealed class EditarModel : AdminPageModelBase
 
     public async Task<IActionResult> OnPostAsync()
     {
-        await ValidarCompaniaAsync();
+        if (!await EsCompaniaValidaAsync()) return Forbid();
         if (!ModelState.IsValid) return Page();
         try
         {
@@ -57,10 +57,6 @@ public sealed class EditarModel : AdminPageModelBase
         }
     }
 
-    private async Task ValidarCompaniaAsync()
-    {
-        var companies = await _tenant.ListCompaniesAsync();
-        if (!companies.Any(c => c.Id == CompanyId))
-            throw new InvalidOperationException("Compañía inválida para esta organización.");
-    }
+    private async Task<bool> EsCompaniaValidaAsync()
+        => (await _tenant.ListCompaniesAsync()).Any(c => c.Id == CompanyId);
 }

@@ -14,7 +14,7 @@
 <div class="card-surface" style="max-width:680px;">
     <h2 class="h5 mb-3">@(Model.EsNuevo ? "Nueva conexión" : "Editar conexión")</h2>
 
-    <form method="post">
+    <form method="post" asp-antiforgery="true">
         <div asp-validation-summary="All" class="text-danger"></div>
         <input type="hidden" asp-for="Id" />
         <input type="hidden" asp-for="CompanyId" />

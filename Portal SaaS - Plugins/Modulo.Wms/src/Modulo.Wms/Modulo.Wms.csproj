@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Modulo.Wms</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <!-- PluginManager carga el .dll directo de una carpeta (AssemblyLoadContext
+         aislado) esperando que Microsoft.EntityFrameworkCore.SqlServer/Npgsql estén
+         físicamente al lado, mismo motivo que Modulo.Rendiciones.csproj. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Permite a Modulo.Wms.Tests ejercer EjecutarCicloAsync (internal) de
+         WmsSlshStageParser a través de un contenedor DI real, necesario para poder
+         probar el bug de scoping/ICurrentCompanyOverride: un test que instancia
+         WmsDbContext directo (bypasseando la fábrica de ModuloWms.RegisterServices)
+         nunca lo detecta. Mismo criterio ya usado en PortalSaas.Integrations.csproj. -->
+    <InternalsVisibleTo Include="Modulo.Wms.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- REGLA DURA (ver docs/09-GUIA-DESARROLLO-PLUGINS.md §1 del portal): un plugin
+         referencia SOLO PortalSaas.Abstractions. Nunca PortalSaas.Core ni PortalSaas.Host.
+
+         TEMPORAL: ProjectReference relativa cruzando repos (asume que este repo y
+         "Portal SaaS - Core" viven como carpetas hermanas bajo
+         "Proyecto Portal Web-Company"), mismo criterio ya documentado en
+         Modulo.Rendiciones.csproj , reemplazar por PackageReference NuGet apenas ese
+         paquete exista (ver ARQUITECTURA.md de este repo, "Puntos abiertos").
+    -->
+    <ProjectReference Include="..\..\..\..\Portal SaaS - Core\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Base de datos propia del módulo, motor dual (Postgres/SQL Server), resuelta
+         self-service vía IExternalDatabaseConnectionService (PortalSaas.Abstractions)
+         , mismo patrón que Modulo.Rendiciones. Nunca fijar un solo proveedor en
+         tiempo de compilación (ver docs/09-GUIA-DESARROLLO-PLUGINS.md §1/§6). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+  </ItemGroup>
+
+  <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo, mismo
+       patrón que Modulo.Rendiciones , ver docs/09-GUIA-DESARROLLO-PLUGINS.md §7 del
+       portal para cómo llega de ahí a artifacts/plugins/ del Host. -->
+  <PropertyGroup>
+    <ModuloVersion>1.0.0</ModuloVersion>
+  </PropertyGroup>
+
+  <Target Name="PublicarComoPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <ArchivosDelModulo Include="$(OutputPath)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ArchivosDelModulo)"
+          DestinationFolder="..\..\dist\$(MSBuildProjectName)\$(ModuloVersion)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

@@ -1,0 +1,176 @@
+@page "/wms/transacciones"
+@model Modulo.Wms.Pages.Transacciones.IndexModel
+@using Modulo.Wms.Models
+@{
+    ViewData["Title"] = Model.TipoLabel;
+    var esProducto = Model.Tipo == WmsTipoTransaccion.EnvioProducto;
+}
+
+<style>
+    :root {
+        --wms-primary: #0d6efd; --wms-success: #198754; --wms-warning: #b3790a; --wms-danger: #dc3545;
+        --wms-muted: #6c757d; --wms-border: #dee2e6; --wms-tint: #f8f9fa;
+        --wms-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    }
+    .wms-subject-row .btn { border-radius: .5rem; }
+    .wms-pill { display: inline-flex; align-items: center; gap: .4rem; font-size: .75rem; font-weight: 600; padding: .2rem .55rem; border-radius: 999px; white-space: nowrap; }
+    .wms-pill .dot { width: .4rem; height: .4rem; border-radius: 50%; background: currentColor; }
+    .wms-pill.pendiente { color: var(--wms-warning); background: rgba(255, 193, 7, .2); }
+    .wms-pill.enviado { color: var(--wms-primary); background: rgba(13, 110, 253, .12); }
+    .wms-pill.procesadowms { color: var(--wms-success); background: rgba(25, 135, 84, .12); }
+    .wms-pill.errorwms { color: var(--wms-danger); background: rgba(220, 53, 69, .12); }
+    .wms-item-cell .code { font-family: var(--wms-mono); font-weight: 600; font-size: .85rem; }
+    .wms-item-cell .name { font-size: .78rem; color: var(--wms-muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wms-brand-tag { font-size: .7rem; font-weight: 700; letter-spacing: .02em; color: var(--wms-muted); background: var(--wms-tint); border: 1px solid var(--wms-border); padding: .1rem .4rem; border-radius: .3rem; }
+    .wms-barcode { font-family: var(--wms-mono); font-size: .8rem; color: var(--wms-muted); }
+    .wms-retry-badge { font-family: var(--wms-mono); font-size: .75rem; padding: .05rem .4rem; border-radius: .3rem; background: var(--wms-tint); }
+    .wms-retry-badge.hot { background: rgba(255, 193, 7, .25); color: var(--wms-warning); font-weight: 700; }
+    tr.wms-row-error td:first-child { box-shadow: inset 3px 0 0 var(--wms-danger); }
+    tr.wms-row-pending td:first-child { box-shadow: inset 3px 0 0 var(--wms-warning); }
+    .table-tabular td, .table-tabular th { font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h3 mb-0">Envío SAP &rarr; WMS</h1>
+    <a class="btn btn-sm btn-outline-secondary" asp-page="/Confirmaciones/Index">Ver Confirmación WMS &rarr; SAP &rarr;</a>
+</div>
+
+<div class="btn-group wms-subject-row mb-3">
+    <a class="btn btn-sm @(Model.Tipo == WmsTipoTransaccion.EnvioProducto ? "btn-primary" : "btn-outline-secondary")" asp-route-Tipo="EnvioProducto">Productos</a>
+    <a class="btn btn-sm @(Model.Tipo == WmsTipoTransaccion.EnvioSucursal ? "btn-primary" : "btn-outline-secondary")" asp-route-Tipo="EnvioSucursal">Sucursales</a>
+    <a class="btn btn-sm @(Model.Tipo == WmsTipoTransaccion.EnvioOrdenes ? "btn-primary" : "btn-outline-secondary")" asp-route-Tipo="EnvioOrdenes">Órdenes</a>
+    <a class="btn btn-sm @(Model.Tipo == WmsTipoTransaccion.EnvioIngresoAsn ? "btn-primary" : "btn-outline-secondary")" asp-route-Tipo="EnvioIngresoAsn">Ingresos ASN</a>
+</div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success py-2">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger py-2">@Model.ErrorMessage</div>
+}
+
+<form method="get" class="card mb-3">
+    <div class="card-body d-flex flex-wrap align-items-end gap-3 py-3">
+        <input type="hidden" name="Tipo" value="@((int)Model.Tipo)" />
+        <div>
+            <label class="form-label small text-muted mb-1">Estado</label>
+            <select name="Estado" class="form-select form-select-sm">
+                <option value="">Todos</option>
+                @foreach (var estado in new[] { "Pendiente", "Enviado", "ProcesadoWms", "ErrorWms" })
+                {
+                    <option value="@estado" selected="@(Model.Estado == estado ? "selected" : null)">@estado</option>
+                }
+            </select>
+        </div>
+        <div class="flex-grow-1" style="min-width: 220px;">
+            <label class="form-label small text-muted mb-1">@(esProducto ? "Código / nombre / marca" : "Documento")</label>
+            <input type="text" name="Documento" value="@Model.Documento" class="form-control form-control-sm" placeholder="Buscar..." />
+        </div>
+        <div>
+            <label class="form-label small text-muted mb-1">Desde</label>
+            <input type="date" name="Desde" value="@(Model.Desde?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
+        </div>
+        <div>
+            <label class="form-label small text-muted mb-1">Hasta</label>
+            <input type="date" name="Hasta" value="@(Model.Hasta?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary">Buscar</button>
+        <a class="btn btn-sm btn-outline-secondary" asp-route-Tipo="@Model.Tipo">Limpiar</a>
+    </div>
+</form>
+
+<form method="post" asp-page-handler="Resetear">
+    <input type="hidden" name="tipo" value="@((int)Model.Tipo)" />
+    <div class="card">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+            <span class="small text-muted"><strong>@Model.Resultado.TotalCount.ToString("N0")</strong> registro(s) encontrado(s)</span>
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Resetear seleccionados a Pendiente</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-tabular mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 2rem;"></th>
+                        @if (esProducto)
+                        {
+                            <th>Producto</th>
+                            <th>Marca</th>
+                            <th>Código barra</th>
+                        }
+                        else
+                        {
+                            <th>Documento</th>
+                        }
+                        <th>Estado</th>
+                        <th class="text-end">Reintentos</th>
+                        <th>Error</th>
+                        <th>Creado</th>
+                        <th>Sincronizado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var fila in Model.Resultado.Items)
+                {
+                    var esError = fila.Status == "ErrorWms";
+                    var esPendienteCritico = fila.RetryCount >= 15;
+                    <tr class="@(esError ? "wms-row-error" : esPendienteCritico ? "wms-row-pending" : null)">
+                        <td><input type="checkbox" name="lineIds" value="@fila.LineId" /></td>
+                        @if (esProducto)
+                        {
+                            <td>
+                                <div class="wms-item-cell">
+                                    <div class="code">@fila.Documento</div>
+                                    @if (!string.IsNullOrEmpty(fila.ItemName))
+                                    {
+                                        <div class="name" title="@fila.ItemName">@fila.ItemName</div>
+                                    }
+                                </div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(fila.Marca))
+                                {
+                                    <span class="wms-brand-tag">@fila.Marca</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">&mdash;</span>
+                                }
+                            </td>
+                            <td><span class="wms-barcode">@(fila.BarCode ?? "—")</span></td>
+                        }
+                        else
+                        {
+                            <td>@fila.Documento</td>
+                        }
+                        <td><span class="wms-pill @(fila.Status.ToLowerInvariant())"><span class="dot"></span>@fila.Status</span></td>
+                        <td class="text-end">
+                            <span class="wms-retry-badge @(esPendienteCritico ? "hot" : null)">@fila.RetryCount/20</span>
+                        </td>
+                        <td class="small @(esError ? "text-danger" : "text-muted")" style="max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@fila.ErrorMsg">@(fila.ErrorMsg ?? "—")</td>
+                        <td class="small">@fila.CreatedAt.ToLocalTime().ToString("dd-MM HH:mm")</td>
+                        <td class="small">@(fila.SyncedAt?.ToLocalTime().ToString("dd-MM HH:mm") ?? "—")</td>
+                    </tr>
+                }
+                @if (Model.Resultado.Items.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-center text-muted py-4">Sin registros para los filtros seleccionados.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+
+@if (Model.Resultado.TotalPages > 1)
+{
+    <nav class="mt-3">
+        @for (var p = 1; p <= Model.Resultado.TotalPages; p++)
+        {
+            <a class="btn btn-sm @(p == Model.Resultado.Page ? "btn-primary" : "btn-outline-secondary")"
+               asp-route-Tipo="@Model.Tipo" asp-route-Page="@p" asp-route-Estado="@Model.Estado" asp-route-Documento="@Model.Documento"
+               asp-route-Desde="@(Model.Desde?.ToString("yyyy-MM-dd"))" asp-route-Hasta="@(Model.Hasta?.ToString("yyyy-MM-dd"))">@p</a>
+        }
+    </nav>
+}

@@ -1,0 +1,48 @@
+@page "{id:long}"
+@model PortalSaas.Host.Pages.Admin.Profiles.EditModel
+@{
+    ViewData["Title"] = "Editar perfil";
+}
+
+<div class="card-surface mb-4">
+    <h2 class="h5 mb-3">Editar perfil</h2>
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <input type="hidden" asp-for="Input.Id" />
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label asp-for="Input.Name" class="form-label"></label>
+                <input asp-for="Input.Name" class="form-control" autofocus />
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-8">
+                <label asp-for="Input.Description" class="form-label"></label>
+                <input asp-for="Input.Description" class="form-control" />
+                <span asp-validation-for="Input.Description" class="text-danger"></span>
+            </div>
+        </div>
+
+        <span class="doc-resumen-total-titulo mt-3 d-block">Acciones incluidas</span>
+        <div class="menu-perfil-panel">
+            @foreach (var action in Model.AllActions)
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="Input.SelectedActionIds" value="@action.Id"
+                           id="action-@action.Id" checked="@Model.Input.SelectedActionIds.Contains(action.Id)" />
+                    <label class="form-check-label" for="action-@action.Id">@action.Name (@action.Code)</label>
+                </div>
+            }
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <a asp-page="/Admin/Profiles/Index" class="btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

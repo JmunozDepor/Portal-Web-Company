@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    # windows-latest, no ubuntu -- PortalSaas.Core/Host/Tests fijan PlatformTarget=x64
+    # por el cliente nativo de HANA (Lib/Sap.Data.Hana.Net.v8.0.dll), que solo carga en
+    # Windows. No se ejecuta ningún test contra HANA/SQL Server real en este workflow --
+    # solo build + los tests unitarios (EF Core InMemory, sin dependencia de red).
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restaurar
+        run: dotnet restore PortalSaas.sln
+
+      - name: Compilar
+        run: dotnet build PortalSaas.sln --no-restore --configuration Release
+
+      - name: Ejecutar tests
+        run: dotnet test tests/PortalSaas.Core.Tests/PortalSaas.Core.Tests.csproj --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Publicar resultados de tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/PortalSaas.Core.Tests/TestResults/test-results.trx

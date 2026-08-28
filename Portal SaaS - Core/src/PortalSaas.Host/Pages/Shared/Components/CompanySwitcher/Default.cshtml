@@ -1,0 +1,44 @@
+@model PortalSaas.Host.ViewComponents.CompanySwitcherViewModel
+@if (Model.Companies.Count > 0)
+{
+    @* asp-page dispara la inyección automática del antiforgery token (FormTagHelper) --
+       igual criterio que SelectCompany.cshtml, ver su comentario histórico. El submit es
+       automático al elegir (onchange), no hace falta botón "Continuar" acá: es un
+       cambio rápido desde cualquier página, no un paso de login. *@
+    <form method="post" asp-page="/Account/SwitchCompany" class="company-switcher">
+        @* Request.PathBase + Request.Path, no Request.Path solo -- hosteado como
+           subaplicación de IIS (ej. /portalsaas-comercialdepor), Request.Path YA viene
+           sin ese prefijo; omitirlo genera un returnUrl que cae fuera de la app (404
+           real de IIS al cambiar de compañía). Mismo criterio ya aplicado en
+           DetailUrl/CreateUrl/BackUrl de los 3 motores genéricos de documento. *@
+        <input type="hidden" name="returnUrl" value="@(Context.Request.PathBase + Context.Request.Path + Context.Request.QueryString)" />
+        <label for="company-switcher-select" class="company-switcher-label">Compañía</label>
+        @* <option> armadas a mano, NO asp-items -- más transparente que confiar en cómo
+           el SelectTagHelper infiere "selected" sin asp-for.
+           Bug real (2026-08-08): la comparación de acá era "==" (ordinal case-sensitive)
+           entre item.Value (CompanySwitcherViewComponent arma la lista con
+           c.Id.ToString(), que EF Core traduce a CONVERT(varchar(36), [c].[id]) DEL LADO
+           DE SQL SERVER -- eso devuelve el GUID en MAYÚSCULAS) y Model.CurrentCompanyId
+           (el claim CompanyId, armado en C# con company.Id.ToString() en
+           CompanySessionActivator -- eso devuelve minúsculas). Ningún item empataba
+           nunca -> ningún <option> quedaba "selected" -> el navegador mostraba la
+           primera opción de la lista por default (comportamiento nativo del <select>
+           sin ninguna opción marcada), no la compañía real de la sesión (que sí estaba
+           bien resuelta -- el subtítulo "Portal SaaS / CÓDIGO", que compara distinto,
+           mostraba el valor correcto). OrdinalIgnoreCase evita depender de que las dos
+           fuentes generen el mismo casing. *@
+        <select id="company-switcher-select" name="companyId" class="form-select form-select-sm" onchange="this.form.submit()">
+            @foreach (var item in Model.Companies)
+            {
+                if (string.Equals(item.Value, Model.CurrentCompanyId, StringComparison.OrdinalIgnoreCase))
+                {
+                    <option value="@item.Value" selected="selected">@item.Text</option>
+                }
+                else
+                {
+                    <option value="@item.Value">@item.Text</option>
+                }
+            }
+        </select>
+    </form>
+}

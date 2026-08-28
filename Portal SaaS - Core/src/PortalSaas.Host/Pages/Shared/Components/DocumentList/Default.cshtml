@@ -1,0 +1,174 @@
+@model PortalSaas.Abstractions.Componentes.DocumentListViewModel
+@using PortalSaas.Abstractions.Componentes
+@{
+    // La variable local se llama "pageNumber" (no "page") por dos razones distintas,
+    // ambas reales: (1) Razor interpreta el token literal @page como la directiva de
+    // página apenas lo ve en modo expresión dentro de markup, aunque sea solo el
+    // nombre de una variable (bug real encontrado al compilar esta vista). (2) la
+    // QUERY KEY que se genera acá ("pageNumber=", no "page=") también tiene que
+    // coincidir con [BindProperty(Name = "pageNumber")] de IndexGeneric*ModelBase --
+    // "page" colisiona con una route-value RESERVADA de Razor Pages (registra qué
+    // .cshtml resolvió la ruta) que le gana al query string en el
+    // CompositeValueProvider, dejando el binding siempre en 1 sin ninguna excepción
+    // visible (bug real confirmado con una app Razor Pages mínima aislada).
+    string BuildPageUrl(int pageNumber)
+    {
+        var query = Context.Request.Query
+            .Where(kv => !string.Equals(kv.Key, "pageNumber", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(kv => kv.Value.Select(v => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(v ?? string.Empty)}"))
+            .ToList();
+        query.Add($"pageNumber={pageNumber}");
+        // PathBase + Path, no Path solo -- hosteado como subaplicación de IIS (ej.
+        // /portalsaas-comercialdepor), Path YA viene sin ese prefijo (mismo bug ya
+        // corregido en CompanySwitcher/Default.cshtml y los *GenericDocumentModelBase).
+        return Context.Request.PathBase + Context.Request.Path + "?" + string.Join("&", query);
+    }
+}
+
+@* Todo el listado (título + filtro + tabla + paginación) es UNA sola tarjeta -- portado
+   de referencia-original/PortalSAP_v2 (<div class="card-ps doc-list">), no piezas
+   sueltas flotando sobre el fondo de página. *@
+<div class="card-ps doc-list">
+    <div class="doc-list-header">
+        <h2 class="h4 mb-0">@Model.Title</h2>
+        @if (Model.CreateUrl is not null)
+        {
+            <a href="@Model.CreateUrl" class="btn btn-primary">Nuevo</a>
+        }
+        else if (Model.CreateDisabledTitle is not null)
+        {
+            <button type="button" class="btn btn-secondary" disabled title="@Model.CreateDisabledTitle">@Model.CreateDisabledTitle</button>
+        }
+    </div>
+
+    @if (Model.ShowFreeTextSearch || Model.Filters.Count > 0 || Model.ShowPaging)
+    {
+        <form method="get" class="filter-card">
+            @if (Model.ShowFreeTextSearch)
+            {
+                <div class="col-auto">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" name="q" value="@Model.SearchText" class="form-control" />
+                </div>
+            }
+            @foreach (var filter in Model.Filters)
+            {
+                <div class="col-auto">
+                    <label class="form-label">@filter.Label</label>
+                    @switch (filter.FieldType)
+                    {
+                        case FilterFieldType.Date:
+                            <input type="date" name="@filter.Name" value="@filter.Value" class="form-control" />
+                            break;
+                        case FilterFieldType.Number:
+                            <input type="number" name="@filter.Name" value="@filter.Value" class="form-control" />
+                            break;
+                        case FilterFieldType.Select:
+                            <select name="@filter.Name" class="form-select">
+                                <option value="">Todos</option>
+                                @foreach (var option in filter.Options ?? [])
+                                {
+                                    <option value="@option.Value" selected="@(option.Value == filter.Value)">@option.Label</option>
+                                }
+                            </select>
+                            break;
+                        default:
+                            <input type="text" name="@filter.Name" value="@filter.Value" class="form-control" />
+                            break;
+                    }
+                </div>
+            }
+            @if (Model.ShowPaging)
+            {
+                <div class="col-auto">
+                    <label class="form-label">Mostrar</label>
+                    <select name="pageSize" class="form-select" onchange="this.form.submit()">
+                        @foreach (var size in DocumentListViewModel.AvailablePageSizes)
+                        {
+                            <option value="@size" selected="@(size == Model.PageSize)">@size</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+        </form>
+    }
+
+    @* Contador entre el filtro y la tabla -- portado de .doc-list-contador, arriba de
+       la grilla, no debajo. Oculto sin ninguna búsqueda ejecutada todavía (ver
+       HasSearched) -- "0 registros" ahí confundiría con un resultado real vacío. *@
+    @if (Model.HasSearched)
+    {
+        <div class="doc-list-contador">
+            @if (Model.ShowPaging)
+            {
+                @($"{Model.TotalRecords} registro(s) -- página {Model.CurrentPage} de {Model.TotalPages}")
+            }
+            else
+            {
+                @($"{Model.Rows.Count} registro(s)")
+            }
+        </div>
+    }
+
+    <div class="document-list-table-wrapper">
+        @* line-items-table reusa el mismo header mudo/mayúscula que la referencia usa
+           para .admin-table Y .doc-list-tabla -- son la misma clase base ahí, no dos
+           tratamientos visuales distintos. *@
+        <table class="table table-striped document-list-table line-items-table">
+            <thead>
+                <tr>
+                    @foreach (var column in Model.Columns)
+                    {
+                        <th class="@(column.AlignRight ? "text-end" : "")">@column.Title</th>
+                    }
+                    <th class="doc-list-col-detalle"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.HasSearched)
+                {
+                    @* Sin ninguna consulta ejecutada todavía -- ver HasSearched. Evita pagar
+                       el costo de una consulta remota (HANA/SQL Server del cliente) con solo
+                       abrir el módulo, sobre todo bajo conexión de mala calidad. *@
+                    <tr><td colspan="@(Model.Columns.Count + 1)" class="text-muted">Ajustá los filtros y presioná "Filtrar" para buscar.</td></tr>
+                }
+                else
+                {
+                    @foreach (var row in Model.Rows)
+                    {
+                        @* Fila clicable completa (doc-list.js), no solo la primera celda --
+                           portado de .doc-list-fila/data-url-detalle. *@
+                        <tr class="doc-list-fila" data-url-detalle="@row.DetailUrl">
+                            @for (var i = 0; i < row.Cells.Count; i++)
+                            {
+                                var alignRight = i < Model.Columns.Count && Model.Columns[i].AlignRight;
+                                <td class="@(alignRight ? "text-end" : "")">@row.Cells[i]</td>
+                            }
+                            <td class="doc-list-col-detalle"><a href="@row.DetailUrl"><i class="bi bi-chevron-right"></i></a></td>
+                        </tr>
+                    }
+                    @if (Model.Rows.Count == 0)
+                    {
+                        <tr><td colspan="@(Model.Columns.Count + 1)" class="text-muted">No hay documentos para mostrar.</td></tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* Anterior/Siguiente + contador de página -- portado de .doc-list-paginacion, no un
+       paginador numerado plano. Oculto sin búsqueda ejecutada (ver HasSearched). *@
+    @if (Model.HasSearched && Model.ShowPaging && Model.TotalPages > 1)
+    {
+        <div class="doc-list-paginacion">
+            <a class="btn-module-action @(Model.CurrentPage <= 1 ? "disabled" : "")"
+               href="@(Model.CurrentPage <= 1 ? "#" : BuildPageUrl(Model.CurrentPage - 1))">« Anterior</a>
+            <span>Página @Model.CurrentPage de @Model.TotalPages</span>
+            <a class="btn-module-action @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")"
+               href="@(Model.CurrentPage >= Model.TotalPages ? "#" : BuildPageUrl(Model.CurrentPage + 1))">Siguiente »</a>
+        </div>
+    }
+</div>

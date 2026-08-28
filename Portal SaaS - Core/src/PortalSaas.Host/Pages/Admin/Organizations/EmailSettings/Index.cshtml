@@ -1,0 +1,117 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.EmailSettings.IndexModel
+@{
+    ViewData["Title"] = $"Correo · {Model.Organization.LegalName}";
+}
+
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "EmailSettings" })" />
+
+@if (!Model.EsNuevo)
+{
+    <p class="text-muted">
+        Ya hay un proveedor configurado. El correo de la cuenta de servicio (Google) y
+        el Tenant Id / Client Id (Microsoft 365) se muestran prellenados. La clave
+        privada (PEM) y el Client Secret nunca se muestran (write-only): dejalos en
+        blanco para conservar los guardados, o ingresá uno nuevo para reemplazar la
+        configuración cifrada.
+    </p>
+}
+else
+{
+    <p class="text-muted">Esta organización todavía no tiene un proveedor de correo configurado.</p>
+}
+
+@if (Model.TestResultMessage is not null)
+{
+    <div class="admin-alert @(Model.TestResultOk ? "admin-alert-success" : "admin-alert-danger")" style="max-width: 640px;">
+        @Model.TestResultMessage
+    </div>
+}
+
+@* asp-antiforgery="true" explícito -- un <form method="post"> sin ningún otro
+   atributo asp-* no dispara la inyección automática del token del
+   FormTagHelper (mismo bug encontrado y corregido en SelectCompany.cshtml,
+   ver CLAUDE.md "sidebar dinámico"). *@
+<form method="post" asp-antiforgery="true" style="max-width: 640px;">
+    <div class="mb-3">
+        <label asp-for="Input.Provider" class="form-label"></label>
+        <select asp-for="Input.Provider" class="form-select">
+            @foreach (var provider in Model.Providers)
+            {
+                <option value="@provider">@provider</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.SenderEmail" class="form-label"></label>
+        <input asp-for="Input.SenderEmail" class="form-control" />
+        <span asp-validation-for="Input.SenderEmail" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.SenderDisplayName" class="form-label"></label>
+        <input asp-for="Input.SenderDisplayName" class="form-control" />
+    </div>
+
+    <div class="form-check mb-4">
+        <input asp-for="Input.IsActive" class="form-check-input" />
+        <label asp-for="Input.IsActive" class="form-check-label"></label>
+    </div>
+
+    <fieldset class="border rounded p-3 mb-3">
+        <legend class="h6">Google Workspace</legend>
+        <div class="mb-3">
+            <label asp-for="Input.ClientEmail" class="form-label"></label>
+            <input asp-for="Input.ClientEmail" class="form-control" placeholder="ej. portalsaas@mi-proyecto.iam.gserviceaccount.com" />
+            <span asp-validation-for="Input.ClientEmail" class="text-danger"></span>
+        </div>
+        <div class="mb-1">
+            <label asp-for="Input.PrivateKeyPem" class="form-label"></label>
+            <textarea asp-for="Input.PrivateKeyPem" class="form-control" rows="6" placeholder="-----BEGIN PRIVATE KEY-----..."></textarea>
+            <div class="form-text">
+                Pegá el PEM completo. Si lo copiás directo del campo <code>private_key</code> del
+                .json de la cuenta de servicio (con <code>\n</code> en vez de saltos de línea reales),
+                también funciona -- se normaliza solo.
+            </div>
+            <span asp-validation-for="Input.PrivateKeyPem" class="text-danger"></span>
+        </div>
+    </fieldset>
+
+    <fieldset class="border rounded p-3 mb-4">
+        <legend class="h6">Microsoft 365</legend>
+        <div class="mb-3">
+            <label asp-for="Input.TenantId" class="form-label"></label>
+            <input asp-for="Input.TenantId" class="form-control" />
+            <span asp-validation-for="Input.TenantId" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Input.ClientId" class="form-label"></label>
+            <input asp-for="Input.ClientId" class="form-control" />
+            <span asp-validation-for="Input.ClientId" class="text-danger"></span>
+        </div>
+        <div class="mb-1">
+            <label asp-for="Input.ClientSecret" class="form-label"></label>
+            <input asp-for="Input.ClientSecret" class="form-control" />
+            <span asp-validation-for="Input.ClientSecret" class="text-danger"></span>
+        </div>
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+</form>
+
+@if (!Model.EsNuevo)
+{
+    <form method="post" asp-page-handler="Test" asp-antiforgery="true" style="max-width: 640px; margin-top: 12px;">
+        <button type="submit" class="btn btn-outline-secondary">
+            <i class="bi bi-envelope-check"></i> Enviar correo de prueba
+        </button>
+        <span class="text-muted" style="font-size: 12.5px; margin-left: 8px;">
+            Manda un correo real a tu casilla (@User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value) usando la config guardada.
+        </span>
+    </form>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

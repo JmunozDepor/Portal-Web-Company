@@ -1,0 +1,51 @@
+@page
+@model PortalSaas.Host.Pages.Admin.Profiles.IndexModel
+@{
+    ViewData["Title"] = "Perfiles";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Perfiles</h1>
+    <a asp-page="/Admin/Profiles/Create" class="btn btn-primary">Nuevo perfil</a>
+</div>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Acciones asignadas</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var profile in Model.Profiles)
+        {
+            <tr>
+                <td>@profile.Name</td>
+                <td>@profile.Description</td>
+                <td>@profile.ProfileActions.Count</td>
+                <td>
+                    <a asp-page="/Admin/Profiles/Edit" asp-route-id="@profile.Id">Editar</a>
+                    ·
+                    <form asp-page="./Index" asp-page-handler="Delete" asp-route-id="@profile.Id" method="post" style="display:inline"
+                          onsubmit="return confirm('¿Eliminar el perfil @profile.Name?');">
+                        <button type="submit" class="btn btn-link text-danger p-0">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+</div>
+
+@if (Model.Profiles.Count == 0)
+{
+    <p class="text-muted">Todavía no hay perfiles.</p>
+}

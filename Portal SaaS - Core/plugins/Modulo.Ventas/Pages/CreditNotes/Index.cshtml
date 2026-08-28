@@ -1,0 +1,7 @@
+@page "/ventas/notas-credito"
+@model Modulo.Ventas.Pages.CreditNotes.IndexModel
+@{
+    ViewData["Title"] = "Notas de Crédito";
+}
+
+@await Component.InvokeAsync("DocumentList", Model.Listado)

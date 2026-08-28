@@ -1,0 +1,166 @@
+/* ==========================================================================
+   design-tokens.css -- ÚNICA FUENTE DE VERDAD de color/tipografía/radio/sombra/
+   transición de todo el portal (core + todos los módulos, internos o externos).
+
+   REGLA DURA DE GOBERNANZA (2026-08-17): ningún archivo CSS de módulo
+   (rendiciones.css, admin.css, etc.) puede declarar un color/radio/sombra/
+   transición propios -- todo se consume vía var(--token) definido acá. Ver
+   Views/Shared/_LayoutMaestro.cshtml para el resto de las reglas duras de UI.
+
+   Extraído tal cual de site.css (26/27 jul 2026, "Auditoría de paridad visual
+   completa" + "Rediseño visual con valores reales extraídos de PortalSAP_v2") --
+   esto es una REUBICACIÓN de bloque, no una reescritura de valores. site.css
+   importa este archivo como primera línea; no duplica ninguno de estos tokens. */
+
+/* "claro" (Light) -- tema por defecto. */
+:root,
+[data-theme="claro"] {
+  --bs-body-bg: #e4e7ec;
+  --bs-body-color: #1a1a1a;
+  --card-bg: #ffffff;
+  --card-border: #cbd1db;
+  --text-main: #1a1a1a;
+  --text-muted: #6b7280;
+  --bs-primary: #2c5282;
+  --bs-primary-rgb: 44, 82, 130;
+  --accent: #2c5282;
+  --accent-rgb: 44, 82, 130;
+  --accent-2: #1e3a5f;
+  --accent-soft: #e8f0fb;
+  --bs-success: #2d7d4e;
+  --bs-success-rgb: 45, 125, 78;
+  --bs-danger: #c0392b;
+  --bs-danger-rgb: 192, 57, 43;
+  --bs-warning: #d4880e;
+  --bs-warning-rgb: 212, 136, 14;
+  --input-bg: #ffffff;
+  --shadow-card: 0 24px 60px -28px rgba(30, 58, 95, 0.25);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #0f9b8e;
+  --menu-color-3: #7c3aed;
+  --menu-color-4: #d97706;
+  --menu-color-5: #db2777;
+  --menu-color-6: #16a34a;
+}
+
+/* "oscuro" (Dark). */
+[data-theme="oscuro"] {
+  --bs-body-bg: #111827;
+  --bs-body-color: #f3f4f6;
+  --card-bg: #1f2937;
+  --card-border: #4b5563;
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --bs-primary: #3b82f6;
+  --bs-primary-rgb: 59, 130, 246;
+  --accent: #3b82f6;
+  --accent-rgb: 59, 130, 246;
+  --accent-2: #2563eb;
+  --accent-soft: #93c5fd;
+  --bs-success: #34d399;
+  --bs-success-rgb: 52, 211, 153;
+  --bs-danger: #f87171;
+  --bs-danger-rgb: 248, 113, 113;
+  --bs-warning: #fbbf24;
+  --bs-warning-rgb: 251, 191, 36;
+  --input-bg: #374151;
+  --shadow-card: 0 24px 70px -24px rgba(0, 0, 0, 0.75);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #2dd4bf;
+  --menu-color-3: #a78bfa;
+  --menu-color-4: #fbbf24;
+  --menu-color-5: #f472b6;
+  --menu-color-6: #4ade80;
+}
+
+/* "teal" (Ocean). */
+[data-theme="teal"] {
+  --bs-body-bg: #ddeef8;
+  --bs-body-color: #0a2a3c;
+  --card-bg: #f4f9fd;
+  --card-border: #a8d4e8;
+  --text-main: #0a2a3c;
+  --text-muted: #5c7a8a;
+  --bs-primary: #0096c7;
+  --bs-primary-rgb: 0, 150, 199;
+  --accent: #0096c7;
+  --accent-rgb: 0, 150, 199;
+  --accent-2: #0077b6;
+  --accent-soft: #caf0f8;
+  --bs-success: #2a9d8f;
+  --bs-success-rgb: 42, 157, 143;
+  --bs-danger: #c0392b;
+  --bs-danger-rgb: 192, 57, 43;
+  --bs-warning: #e76f51;
+  --bs-warning-rgb: 231, 111, 81;
+  --input-bg: #ffffff;
+  --shadow-card: 0 24px 60px -28px rgba(10, 74, 110, 0.2);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #2a9d8f;
+  --menu-color-3: #7c3aed;
+  --menu-color-4: #e76f51;
+  --menu-color-5: #e63946;
+  --menu-color-6: #3a86ff;
+}
+
+/* "violeta" (Violet). */
+[data-theme="violeta"] {
+  --bs-body-bg: #ede9fe;
+  --bs-body-color: #1e1b4b;
+  --card-bg: #ffffff;
+  --card-border: #ddd6fe;
+  --text-main: #1e1b4b;
+  --text-muted: #7c70a0;
+  --bs-primary: #7c3aed;
+  --bs-primary-rgb: 124, 58, 237;
+  --accent: #7c3aed;
+  --accent-rgb: 124, 58, 237;
+  --accent-2: #6d28d9;
+  --accent-soft: #ede9fe;
+  --bs-success: #059669;
+  --bs-success-rgb: 5, 150, 105;
+  --bs-danger: #dc2626;
+  --bs-danger-rgb: 220, 38, 38;
+  --bs-warning: #d97706;
+  --bs-warning-rgb: 217, 119, 6;
+  --input-bg: #faf8ff;
+  --shadow-card: 0 24px 60px -28px rgba(30, 27, 75, 0.2);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #0891b2;
+  --menu-color-3: #db2777;
+  --menu-color-4: #d97706;
+  --menu-color-5: #059669;
+  --menu-color-6: #4f46e5;
+}
+
+:root {
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Code", "Consolas", monospace;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* Transiciones estandarizadas (regla dura 2026-08-17) -- hover, tooltips y
+     apertura de drawers/paneles deslizantes usan EXCLUSIVAMENTE estas dos
+     variables, nunca un valor de tiempo propio por componente. */
+  --transition-fast: 150ms;
+  --drawer-transition: 300ms;
+
+  /* Swatches del selector de tema (.theme-row en _LayoutMaestro.cshtml). */
+  --theme-preview-claro: #2c5282;
+  --theme-preview-oscuro: #111827;
+  --theme-preview-teal: #0096c7;
+  --theme-preview-violeta: #7c3aed;
+
+  /* Rail del sidebar principal (Nivel 1) -- 64px fijo, regla dura de layout. */
+  --rail-width: 64px;
+  --sidebar-width: 250px;
+}

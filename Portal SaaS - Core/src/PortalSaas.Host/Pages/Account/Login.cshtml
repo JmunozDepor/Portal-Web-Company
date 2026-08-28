@@ -1,0 +1,137 @@
+@page
+@model PortalSaas.Host.Pages.Account.LoginModel
+@{
+    // Layout = null -- pantalla propia de punta a punta (split-screen), no el shell de
+    // tenant/admin. Estructura portada de referencia-original/PortalSAP_v2
+    // (Pages/Login.cshtml + theme.css .login-*), branding genérico de la plataforma
+    // -- acá todavía no se conoce la organización (recién se resuelve por
+    // Input.OrganizationSlug al enviar el formulario), a diferencia del original
+    // (single-tenant, marca fija de un solo cliente).
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iniciar sesión — Portal SaaS</title>
+    <script>
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('ps-theme') || 'claro');
+    </script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    @* Fase 3 -- login consume el mismo sistema de tokens/componentes que el
+       resto del portal (regla dura de gobernanza), no valores propios. *@
+    <link rel="stylesheet" href="~/css/design-tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="login-bg">
+    <div class="login-brand-panel">
+        <div class="login-brand-mesh" aria-hidden="true"></div>
+        <div class="login-brand-glow" aria-hidden="true"></div>
+        <div class="login-brand-shine" aria-hidden="true"></div>
+        <div class="login-brand-grain" aria-hidden="true"></div>
+        <div class="login-brand-sheen" aria-hidden="true"></div>
+        <div class="login-brand">
+            <div class="login-brand-mark">PS</div>
+            <div class="login-brand-text">
+                <h1>Portal SaaS</h1>
+                <p>Plataforma multiempresa para SAP Business One</p>
+            </div>
+        </div>
+
+        <div class="login-pitch-wrap">
+            <div class="login-pitch">
+                <span class="login-pitch-eyebrow">Plataforma unificada</span>
+                <span class="login-pitch-rule" aria-hidden="true"></span>
+                <h2>Un portal, todas tus organizaciones conectadas a SAP</h2>
+                <p>Ventas, compras, logística e importación de datos en un solo lugar, con acceso independiente por organización y compañía.</p>
+                <div class="login-pitch-tags">
+                    <span>Ventas</span>
+                    <span>Compras</span>
+                    <span>Logística</span>
+                    <span>Multiempresa</span>
+                </div>
+            </div>
+        </div>
+
+        <p class="login-footer">&copy; @DateTime.Now.Year Portal SaaS — Acceso restringido a usuarios autorizados.</p>
+    </div>
+
+    <div class="login-form-panel">
+        <div class="login-shell">
+            <div class="login-card">
+                <h2>Iniciar sesión</h2>
+                <p class="login-subtitle">Ingresá los datos de tu organización para continuar.</p>
+
+                @if (Model.ErrorMessage is not null)
+                {
+                    <div class="login-error-banner">
+                        @Model.ErrorMessage
+                    </div>
+                }
+
+                <form method="post" asp-antiforgery="true">
+                    <input type="hidden" asp-for="Input.ReturnUrl" />
+
+                    @if (Model.OrganizationLocked)
+                    {
+                        @* Tenant:DefaultOrganizationSlug configurado (perfil OnPremise de una sola
+                           organización real) -- precargada y bloqueada, el usuario no tipea nada acá.
+                           disabled a propósito: LoginModel.AplicarOrganizacionBloqueadaSiCorresponde
+                           reaplica el valor real en el servidor en cada POST, así que un campo
+                           disabled (que nunca viaja en el submit) es más seguro que uno solo readonly. *@
+                        <div class="form-group mb-3">
+                            <label class="form-label">Organización</label>
+                            <input value="@Model.Input.OrganizationSlug" class="form-control" disabled />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="form-group mb-3">
+                            <label asp-for="Input.OrganizationSlug" class="form-label">Organización</label>
+                            <input asp-for="Input.OrganizationSlug" class="form-control" autocomplete="organization" autofocus />
+                            <span asp-validation-for="Input.OrganizationSlug" class="text-danger"></span>
+                        </div>
+                    }
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Input.EmailOrUsername" class="form-label">Usuario</label>
+                        @if (Model.OrganizationLocked)
+                        {
+                            <input asp-for="Input.EmailOrUsername" class="form-control" autocomplete="username" autofocus />
+                        }
+                        else
+                        {
+                            <input asp-for="Input.EmailOrUsername" class="form-control" autocomplete="username" />
+                        }
+                        <span asp-validation-for="Input.EmailOrUsername" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Input.Password" class="form-label">Contraseña</label>
+                        <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
+                        <span asp-validation-for="Input.Password" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="login-submit">Iniciar sesión</button>
+                </form>
+
+                <p class="text-center mt-3 mb-0">
+                    <a asp-page="/Account/ForgotPassword" style="font-size: 12.5px;">¿Olvidaste tu contraseña?</a>
+                </p>
+
+                <div class="theme-row justify-content-center">
+                    <button type="button" data-theme-switch="claro" title="Claro"></button>
+                    <button type="button" data-theme-switch="oscuro" title="Oscuro"></button>
+                    <button type="button" data-theme-switch="teal" title="Teal"></button>
+                    <button type="button" data-theme-switch="violeta" title="Violeta"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/js/theme-switcher.js" asp-append-version="true"></script>
+</body>
+</html>

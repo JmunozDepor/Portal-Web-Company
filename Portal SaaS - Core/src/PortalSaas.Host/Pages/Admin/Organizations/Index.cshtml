@@ -1,0 +1,207 @@
+@page
+@using PortalSaas.Data.Entities
+@model PortalSaas.Host.Pages.Admin.Organizations.IndexModel
+@{
+    ViewData["Title"] = "Organizaciones";
+
+    static string Initials(string legalName)
+    {
+        var parts = legalName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant(),
+        };
+    }
+
+    static (string Class, string Label) StatusInfo(string status) => status switch
+    {
+        OrganizationStatus.Active => ("status-pill--active", "Activa"),
+        OrganizationStatus.Trial => ("status-pill--trial", "Prueba"),
+        OrganizationStatus.Suspended => ("status-pill--suspended", "Suspendida"),
+        OrganizationStatus.Cancelled => ("status-pill--cancelled", "Cancelada"),
+        _ => ("status-pill--trial", status),
+    };
+}
+
+<div class="d-flex justify-content-between align-items-end mb-3">
+    <div>
+        <p class="page-eyebrow">Backoffice · Plataforma</p>
+        <h1 class="h3 mb-0">Organizaciones</h1>
+        <p class="page-subtitle">Cada fila es un cliente con su propio SAP Business One -- instancia, compañías, licencia y usuarios cuelgan de acá.</p>
+    </div>
+    <a asp-page="/Admin/Organizations/Create" class="btn btn-primary">Nueva organización</a>
+</div>
+
+<div class="kpi-row">
+    <div class="kpi-tile" style="--kpi-accent: var(--bs-primary);">
+        <p class="kpi-tile-label">Organizaciones</p>
+        <div class="kpi-tile-value">@Model.Organizations.Count</div>
+        <p class="kpi-tile-sub">@Model.CreatedThisMonthCount creada(s) este mes</p>
+    </div>
+    <div class="kpi-tile" style="--kpi-accent: var(--bs-success);">
+        <p class="kpi-tile-label">Activas</p>
+        <div class="kpi-tile-value">@Model.ActiveCount</div>
+        <p class="kpi-tile-sub">de @Model.Organizations.Count en total</p>
+    </div>
+    <div class="kpi-tile" style="--kpi-accent: var(--accent-2);">
+        <p class="kpi-tile-label">Modo de despliegue</p>
+        <div class="kpi-tile-value" style="font-size: 20px;">@Model.OnPremiseCount <span class="text-muted" style="font-weight: 500;">on-premise</span></div>
+        <p class="kpi-tile-sub">@Model.SaasCount en modo SaaS</p>
+    </div>
+    <div class="kpi-tile" style="--kpi-accent: @(Model.OrganizationsWithoutAccess.Count > 0 ? "var(--bs-danger)" : "var(--card-border)");">
+        <p class="kpi-tile-label">Sin licencia / suscripción</p>
+        <div class="kpi-tile-value">@Model.OrganizationsWithoutAccess.Count</div>
+        <p class="kpi-tile-sub">@(Model.OrganizationsWithoutAccess.Count == 0 ? "Todas con acceso cubierto" : "Revisar licencia o suscripción")</p>
+    </div>
+</div>
+
+<div class="filter-card">
+    <div class="col-auto" style="min-width: 260px;">
+        <label class="form-label" for="org-search">Buscar</label>
+        <input type="text" id="org-search" class="form-control" placeholder="Nombre legal o slug..." />
+    </div>
+    <div class="d-flex gap-2 flex-wrap" role="group" aria-label="Filtrar por modo/estado" id="org-mode-filter">
+        <button type="button" class="chip-filter active" data-filter="all">Todas</button>
+        <button type="button" class="chip-filter" data-filter="on_premise">On-premise</button>
+        <button type="button" class="chip-filter" data-filter="saas">SaaS</button>
+        <button type="button" class="chip-filter" data-filter="active">Activas</button>
+    </div>
+    <div class="ms-auto text-muted" style="font-size: 12.5px;" id="org-count">@Model.Organizations.Count organización(es)</div>
+</div>
+
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
+    <thead>
+        <tr>
+            <th>Organización</th>
+            <th>Modo</th>
+            <th>País</th>
+            <th>Estado</th>
+            <th>Creada</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var org in Model.Organizations)
+        {
+            var (statusClass, statusLabel) = StatusInfo(org.Status);
+            var isOnPremise = org.Mode == OrganizationMode.OnPremise;
+            <tr data-org-mode="@org.Mode" data-org-status="@org.Status" data-org-search="@($"{org.LegalName} {org.Slug}".ToLowerInvariant())">
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="row-avatar @(isOnPremise ? "row-avatar--onprem" : "row-avatar--saas")">
+                            @Initials(org.LegalName)
+                        </span>
+                        <div>
+                            <div class="fw-semibold">@org.LegalName</div>
+                            <div class="text-muted sap-code" style="font-size: 11.5px;">@org.Slug</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    @if (isOnPremise)
+                    {
+                        <span class="mode-pill mode-pill--onprem">On-premise</span>
+                    }
+                    else
+                    {
+                        <span class="mode-pill mode-pill--saas">SaaS</span>
+                    }
+                </td>
+                <td>@org.Country</td>
+                <td><span class="status-pill @statusClass">@statusLabel</span></td>
+                <td class="sap-code text-muted" style="font-size: 12.5px;">@org.CreatedAt.ToString("yyyy-MM-dd")</td>
+                <td>
+                    <div class="dropdown row-actions-menu text-end">
+                        <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Más acciones para @org.LegalName">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" asp-page="/Admin/Organizations/Edit" asp-route-id="@org.Id">Editar organización</a></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li><h6 class="dropdown-header">Recursos</h6></li>
+                            <li><a class="dropdown-item" asp-page="/Admin/Organizations/Users/Index" asp-route-organizationId="@org.Id">Usuarios</a></li>
+                            <li><a class="dropdown-item" asp-page="/Admin/Organizations/Instances/Index" asp-route-organizationId="@org.Id">Instancias</a></li>
+                            <li><a class="dropdown-item" asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@org.Id">Compañías</a></li>
+                            <li><a class="dropdown-item" asp-page="/Admin/Organizations/EmailSettings/Index" asp-route-organizationId="@org.Id">Correo</a></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li><h6 class="dropdown-header">Comercial</h6></li>
+                            <li><a class="dropdown-item" asp-page="/Admin/Organizations/Modules/Index" asp-route-organizationId="@org.Id">Módulos</a></li>
+                            <li><a class="dropdown-item" asp-page="/Admin/Organizations/DocumentPermissions/Index" asp-route-organizationId="@org.Id">Permisos de documentos</a></li>
+                            @if (isOnPremise)
+                            {
+                                <li><a class="dropdown-item" asp-page="/Admin/Organizations/Licenses/Index" asp-route-organizationId="@org.Id">Licencia</a></li>
+                            }
+                            else
+                            {
+                                <li><a class="dropdown-item" asp-page="/Admin/Organizations/Subscriptions/Index" asp-route-organizationId="@org.Id">Suscripción</a></li>
+                            }
+                        </ul>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+</div>
+
+@if (Model.Organizations.Count == 0)
+{
+    <p class="text-muted">Todavía no hay organizaciones.</p>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            var searchInput = document.getElementById('org-search');
+            var filterGroup = document.getElementById('org-mode-filter');
+            var countLabel = document.getElementById('org-count');
+            var rows = Array.prototype.slice.call(document.querySelectorAll('.document-list-table tbody tr'));
+            var activeFilter = 'all';
+
+            function applyFilters() {
+                var query = (searchInput.value || '').trim().toLowerCase();
+                var visible = 0;
+                rows.forEach(function (row) {
+                    var matchesSearch = !query || row.getAttribute('data-org-search').indexOf(query) !== -1;
+                    var mode = row.getAttribute('data-org-mode');
+                    var status = row.getAttribute('data-org-status');
+                    var matchesFilter =
+                        activeFilter === 'all' ||
+                        (activeFilter === 'active' && status === 'active') ||
+                        activeFilter === mode;
+                    var show = matchesSearch && matchesFilter;
+                    row.style.display = show ? '' : 'none';
+                    if (show) visible++;
+                });
+                countLabel.textContent = visible + ' organización(es)';
+            }
+
+            searchInput.addEventListener('input', applyFilters);
+            filterGroup.addEventListener('click', function (e) {
+                var btn = e.target.closest('button[data-filter]');
+                if (!btn) return;
+                filterGroup.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                activeFilter = btn.getAttribute('data-filter');
+                applyFilters();
+            });
+
+            // .document-list-table-wrapper tiene overflow:auto (scroll de tablas
+            // largas) -- por default el dropdown de Bootstrap se posiciona con
+            // Popper en modo "absolute", así que ese overflow lo recorta apenas la
+            // fila queda cerca del borde del wrapper (el menú se abre pero queda
+            // invisible/cortado). strategy:'fixed' saca el menú del flujo del
+            // wrapper -- ya no lo recorta ningún ancestro con scroll.
+            document.querySelectorAll('.row-actions-menu [data-bs-toggle="dropdown"]').forEach(function (toggle) {
+                bootstrap.Dropdown.getOrCreateInstance(toggle, {
+                    popperConfig: function (defaultConfig) {
+                        return Object.assign({}, defaultConfig, { strategy: 'fixed' });
+                    },
+                });
+            });
+        })();
+    </script>
+}

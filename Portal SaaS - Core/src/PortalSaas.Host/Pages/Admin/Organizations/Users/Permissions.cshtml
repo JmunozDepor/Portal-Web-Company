@@ -1,0 +1,109 @@
+@page "{organizationId:guid}/{userId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Users.PermissionsModel
+@{
+    ViewData["Title"] = $"Permisos · {Model.TargetUser.Username}";
+}
+
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "Users" })" />
+
+@if (!Model.TieneCompanies)
+{
+    <p class="text-warning">
+        Esta organización todavía no tiene ninguna compañía. Crea una
+        <a asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@Model.Organization.Id">acá</a>
+        antes de poder asignar permisos (UserMenuGroup/UserMenuProfile son siempre por compañía).
+    </p>
+    return;
+}
+
+<div class="card-surface mb-4">
+    <h2 class="h5 mb-3">Permisos de @Model.TargetUser.Username</h2>
+
+    <form method="get" class="filter-card">
+        <div class="col-auto">
+            <label class="form-label">Compañía</label>
+            <select name="companyId" class="form-select" onchange="this.form.submit()">
+                @foreach (var company in Model.Companies)
+                {
+                    <option value="@company.Value" selected="@(company.Value == Model.SelectedCompanyId.ToString())">@company.Text</option>
+                }
+            </select>
+        </div>
+    </form>
+
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <input type="hidden" asp-for="Input.CompanyId" />
+
+        <span class="doc-resumen-total-titulo d-block">Grupos de menú</span>
+        @if (Model.AllMenuGroups.Count == 0)
+        {
+            <p class="text-muted">Todavía no hay grupos de menú creados.</p>
+        }
+        else
+        {
+            <div class="menu-perfil-panel">
+                @foreach (var group in Model.AllMenuGroups)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="Input.SelectedMenuGroupIds" value="@group.Id"
+                               id="group-@group.Id" checked="@Model.Input.SelectedMenuGroupIds.Contains(group.Id)" />
+                        <label class="form-check-label" for="group-@group.Id">
+                            @group.Name
+                            @if (!group.IsActive)
+                            {
+                                <span class="badge bg-secondary doc-status-badge">inactivo</span>
+                            }
+                        </label>
+                    </div>
+                }
+            </div>
+        }
+
+        <span class="doc-resumen-total-titulo d-block mt-3">Perfil por nodo de menú (asignación manual)</span>
+        <p class="text-muted" style="font-size: 12.5px;">
+            Dejalo en "Heredar del grupo de menú" para que el usuario tome el Perfil por
+            defecto de los grupos a los que pertenece (ver arriba) -- elegí un Perfil acá
+            solo para darle a este usuario un acceso puntual DISTINTO del de su grupo. Para
+            deshacer una asignación manual anterior, volvé a poner "Heredar del grupo de
+            menú" y guardá -- borra la excepción, no le quita el grupo.
+        </p>
+        @if (Model.LeafMenus.Count == 0)
+        {
+            <p class="text-muted">Todavía no hay nodos de menú finales (no hay plugins cargados).</p>
+        }
+        else
+        {
+            <div class="document-list-table-wrapper">
+                <table class="table document-list-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Menú</th>
+                        <th>Perfil</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var menu in Model.LeafMenus)
+                    {
+                        var actual = Model.Input.ProfileByMenu.GetValueOrDefault(menu.Id);
+                        <tr>
+                            <td>@menu.Name <span class="text-muted">(@($"{menu.OriginModule}.{menu.Code}"))</span></td>
+                            <td>
+                                <select name="Input.ProfileByMenu[@menu.Id]" class="form-select form-select-sm">
+                                    <option value="" selected="@(actual is null or 0)">Heredar del grupo de menú</option>
+                                    @foreach (var profile in Model.ProfileOptions)
+                                    {
+                                        <option value="@profile.Value" selected="@(profile.Value == actual?.ToString())">@profile.Text</option>
+                                    }
+                                </select>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+        }
+
+        <button type="submit" class="btn-primary mt-4">Guardar</button>
+    </form>
+</div>

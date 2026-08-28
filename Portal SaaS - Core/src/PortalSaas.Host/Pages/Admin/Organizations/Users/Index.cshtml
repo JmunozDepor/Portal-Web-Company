@@ -1,0 +1,64 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Users.IndexModel
+@{
+    ViewData["Title"] = $"Usuarios · {Model.Organization.LegalName}";
+}
+
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "Users" })" />
+
+@if (Model.Message is not null)
+{
+    <div class="alert alert-info">@Model.Message</div>
+}
+
+<div class="d-flex justify-content-end mb-3">
+    <a asp-page="/Admin/Organizations/Users/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Nuevo usuario</a>
+</div>
+
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
+    <thead>
+        <tr>
+            <th>Usuario</th>
+            <th>Correo</th>
+            <th>Admin de la organización</th>
+            <th>Estado</th>
+            <th>Último acceso</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in Model.Users)
+        {
+            <tr>
+                <td>@user.Username</td>
+                <td>@user.Email</td>
+                <td>@(user.IsAdmin ? "Sí" : "No")</td>
+                <td>
+                    @if (!user.IsActive)
+                    {
+                        <span class="text-muted">Inactivo</span>
+                    }
+                    else if (user.IsLocked)
+                    {
+                        <span class="text-danger">Bloqueado</span>
+                    }
+                    else
+                    {
+                        <span class="text-success">Activo</span>
+                    }
+                </td>
+                <td>@(user.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Nunca")</td>
+                <td>
+                    <a asp-page="/Admin/Organizations/Users/Permissions" asp-route-organizationId="@Model.Organization.Id" asp-route-userId="@user.Id">Permisos</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+</div>
+
+@if (Model.Users.Count == 0)
+{
+    <p class="text-muted">Todavía no hay usuarios en esta organización.</p>
+}

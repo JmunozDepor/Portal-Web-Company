@@ -1,0 +1,7 @@
+@page "/ventas/ordenes"
+@model Modulo.Ventas.Pages.SalesOrders.IndexModel
+@{
+    ViewData["Title"] = "Órdenes de Venta";
+}
+
+@await Component.InvokeAsync("DocumentList", Model.Listado)

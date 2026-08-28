@@ -1,0 +1,53 @@
+# Postgres de PRUEBA y PRODUCTIVO -- 2 contenedores independientes en el servidor
+# cloud, separados por completo del SQL Server de SAP (sqlsap.cdepor.cl) -- esa base
+# NUNCA se toca, esto es solo la base propia de la plataforma PortalSaas.
+# La app (PortalSaas.Host) sigue corriendo en IIS, fuera de Docker -- ver
+# docs/10-DOCKER-POSTGRES-PRODUCCION.md.
+#
+# Credenciales SIEMPRE via .env.prod (nunca committeado, ver .env.prod.example).
+#
+# Uso:
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+services:
+  postgres-test:
+    image: postgres:16
+    container_name: portalsaas-saas-test-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TEST_POSTGRES_DB}
+      POSTGRES_USER: ${TEST_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD}
+    ports:
+      - "${TEST_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - portalsaas_saas_test_data:/var/lib/postgresql/data
+      # Mismo dump que productivo -- arrancan idénticos, después divergen.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER} -d ${TEST_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-prod:
+    image: postgres:16
+    container_name: portalsaas-saas-prod-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PROD_POSTGRES_DB}
+      POSTGRES_USER: ${PROD_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${PROD_POSTGRES_PASSWORD}
+    ports:
+      - "${PROD_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - portalsaas_saas_prod_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PROD_POSTGRES_USER} -d ${PROD_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  portalsaas_saas_test_data:
+  portalsaas_saas_prod_data:

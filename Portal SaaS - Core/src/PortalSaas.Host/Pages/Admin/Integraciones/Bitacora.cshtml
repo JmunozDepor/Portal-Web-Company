@@ -1,0 +1,65 @@
+@page "{id:guid}"
+@model PortalSaas.Host.Pages.Admin.Integraciones.BitacoraModel
+@{
+    ViewData["Title"] = "Bitácora de integración";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Bitácora: @Model.Integracion.Nombre</h1>
+        <span class="text-muted">Últimas @Model.Ejecuciones.Count ejecución(es)</span>
+    </div>
+    <a asp-page="/Admin/Integraciones/Index" class="btn btn-outline-secondary">Volver</a>
+</div>
+
+@if (Model.Ejecuciones.Count == 0)
+{
+    <p class="text-muted">Todavía no hay ejecuciones registradas para esta integración.</p>
+}
+else
+{
+    <div class="document-list-table-wrapper">
+        <table class="table document-list-table mb-0">
+            <thead>
+                <tr>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Resultado</th>
+                    <th>Procesados</th>
+                    <th>Con error</th>
+                    <th>Disparado por</th>
+                    <th>Consulta ejecutada</th>
+                    <th>Detalle del error</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ejecucion in Model.Ejecuciones)
+                {
+                    <tr>
+                        <td>@ejecucion.IniciadoEn.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</td>
+                        <td>@(ejecucion.FinalizadoEn?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "-")</td>
+                        <td>
+                            @switch (ejecucion.Resultado)
+                            {
+                                case IntegrationRunResultado.Exito:
+                                    <span class="badge bg-success">Éxito</span>
+                                    break;
+                                case IntegrationRunResultado.Parcial:
+                                    <span class="badge bg-warning text-dark">Parcial</span>
+                                    break;
+                                default:
+                                    <span class="badge bg-danger">Error</span>
+                                    break;
+                            }
+                        </td>
+                        <td>@ejecucion.RegistrosProcesados</td>
+                        <td>@ejecucion.RegistrosConError</td>
+                        <td>@ejecucion.DisparadoPor</td>
+                        <td><code>@(ejecucion.DetalleConsulta ?? "-")</code></td>
+                        <td>@(ejecucion.DetalleError ?? "-")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

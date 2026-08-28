@@ -1,0 +1,33 @@
+@*
+    _OrganizationSubnav.cshtml -- Sub-barra horizontal (Nivel 2) del detalle de una
+    organización en el backoffice de PlatformAdmin. Complementa el dropdown "..." de
+    Organizations/Index.cshtml (que no se toca) con navegación directa entre las 8
+    páginas de una misma organización, sin volver al listado.
+
+    Reusa .subnav-bar/.subnav-pill (wwwroot/css/components.css), el mismo componente
+    que ya usa _ModuloSubnav.cshtml para el shell de tenant -- ver la nota de alcance
+    en ese archivo, que dejaba esto pendiente explícitamente. Estático (lista fija de
+    8 páginas), no dinámico vía IMenuNavigationService -- estas páginas cuelgan de
+    organizationId como parámetro de ruta, no son nodos del árbol de menú.
+*@
+@model PortalSaas.Host.Pages.Admin.Organizations.OrganizationSubnavViewModel
+@{
+    var licenseLabel = Model.Mode == PortalSaas.Data.Entities.OrganizationMode.OnPremise ? "Licencia" : "Suscripción";
+    var licensePage = Model.Mode == PortalSaas.Data.Entities.OrganizationMode.OnPremise
+        ? "/Admin/Organizations/Licenses/Index"
+        : "/Admin/Organizations/Subscriptions/Index";
+}
+<div class="mb-3">
+    <p class="page-eyebrow">Backoffice · Plataforma</p>
+    <h1 class="h3 mb-0">@Model.OrganizationName</h1>
+</div>
+<nav class="subnav-bar mb-3">
+    <a href="@Url.Page("/Admin/Organizations/Edit", new { id = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "Edit" ? "active" : "")">Editar organización</a>
+    <a href="@Url.Page("/Admin/Organizations/Users/Index", new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "Users" ? "active" : "")">Usuarios</a>
+    <a href="@Url.Page("/Admin/Organizations/Instances/Index", new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "Instances" ? "active" : "")">Instancias</a>
+    <a href="@Url.Page("/Admin/Organizations/Companies/Index", new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "Companies" ? "active" : "")">Compañías</a>
+    <a href="@Url.Page("/Admin/Organizations/EmailSettings/Index", new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "EmailSettings" ? "active" : "")">Correo</a>
+    <a href="@Url.Page("/Admin/Organizations/Modules/Index", new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "Modules" ? "active" : "")">Módulos</a>
+    <a href="@Url.Page("/Admin/Organizations/DocumentPermissions/Index", new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "DocumentPermissions" ? "active" : "")">Permisos de documentos</a>
+    <a href="@Url.Page(licensePage, new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "License" ? "active" : "")">@licenseLabel</a>
+</nav>

@@ -1,0 +1,71 @@
+@page "/organizacion/modulos"
+@model Modulo.Administracion.Pages.Modulos.IndexModel
+@{
+    ViewData["Title"] = "Módulos";
+}
+@* Migrado al Design System unificado (2026-08-19) -- .card-surface + .table-ps +
+   .badge-status. Sin drawer: esta pantalla no tiene creación, solo un toggle
+   por fila. *@
+
+<div class="card-surface">
+    <h2 class="mb-1">Módulos de tu organización</h2>
+    <p class="text-muted mb-3">
+        Estos son los módulos que tu organización tiene contratados. Ocultar un módulo no
+        cambia lo que contrataste -- solo lo saca del menú para que no distraiga si no lo usás.
+    </p>
+
+@if (Model.MensajeExito is not null)
+{
+    <div class="alert alert-success">@Model.MensajeExito</div>
+}
+@if (Model.MensajeError is not null)
+{
+    <div class="alert alert-danger">@Model.MensajeError</div>
+}
+
+<table class="table-ps">
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Núcleo de plataforma</th>
+            <th>Estado</th>
+            <th class="col-actions"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var module in Model.Modules)
+        {
+            <tr>
+                <td>@module.Code</td>
+                <td>@module.Name</td>
+                <td>@(module.IsCore ? "Sí" : "No")</td>
+                <td>
+                    @if (module.IsHidden)
+                    {
+                        <span class="badge-status badge-status--neutral">Oculto</span>
+                    }
+                    else
+                    {
+                        <span class="badge-status badge-status--success">Visible</span>
+                    }
+                </td>
+                <td class="col-actions">
+                    <form method="post" asp-page-handler="Toggle" asp-antiforgery="true">
+                        <input type="hidden" name="moduleId" value="@module.ModuleId" />
+                        <input type="hidden" name="isHidden" value="@(!module.IsHidden)" />
+                        <button type="submit" class="btn-ghost" title="@(module.IsHidden ? "Mostrar" : "Ocultar")">
+                            <i class="bi @(module.IsHidden ? "bi-eye" : "bi-eye-slash")"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Modules.Count == 0)
+{
+    <p class="text-muted">Tu organización todavía no tiene módulos contratados en el catálogo comercial.</p>
+}
+</div>

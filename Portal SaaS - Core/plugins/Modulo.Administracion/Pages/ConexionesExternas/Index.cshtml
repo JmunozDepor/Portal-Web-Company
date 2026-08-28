@@ -1,0 +1,151 @@
+@page "/organizacion/conexiones-externas"
+@using PortalSaas.Abstractions.Modelos
+@model Modulo.Administracion.Pages.ConexionesExternas.IndexModel
+@{
+    ViewData["Title"] = "Conexiones externas";
+    string? CompanyIdStr = Model.CompanyId?.ToString();
+}
+@* Patrón ListadoOrganizacion sobre el Design System unificado (.card-surface +
+   .table-ps + .badge-status) -- mismas clases que Usuarios/Modulos/Perfiles. El
+   selector de compañía es de SOLO LECTURA: postea GET con ?companyId= para recargar
+   el catálogo de esa compañía, nunca cambia a qué organización pertenece. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1 flex-wrap">
+        <h2 class="mb-0">Conexiones externas</h2>
+        @if (Model.CompanyId is not null)
+        {
+            <a class="btn-primary" href="~/organizacion/conexiones-externas/editar?companyId=@CompanyIdStr">+ Nueva conexión</a>
+        }
+    </div>
+    <p class="text-muted mb-3">
+        Bases de datos y APIs externas que usan los módulos de tu organización, y qué
+        conexión usa cada módulo. Se configura compañía por compañía.
+    </p>
+
+@if (Model.MensajeExito is not null)
+{
+    <div class="alert alert-success">@Model.MensajeExito</div>
+}
+@if (Model.MensajeError is not null)
+{
+    <div class="alert alert-danger">@Model.MensajeError</div>
+}
+
+@if (Model.Companies.Count == 0)
+{
+    <p class="text-muted">Tu organización todavía no tiene ninguna compañía configurada.</p>
+}
+else
+{
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label">Compañía</label>
+            <select name="companyId" class="form-select" onchange="this.form.submit()">
+                @foreach (var company in Model.Companies)
+                {
+                    <option value="@company.Id" selected="@(company.Id == Model.CompanyId)">@company.Code — @company.Name</option>
+                }
+            </select>
+        </div>
+    </form>
+
+    <h3 class="h6 mt-4">Conexiones</h3>
+    <table class="table-ps">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Host / URL</th>
+                <th>Activa</th>
+                <th class="col-actions"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.Connections)
+            {
+                <tr>
+                    <td>@c.Nombre</td>
+                    <td>@c.Tipo</td>
+                    <td>@(ExternalConnectionType.IsDatabase(c.Tipo) ? c.Host : c.BaseUrl)</td>
+                    <td>
+                        @if (c.IsActive)
+                        {
+                            <span class="badge-status badge-status--success">Sí</span>
+                        }
+                        else
+                        {
+                            <span class="badge-status badge-status--neutral">No</span>
+                        }
+                    </td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            <form method="post" asp-page-handler="Test" class="d-inline-block">
+                                <input type="hidden" name="companyId" value="@CompanyIdStr" />
+                                <input type="hidden" name="id" value="@c.Id" />
+                                <button type="submit" class="btn-ghost" title="Probar"><i class="bi bi-plug"></i></button>
+                            </form>
+                            <a class="btn-ghost" title="Editar" href="~/organizacion/conexiones-externas/editar/@c.Id?companyId=@CompanyIdStr"><i class="bi bi-pencil"></i></a>
+                            <form method="post" asp-page-handler="Delete" class="d-inline-block" onsubmit="return confirm('¿Eliminar la conexión @c.Nombre?');">
+                                <input type="hidden" name="companyId" value="@CompanyIdStr" />
+                                <input type="hidden" name="id" value="@c.Id" />
+                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Model.Connections.Count == 0)
+    {
+        <p class="text-muted">Esta compañía todavía no tiene conexiones externas.</p>
+    }
+
+    <h3 class="h6 mt-4">Asignación por módulo</h3>
+    <table class="table-ps">
+        <thead>
+            <tr>
+                <th>Módulo</th>
+                <th>Propósito</th>
+                <th>Conexión asignada</th>
+                <th class="col-actions"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var b in Model.Bindings)
+            {
+                <tr>
+                    <td>@b.ModuleName</td>
+                    <td>
+                        @b.PurposeDisplayName
+                        @if (b.Required)
+                        {
+                            <span class="badge-status badge-status--warning">Requerida</span>
+                        }
+                    </td>
+                    <td colspan="2">
+                        <form method="post" asp-page-handler="SetBinding" class="d-flex align-items-center gap-2">
+                            <input type="hidden" name="companyId" value="@CompanyIdStr" />
+                            <input type="hidden" name="moduleCode" value="@b.ModuleCode" />
+                            <input type="hidden" name="purpose" value="@b.Purpose" />
+                            <select name="connectionId" class="form-select form-select-sm" style="width:auto;">
+                                <option value="">— Sin asignar —</option>
+                                @foreach (var c in Model.Connections)
+                                {
+                                    <option value="@c.Id" selected="@(c.Id == b.ConnectionId)">@c.Nombre</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn-secondary btn-sm">Guardar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Model.Bindings.Count == 0)
+    {
+        <p class="text-muted">Ningún módulo cargado declara necesitar una conexión externa.</p>
+    }
+}
+</div>

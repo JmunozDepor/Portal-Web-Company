@@ -1,0 +1,99 @@
+@page "{companyId:guid}/{id:long}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Companies.ExternalConnections.EditModel
+@{
+    ViewData["Title"] = $"Editar conexión externa · {Model.Company.Code}";
+}
+
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "Companies" })" />
+
+<div class="card-surface mb-4">
+    <h2 class="h5 mb-3">Editar conexión externa de @Model.Company.Code &mdash; @Model.Company.Name</h2>
+    <form method="post" asp-antiforgery="true">
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Input.Nombre" class="form-label">Nombre</label>
+                <input asp-for="Input.Nombre" class="form-control" autofocus />
+                <span asp-validation-for="Input.Nombre" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Input.Tipo" class="form-label">Tipo</label>
+                <select asp-for="Input.Tipo" id="Input_Tipo" class="form-select"
+                        asp-items="Model.Tipos.Select(t => new SelectListItem(t, t))"></select>
+                <span asp-validation-for="Input.Tipo" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-8 conn-db">
+                <label asp-for="Input.Host" class="form-label">Host (base de datos)</label>
+                <input asp-for="Input.Host" class="form-control" />
+                <span asp-validation-for="Input.Host" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4 conn-db">
+                <label asp-for="Input.Port" class="form-label">Puerto</label>
+                <input asp-for="Input.Port" class="form-control" />
+                <span asp-validation-for="Input.Port" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6 conn-db">
+                <label asp-for="Input.DatabaseName" class="form-label">Nombre de la base de datos</label>
+                <input asp-for="Input.DatabaseName" class="form-control" />
+                <span asp-validation-for="Input.DatabaseName" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6 conn-db">
+                <label asp-for="Input.TechnicalUsername" class="form-label">Usuario técnico</label>
+                <input asp-for="Input.TechnicalUsername" class="form-control" />
+                <span asp-validation-for="Input.TechnicalUsername" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 conn-http">
+                <label asp-for="Input.BaseUrl" class="form-label">URL base (API HTTP)</label>
+                <input asp-for="Input.BaseUrl" class="form-control" />
+                <span asp-validation-for="Input.BaseUrl" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Input.TechnicalSecretKey" class="form-label">Secreto / contraseña (dejar en blanco para no cambiarla)</label>
+                <input asp-for="Input.TechnicalSecretKey" type="password" class="form-control" autocomplete="new-password" />
+            </div>
+
+            <div class="col-12">
+                <label asp-for="Input.ConfiguracionExtra" class="form-label">Configuración extra (JSON crudo)</label>
+                <textarea asp-for="Input.ConfiguracionExtra" class="form-control" rows="4"></textarea>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input asp-for="Input.IsActive" class="form-check-input" />
+                    <label asp-for="Input.IsActive" class="form-check-label">Activa</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <a asp-page="./Index" asp-route-companyId="@Model.Company.Id" class="btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var tipo = document.getElementById('Input_Tipo');
+            if (!tipo) { return; }
+            function apply() {
+                var isDb = tipo.value.indexOf('db_') === 0;
+                document.querySelectorAll('.conn-db').forEach(function (el) { el.style.display = isDb ? '' : 'none'; });
+                document.querySelectorAll('.conn-http').forEach(function (el) { el.style.display = isDb ? 'none' : ''; });
+            }
+            tipo.addEventListener('change', apply);
+            apply();
+        })();
+    </script>
+}

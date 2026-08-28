@@ -1,0 +1,111 @@
+@*
+    _ModuloBackLink.cshtml -- Breadcrumb genérico de módulo (REVISADO 2026-08-19,
+    pedido explícito -- "el volver se repite... deberia quedar la ruta ej: Venta >
+    Ordenes de Venta > Detalle, solo existir una ruta"). Reemplaza la primera
+    versión (un solo link "< Volver a {Módulo}") que convivía duplicada con el
+    "< Volver" propio de DocumentForm/Default.cshtml -- ahora es la ÚNICA ruta de
+    vuelta en toda la plataforma, DocumentForm ya no tiene la suya (ver ese
+    archivo).
+
+    Arma la cadena completa desde el módulo raíz (nivel 1) hasta el nodo más
+    profundo del árbol de IMenuNavigationService cuya PagePath calce con la ruta
+    actual (o sea prefijo de ella) -- mismo árbol que ya arma el sidebar, ningún
+    dato nuevo. Si la ruta actual va MÁS ALLÁ de ese nodo (ej. el detalle de un
+    documento, /ventas/ordenes/62198 vs. el nodo /ventas/ordenes), se agrega un
+    tramo final "Detalle" no clicable, y el tramo del nodo se vuelve clicable --
+    usando ViewData["ModuleBreadcrumbBackUrl"] si la página lo dejó (ver
+    DetailGeneric*ModelBase.BuildDocumentViewModel, los 3 motores genéricos), que
+    preserva filtros/página del listado en vez de la ruta plana del menú.
+
+    Una sola línea, ocupa el mínimo de alto vertical -- reemplaza los 2 links
+    apilados de la versión anterior.
+*@
+@using PortalSaas.Abstractions.Contratos
+@using PortalSaas.Abstractions.Modelos
+@inject IMenuNavigationService MenuNavigation
+@inject Microsoft.Extensions.Localization.IStringLocalizer<PortalSaas.Host.Resources.SharedResources> Localizer
+@{
+    var currentPath = Context.Request.Path.Value ?? "";
+    var isPlatformAdmin = User.Identity?.AuthenticationType == "PlatformAdmin";
+    var crumbs = new List<(string Label, string? Href)>();
+
+    if (!isPlatformAdmin && User.Identity?.IsAuthenticated == true)
+    {
+        var tree = await MenuNavigation.GetVisibleMenuAsync();
+        List<MenuNodeDto>? bestChain = null;
+
+        void Walk(MenuNodeDto node, List<MenuNodeDto> ancestors)
+        {
+            var chain = new List<MenuNodeDto>(ancestors) { node };
+            if (node.PagePath is not null &&
+                (currentPath.Equals(node.PagePath, StringComparison.OrdinalIgnoreCase) ||
+                 currentPath.StartsWith(node.PagePath + "/", StringComparison.OrdinalIgnoreCase)))
+            {
+                // Prefijo MÁS LARGO gana -- un documento bajo /ventas/ordenes/62198
+                // calza tanto con un eventual nodo /ventas (si existiera) como con
+                // /ventas/ordenes, siempre preferimos el más específico.
+                if (bestChain is null || (node.PagePath?.Length ?? 0) > (bestChain[^1].PagePath?.Length ?? -1))
+                {
+                    bestChain = chain;
+                }
+            }
+            foreach (var child in node.Children)
+            {
+                Walk(child, chain);
+            }
+        }
+
+        foreach (var root in tree)
+        {
+            Walk(root, new List<MenuNodeDto>());
+        }
+
+        if (bestChain is not null)
+        {
+            for (var i = 0; i < bestChain.Count; i++)
+            {
+                // Solo el tramo raíz (nivel 1) se traduce -- mismo alcance acotado
+                // que SidebarMenu/_MenuNode.cshtml (ver su comentario), el resto
+                // del árbol de menú sigue en español tal cual viene de `menus.name`.
+                var label = i == 0 ? Localizer[bestChain[i].Name].Value : bestChain[i].Name;
+                crumbs.Add((label, null));
+            }
+
+            var leaf = bestChain[^1];
+            var isExactLeafMatch = leaf.PagePath is not null &&
+                currentPath.Equals(leaf.PagePath, StringComparison.OrdinalIgnoreCase);
+
+            if (!isExactLeafMatch)
+            {
+                // La ruta actual va más allá del nodo del árbol (ej. detalle de
+                // documento) -- ese tramo pasa a ser clicable (con el BackUrl
+                // "inteligente" de la página si lo dejó), y se agrega "Detalle".
+                var overrideUrl = ViewData["ModuleBreadcrumbBackUrl"] as string;
+                var leafHref = overrideUrl ?? (leaf.PagePath is not null ? Url.Content("~" + leaf.PagePath) : null);
+                crumbs[^1] = (crumbs[^1].Label, leafHref);
+                crumbs.Add(("Detalle", null));
+            }
+        }
+    }
+}
+@if (crumbs.Count > 0)
+{
+    <nav class="modulo-breadcrumb">
+        @for (var i = 0; i < crumbs.Count; i++)
+        {
+            if (i > 0)
+            {
+                <i class="bi bi-chevron-right modulo-breadcrumb-sep"></i>
+            }
+            var crumb = crumbs[i];
+            if (crumb.Href is not null)
+            {
+                <a href="@crumb.Href">@crumb.Label</a>
+            }
+            else
+            {
+                <span class="@(i == crumbs.Count - 1 ? "modulo-breadcrumb-current" : "")">@crumb.Label</span>
+            }
+        }
+    </nav>
+}

@@ -1,0 +1,91 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "detener PortalSaas.Host en ejecución",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/.vscode/stop-host.ps1"
+            ],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "build",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "${workspaceFolder}/PortalSaas.sln"
+            ],
+            "problemMatcher": "$msCompile",
+            "dependsOn": ["detener PortalSaas.Host en ejecución"],
+            "dependsOrder": "sequence",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "docker: levantar Postgres de desarrollo",
+            "type": "shell",
+            "command": "docker compose up -d",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "ef: aplicar migraciones (PostgreSQL)",
+            "type": "shell",
+            "command": "dotnet tool run dotnet-ef database update --project src/PortalSaas.Data.Migrations.PostgreSql/PortalSaas.Data.Migrations.PostgreSql.csproj --startup-project src/PortalSaas.Data.Migrations.PostgreSql/PortalSaas.Data.Migrations.PostgreSql.csproj --context PortalSaasDbContext",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": ["docker: levantar Postgres de desarrollo"],
+            "problemMatcher": []
+        },
+        {
+            "label": "ef: aplicar migraciones (SQL Server)",
+            "type": "shell",
+            "command": "dotnet tool run dotnet-ef database update --project src/PortalSaas.Data.Migrations.SqlServer/PortalSaas.Data.Migrations.SqlServer.csproj --startup-project src/PortalSaas.Data.Migrations.SqlServer/PortalSaas.Data.Migrations.SqlServer.csproj --context PortalSaasDbContext",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "ef: nueva migración (PostgreSQL)",
+            "type": "shell",
+            "command": "dotnet tool run dotnet-ef migrations add ${input:migrationName} --project src/PortalSaas.Data.Migrations.PostgreSql/PortalSaas.Data.Migrations.PostgreSql.csproj --startup-project src/PortalSaas.Data.Migrations.PostgreSql/PortalSaas.Data.Migrations.PostgreSql.csproj --context PortalSaasDbContext",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "ef: nueva migración (SQL Server)",
+            "type": "shell",
+            "command": "dotnet tool run dotnet-ef migrations add ${input:migrationName} --project src/PortalSaas.Data.Migrations.SqlServer/PortalSaas.Data.Migrations.SqlServer.csproj --startup-project src/PortalSaas.Data.Migrations.SqlServer/PortalSaas.Data.Migrations.SqlServer.csproj --context PortalSaasDbContext",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "migrationName",
+            "type": "promptString",
+            "description": "Nombre de la migración nueva (PascalCase, ej. AddUsageAlerts) -- generar en los DOS motores"
+        }
+    ]
+}

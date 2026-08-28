@@ -1,0 +1,100 @@
+@model Modulo.Compras.Pages.DetailGenericPurchaseDocumentModelBase
+@{
+    var readOnly = Model.Document.ReadOnly;
+}
+
+<div class="doc-tab-seccion">
+    @if (!Model.IsNew)
+    {
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">N° documento</label>
+                <input class="form-control" value="@Model.DocNum" disabled />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Total</label>
+                <input class="form-control" value="@Model.DocTotal?.ToString("N2")" disabled />
+            </div>
+        </div>
+    }
+
+    @* Layout fijo en 2 columnas -- mismo criterio que _TabGeneralVentas.cshtml
+       (Modulo.Ventas), regla de paridad entre motores genéricos. Compras no tiene
+       equivalente de "Vendedor" (SalesEmployeeCode), así que la izquierda queda con
+       Proveedor/N° referencia/Tipo de línea. *@
+    <div class="doc-columnas-2">
+        <div class="doc-columna">
+            <div class="form-group">
+                <label asp-for="Input.SupplierCardCode" class="form-label"></label>
+                @* Búsqueda en vivo (mismo modelo que Artículo/Cliente) en vez de un <select>
+                   con TODO OCRD precargado -- ver OnGetSearchSuppliersAsync. *@
+                @if (readOnly)
+                {
+                    <input class="form-control" value="@(Model.Input.SupplierCardCode + (Model.SupplierName is null ? "" : " — " + Model.SupplierName))" disabled />
+                    <input type="hidden" asp-for="Input.SupplierCardCode" />
+                }
+                else
+                {
+                    <input asp-for="Input.SupplierCardCode" list="purchase-document-suppliers-datalist" class="form-control purchase-document-supplier-code"
+                           autocomplete="off" placeholder="Código o nombre del proveedor" />
+                    <datalist id="purchase-document-suppliers-datalist"></datalist>
+                }
+                <span asp-validation-for="Input.SupplierCardCode" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.SupplierReferenceNumber" class="form-label"></label>
+                <input asp-for="Input.SupplierReferenceNumber" class="form-control" disabled="@readOnly" />
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.LineType" class="form-label"></label>
+                <select asp-for="Input.LineType" class="form-select" disabled="@readOnly">
+                    <option value="@PortalSaas.Abstractions.Modelos.DocumentLineType.Item">Artículo</option>
+                    <option value="@PortalSaas.Abstractions.Modelos.DocumentLineType.Service">Servicio</option>
+                </select>
+            </div>
+        </div>
+        <div class="doc-columna">
+            <div class="form-group">
+                <label asp-for="Input.Series" class="form-label"></label>
+                <select asp-for="Input.Series" asp-items="Model.Series" class="form-select" disabled="@readOnly">
+                    <option value="">Serie por defecto de SAP</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.DocDate" class="form-label"></label>
+                <input asp-for="Input.DocDate" type="date" class="form-control" disabled="@readOnly" />
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.DocDueDate" class="form-label"></label>
+                <input asp-for="Input.DocDueDate" type="date" class="form-control" disabled="@readOnly" />
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.TaxDate" class="form-label"></label>
+                <input asp-for="Input.TaxDate" type="date" class="form-control" disabled="@readOnly" />
+            </div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group form-group-ancho-completo">
+            <label asp-for="Input.Comments" class="form-label"></label>
+            <textarea asp-for="Input.Comments" class="form-control" rows="3" disabled="@readOnly"></textarea>
+        </div>
+    </div>
+</div>
+
+@if (!readOnly)
+{
+    @* Ver el comentario equivalente en _TabGeneralVentas.cshtml (Modulo.Ventas) sobre
+       por qué se vuelve a incluir el <script src> acá. *@
+    <script src="~/js/catalog-search.js"></script>
+    <script>
+        wireCatalogSearch({
+            inputSelector: '.purchase-document-supplier-code',
+            datalistId: 'purchase-document-suppliers-datalist',
+            handlerName: 'SearchSuppliers',
+            getValue: function (item) { return item.cardCode; },
+            getLabel: function (item) { return item.cardCode + ' — ' + item.cardName; },
+        });
+    </script>
+}

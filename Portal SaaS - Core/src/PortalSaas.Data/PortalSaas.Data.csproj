@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Solo el modelo (Entities/ + PortalSaasDbContext), deliberadamente agnóstico
+         de proveedor (ver docs/02-ARQUITECTURA-BASE-DE-DATOS.md §7, motor dual). Los
+         paquetes de proveedor (Npgsql/SqlServer), EFCore.NamingConventions y
+         Microsoft.EntityFrameworkCore.Design viven en
+         PortalSaas.Data.Migrations.PostgreSql/.SqlServer, no acá. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.8" />
+  </ItemGroup>
+
+</Project>

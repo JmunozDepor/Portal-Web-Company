@@ -1,0 +1,43 @@
+@*
+    _ModuloLayout.cshtml -- Layout Contextual Secundario. Hereda de
+    _LayoutMaestro.cshtml (Sidebar Nivel 1 + Topbar) e inyecta la Sub-Barra
+    Contextual Horizontal (Nivel 2, _ModuloSubnav.cshtml) justo debajo del
+    Topbar, consumiendo dinámicamente las sub-opciones del módulo activo
+    desde IMenuNavigationService.
+
+    Todo _ViewStart.cshtml del proyecto (Host y plugins) apunta acá, no
+    directo a _LayoutMaestro -- así una vista de módulo solo necesita traer
+    su propio marcado (.card-surface/.table-ps/etc.), nunca reimplementar
+    navegación.
+
+    BUG REAL CORREGIDO (2026-08-17): con dos niveles de layout (Página ->
+    _ModuloLayout -> _LayoutMaestro), las secciones @section Scripts/Styles
+    que define una página NO llegan automáticamente al RenderSectionAsync de
+    _LayoutMaestro -- Razor solo resuelve una sección contra el Layout
+    INMEDIATO de quien la declaró (acá, _ModuloLayout), nunca salta un nivel
+    más. Sin este archivo reclamando esas secciones, quedaban "definidas pero
+    nunca renderizadas" -> InvalidOperationException en cualquier página que
+    declarara @section Scripts (ej. /organizacion/usuarios/editar/...).
+    Patrón de PASO-A-TRAVÉS (pass-through): @RenderSection consume la sección
+    de la página hija, y se re-envuelve en un @section del MISMO nombre para
+    que _LayoutMaestro (el siguiente nivel) la encuentre.
+
+    _ModuloSubnav DESHABILITADA (2026-08-19, pedido explícito del dueño del
+    proyecto): con el sidebar vuelto a ser desplegable (SidebarMenu/
+    Default.cshtml, ver ese archivo), esta barra pintaba exactamente los
+    mismos hijos ya visibles en el árbol del sidebar -- duplicado que el
+    dueño del proyecto pidió eliminar de la parte superior. El componente en
+    sí (_ModuloSubnav.cshtml) NO se borró, solo se dejó de invocar acá, por
+    si se necesita reactivar en el futuro.
+*@
+@{
+    Layout = "_LayoutMaestro";
+}
+@section Styles {
+    @RenderSection("Styles", required: false)
+}
+@await Html.PartialAsync("_ModuloBackLink")
+@RenderBody()
+@section Scripts {
+    @RenderSection("Scripts", required: false)
+}

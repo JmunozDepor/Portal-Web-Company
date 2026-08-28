@@ -1,0 +1,653 @@
+/* Shell del tenant: sidebar izquierdo + topbar + contenido -- estructura adaptada de
+   PortalSAP_v2 (theme.css .app-shell/.sidebar/.topbar/.user-menu*), pero sobre
+   variables de Bootstrap 5 (--bs-*) en vez de un sistema de temas propio -- ver
+   CLAUDE.md, decisión de alcance de esta entrega. El árbol colapsable usa el
+   componente `collapse` nativo de Bootstrap (clases .collapse/.show que
+   bootstrap.bundle.min.js ya trae) -- este archivo solo aporta layout/color, sidebar.js
+   solo aporta persistencia en localStorage.
+
+   Sidebar/topbar BLANCOS (26 jul 2026, revierte el sólido navy de la entrega
+   anterior) -- decisión validada línea por línea contra theme.css real:
+   .sidebar/.topbar usan var(--card-bg) ahí, el navy (--bs-primary) es acento
+   (activo/hover/botones), nunca fondo sólido de estos dos. Ver site.css para el
+   detalle completo de por qué la entrega anterior tomó el camino equivocado
+   (capturas de una build vieja de Comercial Depor, ya reemplazada en el código
+   fuente real). Todos los estados de acá para abajo vuelven a ser oscuro-sobre-claro
+   (texto var(--text-main)/var(--text-muted), acento color-mix con --bs-primary). */
+
+/* Rail de 64px es el default de gobernanza (Fase 2, 2026-08-17) -- el estado
+   "collapsed" (histórico) y el default ahora son el MISMO ancho; el toggle
+   sigue funcionando para volver al modo expandido de 250px si el usuario lo
+   pide explícitamente (ver el script inline de _LayoutMaestro.cshtml).
+
+   Cero scrollbar global (2026-08-17): .app-shell pasa de CSS Grid a flex --
+   height: 100dvh fijo + overflow: hidden en el shell entero, el ÚNICO
+   elemento que scrollea es .content (overflow-y: auto). .sidebar es
+   flex-shrink: 0 con su ancho fijo (rail 64px o expandido 250px); .shell-main
+   (wrapper nuevo alrededor de .topbar + .content, ver _LayoutMaestro.cshtml)
+   es una columna flex donde .content toma flex: 1 para ocupar el resto de
+   la altura sin desbordar. */
+.app-shell {
+    display: flex;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--bs-body-bg);
+}
+
+.shell-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+}
+
+.rail-item {
+    position: relative;
+}
+
+.sidebar {
+    width: var(--rail-width);
+    flex-shrink: 0;
+    position: relative;
+    background: var(--card-bg);
+    border-right: 1px solid var(--card-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    /* BUG REAL CORREGIDO (2026-08-19, "se sigue agregando la opción de scroll
+       vertical"): sin overflow-x explícito, el spec de CSS obliga a que un eje
+       "visible" se compute como "auto" en cuanto el otro eje NO es "visible"
+       (acá overflow-y:auto) -- cualquier contenido que se pasara por poco del
+       ancho del sidebar (ej. .rail-tooltip, ancho fijo, sobresaliendo del
+       contenedor en modo rail) disparaba una barra de scroll HORIZONTAL
+       fantasma pegada abajo, que a simple vista se veía como "otro scroll" en
+       el menú. overflow-x:hidden la elimina de raíz -- nada dentro del
+       sidebar necesita desbordar horizontalmente a propósito. */
+    overflow-x: hidden;
+}
+
+/* Scrollbar invisible por defecto (2026-08-19, pedido explícito -- "eliminar
+   el scroll vertical de la parte inferior del menú"): el árbol SIGUE siendo
+   scrolleable de verdad cuando hay más módulos que alto de viewport (ocultar
+   el overflow entero cortaría módulos inalcanzables) -- lo que se elimina es
+   la barra de scroll SIEMPRE visible ocupando espacio/ensuciando el borde
+   inferior; con esto solo aparece (angosta, discreta) mientras el cursor está
+   sobre el sidebar. */
+.sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+.sidebar:hover {
+    scrollbar-color: var(--card-border) transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb {
+    background: var(--card-border);
+}
+
+/* Costura de marca -- elemento de firma (DESIGN.md, hallazgo "sin ningún
+   elemento de firma"): reusa el mismo degradado --accent->--accent-2 del panel
+   de login (.login-brand-panel) en el único borde del sidebar que hoy no tiene
+   ningún tratamiento (arriba -- el derecho ya es --card-border, ver arriba).
+   Pseudo-elemento posicionado, no border-image: .sidebar ya declara
+   border-right propio, y border-image pinta los 4 lados del borde a la vez --
+   se habría pisado el color plano del borde derecho. position:absolute no
+   suma altura/ancho al grid del shell (.app-shell), la densidad no cambia. */
+.sidebar::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--card-border);
+    height: 56px;
+}
+
+/* Degradado navy -- portado tal cual de .sidebar-brand-mark (theme.css:524,
+   linear-gradient(135deg, var(--accent), var(--accent-2))). */
+.sidebar-brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--bs-border-radius-sm);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--on-accent);
+    font-weight: 700;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.sidebar-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    overflow: hidden;
+    color: var(--text-main);
+}
+
+.sidebar-brand-text strong {
+    font-size: 13px;
+}
+
+.sidebar-brand-text span {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Selector de compañía dentro del sidebar (2026-08-19, layout tipo
+   "rindegastos" -- ver captura de referencia adjuntada) -- reemplaza la
+   ubicación anterior en topbar-right. El <select> real (CompanySwitcher/
+   Default.cshtml, sin cambios de markup) queda estilizado como texto plano
+   con flecha nativa del navegador, dentro de esta "pill" con ícono de
+   edificio a la izquierda. En modo rail (64px) el texto/label se ocultan
+   igual que .nav-texto -- solo queda el ícono, con tooltip nativo del
+   <select> (title del navegador) para saber qué compañía es sin expandir. */
+.sidebar-company {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--card-border);
+    color: var(--bs-primary);
+    font-size: 12.5px;
+}
+
+.sidebar-company > i {
+    flex-shrink: 0;
+    font-size: 14px;
+}
+
+.sidebar-company .company-switcher {
+    flex: 1;
+    min-width: 0;
+}
+
+.sidebar-company .company-switcher-label {
+    display: none;
+}
+
+.sidebar-company .company-switcher select {
+    max-width: 100%;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--bs-primary);
+    font-weight: 700;
+    padding: 0;
+}
+
+html[data-sidebar="collapsed"] .sidebar-company .company-switcher {
+    display: none;
+}
+
+html[data-sidebar="collapsed"] .sidebar-company {
+    justify-content: center;
+    padding: 10px 6px;
+}
+
+.sidebar-nav {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+/* .sidebar-nav-sub es un <ul class="sidebar-nav sidebar-nav-sub"> anidado (ver
+   _MenuNode.cshtml) -- hereda el padding:6px de .sidebar-nav de ARRIBA, así que sin
+   esta regla cada nivel de submenú suma otros 6px propios (bug real: "genera mucho
+   espacio entre menú y submenú", eran paddings de .sidebar-nav acumulados en cada
+   nivel de anidamiento, no un solo valor). Un submenú no necesita padding vertical
+   propio -- ya lo separa el .collapse que lo contiene. */
+.sidebar-nav-sub {
+    padding: 0 0 0 12px;
+    gap: 0;
+}
+
+.sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: var(--bs-border-radius-sm);
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 12.5px;
+    font-weight: 500;
+    box-shadow: inset 3px 0 0 transparent;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Valores exactos validados: activo = color-mix al 16% + texto/inset en
+   --bs-primary; hover = mismo color-mix al 10%, sin el inset (theme.css
+   .sidebar-nav a.active/:hover, adaptado de --accent a --bs-primary). */
+.sidebar-nav a:hover {
+    background: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+    color: var(--text-main);
+}
+
+.sidebar-nav a.active {
+    background: color-mix(in srgb, var(--bs-primary) 16%, transparent);
+    color: var(--bs-primary);
+    font-weight: 700;
+    box-shadow: inset 3px 0 0 var(--bs-primary);
+}
+
+.sidebar-nav .nav-icon {
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 18px;
+}
+
+.sidebar-nav-grupo {
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Chip de color sólido SOLO para categorías raíz (nivel 0) -- portado de theme.css
+   :634-660. --icon-color se fija inline por nodo (ver _MenuNode.cshtml/
+   SidebarMenu/Default.cshtml, cicla --menu-color-1..6). Un subgrupo anidado no lleva
+   esta clase -- queda chico y gris, visualmente subordinado a su carpeta raíz. */
+.sidebar-nav-grupo-raiz .nav-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--bs-border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--icon-color, var(--text-muted));
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.sidebar-nav-grupo-raiz .nav-icon i {
+    color: var(--on-accent);
+    font-size: 15px;
+}
+
+.sidebar-nav-grupo-raiz:hover .nav-icon {
+    transform: scale(1.08);
+}
+
+.sidebar-nav-grupo .nav-texto {
+    flex: 1;
+}
+
+.sidebar-grupo-chevron {
+    font-size: 11px;
+    transition: transform 0.15s ease;
+}
+
+/* Bootstrap gestiona aria-expanded solo en el toggle -- el chevron rota según ese
+   atributo, sin ninguna clase propia que sidebar.js tenga que mantener sincronizada. */
+.sidebar-nav-grupo[aria-expanded="true"] .sidebar-grupo-chevron {
+    transform: rotate(0deg);
+}
+
+.sidebar-nav-grupo:not([aria-expanded="true"]) .sidebar-grupo-chevron {
+    transform: rotate(-90deg);
+}
+
+/* ---- Sidebar contraído: solo iconos (default) ---- */
+html[data-sidebar="collapsed"] .sidebar-brand-text,
+html[data-sidebar="collapsed"] .nav-texto,
+html[data-sidebar="collapsed"] .sidebar-grupo-chevron {
+    display: none;
+}
+
+html[data-sidebar="collapsed"] .sidebar-nav a,
+html[data-sidebar="collapsed"] .sidebar-nav-grupo {
+    justify-content: center;
+    padding-left: 10px;
+}
+
+html[data-sidebar="collapsed"] .sidebar-nav-sub {
+    padding-left: 0;
+}
+
+html[data-sidebar="collapsed"] .sidebar-brand {
+    justify-content: center;
+    padding: 12px 6px;
+}
+
+html[data-sidebar="collapsed"] .sidebar-brand-mark {
+    display: none;
+}
+
+/* ---- Sidebar expandido (toggle manual, 2026-08-19 restaurado a pedido del
+   dueño del proyecto): ancho 250px + nombre de cada nodo de nivel 1 visible.
+   IMPORTANTE -- esto NO reabre el árbol de sub-menús (regla dura vigente,
+   "PROHIBIDO desplegar el árbol de sub-menús en el sidebar"): SidebarMenu/
+   Default.cshtml sigue sin recursar a hijos, solo pinta el ícono + nombre de
+   cada módulo raíz con href resuelto al primer descendiente navegable -- el
+   ancho extra únicamente da lugar al texto, nunca a un nivel 2 anidado. */
+html[data-sidebar="expanded"] .sidebar {
+    width: var(--sidebar-width);
+}
+
+html[data-sidebar="expanded"] .sidebar-nav a,
+html[data-sidebar="expanded"] .sidebar-nav-grupo {
+    justify-content: flex-start;
+    padding-left: 8px;
+}
+
+/* Resize manual del sidebar (2026-08-19, pedido explícito -- "deja configurado
+   para que se pueda mover el Menú izquierdo para ampliar o achicar
+   manualmente"): franja invisible de 6px pegada al borde derecho del
+   sidebar, solo activa en modo expandido (en modo rail 64px no tiene sentido
+   angostar/ensanchar a mano, para eso está el toggle). sidebar-resize.js
+   hace el drag real y persiste el ancho elegido en localStorage, por encima
+   del valor fijo de --sidebar-width. */
+.sidebar-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 20;
+    background: transparent;
+}
+
+.sidebar-resize-handle:hover,
+body.sidebar-resizing .sidebar-resize-handle {
+    background: color-mix(in srgb, var(--bs-primary) 35%, transparent);
+}
+
+html[data-sidebar="collapsed"] .sidebar-resize-handle {
+    display: none;
+}
+
+body.sidebar-resizing {
+    cursor: col-resize;
+    user-select: none;
+}
+
+.sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: var(--bs-border-radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-toggle:hover {
+    background: var(--bs-secondary-bg);
+    color: var(--text-main);
+}
+
+html[data-sidebar="collapsed"] .sidebar-toggle i {
+    transform: rotate(180deg);
+}
+
+.topbar {
+    height: 56px;
+    flex-shrink: 0;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    color: var(--text-main);
+}
+
+.topbar-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Buscador central del topbar (2026-08-19, layout tipo "rindegastos") --
+   placeholder visual, disabled a propósito (ver el comentario en
+   _LayoutMaestro.cshtml, sin backend de búsqueda global todavía). */
+.topbar-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    max-width: 360px;
+    margin: 0 24px;
+    padding: 6px 12px;
+    background: var(--bs-secondary-bg);
+    border-radius: var(--bs-border-radius-sm);
+    color: var(--text-muted);
+}
+
+.topbar-search input {
+    border: none;
+    background: transparent;
+    font-size: 12.5px;
+    width: 100%;
+    color: var(--text-main);
+}
+
+.topbar-search input::placeholder {
+    color: var(--text-muted);
+}
+
+.topbar-search input:disabled {
+    cursor: not-allowed;
+}
+
+/* Íconos de nivel superior (notificaciones/mensajes/crear) -- mismos
+   placeholders visuales disabled, ver comentario en _LayoutMaestro.cshtml. */
+.topbar-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 50%;
+    font-size: 15px;
+    cursor: not-allowed;
+}
+
+/* Selector de compañía del topbar -- ver CompanySwitcherViewComponent. Mismo
+   font-size/altura que .user-name para que quede a la par visualmente. */
+.company-switcher {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.company-switcher-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.company-switcher select {
+    font-size: 12.5px;
+    max-width: 220px;
+}
+
+.user-menu {
+    position: relative;
+}
+
+.user-menu summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--bs-border-radius-sm);
+}
+
+.user-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.user-menu summary:hover {
+    background: var(--bs-secondary-bg);
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bs-primary);
+    color: var(--on-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.user-menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card);
+    width: 200px;
+    padding: 10px;
+    z-index: 1030;
+}
+
+/* Cabecera de identidad del panel de usuario (2026-08-19, layout tipo
+   "rindegastos" -- avatar grande + nombre + correo, arriba del selector de
+   idioma/tema). */
+.user-menu-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px 12px;
+    border-bottom: 1px solid var(--card-border);
+    margin-bottom: 8px;
+}
+
+.user-avatar-lg {
+    width: 40px;
+    height: 40px;
+    font-size: 15px;
+}
+
+.user-menu-fullname {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.user-menu-email {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.user-menu-panel .user-menu-org {
+    font-size: 11.5px;
+    color: var(--bs-secondary-color);
+    padding: 4px 8px 10px;
+    border-bottom: 1px solid var(--bs-border-color);
+    margin-bottom: 8px;
+}
+
+.user-menu-panel form {
+    margin: 0;
+}
+
+.user-menu-panel .user-menu-link {
+    display: block;
+    text-align: left;
+    color: var(--bs-body-color);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 8px;
+    border-radius: var(--bs-border-radius-sm);
+    text-decoration: none;
+}
+
+.user-menu-panel .user-menu-link:hover {
+    background: var(--bs-secondary-bg);
+}
+
+.user-menu-panel .btn-logout {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: var(--bs-danger);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 8px;
+    border-radius: var(--bs-border-radius-sm);
+    cursor: pointer;
+}
+
+.user-menu-panel .btn-logout:hover {
+    background: var(--bs-danger-bg-subtle, var(--bs-secondary-bg));
+}
+
+.content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+/* .subnav-bar (Nivel 2, ver _ModuloLayout.cshtml/_ModuloSubnav.cshtml) vive
+   DENTRO de .content (primer hijo) -- no es un elemento propio del shell
+   (.shell-main), para no acoplar _LayoutMaestro (shell puro) al concepto de
+   "módulo activo", que es responsabilidad de _ModuloLayout. */
+.content > .subnav-bar {
+    margin: -24px -24px 16px -24px;
+}

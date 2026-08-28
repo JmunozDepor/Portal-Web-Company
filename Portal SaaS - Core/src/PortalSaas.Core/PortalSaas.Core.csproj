@@ -1,0 +1,72 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- El cliente nativo de HANA (ver el ItemGroup de Reference más abajo) es x64-only,
+         mismo criterio que PortalSAP_v2 (todos sus .csproj con dependencia nativa fijan
+         PlatformTarget=x64, no cambiar a Any-CPU). Se propaga a Host/Core.Tests
+         (referencian este proyecto); Abstractions/Data/Data.Migrations.* quedan en
+         Any-CPU porque no tocan HANA. -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Necesario para ApplicationPartManager/AssemblyPart/CompiledRazorAssemblyPart
+         (PluginManager), parte del framework compartido ASP.NET Core, no un paquete
+         NuGet separado. Mismo criterio que PortalSAP_v2 (todos sus .csproj con
+         FrameworkReference). -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+    <ProjectReference Include="..\PortalSaas.Data\PortalSaas.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <!-- Cliente de Service Layer (SapConnectionProvider/SapSession), conector al SAP
+         de cada organización cliente, ver Sap/. -->
+    <PackageReference Include="B1SLayer" Version="2.1.4" />
+    <!-- Cliente para la rama SQL Server de HanaService (empresas cuyo SAP B1 corre
+         sobre SQL Server, no HANA). SIN relación con el proveedor que ya usa
+         PortalSaas.Data.Migrations.SqlServer para la base propia de la plataforma, son
+         dos motores dual completamente independientes (ver docs/02-...md §1). -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <!-- Driver base (no el provider de EF Core, ese vive solo en
+         PortalSaas.Data.Migrations.PostgreSql), necesario para armar el connection
+         string de bases externas motor Postgres en ExternalDatabaseConnectionService
+         (ver Infraestructura/), mismo criterio dual que Microsoft.Data.SqlClient de
+         arriba. -->
+    <PackageReference Include="Npgsql" Version="8.0.5" />
+    <!-- Modulo.ImportacionGenerica: leer el archivo subido (.xlsx/.xls) y generar la
+         plantilla de "Descargar formato", mismas 2 librerias del original
+         (referencia original PortalSAP_v2), ambas MIT. -->
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
+    <PackageReference Include="ClosedXML" Version="0.104.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Cliente nativo de HANA: NO se referencia por NuGet, se referencia por HintPath,
+      mismo criterio y mismo archivo que PortalSAP_v2 (Sap.Data.Hana.Net.v8.0.dll, ver
+      referencia-original/PortalSAP_v2/Lib/, requiere el cliente HANA v2.26.18 instalado
+      en la máquina para conectar en runtime; ver C:\Program Files\sap\hdbclient\dotnetcore\v8.0\).
+    -->
+    <Reference Include="Sap.Data.Hana.Net.v8.0">
+      <HintPath>..\..\Lib\Sap.Data.Hana.Net.v8.0.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Los builders puros de Correo/ (payload/JWT) son internal, se testean
+         directo desde PortalSaas.Core.Tests sin exponerlos como API pública. -->
+    <InternalsVisibleTo Include="PortalSaas.Core.Tests" />
+  </ItemGroup>
+
+</Project>

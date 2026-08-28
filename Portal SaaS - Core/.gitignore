@@ -1,0 +1,49 @@
+bin/
+obj/
+*.user
+.vs/
+**/TestResults/
+
+# Output de build de plugins (target PublicarComoPlugin, ver plugins/*/*.csproj) --
+# regenerable con `dotnet build`, no es código fuente.
+artifacts/
+
+# Output de publish-all.ps1 (Host publicado + artifacts/plugins limpio, listo para
+# copiar a IIS) -- regenerable, no es código fuente.
+dist/
+
+# Credenciales reales del contenedor Postgres de producción -- nunca versionar,
+# solo .env.prod.example (placeholders) sí se versiona.
+.env.prod
+
+# Dump de base de datos usado para inicializar el contenedor Postgres de
+# producción -- contiene datos reales de clientes, nunca se versiona.
+db/init/*.sql
+db/init/*.sql.gz
+
+# appsettings.Development.json SÍ se versiona -- solo trae credenciales de
+# docker-compose.yml (desarrollo local, no secretos reales). appsettings.Production.json
+# y cualquier override personal *.local.json nunca se versionan.
+appsettings.Production.json
+appsettings.*.local.json
+
+# Copia de solo lectura de PortalSAP_v2/WMS_Suite para consulta al portar código
+# (ver CLAUDE.md) -- no es código de este producto, no se versiona acá.
+referencia-original/
+
+# Caché local de extracción semántica de graphify -- regenerable, no se versiona.
+graphify-out/cache/
+
+# --- OPTIMIZACIÓN DE TOKENS PARA CLAUDE CODE ---
+# Bloquea las librerías estáticas locales de PortalSaas.Host para que Claude no las lea en cada consulta
+**/wwwroot/lib/bootstrap/
+**/wwwroot/lib/jquery/
+**/wwwroot/lib/jquery-validation/
+**/wwwroot/lib/jquery-validation-unobtrusive/
+**/wwwroot/lib/bootstrap-icons/
+
+# Estado interno de Claude Code (lock de sesión, tareas programadas) -- efímero, nunca
+# se versiona.
+.claude/*.lock
+.worktrees/
+.gstack/

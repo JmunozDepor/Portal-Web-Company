@@ -1,0 +1,22 @@
+@page "/ventas/solicitudes-devolucion/{id}"
+@model Modulo.Ventas.Pages.ReturnRequests.DetailModel
+@{
+    ViewData["Title"] = Model.IsNew ? $"Nuevo/a {Model.DocumentName}" : $"{Model.DocumentName} N° {Model.DocNum}";
+}
+
+@if (Model.IsNew)
+{
+    <form method="post">
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+        @await Component.InvokeAsync("DocumentForm", Model.Document)
+        <button type="submit" class="btn btn-primary mt-3">Crear @Model.DocumentName</button>
+    </form>
+}
+else
+{
+    @await Component.InvokeAsync("DocumentForm", Model.Document)
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

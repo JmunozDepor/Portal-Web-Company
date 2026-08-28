@@ -1,0 +1,61 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Instances.CreateModel
+@{
+    ViewData["Title"] = $"Nueva instancia · {Model.Organization.LegalName}";
+}
+
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "Instances" })" />
+
+<div class="card-surface mb-4">
+    <h2 class="h5 mb-3">Nueva instancia en @Model.Organization.LegalName</h2>
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Input.Name" class="form-label"></label>
+                <input asp-for="Input.Name" class="form-control" autofocus />
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Input.Host" class="form-label"></label>
+                <input asp-for="Input.Host" class="form-control" />
+                <span asp-validation-for="Input.Host" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-3">
+                <label asp-for="Input.Port" class="form-label"></label>
+                <input asp-for="Input.Port" class="form-control" />
+                <span asp-validation-for="Input.Port" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="Input.EngineType" class="form-label"></label>
+                <select asp-for="Input.EngineType" class="form-select" asp-items="Model.EngineTypes.Select(e => new SelectListItem(e, e))"></select>
+                <span asp-validation-for="Input.EngineType" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="Input.TechnicalUsername" class="form-label"></label>
+                <input asp-for="Input.TechnicalUsername" class="form-control" />
+                <span asp-validation-for="Input.TechnicalUsername" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="Input.TechnicalSecretKey" class="form-label"></label>
+                <input asp-for="Input.TechnicalSecretKey" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="Input.TechnicalSecretKey" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-primary">Crear</button>
+            <a asp-page="/Admin/Organizations/Instances/Index" asp-route-organizationId="@Model.Organization.Id" class="btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

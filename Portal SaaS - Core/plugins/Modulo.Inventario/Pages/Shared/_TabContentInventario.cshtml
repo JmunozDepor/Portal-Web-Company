@@ -1,0 +1,136 @@
+@model Modulo.Inventario.Pages.DetailGenericInventoryDocumentModelBase
+@using System.Globalization
+@{
+    var readOnly = Model.Document.ReadOnly;
+    // Ya NO se pre-renderizan filas extra en blanco -- "+ Agregar línea" real (JS,
+    // ver document-lines-editor.js), mismo criterio aplicado primero en
+    // Modulo.Ventas/_TabContentVentas.cshtml (regla de paridad entre motores). Sin
+    // Resumen total acá a propósito (traslados no tienen precio/descuento por línea).
+    var rowCount = readOnly ? Model.Input.Lines.Count : Math.Max(Model.Input.Lines.Count, 1);
+}
+
+<div style="overflow-x:auto;">
+<table class="table table-sm line-items-table" id="inventory-document-lines">
+    <thead>
+        <tr>
+            <th>Artículo</th>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+            <th>Almacén origen</th>
+            <th>Almacén destino</th>
+            @if (!readOnly)
+            {
+                <th></th>
+            }
+        </tr>
+    </thead>
+    <tbody id="inventory-document-lines-body">
+        @for (var i = 0; i < rowCount; i++)
+        {
+            var line = i < Model.Input.Lines.Count ? Model.Input.Lines[i] : new Modulo.Inventario.Pages.DetailGenericInventoryDocumentModelBase.LineInput();
+            <tr>
+                <td>
+                    <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm inventory-document-item-code" list="inventory-document-items-datalist" disabled="@readOnly" />
+                </td>
+                <td>
+                    <input name="Input.Lines[@i].Description" value="@line.Description" class="form-control form-control-sm" disabled="@readOnly" />
+                </td>
+                <td style="max-width:100px">
+                    <input name="Input.Lines[@i].Quantity" type="number" step="0.01" value="@(line.Quantity is null or 0 ? "" : line.Quantity.Value.ToString(CultureInfo.InvariantCulture))" class="form-control form-control-sm" disabled="@readOnly" />
+                </td>
+                <td>
+                    <input name="Input.Lines[@i].FromWarehouseCode" value="@line.FromWarehouseCode" class="form-control form-control-sm inventory-document-from-warehouse-code" list="inventory-document-from-warehouses-datalist" placeholder="Buscar…" disabled="@readOnly" />
+                </td>
+                <td>
+                    <input name="Input.Lines[@i].ToWarehouseCode" value="@line.ToWarehouseCode" class="form-control form-control-sm inventory-document-to-warehouse-code" list="inventory-document-to-warehouses-datalist" placeholder="Buscar…" disabled="@readOnly" />
+                </td>
+                @if (!readOnly)
+                {
+                    <td><button type="button" class="btn btn-sm btn-outline-danger inventory-document-remove-line">Quitar</button></td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+</div>
+
+<datalist id="inventory-document-items-datalist"></datalist>
+<datalist id="inventory-document-from-warehouses-datalist"></datalist>
+<datalist id="inventory-document-to-warehouses-datalist"></datalist>
+
+@if (!readOnly)
+{
+    <div class="admin-row-actions mb-2 mt-2">
+        <button type="button" id="inventory-document-add-line" class="btn btn-sm btn-outline-secondary">+ Agregar línea</button>
+        <button type="button" id="inventory-document-download-template" class="btn btn-sm btn-outline-secondary">Descargar plantilla Excel</button>
+        <button type="button" id="inventory-document-import-csv" class="btn btn-sm btn-outline-secondary">Importar Excel</button>
+        <button type="button" id="inventory-document-clear-lines" class="btn btn-sm btn-outline-danger">Vaciar todas las líneas</button>
+        <input type="file" id="inventory-document-csv-file" accept=".xlsx,.xls" style="display:none" />
+    </div>
+    <div id="inventory-document-csv-result"></div>
+
+    <template id="inventory-document-line-template">
+        <tr>
+            <td><input name="Input.Lines[__INDEX__].ItemCode" class="form-control form-control-sm inventory-document-item-code" list="inventory-document-items-datalist" /></td>
+            <td><input name="Input.Lines[__INDEX__].Description" class="form-control form-control-sm" /></td>
+            <td style="max-width:100px"><input name="Input.Lines[__INDEX__].Quantity" type="number" step="0.01" class="form-control form-control-sm" /></td>
+            <td>
+                <input name="Input.Lines[__INDEX__].FromWarehouseCode" class="form-control form-control-sm inventory-document-from-warehouse-code" list="inventory-document-from-warehouses-datalist" placeholder="Buscar…" />
+            </td>
+            <td>
+                <input name="Input.Lines[__INDEX__].ToWarehouseCode" class="form-control form-control-sm inventory-document-to-warehouse-code" list="inventory-document-to-warehouses-datalist" placeholder="Buscar…" />
+            </td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger inventory-document-remove-line">Quitar</button></td>
+        </tr>
+    </template>
+
+    <script src="~/js/catalog-search.js"></script>
+    <script src="~/lib/sheetjs/xlsx.full.min.js"></script>
+    <script src="~/js/document-lines-editor.js"></script>
+    <script>
+        wireCatalogSearch({
+            inputSelector: '.inventory-document-item-code',
+            datalistId: 'inventory-document-items-datalist',
+            handlerName: 'SearchItems',
+            minChars: 2,
+            getValue: function (item) { return item.itemCode; },
+            getLabel: function (item) { return item.itemCode + ' — ' + item.itemName; },
+        });
+
+        // Almacén -- catálogo chico, minChars: 0 (ver el comentario completo en
+        // OnGetSearchWarehousesAsync, Modulo.Ventas).
+        wireCatalogSearch({
+            inputSelector: '.inventory-document-from-warehouse-code',
+            datalistId: 'inventory-document-from-warehouses-datalist',
+            handlerName: 'SearchWarehouses',
+            minChars: 0,
+            getValue: function (item) { return item.warehouseCode; },
+            getLabel: function (item) { return item.warehouseCode + ' — ' + item.warehouseName; },
+        });
+
+        wireCatalogSearch({
+            inputSelector: '.inventory-document-to-warehouse-code',
+            datalistId: 'inventory-document-to-warehouses-datalist',
+            handlerName: 'SearchWarehouses',
+            minChars: 0,
+            getValue: function (item) { return item.warehouseCode; },
+            getLabel: function (item) { return item.warehouseCode + ' — ' + item.warehouseName; },
+        });
+
+        wireDocumentLinesEditor({
+            tableBodyId: 'inventory-document-lines-body',
+            templateId: 'inventory-document-line-template',
+            addButtonId: 'inventory-document-add-line',
+            clearButtonId: 'inventory-document-clear-lines',
+            removeButtonSelector: '.inventory-document-remove-line',
+            startIndex: @Model.Input.Lines.Count,
+            itemCodeSelector: '.inventory-document-item-code',
+            datalistId: 'inventory-document-items-datalist',
+            csvColumns: ['ItemCode', 'Description', 'Quantity', 'FromWarehouseCode', 'ToWarehouseCode'],
+            downloadTemplateButtonId: 'inventory-document-download-template',
+            importCsvButtonId: 'inventory-document-import-csv',
+            csvFileInputId: 'inventory-document-csv-file',
+            csvResultId: 'inventory-document-csv-result',
+        });
+    </script>
+}

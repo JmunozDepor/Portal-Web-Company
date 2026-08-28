@@ -1,0 +1,52 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.DocumentPermissions.IndexModel
+@{
+    ViewData["Title"] = $"Permisos de documentos · {Model.Organization.LegalName}";
+}
+
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "DocumentPermissions" })" />
+
+@if (TempData["Mensaje"] is string mensaje)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+
+<p class="text-muted">
+    Por defecto, cada tipo de documento de los motores de Venta/Compra/Inventario permite o bloquea la creación según el catálogo estático del motor (columna "Valor por defecto").
+    Elegí "Permitir siempre"/"Bloquear siempre" acá solo si esta organización necesita apartarse de ese default -- "Usar valor por defecto" borra cualquier override existente.
+</p>
+
+<form method="post" asp-antiforgery="true">
+    <div class="document-list-table-wrapper">
+        <table class="table document-list-table">
+        <thead>
+            <tr>
+                <th>Motor</th>
+                <th>Tipo de documento</th>
+                <th>Valor por defecto</th>
+                <th>Override para esta organización</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                var key = $"{row.Engine}.{row.DocumentType}";
+                <tr>
+                    <td>@row.Engine</td>
+                    <td>@row.DocumentType</td>
+                    <td>@(row.DefaultCanCreate ? "Permite" : "Bloquea")</td>
+                    <td>
+                        <select name="selection[@key]" class="form-select form-select-sm">
+                            <option value="default" selected="@(row.Selected == "default")">Usar valor por defecto</option>
+                            <option value="allow" selected="@(row.Selected == "allow")">Permitir siempre</option>
+                            <option value="block" selected="@(row.Selected == "block")">Bloquear siempre</option>
+                        </select>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+</form>

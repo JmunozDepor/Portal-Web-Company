@@ -1,0 +1,15 @@
+@model Modulo.Ventas.Pages.DetailGenericSalesDocumentModelBase
+@{
+    var readOnly = Model.Document.ReadOnly;
+}
+
+<div class="doc-tab-seccion">
+    <div class="form-row">
+        <div class="form-group form-group-ancho-completo">
+            <label asp-for="Input.ShippingMethodCode" class="form-label"></label>
+            <select asp-for="Input.ShippingMethodCode" asp-items="Model.ShippingMethods" class="form-select" disabled="@readOnly">
+                <option value="">Sin asignar</option>
+            </select>
+        </div>
+    </div>
+</div>

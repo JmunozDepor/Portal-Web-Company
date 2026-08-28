@@ -1,0 +1,148 @@
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var username = User.Identity?.Name ?? "Usuario";
+    var organizationSlug = User.FindFirst("OrganizationSlug")?.Value;
+    // Nombre de la Company ACTIVA (no la Organization) -- se re-emite en cada switch
+    // (ver CompanySessionActivator), así que esto sí cambia al elegir otra compañía en
+    // el CompanySwitcher del topbar, a diferencia de organizationSlug (fijo desde el
+    // login, nunca cambia con el switch).
+    var companyCode = User.FindFirst("CompanyCode")?.Value;
+    var initials = username.Length > 0 ? char.ToUpperInvariant(username[0]).ToString() : "?";
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Portal SaaS</title>
+    @* Aplica el modo "solo iconos" del sidebar ANTES de pintar, en <html>, para que el
+       CSS (html[data-sidebar="collapsed"] .app-shell) lo tenga disponible sin parpadeo
+       -- mismo truco que usaba PortalSAP_v2 para su selector de temas. *@
+    <script>
+        if (localStorage.getItem('portalsaas-sidebar-collapsed') === 'collapsed') {
+            document.documentElement.setAttribute('data-sidebar', 'collapsed');
+        }
+        // Aplica el tema guardado ANTES de pintar, mismo criterio que el sidebar
+        // colapsado de arriba -- evita el parpadeo de theme-switcher.js aplicándolo
+        // recién en DOMContentLoaded.
+        var savedTheme = localStorage.getItem('ps-theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+    </script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @if (isAuthenticated)
+    {
+        <link rel="stylesheet" href="~/css/sidebar.css" asp-append-version="true" />
+    }
+    @* CSS propio de un plugin con ServesOwnWwwRoot=true (ej. Modulo.Rendiciones) --
+       required: false porque la mayoría de las páginas no define esta sección. Bug
+       real encontrado en la verificación E2E de Modulo.Rendiciones: sin este
+       RenderSectionAsync, cualquier página que declare "@section Styles { ... }"
+       tira InvalidOperationException ("sections... have not been rendered"). *@
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    @if (isAuthenticated)
+    {
+        <div class="app-shell">
+            <aside class="sidebar">
+                <div class="sidebar-brand">
+                    <button type="button" id="btn-collapse-sidebar" class="sidebar-toggle" title="Contraer/expandir menú" aria-label="Contraer/expandir menú">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div class="sidebar-brand-mark">PS</div>
+                    <div class="sidebar-brand-text">
+                        <strong>Portal SaaS</strong>
+                        @if (!string.IsNullOrEmpty(companyCode))
+                        {
+                            <span>@companyCode</span>
+                        }
+                    </div>
+                </div>
+                <ul class="sidebar-nav" id="sidebar-nav-root">
+                    <li><a asp-page="/Home/Index"><span class="nav-icon"><i class="bi bi-house"></i></span><span class="nav-texto">Inicio</span></a></li>
+                    @await Component.InvokeAsync("SidebarMenu")
+                </ul>
+            </aside>
+            <header class="topbar">
+                <span class="topbar-title">@ViewData["Title"]</span>
+                <div class="topbar-right">
+                    @* Solo aparece si el usuario tiene acceso a más de una compañía --
+                       ver CompanySwitcherViewComponent. *@
+                    @await Component.InvokeAsync("CompanySwitcher")
+                    <details class="user-menu">
+                        <summary>
+                            <span class="user-avatar">@initials</span>
+                            <span class="user-name">@username</span>
+                        </summary>
+                        <div class="user-menu-panel">
+                            @if (!string.IsNullOrEmpty(organizationSlug))
+                            {
+                                <div class="user-menu-org">@organizationSlug</div>
+                            }
+                            @* 4 paletas reales -- portado de referencia-original/PortalSAP_v2
+                               (theme-switcher.js/theme.css [data-theme]), persistencia por
+                               navegador (localStorage), no por usuario/organización. *@
+                            @* Color de cada swatch: en site.css (.theme-row button[data-theme-switch="..."]),
+                               no acá -- un solo lugar de configuración, nunca un color repetido en el markup. *@
+                            <div class="theme-row">
+                                <button type="button" data-theme-switch="claro" title="Claro"></button>
+                                <button type="button" data-theme-switch="oscuro" title="Oscuro"></button>
+                                <button type="button" data-theme-switch="teal" title="Teal"></button>
+                                <button type="button" data-theme-switch="violeta" title="Violeta"></button>
+                            </div>
+                            <a asp-page="/Home/Preferences" class="user-menu-link"><i class="bi bi-gear"></i> Mis preferencias</a>
+                            <form method="post" asp-page="/Account/Logout">
+                                <button type="submit" class="btn-logout">Cerrar sesión</button>
+                            </form>
+                        </div>
+                    </details>
+                </div>
+            </header>
+            <main class="content">
+                @* Banner global de error de sesión (ej. switch de compañía fallado) --
+                   TempData en vez de ViewData porque el origen (Pages/Account/SwitchCompany,
+                   que nunca renderiza vista propia) redirige a una página arbitraria
+                   (ReturnUrl) que no sabe de antemano que tiene que mostrar este mensaje;
+                   TempData sobrevive exactamente un redirect, este layout es el único lugar
+                   que lo necesita leer. *@
+                @if (TempData["Error"] is string errorMensaje && !string.IsNullOrEmpty(errorMensaje))
+                {
+                    <div class="alert alert-danger">@errorMensaje</div>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    }
+    else
+    {
+        <header>
+            <nav class="navbar navbar-light bg-white border-bottom mb-4">
+                <div class="container">
+                    <a class="navbar-brand" asp-page="/Index">Portal SaaS</a>
+                </div>
+            </nav>
+        </header>
+        <div class="container">
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
+        </div>
+    }
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @if (isAuthenticated)
+    {
+        <script src="~/js/sidebar.js" asp-append-version="true"></script>
+        <script src="~/js/doc-list.js" asp-append-version="true"></script>
+        <script src="~/js/doc-tabs.js" asp-append-version="true"></script>
+        <script src="~/js/theme-switcher.js" asp-append-version="true"></script>
+    }
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

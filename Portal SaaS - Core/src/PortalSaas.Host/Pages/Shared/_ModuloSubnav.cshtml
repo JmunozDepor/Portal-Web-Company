@@ -1,0 +1,66 @@
+@*
+    _ModuloSubnav.cshtml -- Sub-Barra Contextual Horizontal (Nivel 2), incluida
+    por _LayoutMaestro.cshtml para toda página autenticada (tenant o admin).
+    Consume dinámicamente las sub-opciones del módulo activo desde
+    IMenuNavigationService -- busca, dentro del árbol ya filtrado para el
+    usuario actual, el nodo de nivel 1 (módulo) cuyo subárbol contiene la ruta
+    actual, y pinta sus Children como pills. Si el módulo activo no tiene
+    hijos (o la página no pertenece a ningún módulo, ej. /Home/Index), no
+    renderiza nada -- degradación explícita, no un contenedor vacío con
+    padding fantasma.
+
+    Nota de alcance (2026-08-17): en sesión de PlatformAdmin este partial no
+    encuentra nodos (IMenuNavigationService es del árbol de TENANT, esa sesión
+    no tiene OrganizationId) -- por diseño no renderiza nada ahí todavía; el
+    rail de _LayoutMaestro ya cubre navegación de nivel 1 para /Admin/*. Un
+    subnav real de Admin (ej. dentro de Organizations: Usuarios/Compañías/
+    Instancias/Licencias) queda para una entrega dedicada -- son páginas con
+    parámetro de ruta (organizationId), no un menú estático simple.
+*@
+@using PortalSaas.Abstractions.Contratos
+@using PortalSaas.Abstractions.Modelos
+@inject IMenuNavigationService MenuNavigation
+@{
+    var currentPath = Context.Request.Path.Value ?? "";
+    var isPlatformAdmin = User.Identity?.AuthenticationType == "PlatformAdmin";
+    List<MenuNodeDto>? activeChildren = null;
+
+    if (!isPlatformAdmin && User.Identity?.IsAuthenticated == true)
+    {
+        var tree = await MenuNavigation.GetVisibleMenuAsync();
+
+        bool ContainsPath(MenuNodeDto node)
+        {
+            if (!string.IsNullOrEmpty(node.PagePath) &&
+                currentPath.StartsWith(node.PagePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            return node.Children.Any(ContainsPath);
+        }
+
+        var activeRoot = tree.FirstOrDefault(ContainsPath);
+        if (activeRoot is not null && activeRoot.Children.Count > 0)
+        {
+            activeChildren = activeRoot.Children;
+        }
+    }
+}
+@if (activeChildren is { Count: > 0 })
+{
+    <nav class="subnav-bar">
+        @foreach (var child in activeChildren)
+        {
+            var isActive = !string.IsNullOrEmpty(child.PagePath) &&
+                currentPath.StartsWith(child.PagePath, StringComparison.OrdinalIgnoreCase);
+            if (string.IsNullOrEmpty(child.PagePath))
+            {
+                <span class="subnav-pill">@child.Name</span>
+            }
+            else
+            {
+                <a href="@child.PagePath" class="subnav-pill @(isActive ? "active" : "")">@child.Name</a>
+            }
+        }
+    </nav>
+}

@@ -1,0 +1,19 @@
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@using PortalSaas.Abstractions.Modelos
+@model IReadOnlyList<MenuNodeDto>
+@{
+    // REVERTIDO (2026-08-19, pedido explícito del dueño del proyecto): el
+    // sidebar vuelve a ser desplegable -- cada módulo raíz muestra su árbol
+    // de hijos vía el accordion nativo de Bootstrap (_MenuNode.cshtml, nunca
+    // se había borrado, solo había dejado de usarse). La navegación de
+    // Nivel 2 ya NO vive en la sub-barra horizontal (_ModuloSubnav.cshtml,
+    // deshabilitada en _ModuloLayout.cshtml en el mismo cambio) -- vivía
+    // duplicada con el árbol del sidebar, el pedido fue no verla arriba.
+    var colorIndex = 0;
+}
+@foreach (var node in Model)
+{
+    ViewData["RootIconStyle"] = $"--icon-color: var(--menu-color-{(colorIndex % 6) + 1})";
+    colorIndex++;
+    <partial name="~/Pages/Shared/Components/SidebarMenu/_MenuNode.cshtml" model="node" />
+}

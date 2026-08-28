@@ -1,0 +1,75 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Licenses.ActivateModel
+@{
+    ViewData["Title"] = $"Activar licencia · {Model.Organization.LegalName}";
+}
+
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "License" })" />
+
+<div class="card-surface mb-4">
+    <h2 class="h5 mb-3">Activar licencia para @Model.Organization.LegalName</h2>
+    <p class="text-muted">
+        Usar esta pantalla solo en la instalación ON-PREMISE, con la clave de activación
+        que ya emitió el servidor Central para esta organización (pantalla "Emitir
+        licencia" del lado Central). El estado/límites reales los trae el primer
+        heartbeat automático contra Central -- lo que se ingresa acá es solo el alta
+        local inicial.
+    </p>
+
+    <div class="alert alert-warning">
+        <strong>Importante -- riesgo real ya encontrado probando esto:</strong> la
+        licencia que la aplicación usa siempre es la más reciente de la organización
+        (por fecha de emisión), sin importar cuántas existan. Si ya hay una licencia
+        activa funcionando y se activa una nueva, la nueva la reemplaza de inmediato
+        como la vigente -- y hasta que su propio heartbeat no traiga el token firmado
+        de Central, la organización puede quedar sin acceso (bloqueos por "no tiene un
+        plan vigente") aunque la licencia anterior siguiera funcionando bien.
+    </div>
+
+    @if (Model.LicenciaExistente is { } existente)
+    {
+        <div class="alert alert-danger">
+            <strong>Esta organización ya tiene una licencia activa:</strong>
+            clave <code>@existente.ActivationKey</code>, plan
+            <strong>@existente.Plan.Name</strong>, último contacto con Central
+            @(existente.SignedStatusUpdatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "nunca").
+            Activar una nueva la va a <strong>reemplazar</strong> -- solo hacerlo si
+            realmente corresponde (ej. la clave anterior quedó inválida/rotada), no
+            para "probar" ni para un caso de prueba.
+        </div>
+    }
+
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Input.ActivationKey" class="form-label"></label>
+                <input asp-for="Input.ActivationKey" class="form-control" autocomplete="off" />
+                <span asp-validation-for="Input.ActivationKey" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Input.PlanId" class="form-label"></label>
+                <select asp-for="Input.PlanId" class="form-select" asp-items="Model.Plans"></select>
+                <span asp-validation-for="Input.PlanId" class="text-danger"></span>
+            </div>
+
+            @if (Model.LicenciaExistente is not null)
+            {
+                <div class="col-12 d-flex align-items-center">
+                    <div class="form-check">
+                        <input asp-for="Input.ConfirmoReemplazo" class="form-check-input" />
+                        <label asp-for="Input.ConfirmoReemplazo" class="form-check-label"></label>
+                        <span asp-validation-for="Input.ConfirmoReemplazo" class="text-danger d-block"></span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-primary">Activar</button>
+            <a asp-page="/Admin/Organizations/Licenses/Index" asp-route-organizationId="@Model.Organization.Id" class="btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>

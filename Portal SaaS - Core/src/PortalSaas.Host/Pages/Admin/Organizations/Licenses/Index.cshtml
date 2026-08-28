@@ -1,0 +1,74 @@
+@page "{organizationId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Licenses.IndexModel
+@{
+    ViewData["Title"] = $"Licencia · {Model.Organization.LegalName}";
+}
+
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "License" })" />
+
+<div class="d-flex justify-content-end mb-3">
+    <a asp-page="/Admin/Organizations/Licenses/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Emitir licencia</a>
+    <a asp-page="/Admin/Organizations/Licenses/Activate" asp-route-organizationId="@Model.Organization.Id" class="btn btn-outline-primary">Activar licencia (on-premise)</a>
+    @if (Model.PuedeValidarManualmente)
+    {
+        <form method="post" asp-page-handler="Validar" asp-route-organizationId="@Model.Organization.Id" class="d-inline">
+            <button type="submit" class="btn btn-outline-secondary">Validar licencia manualmente</button>
+        </form>
+    }
+</div>
+
+@if (TempData["MensajeExito"] is string mensajeExito)
+{
+    <div class="alert alert-success">@mensajeExito</div>
+}
+@if (TempData["MensajeError"] is string mensajeError)
+{
+    <div class="alert alert-danger">@mensajeError</div>
+}
+
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
+    <thead>
+        <tr>
+            <th>Clave de activación</th>
+            <th>Plan</th>
+            <th>Estado</th>
+            <th>Emitida</th>
+            <th>Vence</th>
+            <th>Huella de instalación</th>
+            <th>Último contacto central</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var license in Model.Licenses)
+        {
+            var conflictCount = Model.UnresolvedConflictsByLicenseId.GetValueOrDefault(license.Id);
+            <tr>
+                <td><code>@license.ActivationKey</code></td>
+                <td>@license.Plan.Name</td>
+                <td>@license.Status</td>
+                <td>@license.IssuedAt.ToString("yyyy-MM-dd")</td>
+                <td>@license.ExpiresAt.ToString("yyyy-MM-dd")</td>
+                <td>@(license.InstallationFingerprint ?? "—")</td>
+                <td>@(license.SignedStatusUpdatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "nunca")</td>
+                <td>
+                    <a asp-page="/Admin/Organizations/Licenses/Edit" asp-route-id="@license.Id">Editar</a>
+                    @if (conflictCount > 0)
+                    {
+                        <text> · </text>
+                        <a asp-page="/Admin/Organizations/Licenses/Conflicts" asp-route-id="@license.Id" class="text-danger">
+                            @conflictCount conflicto(s)
+                        </a>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+</div>
+
+@if (Model.Licenses.Count == 0)
+{
+    <p class="text-muted">Esta organización todavía no tiene ninguna licencia emitida.</p>
+}

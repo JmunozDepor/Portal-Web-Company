@@ -1,0 +1,53 @@
+@page
+@model PortalSaas.Host.Pages.Admin.MenuGroups.IndexModel
+@{
+    ViewData["Title"] = "Grupos de menú";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Grupos de menú</h1>
+    <a asp-page="/Admin/MenuGroups/Create" class="btn btn-primary">Nuevo grupo</a>
+</div>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Nodos incluidos</th>
+            <th>Estado</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var group in Model.MenuGroups)
+        {
+            <tr>
+                <td>@group.Name</td>
+                <td>@group.Description</td>
+                <td>@group.MenuGroupItems.Count</td>
+                <td>@(group.IsActive ? "Activo" : "Inactivo")</td>
+                <td>
+                    <a asp-page="/Admin/MenuGroups/Edit" asp-route-id="@group.Id">Editar</a>
+                    ·
+                    <form asp-page="./Index" asp-page-handler="Delete" asp-route-id="@group.Id" method="post" style="display:inline"
+                          onsubmit="return confirm('¿Eliminar el grupo @group.Name?');">
+                        <button type="submit" class="btn btn-link text-danger p-0">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+</div>
+
+@if (Model.MenuGroups.Count == 0)
+{
+    <p class="text-muted">Todavía no hay grupos de menú.</p>
+}

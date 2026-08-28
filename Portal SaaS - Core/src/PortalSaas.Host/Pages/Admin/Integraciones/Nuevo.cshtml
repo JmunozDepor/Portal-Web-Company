@@ -1,0 +1,291 @@
+@page "{id:guid?}"
+@model PortalSaas.Host.Pages.Admin.Integraciones.NuevoModel
+@using PortalSaas.Data.Entities.Integraciones
+@{
+    ViewData["Title"] = Model.EsEdicion ? "Editar integración" : "Nueva integración";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">@(Model.EsEdicion ? "Editar integración" : "Nueva integración")</h1>
+    <a asp-page="/Admin/Integraciones/Index" class="btn btn-sm btn-outline-secondary">‹ Volver al listado</a>
+</div>
+
+<div asp-validation-summary="All" class="text-danger"></div>
+
+<form method="post">
+    <input type="hidden" asp-for="Input.Id" />
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="Input.Nombre" class="form-label"></label>
+            <input asp-for="Input.Nombre" class="form-control" />
+            <span asp-validation-for="Input.Nombre" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Input.CompanyId" class="form-label"></label>
+            <select asp-for="Input.CompanyId" class="form-select">
+                <option value="">-- Seleccionar --</option>
+                @foreach (var company in Model.Companies)
+                {
+                    <option value="@company.Id">@company.Name (@company.Code)</option>
+                }
+            </select>
+            <span asp-validation-for="Input.CompanyId" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-6">
+            <label asp-for="Input.ModuloOrigen" class="form-label"></label>
+            <select asp-for="Input.ModuloOrigen" class="form-select">
+                <option value="">-- Seleccionar --</option>
+                @foreach (var modulo in Model.ModulosOrigen)
+                {
+                    <option value="@modulo" selected="@(string.Equals(Model.Input.ModuloOrigen, modulo, StringComparison.OrdinalIgnoreCase))">@modulo</option>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Input.ModuloOrigen) && !Model.ModulosOrigen.Contains(Model.Input.ModuloOrigen, StringComparer.OrdinalIgnoreCase))
+                {
+                    <option value="@Model.Input.ModuloOrigen" selected>@Model.Input.ModuloOrigen (valor existente, no está en el catálogo)</option>
+                }
+            </select>
+            <span asp-validation-for="Input.ModuloOrigen" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Input.EntidadNegocio" class="form-label"></label>
+            <select asp-for="Input.EntidadNegocio" class="form-select" id="input-entidad-negocio"></select>
+            <div class="form-text">Las opciones dependen de la Dirección elegida más abajo (Bajada = writers registrados, Subida = readers registrados).</div>
+            <span asp-validation-for="Input.EntidadNegocio" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="Input.ConectorTipo" class="form-label"></label>
+            @* Se arma a mano (value = nombre del enum) en vez de asp-items="Html.GetEnumSelectList<...>()"
+               porque ese helper genera value = número subyacente ("0","1"...), no el nombre -- el JS de
+               abajo compara contra 'Sap'/'WmsCloud'/etc. y con el número silenciosamente nunca matcheaba,
+               dejando bloque-config-sap oculto aunque ConectorTipo=Sap estuviera seleccionado. *@
+            <select asp-for="Input.ConectorTipo" class="form-select" id="conector-tipo-select">
+                @foreach (var valor in Enum.GetValues<IntegrationConectorTipo>())
+                {
+                    <option value="@valor" selected="@(Model.Input.ConectorTipo == valor)">@valor</option>
+                }
+            </select>
+            <div class="form-text" id="conector-tipo-help"></div>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Input.Direccion" class="form-label"></label>
+            @* Mismo motivo que ConectorTipo arriba -- el JS de Entidad de negocio depende de comparar
+               direccionSelect.value contra 'Bajada'/'Subida' textual. *@
+            <select asp-for="Input.Direccion" class="form-select" id="direccion-select">
+                @foreach (var valor in Enum.GetValues<IntegrationDireccion>())
+                {
+                    <option value="@valor" selected="@(Model.Input.Direccion == valor)">@valor</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Input.ProgramacionCron" class="form-label"></label>
+            <input asp-for="Input.ProgramacionCron" class="form-control" placeholder="No usado por el motor actual" />
+        </div>
+
+        <div class="col-12">
+            <div class="form-check">
+                <input asp-for="Input.Activo" class="form-check-input" />
+                <label asp-for="Input.Activo" class="form-check-label"></label>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-4" />
+
+    <div id="bloque-config-sap" class="row g-3">
+        <h5 class="col-12">Configuración del conector SAP</h5>
+        <div class="col-md-6">
+            <label asp-for="Input.TipoEntidad" class="form-label"></label>
+            <input asp-for="Input.TipoEntidad" class="form-control" id="input-tipo-entidad" placeholder="Item / Store / Picking / InboundTraslado" />
+            <span asp-validation-for="Input.TipoEntidad" class="text-danger"></span>
+        </div>
+        <div class="col-md-12">
+            <label asp-for="Input.Filtro" class="form-label"></label>
+            <input asp-for="Input.Filtro" class="form-control" id="input-filtro" placeholder="Ej. U_NX_EnviarWMS eq 'Y' and BarCode ne null and BarCode ne '' -- solo aplica a Item/Store" />
+            <div class="form-text">
+                Solo se usa para TipoEntidad Item/Store. Si lo dejás vacío, el sistema ejecuta este filtro por defecto:
+                <br />
+                <code id="filtro-por-defecto-preview"></code>
+                <button type="button" id="btn-copiar-filtro-defecto" class="btn btn-sm btn-link p-0 align-baseline">usar este filtro (editable)</button>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Input.PageSize" class="form-label"></label>
+            <input asp-for="Input.PageSize" class="form-control" type="number" min="1" />
+            <div class="form-text">Solo aplica a Item/Store. No es un límite total -- sigue trayendo todo lo que matchea el filtro, en lotes de este tamaño. Bajarlo ayuda si SAP tarda/se cuelga con muchas filas que matchean.</div>
+        </div>
+    </div>
+
+    <div id="bloque-config-wmscloud" class="row g-3">
+        <h5 class="col-12">Configuración del conector Oracle WMS Cloud</h5>
+        <div class="col-md-6">
+            <label asp-for="Input.ApiUrl" class="form-label"></label>
+            <input asp-for="Input.ApiUrl" class="form-control" />
+            <span asp-validation-for="Input.ApiUrl" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Input.Usuario" class="form-label"></label>
+            <input asp-for="Input.Usuario" class="form-control" />
+            <span asp-validation-for="Input.Usuario" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Input.Clave" class="form-label"></label>
+            <input asp-for="Input.Clave" type="password" class="form-control" autocomplete="new-password" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.ClientEnvCode" class="form-label"></label>
+            <input asp-for="Input.ClientEnvCode" class="form-control" />
+            <span asp-validation-for="Input.ClientEnvCode" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.ParentCompanyCode" class="form-label"></label>
+            <input asp-for="Input.ParentCompanyCode" class="form-control" />
+            <span asp-validation-for="Input.ParentCompanyCode" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.BatchSize" class="form-label"></label>
+            <input asp-for="Input.BatchSize" class="form-control" type="number" min="1" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.MaxRecordsPerCycle" class="form-label"></label>
+            <input asp-for="Input.MaxRecordsPerCycle" class="form-control" type="number" min="0" />
+        </div>
+        <div class="col-md-9">
+            <label asp-for="Input.LgfApiBaseUrl" class="form-label"></label>
+            <input asp-for="Input.LgfApiBaseUrl" class="form-control" placeholder="Ej. https://ta11.wms.ocs.oraclecloud.com/cd_test/wms/lgfapi/v10/entity/" />
+        </div>
+    </div>
+
+    <div id="bloque-config-sql" class="row g-3">
+        <h5 class="col-12">Configuración del conector SQL directo</h5>
+        <div class="col-12">
+            <label asp-for="Input.Query" class="form-label"></label>
+            <textarea asp-for="Input.Query" class="form-control" id="input-query" rows="8" placeholder="Ej. SELECT ItemCode, ItemName FROM OITM WHERE UpdateDate &gt;= :cursor"></textarea>
+            <div class="form-text">
+                Si la query filtra por fecha de corte, usá el placeholder <code>:cursor</code> en el WHERE -- el motor lo reemplaza por el valor de la última corrida exitosa (vacío = trae todo, primera corrida). Vista previa de lo que se va a ejecutar:
+                <br />
+                <code id="query-preview"></code>
+            </div>
+            <span asp-validation-for="Input.Query" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        (function () {
+            var select = document.getElementById('conector-tipo-select');
+            var bloqueSap = document.getElementById('bloque-config-sap');
+            var bloqueWmsCloud = document.getElementById('bloque-config-wmscloud');
+            var bloqueSql = document.getElementById('bloque-config-sql');
+            var ayuda = document.getElementById('conector-tipo-help');
+            var textosAyuda = {
+                'Sap': 'Conecta siempre vía SAP Business One Service Layer (REST/OData) -- nunca hace consultas directas a HANA.',
+                'WmsCloud': 'Envía XML (LgfData) por HTTP POST a la API de Oracle WMS Cloud.',
+                'Sql': 'Ejecuta la query SQL directa contra HANA/SQL Server (vía IHanaService) -- para entidades cuyo mapeo requiere joins que OData no puede expresar.',
+                'Rest': 'Todavía no tiene ningún conector implementado en el motor -- una integración con este tipo no puede ejecutarse (falla con "No hay conector registrado").',
+                'Archivo': 'Todavía no tiene ningún conector implementado en el motor -- una integración con este tipo no puede ejecutarse (falla con "No hay conector registrado").'
+            };
+
+            function actualizarVisibilidad() {
+                var esSap = select.value === 'Sap';
+                var esWmsCloud = select.value === 'WmsCloud';
+                var esSql = select.value === 'Sql';
+                bloqueSap.style.display = esSap ? '' : 'none';
+                bloqueWmsCloud.style.display = esWmsCloud ? '' : 'none';
+                bloqueSql.style.display = esSql ? '' : 'none';
+                ayuda.textContent = textosAyuda[select.value] || '';
+            }
+
+            select.addEventListener('change', actualizarVisibilidad);
+            actualizarVisibilidad();
+        })();
+
+        (function () {
+            var direccionSelect = document.getElementById('direccion-select');
+            var entidadSelect = document.getElementById('input-entidad-negocio');
+            var valorActual = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Input.EntidadNegocio ?? ""));
+            var entidadesPorDireccion = {
+                'Bajada': @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.EntidadesNegocioBajada)),
+                'Subida': @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.EntidadesNegocioSubida)),
+                'Ambas': []
+            };
+
+            function actualizarOpciones() {
+                var opciones = entidadesPorDireccion[direccionSelect.value] || [];
+                var valorPrevio = entidadSelect.value || valorActual;
+                entidadSelect.innerHTML = '';
+
+                var vacia = document.createElement('option');
+                vacia.value = '';
+                vacia.textContent = '-- Seleccionar --';
+                entidadSelect.appendChild(vacia);
+
+                opciones.forEach(function (entidad) {
+                    var opt = document.createElement('option');
+                    opt.value = entidad;
+                    opt.textContent = entidad;
+                    entidadSelect.appendChild(opt);
+                });
+
+                if (valorPrevio && opciones.indexOf(valorPrevio) === -1) {
+                    var opt = document.createElement('option');
+                    opt.value = valorPrevio;
+                    opt.textContent = valorPrevio + ' (valor existente, no coincide con ningún reader/writer registrado)';
+                    entidadSelect.appendChild(opt);
+                }
+
+                entidadSelect.value = valorPrevio;
+            }
+
+            direccionSelect.addEventListener('change', actualizarOpciones);
+            actualizarOpciones();
+        })();
+
+        (function () {
+            var tipoEntidadInput = document.getElementById('input-tipo-entidad');
+            var filtroInput = document.getElementById('input-filtro');
+            var preview = document.getElementById('filtro-por-defecto-preview');
+            var btnCopiar = document.getElementById('btn-copiar-filtro-defecto');
+            var filtrosPorDefecto = {
+                'Item': @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FiltroPorDefectoItems)),
+                'Store': @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FiltroPorDefectoStores))
+            };
+
+            function filtroActual() {
+                return filtrosPorDefecto[tipoEntidadInput.value] || '(TipoEntidad sin filtro por defecto -- no aplica)';
+            }
+
+            function actualizarPreview() {
+                preview.textContent = filtroActual();
+            }
+
+            tipoEntidadInput.addEventListener('input', actualizarPreview);
+            btnCopiar.addEventListener('click', function () {
+                filtroInput.value = filtroActual();
+            });
+            actualizarPreview();
+        })();
+
+        (function () {
+            var queryInput = document.getElementById('input-query');
+            var preview = document.getElementById('query-preview');
+
+            function actualizarPreviewQuery() {
+                preview.textContent = queryInput.value
+                    ? 'SQL directo (:cursor=<última corrida exitosa, o vacío en la primera>): ' + queryInput.value
+                    : '(sin query cargada todavía)';
+            }
+
+            queryInput.addEventListener('input', actualizarPreviewQuery);
+            actualizarPreviewQuery();
+        })();
+    </script>
+}

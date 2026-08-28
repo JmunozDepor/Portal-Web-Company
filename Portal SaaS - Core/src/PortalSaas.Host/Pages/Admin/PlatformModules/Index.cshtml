@@ -1,0 +1,59 @@
+@page
+@model PortalSaas.Host.Pages.Admin.PlatformModules.IndexModel
+@{
+    ViewData["Title"] = "Módulos";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Módulos</h1>
+        <p class="text-muted mb-0">Catálogo comercial de módulos vendibles -- de acá salen los checkboxes de "Módulos incluidos" en Planes y los add-ons por organización.</p>
+    </div>
+    <div>
+        <a asp-page="/Admin/PlatformModules/Import" class="btn btn-outline-primary">Importar plugin (.zip)</a>
+        <a asp-page="/Admin/PlatformModules/Create" class="btn btn-primary">Nuevo módulo</a>
+    </div>
+</div>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Core (incluido en todo plan)</th>
+            <th>Exclusivo de</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var module in Model.Modules)
+        {
+            <tr>
+                <td><code>@module.Code</code></td>
+                <td>@module.Name</td>
+                <td>@(module.IsCore ? "Sí" : "No")</td>
+                <td>@(module.ExclusiveOrganization?.LegalName ?? "—")</td>
+                <td>
+                    <a asp-page="/Admin/PlatformModules/Edit" asp-route-id="@module.Id">Editar</a>
+                    ·
+                    <form asp-page="./Index" asp-page-handler="Delete" asp-route-id="@module.Id" method="post" style="display:inline"
+                          onsubmit="return confirm('¿Eliminar el módulo @module.Code?');">
+                        <button type="submit" class="btn btn-link text-danger p-0">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+</div>
+
+@if (Model.Modules.Count == 0)
+{
+    <p class="text-muted">Todavía no hay módulos cargados. El código debe coincidir con el <code>OriginModule</code>/<code>ModuleCode</code> real del plugin (ej. "Ventas", "Compras", "Inventario", "Administracion") para que el filtrado de menú tenga algo que filtrar.</p>
+}

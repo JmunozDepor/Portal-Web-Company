@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Modulo.Administracion</RootNamespace>
+    <!-- Mismo criterio de consistencia de build que Core/Host/Core.Tests: este
+         plugin no usa HANA, pero corre cargado dentro del mismo proceso x64 del Host. -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Regla dura del proyecto: un plugin referencia SOLO Abstractions. -->
+    <ProjectReference Include="..\..\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <ModuloVersion>1.0.0</ModuloVersion>
+  </PropertyGroup>
+
+  <!-- La carpeta+nombre de DLL (Modulo.Administracion.dll bajo esta ruta) ES el
+       manifiesto que PluginManager espera: no hay archivo de manifiesto aparte
+       (ver PortalSaas.Core/Infraestructura/PluginManager.cs). -->
+  <Target Name="PublicarComoPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <ArchivosDelModulo Include="$(OutputPath)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ArchivosDelModulo)"
+          DestinationFolder="..\..\artifacts\plugins\$(MSBuildProjectName)\$(ModuloVersion)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

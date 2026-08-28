@@ -31,4 +31,7 @@ node_modules/
 mockup-master-detail.html
 
 # Repositorio git anidado propio (no se trackea como submódulo desde acá)
-/Portal SaaS - Core/
+
+# --- monorepo ---
+**/.claude/worktrees/
+**/worktrees/

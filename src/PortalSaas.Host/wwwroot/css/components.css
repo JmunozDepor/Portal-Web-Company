@@ -207,6 +207,16 @@
   transition: transform var(--drawer-transition) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Modificador reusable para un drawer que contiene contenido denso en datos
+   (ej. la grilla checkbox+select de "Pantallas incluidas" en
+   /organizacion/grupos-menu) -- el ancho estándar de 420px trunca cualquier
+   texto de largo variable a solo unos caracteres. Cualquier drawer nuevo con
+   el mismo problema (una tabla/grilla adentro, no un formulario simple) usa
+   esta clase en vez de fijar un max-width propio inline. */
+.drawer-panel--wide {
+  max-width: 640px;
+}
+
 .drawer-panel.is-open {
   transform: translateX(0);
 }

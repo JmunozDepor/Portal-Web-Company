@@ -21,8 +21,14 @@ public interface ITenantUserAdminService
 
     Task<TenantUserDetailDto?> GetAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Verifica el límite de plan (IContractLimitService) antes de crear -- falla hacia lo más estricto.</summary>
-    Task<TenantUserOperationResult> CreateAsync(string username, string email, string password, bool isAdmin, CancellationToken ct = default);
+    /// <summary>
+    /// Verifica el límite de plan (IContractLimitService) antes de crear -- falla hacia lo
+    /// más estricto. Sin parámetro de contraseña a propósito: el usuario nuevo la elige él
+    /// mismo vía el correo de invitación que el llamador envía después de un resultado
+    /// exitoso (mismo token de un solo uso que IPasswordResetService, ver
+    /// ForgotPassword.cshtml.cs del Host para el patrón de referencia).
+    /// </summary>
+    Task<TenantUserOperationResult> CreateAsync(string username, string email, bool isAdmin, CancellationToken ct = default);
 
     /// <summary>Rechaza si userId es el propio usuario logueado y la operación le quitaría IsAdmin o IsActive (auto-bloqueo).</summary>
     Task<TenantUserOperationResult> UpdateAsync(Guid userId, string email, bool isAdmin, bool isActive, bool isLocked, CancellationToken ct = default);

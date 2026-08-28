@@ -2711,6 +2711,52 @@ tamaño de fuente, padding, buscador o layout propio por módulo nuevo.
   un `<h1 class="h3 mb-3">` suelto sin el wrapper del punto 1; ahora las 4 pantallas
   de `Modulo.Administracion` comparten exactamente el mismo esqueleto de header.
 
+## Correo de invitación al crear un usuario (26 ago 2026)
+
+Decisión del dueño del proyecto: crear un usuario nuevo (en cualquiera de los 2
+flujos de alta que existen) **ya no pide contraseña en el formulario** -- se genera
+un hash aleatorio interno (nunca comunicado a nadie) y se le envía al usuario un
+correo de invitación para que elija su propia contraseña, reusando **exactamente el
+mismo mecanismo de token** que `IPasswordResetService`/`ForgotPassword.cshtml.cs`
+(el link de "crear tu contraseña" y el de "recuperarla" son el mismo flujo -- un
+token de un solo uso, 1 hora de vida, resuelto por `/Account/ResetPassword`). No se
+creó ningún servicio nuevo -- cada punto de alta compone `IPasswordResetService` +
+`IEmailSenderService` directo, mismo patrón que ya usaba `ForgotPasswordModel` (sin
+tests xUnit dedicados, es composición sin lógica de negocio propia, mismo criterio
+que esa página).
+
+- **`/Admin/Organizations/Users/Create`** (backoffice de plataforma,
+  `Pages/Admin/Organizations/Users/Create.cshtml.cs`): tras crear el `User`, llama
+  `EnviarInvitacionAsync` (privado, mismo cuerpo que `ForgotPasswordModel.OnPostAsync`)
+  y deja el resultado (éxito/fallo de envío) en `[TempData] Message`, mostrado como
+  alerta en `Index.cshtml` tras el redirect.
+- **`ITenantUserAdminService.CreateAsync`** (self-service de organización, consumido
+  por `Modulo.Administracion`) **perdió el parámetro `password`** -- firma nueva:
+  `CreateAsync(string username, string email, bool isAdmin, ct)`. El envío del correo
+  vive en `Editar.cshtml.cs` (`EnviarInvitacionAsync`, llamado desde
+  `OnPostGuardarAsync` tras un `CreateAsync` exitoso), no en el servicio de Core --
+  mismo motivo que el punto anterior, la construcción del link
+  (`Url.PageLink("/Account/ResetPassword", ...)`) necesita el `PageModel`, no está
+  disponible desde `PortalSaas.Core` sin agregar una dependencia de
+  `IHttpContextAccessor`/`LinkGenerator` que no compraba nada nuevo.
+- **Falla hacia adelante, no hacia atrás**: si el envío del correo falla (ej.
+  `email_settings` no configurado para esa organización), el usuario **igual se
+  crea** -- el admin ve un mensaje distinto avisando que hay que revisar la
+  configuración de correo, mismo criterio ya usado en `ForgotPasswordModel` de no
+  bloquear la operación principal por un fallo de un sistema secundario.
+- **Campos de contraseña eliminados** de los 3 formularios de alta afectados:
+  `Pages/Admin/Organizations/Users/Create.cshtml` (Host),
+  `plugins/Modulo.Administracion/Pages/Usuarios/Index.cshtml` (drawer) y
+  `Editar.cshtml` (la sección "Nuevo usuario" del formulario compartido
+  crear/editar) -- el campo `Input.Password` en `Editar.cshtml` para un usuario
+  YA EXISTENTE era código muerto desde antes de esta entrega (`UpdateAsync` nunca
+  tomó un parámetro de contraseña), no se perdió ninguna funcionalidad real ahí.
+- `dotnet build` 0/0, **183/183 tests en verde** (14 llamadas a
+  `TenantUserAdminServiceTests.CreateAsync` actualizadas para la firma nueva, sin
+  tests nuevos dedicados por el motivo ya explicado). Sin verificación E2E contra
+  Postgres/correo real en esta entrega -- mismo estado que otras entregas de
+  composición de servicios ya probados por separado.
+
 ## Estilo de código
 
 - Comentarios, mensajes de log y texto de UI: **en español** (mismo criterio que

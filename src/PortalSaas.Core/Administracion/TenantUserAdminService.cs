@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
@@ -72,7 +73,7 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
         };
     }
 
-    public async Task<TenantUserOperationResult> CreateAsync(string username, string email, string password, bool isAdmin, CancellationToken ct = default)
+    public async Task<TenantUserOperationResult> CreateAsync(string username, string email, bool isAdmin, CancellationToken ct = default)
     {
         var organizationId = _currentUser.OrganizationId;
 
@@ -99,7 +100,10 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
             return TenantUserOperationResult.Failure("Ya existe un usuario con ese correo en tu organización.");
         }
 
-        var (hash, salt) = PasswordHasher.Hash(password);
+        // Sin contraseña elegida por el admin -- el usuario nuevo la fija él mismo vía
+        // el correo de invitación que el llamador (Editar.cshtml.cs) envía después de un
+        // resultado exitoso. Este hash aleatorio nunca se comunica a nadie.
+        var (hash, salt) = PasswordHasher.Hash(Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)));
         var user = new User
         {
             OrganizationId = organizationId,

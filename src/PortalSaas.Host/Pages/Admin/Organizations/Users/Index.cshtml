@@ -6,6 +6,11 @@
 
 <partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "Users" })" />
 
+@if (Model.Message is not null)
+{
+    <div class="alert alert-info">@Model.Message</div>
+}
+
 <div class="d-flex justify-content-end mb-3">
     <a asp-page="/Admin/Organizations/Users/Create" asp-route-organizationId="@Model.Organization.Id" class="btn btn-primary">Nuevo usuario</a>
 </div>

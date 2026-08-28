@@ -58,10 +58,10 @@ public class TenantUserAdminServiceTests
         var (db, org, _) = await CrearOrganizacionConPlanAsync(userLimit: 1);
         var servicio = CrearServicio(db, org.Id);
 
-        var primero = await servicio.CreateAsync("u1", "u1@test.cl", "Password123!", isAdmin: false);
+        var primero = await servicio.CreateAsync("u1", "u1@test.cl", isAdmin: false);
         Assert.True(primero.IsSuccess);
 
-        var segundo = await servicio.CreateAsync("u2", "u2@test.cl", "Password123!", isAdmin: false);
+        var segundo = await servicio.CreateAsync("u2", "u2@test.cl", isAdmin: false);
         Assert.False(segundo.IsSuccess);
         Assert.Contains("1/1", segundo.Reason);
     }
@@ -72,8 +72,8 @@ public class TenantUserAdminServiceTests
         var (db, org, _) = await CrearOrganizacionConPlanAsync();
         var servicio = CrearServicio(db, org.Id);
 
-        await servicio.CreateAsync("mismo", "a@test.cl", "Password123!", isAdmin: false);
-        var resultado = await servicio.CreateAsync("mismo", "b@test.cl", "Password123!", isAdmin: false);
+        await servicio.CreateAsync("mismo", "a@test.cl", isAdmin: false);
+        var resultado = await servicio.CreateAsync("mismo", "b@test.cl", isAdmin: false);
 
         Assert.False(resultado.IsSuccess);
     }
@@ -93,8 +93,8 @@ public class TenantUserAdminServiceTests
         var servicio1 = CrearServicio(db, org1.Id);
         var servicio2 = CrearServicio(db, org2.Id);
 
-        var resultado1 = await servicio1.CreateAsync("mismo", "a@test.cl", "Password123!", isAdmin: false);
-        var resultado2 = await servicio2.CreateAsync("mismo", "b@test.cl", "Password123!", isAdmin: false);
+        var resultado1 = await servicio1.CreateAsync("mismo", "a@test.cl", isAdmin: false);
+        var resultado2 = await servicio2.CreateAsync("mismo", "b@test.cl", isAdmin: false);
 
         Assert.True(resultado1.IsSuccess);
         Assert.True(resultado2.IsSuccess);
@@ -105,7 +105,7 @@ public class TenantUserAdminServiceTests
     {
         var (db, org, _) = await CrearOrganizacionConPlanAsync();
         var servicio = CrearServicio(db, org.Id, userId: Guid.NewGuid());
-        var creado = await servicio.CreateAsync("admin1", "admin1@test.cl", "Password123!", isAdmin: true);
+        var creado = await servicio.CreateAsync("admin1", "admin1@test.cl", isAdmin: true);
 
         var servicioComoElMismo = CrearServicio(db, org.Id, userId: creado.UserId!.Value);
         var resultado = await servicioComoElMismo.UpdateAsync(creado.UserId.Value, "admin1@test.cl", isAdmin: false, isActive: true, isLocked: false);
@@ -118,7 +118,7 @@ public class TenantUserAdminServiceTests
     {
         var (db, org, _) = await CrearOrganizacionConPlanAsync();
         var servicio = CrearServicio(db, org.Id);
-        var creado = await servicio.CreateAsync("admin1", "admin1@test.cl", "Password123!", isAdmin: true);
+        var creado = await servicio.CreateAsync("admin1", "admin1@test.cl", isAdmin: true);
 
         var servicioComoElMismo = CrearServicio(db, org.Id, userId: creado.UserId!.Value);
         var resultado = await servicioComoElMismo.UpdateAsync(creado.UserId.Value, "admin1@test.cl", isAdmin: true, isActive: false, isLocked: false);
@@ -131,7 +131,7 @@ public class TenantUserAdminServiceTests
     {
         var (db, org, _) = await CrearOrganizacionConPlanAsync();
         var servicio = CrearServicio(db, org.Id);
-        var creado = await servicio.CreateAsync("otro", "otro@test.cl", "Password123!", isAdmin: true);
+        var creado = await servicio.CreateAsync("otro", "otro@test.cl", isAdmin: true);
 
         var resultado = await servicio.UpdateAsync(creado.UserId!.Value, "otro@test.cl", isAdmin: false, isActive: true, isLocked: false);
 
@@ -143,7 +143,7 @@ public class TenantUserAdminServiceTests
     {
         var (db, org, _) = await CrearOrganizacionConPlanAsync();
         var servicio = CrearServicio(db, org.Id);
-        var creado = await servicio.CreateAsync("admin1", "admin1@test.cl", "Password123!", isAdmin: true);
+        var creado = await servicio.CreateAsync("admin1", "admin1@test.cl", isAdmin: true);
 
         var servicioComoElMismo = CrearServicio(db, org.Id, userId: creado.UserId!.Value);
         var resultado = await servicioComoElMismo.DeleteAsync(creado.UserId.Value);
@@ -177,7 +177,7 @@ public class TenantUserAdminServiceTests
         await db.SaveChangesAsync();
 
         var servicio = CrearServicio(db, org1.Id);
-        var creado = await servicio.CreateAsync("usuario1", "usuario1@test.cl", "Password123!", isAdmin: false);
+        var creado = await servicio.CreateAsync("usuario1", "usuario1@test.cl", isAdmin: false);
 
         var resultado = await servicio.SavePermissionsAsync(creado.UserId!.Value, companiaAjena.Id, [], new Dictionary<long, long?>());
 
@@ -189,7 +189,7 @@ public class TenantUserAdminServiceTests
     {
         var (db, org1, _) = await CrearOrganizacionConPlanAsync();
         var servicioOrg1 = CrearServicio(db, org1.Id);
-        var creadoEnOrg1 = await servicioOrg1.CreateAsync("usuario1", "usuario1@test.cl", "Password123!", isAdmin: false);
+        var creadoEnOrg1 = await servicioOrg1.CreateAsync("usuario1", "usuario1@test.cl", isAdmin: false);
 
         var org2 = new Organization { LegalName = "Otro cliente", Slug = "otro-cliente-3", Country = "CL" };
         db.Organizations.Add(org2);
@@ -209,8 +209,8 @@ public class TenantUserAdminServiceTests
         db.Organizations.Add(org2);
         await db.SaveChangesAsync();
 
-        await CrearServicio(db, org1.Id).CreateAsync("de-org1", "org1@test.cl", "Password123!", isAdmin: false);
-        await CrearServicio(db, org2.Id).CreateAsync("de-org2", "org2@test.cl", "Password123!", isAdmin: false);
+        await CrearServicio(db, org1.Id).CreateAsync("de-org1", "org1@test.cl", isAdmin: false);
+        await CrearServicio(db, org2.Id).CreateAsync("de-org2", "org2@test.cl", isAdmin: false);
 
         var lista = await CrearServicio(db, org1.Id).ListAsync();
 

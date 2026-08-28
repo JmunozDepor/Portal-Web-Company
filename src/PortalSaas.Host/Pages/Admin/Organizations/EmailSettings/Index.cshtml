@@ -9,9 +9,11 @@
 @if (!Model.EsNuevo)
 {
     <p class="text-muted">
-        Ya hay un proveedor configurado. Los campos de credenciales quedan en blanco
-        a propósito (write-only) -- dejarlos en blanco no cambia la configuración
-        existente; completarlos exige completar TODOS los del proveedor elegido.
+        Ya hay un proveedor configurado. El correo de la cuenta de servicio (Google) y
+        el Tenant Id / Client Id (Microsoft 365) se muestran prellenados. La clave
+        privada (PEM) y el Client Secret nunca se muestran (write-only): dejalos en
+        blanco para conservar los guardados, o ingresá uno nuevo para reemplazar la
+        configuración cifrada.
     </p>
 }
 else

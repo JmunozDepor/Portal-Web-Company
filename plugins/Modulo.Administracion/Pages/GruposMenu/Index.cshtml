@@ -83,7 +83,11 @@
 </div>
 
 <div id="drawer-grupo-menu" class="drawer-overlay @(grupoDrawerAbierto ? "is-open" : "")" data-drawer>
-    <aside class="drawer-panel @(grupoDrawerAbierto ? "is-open" : "")">
+    @* drawer-panel--wide: este drawer tiene adentro la grilla checkbox+select
+       de "Pantallas incluidas" (contenido denso, no un formulario simple) --
+       el ancho estándar de 420px truncaba el nombre de cada pantalla a solo
+       unos caracteres, ver el comentario en site.css .menu-perfil-fila. *@
+    <aside class="drawer-panel drawer-panel--wide @(grupoDrawerAbierto ? "is-open" : "")">
         <div class="drawer-header">
             <h3>@(Model.EditId is null ? "Nuevo grupo" : Model.IsEditingGlobalTemplate ? "Plantilla de plataforma" : "Editar grupo")</h3>
             <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>

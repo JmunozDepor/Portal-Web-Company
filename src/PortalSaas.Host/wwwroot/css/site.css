@@ -1288,7 +1288,7 @@ body {
 
 .menu-perfil-fila {
   display: grid;
-  grid-template-columns: 1fr 200px;
+  grid-template-columns: 1fr 180px;
   align-items: center;
   gap: 10px;
   padding: 4px 2px;
@@ -1302,11 +1302,19 @@ body {
   border-radius: 6px;
 }
 
+/* Antes: overflow hidden + nowrap + ellipsis -- con el drawer al ancho
+   estándar de 420px (ver .drawer-panel--wide en components.css) eso cortaba
+   el nombre de la pantalla a apenas unos caracteres, ilegible sin pasar el
+   mouse (el title="..." del label es solo un respaldo, no un reemplazo de
+   verlo escrito). Con el drawer más ancho + este min-width:0, alcanza con
+   dejar que el texto haga wrap a una segunda línea si hace falta. */
 .menu-perfil-fila .form-check {
   min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+}
+
+.menu-perfil-fila .form-check-label {
+  white-space: normal;
+  line-height: 1.25;
 }
 
 /* Resumen de totales -- portado de .doc-resumen-total (theme.css, sección Contenido).

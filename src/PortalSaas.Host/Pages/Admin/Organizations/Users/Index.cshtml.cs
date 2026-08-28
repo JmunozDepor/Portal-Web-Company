@@ -20,6 +20,9 @@ public class IndexModel : PageModel
     public Organization Organization { get; private set; } = null!;
     public List<User> Users { get; private set; } = [];
 
+    [TempData]
+    public string? Message { get; set; }
+
     public async Task<IActionResult> OnGetAsync(Guid organizationId)
     {
         var organization = await _db.Organizations.FindAsync(organizationId);

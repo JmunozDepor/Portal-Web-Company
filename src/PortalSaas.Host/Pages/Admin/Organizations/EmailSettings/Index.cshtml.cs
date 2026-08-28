@@ -64,13 +64,7 @@ public class IndexModel : PageModel
 
         if (existing is not null)
         {
-            Input = new InputModel
-            {
-                Provider = existing.Provider,
-                SenderEmail = existing.SenderEmail,
-                SenderDisplayName = existing.SenderDisplayName,
-                IsActive = existing.IsActive,
-            };
+            PopulateInputFromExisting(existing);
         }
 
         return Page();
@@ -103,8 +97,11 @@ public class IndexModel : PageModel
 
         if (Input.Provider == EmailProviderType.GoogleWorkspace)
         {
-            var completoAlgunCampo = !string.IsNullOrWhiteSpace(Input.ClientEmail) || !string.IsNullOrWhiteSpace(Input.PrivateKeyPem);
-            if (EsNuevo || cambioDeProveedor || completoAlgunCampo)
+            // clientEmail no es secreto y viene prellenado -- lo que dispara regrabar
+            // la config cifrada es que se haya ingresado un PEM nuevo (o alta / cambio
+            // de proveedor).
+            var hayPemNuevo = !string.IsNullOrWhiteSpace(Input.PrivateKeyPem);
+            if (EsNuevo || cambioDeProveedor || hayPemNuevo)
             {
                 if (string.IsNullOrWhiteSpace(Input.ClientEmail))
                 {
@@ -127,8 +124,10 @@ public class IndexModel : PageModel
         }
         else if (Input.Provider == EmailProviderType.Microsoft365)
         {
-            var completoAlgunCampo = !string.IsNullOrWhiteSpace(Input.TenantId) || !string.IsNullOrWhiteSpace(Input.ClientId) || !string.IsNullOrWhiteSpace(Input.ClientSecret);
-            if (EsNuevo || cambioDeProveedor || completoAlgunCampo)
+            // tenantId/clientId no son secretos y vienen prellenados -- lo que dispara
+            // regrabar es un clientSecret nuevo (o alta / cambio de proveedor).
+            var haySecretNuevo = !string.IsNullOrWhiteSpace(Input.ClientSecret);
+            if (EsNuevo || cambioDeProveedor || haySecretNuevo)
             {
                 if (string.IsNullOrWhiteSpace(Input.TenantId))
                 {
@@ -213,13 +212,7 @@ public class IndexModel : PageModel
 
         if (existing is not null)
         {
-            Input = new InputModel
-            {
-                Provider = existing.Provider,
-                SenderEmail = existing.SenderEmail,
-                SenderDisplayName = existing.SenderDisplayName,
-                IsActive = existing.IsActive,
-            };
+            PopulateInputFromExisting(existing);
         }
 
         if (existing is null)
@@ -257,6 +250,43 @@ public class IndexModel : PageModel
         }
 
         return Page();
+    }
+
+    /// <summary>
+    /// Rellena Input desde la fila guardada. clientEmail (Google) y tenantId/clientId
+    /// (M365) NO son secretos -- se muestran prellenados para que el admin vea qué
+    /// quedó configurado. El PEM y el clientSecret sí lo son: quedan en blanco
+    /// (write-only) y solo se regraban si se ingresa uno nuevo.
+    /// </summary>
+    private void PopulateInputFromExisting(global::PortalSaas.Data.Entities.EmailSettings existing)
+    {
+        Input = new InputModel
+        {
+            Provider = existing.Provider,
+            SenderEmail = existing.SenderEmail,
+            SenderDisplayName = existing.SenderDisplayName,
+            IsActive = existing.IsActive,
+        };
+
+        try
+        {
+            var json = _secretoCifradoService.Decrypt(existing.EncryptedProviderConfig);
+            if (existing.Provider == EmailProviderType.GoogleWorkspace)
+            {
+                Input.ClientEmail = JsonSerializer.Deserialize<GoogleWorkspaceConfigInput>(json)?.ClientEmail;
+            }
+            else if (existing.Provider == EmailProviderType.Microsoft365)
+            {
+                var cfg = JsonSerializer.Deserialize<Microsoft365ConfigInput>(json);
+                Input.TenantId = cfg?.TenantId;
+                Input.ClientId = cfg?.ClientId;
+            }
+        }
+        catch
+        {
+            // Config ilegible (clave maestra distinta / dato corrupto) -- mostrar los
+            // campos vacíos, sin romper la página.
+        }
     }
 
     public sealed class InputModel

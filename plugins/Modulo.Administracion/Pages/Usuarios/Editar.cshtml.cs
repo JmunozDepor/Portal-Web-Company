@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.Logging;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
@@ -9,10 +10,22 @@ namespace Modulo.Administracion.Pages.Usuarios;
 public class EditarModel : AdminPageModelBase
 {
     private readonly ITenantUserAdminService _usuarios;
+    private readonly IPasswordResetService _passwordResetService;
+    private readonly IEmailSenderService _emailSenderService;
+    private readonly ILogger<EditarModel> _logger;
 
-    public EditarModel(ITenantUserAdminService usuarios, ICurrentUserContext currentUser) : base(currentUser)
+    public EditarModel(
+        ITenantUserAdminService usuarios,
+        ICurrentUserContext currentUser,
+        IPasswordResetService passwordResetService,
+        IEmailSenderService emailSenderService,
+        ILogger<EditarModel> logger)
+        : base(currentUser)
     {
         _usuarios = usuarios;
+        _passwordResetService = passwordResetService;
+        _emailSenderService = emailSenderService;
+        _logger = logger;
     }
 
     [BindProperty]
@@ -45,15 +58,6 @@ public class EditarModel : AdminPageModelBase
         [EmailAddress(ErrorMessage = "Correo inválido.")]
         [Display(Name = "Correo")]
         public string Email { get; set; } = string.Empty;
-
-        [DataType(DataType.Password)]
-        [Display(Name = "Contraseña")]
-        public string? Password { get; set; }
-
-        [DataType(DataType.Password)]
-        [Display(Name = "Confirmar contraseña")]
-        [Compare(nameof(Password), ErrorMessage = "Las contraseñas no coinciden.")]
-        public string? ConfirmPassword { get; set; }
 
         [Display(Name = "Administrador de la organización")]
         public bool IsAdmin { get; set; }
@@ -104,11 +108,6 @@ public class EditarModel : AdminPageModelBase
     {
         EsNuevo = id is null;
 
-        if (EsNuevo && string.IsNullOrWhiteSpace(Input.Password))
-        {
-            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Password)}", "La contraseña es obligatoria para un usuario nuevo.");
-        }
-
         if (!ModelState.IsValid)
         {
             if (!EsNuevo)
@@ -123,14 +122,16 @@ public class EditarModel : AdminPageModelBase
 
         if (EsNuevo)
         {
-            var resultado = await _usuarios.CreateAsync(Input.Username, Input.Email, Input.Password!, Input.IsAdmin);
+            var resultado = await _usuarios.CreateAsync(Input.Username, Input.Email, Input.IsAdmin);
             if (!resultado.IsSuccess)
             {
                 ModelState.AddModelError(string.Empty, resultado.Reason!);
                 return Page();
             }
 
-            MensajeExito = "Usuario creado correctamente.";
+            MensajeExito = await EnviarInvitacionAsync(Input.Email)
+                ? "Usuario creado correctamente. Se envió un correo de invitación para que cree su contraseña."
+                : "Usuario creado correctamente, pero no se pudo enviar el correo de invitación (revisa la configuración de correo de la organización).";
             return RedirectToPage(new { id = resultado.UserId });
         }
 
@@ -175,6 +176,41 @@ public class EditarModel : AdminPageModelBase
         }
 
         return RedirectToPage(new { id });
+    }
+
+    /// <summary>
+    /// Junta IPasswordResetService + IEmailSenderService -- mismo patrón exacto que
+    /// ForgotPassword.cshtml.cs del Host (el link de "crear tu contraseña" y el de
+    /// "recuperarla" son el mismo mecanismo de token). El fallo de envío nunca bloquea
+    /// la creación del usuario, solo cambia el mensaje que ve el admin.
+    /// </summary>
+    private async Task<bool> EnviarInvitacionAsync(string email)
+    {
+        var organizationId = CurrentUser.OrganizationId;
+        var rawToken = await _passwordResetService.RequestResetAsync(organizationId, email);
+        if (rawToken is null)
+        {
+            return false;
+        }
+
+        var resetLink = Url.PageLink("/Account/ResetPassword", values: new { token = rawToken });
+
+        try
+        {
+            await _emailSenderService.SendAsync(organizationId, new EmailMessage(
+                email,
+                "Creá tu contraseña — Portal SaaS",
+                $"""
+                <p>Se creó una cuenta para vos en el Portal SaaS.</p>
+                <p><a href="{resetLink}">Hacé clic acá para elegir tu contraseña</a> (el link vence en 1 hora).</p>
+                """));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falló el envío del correo de invitación para el usuario {Email} de la organización {OrganizationId}", email, organizationId);
+            return false;
+        }
     }
 
     private async Task CargarPermisosAsync(Guid userId, Guid? companyId)

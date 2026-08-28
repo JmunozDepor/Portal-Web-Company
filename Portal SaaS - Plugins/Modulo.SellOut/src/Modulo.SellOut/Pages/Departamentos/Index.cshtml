@@ -1,0 +1,127 @@
+@page "/sellout/departamentos"
+@model Modulo.SellOut.Pages.Departamentos.IndexModel
+@{
+    ViewData["Title"] = "Departamentos";
+    var puedeAbrirFormulario = Model.PuedeVer && (Model.PuedeCrear || Model.PuedeEditar);
+    var formularioAbierto = Model.Editando is not null || !ViewData.ModelState.IsValid;
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Departamentos</h2>
+        @if (Model.PuedeVer && Model.PuedeCrear)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-departamento">+ Nuevo departamento</button>
+        }
+    </div>
+
+    <partial name="_MensajesSellOut" model="Model" />
+
+    @if (!Model.PuedeVer)
+    {
+        <p class="text-muted">No tenés permiso para ver esta pantalla.</p>
+    }
+    else
+    {
+        <form method="get" class="d-flex align-items-end gap-3 flex-wrap mb-3">
+            <div class="mb-0" style="min-width:220px;">
+                <label for="filtro-cliente" class="form-label">Cliente</label>
+                <select id="filtro-cliente" name="FiltroIdCliente" class="form-select" onchange="this.form.submit()" asp-items="Model.ClientesDisponibles">
+                    <option value="">Todos los clientes</option>
+                </select>
+            </div>
+            <div class="mb-0 flex-grow-1" style="max-width:320px;">
+                <label for="filtro-texto" class="form-label">Buscar</label>
+                <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Departamento o descripción..." />
+            </div>
+            <button type="submit" class="btn-secondary">Buscar</button>
+            <a href="~/sellout/departamentos" class="btn-ghost">Limpiar</a>
+        </form>
+
+        <table class="table-ps">
+            <thead><tr><th>Cliente</th><th>Departamento (cliente)</th><th>Descripción local</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var d in Model.Departamentos)
+                {
+                    <tr>
+                        <td>@d.NomCliente</td>
+                        <td>@d.ClienteDepartamento</td>
+                        <td>@d.DescripcionDeptoLocal</td>
+                        <td class="col-actions">
+                            @if (Model.PuedeEditar)
+                            {
+                                <a href="~/sellout/departamentos?editandoCliente=@d.IdCliente&editandoDepartamento=@d.ClienteDepartamento&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                            }
+                            @if (Model.PuedeEliminar)
+                            {
+                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@d.IdCliente" asp-route-clienteDepartamento="@d.ClienteDepartamento" method="post" class="d-inline-block"
+                                      onsubmit="return confirm('¿Eliminar el departamento &quot;@d.ClienteDepartamento&quot;?');">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Departamentos.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-muted">Sin departamentos todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (puedeAbrirFormulario)
+    {
+        <div id="drawer-departamento" class="drawer-overlay @(formularioAbierto ? "is-open" : "")" data-drawer>
+            <aside class="drawer-panel @(formularioAbierto ? "is-open" : "")">
+                <div class="drawer-header">
+                    <h3>@(Model.Editando is null ? "Nuevo departamento" : $"Editar departamento · {Model.Input.ClienteDepartamento}")</h3>
+                    <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <form asp-page="./Index" asp-page-handler="Guardar" method="post">
+                    <input type="hidden" name="FiltroIdCliente" value="@Model.FiltroIdCliente" />
+                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
+                    <div class="drawer-body">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <div class="drawer-grid">
+                            <div class="mb-3">
+                                <label asp-for="Input.IdCliente" class="form-label">Cliente</label>
+                                @if (Model.Editando is null)
+                                {
+                                    <select asp-for="Input.IdCliente" asp-items="Model.ClientesDisponibles" class="form-select">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                }
+                                else
+                                {
+                                    <input type="hidden" asp-for="Input.IdCliente" />
+                                    <input class="form-control" value="@Model.Input.IdCliente" readonly />
+                                }
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.ClienteDepartamento" class="form-label">Departamento (cliente)</label>
+                                @if (Model.Editando is null)
+                                {
+                                    <input asp-for="Input.ClienteDepartamento" class="form-control" />
+                                }
+                                else
+                                {
+                                    <input type="hidden" asp-for="Input.ClienteDepartamento" />
+                                    <input class="form-control" value="@Model.Input.ClienteDepartamento" readonly />
+                                }
+                            </div>
+                            <div class="mb-3 span-2">
+                                <label asp-for="Input.DescripcionDeptoLocal" class="form-label">Descripción local</label>
+                                <input asp-for="Input.DescripcionDeptoLocal" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="drawer-footer">
+                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                    </div>
+                </form>
+            </aside>
+        </div>
+    }
+</div>

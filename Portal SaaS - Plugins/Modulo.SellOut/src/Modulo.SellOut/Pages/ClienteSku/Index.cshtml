@@ -1,0 +1,221 @@
+@page "/sellout/clientesku"
+@model Modulo.SellOut.Pages.ClienteSku.IndexModel
+@{
+    ViewData["Title"] = "SKU por cliente";
+    var puedeAbrirFormulario = Model.PuedeVer && (Model.PuedeCrear || Model.PuedeEditar);
+    var formularioAbierto = Model.Editando is not null || !ViewData.ModelState.IsValid;
+
+    string ConstruirUrlPagina(int pagina) =>
+        $"~/sellout/clientesku?pagina={pagina}&tamanoPagina={Model.TamanoPagina}&filtroIdCliente={Model.FiltroIdCliente}&filtroTexto={Uri.EscapeDataString(Model.FiltroTexto ?? string.Empty)}&filtroSoloSinParidad={Model.FiltroSoloSinParidad}";
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">SKU por cliente</h2>
+        @if (Model.PuedeVer && Model.PuedeCrear)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-sku">+ Nuevo SKU</button>
+        }
+    </div>
+
+    <partial name="_MensajesSellOut" model="Model" />
+
+    @if (!Model.PuedeVer)
+    {
+        <p class="text-muted">No tenés permiso para ver esta pantalla.</p>
+    }
+    else
+    {
+        @if (Model.PuedeCrear || Model.PuedeEditar)
+        {
+            <div class="card-surface mb-3" style="box-shadow:none;background:var(--input-bg);">
+                <h3 class="h6 mb-1">Actualizar paridad masivamente</h3>
+                <p class="text-muted mb-3">
+                    CSV con columnas <code>IdCliente</code>, <code>Sku</code>, <code>Producto</code> (encabezado, cualquier orden) --
+                    actualiza la paridad de SKU ya existentes, no crea filas nuevas.
+                </p>
+                <form asp-page="./Index" asp-page-handler="ImportarParidad" method="post" enctype="multipart/form-data" class="d-flex align-items-center gap-2">
+                    <input type="file" name="archivoParidad" accept=".csv" class="form-control" required style="max-width:320px;" />
+                    <button type="submit" class="btn-secondary">Importar CSV</button>
+                </form>
+
+                @if (Model.ErroresImportacion is { Count: > 0 })
+                {
+                    <div class="alert alert-danger mt-3 mb-0">
+                        <strong>@Model.ErroresImportacion.Count fila(s) con error:</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach (var error in Model.ErroresImportacion.Take(50))
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                        @if (Model.ErroresImportacion.Count > 50)
+                        {
+                            <p class="mb-0 mt-1">... y @(Model.ErroresImportacion.Count - 50) más.</p>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        <form method="get" class="d-flex align-items-end gap-3 flex-wrap mb-3">
+            <div class="mb-0" style="min-width:220px;">
+                <label for="filtro-cliente" class="form-label">Cliente</label>
+                <select id="filtro-cliente" name="FiltroIdCliente" class="form-select" asp-items="Model.ClientesDisponibles">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="mb-0 flex-grow-1" style="max-width:320px;">
+                <label for="filtro-texto" class="form-label">Buscar</label>
+                <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="SKU, descripción o barcode..." />
+            </div>
+            <div class="mb-0 form-check pb-2">
+                <input type="checkbox" name="FiltroSoloSinParidad" value="true" checked="@Model.FiltroSoloSinParidad" class="form-check-input" id="filtro-sin-paridad" />
+                <label class="form-check-label" for="filtro-sin-paridad">Solo sin paridad</label>
+            </div>
+            <div class="mb-0" style="min-width:120px;">
+                <label for="tamano-pagina" class="form-label">Por página</label>
+                <select id="tamano-pagina" name="TamanoPagina" class="form-select">
+                    @foreach (var tamano in Model.AvailablePageSizes)
+                    {
+                        <option value="@tamano" selected="@(tamano == Model.TamanoPagina)">@tamano</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn-secondary">Buscar</button>
+            <a href="~/sellout/clientesku" class="btn-ghost">Limpiar</a>
+        </form>
+
+        <p class="text-muted mb-2">@Model.TotalRegistros registro(s) · página @Model.Pagina de @Model.TotalPaginas</p>
+
+        <table class="table-ps">
+            <thead><tr><th>Cliente</th><th>SKU</th><th>Descripción</th><th>Barcode</th><th>Producto (paridad)</th><th>Costo</th><th>Venta</th><th>Activo</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var s in Model.Skus)
+                {
+                    <tr class="@((s.Activo ?? true) ? "" : "row-inactive")">
+                        <td>@s.NomCliente</td>
+                        <td>@s.Sku</td>
+                        <td>@s.DescripcionCliente</td>
+                        <td>@s.Barcode</td>
+                        <td>@s.Producto</td>
+                        <td>@s.CostoUnit</td>
+                        <td>@s.VentaUnit</td>
+                        <td>@((s.Activo ?? true) ? "Sí" : "No")</td>
+                        <td class="col-actions">
+                            @if (Model.PuedeEditar)
+                            {
+                                <a href="~/sellout/clientesku?editandoCliente=@s.IdCliente&editandoSku=@s.Sku&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto&filtroSoloSinParidad=@Model.FiltroSoloSinParidad&pagina=@Model.Pagina&tamanoPagina=@Model.TamanoPagina" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                            }
+                            @if (Model.PuedeEliminar)
+                            {
+                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@s.IdCliente" asp-route-sku="@s.Sku" method="post" class="d-inline-block"
+                                      onsubmit="return confirm('¿Eliminar el SKU &quot;@s.Sku&quot;?');">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Skus.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-muted">Sin SKU todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="d-flex align-items-center justify-content-center gap-3 mt-3">
+            <a class="btn-secondary @(Model.Pagina <= 1 ? "disabled" : "")"
+               href="@(Model.Pagina <= 1 ? "#" : ConstruirUrlPagina(Model.Pagina - 1))">« Anterior</a>
+            <span class="text-muted">Página @Model.Pagina de @Model.TotalPaginas</span>
+            <a class="btn-secondary @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")"
+               href="@(Model.Pagina >= Model.TotalPaginas ? "#" : ConstruirUrlPagina(Model.Pagina + 1))">Siguiente »</a>
+        </div>
+    }
+
+    @if (puedeAbrirFormulario)
+    {
+        <div id="drawer-sku" class="drawer-overlay @(formularioAbierto ? "is-open" : "")" data-drawer>
+            <aside class="drawer-panel @(formularioAbierto ? "is-open" : "")">
+                <div class="drawer-header">
+                    <h3>@(Model.Editando is null ? "Nuevo SKU" : $"Editar SKU · {Model.Input.Sku}")</h3>
+                    <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <form asp-page="./Index" asp-page-handler="Guardar" method="post">
+                    <input type="hidden" name="FiltroIdCliente" value="@Model.FiltroIdCliente" />
+                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
+                    <input type="hidden" name="FiltroSoloSinParidad" value="@Model.FiltroSoloSinParidad" />
+                    <input type="hidden" name="Pagina" value="@Model.Pagina" />
+                    <input type="hidden" name="TamanoPagina" value="@Model.TamanoPagina" />
+                    <div class="drawer-body">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <div class="drawer-grid">
+                            <div class="mb-3">
+                                <label asp-for="Input.IdCliente" class="form-label">Cliente</label>
+                                @if (Model.Editando is null)
+                                {
+                                    <select asp-for="Input.IdCliente" asp-items="Model.ClientesDisponibles" class="form-select">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                }
+                                else
+                                {
+                                    <input type="hidden" asp-for="Input.IdCliente" />
+                                    <input class="form-control" value="@Model.Input.IdCliente" readonly />
+                                }
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Sku" class="form-label">SKU</label>
+                                @if (Model.Editando is null)
+                                {
+                                    <input asp-for="Input.Sku" class="form-control" />
+                                }
+                                else
+                                {
+                                    <input type="hidden" asp-for="Input.Sku" />
+                                    <input class="form-control" value="@Model.Input.Sku" readonly />
+                                }
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Barcode" class="form-label">Barcode</label>
+                                <input asp-for="Input.Barcode" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.DescripcionCliente" class="form-label">Descripción</label>
+                                <input asp-for="Input.DescripcionCliente" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.DeptoCliente" class="form-label">Depto. cliente</label>
+                                <input asp-for="Input.DeptoCliente" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Producto" class="form-label">Producto (paridad SAP)</label>
+                                <input asp-for="Input.Producto" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.CostoUnit" class="form-label">Costo unit.</label>
+                                <input asp-for="Input.CostoUnit" type="number" step="0.01" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.VentaUnit" class="form-label">Venta unit.</label>
+                                <input asp-for="Input.VentaUnit" type="number" step="0.01" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.PrecioFull" class="form-label">Precio full</label>
+                                <input asp-for="Input.PrecioFull" type="number" step="0.01" class="form-control" />
+                            </div>
+                            <div class="mb-3 span-2 form-check">
+                                <input asp-for="Input.Activo" type="checkbox" class="form-check-input" />
+                                <label asp-for="Input.Activo" class="form-check-label">Activo</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="drawer-footer">
+                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                    </div>
+                </form>
+            </aside>
+        </div>
+    }
+</div>

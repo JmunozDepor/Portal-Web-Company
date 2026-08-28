@@ -1,0 +1,132 @@
+@page "/sellout/clientes"
+@model Modulo.SellOut.Pages.Clientes.IndexModel
+@{
+    ViewData["Title"] = "Clientes";
+    var puedeAbrirFormulario = Model.PuedeVer && (Model.PuedeCrear || Model.PuedeEditar);
+    var formularioAbierto = Model.EditandoId is not null || !ViewData.ModelState.IsValid;
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Clientes</h2>
+        @if (Model.PuedeVer && Model.PuedeCrear)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-cliente">+ Nuevo cliente</button>
+        }
+    </div>
+
+    <partial name="_MensajesSellOut" model="Model" />
+
+    @if (!Model.PuedeVer)
+    {
+        <p class="text-muted">No tenés permiso para ver esta pantalla.</p>
+    }
+    else
+    {
+        <form method="get" class="d-flex align-items-end gap-3 flex-wrap mb-3">
+            <div class="mb-0 flex-grow-1" style="max-width:320px;">
+                <label for="filtro-texto" class="form-label">Buscar</label>
+                <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Nombre o código..." />
+            </div>
+            <button type="submit" class="btn-secondary">Buscar</button>
+            <a href="~/sellout/clientes" class="btn-ghost">Limpiar</a>
+        </form>
+
+        <table class="table-ps">
+            <thead><tr><th>ID</th><th>Nombre</th><th>Código</th><th>Período</th><th>Activo</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var c in Model.Clientes)
+                {
+                    <tr class="@((c.Activo ?? true) ? "" : "row-inactive")">
+                        <td>@c.IdCliente</td>
+                        <td>@c.NomCliente</td>
+                        <td>@c.ClienteCodigo</td>
+                        <td>@c.Periodo</td>
+                        <td>@((c.Activo ?? true) ? "Sí" : "No")</td>
+                        <td class="col-actions">
+                            @if (Model.PuedeEditar)
+                            {
+                                <a href="~/sellout/clientes?editando=@c.IdCliente&filtroTexto=@Model.FiltroTexto" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                            }
+                            @if (Model.PuedeEliminar)
+                            {
+                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@c.IdCliente" method="post" class="d-inline-block"
+                                      onsubmit="return confirm('¿Eliminar el cliente &quot;@c.NomCliente&quot;?');">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Clientes.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-muted">Sin clientes todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (puedeAbrirFormulario)
+    {
+        <div id="drawer-cliente" class="drawer-overlay @(formularioAbierto ? "is-open" : "")" data-drawer>
+            <aside class="drawer-panel @(formularioAbierto ? "is-open" : "")">
+                <div class="drawer-header">
+                    <h3>@(Model.EditandoId is null ? "Nuevo cliente" : $"Editar cliente · {Model.Input.NomCliente}")</h3>
+                    <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <form asp-page="./Index" asp-page-handler="Guardar" asp-route-editando="@Model.EditandoId" method="post">
+                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
+                    <div class="drawer-body">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <div class="drawer-grid">
+                            <div class="mb-3">
+                                <label asp-for="Input.IdCliente" class="form-label">ID</label>
+                                <input asp-for="Input.IdCliente" type="number" class="form-control" readonly="@(Model.EditandoId is not null)" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.NomCliente" class="form-label">Nombre</label>
+                                <input asp-for="Input.NomCliente" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.ClienteCodigo" class="form-label">Código</label>
+                                <input asp-for="Input.ClienteCodigo" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.OrdenReporte" class="form-label">Orden reporte</label>
+                                <input asp-for="Input.OrdenReporte" type="number" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Periodo" class="form-label">Período</label>
+                                <input asp-for="Input.Periodo" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.PrimerSemInicio" class="form-label">1er sem. inicio</label>
+                                <input asp-for="Input.PrimerSemInicio" type="number" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.PrimerSemFin" class="form-label">1er sem. fin</label>
+                                <input asp-for="Input.PrimerSemFin" type="number" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.SegundoSemInicio" class="form-label">2do sem. inicio</label>
+                                <input asp-for="Input.SegundoSemInicio" type="number" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.SegundoSemFin" class="form-label">2do sem. fin</label>
+                                <input asp-for="Input.SegundoSemFin" type="number" class="form-control" />
+                            </div>
+                            <div class="mb-3 span-2 form-check">
+                                <input asp-for="Input.Activo" type="checkbox" class="form-check-input" />
+                                <label asp-for="Input.Activo" class="form-check-label">Activo</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="drawer-footer">
+                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn-primary">@(Model.EditandoId is null ? "Crear" : "Guardar")</button>
+                    </div>
+                </form>
+            </aside>
+        </div>
+    }
+</div>

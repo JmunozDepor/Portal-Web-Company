@@ -1,0 +1,216 @@
+@page "/sellout/layouts"
+@model Modulo.SellOut.Pages.Layouts.IndexModel
+@{
+    ViewData["Title"] = "Configuración de layouts";
+}
+
+@* Formulario de ~30 campos (4 secciones) -- NO usa el patrón .drawer-panel (max-width
+   420px, pensado para formularios cortos, ver components.css) porque cramearlo ahí
+   sería peor UX que una sección expandible de ancho completo. Reutiliza igual el resto
+   del Design System unificado (.card-surface/.table-ps/.btn-*/form-label). *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-2">
+        <h2 class="mb-0">Configuración de layouts</h2>
+        @if (Model.PuedeVer && Model.PuedeCrear)
+        {
+            <a href="~/sellout/layouts?filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto#form-layout" class="btn-primary">+ Nueva configuración</a>
+        }
+    </div>
+
+    <p class="text-muted">
+        Define cómo el pipeline SSIS interpreta el archivo de cada cliente retail. Cada campo "Map*" acepta:
+        una referencia a columna de staging (<code>Col17</code>), una fórmula de lectura sobre esas columnas donde
+        <code>ColN</code> se reemplaza por el valor real del archivo al leerlo
+        (<code>CONCAT(Col3, ' | ', Col6, ' | ', Col7)</code>, <code>TRY_CAST(Col22 AS NUMERIC(18,0)) / 1.19</code>),
+        o el literal <code>Calcular</code> (el servicio de importación calcula ese campo). Cualquier otra cosa se
+        rechaza al guardar -- este portal no ejecuta este texto, solo lo guarda para que el SSIS lo use.
+    </p>
+
+    <partial name="_MensajesSellOut" model="Model" />
+
+    @if (!Model.PuedeVer)
+    {
+        <p class="text-muted">No tenés permiso para ver esta pantalla.</p>
+    }
+    else
+    {
+        <form method="get" class="d-flex align-items-end gap-3 flex-wrap mb-3">
+            <div class="mb-0" style="min-width:220px;">
+                <label for="filtro-cliente" class="form-label">Cliente</label>
+                <select id="filtro-cliente" name="FiltroIdCliente" class="form-select" onchange="this.form.submit()" asp-items="Model.ClientesDisponibles">
+                    <option value="">Todos los clientes</option>
+                </select>
+            </div>
+            <div class="mb-0 flex-grow-1" style="max-width:320px;">
+                <label for="filtro-texto" class="form-label">Buscar</label>
+                <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Tipo, patrón o cliente..." />
+            </div>
+            <button type="submit" class="btn-secondary">Buscar</button>
+            <a href="~/sellout/layouts" class="btn-ghost">Limpiar</a>
+        </form>
+
+        <table class="table-ps">
+            <thead><tr><th>Cliente</th><th>Tipo archivo</th><th>File pattern</th><th>Activo</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var l in Model.Layouts)
+                {
+                    <tr class="@((l.Activo ?? true) ? "" : "row-inactive")">
+                        <td>@l.NomCliente</td>
+                        <td>@l.TipoArchivo</td>
+                        <td>@l.FilePattern</td>
+                        <td>@((l.Activo ?? true) ? "Sí" : "No")</td>
+                        <td class="col-actions">
+                            @if (Model.PuedeEditar)
+                            {
+                                <a href="~/sellout/layouts?editandoCliente=@l.IdCliente&editandoTipo=@l.TipoArchivo&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto#form-layout" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                            }
+                            @if (Model.PuedeEliminar)
+                            {
+                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@l.IdCliente" asp-route-tipoArchivo="@l.TipoArchivo" method="post" class="d-inline-block"
+                                      onsubmit="return confirm('¿Eliminar la configuración de &quot;@l.NomCliente&quot; / &quot;@l.TipoArchivo&quot;?');">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Layouts.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-muted">Sin configuraciones todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.PuedeCrear || Model.PuedeEditar)
+        {
+            <div id="form-layout" class="card-surface mt-3" style="background:var(--input-bg);">
+                <h3 class="h6 mb-3">@(Model.Editando is null ? "Nueva configuración" : $"Editar configuración · {Model.Input.Cliente} / {Model.Input.TipoArchivo}")</h3>
+
+                <form asp-page="./Index" asp-page-handler="Guardar" method="post">
+                    <input type="hidden" name="FiltroIdCliente" value="@Model.FiltroIdCliente" />
+                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
+                    <div asp-validation-summary="All" class="text-danger"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="Input.IdCliente" class="form-label">Cliente</label>
+                            @if (Model.Editando is null)
+                            {
+                                <select id="select-cliente-layout" asp-for="Input.IdCliente" asp-items="Model.ClientesDisponibles" class="form-select">
+                                    <option value="">Seleccionar...</option>
+                                </select>
+                            }
+                            else
+                            {
+                                <input type="hidden" asp-for="Input.IdCliente" />
+                                <input class="form-control" value="@Model.Input.Cliente" readonly />
+                            }
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Input.TipoArchivo" class="form-label">Tipo de archivo</label>
+                            @if (Model.Editando is null)
+                            {
+                                <select asp-for="Input.TipoArchivo" class="form-select">
+                                    <option value="">Seleccionar...</option>
+                                    @foreach (var tipo in Model.TiposArchivo)
+                                    {
+                                        <option value="@tipo">@tipo</option>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                <input type="hidden" asp-for="Input.TipoArchivo" />
+                                <input class="form-control" value="@Model.Input.TipoArchivo" readonly />
+                            }
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Input.Cliente" class="form-label">Nombre cliente (texto libre)</label>
+                            <input id="input-nombre-cliente-layout" asp-for="Input.Cliente" class="form-control" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Input.FilePattern" class="form-label">Patrón de archivo</label>
+                            <input asp-for="Input.FilePattern" class="form-control" placeholder="ej. Falabella*ecat*" />
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input asp-for="Input.Activo" type="checkbox" class="form-check-input" />
+                                <label asp-for="Input.Activo" class="form-check-label">Activo</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input asp-for="Input.CalcSkuBarcode" type="checkbox" class="form-check-input" />
+                                <label asp-for="Input.CalcSkuBarcode" class="form-check-label">Calcular barcode desde SKU</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="h6 text-muted mt-4 mb-2">Identificación</h4>
+                    <div class="row g-3">
+                        <div class="col-md-3"><label asp-for="Input.MapFecha" class="form-label">Fecha</label><input asp-for="Input.MapFecha" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapSku" class="form-label">SKU</label><input asp-for="Input.MapSku" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapBarcode" class="form-label">Barcode</label><input asp-for="Input.MapBarcode" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapDescripcionCliente" class="form-label">Descripción</label><input asp-for="Input.MapDescripcionCliente" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapDepartamento" class="form-label">Departamento</label><input asp-for="Input.MapDepartamento" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapIdSucursal" class="form-label">ID sucursal</label><input asp-for="Input.MapIdSucursal" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapSucursal" class="form-label">Sucursal</label><input asp-for="Input.MapSucursal" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapDefinicion1" class="form-label">Definición 1</label><input asp-for="Input.MapDefinicion1" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapDefinicion2" class="form-label">Definición 2</label><input asp-for="Input.MapDefinicion2" class="form-control" /></div>
+                    </div>
+
+                    <h4 class="h6 text-muted mt-4 mb-2">Precios</h4>
+                    <div class="row g-3">
+                        <div class="col-md-4"><label asp-for="Input.MapPrcCostoUnit" class="form-label">Costo unitario</label><input asp-for="Input.MapPrcCostoUnit" class="form-control" /></div>
+                        <div class="col-md-4"><label asp-for="Input.MapPrcVtaUnit" class="form-label">Venta unitaria</label><input asp-for="Input.MapPrcVtaUnit" class="form-control" /></div>
+                        <div class="col-md-4"><label asp-for="Input.MapPrcVtaFull" class="form-label">Venta full</label><input asp-for="Input.MapPrcVtaFull" class="form-control" /></div>
+                    </div>
+
+                    <h4 class="h6 text-muted mt-4 mb-2">Venta</h4>
+                    <div class="row g-3">
+                        <div class="col-md-3"><label asp-for="Input.MapVtaUN" class="form-label">Unidades</label><input asp-for="Input.MapVtaUN" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapVtaNeta" class="form-label">Venta neta</label><input asp-for="Input.MapVtaNeta" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapVtaBruta" class="form-label">Venta bruta</label><input asp-for="Input.MapVtaBruta" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapVtaBrutaFull" class="form-label">Venta bruta full</label><input asp-for="Input.MapVtaBrutaFull" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapVtaCosto" class="form-label">Costo de venta</label><input asp-for="Input.MapVtaCosto" class="form-control" /></div>
+                    </div>
+
+                    <h4 class="h6 text-muted mt-4 mb-2">Stock</h4>
+                    <div class="row g-3">
+                        <div class="col-md-3"><label asp-for="Input.MapStkUN" class="form-label">Unidades</label><input asp-for="Input.MapStkUN" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapStkVtaNeta" class="form-label">Venta neta</label><input asp-for="Input.MapStkVtaNeta" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapStkVtaBruta" class="form-label">Venta bruta</label><input asp-for="Input.MapStkVtaBruta" class="form-control" /></div>
+                        <div class="col-md-3"><label asp-for="Input.MapStkCosto" class="form-label">Costo</label><input asp-for="Input.MapStkCosto" class="form-control" /></div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                        @if (Model.Editando is not null)
+                        {
+                            <a href="~/sellout/layouts?filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto" class="btn-secondary">Cancelar</a>
+                        }
+                    </div>
+                </form>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Comodidad de UI, no autoritativo -- precarga el texto libre "Cliente" con el
+        // nombre real al elegir del select, el usuario lo puede pisar despues.
+        (function () {
+            var select = document.getElementById('select-cliente-layout');
+            var nombre = document.getElementById('input-nombre-cliente-layout');
+            if (!select || !nombre) { return; }
+            select.addEventListener('change', function () {
+                if (!nombre.value) {
+                    var texto = select.options[select.selectedIndex]?.text;
+                    if (texto && texto !== 'Seleccionar...') { nombre.value = texto; }
+                }
+            });
+        })();
+    </script>
+}

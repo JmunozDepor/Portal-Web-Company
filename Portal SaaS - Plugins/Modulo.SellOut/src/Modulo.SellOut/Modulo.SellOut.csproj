@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Modulo.SellOut</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <!-- PluginManager carga el .dll directo de una carpeta (AssemblyLoadContext
+         aislado) esperando que Microsoft.EntityFrameworkCore.SqlServer/Npgsql estén
+         físicamente al lado. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- REGLA DURA (ver docs/09-GUIA-DESARROLLO-PLUGINS.md §1 del portal): un plugin
+         referencia SOLO PortalSaas.Abstractions. Nunca PortalSaas.Core ni PortalSaas.Host.
+
+         TEMPORAL: ProjectReference relativa cruzando repos (asume que este repo y
+         "Portal SaaS - Core" viven como carpetas hermanas bajo
+         "Proyecto Portal Web-Company"). Reemplazar por un PackageReference a un paquete
+         NuGet versionado de PortalSaas.Abstractions apenas ese paquete exista, mismo
+         TODO que Modulo.Rendiciones, ver docs/09-GUIA-DESARROLLO-PLUGINS.md §1. -->
+    <ProjectReference Include="..\..\..\..\Portal SaaS - Core\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Base propia del módulo (CLSELLOUT), ajena a HANA/SAP, resuelta self-service vía
+         IExternalDatabaseConnectionService (PortalSaas.Abstractions.Contratos). REGLA
+         (ver docs/09-GUIA-DESARROLLO-PLUGINS.md §6.1): motor dual obligatorio, se
+         referencian los DOS proveedores y se elige en runtime; aunque en producción
+         (Comercial Depor, on-premise) CLSELLOUT resuelva siempre a SqlServer, el
+         plugin nunca lo asume en tiempo de compilación. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+  </ItemGroup>
+
+  <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo, mismo
+       patrón que Modulo.Rendiciones/Modulo.Wms/Modulo.GestionDistribucionGastos;
+       el artefacto se copia manualmente a artifacts/plugins/Modulo.SellOut/{Version}/
+       del portal (ver docs/09-GUIA-DESARROLLO-PLUGINS.md §7). -->
+  <PropertyGroup>
+    <ModuloVersion>1.0.0</ModuloVersion>
+  </PropertyGroup>
+
+  <Target Name="PublicarComoPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <ArchivosDelModulo Include="$(OutputPath)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ArchivosDelModulo)"
+          DestinationFolder="..\..\dist\$(MSBuildProjectName)\$(ModuloVersion)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

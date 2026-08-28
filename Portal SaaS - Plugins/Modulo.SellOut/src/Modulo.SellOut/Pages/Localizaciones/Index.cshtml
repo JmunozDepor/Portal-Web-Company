@@ -1,0 +1,121 @@
+@page "/sellout/localizaciones"
+@model Modulo.SellOut.Pages.Localizaciones.IndexModel
+@{
+    ViewData["Title"] = "Localizaciones";
+    var puedeAbrirFormulario = Model.PuedeVer && (Model.PuedeCrear || Model.PuedeEditar);
+    var formularioAbierto = Model.EditandoId is not null || !ViewData.ModelState.IsValid;
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Localizaciones</h2>
+        @if (Model.PuedeVer && Model.PuedeCrear)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-localizacion">+ Nueva localización</button>
+        }
+    </div>
+
+    <partial name="_MensajesSellOut" model="Model" />
+
+    @if (!Model.PuedeVer)
+    {
+        <p class="text-muted">No tenés permiso para ver esta pantalla.</p>
+    }
+    else
+    {
+        <form method="get" class="d-flex align-items-end gap-3 flex-wrap mb-3">
+            <div class="mb-0 flex-grow-1" style="max-width:320px;">
+                <label for="filtro-texto" class="form-label">Buscar</label>
+                <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Ciudad o comuna..." />
+            </div>
+            <div class="mb-0" style="min-width:220px;">
+                <label for="filtro-geografia" class="form-label">Geografía</label>
+                <select id="filtro-geografia" name="FiltroIdGeografia" class="form-select" asp-items="Model.GeografiasDisponibles">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-secondary">Buscar</button>
+            <a href="~/sellout/localizaciones" class="btn-ghost">Limpiar</a>
+        </form>
+
+        <table class="table-ps">
+            <thead><tr><th>ID</th><th>Ciudad</th><th>Comuna</th><th>Cod. comuna</th><th>Geografía</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var l in Model.Localizaciones)
+                {
+                    <tr>
+                        <td>@l.IDLocalizacion</td>
+                        <td>@l.Ciudad</td>
+                        <td>@l.Comuna</td>
+                        <td>@l.CodigoComuna</td>
+                        <td>@l.Region</td>
+                        <td class="col-actions">
+                            @if (Model.PuedeEditar)
+                            {
+                                <a href="~/sellout/localizaciones?editando=@l.IDLocalizacion&filtroTexto=@Model.FiltroTexto&filtroIdGeografia=@Model.FiltroIdGeografia" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                            }
+                            @if (Model.PuedeEliminar)
+                            {
+                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@l.IDLocalizacion" method="post" class="d-inline-block"
+                                      onsubmit="return confirm('¿Eliminar la localización &quot;@l.Ciudad&quot;?');">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Localizaciones.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-muted">Sin localizaciones todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (puedeAbrirFormulario)
+    {
+        <div id="drawer-localizacion" class="drawer-overlay @(formularioAbierto ? "is-open" : "")" data-drawer>
+            <aside class="drawer-panel @(formularioAbierto ? "is-open" : "")">
+                <div class="drawer-header">
+                    <h3>@(Model.EditandoId is null ? "Nueva localización" : $"Editar localización · {Model.Input.Ciudad}")</h3>
+                    <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <form asp-page="./Index" asp-page-handler="Guardar" asp-route-editando="@Model.EditandoId" method="post">
+                    <input type="hidden" name="FiltroTexto" value="@Model.FiltroTexto" />
+                    <input type="hidden" name="FiltroIdGeografia" value="@Model.FiltroIdGeografia" />
+                    <div class="drawer-body">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <div class="drawer-grid">
+                            <div class="mb-3">
+                                <label asp-for="Input.IDLocalizacion" class="form-label">ID</label>
+                                <input asp-for="Input.IDLocalizacion" type="number" class="form-control" readonly="@(Model.EditandoId is not null)" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Ciudad" class="form-label">Ciudad</label>
+                                <input asp-for="Input.Ciudad" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.Comuna" class="form-label">Comuna</label>
+                                <input asp-for="Input.Comuna" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.CodigoComuna" class="form-label">Código comuna</label>
+                                <input asp-for="Input.CodigoComuna" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Input.IDGeografia" class="form-label">Geografía</label>
+                                <select asp-for="Input.IDGeografia" asp-items="Model.GeografiasDisponibles" class="form-select">
+                                    <option value="">Sin asignar</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="drawer-footer">
+                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn-primary">@(Model.EditandoId is null ? "Crear" : "Guardar")</button>
+                    </div>
+                </form>
+            </aside>
+        </div>
+    }
+</div>

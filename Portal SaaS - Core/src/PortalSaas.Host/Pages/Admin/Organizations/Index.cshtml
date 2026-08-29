@@ -114,13 +114,27 @@
                 <td><span class="status-pill @statusClass">@statusLabel</span></td>
                 <td class="sap-code text-muted" style="font-size: 12.5px;">@org.CreatedAt.ToString("yyyy-MM-dd")</td>
                 <td>
-                    <div class="dropdown row-actions-menu text-end">
+                    @{
+                        var isActiveOrg = org.Status is OrganizationStatus.Active or OrganizationStatus.Trial;
+                    }
+                    <div class="row-actions-menu d-flex align-items-center justify-content-end gap-1">
+                        <a class="btn btn-sm" asp-page="/Admin/Organizations/Edit" asp-route-id="@org.Id"
+                           title="Editar organización" aria-label="Editar organización @org.LegalName">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="post" asp-page-handler="ToggleStatus" asp-route-id="@org.Id" class="d-inline"
+                              onsubmit="return confirm('@(isActiveOrg ? $"¿Desactivar la organización {org.LegalName}?" : $"¿Activar la organización {org.LegalName}?")');">
+                            <button type="submit" class="btn btn-sm"
+                                    title="@(isActiveOrg ? "Desactivar organización" : "Activar organización")"
+                                    aria-label="@(isActiveOrg ? "Desactivar" : "Activar") organización @org.LegalName">
+                                <i class="bi @(isActiveOrg ? "bi-pause-circle text-warning" : "bi-play-circle text-success")"></i>
+                            </button>
+                        </form>
+                        <div class="dropdown">
                         <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Más acciones para @org.LegalName">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" asp-page="/Admin/Organizations/Edit" asp-route-id="@org.Id">Editar organización</a></li>
-                            <li><hr class="dropdown-divider" /></li>
                             <li><h6 class="dropdown-header">Recursos</h6></li>
                             <li><a class="dropdown-item" asp-page="/Admin/Organizations/Users/Index" asp-route-organizationId="@org.Id">Usuarios</a></li>
                             <li><a class="dropdown-item" asp-page="/Admin/Organizations/Instances/Index" asp-route-organizationId="@org.Id">Instancias</a></li>
@@ -139,6 +153,7 @@
                                 <li><a class="dropdown-item" asp-page="/Admin/Organizations/Subscriptions/Index" asp-route-organizationId="@org.Id">Suscripción</a></li>
                             }
                         </ul>
+                        </div>
                     </div>
                 </td>
             </tr>

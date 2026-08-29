@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Abstractions.Contratos;
@@ -50,5 +51,27 @@ public class IndexModel : PageModel
                 OrganizationsWithoutAccess.Add(organization.Id);
             }
         }
+    }
+
+    /// <summary>
+    /// Activa/desactiva una organización sin abrir el formulario de edición
+    /// (icono directo en la fila del listado). Las organizaciones no se borran
+    /// -- soft-delete vía Status (regla dura del proyecto): "active"/"trial"
+    /// pasan a "suspended", y "suspended"/"cancelled" vuelven a "active".
+    /// </summary>
+    public async Task<IActionResult> OnPostToggleStatusAsync(Guid id, CancellationToken ct)
+    {
+        var organization = await _db.Organizations.FirstOrDefaultAsync(o => o.Id == id, ct);
+        if (organization is null)
+        {
+            return RedirectToPage();
+        }
+
+        organization.Status = organization.Status is OrganizationStatus.Active or OrganizationStatus.Trial
+            ? OrganizationStatus.Suspended
+            : OrganizationStatus.Active;
+        await _db.SaveChangesAsync(ct);
+
+        return RedirectToPage();
     }
 }

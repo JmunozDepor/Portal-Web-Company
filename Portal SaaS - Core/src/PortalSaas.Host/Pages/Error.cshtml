@@ -17,8 +17,18 @@
         </p>
     </div>
 
+    @{
+        // El destino de "Volver" depende de dónde ocurrió la excepción: una
+        // sesión de administrador de plataforma (/Admin/*) no tiene shell de
+        // tenant, así que mandarla a /Home la saca de su contexto. Se usa la
+        // ruta real del fallo (IExceptionHandlerPathFeature.Path) para elegir.
+        var esContextoAdmin = Model.RoutePath?.StartsWith("/Admin", StringComparison.OrdinalIgnoreCase) == true;
+        var volverUrl = esContextoAdmin ? "~/Admin/Organizations" : "~/Home/Index";
+        var volverTexto = esContextoAdmin ? "Volver a Organizaciones" : "Volver al inicio";
+    }
+
     <div class="d-flex justify-content-center gap-2 mb-3">
-        <a href="~/Home/Index" class="btn-erp-primary">Volver al inicio</a>
+        <a href="@volverUrl" class="btn-erp-primary">@volverTexto</a>
         <button type="button" class="btn btn-outline-secondary" onclick="history.back()">Volver atrás</button>
     </div>
 

@@ -17,11 +17,20 @@
         ? "/Admin/Organizations/Licenses/Index"
         : "/Admin/Organizations/Subscriptions/Index";
 }
+@*
+    El <nav class="subnav-bar"> se envuelve en este contenedor a propósito: la
+    regla `.content > .subnav-bar` (wwwroot/css/sidebar.css) le aplica un
+    `margin-top: -24px` para el subnav full-bleed de _ModuloSubnav (que es el
+    primer hijo de .content). Acá el subnav va DEBAJO de un encabezado, así que
+    ese margen negativo montaba las pills "Editar organización / ..." sobre las
+    letras del <h1>. Al no ser hijo directo de .content, la regla ya no aplica.
+*@
 <div class="mb-3">
-    <p class="page-eyebrow">Backoffice · Plataforma</p>
-    <h1 class="h3 mb-0">@Model.OrganizationName</h1>
-</div>
-<nav class="subnav-bar mb-3">
+    <div class="mb-2">
+        <p class="page-eyebrow">Backoffice · Plataforma</p>
+        <h1 class="h3 mb-0">@Model.OrganizationName</h1>
+    </div>
+<nav class="subnav-bar">
     <a href="@Url.Page("/Admin/Organizations/Edit", new { id = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "Edit" ? "active" : "")">Editar organización</a>
     <a href="@Url.Page("/Admin/Organizations/Users/Index", new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "Users" ? "active" : "")">Usuarios</a>
     <a href="@Url.Page("/Admin/Organizations/Instances/Index", new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "Instances" ? "active" : "")">Instancias</a>
@@ -31,3 +40,4 @@
     <a href="@Url.Page("/Admin/Organizations/DocumentPermissions/Index", new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "DocumentPermissions" ? "active" : "")">Permisos de documentos</a>
     <a href="@Url.Page(licensePage, new { organizationId = Model.OrganizationId })" class="subnav-pill @(Model.ActivePage == "License" ? "active" : "")">@licenseLabel</a>
 </nav>
+</div>

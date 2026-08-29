@@ -747,4 +747,52 @@ html[data-sidebar="collapsed"] .sidebar-toggle i {
     opacity: 1;
     pointer-events: auto;
   }
+
+  .topbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .topbar-title {
+    font-size: 13px;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Placeholders `disabled` -- en escritorio dicen "próximamente", en móvil
+     solo estorban. */
+  .topbar-search,
+  .topbar-icon-btn {
+    display: none;
+  }
+
+  .user-menu .user-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .content {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 576px) {
+  .content {
+    padding: 12px;
+  }
+
+  .user-menu .user-name {
+    display: none;
+  }
+
+  .user-menu-panel {
+    right: 8px;
+    width: auto;
+    min-width: 200px;
+    max-width: calc(100vw - 16px);
+  }
 }

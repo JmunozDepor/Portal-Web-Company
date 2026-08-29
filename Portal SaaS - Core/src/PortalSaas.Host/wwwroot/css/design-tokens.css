@@ -175,4 +175,9 @@
   /* Rail del sidebar principal (Nivel 1) -- 64px fijo, regla dura de layout. */
   --rail-width: 64px;
   --sidebar-width: 250px;
+
+  /* Drawer off-canvas del shell (<=900px, ver sidebar.css). Neutrales por
+     diseño -- misma política base-only que --rail-width et al. */
+  --scrim-bg: rgba(0, 0, 0, 0.4);
+  --shadow-drawer: 0 0 40px -8px rgba(0, 0, 0, 0.35);
 }

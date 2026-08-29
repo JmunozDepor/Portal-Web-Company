@@ -702,7 +702,7 @@ html[data-sidebar="collapsed"] .sidebar-toggle i {
 
   html[data-shell-nav="open"] .app-shell .sidebar {
     transform: translateX(0);
-    box-shadow: 0 0 40px -8px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--shadow-drawer);
   }
 
   /* En el drawer el sidebar SIEMPRE muestra labels (no modo rail 64px) -- se
@@ -737,7 +737,7 @@ html[data-sidebar="collapsed"] .sidebar-toggle i {
     position: fixed;
     inset: 0;
     z-index: 1035;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--scrim-bg);
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--transition-fast) ease;

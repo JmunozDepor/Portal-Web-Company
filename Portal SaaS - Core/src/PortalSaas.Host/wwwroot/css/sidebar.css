@@ -696,13 +696,15 @@ html[data-sidebar="collapsed"] .sidebar-toggle i {
     width: var(--sidebar-width);
     z-index: 1040;
     transform: translateX(-100%);
-    transition: transform var(--drawer-transition) ease;
+    transition: transform var(--drawer-transition) ease, visibility var(--drawer-transition);
     box-shadow: none;
+    visibility: hidden;
   }
 
   html[data-shell-nav="open"] .app-shell .sidebar {
     transform: translateX(0);
     box-shadow: var(--shadow-drawer);
+    visibility: visible;
   }
 
   /* En el drawer el sidebar SIEMPRE muestra labels (no modo rail 64px) -- se

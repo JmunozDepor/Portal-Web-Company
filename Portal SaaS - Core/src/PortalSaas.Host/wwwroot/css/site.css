@@ -821,24 +821,26 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Al scrollear horizontal en teléfono, la 1ª celda (código de artículo) queda
-   fija como referencia de fila. */
-.line-items-wrapper .line-items-table th:first-child,
-.line-items-wrapper .line-items-table td:first-child {
-  position: sticky;
-  left: 0;
-  background: var(--card-bg);
-  z-index: 1;
-}
+@media (max-width: 900px) {
+  /* Al scrollear horizontal en teléfono, la 1ª celda (código de artículo) queda
+     fija como referencia de fila. */
+  .line-items-wrapper .line-items-table th:first-child,
+  .line-items-wrapper .line-items-table td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--card-bg);
+    z-index: 1;
+  }
 
-/* Que los inputs de cada línea no se aplasten -- ancho mínimo por columna. */
-.line-items-wrapper .line-items-table th,
-.line-items-wrapper .line-items-table td {
-  min-width: 120px;
-}
-.line-items-wrapper .line-items-table th:first-child,
-.line-items-wrapper .line-items-table td:first-child {
-  min-width: 140px;
+  /* Que los inputs de cada línea no se aplasten -- ancho mínimo por columna. */
+  .line-items-wrapper .line-items-table th,
+  .line-items-wrapper .line-items-table td {
+    min-width: 120px;
+  }
+  .line-items-wrapper .line-items-table th:first-child,
+  .line-items-wrapper .line-items-table td:first-child {
+    min-width: 140px;
+  }
 }
 
 /* ==========================================================================
@@ -1563,6 +1565,10 @@ body {
 }
 
 @media (max-width: 900px) {
+  /* NOTA: hay un SEGUNDO bloque @media (max-width: 900px) al final del archivo
+     (sección "Login responsive"), obligatorio por orden de cascada -- ver el
+     comentario ahí. No fusionar: debe venir después de la regla base
+     .login-brand-panel. */
   .form-row,
   .doc-columnas-2 {
     grid-template-columns: 1fr;

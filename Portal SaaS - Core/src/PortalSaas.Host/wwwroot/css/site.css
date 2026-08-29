@@ -1553,25 +1553,12 @@ body {
    ========================================================================== */
 
 .login-bg {
-  height: 100vh;
-  height: 100dvh;
   min-height: 100vh;
   min-height: 100dvh;
-  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   font-family: var(--font-sans, inherit);
   color: var(--text-main);
-}
-
-@media (max-width: 900px) {
-  .login-bg {
-    grid-template-columns: 1fr;
-  }
-
-  .login-brand-panel {
-    display: none;
-  }
 }
 
 /* Azul marino (no slate casi-negro) -- no consume --accent/--accent-2 del
@@ -1807,7 +1794,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  height: 100%;
+  min-height: 100dvh;
   overflow-y: auto;
 }
 
@@ -1887,3 +1874,37 @@ body {
   font-size: 11.5px;
   color: var(--text-muted);
   margin-top: 22px;
+}
+
+/* ==========================================================================
+   Login responsive -- AL FINAL del bloque .login-* a propósito: una @media
+   que matchea no suma especificidad, así que para pisar `.login-brand-panel
+   { display: flex }` (regla base más abajo en el archivo) este bloque tiene
+   que venir DESPUÉS de ella. Ver spec 2026-08-28.
+   ========================================================================== */
+@media (max-width: 900px) {
+  .login-bg {
+    grid-template-columns: 1fr;
+  }
+
+  /* Fallback en flujo -- si por lo que sea el panel se llega a mostrar en un
+     viewport corto, su contenido no debe encimarse (las capas decorativas son
+     position:absolute; los hijos reales quedan en flujo normal). */
+  .login-brand-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .login-card {
+    padding: 24px 20px;
+  }
+
+  .login-card .form-control {
+    min-height: 44px;
+  }
+
+  .login-submit {
+    padding: 14px 16px;
+  }
+}

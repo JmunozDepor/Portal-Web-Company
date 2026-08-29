@@ -199,8 +199,12 @@
                     </li>
                 </ul>
             </aside>
+            <div class="shell-scrim" id="shell-scrim" hidden></div>
             <div class="shell-main">
                 <header class="topbar">
+                    <button type="button" class="topbar-nav-toggle" id="shell-nav-toggle" aria-label="Abrir menú" aria-expanded="false">
+                        <i class="bi bi-list"></i>
+                    </button>
                     <span class="topbar-title">@ViewData["Title"] <span class="badge-status badge-status--neutral">Administración</span></span>
                     <div class="topbar-right">
                         <details class="user-menu">
@@ -250,8 +254,12 @@
                 </ul>
                 <div class="sidebar-resize-handle" id="sidebar-resize-handle" title="Arrastrar para ajustar el ancho"></div>
             </aside>
+            <div class="shell-scrim" id="shell-scrim" hidden></div>
             <div class="shell-main">
                 <header class="topbar">
+                    <button type="button" class="topbar-nav-toggle" id="shell-nav-toggle" aria-label="Abrir menú" aria-expanded="false">
+                        <i class="bi bi-list"></i>
+                    </button>
                     <span class="topbar-title">@ViewData["Title"]</span>
                     @* Buscador + iconos de nivel superior (2026-08-19, layout tipo
                        "rindegastos") -- son PLACEHOLDERS visuales por ahora: no hay
@@ -337,12 +345,14 @@
         @* Drawer disponible para cualquier sesión autenticada (tenant o admin) --
            componente de UI puro, sin dependencia del menú dinámico de tenant. *@
         <script src="~/js/drawer.js" asp-append-version="true"></script>
+        @* sidebar.js restaurado (2026-08-19) -- toggle expandir/colapsar, ver
+           el comentario del script inline arriba y sidebar.js mismo. Cargado
+           para cualquier sesión autenticada (tenant o admin) por el drawer
+           off-canvas en <=900px (Task 3). *@
+        <script src="~/js/sidebar.js" asp-append-version="true"></script>
     }
     @if (isAuthenticated && !isPlatformAdmin)
     {
-        @* sidebar.js restaurado (2026-08-19) -- toggle expandir/colapsar, ver
-           el comentario del script inline arriba y sidebar.js mismo. *@
-        <script src="~/js/sidebar.js" asp-append-version="true"></script>
         <script src="~/js/sidebar-resize.js" asp-append-version="true"></script>
         <script src="~/js/doc-list.js" asp-append-version="true"></script>
         <script src="~/js/doc-tabs.js" asp-append-version="true"></script>

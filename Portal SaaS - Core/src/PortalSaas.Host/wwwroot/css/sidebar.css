@@ -651,3 +651,100 @@ html[data-sidebar="collapsed"] .sidebar-toggle i {
 .content > .subnav-bar {
     margin: -24px -24px 16px -24px;
 }
+
+/* ===========================================================================
+   Shell responsive -- drawer off-canvas en <=900px (corte `md`, ver
+   design-tokens.css). En >900px NO hay ningún override: el shell es idéntico
+   al actual (sidebar en flujo, rail 64/250px, resize handle, topbar completa).
+   Estado abierto = html[data-shell-nav="open"] (lo pone sidebar.js).
+   =========================================================================== */
+
+/* Botón hamburguesa: oculto en escritorio, visible en <=900px. */
+.topbar-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  border-radius: var(--bs-border-radius-sm);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.topbar-nav-toggle:hover {
+  background: var(--bs-secondary-bg);
+}
+
+.shell-scrim {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .topbar-nav-toggle {
+    display: flex;
+  }
+
+  .app-shell .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: var(--sidebar-width);
+    z-index: 1040;
+    transform: translateX(-100%);
+    transition: transform var(--drawer-transition) ease;
+    box-shadow: none;
+  }
+
+  html[data-shell-nav="open"] .app-shell .sidebar {
+    transform: translateX(0);
+    box-shadow: 0 0 40px -8px rgba(0, 0, 0, 0.35);
+  }
+
+  /* En el drawer el sidebar SIEMPRE muestra labels (no modo rail 64px) -- se
+     fuerza el ancho expandido sin importar data-sidebar. */
+  html[data-sidebar="collapsed"] .app-shell .sidebar,
+  html[data-sidebar="expanded"] .app-shell .sidebar {
+    width: var(--sidebar-width);
+  }
+  html[data-sidebar="collapsed"] .app-shell .sidebar .nav-texto,
+  html[data-sidebar="collapsed"] .app-shell .sidebar .sidebar-brand-text {
+    display: inline;
+  }
+  html[data-sidebar="collapsed"] .app-shell .sidebar .sidebar-nav a,
+  html[data-sidebar="collapsed"] .app-shell .sidebar .sidebar-nav-grupo {
+    justify-content: flex-start;
+    padding-left: 8px;
+  }
+
+  /* El toggle interno rail<->250 y el handle de resize no aplican en drawer. */
+  .app-shell .sidebar-toggle,
+  .app-shell .sidebar-resize-handle {
+    display: none;
+  }
+
+  /* El contenido toma el ancho completo -- el sidebar fixed ya no ocupa flujo. */
+  .shell-main {
+    width: 100%;
+  }
+
+  .shell-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1035;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast) ease;
+  }
+
+  html[data-shell-nav="open"] .shell-scrim:not([hidden]) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

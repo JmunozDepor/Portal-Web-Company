@@ -816,6 +816,31 @@ body {
   opacity: 1;
 }
 
+.line-items-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Al scrollear horizontal en teléfono, la 1ª celda (código de artículo) queda
+   fija como referencia de fila. */
+.line-items-wrapper .line-items-table th:first-child,
+.line-items-wrapper .line-items-table td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--card-bg);
+  z-index: 1;
+}
+
+/* Que los inputs de cada línea no se aplasten -- ancho mínimo por columna. */
+.line-items-wrapper .line-items-table th,
+.line-items-wrapper .line-items-table td {
+  min-width: 120px;
+}
+.line-items-wrapper .line-items-table th:first-child,
+.line-items-wrapper .line-items-table td:first-child {
+  min-width: 140px;
+}
+
 /* ==========================================================================
    Listado de documentos como UNA sola tarjeta -- portado de referencia-original/
    PortalSAP_v2 (<div class="card-ps doc-list">, theme.css:143/1419-1638). La entrega
@@ -1551,11 +1576,30 @@ body {
   .inicio-panel {
     padding: 16px;
   }
+
+  .doc-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @media (max-width: 576px) {
   .inicio-accesos {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .filter-card .col-auto {
+    min-width: 100%;
+  }
+
+  .doc-form {
+    padding: 8px 10px;
+  }
+
+  .doc-form-sticky {
+    margin: -8px -10px 0;
+    padding: 11px 10px 0;
   }
 }
 

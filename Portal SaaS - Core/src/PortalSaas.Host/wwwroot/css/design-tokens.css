@@ -154,6 +154,18 @@
   --transition-fast: 150ms;
   --drawer-transition: 300ms;
 
+  /* ---------------------------------------------------------------------------
+     BREAKPOINTS (contrato) -- CSS no admite var() en condiciones @media, así
+     que estos valores se escriben literales en cada @media del proyecto, pero
+     esta es la definición de referencia. NO agregar cortes nuevos sin
+     actualizar acá.
+       sm : max-width: 576px   -> teléfono vertical
+       md : max-width: 900px   -> teléfono horizontal / tablet vertical.
+                                  El shell (_LayoutMaestro/sidebar.css) pasa a
+                                  drawer off-canvas en este corte.
+       lg : min-width: 901px   -> escritorio. Layout base, sin overrides.
+     --------------------------------------------------------------------------- */
+
   /* Swatches del selector de tema (.theme-row en _LayoutMaestro.cshtml). */
   --theme-preview-claro: #2c5282;
   --theme-preview-oscuro: #111827;

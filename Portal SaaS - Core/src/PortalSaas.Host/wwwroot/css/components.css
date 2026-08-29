@@ -273,7 +273,7 @@ body.drawer-locked .content {
   grid-column: 1 / -1;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 576px) {
   .drawer-grid {
     grid-template-columns: 1fr;
   }

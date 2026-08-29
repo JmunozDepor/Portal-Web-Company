@@ -1524,7 +1524,7 @@ body {
   gap: 8px;
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 900px) {
   .form-row,
   .doc-columnas-2 {
     grid-template-columns: 1fr;

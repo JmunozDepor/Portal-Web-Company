@@ -5,11 +5,11 @@
     ViewData["Title"] = Localizer["Inicio"].Value;
 }
 
-<div class="card-ps" style="padding: 20px;">
-    <h2 style="margin: 0 0 6px;">Hola, @Model.Email</h2>
-    <p style="color: var(--bs-secondary-color); margin: 0;">
-        Organización: <strong>@Model.OrganizationSlug</strong>. Elegí un módulo para empezar.
-    </p>
+<div class="card-ps inicio-panel">
+    <div class="inicio-encabezado">
+        <h2>Hola, @Model.Email</h2>
+        <p>Organización: <strong>@Model.OrganizationSlug</strong>. Elegí un módulo para empezar.</p>
+    </div>
 
     <div class="inicio-accesos">
         @foreach (var acceso in Model.Shortcuts)
@@ -34,7 +34,7 @@
         </button>
     </div>
 
-    <div id="acceso-inicio-picker" class="inicio-picker" style="display:none">
+    <div id="acceso-inicio-picker" class="inicio-picker" hidden>
         <div class="form-group">
             <input type="text" id="acceso-inicio-filtro" class="form-control" placeholder="Buscar página para agregar a Inicio..."
                    oninput="filtrarAccesoInicioPicker(this.value)" />
@@ -64,7 +64,7 @@
 <script>
     function toggleAccesoInicioPicker() {
         var picker = document.getElementById('acceso-inicio-picker');
-        picker.style.display = picker.style.display === 'none' ? '' : 'none';
+        picker.hidden = !picker.hidden;
     }
 
     function filtrarAccesoInicioPicker(texto) {

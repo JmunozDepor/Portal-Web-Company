@@ -1365,6 +1365,19 @@ body {
 /* Portado de referencia-original/PortalSAP_v2 theme.css (.inicio-*) -- grilla de tarjetas
    personalizable en la pantalla de Inicio, mismo --menu-color-N que el chip de icono del
    sidebar (SidebarMenu/Default.cshtml) para que se lean como el mismo lenguaje visual. */
+.inicio-panel {
+  padding: 20px;
+}
+
+.inicio-encabezado h2 {
+  margin: 0 0 6px;
+}
+
+.inicio-encabezado p {
+  margin: 0;
+  color: var(--bs-secondary-color);
+}
+
 .inicio-accesos {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1533,6 +1546,16 @@ body {
   .menu-perfil-fila {
     grid-template-columns: 1fr;
     row-gap: 4px;
+  }
+
+  .inicio-panel {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .inicio-accesos {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   }
 }
 

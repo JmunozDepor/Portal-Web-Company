@@ -30,6 +30,12 @@ public sealed class ModuloAdministracion : IModuloPortal
         yield return new MenuItemDefinition { Code = "grupos-menu", ParentCode = "raiz", Name = "Grupos de menú", Icon = "bi bi-diagram-3", PageRoute = "/organizacion/grupos-menu", Order = 4 };
         yield return new MenuItemDefinition { Code = "perfiles", ParentCode = "raiz", Name = "Perfiles", Icon = "bi bi-person-badge", PageRoute = "/organizacion/perfiles", Order = 5 };
         yield return new MenuItemDefinition { Code = "conexiones-externas", ParentCode = "raiz", Name = "Conexiones externas", Icon = "bi bi-plug", PageRoute = "/organizacion/conexiones-externas", Order = 6 };
+        // Acceso directo al login del OPERADOR DE PLATAFORMA (/Admin/*, actor y
+        // esquema de cookie distintos al tenant -- ver Program.cs). No es una página
+        // de este plugin: MenuSyncService solo guarda la ruta como string y
+        // _MenuNode.cshtml la resuelve con Url.Content("~" + ruta), así que un link
+        // absoluto a otra área del mismo Host funciona igual (PathBase incluido).
+        yield return new MenuItemDefinition { Code = "admin-plataforma", ParentCode = "raiz", Name = "Administración de plataforma", Icon = "bi bi-shield-lock", PageRoute = "/Admin/Login", Order = 7 };
     }
 
     public void RegisterServices(IServiceCollection services)

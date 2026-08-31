@@ -11,26 +11,23 @@ namespace Modulo.Rendiciones.Servicios;
 
 public static class ReceiptRecompression
 {
-    private static readonly HashSet<string> RasterMimes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "image/jpeg", "image/jpg", "image/png", "image/webp",
-    };
-
     public static bool ShouldRecompress(ExpenseReceipt r, long minBytes) =>
-        r.Content is { } c && c.Length >= minBytes && RasterMimes.Contains(r.MimeType ?? "");
+        r.Content is { } c && c.Length >= minBytes
+        && SkiaReceiptImageProcessor.RasterMimes.Contains((r.MimeType ?? "").Trim());
 }
 
 /// <summary>
-/// Pasada única de "descongestión": al arrancar el Host, si
+/// Pasada única de "descongestión": corre una sola vez, en segundo plano, poco
+/// después del arranque del Host (ya no bloquea el boot). Si
 /// RENDICIONES_RECOMPRESS_RECEIPTS_ON_STARTUP = true, reescala y recomprime los
 /// comprobantes imagen ya guardados que superen el umbral, sobreescribiéndolos en su
-/// lugar. El operador prende la variable, reinicia el Host una vez, revisa el log del
-/// resumen y la vuelve a apagar. Soporta RENDICIONES_RECOMPRESS_RECEIPTS_DRY_RUN=true
-/// (no escribe, solo proyecta). Idempotente. Mismo patrón per-company que
-/// RendicionesReminderBackgroundService (el DbContext de DI depende de un request
-/// HTTP en curso, acá no hay ninguno).
+/// lugar; si no, es NO-OP. El operador prende la variable, reinicia el Host una vez,
+/// lee el log del resumen y la vuelve a apagar. Soporta
+/// RENDICIONES_RECOMPRESS_RECEIPTS_DRY_RUN=true (no escribe, solo proyecta).
+/// Idempotente. Mismo patrón per-company que RendicionesReminderBackgroundService
+/// (el DbContext de DI depende de un request HTTP en curso, acá no hay ninguno).
 /// </summary>
-public sealed class ReceiptRecompressionStartupService : IHostedService
+public sealed class ReceiptRecompressionStartupService : BackgroundService
 {
     private const string ModuleCode = "Rendiciones";
     private const int BatchSize = 100;
@@ -49,7 +46,7 @@ public sealed class ReceiptRecompressionStartupService : IHostedService
         _logger = logger;
     }
 
-    public async Task StartAsync(CancellationToken ct)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!EnvBool("RENDICIONES_RECOMPRESS_RECEIPTS_ON_STARTUP"))
             return;
@@ -68,13 +65,17 @@ public sealed class ReceiptRecompressionStartupService : IHostedService
         {
             using var scope = _scopeFactory.CreateScope();
             var externalDb = scope.ServiceProvider.GetRequiredService<IExternalDatabaseConnectionService>();
-            var companies = await externalDb.ListActiveCompanyIdsAsync(ModuleCode, ct);
+            var companies = await externalDb.ListActiveCompanyIdsAsync(ModuleCode, stoppingToken);
 
             foreach (var company in companies)
             {
                 try
                 {
-                    await ProcessCompanyAsync(company, externalDb, dryRun, minBytes, maxEdge, quality, ct);
+                    await ProcessCompanyAsync(company, externalDb, dryRun, minBytes, maxEdge, quality, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -82,13 +83,15 @@ public sealed class ReceiptRecompressionStartupService : IHostedService
                 }
             }
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Recompresión de comprobantes: cancelada por apagado del Host.");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Recompresión de comprobantes: fallo general -- se omite en este arranque.");
         }
     }
-
-    public Task StopAsync(CancellationToken ct) => Task.CompletedTask;
 
     private async Task ProcessCompanyAsync(
         ModuleCompanyDto company, IExternalDatabaseConnectionService externalDb,
@@ -111,14 +114,21 @@ public sealed class ReceiptRecompressionStartupService : IHostedService
 
         await using var db = new RendicionesDbContext(optionsBuilder.Options);
 
-        int reviewed = 0, hit = 0;
+        int candidates = 0, hit = 0;
         long saved = 0;
         long lastId = 0;
 
         while (!ct.IsCancellationRequested)
         {
+            // Pre-filtro server-side: SizeBytes/MimeType evitan materializar los blobs
+            // (PDF, imágenes chicas) sólo para descartarlos en cliente. Corre igual en
+            // Npgsql y SqlServer. La autoridad sigue siendo ShouldRecompress abajo
+            // (SizeBytes puede estar desactualizado respecto de Content).
             var batch = await db.ExpenseReceipts
-                .Where(r => r.CompanyId == company.CompanyId && r.Id > lastId)
+                .Where(r => r.CompanyId == company.CompanyId && r.Id > lastId
+                    && r.SizeBytes >= minBytes
+                    && (r.MimeType == "image/jpeg" || r.MimeType == "image/jpg"
+                        || r.MimeType == "image/png" || r.MimeType == "image/webp"))
                 .OrderBy(r => r.Id)
                 .Take(BatchSize)
                 .ToListAsync(ct);
@@ -130,9 +140,10 @@ public sealed class ReceiptRecompressionStartupService : IHostedService
 
             foreach (var r in batch)
             {
-                reviewed++;
                 if (!ReceiptRecompression.ShouldRecompress(r, minBytes))
                     continue;
+
+                candidates++;
 
                 var processed = await _imageProcessor.ProcessAsync(r.FileName, r.MimeType, r.Content, maxEdge, quality, ct);
                 if (processed.Content.Length >= r.Content.Length)
@@ -152,11 +163,25 @@ public sealed class ReceiptRecompressionStartupService : IHostedService
 
             if (!dryRun)
                 await db.SaveChangesAsync(ct);
+
+            // Soltar las entidades trackeadas: cada fila revisada retiene su byte[]
+            // Content en el ChangeTracker durante toda la pasada -- OOM en tablas
+            // grandes, que es justo el objetivo de esta feature. Seguro en dry-run
+            // (no hay nada pendiente) y seguro después de SaveChanges.
+            db.ChangeTracker.Clear();
+        }
+
+        if (ct.IsCancellationRequested)
+        {
+            _logger.LogInformation(
+                "Recompresión de comprobantes (compañía {CompanyId}){DryRun}: cancelada.",
+                company.CompanyId, dryRun ? " [DRY-RUN]" : "");
+            return;
         }
 
         _logger.LogInformation(
-            "Recompresión de comprobantes (compañía {CompanyId}){DryRun}: {Hit} de {Reviewed}, {SavedMB:N1} MB {Verbo}.",
-            company.CompanyId, dryRun ? " [DRY-RUN]" : "", hit, reviewed,
+            "Recompresión de comprobantes (compañía {CompanyId}){DryRun}: {Hit} de {Candidates} candidatos, {SavedMB:N1} MB {Verbo}.",
+            company.CompanyId, dryRun ? " [DRY-RUN]" : "", hit, candidates,
             saved / (1024d * 1024d), dryRun ? "liberables" : "liberados");
     }
 

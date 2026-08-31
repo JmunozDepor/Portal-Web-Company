@@ -47,6 +47,13 @@
     <!-- OCR de comprobantes (fase de servicios, no portado todavía): endpoint/clave se
          leen de configuración en runtime, nunca en appsettings.json en texto plano. -->
     <PackageReference Include="Azure.AI.DocumentIntelligence" Version="1.0.0" />
+    <!-- Normalización de imágenes de comprobantes (reescalar/recomprimir).
+         SkiaSharp = licencia MIT (apta para producto comercial, a diferencia de
+         SixLabors.ImageSharp). El asset nativo Win32 se copia al output por
+         CopyLocalLockFileAssemblies=true; para el futuro SaaS Linux agregar además
+         SkiaSharp.NativeAssets.Linux.NoDependencies. -->
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="2.88.9" />
     <!-- Trae los targets que arman el recurso embebido a partir de EmbeddedResource
          wwwroot\**. ServesOwnWwwRoot=true en ModuloRendiciones.cs hace que el host lo
          sirva embebido. -->

@@ -15,7 +15,12 @@ public sealed class SkiaReceiptImageProcessor : IReceiptImageProcessor
     /// <summary>Calidad JPEG de salida por defecto.</summary>
     public const int DefaultJpegQuality = 78;
 
-    private static readonly HashSet<string> RasterMimes = new(StringComparer.OrdinalIgnoreCase)
+    /// <summary>
+    /// Tipos MIME raster que este procesador sabe recomprimir. Fuente única: la
+    /// pasada de recompresión (ReceiptRecompression) también la consume, para que no
+    /// se desincronicen dos copias.
+    /// </summary>
+    internal static readonly HashSet<string> RasterMimes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg", "image/jpg", "image/png", "image/webp",
     };
@@ -24,6 +29,8 @@ public sealed class SkiaReceiptImageProcessor : IReceiptImageProcessor
         string fileName, string mimeType, byte[] content,
         int? maxLongEdgePx = null, int? jpegQuality = null, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+
         mimeType ??= "";
         var mime = mimeType.Trim();
         if (!RasterMimes.Contains(mime))
@@ -39,8 +46,15 @@ public sealed class SkiaReceiptImageProcessor : IReceiptImageProcessor
             if (codec is null)
                 return Task.FromResult(new ProcessedReceipt(fileName, mimeType, content));
 
-            using var original = SKBitmap.Decode(codec);
-            if (original is null)
+            // SKBitmap.Decode NO falla ante un JPEG/PNG truncado: devuelve un bitmap
+            // parcial (prefijo decodificado + filas en blanco) que luego re-comprime
+            // muy chico y pasaría el test de "< original", sobreescribiendo el
+            // original bueno con una imagen visiblemente dañada. Decodificamos por el
+            // código de resultado del codec y ante cualquier cosa que no sea Success
+            // devolvemos el original intacto.
+            using var original = new SKBitmap(codec.Info);
+            var decodeResult = codec.GetPixels(original.Info, original.GetPixels());
+            if (decodeResult != SKCodecResult.Success)
                 return Task.FromResult(new ProcessedReceipt(fileName, mimeType, content));
 
             using var oriented = ApplyOrientation(original, codec.EncodedOrigin);
@@ -55,6 +69,12 @@ public sealed class SkiaReceiptImageProcessor : IReceiptImageProcessor
 
             var newName = Path.ChangeExtension(fileName, ".jpg");
             return Task.FromResult(new ProcessedReceipt(newName, "image/jpeg", jpegBytes));
+        }
+        catch (OutOfMemoryException)
+        {
+            // Un OOM real no es "no se pudo comprimir": que propague y lo contenga
+            // el catch por-compañía de la pasada de recompresión.
+            throw;
         }
         catch
         {

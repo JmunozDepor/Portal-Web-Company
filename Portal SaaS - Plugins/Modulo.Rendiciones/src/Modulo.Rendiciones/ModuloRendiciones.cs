@@ -272,6 +272,7 @@ public sealed class ModuloRendiciones : IModuloPortal
         services.AddScoped<IUserCostCenterService, UserCostCenterService>();
         services.AddScoped<IRendicionesUserRoleService, RendicionesUserRoleService>();
         services.AddScoped<IAttachmentStorageService, AttachmentStorageService>();
+        services.AddSingleton<IReceiptImageProcessor, SkiaReceiptImageProcessor>();
         services.AddScoped<IExpensePolicyService, ExpensePolicyService>();
         services.AddScoped<IExpenseService, ExpenseService>();
         services.AddScoped<IReceiptExtractorService, AzureDocumentIntelligenceExtractorService>();

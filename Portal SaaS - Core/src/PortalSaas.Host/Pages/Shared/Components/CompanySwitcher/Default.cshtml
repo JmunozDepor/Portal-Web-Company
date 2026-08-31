@@ -13,6 +13,15 @@
            DetailUrl/CreateUrl/BackUrl de los 3 motores genéricos de documento. *@
         <input type="hidden" name="returnUrl" value="@(Context.Request.PathBase + Context.Request.Path + Context.Request.QueryString)" />
         <label for="company-switcher-select" class="company-switcher-label">Compañía</label>
+        @* activeValue = el Value EXACTO (mismo string que va en <option value>) de la
+           compañía activa -- se compara con OrdinalIgnoreCase por el problema histórico
+           de casing del GUID (ver comentario abajo). onCompanySwitchChange lo usa para
+           revertir el <select> si el usuario cancela el aviso de confirmación. *@
+        @{
+            var activeValue = Model.Companies
+                .FirstOrDefault(i => string.Equals(i.Value, Model.CurrentCompanyId, StringComparison.OrdinalIgnoreCase))
+                ?.Value;
+        }
         @* <option> armadas a mano, NO asp-items -- más transparente que confiar en cómo
            el SelectTagHelper infiere "selected" sin asp-for.
            Bug real (2026-08-08): la comparación de acá era "==" (ordinal case-sensitive)
@@ -27,12 +36,13 @@
            bien resuelta -- el subtítulo "Portal SaaS / CÓDIGO", que compara distinto,
            mostraba el valor correcto). OrdinalIgnoreCase evita depender de que las dos
            fuentes generen el mismo casing. *@
-        <select id="company-switcher-select" name="companyId" class="form-select form-select-sm" onchange="this.form.submit()">
+        <select id="company-switcher-select" name="companyId" class="form-select form-select-sm"
+                data-current="@activeValue" onchange="onCompanySwitchChange(this)">
             @foreach (var item in Model.Companies)
             {
                 if (string.Equals(item.Value, Model.CurrentCompanyId, StringComparison.OrdinalIgnoreCase))
                 {
-                    <option value="@item.Value" selected="selected">@item.Text</option>
+                    <option value="@item.Value" selected="selected">✓ @item.Text</option>
                 }
                 else
                 {
@@ -41,4 +51,18 @@
             }
         </select>
     </form>
+    @* Aviso antes de cambiar de compañía: el cambio recarga la sesión de trabajo
+       (nueva compañía activa en todos los claims), así que se confirma primero. Si el
+       usuario cancela, el <select> vuelve a la compañía actual (data-current) y no se
+       envía nada. El prefijo "✓ " de la opción activa se saca del texto para el aviso. *@
+    <script>
+        function onCompanySwitchChange(sel) {
+            var label = (sel.options[sel.selectedIndex].text || '').replace(/^✓\s*/, '');
+            if (window.confirm('¿Cambiar la compañía activa a «' + label + '»?\nSe recargará tu sesión de trabajo.')) {
+                sel.form.submit();
+            } else {
+                sel.value = sel.getAttribute('data-current');
+            }
+        }
+    </script>
 }

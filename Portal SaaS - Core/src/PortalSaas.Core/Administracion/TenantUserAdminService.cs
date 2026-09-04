@@ -315,6 +315,25 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
         return TenantUserOperationResult.Success(userId);
     }
 
+    public async Task<TenantUserOperationResult> SetPasswordAsync(Guid userId, string newPassword, CancellationToken ct = default)
+    {
+        var user = await FindOwnUserAsync(userId, ct);
+        if (user is null)
+        {
+            return TenantUserOperationResult.Failure("Usuario no encontrado.");
+        }
+
+        var (hash, salt) = PasswordHasher.Hash(newPassword);
+        user.PasswordHash = hash;
+        user.PasswordSalt = salt;
+        user.FailedLoginAttempts = 0;
+        user.IsLocked = false;
+
+        await _db.SaveChangesAsync(ct);
+
+        return TenantUserOperationResult.Success(user.Id);
+    }
+
     private Task<User?> FindOwnUserAsync(Guid userId, CancellationToken ct) =>
         _db.Users.FirstOrDefaultAsync(u => u.Id == userId && u.OrganizationId == _currentUser.OrganizationId, ct);
 

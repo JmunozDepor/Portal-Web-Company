@@ -4,6 +4,7 @@ using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Core.Administracion;
 using PortalSaas.Core.Comercial;
 using PortalSaas.Core.Comercial.Licenciamiento;
+using PortalSaas.Core.Seguridad;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
 using Xunit;
@@ -216,5 +217,38 @@ public class TenantUserAdminServiceTests
 
         Assert.Single(lista);
         Assert.Equal("de-org1", lista[0].Username);
+    }
+
+    [Fact]
+    public async Task SetPasswordAsync_UsuarioPropio_CambiaElHashYReseteaBloqueo()
+    {
+        var (db, org, _) = await CrearOrganizacionConPlanAsync();
+        var servicio = CrearServicio(db, org.Id);
+        var alta = await servicio.CreateAsync("jperez", "jperez@test.cl", isAdmin: false);
+        var usuario = await db.Users.FindAsync(alta.UserId);
+        usuario!.FailedLoginAttempts = 3;
+        usuario.IsLocked = true;
+        await db.SaveChangesAsync();
+
+        var resultado = await servicio.SetPasswordAsync(alta.UserId!.Value, "Nueva.Clave12!");
+
+        Assert.True(resultado.IsSuccess);
+        var actualizado = await db.Users.FindAsync(alta.UserId);
+        Assert.True(PasswordHasher.Verify("Nueva.Clave12!", actualizado!.PasswordHash, actualizado.PasswordSalt));
+        Assert.Equal(0, actualizado.FailedLoginAttempts);
+        Assert.False(actualizado.IsLocked);
+    }
+
+    [Fact]
+    public async Task SetPasswordAsync_UsuarioDeOtraOrganizacion_Rechaza()
+    {
+        var (db, org, _) = await CrearOrganizacionConPlanAsync();
+        var servicio = CrearServicio(db, org.Id);
+        var alta = await servicio.CreateAsync("jperez", "jperez@test.cl", isAdmin: false);
+
+        var servicioDeOtraOrg = CrearServicio(db, Guid.NewGuid());
+        var resultado = await servicioDeOtraOrg.SetPasswordAsync(alta.UserId!.Value, "Nueva.Clave12!");
+
+        Assert.False(resultado.IsSuccess);
     }
 }

@@ -57,4 +57,13 @@ public interface ITenantUserAdminService
     /// null limpia el default (el usuario vuelve a elegir en cada login).
     /// </summary>
     Task<TenantUserOperationResult> SetDefaultCompanyAsync(Guid userId, Guid? companyId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Fija una contraseña ya generada por el llamador (admin, vía RandomPasswordGenerator)
+    /// -- a diferencia de CreateAsync, acá el hash SÍ se comunica (por correo o en pantalla),
+    /// por eso el llamador es responsable de que newPassword cumpla PasswordPolicy antes de
+    /// invocar este método. Resetea intentos fallidos y desbloquea, mismo criterio que
+    /// PasswordResetService.ResetPasswordAsync.
+    /// </summary>
+    Task<TenantUserOperationResult> SetPasswordAsync(Guid userId, string newPassword, CancellationToken ct = default);
 }

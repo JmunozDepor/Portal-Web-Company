@@ -40,6 +40,17 @@ public sealed class TenantUserOperationResult
     public static TenantUserOperationResult Failure(string reason) => new() { IsSuccess = false, Reason = reason };
 }
 
+/// <summary>Resultado de generar una contraseña nueva -- igual que TenantUserOperationResult, más el valor en texto plano para que el llamador decida cómo entregarla (correo o pantalla).</summary>
+public sealed class TenantUserPasswordResult
+{
+    public required bool IsSuccess { get; init; }
+    public string? Reason { get; init; }
+    public string? NewPassword { get; init; }
+
+    public static TenantUserPasswordResult Success(string newPassword) => new() { IsSuccess = true, NewPassword = newPassword };
+    public static TenantUserPasswordResult Failure(string reason) => new() { IsSuccess = false, Reason = reason };
+}
+
 public sealed class CompanyOptionDto
 {
     public required Guid Id { get; init; }

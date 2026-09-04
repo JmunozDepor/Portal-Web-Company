@@ -38,6 +38,9 @@ public class EditarModel : AdminPageModelBase
     public bool TieneCompanies { get; set; }
     public Guid SelectedCompanyId { get; set; }
 
+    [TempData]
+    public string? NuevaPasswordGenerada { get; set; }
+
     public List<MenuGroupOptionDto> AllMenuGroups { get; set; } = [];
     public List<LeafMenuDto> LeafMenus { get; set; } = [];
     public List<SelectListItem> ProfileOptions { get; set; } = [];
@@ -145,6 +148,52 @@ public class EditarModel : AdminPageModelBase
         }
 
         MensajeExito = "Usuario actualizado correctamente.";
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostGenerarPasswordAsync(Guid id, bool enviarPorCorreo)
+    {
+        var detalle = await _usuarios.GetAsync(id);
+        if (detalle is null)
+        {
+            return NotFound();
+        }
+
+        var resultado = await _usuarios.GenerateAndSetPasswordAsync(id);
+        if (!resultado.IsSuccess)
+        {
+            MensajeError = resultado.Reason;
+            return RedirectToPage(new { id });
+        }
+
+        var password = resultado.NewPassword!;
+
+        if (!enviarPorCorreo)
+        {
+            NuevaPasswordGenerada = password;
+            MensajeExito = "Se generó una contraseña nueva. Cópiala ahora: no se volverá a mostrar.";
+            return RedirectToPage(new { id });
+        }
+
+        var organizationId = CurrentUser.OrganizationId;
+        try
+        {
+            await _emailSenderService.SendAsync(organizationId, new EmailMessage(
+                detalle.Email,
+                "Tu contraseña fue actualizada — Portal SaaS",
+                $"""
+                <p>Un administrador generó una contraseña nueva para tu cuenta en el Portal SaaS.</p>
+                <p>Tu nueva contraseña es: <strong>{password}</strong></p>
+                <p>Te recomendamos cambiarla la próxima vez que inicies sesión.</p>
+                """));
+            MensajeExito = "Se generó una contraseña nueva y se envió por correo al usuario.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falló el envío del correo de contraseña nueva para el usuario {UserId} de la organización {OrganizationId}", id, organizationId);
+            MensajeError = "Se generó la contraseña nueva, pero no se pudo enviar el correo (revisa la configuración de correo de la organización).";
+        }
+
         return RedirectToPage(new { id });
     }
 

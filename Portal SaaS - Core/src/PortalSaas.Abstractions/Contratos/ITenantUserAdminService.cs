@@ -66,4 +66,13 @@ public interface ITenantUserAdminService
     /// PasswordResetService.ResetPasswordAsync.
     /// </summary>
     Task<TenantUserOperationResult> SetPasswordAsync(Guid userId, string newPassword, CancellationToken ct = default);
+
+    /// <summary>
+    /// Genera una contraseña aleatoria que cumple PasswordPolicy y la fija de inmediato --
+    /// a diferencia de SetPasswordAsync, la generación queda encapsulada acá para que el
+    /// llamador (plugin, que solo referencia Abstractions) no necesite conocer
+    /// RandomPasswordGenerator ni PasswordPolicy. Devuelve la contraseña en texto plano
+    /// para que el llamador decida cómo entregarla (correo o mostrarla una vez en pantalla).
+    /// </summary>
+    Task<TenantUserPasswordResult> GenerateAndSetPasswordAsync(Guid userId, CancellationToken ct = default);
 }

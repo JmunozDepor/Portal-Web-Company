@@ -251,4 +251,33 @@ public class TenantUserAdminServiceTests
 
         Assert.False(resultado.IsSuccess);
     }
+
+    [Fact]
+    public async Task GenerateAndSetPasswordAsync_UsuarioPropio_DevuelveContrasenaQueCumpleLaPolitica()
+    {
+        var (db, org, _) = await CrearOrganizacionConPlanAsync();
+        var servicio = CrearServicio(db, org.Id);
+        var alta = await servicio.CreateAsync("jperez", "jperez@test.cl", isAdmin: false);
+
+        var resultado = await servicio.GenerateAndSetPasswordAsync(alta.UserId!.Value);
+
+        Assert.True(resultado.IsSuccess);
+        Assert.NotNull(resultado.NewPassword);
+        Assert.Empty(PasswordPolicy.Validate(resultado.NewPassword!));
+        var actualizado = await db.Users.FindAsync(alta.UserId);
+        Assert.True(PasswordHasher.Verify(resultado.NewPassword!, actualizado!.PasswordHash, actualizado.PasswordSalt));
+    }
+
+    [Fact]
+    public async Task GenerateAndSetPasswordAsync_UsuarioDeOtraOrganizacion_Rechaza()
+    {
+        var (db, org, _) = await CrearOrganizacionConPlanAsync();
+        var servicio = CrearServicio(db, org.Id);
+        var alta = await servicio.CreateAsync("jperez", "jperez@test.cl", isAdmin: false);
+
+        var servicioDeOtraOrg = CrearServicio(db, Guid.NewGuid());
+        var resultado = await servicioDeOtraOrg.GenerateAndSetPasswordAsync(alta.UserId!.Value);
+
+        Assert.False(resultado.IsSuccess);
+    }
 }

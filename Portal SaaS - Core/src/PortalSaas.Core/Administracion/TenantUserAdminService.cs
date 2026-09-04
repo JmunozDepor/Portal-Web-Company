@@ -336,22 +336,12 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
 
     public async Task<TenantUserPasswordResult> GenerateAndSetPasswordAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await FindOwnUserAsync(userId, ct);
-        if (user is null)
-        {
-            return TenantUserPasswordResult.Failure("Usuario no encontrado.");
-        }
-
         var password = RandomPasswordGenerator.Generate();
-        var (hash, salt) = PasswordHasher.Hash(password);
-        user.PasswordHash = hash;
-        user.PasswordSalt = salt;
-        user.FailedLoginAttempts = 0;
-        user.IsLocked = false;
+        var resultado = await SetPasswordAsync(userId, password, ct);
 
-        await _db.SaveChangesAsync(ct);
-
-        return TenantUserPasswordResult.Success(password);
+        return resultado.IsSuccess
+            ? TenantUserPasswordResult.Success(password)
+            : TenantUserPasswordResult.Failure(resultado.Reason!);
     }
 
     private Task<User?> FindOwnUserAsync(Guid userId, CancellationToken ct) =>

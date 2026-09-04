@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Core.Seguridad;
 
 namespace PortalSaas.Host.Pages.Account;
 
@@ -37,6 +38,16 @@ public class ResetPasswordModel : PageModel
             return Page();
         }
 
+        foreach (var error in PasswordPolicy.Validate(Input.NewPassword))
+        {
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.NewPassword)}", error);
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return Page();
+        }
+
         Succeeded = await _passwordResetService.ResetPasswordAsync(Input.Token, Input.NewPassword);
         return Page();
     }
@@ -48,7 +59,6 @@ public class ResetPasswordModel : PageModel
         [Required(ErrorMessage = "Ingresa tu nueva contraseña.")]
         [DataType(DataType.Password)]
         [Display(Name = "Contraseña nueva")]
-        [MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres.")]
         public string NewPassword { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Confirma tu nueva contraseña.")]

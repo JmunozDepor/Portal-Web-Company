@@ -82,6 +82,15 @@ public sealed class IndexModel : PageModel
     /// <summary>Búsqueda en vivo del artículo -- mismo mecanismo que Modulo.Ventas (nunca se precarga OITM completo).</summary>
     public async Task<JsonResult> OnGetSearchItemsAsync(string text, CancellationToken ct)
     {
+        // Named handler invocable directo (?handler=SearchItems) -- [Authorize] a nivel
+        // de clase solo exige autenticación, no el permiso de vista de este menú. Sin
+        // este chequeo, cualquier usuario autenticado sin acceso a
+        // "Inventario.maestroproducto" podría buscar artículos saltándose el gate.
+        if (!await _currentUser.HasActionAsync(MenuCode, PortalActions.View, ct))
+        {
+            return new JsonResult(Array.Empty<object>()) { StatusCode = 403 };
+        }
+
         var items = await _items.SearchAsync(text ?? string.Empty, ct: ct);
         return new JsonResult(items.Select(i => new { i.ItemCode, i.ItemName }));
     }
@@ -89,6 +98,13 @@ public sealed class IndexModel : PageModel
     /// <summary>Fetch AJAX liviano al cambiar el combo de lista de precios -- evita recargar toda la ficha.</summary>
     public async Task<JsonResult> OnGetPriceAsync(string itemCode, int priceList, CancellationToken ct)
     {
+        // Mismo motivo que OnGetSearchItemsAsync: named handler invocable directo
+        // (?handler=Price), necesita su propio chequeo de permiso de vista.
+        if (!await _currentUser.HasActionAsync(MenuCode, PortalActions.View, ct))
+        {
+            return new JsonResult(Array.Empty<object>()) { StatusCode = 403 };
+        }
+
         var price = await _priceLists.GetPriceAsync(itemCode, priceList, ct);
         return new JsonResult(new { price });
     }

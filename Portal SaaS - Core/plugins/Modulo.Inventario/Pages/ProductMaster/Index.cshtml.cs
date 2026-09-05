@@ -102,7 +102,7 @@ public sealed class IndexModel : PageModel
         // (?handler=Price), necesita su propio chequeo de permiso de vista.
         if (!await _currentUser.HasActionAsync(MenuCode, PortalActions.View, ct))
         {
-            return new JsonResult(Array.Empty<object>()) { StatusCode = 403 };
+            return new JsonResult(new { price = (decimal?)null }) { StatusCode = 403 };
         }
 
         var price = await _priceLists.GetPriceAsync(itemCode, priceList, ct);

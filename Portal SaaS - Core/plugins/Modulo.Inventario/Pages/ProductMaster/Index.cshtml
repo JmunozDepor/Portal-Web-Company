@@ -126,7 +126,7 @@
             fetch('?handler=Price&itemCode=' + encodeURIComponent(itemCode) + '&priceList=' + encodeURIComponent(select.value))
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    output.value = data.price === null ? 'Sin precio' : Number(data.price).toFixed(2);
+                    output.value = data.price === null ? 'Sin precio' : Number(data.price).toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 })
                 .catch(function (error) { console.error('product-master price fetch: ', error); });
         });

@@ -31,6 +31,9 @@
     <ProjectReference Include="..\..\src\PortalSaas.Data\PortalSaas.Data.csproj" />
     <ProjectReference Include="..\..\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\PortalSaas.Integrations\PortalSaas.Integrations.csproj" />
+    <!-- Test de página del visor Maestro de Producto (ProductMasterIndexModelTests),
+         primer test de un PageModel de plugin en este proyecto. -->
+    <ProjectReference Include="..\..\plugins\Modulo.Inventario\Modulo.Inventario.csproj" />
   </ItemGroup>
 
 </Project>

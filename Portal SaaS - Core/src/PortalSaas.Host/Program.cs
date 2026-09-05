@@ -200,6 +200,8 @@ builder.Services.AddScoped<ISapConnectionTestService, SapConnectionTestService>(
 // entrega (Fase 1 del motor genérico Venta/Compra/Inventario).
 builder.Services.AddScoped<ICustomerCatalogService, CustomerCatalogService>();
 builder.Services.AddScoped<IItemCatalogService, ItemCatalogService>();
+builder.Services.AddScoped<IItemMasterDetailService, ItemMasterDetailService>();
+builder.Services.AddScoped<IItemStockService, ItemStockService>();
 builder.Services.AddScoped<IWarehouseCatalogService, WarehouseCatalogService>();
 builder.Services.AddScoped<ISalesEmployeeCatalogService, SalesEmployeeCatalogService>();
 builder.Services.AddScoped<ISalesDocumentService, SalesDocumentService>();

@@ -22,6 +22,7 @@ public sealed class ModuloInventario : IModuloPortal
         yield return new MenuItemDefinition { Code = "raiz", ParentCode = null, Name = "Inventario", Icon = "bi bi-box-seam", PageRoute = null, Order = 200 };
         yield return new MenuItemDefinition { Code = "solicitudestraslado", ParentCode = "raiz", Name = "Solicitudes de Traslado", Icon = "bi bi-signpost-split", PageRoute = "/inventario/solicitudes-traslado", Order = 1 };
         yield return new MenuItemDefinition { Code = "traslados", ParentCode = "raiz", Name = "Traslados", Icon = "bi bi-arrow-left-right", PageRoute = "/inventario/traslados", Order = 2 };
+        yield return new MenuItemDefinition { Code = "maestroproducto", ParentCode = "raiz", Name = "Maestro de Producto", Icon = "bi bi-upc-scan", PageRoute = "/inventario/maestro-producto", Order = 3 };
     }
 
     public void RegisterServices(IServiceCollection services)

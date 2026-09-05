@@ -1,0 +1,134 @@
+@* Portal SaaS - Core/plugins/Modulo.Inventario/Pages/ProductMaster/Index.cshtml *@
+@page "/inventario/maestro-producto"
+@model Modulo.Inventario.Pages.ProductMaster.IndexModel
+@{
+    ViewData["Title"] = "Maestro de Producto";
+}
+
+<h1 class="page-title">Maestro de Producto</h1>
+
+<form method="get" class="form-row product-master-search-form">
+    <div class="form-group">
+        <label class="form-label" for="product-master-search-input">Artículo</label>
+        <input id="product-master-search-input" name="ItemCode" list="product-master-datalist"
+               class="form-control product-master-search-input" autocomplete="off"
+               placeholder="Código o nombre del artículo" value="@Model.ItemCode" />
+        <datalist id="product-master-datalist"></datalist>
+    </div>
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">Ver ficha</button>
+    </div>
+</form>
+
+@if (Model.ItemNotFound)
+{
+    <div class="alert alert-warning">Artículo no encontrado.</div>
+}
+
+@if (Model.Detail is not null)
+{
+    <section class="doc-tab-seccion">
+        <h2>Datos generales</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Código</label>
+                <input class="form-control" value="@Model.Detail.ItemCode" disabled />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Descripción</label>
+                <input class="form-control" value="@Model.Detail.ItemName" disabled />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Código de barra</label>
+                <input class="form-control" value="@(Model.Detail.CodeBars ?? "—")" disabled />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Grupo de artículo</label>
+                <input class="form-control" value="@(Model.Detail.ItemGroupName ?? "—")" disabled />
+            </div>
+        </div>
+    </section>
+
+    <section class="doc-tab-seccion">
+        <h2>Precio</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label" for="product-master-pricelist-select">Lista de precios</label>
+                <select id="product-master-pricelist-select" class="form-select product-master-pricelist-select">
+                    @foreach (var lista in Model.PriceLists)
+                    {
+                        <option value="@lista.ListNum" selected="@(lista.ListNum == Model.SelectedPriceList)">@lista.ListName</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Precio</label>
+                <input id="product-master-price-output" class="form-control" value="@(Model.SelectedPrice?.ToString("N2") ?? "Sin precio")" disabled />
+            </div>
+        </div>
+    </section>
+
+    <section class="doc-tab-seccion">
+        <h2>Stock por almacén</h2>
+        @if (Model.Stocks.Count == 0)
+        {
+            <p>Sin stock registrado.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Almacén</th>
+                        <th>En stock</th>
+                        <th>Comprometido</th>
+                        <th>Disponible</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var fila in Model.Stocks)
+                    {
+                        <tr>
+                            <td>@fila.WhsCode — @fila.WhsName</td>
+                            <td>@fila.OnHand.ToString("N2")</td>
+                            <td>@fila.IsCommited.ToString("N2")</td>
+                            <td>@fila.Available.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+<script src="~/js/catalog-search.js"></script>
+<script>
+    wireCatalogSearch({
+        inputSelector: '.product-master-search-input',
+        datalistId: 'product-master-datalist',
+        handlerName: 'SearchItems',
+        minChars: 2,
+        getValue: function (item) { return item.itemCode; },
+        getLabel: function (item) { return item.itemCode + ' — ' + item.itemName; },
+    });
+
+    // Cambio de lista de precios -- fetch liviano, no recarga la página completa (ver
+    // OnGetPriceAsync). itemCode viene del querystring actual (?ItemCode=...), la
+    // página solo llega hasta acá cuando Model.Detail no es null.
+    (function () {
+        var select = document.querySelector('.product-master-pricelist-select');
+        var output = document.getElementById('product-master-price-output');
+        if (!select) {
+            return;
+        }
+        var itemCode = new URLSearchParams(window.location.search).get('ItemCode');
+        select.addEventListener('change', function () {
+            fetch('?handler=Price&itemCode=' + encodeURIComponent(itemCode) + '&priceList=' + encodeURIComponent(select.value))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    output.value = data.price === null ? 'Sin precio' : Number(data.price).toFixed(2);
+                })
+                .catch(function (error) { console.error('product-master price fetch: ', error); });
+        });
+    })();
+</script>

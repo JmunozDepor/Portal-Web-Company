@@ -1,3 +1,5 @@
+using PortalSaas.Abstractions.Modelos;
+
 namespace PortalSaas.Abstractions.Contratos;
 
 /// <summary>
@@ -18,4 +20,12 @@ public interface IPriceListService
     /// definido en esa lista simplemente no aparecen en el resultado.
     /// </summary>
     Task<IReadOnlyDictionary<string, decimal>> GetPricesAsync(IReadOnlyCollection<string> itemCodes, int priceList, CancellationToken ct = default);
+
+    /// <summary>
+    /// Catálogo completo de listas de precios (OPLN) de la compañía activa -- a
+    /// diferencia de OITM/artículo, OPLN tiene pocas filas (unas pocas a unas
+    /// decenas), se lista completa sin búsqueda ni límite, para poblar un combo (ver
+    /// visor Maestro de Producto).
+    /// </summary>
+    Task<IReadOnlyList<PriceListOptionDto>> ListAllAsync(CancellationToken ct = default);
 }

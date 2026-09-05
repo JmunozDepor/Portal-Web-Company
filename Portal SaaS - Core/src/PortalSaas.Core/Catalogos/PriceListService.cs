@@ -1,4 +1,5 @@
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 
 namespace PortalSaas.Core.Catalogos;
 
@@ -49,6 +50,17 @@ public sealed class PriceListService : IPriceListService
 
         var rows = await _hana.QueryAsync<ItemPriceDto>(sql, parameters, ct);
         return rows.ToDictionary(r => r.ItemCode, r => r.Price, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public async Task<IReadOnlyList<PriceListOptionDto>> ListAllAsync(CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT "ListNum" AS "ListNum", "ListName" AS "ListName"
+            FROM "OPLN"
+            ORDER BY "ListNum"
+            """;
+
+        return await _hana.QueryAsync<PriceListOptionDto>(sql, ct: ct);
     }
 }
 

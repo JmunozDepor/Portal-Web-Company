@@ -147,6 +147,78 @@ public sealed class GenericImportValidationRuleEngineTests
         Assert.Empty(result);
     }
 
+    // ---- Task 8: StockAvailable ----------------------------------------------
+
+    private static GenericImportRowDto RowWithStock(int rowNumber, string itemCode, string warehouse, decimal quantity) => new()
+    {
+        RowNumber = rowNumber,
+        GroupingKey = "G1",
+        IsValid = true,
+        ItemCode = itemCode,
+        Warehouse = warehouse,
+        Quantity = quantity,
+    };
+
+    [Fact]
+    public async Task StockAvailableRule_suma_demanda_de_varios_documentos_del_mismo_archivo()
+    {
+        var rule = new StockAvailableRule(new FakeItemStockService(new Dictionary<(string, string), decimal> { [("I001", "01")] = 100m }));
+        var rows = new[]
+        {
+            RowWithStock(1, "I001", "01", 60m),
+            RowWithStock(2, "I001", "01", 60m), // suma 120 > 100 disponible
+        };
+
+        var result = await rule.ValidateAsync(rows, GenericImportModule.Sales, new Dictionary<string, object?> { ["tolerancePercent"] = 0m }, CancellationToken.None);
+
+        Assert.True(result.ContainsKey(1));
+        Assert.True(result.ContainsKey(2));
+    }
+
+    [Fact]
+    public async Task StockAvailableRule_valida_cada_bodega_de_forma_independiente()
+    {
+        var rule = new StockAvailableRule(new FakeItemStockService(new Dictionary<(string, string), decimal>
+        {
+            [("I001", "01")] = 10m,
+            [("I001", "02")] = 100m,
+        }));
+        var rows = new[]
+        {
+            RowWithStock(1, "I001", "01", 50m), // no alcanza en 01
+            RowWithStock(2, "I001", "02", 50m), // sí alcanza en 02
+        };
+
+        var result = await rule.ValidateAsync(rows, GenericImportModule.Sales, new Dictionary<string, object?> { ["tolerancePercent"] = 0m }, CancellationToken.None);
+
+        Assert.True(result.ContainsKey(1));
+        Assert.False(result.ContainsKey(2));
+    }
+
+    [Fact]
+    public async Task StockAvailableRule_respeta_la_tolerancia()
+    {
+        var rule = new StockAvailableRule(new FakeItemStockService(new Dictionary<(string, string), decimal> { [("I001", "01")] = 100m }));
+        var rows = new[] { RowWithStock(1, "I001", "01", 105m) }; // 5% de más
+
+        var conTolerancia = await rule.ValidateAsync(rows, GenericImportModule.Sales, new Dictionary<string, object?> { ["tolerancePercent"] = 10m }, CancellationToken.None);
+        var sinTolerancia = await rule.ValidateAsync(rows, GenericImportModule.Sales, new Dictionary<string, object?> { ["tolerancePercent"] = 0m }, CancellationToken.None);
+
+        Assert.False(conTolerancia.ContainsKey(1));
+        Assert.True(sinTolerancia.ContainsKey(1));
+    }
+
+    [Fact]
+    public async Task StockAvailableRule_usa_SourceWarehouse_en_Inventario()
+    {
+        var rule = new StockAvailableRule(new FakeItemStockService(new Dictionary<(string, string), decimal> { [("I001", "01")] = 10m }));
+        var row = new GenericImportRowDto { RowNumber = 1, GroupingKey = "G1", IsValid = true, ItemCode = "I001", SourceWarehouse = "01", Quantity = 50m };
+
+        var result = await rule.ValidateAsync([row], GenericImportModule.Inventory, new Dictionary<string, object?> { ["tolerancePercent"] = 0m }, CancellationToken.None);
+
+        Assert.True(result.ContainsKey(1));
+    }
+
     // ---- Fakes escritos a mano (este proyecto no usa Moq/NSubstitute) ----------
 
     private sealed class FakeCustomerCatalogService : ICustomerCatalogService
@@ -192,5 +264,24 @@ public sealed class GenericImportValidationRuleEngineTests
         public FakeBusinessPartnerDefaultsService(int? priceListCode) => _priceListCode = priceListCode;
         public Task<BusinessPartnerDefaultsDto?> GetAsync(string cardCode, CancellationToken ct = default) =>
             Task.FromResult<BusinessPartnerDefaultsDto?>(new BusinessPartnerDefaultsDto { CardCode = cardCode, PriceListCode = _priceListCode });
+    }
+
+    private sealed class FakeItemStockService : IItemStockService
+    {
+        private readonly IReadOnlyDictionary<(string, string), decimal> _available;
+        public FakeItemStockService(IReadOnlyDictionary<(string, string), decimal> available) => _available = available;
+        public Task<IReadOnlyList<WarehouseStockDto>> GetStockByItemAsync(string itemCode, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<WarehouseStockDto>>([]);
+        public Task<IReadOnlyDictionary<(string ItemCode, string WhsCode), decimal>> GetAvailableStockAsync(IReadOnlyList<(string ItemCode, string WhsCode)> pairs, CancellationToken ct = default)
+        {
+            var result = new Dictionary<(string ItemCode, string WhsCode), decimal>();
+            foreach (var pair in pairs)
+            {
+                if (_available.TryGetValue((pair.ItemCode, pair.WhsCode), out var qty))
+                {
+                    result[pair] = qty;
+                }
+            }
+            return Task.FromResult<IReadOnlyDictionary<(string ItemCode, string WhsCode), decimal>>(result);
+        }
     }
 }

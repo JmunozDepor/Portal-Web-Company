@@ -109,6 +109,13 @@
                             <text> · Socio: @socioDelGrupo</text>
                         }
                         · @document.Rows.Count fila(s) · Cantidad total: @cantidadTotal.ToString("N2")
+                        @{
+                            var advertenciasCount = document.Rows.Sum(r => r.Warnings.Count);
+                        }
+                        @if (advertenciasCount > 0)
+                        {
+                            <text> · @advertenciasCount advertencia(s)</text>
+                        }
                         @if (muestraMonto)
                         {
                             <text> · Monto total: @montoTotal.ToString("N2")</text>
@@ -125,6 +132,7 @@
                                 <th>Artículo</th>
                                 <th>Cantidad</th>
                                 <th>Errores</th>
+                                <th>Advertencias</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -137,11 +145,12 @@
                                 var articuloMostrado = row.ItemName ?? row.ItemCode ?? row.Description
                                     ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.ItemCode)
                                     ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.Description);
-                                <tr class="@(row.IsValid ? "" : "table-danger")">
+                                <tr class="@(row.IsValid ? (row.Warnings.Count > 0 ? "table-warning" : "") : "table-danger")">
                                     <td>@row.RowNumber</td>
                                     <td>@articuloMostrado</td>
                                     <td>@row.Quantity</td>
                                     <td>@string.Join("; ", row.Errors)</td>
+                                    <td class="text-warning">@string.Join("; ", row.Warnings)</td>
                                 </tr>
                             }
                         </tbody>
@@ -177,6 +186,19 @@
                     <div id="progresoConfirmarMensaje" class="text-muted mt-1 small"></div>
                 </div>
             }
+
+            @* Reporte de validación pre-carga -- disponible siempre que haya vista previa,
+               no solo cuando hay errores (a diferencia de "Descargar archivo con errores"). *@
+            <form method="post" asp-page-handler="DownloadValidationReport" asp-antiforgery="true" class="mt-2 d-inline-block">
+                <input type="hidden" asp-for="Input.Module" />
+                <input type="hidden" asp-for="Input.SalesDocumentType" />
+                <input type="hidden" asp-for="Input.PurchaseDocumentType" />
+                <input type="hidden" asp-for="Input.InventoryDocumentType" />
+                <input type="hidden" asp-for="Input.LineType" />
+                <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
+                <input type="hidden" asp-for="Input.Base64File" />
+                <button type="submit" class="btn btn-outline-secondary">Descargar reporte de validación</button>
+            </form>
 
             @if (Model.PreviewResult.Documents.Any(d => !d.CanCreate))
             {

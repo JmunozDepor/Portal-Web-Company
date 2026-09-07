@@ -228,6 +228,29 @@ public sealed class IndexModel : PageModelBaseAdmin
             $"Errores_{Input.Module}_{parameters.DocumentType}.xlsx");
     }
 
+    // Reporte de validación pre-carga (Errores + Advertencias por línea + hoja de stock)
+    // -- disponible siempre que haya vista previa, no solo cuando hay errores. Reprocesa
+    // el archivo, mismo criterio que OnPostDownloadWithErrorsAsync.
+    public async Task<IActionResult> OnPostDownloadValidationReportAsync(CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(Input.Base64File))
+        {
+            ModelState.AddModelError(string.Empty, "Volvé a procesar el archivo antes de descargar el reporte.");
+            await LoadCreatableDocumentTypesAsync(ct);
+            await ResolveBusinessPartnerFromFileAsync(ct);
+            return Page();
+        }
+
+        var parameters = BuildParameters();
+        var bytes = Convert.FromBase64String(Input.Base64File);
+        using var stream = new MemoryStream(bytes);
+        var preview = await _importService.ProcessFileAsync(parameters, stream, ct);
+
+        var fileBytes = await _importService.GenerateValidationReportAsync(parameters, preview.Documents, ct);
+        return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"ReporteValidacion_{Input.Module}_{parameters.DocumentType}.xlsx");
+    }
+
     public async Task<IActionResult> OnGetTemplateAsync(GenericImportModule module, string documentType, GenericImportLineType lineType,
         string? businessPartnerCardCode, CancellationToken ct)
     {

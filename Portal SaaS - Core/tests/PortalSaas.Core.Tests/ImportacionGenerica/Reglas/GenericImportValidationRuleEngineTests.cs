@@ -243,6 +243,102 @@ public sealed class GenericImportValidationRuleEngineTests
         Assert.True(result.ContainsKey(2));
     }
 
+    // ---- Task 10: motor orquestador ----------------------------------------
+
+    [Fact]
+    public async Task ApplyAsync_reglas_estructurales_siempre_corren_como_Block()
+    {
+        var engine = new GenericImportValidationRuleEngine([new PositiveQuantityRule(), new ValidDiscountPercentRule()]);
+        var rows = new[] { Row(1, quantity: -1) };
+
+        var result = await engine.ApplyAsync(rows, GenericImportModule.Sales, [], CancellationToken.None);
+
+        var row = Assert.Single(result);
+        Assert.False(row.IsValid);
+        Assert.Contains("Cantidad debe ser mayor a 0.", row.Errors);
+        Assert.Empty(row.Warnings);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_Severity_Warning_no_afecta_IsValid()
+    {
+        var engine = new GenericImportValidationRuleEngine(
+        [
+            new PositiveQuantityRule(),
+            new ValidDiscountPercentRule(),
+            new ItemActiveInSapRule(new FakeItemCatalogService(new Dictionary<string, bool> { ["I001"] = false })),
+        ]);
+        var rows = new[] { RowWithPartner(1, "C001", "I001") with { Quantity = 1 } };
+        var assignments = new[]
+        {
+            new GenericImportValidationRuleAssignmentDto(1, GenericImportValidationRuleType.ItemActiveInSap,
+                GenericImportValidationSeverity.Warning, true, new Dictionary<string, object?>()),
+        };
+
+        var result = await engine.ApplyAsync(rows, GenericImportModule.Sales, assignments, CancellationToken.None);
+
+        var row = Assert.Single(result);
+        Assert.True(row.IsValid);
+        Assert.Empty(row.Errors);
+        Assert.Contains(row.Warnings, w => w.Contains("inactivo"));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_Severity_Block_marca_IsValid_false()
+    {
+        var engine = new GenericImportValidationRuleEngine(
+        [
+            new PositiveQuantityRule(),
+            new ValidDiscountPercentRule(),
+            new ItemActiveInSapRule(new FakeItemCatalogService(new Dictionary<string, bool> { ["I001"] = false })),
+        ]);
+        var rows = new[] { RowWithPartner(1, "C001", "I001") with { Quantity = 1 } };
+        var assignments = new[]
+        {
+            new GenericImportValidationRuleAssignmentDto(1, GenericImportValidationRuleType.ItemActiveInSap,
+                GenericImportValidationSeverity.Block, true, new Dictionary<string, object?>()),
+        };
+
+        var result = await engine.ApplyAsync(rows, GenericImportModule.Sales, assignments, CancellationToken.None);
+
+        var row = Assert.Single(result);
+        Assert.False(row.IsValid);
+        Assert.Contains(row.Errors, e => e.Contains("inactivo"));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_regla_inactiva_no_corre()
+    {
+        var engine = new GenericImportValidationRuleEngine(
+        [
+            new PositiveQuantityRule(),
+            new ValidDiscountPercentRule(),
+            new ItemActiveInSapRule(new FakeItemCatalogService(new Dictionary<string, bool> { ["I001"] = false })),
+        ]);
+        var rows = new[] { RowWithPartner(1, "C001", "I001") with { Quantity = 1 } };
+        var assignments = new[]
+        {
+            new GenericImportValidationRuleAssignmentDto(1, GenericImportValidationRuleType.ItemActiveInSap,
+                GenericImportValidationSeverity.Block, false, new Dictionary<string, object?>()),
+        };
+
+        var result = await engine.ApplyAsync(rows, GenericImportModule.Sales, assignments, CancellationToken.None);
+
+        Assert.True(Assert.Single(result).IsValid);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_regla_no_aplicable_al_modulo_no_corre_aunque_este_activa()
+    {
+        // ValidDiscountPercentRule no aplica a Inventario (ApplicableModules = Sales/Purchase)
+        var engine = new GenericImportValidationRuleEngine([new PositiveQuantityRule(), new ValidDiscountPercentRule()]);
+        var row = new GenericImportRowDto { RowNumber = 1, GroupingKey = "G1", IsValid = true, Quantity = 1, DiscountPercent = 999 };
+
+        var result = await engine.ApplyAsync([row], GenericImportModule.Inventory, [], CancellationToken.None);
+
+        Assert.True(Assert.Single(result).IsValid);
+    }
+
     // ---- Fakes escritos a mano (este proyecto no usa Moq/NSubstitute) ----------
 
     private sealed class FakeCustomerCatalogService : ICustomerCatalogService

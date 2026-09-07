@@ -51,4 +51,15 @@ public interface IGenericImportService
     /// </summary>
     Task<byte[]> GenerateFileWithErrorsAsync(GenericImportParametersDto parameters,
         IReadOnlyList<GenericImportDocumentDto> documents, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reporte de validación PRE-carga -- distinto del reporte de resultado post-carga
+    /// (ver docs/superpowers/specs/2026-09-06-reporte-resultado-importacion-generica-
+    /// design.md). Se genera a partir de la vista previa (ProcessFileAsync), disponible
+    /// sin haber confirmado nada -- hoja "Detalle" (una fila por línea, con Errores y
+    /// Advertencias) + hoja "Stock por artículo-bodega" (una fila por cada par
+    /// (ItemCode, Bodega) marcado por la regla StockAvailable).
+    /// </summary>
+    Task<byte[]> GenerateValidationReportAsync(GenericImportParametersDto parameters,
+        IReadOnlyList<GenericImportDocumentDto> documents, CancellationToken ct = default);
 }

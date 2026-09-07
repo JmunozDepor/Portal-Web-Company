@@ -365,6 +365,76 @@ public sealed class GenericImportService : IGenericImportService
         return stream.ToArray();
     }
 
+    public async Task<byte[]> GenerateValidationReportAsync(GenericImportParametersDto parameters,
+        IReadOnlyList<GenericImportDocumentDto> documents, CancellationToken ct = default)
+    {
+        var config = await _config.ResolveAsync(parameters.Module, parameters.DocumentType, parameters.LineType,
+            parameters.BusinessPartnerCardCode, ct);
+        var userFieldsCatalog = (await _userFieldsCatalog.ListAsync(parameters.Module, ct)).ToDictionary(f => f.Id);
+
+        using var workbook = new XLWorkbook();
+
+        var detalle = workbook.Worksheets.Add("Detalle");
+        var mappedFields = config?.Fields.Where(f => !string.IsNullOrEmpty(f.ExcelColumn)).ToList() ?? [];
+        foreach (var field in mappedFields)
+        {
+            var index = ColumnLetterToIndex(field.ExcelColumn!);
+            detalle.Cell(1, index + 1).Value = FieldLabel(field, userFieldsCatalog);
+        }
+        var errorsColumnIndex = (mappedFields.Count > 0 ? mappedFields.Max(f => ColumnLetterToIndex(f.ExcelColumn!)) : -1) + 1;
+        detalle.Cell(1, errorsColumnIndex + 1).Value = "Errores";
+        detalle.Cell(1, errorsColumnIndex + 2).Value = "Advertencias";
+
+        var allRows = documents.SelectMany(d => d.Rows).OrderBy(r => r.RowNumber).ToList();
+        var rowIndex = 1;
+        foreach (var row in allRows)
+        {
+            rowIndex++;
+            foreach (var field in mappedFields)
+            {
+                var index = ColumnLetterToIndex(field.ExcelColumn!);
+                detalle.Cell(rowIndex, index + 1).Value = FieldValue(row, field, userFieldsCatalog) ?? string.Empty;
+            }
+            detalle.Cell(rowIndex, errorsColumnIndex + 1).Value = string.Join("; ", row.Errors);
+            detalle.Cell(rowIndex, errorsColumnIndex + 2).Value = string.Join("; ", row.Warnings);
+
+            if (!row.IsValid)
+            {
+                detalle.Range(rowIndex, 1, rowIndex, errorsColumnIndex + 2).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 214, 214);
+            }
+            else if (row.Warnings.Count > 0)
+            {
+                detalle.Range(rowIndex, 1, rowIndex, errorsColumnIndex + 2).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 243, 205);
+            }
+        }
+        detalle.Columns().AdjustToContents();
+
+        var stockSheet = workbook.Worksheets.Add("Stock por artículo-bodega");
+        stockSheet.Cell(1, 1).Value = "Artículo";
+        stockSheet.Cell(1, 2).Value = "Bodega";
+        stockSheet.Cell(1, 3).Value = "Advertencia";
+
+        var stockWarningRows = allRows
+            .SelectMany(r => r.Warnings
+                .Where(w => w.StartsWith("Demanda total de", StringComparison.Ordinal))
+                .Select(w => (ItemCode: r.ItemCode ?? string.Empty, Warehouse: r.Warehouse ?? r.SourceWarehouse ?? string.Empty, Warning: w)))
+            .Distinct()
+            .ToList();
+        var stockRowIndex = 1;
+        foreach (var (itemCode, warehouse, warning) in stockWarningRows)
+        {
+            stockRowIndex++;
+            stockSheet.Cell(stockRowIndex, 1).Value = itemCode;
+            stockSheet.Cell(stockRowIndex, 2).Value = warehouse;
+            stockSheet.Cell(stockRowIndex, 3).Value = warning;
+        }
+        stockSheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
     private static string FieldLabel(GenericImportConfigFieldDto field, IReadOnlyDictionary<int, GenericImportUserFieldDto> userFieldsCatalog) =>
         field.LogicalField == GenericImportLogicalField.UserField && field.UserFieldId is { } userFieldId
             && userFieldsCatalog.TryGetValue(userFieldId, out var userField)

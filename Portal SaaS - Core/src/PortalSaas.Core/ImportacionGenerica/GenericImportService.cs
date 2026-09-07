@@ -5,6 +5,7 @@ using ExcelDataReader;
 using Microsoft.Extensions.Logging;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
+using PortalSaas.Core.ImportacionGenerica.Reglas;
 
 namespace PortalSaas.Core.ImportacionGenerica;
 
@@ -47,12 +48,6 @@ public sealed class GenericImportService : IGenericImportService
     // significa MENOS pasadas de reprocesamiento acumuladas para el mismo archivo.
     private const int DefaultBatchSize = 400;
 
-    private static readonly IReadOnlyList<IGenericImportValidationRule> BuiltInRules =
-    [
-        new PositiveQuantityRule(),
-        new ValidDiscountPercentRule(),
-    ];
-
     private readonly IGenericImportConfigService _config;
     private readonly IGenericImportUserFieldService _userFieldsCatalog;
     private readonly IBusinessPartnerDefaultsService _partnerDefaults;
@@ -68,6 +63,7 @@ public sealed class GenericImportService : IGenericImportService
     private readonly IPurchaseDocumentService _purchase;
     private readonly IInventoryDocumentService _inventory;
     private readonly IGenericImportProgressStore _progress;
+    private readonly IGenericImportValidationRuleEngine _validationEngine;
     private readonly ILogger<GenericImportService> _logger;
 
     public GenericImportService(IGenericImportConfigService config, IGenericImportUserFieldService userFieldsCatalog,
@@ -75,7 +71,7 @@ public sealed class GenericImportService : IGenericImportService
         IWarehouseCatalogService warehouses, IGeneralLedgerAccountCatalogService accounts, ICostCenterCatalogService costCenters,
         IPriceListService priceList, ICustomerCatalogService customers, ISupplierCatalogService suppliers,
         ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
-        IGenericImportProgressStore progress, ILogger<GenericImportService> logger)
+        IGenericImportProgressStore progress, IGenericImportValidationRuleEngine validationEngine, ILogger<GenericImportService> logger)
     {
         _config = config;
         _userFieldsCatalog = userFieldsCatalog;
@@ -92,6 +88,7 @@ public sealed class GenericImportService : IGenericImportService
         _purchase = purchase;
         _inventory = inventory;
         _progress = progress;
+        _validationEngine = validationEngine;
         _logger = logger;
     }
 
@@ -230,6 +227,8 @@ public sealed class GenericImportService : IGenericImportService
         var rows = rawRows.Select(r => ProcessRow(r, config, parameters.Module, parameters.LineType, parameters.BusinessPartnerCardCode,
             validBusinessPartners, crossReferenceBySocio, items, warehouses, accounts, costCenters, dimension2, dimension3,
             userFieldsCatalog, systemPrices)).ToList();
+
+        rows = (await _validationEngine.ApplyAsync(rows, parameters.Module, config.ValidationRules, ct)).ToList();
 
         var documents = rows
             .GroupBy(r => r.GroupingKey)
@@ -967,11 +966,9 @@ public sealed class GenericImportService : IGenericImportService
             RawValues = raw.CoreFields,
         };
 
-        foreach (var rule in BuiltInRules)
-        {
-            errors.AddRange(rule.Validate(row));
-        }
-
+        // Las reglas estructurales (Cantidad > 0, Descuento 0-100) y las configurables
+        // por Formato las corre GenericImportValidationRuleEngine sobre el set completo
+        // de filas ya resueltas -- ver ProcessFileAsync.
         return row with { IsValid = errors.Count == 0, Errors = errors };
     }
 

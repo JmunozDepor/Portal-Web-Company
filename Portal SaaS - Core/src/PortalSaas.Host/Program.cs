@@ -13,6 +13,7 @@ using PortalSaas.Core.Comercial.Licenciamiento;
 using PortalSaas.Core.Compras;
 using PortalSaas.Core.Correo;
 using PortalSaas.Core.ImportacionGenerica;
+using PortalSaas.Core.ImportacionGenerica.Reglas;
 using PortalSaas.Core.Infraestructura;
 using PortalSaas.Core.Inventario;
 using PortalSaas.Core.Sap;
@@ -252,6 +253,15 @@ builder.Services.AddScoped<IGenericImportUserFieldService, GenericImportUserFiel
 builder.Services.AddScoped<IGenericImportConfigService, GenericImportConfigService>();
 builder.Services.AddSingleton<IGenericImportProgressStore, GenericImportProgressStore>();
 builder.Services.AddScoped<IGenericImportService, GenericImportService>();
+builder.Services.AddScoped<IGenericImportValidationRule, PositiveQuantityRule>();
+builder.Services.AddScoped<IGenericImportValidationRule, ValidDiscountPercentRule>();
+builder.Services.AddScoped<IGenericImportValidationRule, CustomerActiveInSapRule>();
+builder.Services.AddScoped<IGenericImportValidationRule, ItemActiveInSapRule>();
+builder.Services.AddScoped<IGenericImportValidationRule, PriceVsFixedListRule>();
+builder.Services.AddScoped<IGenericImportValidationRule, PriceVsCustomerListRule>();
+builder.Services.AddScoped<IGenericImportValidationRule, StockAvailableRule>();
+builder.Services.AddScoped<IGenericImportValidationRule, CustomerBranchValidRule>();
+builder.Services.AddScoped<IGenericImportValidationRuleEngine, GenericImportValidationRuleEngine>();
 
 // Catálogos nuevos, sin consumidor propio todavía (ningún plugin los usa aún) --
 // identificados como necesarios para que Sucursales/Series/Impuestos/Dimensión2-3/

@@ -39,4 +39,36 @@ public sealed class SupplierCatalogService : ISupplierCatalogService
         var results = await _hana.QueryAsync<SupplierDto>(sql, new { cardCode }, ct);
         return results.FirstOrDefault();
     }
+
+    public async Task<IReadOnlyDictionary<string, bool>> GetActiveStatusAsync(IReadOnlyList<string> cardCodes, CancellationToken ct = default)
+    {
+        if (cardCodes.Count == 0)
+        {
+            return new Dictionary<string, bool>();
+        }
+
+        var parameters = new Dictionary<string, object?>();
+        var placeholders = new List<string>();
+        var i = 0;
+        foreach (var cardCode in cardCodes)
+        {
+            var name = $"cardCode{i++}";
+            placeholders.Add($":{name}");
+            parameters[name] = cardCode;
+        }
+
+        var sql = $"""
+            SELECT "CardCode" AS "CardCode", "validFor" AS "ValidFor" FROM "OCRD"
+            WHERE "CardType" = 'S' AND "CardCode" IN ({string.Join(",", placeholders)})
+            """;
+
+        var rows = await _hana.QueryAsync<ActiveStatusRow>(sql, parameters, ct);
+        return rows.ToDictionary(r => r.CardCode, r => string.Equals(r.ValidFor, "Y", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private sealed record ActiveStatusRow
+    {
+        public string CardCode { get; init; } = null!;
+        public string ValidFor { get; init; } = null!;
+    }
 }

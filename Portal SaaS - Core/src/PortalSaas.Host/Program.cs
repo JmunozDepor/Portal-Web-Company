@@ -206,6 +206,7 @@ builder.Services.AddScoped<ICustomerCatalogService, CustomerCatalogService>();
 builder.Services.AddScoped<IItemCatalogService, ItemCatalogService>();
 builder.Services.AddScoped<IItemMasterDetailService, ItemMasterDetailService>();
 builder.Services.AddScoped<IItemStockService, ItemStockService>();
+builder.Services.AddScoped<ICustomerShipToAddressService, CustomerShipToAddressService>();
 builder.Services.AddScoped<IWarehouseCatalogService, WarehouseCatalogService>();
 builder.Services.AddScoped<ISalesEmployeeCatalogService, SalesEmployeeCatalogService>();
 builder.Services.AddScoped<ISalesDocumentService, SalesDocumentService>();

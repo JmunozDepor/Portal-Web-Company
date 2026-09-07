@@ -80,4 +80,36 @@ public sealed class ItemCatalogService : IItemCatalogService
 
         return await _hana.QueryAsync<ItemDto>(sql, ct: ct);
     }
+
+    public async Task<IReadOnlyDictionary<string, bool>> GetActiveStatusAsync(IReadOnlyList<string> itemCodes, CancellationToken ct = default)
+    {
+        if (itemCodes.Count == 0)
+        {
+            return new Dictionary<string, bool>();
+        }
+
+        var parameters = new Dictionary<string, object?>();
+        var placeholders = new List<string>();
+        var i = 0;
+        foreach (var itemCode in itemCodes)
+        {
+            var name = $"itemCode{i++}";
+            placeholders.Add($":{name}");
+            parameters[name] = itemCode;
+        }
+
+        var sql = $"""
+            SELECT "ItemCode" AS "ItemCode", "validFor" AS "ValidFor" FROM "OITM"
+            WHERE "ItemCode" IN ({string.Join(",", placeholders)})
+            """;
+
+        var rows = await _hana.QueryAsync<ItemActiveStatusRow>(sql, parameters, ct);
+        return rows.ToDictionary(r => r.ItemCode, r => string.Equals(r.ValidFor, "Y", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private sealed record ItemActiveStatusRow
+    {
+        public string ItemCode { get; init; } = null!;
+        public string ValidFor { get; init; } = null!;
+    }
 }

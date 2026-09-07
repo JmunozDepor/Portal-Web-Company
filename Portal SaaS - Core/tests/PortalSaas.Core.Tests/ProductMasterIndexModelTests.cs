@@ -54,6 +54,10 @@ file sealed class ItemStockServiceFalso : IItemStockService
         Llamado = true;
         return Task.FromResult(_stocks);
     }
+
+    public Task<IReadOnlyDictionary<(string ItemCode, string WhsCode), decimal>> GetAvailableStockAsync(
+        IReadOnlyList<(string ItemCode, string WhsCode)> pairs, CancellationToken ct = default) =>
+        throw new NotSupportedException("No usado por el visor Maestro de Producto.");
 }
 
 file sealed class PriceListServiceFalso : IPriceListService
@@ -105,6 +109,9 @@ file sealed class ItemCatalogServiceFalso : IItemCatalogService
         GetTopLlamado = true;
         return Task.FromResult<IReadOnlyList<ItemDto>>([new ItemDto { ItemCode = "TOP1", ItemName = "El más vendido" }]);
     }
+
+    public Task<IReadOnlyDictionary<string, bool>> GetActiveStatusAsync(IReadOnlyList<string> itemCodes, CancellationToken ct = default) =>
+        throw new NotSupportedException("No usado por el visor Maestro de Producto.");
 }
 
 public class ProductMasterIndexModelTests

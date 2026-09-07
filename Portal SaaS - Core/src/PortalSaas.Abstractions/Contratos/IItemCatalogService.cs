@@ -25,4 +25,7 @@ public interface IItemCatalogService
     /// lo usa hoy, Ventas/Compras siguen exigiendo texto real vía SearchAsync.
     /// </summary>
     Task<IReadOnlyList<ItemDto>> GetTopAsync(int limit = 30, CancellationToken ct = default);
+
+    /// <summary>ItemCode -> validFor == "Y" en OITM, para varios códigos en una sola consulta -- usado por la regla ItemActiveInSap.</summary>
+    Task<IReadOnlyDictionary<string, bool>> GetActiveStatusAsync(IReadOnlyList<string> itemCodes, CancellationToken ct = default);
 }

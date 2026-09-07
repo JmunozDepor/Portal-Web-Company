@@ -219,6 +219,30 @@ public sealed class GenericImportValidationRuleEngineTests
         Assert.True(result.ContainsKey(1));
     }
 
+    // ---- Task 9: CustomerBranchValid ----------------------------------------
+
+    private static GenericImportRowDto RowWithBranch(int rowNumber, string cardCode, string branch) => new()
+    {
+        RowNumber = rowNumber,
+        GroupingKey = "G1",
+        IsValid = true,
+        BusinessPartnerCardCode = cardCode,
+        Branch = branch,
+    };
+
+    [Fact]
+    public async Task CustomerBranchValidRule_marca_sucursal_que_no_pertenece_al_cliente()
+    {
+        var rule = new CustomerBranchValidRule(new FakeCustomerShipToAddressService(
+            new Dictionary<string, IReadOnlyList<string>> { ["C001"] = ["SUC-CENTRAL", "SUC-NORTE"] }));
+        var rows = new[] { RowWithBranch(1, "C001", "SUC-CENTRAL"), RowWithBranch(2, "C001", "SUC-INEXISTENTE") };
+
+        var result = await rule.ValidateAsync(rows, GenericImportModule.Sales, new Dictionary<string, object?>(), CancellationToken.None);
+
+        Assert.False(result.ContainsKey(1));
+        Assert.True(result.ContainsKey(2));
+    }
+
     // ---- Fakes escritos a mano (este proyecto no usa Moq/NSubstitute) ----------
 
     private sealed class FakeCustomerCatalogService : ICustomerCatalogService
@@ -264,6 +288,14 @@ public sealed class GenericImportValidationRuleEngineTests
         public FakeBusinessPartnerDefaultsService(int? priceListCode) => _priceListCode = priceListCode;
         public Task<BusinessPartnerDefaultsDto?> GetAsync(string cardCode, CancellationToken ct = default) =>
             Task.FromResult<BusinessPartnerDefaultsDto?>(new BusinessPartnerDefaultsDto { CardCode = cardCode, PriceListCode = _priceListCode });
+    }
+
+    private sealed class FakeCustomerShipToAddressService : ICustomerShipToAddressService
+    {
+        private readonly IReadOnlyDictionary<string, IReadOnlyList<string>> _addressesByCardCode;
+        public FakeCustomerShipToAddressService(IReadOnlyDictionary<string, IReadOnlyList<string>> addressesByCardCode) => _addressesByCardCode = addressesByCardCode;
+        public Task<IReadOnlyList<string>> GetShipToAddressCodesAsync(string cardCode, CancellationToken ct = default) =>
+            Task.FromResult(_addressesByCardCode.GetValueOrDefault(cardCode, []));
     }
 
     private sealed class FakeItemStockService : IItemStockService

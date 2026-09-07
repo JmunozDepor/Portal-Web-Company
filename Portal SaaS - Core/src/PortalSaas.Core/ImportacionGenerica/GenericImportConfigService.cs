@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
@@ -167,7 +168,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         RuleType = dto.RuleType.ToString(),
         Severity = dto.Severity.ToString(),
         IsActive = dto.IsActive,
-        ParametersJson = dto.Parameters.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(dto.Parameters) : null,
+        ParametersJson = dto.Parameters.Count > 0 ? JsonSerializer.Serialize(dto.Parameters) : null,
     };
 
     private static GenericImportValidationRuleAssignmentDto MapRuleAssignmentDto(GenericImportValidationRuleAssignment row) => new(
@@ -175,9 +176,32 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         Enum.Parse<GenericImportValidationRuleType>(row.RuleType),
         Enum.Parse<GenericImportValidationSeverity>(row.Severity),
         row.IsActive,
-        string.IsNullOrEmpty(row.ParametersJson)
-            ? new Dictionary<string, object?>()
-            : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(row.ParametersJson)!);
+        ParseParameters(row.ParametersJson));
+
+    /// <summary>
+    /// Deserializa ParametersJson a primitivos CLR (long/decimal/string/bool), NO a
+    /// JsonElement -- las reglas hacen Convert.ToInt32/ToDecimal sobre estos valores y
+    /// JsonElement no implementa IConvertible (tiraba InvalidCastException al procesar un
+    /// archivo con una regla parametrizada activa, ej. StockAvailable).
+    /// </summary>
+    private static IReadOnlyDictionary<string, object?> ParseParameters(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return new Dictionary<string, object?>();
+        }
+
+        var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json) ?? [];
+        return raw.ToDictionary(kv => kv.Key, kv => (object?)(kv.Value.ValueKind switch
+        {
+            JsonValueKind.Number => kv.Value.TryGetInt64(out var l) ? l : kv.Value.GetDecimal(),
+            JsonValueKind.String => kv.Value.GetString(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => kv.Value.GetRawText(),
+        }));
+    }
 
     private static GenericImportConfigField MapField(GenericImportConfigFieldDto dto) => new()
     {

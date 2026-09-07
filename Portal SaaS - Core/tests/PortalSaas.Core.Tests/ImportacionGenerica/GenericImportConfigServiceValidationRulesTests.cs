@@ -59,6 +59,28 @@ public sealed class GenericImportConfigServiceValidationRulesTests
     }
 
     [Fact]
+    public async Task SaveValidationRulesAsync_parametros_vuelven_como_primitivos_convertibles()
+    {
+        var companyId = Guid.NewGuid();
+        await using var db = CreateDb(nameof(SaveValidationRulesAsync_parametros_vuelven_como_primitivos_convertibles));
+        var configId = await SeedConfigAsync(db, companyId);
+        var service = new GenericImportConfigService(db, new FakeCurrentCompanyAccessor(companyId));
+
+        await service.SaveValidationRulesAsync(configId,
+        [
+            new GenericImportValidationRuleAssignmentDto(0, GenericImportValidationRuleType.PriceVsFixedList,
+                GenericImportValidationSeverity.Warning, true,
+                new Dictionary<string, object?> { ["priceListNum"] = 2, ["tolerancePercent"] = 1.5m }),
+        ]);
+
+        var rule = Assert.Single((await service.GetAsync(configId))!.ValidationRules);
+
+        // Las reglas hacen Convert.ToInt32/ToDecimal sobre estos valores -- no deben ser JsonElement.
+        Assert.Equal(2, Convert.ToInt32(rule.Parameters["priceListNum"]));
+        Assert.Equal(1.5m, Convert.ToDecimal(rule.Parameters["tolerancePercent"]));
+    }
+
+    [Fact]
     public async Task SaveValidationRulesAsync_rechaza_dos_reglas_de_precio_a_la_vez()
     {
         var companyId = Guid.NewGuid();

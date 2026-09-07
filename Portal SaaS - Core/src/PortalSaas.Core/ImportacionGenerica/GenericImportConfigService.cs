@@ -29,7 +29,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
 
     public async Task<IReadOnlyList<GenericImportConfigDto>> ListAsync(GenericImportModule? module = null, CancellationToken ct = default)
     {
-        var query = _db.GenericImportConfigs.Include(c => c.Fields)
+        var query = _db.GenericImportConfigs.Include(c => c.Fields).Include(c => c.ValidationRules)
             .Where(c => c.CompanyId == _currentCompany.CompanyId);
         if (module is { } m)
         {
@@ -42,7 +42,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
 
     public async Task<GenericImportConfigDto?> GetAsync(int id, CancellationToken ct = default)
     {
-        var row = await _db.GenericImportConfigs.Include(c => c.Fields)
+        var row = await _db.GenericImportConfigs.Include(c => c.Fields).Include(c => c.ValidationRules)
             .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == _currentCompany.CompanyId, ct);
         return row is null ? null : Map(row);
     }
@@ -56,7 +56,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
 
         if (!string.IsNullOrWhiteSpace(businessPartnerCardCode))
         {
-            var exception = await _db.GenericImportConfigs.Include(c => c.Fields)
+            var exception = await _db.GenericImportConfigs.Include(c => c.Fields).Include(c => c.ValidationRules)
                 .FirstOrDefaultAsync(c => c.CompanyId == companyId && c.Module == moduleStr
                     && c.DocumentType == documentType && c.LineType == lineTypeStr
                     && c.BusinessPartnerCardCode == businessPartnerCardCode && c.IsActive, ct);
@@ -66,7 +66,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
             }
         }
 
-        var standard = await _db.GenericImportConfigs.Include(c => c.Fields)
+        var standard = await _db.GenericImportConfigs.Include(c => c.Fields).Include(c => c.ValidationRules)
             .FirstOrDefaultAsync(c => c.CompanyId == companyId && c.Module == moduleStr
                 && c.DocumentType == documentType && c.LineType == lineTypeStr
                 && c.BusinessPartnerCardCode == null && c.IsActive, ct);
@@ -109,7 +109,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         bool businessPartnerFromFile = false,
         CancellationToken ct = default)
     {
-        var entity = await _db.GenericImportConfigs.Include(c => c.Fields)
+        var entity = await _db.GenericImportConfigs.Include(c => c.Fields).Include(c => c.ValidationRules)
             .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == _currentCompany.CompanyId, ct)
             ?? throw new InvalidOperationException("Configuración no encontrada.");
 
@@ -140,6 +140,45 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         await _db.SaveChangesAsync(ct);
     }
 
+    private static readonly IReadOnlyList<GenericImportValidationRuleType> PriceRuleTypes =
+        [GenericImportValidationRuleType.PriceVsFixedList, GenericImportValidationRuleType.PriceVsCustomerList];
+
+    public async Task SaveValidationRulesAsync(int configId, IReadOnlyList<GenericImportValidationRuleAssignmentDto> rules, CancellationToken ct = default)
+    {
+        var activePriceRules = rules.Where(r => r.IsActive && PriceRuleTypes.Contains(r.RuleType)).ToList();
+        if (activePriceRules.Count > 1)
+        {
+            throw new InvalidOperationException(
+                "Solo se puede activar una regla de precio a la vez (\"Precio vs. lista fija\" o \"Precio vs. lista del cliente\").");
+        }
+
+        var entity = await _db.GenericImportConfigs.Include(c => c.ValidationRules)
+            .FirstOrDefaultAsync(c => c.Id == configId && c.CompanyId == _currentCompany.CompanyId, ct)
+            ?? throw new InvalidOperationException("Configuración no encontrada.");
+
+        _db.GenericImportValidationRuleAssignments.RemoveRange(entity.ValidationRules);
+        entity.ValidationRules = rules.Select(MapRuleAssignment).ToList();
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private static GenericImportValidationRuleAssignment MapRuleAssignment(GenericImportValidationRuleAssignmentDto dto) => new()
+    {
+        RuleType = dto.RuleType.ToString(),
+        Severity = dto.Severity.ToString(),
+        IsActive = dto.IsActive,
+        ParametersJson = dto.Parameters.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(dto.Parameters) : null,
+    };
+
+    private static GenericImportValidationRuleAssignmentDto MapRuleAssignmentDto(GenericImportValidationRuleAssignment row) => new(
+        row.Id,
+        Enum.Parse<GenericImportValidationRuleType>(row.RuleType),
+        Enum.Parse<GenericImportValidationSeverity>(row.Severity),
+        row.IsActive,
+        string.IsNullOrEmpty(row.ParametersJson)
+            ? new Dictionary<string, object?>()
+            : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(row.ParametersJson)!);
+
     private static GenericImportConfigField MapField(GenericImportConfigFieldDto dto) => new()
     {
         LogicalField = dto.LogicalField.ToString(),
@@ -169,5 +208,6 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
             f.UserFieldId)).ToList(),
         Enum.Parse<GenericImportPriceSource>(row.PriceSource),
         row.SystemPriceListCode,
-        row.BusinessPartnerFromFile);
+        row.BusinessPartnerFromFile,
+        row.ValidationRules.Select(MapRuleAssignmentDto).ToList());
 }

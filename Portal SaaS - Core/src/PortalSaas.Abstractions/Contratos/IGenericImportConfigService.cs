@@ -39,4 +39,12 @@ public interface IGenericImportConfigService
         CancellationToken ct = default);
 
     Task DeleteAsync(int id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reemplaza TODO el set de reglas de validación activas para este Formato (borra +
+    /// crea, mismo criterio que el detalle de Fields en UpdateAsync). Rechaza con
+    /// InvalidOperationException si `rules` trae más de una regla de tipo
+    /// PriceVsFixedList/PriceVsCustomerList activa a la vez -- son mutuamente excluyentes.
+    /// </summary>
+    Task SaveValidationRulesAsync(int configId, IReadOnlyList<GenericImportValidationRuleAssignmentDto> rules, CancellationToken ct = default);
 }

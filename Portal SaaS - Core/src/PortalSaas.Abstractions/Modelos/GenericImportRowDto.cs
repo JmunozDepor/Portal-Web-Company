@@ -69,6 +69,9 @@ public sealed record GenericImportRowDto
 
     public bool IsValid { get; init; }
     public IReadOnlyList<string> Errors { get; init; } = [];
+
+    /// <summary>Mensajes de reglas configurables en severidad Alerta -- nunca afecta IsValid, a diferencia de Errors. Ver GenericImportValidationRuleEngine.</summary>
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 }
 
 /// <summary>Grupo de filas que va a generar un único documento SAP -- GroupingKey identifica el grupo (ver GenericImportConfigDto.GroupingColumn).</summary>

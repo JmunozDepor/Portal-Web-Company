@@ -44,4 +44,9 @@ public sealed record GenericImportConfigDto(
     /// ConfiguracionImportacionGenericaDto.SocioNegocioDesdeArchivo). Default false, sin
     /// cambio de comportamiento para configuraciones existentes.
     /// </summary>
-    bool BusinessPartnerFromFile = false);
+    bool BusinessPartnerFromFile = false,
+    /// <summary>Reglas de validación activas para este Formato (ver GenericImportValidationRuleAssignmentDto). Vacía = ninguna regla configurable activa (solo corren las 2 estructurales fijas).</summary>
+    IReadOnlyList<GenericImportValidationRuleAssignmentDto>? ValidationRules = null)
+{
+    public IReadOnlyList<GenericImportValidationRuleAssignmentDto> ValidationRules { get; init; } = ValidationRules ?? [];
+}

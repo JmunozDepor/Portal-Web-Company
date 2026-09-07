@@ -58,4 +58,6 @@ public sealed class GenericImportConfig
     public bool BusinessPartnerFromFile { get; set; }
 
     public List<GenericImportConfigField> Fields { get; set; } = [];
+
+    public List<GenericImportValidationRuleAssignment> ValidationRules { get; set; } = [];
 }

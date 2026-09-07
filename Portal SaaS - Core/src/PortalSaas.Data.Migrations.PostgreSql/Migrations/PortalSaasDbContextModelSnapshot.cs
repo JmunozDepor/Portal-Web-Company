@@ -558,6 +558,49 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.ToTable("generic_import_user_fields", (string)null);
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportValidationRuleAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ConfigId")
+                        .HasColumnType("integer")
+                        .HasColumnName("config_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("ParametersJson")
+                        .HasColumnType("text")
+                        .HasColumnName("parameters_json");
+
+                    b.Property<string>("RuleType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("rule_type");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("severity");
+
+                    b.HasKey("Id")
+                        .HasName("pk_generic_import_validation_rule_assignments");
+
+                    b.HasIndex("ConfigId", "RuleType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_generic_import_validation_rule_assignments_config_id_rule_t");
+
+                    b.ToTable("generic_import_validation_rule_assignments", (string)null);
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.Instance", b =>
                 {
                     b.Property<long>("Id")
@@ -2194,6 +2237,18 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Navigation("Company");
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportValidationRuleAssignment", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.GenericImportConfig", "Config")
+                        .WithMany("ValidationRules")
+                        .HasForeignKey("ConfigId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_generic_import_validation_rule_assignments_generic_import_c");
+
+                    b.Navigation("Config");
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.Instance", b =>
                 {
                     b.HasOne("PortalSaas.Data.Entities.Organization", "Organization")
@@ -2667,6 +2722,8 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
             modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportConfig", b =>
                 {
                     b.Navigation("Fields");
+
+                    b.Navigation("ValidationRules");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.Instance", b =>

@@ -33,6 +33,7 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<GenericImportUserField> GenericImportUserFields => Set<GenericImportUserField>();
     public DbSet<GenericImportConfig> GenericImportConfigs => Set<GenericImportConfig>();
     public DbSet<GenericImportConfigField> GenericImportConfigFields => Set<GenericImportConfigField>();
+    public DbSet<GenericImportValidationRuleAssignment> GenericImportValidationRuleAssignments => Set<GenericImportValidationRuleAssignment>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<OnPremiseLicense> OnPremiseLicenses => Set<OnPremiseLicense>();
     public DbSet<OnPremiseLicenseConflict> OnPremiseLicenseConflicts => Set<OnPremiseLicenseConflict>();
@@ -179,6 +180,15 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.FixedValue).HasMaxLength(200);
             entity.HasOne(e => e.Config).WithMany(c => c.Fields).HasForeignKey(e => e.ConfigId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.UserField).WithMany().HasForeignKey(e => e.UserFieldId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<GenericImportValidationRuleAssignment>(entity =>
+        {
+            entity.ToTable("generic_import_validation_rule_assignments");
+            entity.HasIndex(e => new { e.ConfigId, e.RuleType }).IsUnique();
+            entity.Property(e => e.RuleType).HasMaxLength(30);
+            entity.Property(e => e.Severity).HasMaxLength(10);
+            entity.HasOne(e => e.Config).WithMany(c => c.ValidationRules).HasForeignKey(e => e.ConfigId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Subscription>(entity =>

@@ -108,6 +108,17 @@ public sealed class IndexModel : PageModelBaseAdmin
     public static IReadOnlyList<GenericImportLogicalField> CoreFields { get; } =
         Enum.GetValues<GenericImportLogicalField>().Where(f => f != GenericImportLogicalField.UserField).ToList();
 
+    /// <summary>Las 6 reglas configurables por Formato -- las 2 estructurales (PositiveQuantity/ValidDiscountPercent) no aparecen acá, siempre están activas en Bloqueante.</summary>
+    public static readonly IReadOnlyList<GenericImportValidationRuleType> ConfigurableRuleTypes =
+    [
+        GenericImportValidationRuleType.CustomerActiveInSap,
+        GenericImportValidationRuleType.ItemActiveInSap,
+        GenericImportValidationRuleType.PriceVsFixedList,
+        GenericImportValidationRuleType.PriceVsCustomerList,
+        GenericImportValidationRuleType.StockAvailable,
+        GenericImportValidationRuleType.CustomerBranchValid,
+    ];
+
     public async Task OnGetAsync(CancellationToken ct)
     {
         Configs = await _configs.ListAsync(ct: ct);
@@ -154,6 +165,17 @@ public sealed class IndexModel : PageModelBaseAdmin
                 "Carga multi-socio activada -- mapeá una columna Excel para el campo núcleo \"BusinessPartnerCardCode\" en la grilla de abajo.");
         }
 
+        // "Precio vs. lista fija" y "Precio vs. lista del cliente" son mutuamente
+        // excluyentes -- SaveValidationRulesAsync lo rechaza igual server-side, pero
+        // chequearlo acá evita guardar la cabecera y recién fallar en las reglas.
+        var activePriceRules = Input.ValidationRules.Count(r => r.IsActive
+            && r.RuleType is GenericImportValidationRuleType.PriceVsFixedList or GenericImportValidationRuleType.PriceVsCustomerList);
+        if (activePriceRules > 1)
+        {
+            ModelState.AddModelError(string.Empty,
+                "Solo se puede activar una regla de precio a la vez (\"Precio vs. lista fija\" o \"Precio vs. lista del cliente\").");
+        }
+
         if (!ModelState.IsValid)
         {
             Configs = await _configs.ListAsync(ct: ct);
@@ -164,19 +186,23 @@ public sealed class IndexModel : PageModelBaseAdmin
 
         try
         {
+            int configId;
             if (EditId is { } id)
             {
                 await _configs.UpdateAsync(id, Input.GroupingColumn, Input.SkuIsCustomerOwn, Input.Alias, Input.IsActive,
                     fields, Input.PriceSource, Input.SystemPriceListCode, Input.BusinessPartnerFromFile, ct);
+                configId = id;
                 SuccessMessage = "Configuración actualizada.";
             }
             else
             {
-                await _configs.CreateAsync(Input.Module, Input.DocumentType, Input.LineType, Input.BusinessPartnerCardCode,
+                configId = await _configs.CreateAsync(Input.Module, Input.DocumentType, Input.LineType, Input.BusinessPartnerCardCode,
                     Input.GroupingColumn, Input.SkuIsCustomerOwn, Input.Alias, fields, Input.PriceSource, Input.SystemPriceListCode,
                     Input.BusinessPartnerFromFile, ct);
                 SuccessMessage = "Configuración creada.";
             }
+
+            await _configs.SaveValidationRulesAsync(configId, BuildValidationRuleAssignments(), ct);
         }
         catch (Exception ex)
         {
@@ -185,6 +211,23 @@ public sealed class IndexModel : PageModelBaseAdmin
 
         return RedirectToPage();
     }
+
+    private List<GenericImportValidationRuleAssignmentDto> BuildValidationRuleAssignments() =>
+        Input.ValidationRules.Where(r => r.IsActive).Select(r =>
+        {
+            var parameters = new Dictionary<string, object?>();
+            if (r.RuleType is GenericImportValidationRuleType.PriceVsFixedList)
+            {
+                parameters["priceListNum"] = r.PriceListNum ?? 0;
+            }
+            if (r.RuleType is GenericImportValidationRuleType.PriceVsFixedList
+                or GenericImportValidationRuleType.PriceVsCustomerList
+                or GenericImportValidationRuleType.StockAvailable)
+            {
+                parameters["tolerancePercent"] = r.TolerancePercent ?? 0m;
+            }
+            return new GenericImportValidationRuleAssignmentDto(0, r.RuleType, r.Severity, true, parameters);
+        }).ToList();
 
     /// <summary>Ver el comentario completo en OnGetSearchBusinessPartnersAsync (Pages/Importar/Index.cshtml.cs), mismo criterio.</summary>
     public async Task<JsonResult> OnGetSearchBusinessPartnersAsync(string text, GenericImportModule module, CancellationToken ct)
@@ -320,8 +363,33 @@ public sealed class IndexModel : PageModelBaseAdmin
             });
         }
 
+        input.ValidationRules = BuildValidationRuleInputs(config);
+
         return input;
     }
+
+    /// <summary>
+    /// Una fila por cada una de las 6 reglas configurables, prellenada con la asignación
+    /// existente si la hay (config null / regla no asignada -> fila inactiva). Se usa
+    /// tanto al editar (MapToInput) como al crear desde cero (LoadUserFieldOptionsAsync).
+    /// </summary>
+    private static List<ValidationRuleInput> BuildValidationRuleInputs(GenericImportConfigDto? config) =>
+        ConfigurableRuleTypes.Select(type =>
+        {
+            var existing = config?.ValidationRules.FirstOrDefault(r => r.RuleType == type);
+            return new ValidationRuleInput
+            {
+                RuleType = type,
+                IsActive = existing?.IsActive ?? false,
+                Severity = existing?.Severity ?? GenericImportValidationSeverity.Warning,
+                PriceListNum = existing is not null && existing.Parameters.TryGetValue("priceListNum", out var pl) && pl is not null
+                    ? Convert.ToInt32(pl)
+                    : null,
+                TolerancePercent = existing is not null && existing.Parameters.TryGetValue("tolerancePercent", out var tp) && tp is not null
+                    ? Convert.ToDecimal(tp)
+                    : null,
+            };
+        }).ToList();
 
     private async Task LoadUserFieldOptionsAsync(CancellationToken ct)
     {
@@ -338,6 +406,13 @@ public sealed class IndexModel : PageModelBaseAdmin
         if (Input.UserFieldMappings.Count == 0)
         {
             Input.UserFieldMappings = [new UserFieldMappingInput()];
+        }
+
+        // Catálogo fijo de 6 reglas configurables -- si el POST no las trajo (alta nueva
+        // sin cargar todavía), poblarlas todas inactivas.
+        if (Input.ValidationRules.Count == 0)
+        {
+            Input.ValidationRules = BuildValidationRuleInputs(null);
         }
 
         await LoadDocumentTypesAsync(ct);
@@ -436,6 +511,16 @@ public sealed class IndexModel : PageModelBaseAdmin
 
         public List<FieldInput> Fields { get; set; } = [];
         public List<UserFieldMappingInput> UserFieldMappings { get; set; } = [];
+        public List<ValidationRuleInput> ValidationRules { get; set; } = [];
+    }
+
+    public sealed class ValidationRuleInput
+    {
+        public GenericImportValidationRuleType RuleType { get; set; }
+        public bool IsActive { get; set; }
+        public GenericImportValidationSeverity Severity { get; set; } = GenericImportValidationSeverity.Warning;
+        public int? PriceListNum { get; set; }
+        public decimal? TolerancePercent { get; set; }
     }
 
     public sealed class FieldInput

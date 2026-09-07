@@ -1,7 +1,19 @@
 @page "/importacion-generica/configuracion"
 @model Modulo.ImportacionGenerica.Pages.Configuracion.IndexModel
+@using PortalSaas.Abstractions.Modelos
 @{
     ViewData["Title"] = "Configuración de Importación Genérica";
+
+    string RuleLabel(GenericImportValidationRuleType type) => type switch
+    {
+        GenericImportValidationRuleType.CustomerActiveInSap => "Cliente/Proveedor activo en SAP",
+        GenericImportValidationRuleType.ItemActiveInSap => "Artículo activo en SAP",
+        GenericImportValidationRuleType.PriceVsFixedList => "Precio vs. lista fija",
+        GenericImportValidationRuleType.PriceVsCustomerList => "Precio vs. lista del cliente",
+        GenericImportValidationRuleType.StockAvailable => "Stock disponible (agregado del lote)",
+        GenericImportValidationRuleType.CustomerBranchValid => "Sucursal pertenece al cliente",
+        _ => type.ToString(),
+    };
 }
 
 <h1 class="h3 mb-3">Configuración de Importación Genérica</h1>
@@ -219,6 +231,56 @@
         </table>
         <button type="submit" asp-page-handler="AgregarCampoUsuario" class="btn btn-sm btn-outline-secondary mb-3">Agregar campo</button>
 
+        <h5 class="mt-4">Reglas de validación</h5>
+        <p class="text-muted small">Corren sobre la vista previa antes de confirmar la carga a SAP. En modo Alerta nunca bloquean; en modo Bloqueante mandan la fila a Errores. "Cantidad &gt; 0" y "Descuento 0-100" son estructurales -- siempre activas, no se configuran acá.</p>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Regla</th>
+                    <th>Activa</th>
+                    <th>Severidad</th>
+                    <th>Parámetros</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < Model.Input.ValidationRules.Count; i++)
+                {
+                    var rule = Model.Input.ValidationRules[i];
+                    var hasParams = rule.RuleType is GenericImportValidationRuleType.PriceVsFixedList
+                        or GenericImportValidationRuleType.PriceVsCustomerList
+                        or GenericImportValidationRuleType.StockAvailable;
+                    <tr>
+                        <td>
+                            @RuleLabel(rule.RuleType)
+                            <input type="hidden" name="Input.ValidationRules[@i].RuleType" value="@rule.RuleType" />
+                        </td>
+                        <td>
+                            <input type="checkbox" name="Input.ValidationRules[@i].IsActive" value="true" class="form-check-input" checked="@rule.IsActive" data-toggle-params="params-@i" />
+                            <input type="hidden" name="Input.ValidationRules[@i].IsActive" value="false" />
+                        </td>
+                        <td>
+                            <select name="Input.ValidationRules[@i].Severity" class="form-select form-select-sm">
+                                <option value="@GenericImportValidationSeverity.Warning" selected="@(rule.Severity == GenericImportValidationSeverity.Warning)">Alerta</option>
+                                <option value="@GenericImportValidationSeverity.Block" selected="@(rule.Severity == GenericImportValidationSeverity.Block)">Bloqueante</option>
+                            </select>
+                        </td>
+                        <td id="params-@i" style="@(rule.IsActive && hasParams ? "" : "display:none")">
+                            @if (rule.RuleType == GenericImportValidationRuleType.PriceVsFixedList)
+                            {
+                                <label class="form-label small mb-0">N° Lista de precio</label>
+                                <input type="number" name="Input.ValidationRules[@i].PriceListNum" value="@rule.PriceListNum" class="form-control form-control-sm" style="max-width:110px" />
+                            }
+                            @if (hasParams)
+                            {
+                                <label class="form-label small mb-0">Tolerancia %</label>
+                                <input type="number" step="0.01" name="Input.ValidationRules[@i].TolerancePercent" value="@rule.TolerancePercent" class="form-control form-control-sm" style="max-width:110px" />
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
         <button type="submit" class="btn btn-primary">@(Model.EditId is null ? "Crear" : "Guardar")</button>
         <a asp-page="/Configuracion/Index" class="btn btn-outline-secondary">Cancelar</a>
     </form>
@@ -233,6 +295,16 @@
             document.getElementById('config-tipo-doc-inventory').style.display = modulo === 'Inventory' ? '' : 'none';
         }
         mostrarTipoDocumentoConfig(document.querySelector('[name="Input.Module"]').value);
+
+        // Muestra la celda de parámetros de una regla solo mientras esté activa.
+        document.querySelectorAll('input[data-toggle-params]').forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                var cell = document.getElementById(checkbox.dataset.toggleParams);
+                if (cell) {
+                    cell.style.display = checkbox.checked ? '' : 'none';
+                }
+            });
+        });
     </script>
 
     @if (Model.EditId is null)

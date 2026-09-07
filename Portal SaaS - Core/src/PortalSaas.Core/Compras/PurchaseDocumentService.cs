@@ -1,5 +1,6 @@
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
+using PortalSaas.Core.Sap;
 
 namespace PortalSaas.Core.Compras;
 
@@ -16,15 +17,20 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
     private readonly IHanaService _hana;
     private readonly ISapConnectionProvider _connectionProvider;
     private readonly IOrganizationDocumentPermissionService _permissions;
+    private readonly ISapTraceabilityFieldResolver _traceability;
 
-    public PurchaseDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider, IOrganizationDocumentPermissionService permissions)
+    public PurchaseDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider,
+        IOrganizationDocumentPermissionService permissions, ISapTraceabilityFieldResolver traceability)
     {
         _hana = hana;
         _connectionProvider = connectionProvider;
         _permissions = permissions;
+        _traceability = traceability;
     }
 
     public int GetSapObjectCode(PurchaseDocumentType type) => PurchaseDocumentTypeCatalog.Resolve(type).ObjectCode;
+
+    public bool SupportsCancel(PurchaseDocumentType type) => PurchaseDocumentTypeCatalog.Resolve(type).SupportsCancel;
 
     public Task<bool> CanCreateAsync(PurchaseDocumentType type, CancellationToken ct = default) =>
         _permissions.IsCreateAllowedAsync("Purchase", type.ToString(), PurchaseDocumentTypeCatalog.Resolve(type).DefaultCanCreate, ct);
@@ -34,6 +40,9 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
         var entry = PurchaseDocumentTypeCatalog.Resolve(type);
 
         var requiredDate = document.DocDueDate.ToDateTime(TimeOnly.MinValue);
+
+        var udfName = await _traceability.ResolveUserFieldNameAsync(ct);
+        var isDefaultUdf = string.Equals(udfName, SapTraceabilityFieldResolver.DefaultUserFieldName, StringComparison.OrdinalIgnoreCase);
 
         var header = new SapPurchaseDocumentHeader
         {
@@ -47,8 +56,10 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
             RequriedDate = requiredDate,
             TaxDate = document.TaxDate.ToDateTime(TimeOnly.MinValue),
             NumAtCard = document.SupplierReferenceNumber,
-            U_PortalUser = portalUsername,
-            AdditionalFields = document.AdditionalFields,
+            U_PortalUser = isDefaultUdf ? portalUsername : null,
+            AdditionalFields = isDefaultUdf
+                ? document.AdditionalFields
+                : SapAdditionalFieldsHelper.MergeTraceabilityUser(document.AdditionalFields, udfName, portalUsername),
             DocumentLines = document.Lines.Select(line => MapLine(line, requiredDate)).ToList(),
         };
 
@@ -79,6 +90,20 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
             .ToList();
 
         await session.PatchAsync(entry.Resource, docEntry, new { DocumentLines = combinedLines }, ct);
+    }
+
+    public async Task CloseAsync(PurchaseDocumentType type, int docEntry, CancellationToken ct = default)
+    {
+        var entry = PurchaseDocumentTypeCatalog.Resolve(type);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        await session.PostAsync($"{entry.Resource}({docEntry})/Close", new { }, ct);
+    }
+
+    public async Task CancelAsync(PurchaseDocumentType type, int docEntry, CancellationToken ct = default)
+    {
+        var entry = PurchaseDocumentTypeCatalog.Resolve(type);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        await session.PostAsync($"{entry.Resource}({docEntry})/Cancel", new { }, ct);
     }
 
     public async Task<PurchaseDocumentDto?> GetAsync(PurchaseDocumentType type, int docEntry, CancellationToken ct = default)

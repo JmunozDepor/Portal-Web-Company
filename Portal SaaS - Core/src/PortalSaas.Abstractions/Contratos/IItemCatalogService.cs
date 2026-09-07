@@ -16,4 +16,13 @@ public interface IItemCatalogService
     /// ItemCode distintos de un archivo de una vez, en vez de una búsqueda por fila.
     /// </summary>
     Task<IReadOnlyList<ItemDto>> GetByCodesAsync(IReadOnlyCollection<string> itemCodes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Top N artículos por nombre, SIN filtro de texto -- excepción deliberada al "solo
+    /// búsqueda" de la clase (acotado por `limit`, nunca listado completo real). Pensado
+    /// para el atajo "*" del visor Maestro de Producto (ver
+    /// Modulo.Inventario/Pages/ProductMaster/Index.cshtml.cs) -- ningún otro consumidor
+    /// lo usa hoy, Ventas/Compras siguen exigiendo texto real vía SearchAsync.
+    /// </summary>
+    Task<IReadOnlyList<ItemDto>> GetTopAsync(int limit = 30, CancellationToken ct = default);
 }

@@ -19,4 +19,7 @@ public sealed class HanaWarehouseTransferRepository : IWarehouseTransferReposito
 
     public void MarcarDocumentoCompletado(string connectionString, string tablaCabecera, string completionUdfFieldName, int docEntry)
         => HanaRepository.MarcarDocumentoCompletado(connectionString, tablaCabecera, completionUdfFieldName, docEntry);
+
+    public bool DocumentoEstaEnPicking(string connectionString, int docEntry, string objType)
+        => HanaRepository.DocumentoEstaEnPicking(connectionString, docEntry, objType);
 }

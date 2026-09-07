@@ -90,6 +90,9 @@ public class CreateModel : PageModel
             IntegrationUsername = Input.IntegrationUsername.Trim(),
             IntegrationSecretKey = _secretoCifradoService.Encrypt(Input.IntegrationSecretKey),
             Country = Input.Country.Trim(),
+            TraceabilityUserUdfName = string.IsNullOrWhiteSpace(Input.TraceabilityUserUdfName)
+                ? null
+                : Input.TraceabilityUserUdfName.Trim(),
         });
 
         await _db.SaveChangesAsync();
@@ -140,5 +143,9 @@ public class CreateModel : PageModel
         [Required(ErrorMessage = "Ingresa el país.")]
         [Display(Name = "País")]
         public string Country { get; set; } = string.Empty;
+
+        [Display(Name = "UDF de trazabilidad (dejar en blanco = U_PortalUser)")]
+        [StringLength(50)]
+        public string? TraceabilityUserUdfName { get; set; }
     }
 }

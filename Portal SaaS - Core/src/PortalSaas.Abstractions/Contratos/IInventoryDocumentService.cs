@@ -28,6 +28,15 @@ public interface IInventoryDocumentService
 
     Task<InventoryDocumentListResult> ListAsync(InventoryDocumentType type, InventoryDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default);
 
+    /// <summary>Ver ISalesDocumentService.CloseAsync -- mismo patrón (POST {recurso}(docEntry)/Close).</summary>
+    Task CloseAsync(InventoryDocumentType type, int docEntry, CancellationToken ct = default);
+
+    /// <summary>Ver ISalesDocumentService.CancelAsync -- mismo patrón (POST {recurso}(docEntry)/Cancel).</summary>
+    Task CancelAsync(InventoryDocumentType type, int docEntry, CancellationToken ct = default);
+
+    /// <summary>Ver ISalesDocumentService.SupportsCancel.</summary>
+    bool SupportsCancel(InventoryDocumentType type);
+
     /// <summary>Código de objeto SAP (NNM1.ObjectCode) del tipo de documento -- ver ISalesDocumentService.GetSapObjectCode.</summary>
     int GetSapObjectCode(InventoryDocumentType type);
 }

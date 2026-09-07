@@ -1,3 +1,5 @@
+using System;
+using System.Globalization;
 using Microsoft.Data.SqlClient;
 
 namespace Servicios.TransferenciaAutomatica.Sap;
@@ -97,5 +99,15 @@ public sealed class SqlServerRepository : IWarehouseTransferRepository
         using var comando = new SqlCommand(SqlServerQueries.MarcarCompletado(tablaCabecera, completionUdfFieldName), conexion);
         comando.Parameters.AddWithValue("@docEntry", docEntry);
         comando.ExecuteNonQuery();
+    }
+
+    public bool DocumentoEstaEnPicking(string connectionString, int docEntry, string objType)
+    {
+        using var conexion = new SqlConnection(connectionString);
+        conexion.Open();
+        using var comando = new SqlCommand(SqlServerQueries.DocumentoEnPicking(), conexion);
+        comando.Parameters.AddWithValue("@docEntry", docEntry);
+        comando.Parameters.AddWithValue("@baseObject", int.Parse(objType, CultureInfo.InvariantCulture));
+        return Convert.ToInt32(comando.ExecuteScalar(), CultureInfo.InvariantCulture) > 0;
     }
 }

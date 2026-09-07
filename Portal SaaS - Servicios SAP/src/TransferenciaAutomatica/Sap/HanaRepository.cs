@@ -1,3 +1,5 @@
+using System;
+using System.Globalization;
 using Sap.Data.Hana;
 
 namespace Servicios.TransferenciaAutomatica.Sap;
@@ -94,5 +96,15 @@ public static class HanaRepository
         using var comando = new HanaCommand(HanaQueries.MarcarCompletado(tablaCabecera, completionUdfFieldName), conexion);
         comando.Parameters.Add(new HanaParameter("docEntry", docEntry));
         comando.ExecuteNonQuery();
+    }
+
+    public static bool DocumentoEstaEnPicking(string connectionString, int docEntry, string objType)
+    {
+        using var conexion = new HanaConnection(connectionString);
+        conexion.Open();
+        using var comando = new HanaCommand(HanaQueries.DocumentoEnPicking(), conexion);
+        comando.Parameters.Add(new HanaParameter("docEntry", docEntry));
+        comando.Parameters.Add(new HanaParameter("baseObject", int.Parse(objType, CultureInfo.InvariantCulture)));
+        return Convert.ToInt32(comando.ExecuteScalar(), CultureInfo.InvariantCulture) > 0;
     }
 }

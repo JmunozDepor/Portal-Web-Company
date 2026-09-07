@@ -27,4 +27,14 @@ public static class HanaQueries
     /// <summary>Legado: Queries.UpdateDocumentoSap -- DocEntry ahora parametrizado.</summary>
     public static string MarcarCompletado(string tablaCabecera, string completionUdfFieldName)
         => $"UPDATE \"{tablaCabecera}\" SET \"{completionUdfFieldName}\" = 'N' WHERE \"DocEntry\" = ?";
+
+    /// <summary>
+    /// ¿El documento base tiene una lista de picking activa? PKL1."OrderEntry" es el DocEntry
+    /// del documento base y PKL1."BaseObject" su ObjType (17/13/1250000001); "PickStatus"
+    /// &lt;&gt; 'C' descarta las líneas de picking ya cerradas. No tiene identificadores de
+    /// configuración por compañía -- PKL1/OPKL son tablas estándar de SAP B1. Parámetros
+    /// posicionales igual que el resto de este archivo.
+    /// </summary>
+    public static string DocumentoEnPicking()
+        => "SELECT COUNT(*) FROM \"PKL1\" WHERE \"OrderEntry\" = ? AND \"BaseObject\" = ? AND \"PickStatus\" <> 'C'";
 }

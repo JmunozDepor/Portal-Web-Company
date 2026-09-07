@@ -91,7 +91,13 @@ public sealed class IndexModel : PageModel
             return new JsonResult(Array.Empty<object>()) { StatusCode = 403 };
         }
 
-        var items = await _items.SearchAsync(text ?? string.Empty, ct: ct);
+        var trimmed = (text ?? string.Empty).Trim();
+        // Atajo "*" -- top 30 artículos por nombre (IItemCatalogService.GetTopAsync),
+        // exclusivo de este visor: no cambia el buscador compartido de Ventas/Compras
+        // (su propio OnGetSearchItemsAsync sigue llamando solo a SearchAsync).
+        var items = trimmed == "*"
+            ? await _items.GetTopAsync(ct: ct)
+            : await _items.SearchAsync(trimmed, ct: ct);
         return new JsonResult(items.Select(i => new { i.ItemCode, i.ItemName }));
     }
 

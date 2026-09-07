@@ -91,6 +91,12 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
     public decimal? DocTotal { get; private set; }
     public string? Status { get; private set; }
 
+    /// <summary>Ver DocumentFormViewModel.CanClose para el criterio completo.</summary>
+    public bool CanClose { get; private set; }
+
+    /// <summary>Ver DocumentFormViewModel.CanCancel para el criterio completo.</summary>
+    public bool CanCancel { get; private set; }
+
     /// <summary>
     /// Nombre del cliente ya elegido -- solo para MOSTRAR junto al código en modo
     /// solo-lectura (documento existente). Viene de SalesDocumentDto.CustomerName
@@ -169,6 +175,10 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
             DocTotal = document.DocTotal;
             Status = document.Status;
             CustomerName = document.CustomerName;
+            CanClose = Status != "Cerrado"
+                && await _documents.CanCreateAsync(Type, ct)
+                && await _currentUser.HasActionAsync(MenuCode, PortalActions.Delete, ct);
+            CanCancel = CanClose && _documents.SupportsCancel(Type);
 
             Input = new InputModel
             {
@@ -300,6 +310,50 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
         }
     }
 
+    /// <summary>
+    /// Cierra el documento en SAP (ver ISalesDocumentService.CloseAsync) -- validado en
+    /// el servidor con el mismo gate que habilita el botón (CanCreateAsync +
+    /// PortalActions.Delete), portado de OnPostCerrarAsync (DetalleGenericoVentaModelBase,
+    /// referencia-original/PortalSAP_v2).
+    /// </summary>
+    public Task<IActionResult> OnPostCloseAsync(string id, CancellationToken ct) =>
+        ExecuteStatusActionAsync(id, docEntry => _documents.CloseAsync(Type, docEntry, ct), "cerrado", requireSupportsCancel: false, ct);
+
+    /// <summary>
+    /// Cancela el documento en SAP (ver ISalesDocumentService.CancelAsync) -- mismo gate
+    /// que OnPostCloseAsync, MÁS SupportsCancel(Type) (revalidado server-side, no solo
+    /// ocultando el botón): Service Layer rechaza "/Cancel" sobre documentos de
+    /// intención (ej. Orden de Venta) con "The requested action is not supported for
+    /// this object" -- mismo error real confirmado en Inventario, 2026-09-04.
+    /// </summary>
+    public Task<IActionResult> OnPostCancelAsync(string id, CancellationToken ct) =>
+        ExecuteStatusActionAsync(id, docEntry => _documents.CancelAsync(Type, docEntry, ct), "cancelado", requireSupportsCancel: true, ct);
+
+    private async Task<IActionResult> ExecuteStatusActionAsync(string id, Func<int, Task> action, string resultParticiple, bool requireSupportsCancel, CancellationToken ct)
+    {
+        if (!int.TryParse(id, out var docEntry)
+            || !await _documents.CanCreateAsync(Type, ct)
+            || !await _currentUser.HasActionAsync(MenuCode, PortalActions.Delete, ct)
+            || (requireSupportsCancel && !_documents.SupportsCancel(Type)))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            await action(docEntry);
+            TempData["DocumentActionMessage"] = $"{DocumentName} {resultParticiple} correctamente.";
+            TempData["DocumentActionMessageType"] = "alert-success";
+        }
+        catch (Exception ex)
+        {
+            TempData["DocumentActionMessage"] = $"No se pudo {(resultParticiple == "cerrado" ? "cerrar" : "cancelar")} el documento: {ex.Message}";
+            TempData["DocumentActionMessageType"] = "alert-danger";
+        }
+
+        return RedirectToPage(new { id });
+    }
+
     /// <summary>Búsqueda en vivo del artículo -- nunca se precarga el catálogo completo (ver IItemCatalogService).</summary>
     public async Task<JsonResult> OnGetSearchItemsAsync(string text, CancellationToken ct)
     {
@@ -426,6 +480,9 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
             LogisticsView = "~/Pages/Shared/_TabLogisticaVentas.cshtml",
             AccountingView = "~/Pages/Shared/_TabFinanzasVentas.cshtml",
             AccountingTitle = "Finanzas",
+            DocEntry = DocEntry,
+            CanClose = CanClose,
+            CanCancel = CanCancel,
         };
 
         // Consumido por _ModuloBackLink.cshtml (breadcrumb del layout) -- así el

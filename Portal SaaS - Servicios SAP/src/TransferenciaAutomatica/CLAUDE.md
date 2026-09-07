@@ -70,6 +70,28 @@ El servicio original (`StrockTrans.cs`) envolvía **todo** el `foreach` de compa
 Acá cada compañía tiene su propio try/catch (ver comentario en `Worker.cs`): una falla nunca
 afecta a las demás.
 
+**Rechazo de negocio de SAP en el POST a Service Layer**: el legado (`StrockTrans.cs`)
+recibía el error por `ref er` sin lanzar, lo escribía en el log y **siempre** marcaba
+`U_NX_Auto_ABS = 'N'` — un documento que SAP rechazaba (ej. `-10 Quantity falls into
+negative inventory`) quedaba cerrado sin transferirse. Acá `ServiceLayerClient` lanza
+`ServiceLayerPostException` (tipo propio, distinto de los errores de plomería/login), que
+`Worker.cs` captura por prioridad: registra el error, sigue con las demás prioridades y
+documentos, y al cierre decide:
+  - hubo al menos un POST exitoso, o SAP no rechazó nada → marca `'N'` (además evita
+    re-postear en el próximo ciclo las prioridades que sí entraron);
+  - SAP rechazó y nada entró → marca `'N'` **solo si el documento ya está en un picking**
+    (`IWarehouseTransferRepository.DocumentoEstaEnPicking`, consulta `PKL1`/`OPKL` con
+    `PickStatus <> 'C'`); si no, lo deja pendiente para reintentar el próximo ciclo.
+
+Además `ServiceLayerError.Code` pasó de `int` a `string` con converter flexible (Service
+Layer manda `error.code` como número desde la DI API y como string `"-10"` desde HANA/SQL) y
+`error.message` acepta tanto `{lang,value}` como string plano — antes cualquiera de las dos
+formas string reventaba la deserialización con `JsonException` y tapaba el error real.
+
+*A confirmar contra el SAP del cliente*: el filtro `PKL1."PickStatus" <> 'C'` asume el
+picking nativo de B1; si Comercial Depor usa otro estado/campo para "en picking", ajustar
+`HanaQueries.DocumentoEnPicking` / `SqlServerQueries.DocumentoEnPicking`.
+
 ## Comandos
 
 ```

@@ -20,6 +20,11 @@ public class SapDocumentConnectorTests
             => throw new InvalidOperationException("No debería llamarse en este test.");
         public Task<SalesDocumentListResult> ListAsync(SalesDocumentType type, SalesDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
             => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task CloseAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task CancelAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+        public bool SupportsCancel(SalesDocumentType type) => true;
         public int GetSapObjectCode(SalesDocumentType type)
             => throw new InvalidOperationException("No debería llamarse en este test.");
     }
@@ -35,6 +40,11 @@ public class SapDocumentConnectorTests
             => throw new InvalidOperationException("No debería llamarse en este test.");
         public Task<PurchaseDocumentListResult> ListAsync(PurchaseDocumentType type, PurchaseDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
             => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task CloseAsync(PurchaseDocumentType type, int docEntry, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task CancelAsync(PurchaseDocumentType type, int docEntry, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+        public bool SupportsCancel(PurchaseDocumentType type) => true;
         public int GetSapObjectCode(PurchaseDocumentType type)
             => throw new InvalidOperationException("No debería llamarse en este test.");
     }
@@ -50,6 +60,11 @@ public class SapDocumentConnectorTests
             => throw new InvalidOperationException("No debería llamarse en este test.");
         public Task<InventoryDocumentListResult> ListAsync(InventoryDocumentType type, InventoryDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
             => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task CloseAsync(InventoryDocumentType type, int docEntry, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task CancelAsync(InventoryDocumentType type, int docEntry, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+        public bool SupportsCancel(InventoryDocumentType type) => true;
         public int GetSapObjectCode(InventoryDocumentType type)
             => throw new InvalidOperationException("No debería llamarse en este test.");
     }
@@ -89,6 +104,9 @@ public class SapDocumentConnectorTests
         }
 
         public Task<T?> PostAsync<T>(string recurso, object cuerpo, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+
+        public Task PostAsync(string recurso, object cuerpo, CancellationToken ct = default)
             => throw new InvalidOperationException("No debería llamarse en este test.");
 
         public Task PatchAsync(string recurso, object clave, object cuerpo, CancellationToken ct = default)
@@ -144,6 +162,9 @@ public class SapDocumentConnectorTests
         }
 
         public Task<T?> PostAsync<T>(string recurso, object cuerpo, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+
+        public Task PostAsync(string recurso, object cuerpo, CancellationToken ct = default)
             => throw new InvalidOperationException("No debería llamarse en este test.");
 
         public Task PatchAsync(string recurso, object clave, object cuerpo, CancellationToken ct = default)
@@ -717,6 +738,11 @@ public class SapDocumentConnectorTests
             => throw new InvalidOperationException("No debería llamarse en este test.");
         public Task<InventoryDocumentListResult> ListAsync(InventoryDocumentType type, InventoryDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
             => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task CloseAsync(InventoryDocumentType type, int docEntry, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task CancelAsync(InventoryDocumentType type, int docEntry, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+        public bool SupportsCancel(InventoryDocumentType type) => true;
         public int GetSapObjectCode(InventoryDocumentType type)
             => throw new InvalidOperationException("No debería llamarse en este test.");
     }

@@ -1,5 +1,7 @@
 using System.Data;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Modulo.GestionDistribucionGastos.Data;
@@ -24,6 +26,11 @@ public class FormModel : PageModelBaseGestionGastos
 
     public bool EsNuevo { get; set; }
 
+    // Se llena desde Catalogo_BaseDistribucion (Sql/Catalogo_BaseDistribucion.sql) en vez de
+    // tener las <option> hardcodeadas en el Razor -- agregar una base nueva pasa a ser solo un
+    // INSERT en esa tabla, sin tocar este código ni el Form.cshtml.
+    public List<SelectListItem> OpcionesBaseDistribucion { get; set; } = new();
+
     public async Task<IActionResult> OnGetAsync(int? id)
     {
         EsNuevo = id is null;
@@ -35,6 +42,7 @@ public class FormModel : PageModelBaseGestionGastos
             Regla = regla;
         }
 
+        await CargarOpcionesBaseDistribucionAsync();
         return Page();
     }
 
@@ -43,19 +51,30 @@ public class FormModel : PageModelBaseGestionGastos
         EsNuevo = id is null;
 
         if (!ModelState.IsValid)
-            return Page();
-
-        if (Regla.Activo && await HayConflicto(_db, Regla))
         {
-            ModelState.AddModelError(nameof(Regla.NroCuenta),
-                "Ya existe otra regla activa para esta cuenta (con el mismo centro de costo, o sin especificarlo). " +
-                "Dos reglas activas superpuestas duplicarían el gasto al distribuir — desactivá la otra regla primero.");
+            await CargarOpcionesBaseDistribucionAsync();
             return Page();
         }
 
+        // HayConflicto (una consulta a la base) quedaba FUERA del try/catch de más abajo -- si
+        // esa consulta puntual reventaba por lo que sea, la excepción se escapaba del handler sin
+        // pasar por ModelState ni por el resumen de errores (Form.cshtml), y el navegador solo veía
+        // un 200 con la página en blanco de mensajes -- exactamente el síntoma reportado al crear
+        // una regla con patrón '%' (bug real detectado 2026-08-28, causa todavía sin confirmar).
+        // Se mete todo en el mismo try de abajo para que CUALQUIER excepción, venga de donde venga,
+        // quede visible en el resumen en vez de desaparecer en silencio.
         string sufijoMensaje;
         try
         {
+            if (Regla.Activo && await HayConflicto(_db, Regla))
+            {
+                ModelState.AddModelError(nameof(Regla.NroCuenta),
+                    "Ya existe otra regla activa para esta cuenta (con el mismo centro de costo, o sin especificarlo). " +
+                    "Dos reglas activas superpuestas duplicarían el gasto al distribuir — desactivá la otra regla primero.");
+                await CargarOpcionesBaseDistribucionAsync();
+                return Page();
+            }
+
             if (EsNuevo)
             {
                 Regla.UsuarioCreacion = NombreUsuarioActual;
@@ -78,12 +97,57 @@ public class FormModel : PageModelBaseGestionGastos
             // pantalla de error generica del Host perdiendo lo que el usuario tipeo -- se
             // muestra en la misma pagina, igual que el chequeo de HayConflicto de mas arriba.
             ModelState.AddModelError(string.Empty, ObtenerMensajeError(ex));
+            await CargarOpcionesBaseDistribucionAsync();
             return Page();
         }
 
         MensajeExito = sufijoMensaje;
         return RedirectToPage("/GestionGastos/Reglas/Index");
     }
+
+    // Lee las bases activas del catálogo (Sql/Catalogo_BaseDistribucion.sql), ordenadas por
+    // Orden. Por ADO directo -- igual que HayConflicto/AplicarSiCorresponde más abajo -- porque
+    // el catálogo se administra por script SQL, no por migración EF, y no amerita un DbSet propio.
+    private async Task CargarOpcionesBaseDistribucionAsync()
+    {
+        var conn = _db.Database.GetDbConnection();
+        var opcionesCargadas = new List<SelectListItem>();
+        var estabaAbierta = conn.State == ConnectionState.Open;
+        if (!estabaAbierta)
+            await conn.OpenAsync();
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT Codigo, Descripcion FROM dbo.Catalogo_BaseDistribucion WHERE Activo = 1 ORDER BY Orden";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                opcionesCargadas.Add(new SelectListItem(reader.GetString(1), reader.GetString(0)));
+            }
+        }
+        finally
+        {
+            if (!estabaAbierta)
+                await conn.CloseAsync();
+        }
+
+        OpcionesBaseDistribucion = opcionesCargadas;
+    }
+
+    // Bases "...DESDE_IND4_POR_CANAL": sus líneas elegibles (sucursal=IND4 CON canal ya resuelto,
+    // ver sp_EjecutarDistribucionAutomatica_Final.sql) nunca se solapan con las de ninguna otra base
+    // (todas las demás exigen canal SIN resolver/IND3) -- por eso son las únicas que pueden convivir,
+    // activas a la vez, con otra regla activa sobre la misma cuenta, sin duplicar el gasto. Entre
+    // ellas mismas SÍ conflictúan (misma condición de elegibilidad -- dos juntas duplicarían la línea).
+    private static readonly string[] BasesIndependientesPorCanal =
+    {
+        "SUCURSAL_DESDE_IND4_POR_CANAL",
+        "SUCURSAL_COLISEUM_DESDE_IND4_POR_CANAL",
+        "VENTA_SUCURSAL_CONVERSE_DESDE_IND4_POR_CANAL",
+        "VENTA_SUCURSAL_UMBRO_DESDE_IND4_POR_CANAL",
+        "VENTA_SUCURSAL_FILA_DESDE_IND4_POR_CANAL",
+        "VENTA_SUCURSAL_SM_DESDE_IND4_POR_CANAL",
+    };
 
     // NroCuenta puede ser un patrón LIKE (ej. "61-09-%"), así que dos reglas con texto distinto
     // pueden superponerse en la práctica sobre una cuenta real que la comparación de texto no vería
@@ -97,8 +161,12 @@ public class FormModel : PageModelBaseGestionGastos
         await conn.OpenAsync();
         try
         {
+            // Lista de bases "por canal" embebida como literales fijos (no vienen del usuario, son
+            // constantes de código -- ver BasesIndependientesPorCanal) para poder usarlas en un IN().
+            var listaBasesPorCanal = string.Join(", ", BasesIndependientesPorCanal.Select(b => $"'{b}'"));
+
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"
+            cmd.CommandText = $@"
                 ;WITH Cuentas AS (
                     SELECT DISTINCT NroCuenta, CodCentroCosto FROM Staging_CentralizacionContable WHERE TipoRegistro = 'DETALLE'
                 )
@@ -111,10 +179,20 @@ public class FormModel : PageModelBaseGestionGastos
                       WHERE r.Activo = 1 AND r.Id <> @idExcluir
                         AND c.NroCuenta LIKE r.NroCuenta
                         AND (r.CodCentroCosto IS NULL OR r.CodCentroCosto = c.CodCentroCosto)
+                        -- Excepción: una base '...DESDE_IND4_POR_CANAL' nunca compite por la misma
+                        -- línea con ninguna base que NO sea de esa familia (mutuamente excluyentes
+                        -- por diseño en el SP), así que combinarlas es seguro -- se omite el
+                        -- conflicto solo cuando EXACTAMENTE una de las dos pertenece a la familia
+                        -- (dos de la familia entre sí SÍ conflictúan, tienen la misma elegibilidad).
+                        AND NOT (
+                              (@baseNueva IN ({listaBasesPorCanal}) AND r.BaseDistribucion NOT IN ({listaBasesPorCanal}))
+                           OR (r.BaseDistribucion IN ({listaBasesPorCanal}) AND @baseNueva NOT IN ({listaBasesPorCanal}))
+                            )
                   )";
             cmd.Parameters.Add(new SqlParameter("@patronNuevo", regla.NroCuenta));
             cmd.Parameters.Add(new SqlParameter("@ccNuevo", (object?)regla.CodCentroCosto ?? DBNull.Value));
             cmd.Parameters.Add(new SqlParameter("@idExcluir", regla.Id));
+            cmd.Parameters.Add(new SqlParameter("@baseNueva", regla.BaseDistribucion));
             var resultado = await cmd.ExecuteScalarAsync();
             return resultado != null;
         }

@@ -40,6 +40,15 @@ public interface ISapSession
     Task<T?> PostAsync<T>(string recurso, object cuerpo, CancellationToken ct = default);
 
     /// <summary>
+    /// Variante sin cuerpo de respuesta tipado -- para acciones de Service Layer que
+    /// responden 204/vacío (ej. "{recurso}(docEntry)/Close", "/Cancel"). PostAsync&lt;T&gt;
+    /// intenta deserializar la respuesta como JSON aunque venga vacía -- error real
+    /// encontrado (2026-09-04): "The input does not contain any JSON tokens" al cerrar
+    /// un documento, porque Close/Cancel no devuelven cuerpo.
+    /// </summary>
+    Task PostAsync(string recurso, object cuerpo, CancellationToken ct = default);
+
+    /// <summary>
     /// clave se pasa tal cual (nunca .ToString()) -- la implementación decide si la
     /// envuelve en comillas simples según el tipo en tiempo de ejecución. Un DocEntry es
     /// numérico en Service Layer; pasarlo como string produce "Recurso('123')" en vez de

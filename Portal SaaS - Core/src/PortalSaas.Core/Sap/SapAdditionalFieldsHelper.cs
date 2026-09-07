@@ -55,6 +55,25 @@ public static class SapAdditionalFieldsHelper
 
     public static bool IsReservedName(string fieldName) => ReservedNames.Contains(fieldName.Trim());
 
+    /// <summary>
+    /// Devuelve una copia de <paramref name="additionalFields"/> con el usuario del portal
+    /// grabado bajo <paramref name="udfName"/> (el UDF de trazabilidad configurado para la
+    /// compañía, ver SapTraceabilityFieldResolver). Se usa cuando el nombre del UDF NO es
+    /// el default "U_PortalUser" -- en ese caso no se puede escribir como propiedad tipada
+    /// del wire model, hay que mandarlo como par dinámico. La trazabilidad se asigna al
+    /// final, así que gana ante un campo de usuario del importador que declare ese mismo
+    /// nombre por accidente.
+    /// </summary>
+    public static IReadOnlyDictionary<string, object?> MergeTraceabilityUser(
+        IReadOnlyDictionary<string, object?>? additionalFields, string udfName, string portalUsername)
+    {
+        var merged = additionalFields is null
+            ? new Dictionary<string, object?>()
+            : new Dictionary<string, object?>(additionalFields);
+        merged[udfName] = portalUsername;
+        return merged;
+    }
+
     public static Dictionary<string, object?> Flatten(object typedObject)
     {
         var result = new Dictionary<string, object?>();

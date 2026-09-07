@@ -42,6 +42,29 @@ public interface ISalesDocumentService
     Task<SalesDocumentListResult> ListAsync(SalesDocumentType type, SalesDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default);
 
     /// <summary>
+    /// Cierra el documento en SAP (POST {recurso}(docEntry)/Close) -- acción de negocio
+    /// normal, a diferencia de un borrado. El documento sigue existiendo, sin acciones
+    /// pendientes. Portado de IGenericoVentaService.CerrarAsync (referencia-original/
+    /// PortalSAP_v2).
+    /// </summary>
+    Task CloseAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cancela el documento en SAP (POST {recurso}(docEntry)/Cancel) -- a diferencia de
+    /// CloseAsync, deja rastro de auditoría (movimiento de anulación), pensado para
+    /// revertir un documento creado por error. Portado de
+    /// IGenericoVentaService.CancelarAsync.
+    /// </summary>
+    Task CancelAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default);
+
+    /// <summary>
+    /// Ver el doc-comment de SupportsCancel en SalesDocumentTypeCatalog.Entry
+    /// (PortalSaas.Core) -- documentos de intención (Orden/Solicitud) no soportan
+    /// "/Cancel" en Service Layer, solo Close.
+    /// </summary>
+    bool SupportsCancel(SalesDocumentType type);
+
+    /// <summary>
     /// Código de objeto SAP (NNM1.ObjectCode) del tipo de documento -- lo necesita el
     /// plugin para pedirle a ISeriesCatalogService la lista de series aplicables, sin
     /// que el plugin tenga que conocer SalesDocumentTypeCatalog (vive en

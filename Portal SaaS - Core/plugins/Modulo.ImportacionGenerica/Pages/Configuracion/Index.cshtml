@@ -44,6 +44,16 @@
             <div class="form-group">
                 <label asp-for="Input.Module" class="form-label"></label>
                 <select asp-for="Input.Module" asp-items="Model.Modules" class="form-select" disabled="@(Model.EditId is not null)" onchange="mostrarTipoDocumentoConfig(this.value)"></select>
+                @* Mismo problema que los 3 <select> de Tipo de documento de abajo -- disabled
+                   durante edición, así que sin este oculto Input.Module volvía como el default
+                   del enum (Sales) en el POST, y la propiedad calculada DocumentType miraba
+                   SalesDocumentType en vez del módulo real (ej. Inventory), reproduciendo el
+                   mismo error "Elegí un tipo de documento." aunque el fix de los 3 selects de
+                   tipo ya estuviera aplicado. *@
+                @if (Model.EditId is not null)
+                {
+                    <input type="hidden" asp-for="Input.Module" />
+                }
             </div>
             @* Un <select> por Módulo, filtrado por CanCreateAsync -- antes era texto libre
                ("ej. SalesOrder, PurchaseQuotation, StockTransfer"), lo que dejaba tipear un
@@ -55,6 +65,14 @@
                 <select asp-for="Input.SalesDocumentType" asp-items="Model.SalesDocumentTypes" class="form-select" disabled="@(Model.EditId is not null)">
                     <option value="">Seleccionar…</option>
                 </select>
+                @* Un <select disabled> nunca viaja en el POST -- sin este oculto, editar una
+                   configuración perdía el tipo de documento al guardar (llegaba vacío,
+                   "Elegí un tipo de documento." pese a verse seleccionado en pantalla).
+                   Mismo criterio que EditId/CopyId/Nuevo más arriba. *@
+                @if (Model.EditId is not null)
+                {
+                    <input type="hidden" asp-for="Input.SalesDocumentType" />
+                }
                 <span asp-validation-for="Input.DocumentType" class="text-danger"></span>
             </div>
             <div class="form-group" id="config-tipo-doc-purchase" style="display:none">
@@ -62,12 +80,20 @@
                 <select asp-for="Input.PurchaseDocumentType" asp-items="Model.PurchaseDocumentTypes" class="form-select" disabled="@(Model.EditId is not null)">
                     <option value="">Seleccionar…</option>
                 </select>
+                @if (Model.EditId is not null)
+                {
+                    <input type="hidden" asp-for="Input.PurchaseDocumentType" />
+                }
             </div>
             <div class="form-group" id="config-tipo-doc-inventory" style="display:none">
                 <label class="form-label">Tipo de documento</label>
                 <select asp-for="Input.InventoryDocumentType" asp-items="Model.InventoryDocumentTypes" class="form-select" disabled="@(Model.EditId is not null)">
                     <option value="">Seleccionar…</option>
                 </select>
+                @if (Model.EditId is not null)
+                {
+                    <input type="hidden" asp-for="Input.InventoryDocumentType" />
+                }
             </div>
             <div class="form-group">
                 <label asp-for="Input.LineType" class="form-label"></label>

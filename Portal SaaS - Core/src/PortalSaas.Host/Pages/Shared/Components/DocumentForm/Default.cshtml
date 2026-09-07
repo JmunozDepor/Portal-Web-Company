@@ -32,6 +32,11 @@
             }
         </div>
 
+        @if (TempData["DocumentActionMessage"] is string actionMessage)
+        {
+            <div class="alert @(TempData["DocumentActionMessageType"] as string ?? "alert-success") mb-3">@actionMessage</div>
+        }
+
         <div class="doc-tabs">
             <a href="#doc-tab-general" class="doc-tab-btn active" data-tab-anchor="doc-tab-general">General</a>
             <a href="#doc-tab-content" class="doc-tab-btn" data-tab-anchor="doc-tab-content">Contenido</a>
@@ -80,5 +85,29 @@
             <span class="doc-resumen-total-titulo">Campos de usuario</span>
             @await Html.PartialAsync(Model.UserFieldsView, Model.Model)
         </section>
+    }
+
+    @if (Model.CanClose || Model.CanCancel)
+    {
+        <div class="doc-tab-seccion admin-row-actions">
+            @if (Model.CanClose)
+            {
+                <form method="post" asp-page-handler="Close" asp-route-id="@Model.DocEntry">
+                    <button type="submit" class="btn btn-outline-secondary"
+                            onclick="return confirm('¿Cerrar @Model.Title? El documento sigue existiendo en SAP, sin acciones pendientes.');">
+                        Cerrar
+                    </button>
+                </form>
+            }
+            @if (Model.CanCancel)
+            {
+                <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.DocEntry">
+                    <button type="submit" class="btn btn-outline-danger"
+                            onclick="return confirm('¿Cancelar @Model.Title? Esta acción anula el documento en SAP con rastro de auditoría.');">
+                        Cancelar
+                    </button>
+                </form>
+            }
+        </div>
     }
 </div>

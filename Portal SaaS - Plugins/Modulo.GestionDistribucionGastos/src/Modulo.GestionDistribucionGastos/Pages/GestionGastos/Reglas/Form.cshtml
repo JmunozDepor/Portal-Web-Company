@@ -11,6 +11,14 @@
 <div class="card">
     <form asp-page-handler="Guardar" asp-route-id="@(Model.EsNuevo ? null : Model.Regla.Id)" method="post">
         <input type="hidden" asp-for="Regla.Id" />
+        <!--
+            Muestra los errores "generales" (ModelState.AddModelError(string.Empty, ...)) que arma
+            el catch de OnPostGuardarAsync -- ej. "String or binary data would be truncated" si
+            BaseDistribucion no entra en la columna. Antes no había dónde mostrarlos: la página
+            volvía a Guardar sin avanzar y sin ningún mensaje visible (los <span asp-validation-for>
+            de abajo solo cubren errores de un campo puntual, no estos).
+        -->
+        <div asp-validation-summary="ModelOnly" style="color:var(--danger); font-size:13px; margin-bottom:8px;"></div>
         <div style="display:flex; flex-direction:column; gap:12px; max-width:420px;">
             <div>
                 <label>Cuenta</label><br />
@@ -24,17 +32,8 @@
             </div>
             <div>
                 <label>Base de distribución</label><br />
-                <select asp-for="Regla.BaseDistribucion" style="width:100%">
-                    <option value="CANAL">Canal</option>
-                    <option value="SUCURSAL">Sucursal</option>
-                    <option value="SUCURSAL_TPR_ECM">Sucursal (solo TPR y ECM)</option>
-                    <option value="SUCURSAL_TPR_SOLO_ECOM">Sucursal (TPR y solo Ecommerce propio, sin marketplace)</option>
-                    <option value="SUCURSAL_COLISEUM">Sucursal (solo tiendas Coliseum)</option>
-                    <option value="VENTA_SUCURSAL_CONVERSE">Sucursal (venta Converse 41-01-001-04)</option>
-                    <option value="VENTA_SUCURSAL_UMBRO">Sucursal (venta Umbro 41-01-001-05)</option>
-                    <option value="VENTA_SUCURSAL_FILA">Sucursal (venta Fila 41-01-001-06)</option>
-                    <option value="VENTA_SUCURSAL_SM">Sucursal (venta SM 41-01-001-09)</option>
-                </select>
+                <select asp-for="Regla.BaseDistribucion" asp-items="Model.OpcionesBaseDistribucion" style="width:100%"></select>
+                <br /><small style="color:var(--text-muted);">Las opciones se administran en la tabla <code>Catalogo_BaseDistribucion</code> (Sql/Catalogo_BaseDistribucion.sql) -- agregar una base nueva no requiere tocar esta pantalla.</small>
             </div>
             <div>
                 <label>Comentario</label><br />

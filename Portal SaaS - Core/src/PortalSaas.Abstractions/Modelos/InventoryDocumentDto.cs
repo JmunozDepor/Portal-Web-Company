@@ -78,9 +78,11 @@ public sealed record InventoryDocumentListResult(IReadOnlyList<InventoryDocument
 /// de cabecera (ToWhsCode, TO_VARCHAR igual que WarehouseCatalogService) y
 /// CustomerReferenceNumber ("N.° ref.", UDF U_NumAtCard -- OWTQ/OWTR no traen el
 /// NumAtCard estándar de los documentos de marketing, mismo hallazgo ya documentado
-/// del original). Sin almacén origen/destino DE LÍNEA acá a propósito: es un dato por
-/// línea, no de cabecera -- mostrarlo en el listado exigiría un JOIN contra WTQ1/WTR1
-/// que no se justifica todavía; el detalle del documento sí lo muestra, línea por línea.
+/// del original). WarehouseSourceCode -- OWTQ/OWTR no tienen almacén de origen a nivel
+/// de cabecera (solo WTQ1/WTR1), así que el listado lo trae con un subquery a la línea
+/// (MIN("FromWhsCod")); si un documento mezcla varios almacenes de origen entre líneas
+/// se muestra el menor -- el detalle del documento sigue mostrándolos todos, línea por
+/// línea. WarehouseDestinationCode sí sale de la cabecera (o."ToWhsCode").
 /// </summary>
 public sealed record InventoryDocumentSummaryDto
 {
@@ -91,6 +93,7 @@ public sealed record InventoryDocumentSummaryDto
     public DateTime DocDate { get; init; }
     public string? DeliveryAddress { get; init; }
     public string? CustomerReferenceNumber { get; init; }
+    public string? WarehouseSourceCode { get; init; }
     public string? WarehouseDestinationCode { get; init; }
     public string Status { get; init; } = null!;
 }

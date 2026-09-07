@@ -73,6 +73,12 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
     public int? DocNum { get; private set; }
     public string? Status { get; private set; }
 
+    /// <summary>Ver DocumentFormViewModel.CanClose para el criterio completo.</summary>
+    public bool CanClose { get; private set; }
+
+    /// <summary>Ver DocumentFormViewModel.CanCancel para el criterio completo.</summary>
+    public bool CanCancel { get; private set; }
+
     /// <summary>Solo-lectura (documento existente) -- mismo criterio que SalesDocumentDto.CustomerName, ver OnGetSearchCustomersAsync.</summary>
     public string? CustomerName { get; private set; }
 
@@ -120,6 +126,10 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
             DocNum = document.DocNum;
             Status = document.Status;
             CustomerName = document.BusinessPartnerName;
+            CanClose = Status != "Cerrado"
+                && await _documents.CanCreateAsync(Type, ct)
+                && await _currentUser.HasActionAsync(MenuCode, PortalActions.Delete, ct);
+            CanCancel = CanClose && _documents.SupportsCancel(Type);
 
             Input = new InputModel
             {
@@ -217,6 +227,50 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         }
     }
 
+    /// <summary>
+    /// Cierra el documento en SAP (ver IInventoryDocumentService.CloseAsync) -- validado
+    /// en el servidor con el mismo gate que habilita el botón (CanCreateAsync +
+    /// PortalActions.Delete), portado de OnPostCerrarAsync (DetalleGenericoVentaModelBase,
+    /// referencia-original/PortalSAP_v2).
+    /// </summary>
+    public Task<IActionResult> OnPostCloseAsync(string id, CancellationToken ct) =>
+        ExecuteStatusActionAsync(id, docEntry => _documents.CloseAsync(Type, docEntry, ct), "cerrado", requireSupportsCancel: false, ct);
+
+    /// <summary>
+    /// Cancela el documento en SAP (ver IInventoryDocumentService.CancelAsync) -- mismo
+    /// gate que OnPostCloseAsync, MÁS SupportsCancel(Type) (revalidado server-side, no
+    /// solo ocultando el botón): Service Layer rechaza "/Cancel" sobre documentos de
+    /// intención (ej. Solicitud de Traslado) con "The requested action is not supported
+    /// for this object" -- error real confirmado 2026-09-04.
+    /// </summary>
+    public Task<IActionResult> OnPostCancelAsync(string id, CancellationToken ct) =>
+        ExecuteStatusActionAsync(id, docEntry => _documents.CancelAsync(Type, docEntry, ct), "cancelado", requireSupportsCancel: true, ct);
+
+    private async Task<IActionResult> ExecuteStatusActionAsync(string id, Func<int, Task> action, string resultParticiple, bool requireSupportsCancel, CancellationToken ct)
+    {
+        if (!int.TryParse(id, out var docEntry)
+            || !await _documents.CanCreateAsync(Type, ct)
+            || !await _currentUser.HasActionAsync(MenuCode, PortalActions.Delete, ct)
+            || (requireSupportsCancel && !_documents.SupportsCancel(Type)))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            await action(docEntry);
+            TempData["DocumentActionMessage"] = $"{DocumentName} {resultParticiple} correctamente.";
+            TempData["DocumentActionMessageType"] = "alert-success";
+        }
+        catch (Exception ex)
+        {
+            TempData["DocumentActionMessage"] = $"No se pudo {(resultParticiple == "cerrado" ? "cerrar" : "cancelar")} el documento: {ex.Message}";
+            TempData["DocumentActionMessageType"] = "alert-danger";
+        }
+
+        return RedirectToPage(new { id });
+    }
+
     /// <summary>Búsqueda en vivo del artículo -- nunca se precarga el catálogo completo (ver IItemCatalogService).</summary>
     public async Task<JsonResult> OnGetSearchItemsAsync(string text, CancellationToken ct)
     {
@@ -272,6 +326,9 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
             Model = this,
             GeneralView = "~/Pages/Shared/_TabGeneralInventario.cshtml",
             ContentView = "~/Pages/Shared/_TabContentInventario.cshtml",
+            DocEntry = DocEntry,
+            CanClose = CanClose,
+            CanCancel = CanCancel,
         };
 
         // Consumido por _ModuloBackLink.cshtml (breadcrumb del layout) -- ver el

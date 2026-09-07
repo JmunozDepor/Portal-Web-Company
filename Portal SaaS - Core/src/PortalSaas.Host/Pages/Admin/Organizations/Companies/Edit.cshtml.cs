@@ -50,6 +50,7 @@ public class EditModel : PageModel
             ServiceLayerUrl = company.ServiceLayerUrl,
             IntegrationUsername = company.IntegrationUsername,
             Country = company.Country,
+            TraceabilityUserUdfName = company.TraceabilityUserUdfName,
             IsActive = company.IsActive,
         };
 
@@ -94,6 +95,9 @@ public class EditModel : PageModel
         company.ServiceLayerUrl = Input.ServiceLayerUrl.Trim();
         company.IntegrationUsername = Input.IntegrationUsername.Trim();
         company.Country = Input.Country.Trim();
+        company.TraceabilityUserUdfName = string.IsNullOrWhiteSpace(Input.TraceabilityUserUdfName)
+            ? null
+            : Input.TraceabilityUserUdfName.Trim();
         company.IsActive = Input.IsActive;
 
         if (!string.IsNullOrWhiteSpace(Input.IntegrationSecretKey))
@@ -150,6 +154,10 @@ public class EditModel : PageModel
         [Required(ErrorMessage = "Ingresa el país.")]
         [Display(Name = "País")]
         public string Country { get; set; } = string.Empty;
+
+        [Display(Name = "UDF de trazabilidad (dejar en blanco = U_PortalUser)")]
+        [StringLength(50)]
+        public string? TraceabilityUserUdfName { get; set; }
 
         [Display(Name = "Activa")]
         public bool IsActive { get; set; } = true;

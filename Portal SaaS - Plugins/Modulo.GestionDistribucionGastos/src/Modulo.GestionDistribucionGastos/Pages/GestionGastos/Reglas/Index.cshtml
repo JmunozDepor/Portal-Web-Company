@@ -81,25 +81,3 @@
         </tbody>
     </table>
 </div>
-
-<div class="card">
-    <div class="toolbar">
-        <strong>Sucursal Central (IND4)</strong>
-    </div>
-    <p style="color:var(--text-muted); font-size:13px; margin:0 0 8px;">
-        Reparte por venta del mismo canal cualquier línea (manual o pendiente) que haya quedado
-        asignada a un canal real pero sin sucursal específica (Sucursal = IND4). No toca meses
-        cerrados ni cuentas ya aprobadas. Las líneas resultantes quedan como ajuste manual, para
-        que ninguna regla las vuelva a tocar sin que alguien lo pida.
-    </p>
-    <div style="display:flex; gap:8px;">
-        <form asp-page-handler="RepartirSucursalCentral" method="post"
-              onsubmit="return confirm('¿Repartir por venta todas las líneas en Sucursal Central (IND4)? Esta acción también toca ajustes manuales.');">
-            <button type="submit" class="btn-primary">Repartir saldos en Sucursal Central</button>
-        </form>
-        <form asp-page-handler="DeshacerRepartoSucursalCentral" method="post"
-              onsubmit="return confirm('¿Deshacer todos los repartos de Sucursal Central hechos con el botón de arriba? Vuelven a quedar en Sucursal=IND4.');">
-            <button type="submit" style="color:var(--danger); border-color:var(--danger);">Deshacer reparto Sucursal Central</button>
-        </form>
-    </div>
-</div>

@@ -1,5 +1,6 @@
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
+using PortalSaas.Core.Sap;
 
 namespace PortalSaas.Core.Ventas;
 
@@ -15,15 +16,20 @@ public sealed class SalesDocumentService : ISalesDocumentService
     private readonly IHanaService _hana;
     private readonly ISapConnectionProvider _connectionProvider;
     private readonly IOrganizationDocumentPermissionService _permissions;
+    private readonly ISapTraceabilityFieldResolver _traceability;
 
-    public SalesDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider, IOrganizationDocumentPermissionService permissions)
+    public SalesDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider,
+        IOrganizationDocumentPermissionService permissions, ISapTraceabilityFieldResolver traceability)
     {
         _hana = hana;
         _connectionProvider = connectionProvider;
         _permissions = permissions;
+        _traceability = traceability;
     }
 
     public int GetSapObjectCode(SalesDocumentType type) => SalesDocumentTypeCatalog.Resolve(type).ObjectCode;
+
+    public bool SupportsCancel(SalesDocumentType type) => SalesDocumentTypeCatalog.Resolve(type).SupportsCancel;
 
     public Task<bool> CanCreateAsync(SalesDocumentType type, CancellationToken ct = default) =>
         _permissions.IsCreateAllowedAsync("Sales", type.ToString(), SalesDocumentTypeCatalog.Resolve(type).DefaultCanCreate, ct);
@@ -31,6 +37,9 @@ public sealed class SalesDocumentService : ISalesDocumentService
     public async Task<int> CreateAsync(SalesDocumentType type, string portalUsername, SalesDocumentDto document, CancellationToken ct = default)
     {
         var entry = SalesDocumentTypeCatalog.Resolve(type);
+
+        var udfName = await _traceability.ResolveUserFieldNameAsync(ct);
+        var isDefaultUdf = string.Equals(udfName, SapTraceabilityFieldResolver.DefaultUserFieldName, StringComparison.OrdinalIgnoreCase);
 
         var header = new SapSalesDocumentHeader
         {
@@ -46,8 +55,10 @@ public sealed class SalesDocumentService : ISalesDocumentService
             DocDueDate = document.DocDueDate.ToDateTime(TimeOnly.MinValue),
             TaxDate = document.TaxDate.ToDateTime(TimeOnly.MinValue),
             NumAtCard = document.CustomerReferenceNumber,
-            U_PortalUser = portalUsername,
-            AdditionalFields = document.AdditionalFields,
+            U_PortalUser = isDefaultUdf ? portalUsername : null,
+            AdditionalFields = isDefaultUdf
+                ? document.AdditionalFields
+                : SapAdditionalFieldsHelper.MergeTraceabilityUser(document.AdditionalFields, udfName, portalUsername),
             DocumentLines = document.Lines.Select(MapLine).ToList(),
         };
 
@@ -75,6 +86,20 @@ public sealed class SalesDocumentService : ISalesDocumentService
             .ToList();
 
         await session.PatchAsync(entry.Resource, docEntry, new { DocumentLines = combinedLines }, ct);
+    }
+
+    public async Task CloseAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default)
+    {
+        var entry = SalesDocumentTypeCatalog.Resolve(type);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        await session.PostAsync($"{entry.Resource}({docEntry})/Close", new { }, ct);
+    }
+
+    public async Task CancelAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default)
+    {
+        var entry = SalesDocumentTypeCatalog.Resolve(type);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        await session.PostAsync($"{entry.Resource}({docEntry})/Cancel", new { }, ct);
     }
 
     public async Task<SalesDocumentDto?> GetAsync(SalesDocumentType type, int docEntry, CancellationToken ct = default)

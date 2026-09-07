@@ -23,4 +23,8 @@ public static class SqlServerQueries
 
     public static string MarcarCompletado(string tablaCabecera, string completionUdfFieldName)
         => $"UPDATE [{tablaCabecera}] SET [{completionUdfFieldName}] = 'N' WHERE [DocEntry] = @docEntry";
+
+    /// <summary>Equivalente T-SQL de HanaQueries.DocumentoEnPicking -- PKL1/OPKL son tablas estándar de SAP B1.</summary>
+    public static string DocumentoEnPicking()
+        => "SELECT COUNT(*) FROM [PKL1] WHERE [OrderEntry] = @docEntry AND [BaseObject] = @baseObject AND [PickStatus] <> 'C'";
 }

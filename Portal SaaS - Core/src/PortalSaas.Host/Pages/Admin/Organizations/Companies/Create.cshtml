@@ -59,6 +59,13 @@
                 <input asp-for="Input.Country" class="form-control" />
                 <span asp-validation-for="Input.Country" class="text-danger"></span>
             </div>
+
+            <div class="col-md-4">
+                <label asp-for="Input.TraceabilityUserUdfName" class="form-label"></label>
+                <input asp-for="Input.TraceabilityUserUdfName" class="form-control" placeholder="U_PortalUser" />
+                <span asp-validation-for="Input.TraceabilityUserUdfName" class="text-danger"></span>
+                <small class="text-muted">UDF de cabecera donde se graba el usuario del portal al crear documentos. Solo si el SAP usa otro nombre (ej. <code>U_DEP_PortalUsuario</code>).</small>
+            </div>
         </div>
 
         <div class="d-flex gap-2 mt-4">

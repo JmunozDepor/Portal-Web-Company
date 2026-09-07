@@ -18,7 +18,15 @@ namespace PortalSaas.Core.Ventas;
 /// </summary>
 public static class SalesDocumentTypeCatalog
 {
-    public sealed record Entry(string Table, string Resource, bool DefaultCanCreate, IReadOnlyList<ExtraFilter> ExtraFilters, int ObjectCode);
+    /// <summary>
+    /// SupportsCancel: Service Layer rechaza "/Cancel" ("The requested action is not
+    /// supported for this object") sobre documentos de INTENCIÓN que todavía no
+    /// postearon una transacción real (Orden/Solicitud) -- solo Close aplica ahí.
+    /// Confirmado empíricamente (2026-09-04) contra un ambiente real: Cancelar una
+    /// Solicitud de Traslado (InventoryTransferRequest, mismo criterio acá para
+    /// SalesOrder/ReturnRequest) falla con ese error exacto; Cerrar sí funciona.
+    /// </summary>
+    public sealed record Entry(string Table, string Resource, bool DefaultCanCreate, IReadOnlyList<ExtraFilter> ExtraFilters, int ObjectCode, bool SupportsCancel = true);
 
     public sealed record ExtraFilter(string Column, string Value, bool IsEqual);
 
@@ -34,11 +42,11 @@ public static class SalesDocumentTypeCatalog
     // (documentado acá porque no es obvio). Ver ISeriesCatalogService.
     public static readonly IReadOnlyDictionary<SalesDocumentType, Entry> Entries = new Dictionary<SalesDocumentType, Entry>
     {
-        [SalesDocumentType.SalesOrder] = new("ORDR", "Orders", true, NoExtraFilters, ObjectCode: 17),
+        [SalesDocumentType.SalesOrder] = new("ORDR", "Orders", true, NoExtraFilters, ObjectCode: 17, SupportsCancel: false),
         [SalesDocumentType.CreditNote] = new("ORIN", "CreditNotes", true, NoExtraFilters, ObjectCode: 14),
         [SalesDocumentType.CustomerInvoice] = new("OINV", "Invoices", false, [new("isIns", "N", true), new("DocSubType", "IB", false)], ObjectCode: 13),
         [SalesDocumentType.ReserveInvoice] = new("OINV", "Invoices", true, [new("isIns", "Y", true)], ObjectCode: 13),
-        [SalesDocumentType.ReturnRequest] = new("ORRR", "ReturnRequest", false, NoExtraFilters, ObjectCode: 234000031),
+        [SalesDocumentType.ReturnRequest] = new("ORRR", "ReturnRequest", false, NoExtraFilters, ObjectCode: 234000031, SupportsCancel: false),
         [SalesDocumentType.Return] = new("ORDN", "Returns", false, NoExtraFilters, ObjectCode: 16),
         [SalesDocumentType.Receipt] = new("OINV", "Invoices", false, [new("isIns", "N", true), new("DocSubType", "IB", true)], ObjectCode: 13),
     };

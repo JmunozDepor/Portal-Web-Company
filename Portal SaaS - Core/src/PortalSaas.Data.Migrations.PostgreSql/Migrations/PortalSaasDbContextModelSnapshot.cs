@@ -183,6 +183,11 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("character varying(300)")
                         .HasColumnName("service_layer_url");
 
+                    b.Property<string>("TraceabilityUserUdfName")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("traceability_user_udf_name");
+
                     b.HasKey("Id")
                         .HasName("pk_companies");
 

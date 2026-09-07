@@ -23,7 +23,11 @@
         // tenant, así que mandarla a /Home la saca de su contexto. Se usa la
         // ruta real del fallo (IExceptionHandlerPathFeature.Path) para elegir.
         var esContextoAdmin = Model.RoutePath?.StartsWith("/Admin", StringComparison.OrdinalIgnoreCase) == true;
-        var volverUrl = esContextoAdmin ? "~/Admin/Organizations" : "~/Home/Index";
+        // Url.Content resuelve el "~/" contra el PathBase real de la app -- un href="~/..."
+        // crudo el navegador lo toma literal y termina en 404 (ej.
+        // /inventario/solicitudes-traslado/~/Home/Index) al abrir la página de error
+        // desde una ruta anidada de un plugin.
+        var volverUrl = Url.Content(esContextoAdmin ? "~/Admin/Organizations" : "~/Home/Index");
         var volverTexto = esContextoAdmin ? "Volver a Organizaciones" : "Volver al inicio";
     }
 

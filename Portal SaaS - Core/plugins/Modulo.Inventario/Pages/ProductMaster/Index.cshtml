@@ -10,82 +10,130 @@
 <form method="get" class="form-row product-master-search-form">
     <div class="form-group">
         <label class="form-label" for="product-master-search-input">Artículo</label>
-        <input id="product-master-search-input" name="ItemCode" list="product-master-datalist"
-               class="form-control product-master-search-input" autocomplete="off"
-               placeholder="Código o nombre del artículo" value="@Model.ItemCode" />
+        <div class="input-group">
+            <input id="product-master-search-input" name="ItemCode" list="product-master-datalist"
+                   class="form-control product-master-search-input" autocomplete="off"
+                   placeholder="Código o nombre del artículo" value="@Model.ItemCode" />
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                    data-bs-target="#product-master-search-modal" title="Buscar artículo">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
         <datalist id="product-master-datalist"></datalist>
+        <small class="form-text text-muted">Tip: escribí <strong>*</strong> para ver los primeros 30 artículos.</small>
     </div>
     <div class="form-group">
-        <button type="submit" class="btn btn-primary">Ver ficha</button>
+        @* Label vacío -- mismo alto que "Artículo" de arriba, así el botón queda alineado
+           con el input-group en vez de quedar más arriba (el input-group no tiene label
+           propio en esta celda). *@
+        <label class="form-label" aria-hidden="true">&nbsp;</label>
+        <button type="submit" class="btn btn-primary d-block">Ver ficha</button>
     </div>
 </form>
+
+@* Modal de búsqueda visual -- complementa el <datalist> nativo (limitado para
+   explorar resultados) cuando no se conoce el código/nombre exacto: mismo handler
+   acotado OnGetSearchItemsAsync (nunca lista OITM completo), resultados en una
+   tabla clicable en vez de un desplegable nativo. *@
+<div class="modal fade" id="product-master-search-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Buscar artículo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="form-control mb-3" id="product-master-search-modal-input"
+                       autocomplete="off" placeholder="Código o nombre del artículo -- o escribí * para ver los primeros 30" />
+                <div class="document-list-table-wrapper" style="max-height: 50vh;">
+                    <table class="table document-list-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="product-master-search-modal-results"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @if (Model.ItemNotFound)
 {
     <div class="alert alert-warning">Artículo no encontrado.</div>
 }
 
-@if (Model.Detail is not null)
-{
-    <section class="doc-tab-seccion">
-        <h2>Datos generales</h2>
-        <div class="form-row">
-            <div class="form-group">
-                <label class="form-label">Código</label>
-                <input class="form-control" value="@Model.Detail.ItemCode" disabled />
-            </div>
-            <div class="form-group">
-                <label class="form-label">Descripción</label>
-                <input class="form-control" value="@Model.Detail.ItemName" disabled />
-            </div>
-            <div class="form-group">
-                <label class="form-label">Código de barra</label>
-                <input class="form-control" value="@(Model.Detail.CodeBars ?? "—")" disabled />
-            </div>
-            <div class="form-group">
-                <label class="form-label">Grupo de artículo</label>
-                <input class="form-control" value="@(Model.Detail.ItemGroupName ?? "—")" disabled />
-            </div>
+@* Las 3 secciones se muestran siempre, incluso sin artículo elegido todavía -- con
+   los campos en blanco (pedido explícito: la pantalla no debe verse vacía con solo
+   el buscador arriba). *@
+<section class="doc-tab-seccion">
+    <h2>Datos generales</h2>
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Código</label>
+            <input class="form-control" value="@Model.Detail?.ItemCode" disabled />
         </div>
-    </section>
-
-    <section class="doc-tab-seccion">
-        <h2>Precio</h2>
-        <div class="form-row">
-            <div class="form-group">
-                <label class="form-label" for="product-master-pricelist-select">Lista de precios</label>
-                <select id="product-master-pricelist-select" class="form-select product-master-pricelist-select">
-                    @foreach (var lista in Model.PriceLists)
-                    {
-                        <option value="@lista.ListNum" selected="@(lista.ListNum == Model.SelectedPriceList)">@lista.ListName</option>
-                    }
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Precio</label>
-                <input id="product-master-price-output" class="form-control" value="@(Model.SelectedPrice?.ToString("N2") ?? "Sin precio")" disabled />
-            </div>
+        <div class="form-group">
+            <label class="form-label">Descripción</label>
+            <input class="form-control" value="@Model.Detail?.ItemName" disabled />
         </div>
-    </section>
+        <div class="form-group">
+            <label class="form-label">Código de barra</label>
+            <input class="form-control" value="@Model.Detail?.CodeBars" disabled />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Grupo de artículo</label>
+            <input class="form-control" value="@Model.Detail?.ItemGroupName" disabled />
+        </div>
+    </div>
+</section>
 
-    <section class="doc-tab-seccion">
-        <h2>Stock por almacén</h2>
-        @if (Model.Stocks.Count == 0)
-        {
-            <p>Sin stock registrado.</p>
-        }
-        else
-        {
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Almacén</th>
-                        <th>En stock</th>
-                        <th>Comprometido</th>
-                        <th>Disponible</th>
-                    </tr>
-                </thead>
-                <tbody>
+<section class="doc-tab-seccion">
+    <h2>Precio</h2>
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label" for="product-master-pricelist-select">Lista de precios</label>
+            <select id="product-master-pricelist-select" class="form-select product-master-pricelist-select" disabled="@(Model.Detail is null)">
+                @foreach (var lista in Model.PriceLists)
+                {
+                    <option value="@lista.ListNum" selected="@(lista.ListNum == Model.SelectedPriceList)">@lista.ListName</option>
+                }
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Precio</label>
+            <input id="product-master-price-output" class="form-control"
+                   value="@(Model.Detail is null ? "" : (Model.SelectedPrice?.ToString("N2") ?? "Sin precio"))" disabled />
+        </div>
+    </div>
+</section>
+
+<section class="doc-tab-seccion">
+    <h2>Stock por almacén</h2>
+    <div class="document-list-table-wrapper">
+        <table class="table document-list-table">
+            <thead>
+                <tr>
+                    <th>Almacén</th>
+                    <th>En stock</th>
+                    <th>Comprometido</th>
+                    <th>Disponible</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Detail is null)
+                {
+                    <tr><td colspan="4" class="text-muted">Buscá un artículo para ver su stock.</td></tr>
+                }
+                else if (Model.Stocks.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-muted">Sin stock registrado.</td></tr>
+                }
+                else
+                {
                     @foreach (var fila in Model.Stocks)
                     {
                         <tr>
@@ -95,11 +143,11 @@
                             <td>@fila.Available.ToString("N2")</td>
                         </tr>
                     }
-                </tbody>
-            </table>
-        }
-    </section>
-}
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
 
 <script src="~/js/catalog-search.js"></script>
 <script>
@@ -107,10 +155,61 @@
         inputSelector: '.product-master-search-input',
         datalistId: 'product-master-datalist',
         handlerName: 'SearchItems',
-        minChars: 2,
+        // minChars: 1 (no 2) -- exclusivo de esta llamada, no afecta a Ventas/Compras
+        // (su propio wireCatalogSearch de artículo sigue en minChars: 2) -- necesario
+        // para que el atajo "*" (1 caracter) dispare la búsqueda del top 30.
+        minChars: 1,
         getValue: function (item) { return item.itemCode; },
         getLabel: function (item) { return item.itemCode + ' — ' + item.itemName; },
     });
+
+    // Modal de búsqueda visual -- mismo handler acotado (OnGetSearchItemsAsync), pero
+    // resultados en una tabla clicable en vez de un <datalist> nativo (más fácil de
+    // explorar cuando no se conoce el código/nombre exacto). Clic en una fila navega
+    // directo a la ficha de ese artículo.
+    (function () {
+        var modalInput = document.getElementById('product-master-search-modal-input');
+        var resultsBody = document.getElementById('product-master-search-modal-results');
+        var timer = null;
+
+        function buscar(text) {
+            var trimmed = text.trim();
+            // 1 carácter alcanza para el atajo "*" (top 30) -- para texto normal sigue
+            // siendo poco (misma lógica que minChars: 1 del datalist principal).
+            if (trimmed.length < 1) {
+                resultsBody.innerHTML = '';
+                return;
+            }
+            fetch('?handler=SearchItems&text=' + encodeURIComponent(trimmed))
+                .then(function (r) { return r.json(); })
+                .then(function (items) {
+                    resultsBody.innerHTML = '';
+                    items.forEach(function (item) {
+                        var tr = document.createElement('tr');
+                        tr.style.cursor = 'pointer';
+
+                        var tdCodigo = document.createElement('td');
+                        tdCodigo.textContent = item.itemCode;
+                        var tdNombre = document.createElement('td');
+                        tdNombre.textContent = item.itemName;
+                        tr.appendChild(tdCodigo);
+                        tr.appendChild(tdNombre);
+
+                        tr.addEventListener('click', function () {
+                            window.location.href = '?ItemCode=' + encodeURIComponent(item.itemCode);
+                        });
+                        resultsBody.appendChild(tr);
+                    });
+                })
+                .catch(function (error) { console.error('product-master search modal: ', error); });
+        }
+
+        modalInput.addEventListener('input', function () {
+            clearTimeout(timer);
+            var text = modalInput.value;
+            timer = setTimeout(function () { buscar(text); }, 300);
+        });
+    })();
 
     // Cambio de lista de precios -- fetch liviano, no recarga la página completa (ver
     // OnGetPriceAsync). itemCode viene del querystring actual (?ItemCode=...), la

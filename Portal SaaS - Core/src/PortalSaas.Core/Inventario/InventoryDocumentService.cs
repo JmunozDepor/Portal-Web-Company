@@ -1,5 +1,6 @@
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
+using PortalSaas.Core.Sap;
 
 namespace PortalSaas.Core.Inventario;
 
@@ -16,15 +17,20 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
     private readonly IHanaService _hana;
     private readonly ISapConnectionProvider _connectionProvider;
     private readonly IOrganizationDocumentPermissionService _permissions;
+    private readonly ISapTraceabilityFieldResolver _traceability;
 
-    public InventoryDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider, IOrganizationDocumentPermissionService permissions)
+    public InventoryDocumentService(IHanaService hana, ISapConnectionProvider connectionProvider,
+        IOrganizationDocumentPermissionService permissions, ISapTraceabilityFieldResolver traceability)
     {
         _hana = hana;
         _connectionProvider = connectionProvider;
         _permissions = permissions;
+        _traceability = traceability;
     }
 
     public int GetSapObjectCode(InventoryDocumentType type) => InventoryDocumentTypeCatalog.Resolve(type).ObjectCode;
+
+    public bool SupportsCancel(InventoryDocumentType type) => InventoryDocumentTypeCatalog.Resolve(type).SupportsCancel;
 
     public Task<bool> CanCreateAsync(InventoryDocumentType type, CancellationToken ct = default) =>
         _permissions.IsCreateAllowedAsync("Inventory", type.ToString(), InventoryDocumentTypeCatalog.Resolve(type).DefaultCanCreate, ct);
@@ -33,6 +39,9 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
     {
         var entry = InventoryDocumentTypeCatalog.Resolve(type);
 
+        var udfName = await _traceability.ResolveUserFieldNameAsync(ct);
+        var isDefaultUdf = string.Equals(udfName, SapTraceabilityFieldResolver.DefaultUserFieldName, StringComparison.OrdinalIgnoreCase);
+
         var header = new SapInventoryDocumentHeader
         {
             DocDate = document.DocDate.ToDateTime(TimeOnly.MinValue),
@@ -40,8 +49,10 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
             Comments = document.Comments,
             CardCode = document.BusinessPartnerCardCode,
             NumAtCard = document.CustomerReferenceNumber,
-            U_PortalUser = portalUsername,
-            AdditionalFields = document.AdditionalFields,
+            U_PortalUser = isDefaultUdf ? portalUsername : null,
+            AdditionalFields = isDefaultUdf
+                ? document.AdditionalFields
+                : SapAdditionalFieldsHelper.MergeTraceabilityUser(document.AdditionalFields, udfName, portalUsername),
             StockTransferLines = document.Lines.Select(MapLine).ToList(),
         };
 
@@ -68,6 +79,20 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
             .ToList();
 
         await session.PatchAsync(entry.Resource, docEntry, new { StockTransferLines = combinedLines }, ct);
+    }
+
+    public async Task CloseAsync(InventoryDocumentType type, int docEntry, CancellationToken ct = default)
+    {
+        var entry = InventoryDocumentTypeCatalog.Resolve(type);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        await session.PostAsync($"{entry.Resource}({docEntry})/Close", new { }, ct);
+    }
+
+    public async Task CancelAsync(InventoryDocumentType type, int docEntry, CancellationToken ct = default)
+    {
+        var entry = InventoryDocumentTypeCatalog.Resolve(type);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        await session.PostAsync($"{entry.Resource}({docEntry})/Cancel", new { }, ct);
     }
 
     public async Task<InventoryDocumentDto?> GetAsync(InventoryDocumentType type, int docEntry, CancellationToken ct = default)
@@ -111,12 +136,15 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
 
         // Paridad con GenericoInventarioService.ListarAsync del original -- socio de
         // negocios/nombre/dirección de destino/almacén destino de cabecera/N.° ref.
-        // (ver el doc-comment de InventoryDocumentSummaryDto). Sin almacén origen/
-        // destino DE LÍNEA acá a propósito -- eso sigue sin equivalente en el listado.
+        // (ver el doc-comment de InventoryDocumentSummaryDto). Almacén destino sale de la
+        // cabecera (o."ToWhsCode"); almacén origen NO existe en cabecera para OWTQ/OWTR,
+        // se trae con un subquery a la línea (WTQ1/WTR1."FromWhsCod").
+        var lineTable = entry.Table[1..] + "1";
         var listSql = $"""
             SELECT o."DocEntry", o."DocNum", o."CardCode" AS "BusinessPartnerCardCode",
                    o."CardName" AS "BusinessPartnerName", o."DocDate",
                    o."Address2" AS "DeliveryAddress", o."U_NumAtCard" AS "CustomerReferenceNumber",
+                   (SELECT MIN(TO_VARCHAR(l."FromWhsCod")) FROM "{lineTable}" l WHERE l."DocEntry" = o."DocEntry") AS "WarehouseSourceCode",
                    TO_VARCHAR(o."ToWhsCode") AS "WarehouseDestinationCode",
                    CASE WHEN o."DocStatus" = 'O' THEN 'Abierto' ELSE 'Cerrado' END AS "Status"
             FROM "{entry.Table}" o

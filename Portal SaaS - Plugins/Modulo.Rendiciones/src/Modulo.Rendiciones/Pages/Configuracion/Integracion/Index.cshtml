@@ -42,7 +42,6 @@
     </p>
 
     <form method="post" asp-page-handler="Toggle">
-        <input type="hidden" name="enabled" value="@(!Model.SapCatalogSyncEnabled)" />
         <button type="submit" class="btn-primary">
             @(Model.SapCatalogSyncEnabled ? "Desactivar sincronización SAP" : "Activar sincronización SAP")
         </button>

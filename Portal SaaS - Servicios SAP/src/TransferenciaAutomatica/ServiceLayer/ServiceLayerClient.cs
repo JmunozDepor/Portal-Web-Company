@@ -92,9 +92,23 @@ public sealed class ServiceLayerClient : IDisposable
 
         if (!respuesta.IsSuccessStatusCode)
         {
-            var error = JsonSerializer.Deserialize<ServiceLayerErrorResponse>(contenido, JsonOptions);
-            var mensaje = error?.Error?.Message?.Value ?? contenido;
-            throw new InvalidOperationException(
+            string? codigoSap = null;
+            string? mensajeSap = null;
+            try
+            {
+                var error = JsonSerializer.Deserialize<ServiceLayerErrorResponse>(contenido, JsonOptions);
+                codigoSap = error?.Error?.Code;
+                mensajeSap = error?.Error?.Message?.Value;
+            }
+            catch (JsonException)
+            {
+                // Cuerpo de error con forma inesperada -- se reporta el contenido crudo en vez
+                // de dejar que la JsonException tape el error real de Service Layer.
+            }
+
+            var mensaje = mensajeSap ?? contenido;
+            throw new ServiceLayerPostException(
+                (int)respuesta.StatusCode, codigoSap, mensaje,
                 $"POST StockTransfers falló ({(int)respuesta.StatusCode} {respuesta.StatusCode}): {mensaje}");
         }
 

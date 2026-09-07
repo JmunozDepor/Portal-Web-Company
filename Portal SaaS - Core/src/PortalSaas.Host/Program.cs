@@ -194,6 +194,10 @@ builder.Services.AddSingleton<ISapSessionCache, SapSessionCache>();
 // el backoffice de administrador de plataforma (botón "Probar conexión" en Companies),
 // que no tiene sesión de tenant.
 builder.Services.AddScoped<ISapConnectionTestService, SapConnectionTestService>();
+// Nombre del UDF de trazabilidad (usuario del portal) por compañía -- consumido por los
+// 3 motores genéricos de documento al crear. Default "U_PortalUser"; Comercial Depor usa
+// "U_DEP_PortalUsuario" (Company.TraceabilityUserUdfName), ver SapTraceabilityFieldResolver.
+builder.Services.AddScoped<ISapTraceabilityFieldResolver, SapTraceabilityFieldResolver>();
 
 // Consumido por Modulo.Ventas (plugin) -- motor genérico de documentos de venta, ver
 // ISalesDocumentService/SalesDocumentTypeCatalog y CLAUDE.md para el alcance de esta

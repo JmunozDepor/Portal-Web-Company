@@ -36,4 +36,28 @@ public sealed class DocumentFormViewModel
     public string? UserFieldsView { get; init; }
 
     public string AccountingTitle { get; init; } = "Contabilidad";
+
+    /// <summary>
+    /// DocEntry real del documento -- necesario para postear Cerrar/Cancelar
+    /// (asp-route-id) desde el chrome compartido, sin que cada plugin repita el botón.
+    /// Null en un documento nuevo (todavía no tiene DocEntry).
+    /// </summary>
+    public int? DocEntry { get; init; }
+
+    /// <summary>
+    /// Habilita el botón Cerrar -- mismo gate que "Crear" (CanCreateAsync del tipo) más
+    /// el permiso Eliminar del usuario sobre este menú, portado de PuedeCerrarOCancelar
+    /// (DetalleGenericoVentaModelBase, referencia-original/PortalSAP_v2). Solo tiene
+    /// sentido en un documento existente que no esté Cerrado.
+    /// </summary>
+    public bool CanClose { get; init; }
+
+    /// <summary>
+    /// Habilita el botón Cancelar -- mismo gate que CanClose, MÁS que el tipo de
+    /// documento soporte la acción (ver *DocumentTypeCatalog.Entry.SupportsCancel):
+    /// Service Layer rechaza "/Cancel" sobre documentos de intención (Orden/Solicitud)
+    /// con "The requested action is not supported for this object" -- error real
+    /// confirmado 2026-09-04 cancelando una Solicitud de Traslado.
+    /// </summary>
+    public bool CanCancel { get; init; }
 }

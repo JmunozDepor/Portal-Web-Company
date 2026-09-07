@@ -27,6 +27,15 @@ public interface IPurchaseDocumentService
 
     Task<PurchaseDocumentListResult> ListAsync(PurchaseDocumentType type, PurchaseDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default);
 
+    /// <summary>Ver ISalesDocumentService.CloseAsync -- mismo patrón (POST {recurso}(docEntry)/Close).</summary>
+    Task CloseAsync(PurchaseDocumentType type, int docEntry, CancellationToken ct = default);
+
+    /// <summary>Ver ISalesDocumentService.CancelAsync -- mismo patrón (POST {recurso}(docEntry)/Cancel).</summary>
+    Task CancelAsync(PurchaseDocumentType type, int docEntry, CancellationToken ct = default);
+
+    /// <summary>Ver ISalesDocumentService.SupportsCancel.</summary>
+    bool SupportsCancel(PurchaseDocumentType type);
+
     /// <summary>Código de objeto SAP (NNM1.ObjectCode) del tipo de documento -- ver ISalesDocumentService.GetSapObjectCode.</summary>
     int GetSapObjectCode(PurchaseDocumentType type);
 }

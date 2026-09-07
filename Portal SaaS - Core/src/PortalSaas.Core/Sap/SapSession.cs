@@ -62,6 +62,9 @@ public sealed class SapSession : ISapSession
     public async Task<T?> PostAsync<T>(string recurso, object cuerpo, CancellationToken ct = default)
         => await _connection.Request(recurso).PostAsync<T>(cuerpo);
 
+    public async Task PostAsync(string recurso, object cuerpo, CancellationToken ct = default)
+        => await _connection.Request(recurso).PostAsync(cuerpo);
+
     public async Task PatchAsync(string recurso, object clave, object cuerpo, CancellationToken ct = default)
         => await _connection.Request(recurso, clave).PatchAsync(cuerpo);
 

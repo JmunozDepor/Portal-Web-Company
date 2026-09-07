@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using PortalSaas.Core.Sap;
+
 namespace PortalSaas.Core.Inventario;
 
 /// <summary>
@@ -58,9 +61,18 @@ internal sealed class SapInventoryDocumentLine
     /// <summary>Almacén origen de esta línea -- nullable, mismo motivo que WarehouseCode.</summary>
     public string? FromWarehouseCode { get; set; }
 
-    /// <summary>Copy-From -- ver InventoryDocumentLineDto.BaseType/BaseEntry/BaseLine.</summary>
+    /// <summary>
+    /// Copy-From -- ver InventoryDocumentLineDto.BaseType/BaseEntry/BaseLine. Service Layer
+    /// devuelve estos campos como número o como string segun el contexto (BaseType de un
+    /// Traslado creado por Copy-From vuelve como string) -- ver FlexibleNullableInt32Converter.
+    /// </summary>
+    [JsonConverter(typeof(FlexibleNullableInt32Converter))]
     public int? BaseType { get; set; }
+
+    [JsonConverter(typeof(FlexibleNullableInt32Converter))]
     public int? BaseEntry { get; set; }
+
+    [JsonConverter(typeof(FlexibleNullableInt32Converter))]
     public int? BaseLine { get; set; }
 
     /// <summary>Campos de usuario de línea -- ver SapInventoryDocumentHeader.AdditionalFields.</summary>

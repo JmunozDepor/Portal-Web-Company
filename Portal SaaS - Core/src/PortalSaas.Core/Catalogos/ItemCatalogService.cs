@@ -66,4 +66,18 @@ public sealed class ItemCatalogService : IItemCatalogService
 
         return await _hana.QueryAsync<ItemDto>(sql, parameters, ct);
     }
+
+    public async Task<IReadOnlyList<ItemDto>> GetTopAsync(int limit = 30, CancellationToken ct = default)
+    {
+        // Clamp explícito, mismo criterio que CatalogSqlHelper.BuildSearchFilter -- un
+        // LIMIT nunca sin tope aunque el caller lo pida sin límite.
+        var clampedLimit = Math.Clamp(limit, 1, 100);
+        var sql = $"""
+            SELECT "ItemCode", "ItemName" FROM "OITM"
+            ORDER BY "ItemName"
+            LIMIT {clampedLimit}
+            """;
+
+        return await _hana.QueryAsync<ItemDto>(sql, ct: ct);
+    }
 }

@@ -23,4 +23,13 @@ public sealed class Company
 
     public string Country { get; set; } = null!;
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Nombre del UDF de cabecera donde los 3 motores genéricos de documento graban el
+    /// usuario del portal que creó el documento (trazabilidad). null/vacío ⇒ se usa el
+    /// default "U_PortalUser". Se configura por compañía porque el nombre del campo de
+    /// usuario lo define el SAP de cada cliente (ej. Comercial Depor usa
+    /// "U_DEP_PortalUsuario") -- ver SapTraceabilityFieldResolver.
+    /// </summary>
+    public string? TraceabilityUserUdfName { get; set; }
 }

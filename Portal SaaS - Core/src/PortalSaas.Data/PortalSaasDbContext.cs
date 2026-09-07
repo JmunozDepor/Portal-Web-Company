@@ -295,6 +295,7 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.IntegrationUsername).HasMaxLength(100);
             entity.Property(e => e.IntegrationSecretKey).HasMaxLength(200);
             entity.Property(e => e.Country).HasMaxLength(10);
+            entity.Property(e => e.TraceabilityUserUdfName).HasMaxLength(50);
             // Restrict, no Cascade -- Company ya es alcanzable en cascada vía
             // Instance (Organization -> Instance -> Company), así que un segundo
             // camino en cascada acá crea un ciclo. Postgres lo permite en silencio;

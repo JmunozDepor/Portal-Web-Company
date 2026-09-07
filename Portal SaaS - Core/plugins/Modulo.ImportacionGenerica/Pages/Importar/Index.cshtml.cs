@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.Logging;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
@@ -38,10 +39,11 @@ public sealed class IndexModel : PageModelBaseAdmin
     private readonly IInventoryDocumentService _inventory;
     private readonly ICustomerCatalogService _customers;
     private readonly ISupplierCatalogService _suppliers;
+    private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(ICurrentUserContext currentUser, IGenericImportService importService, IGenericImportProgressStore progress,
         IGenericImportConfigService configs, ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
-        ICustomerCatalogService customers, ISupplierCatalogService suppliers) : base(currentUser)
+        ICustomerCatalogService customers, ISupplierCatalogService suppliers, ILogger<IndexModel> logger) : base(currentUser)
     {
         _importService = importService;
         _progress = progress;
@@ -51,6 +53,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         _inventory = inventory;
         _customers = customers;
         _suppliers = suppliers;
+        _logger = logger;
     }
 
     [BindProperty]
@@ -101,6 +104,15 @@ public sealed class IndexModel : PageModelBaseAdmin
         var bytes = buffer.ToArray();
         Input.Base64File = Convert.ToBase64String(bytes);
 
+        // El <form> de "Procesar" ya trae su propio <input hidden asp-for="Input.Base64File">
+        // (vacío en el primer ingreso), así que el binder dejó una entrada vacía en
+        // ModelState para esa clave. Los tag helpers (asp-for) priorizan el valor de
+        // ModelState sobre el del modelo al re-renderizar -- sin sacar la entrada acá, el
+        // <input hidden> de "Confirmar"/"Descargar con errores" se pinta VACÍO pese a que
+        // Input.Base64File ya tiene el archivo, y "Confirmar" falla siempre con "Volvé a
+        // procesar el archivo antes de confirmar". Mismo patrón que Account/Login.cshtml.cs.
+        ModelState.Remove($"{nameof(Input)}.{nameof(Input.Base64File)}");
+
         var parameters = BuildParameters();
         using var processStream = new MemoryStream(bytes);
         PreviewResult = await _importService.ProcessFileAsync(parameters, processStream, ct);
@@ -119,30 +131,49 @@ public sealed class IndexModel : PageModelBaseAdmin
     /// </summary>
     public async Task<JsonResult> OnPostConfirmAsync(string jobId, CancellationToken ct)
     {
-        var parameters = BuildParameters();
-
-        if (string.IsNullOrEmpty(Input.Base64File))
+        // Try/catch envolvente -- sin esto, cualquier excepción no prevista acá (ej. el
+        // reprocesado del archivo, no la creación en SAP en sí, que ya se captura por
+        // documento en CreateDocumentsAsync) caía en UseExceptionHandler("/Error")
+        // (Program.cs), que devuelve una página HTML, no JSON. El cliente (Index.cshtml,
+        // btnConfirmar) espera JSON siempre -- al recibir HTML, respuesta.json() tira una
+        // excepción de parseo que el fetch().catch() atrapa junto con los errores de red
+        // reales, mostrando siempre el mismo mensaje genérico "revisá la conexión" sin
+        // importar cuál haya sido el error real (ej. SAP inaccesible, archivo corrupto,
+        // token antiforgery vencido). Se devuelve acá el mensaje real en JSON para que
+        // mostrarResultado() lo despliegue de verdad.
+        try
         {
-            return new JsonResult(new GenericImportProgressDto("Volvé a procesar el archivo antes de confirmar.", 0, 0, false, null, true))
+            var parameters = BuildParameters();
+
+            if (string.IsNullOrEmpty(Input.Base64File))
             {
-                StatusCode = StatusCodes.Status400BadRequest,
-            };
+                return new JsonResult(new GenericImportProgressDto("Volvé a procesar el archivo antes de confirmar.", 0, 0, false, null, true))
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                };
+            }
+
+            var bytes = Convert.FromBase64String(Input.Base64File);
+            using var stream = new MemoryStream(bytes);
+            var preview = await _importService.ProcessFileAsync(parameters, stream, ct);
+
+            if (!preview.HasValidConfig || !preview.Documents.Any(d => d.CanCreate))
+            {
+                var blocked = new GenericImportProgressDto(
+                    preview.HasValidConfig ? "No hay documentos válidos para crear -- volvé a la vista previa." : preview.ErrorMessage ?? "Configuración inválida.",
+                    0, 0, false, null, true);
+                return new JsonResult(blocked) { StatusCode = StatusCodes.Status400BadRequest };
+            }
+
+            var result = await _importService.CreateDocumentsAsync(jobId, CurrentUser.Username, parameters, preview.Documents, ct);
+            return new JsonResult(result);
         }
-
-        var bytes = Convert.FromBase64String(Input.Base64File);
-        using var stream = new MemoryStream(bytes);
-        var preview = await _importService.ProcessFileAsync(parameters, stream, ct);
-
-        if (!preview.HasValidConfig || !preview.Documents.Any(d => d.CanCreate))
+        catch (Exception ex)
         {
-            var blocked = new GenericImportProgressDto(
-                preview.HasValidConfig ? "No hay documentos válidos para crear -- volvé a la vista previa." : preview.ErrorMessage ?? "Configuración inválida.",
-                0, 0, false, null, true);
-            return new JsonResult(blocked) { StatusCode = StatusCodes.Status400BadRequest };
+            _logger.LogError(ex, "Error no previsto al confirmar la importación (jobId {JobId}).", jobId);
+            var failed = new GenericImportProgressDto(GetErrorMessage(ex), 0, 0, false, null, true);
+            return new JsonResult(failed) { StatusCode = StatusCodes.Status500InternalServerError };
         }
-
-        var result = await _importService.CreateDocumentsAsync(jobId, CurrentUser.Username, parameters, preview.Documents, ct);
-        return new JsonResult(result);
     }
 
     /// <summary>Consultado por polling desde el cliente mientras OnPostConfirmAsync sigue corriendo -- ver IGenericImportProgressStore.</summary>

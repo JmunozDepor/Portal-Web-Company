@@ -88,11 +88,23 @@ file sealed class PriceListServiceFalso : IPriceListService
 
 file sealed class ItemCatalogServiceFalso : IItemCatalogService
 {
-    public Task<IReadOnlyList<ItemDto>> SearchAsync(string text, int limit = 30, CancellationToken ct = default) =>
-        throw new NotSupportedException("No usado por OnGetAsync -- solo por el named handler SearchItems.");
+    public string? SearchTextRecibido { get; private set; }
+    public bool GetTopLlamado { get; private set; }
+
+    public Task<IReadOnlyList<ItemDto>> SearchAsync(string text, int limit = 30, CancellationToken ct = default)
+    {
+        SearchTextRecibido = text;
+        return Task.FromResult<IReadOnlyList<ItemDto>>([new ItemDto { ItemCode = "A001", ItemName = "Artículo de prueba" }]);
+    }
 
     public Task<IReadOnlyList<ItemDto>> GetByCodesAsync(IReadOnlyCollection<string> itemCodes, CancellationToken ct = default) =>
         throw new NotSupportedException("No usado por el visor Maestro de Producto.");
+
+    public Task<IReadOnlyList<ItemDto>> GetTopAsync(int limit = 30, CancellationToken ct = default)
+    {
+        GetTopLlamado = true;
+        return Task.FromResult<IReadOnlyList<ItemDto>>([new ItemDto { ItemCode = "TOP1", ItemName = "El más vendido" }]);
+    }
 }
 
 public class ProductMasterIndexModelTests
@@ -164,5 +176,29 @@ public class ProductMasterIndexModelTests
         Assert.True(priceLists.GetPriceLlamado);
         Assert.Single(model.Stocks);
         Assert.True(stock.Llamado);
+    }
+
+    [Fact]
+    public async Task OnGetSearchItemsAsync_TextoAsterisco_LlamaGetTopEnVezDeSearch()
+    {
+        var items = new ItemCatalogServiceFalso();
+        var model = new IndexModel(items, new ItemMasterDetailServiceFalso(null), new ItemStockServiceFalso([]), new PriceListServiceFalso([], null), new CurrentUserContextFalso());
+
+        var resultado = await model.OnGetSearchItemsAsync("*", CancellationToken.None);
+
+        Assert.True(items.GetTopLlamado);
+        Assert.Null(items.SearchTextRecibido);
+    }
+
+    [Fact]
+    public async Task OnGetSearchItemsAsync_TextoNormal_LlamaSearchEnVezDeGetTop()
+    {
+        var items = new ItemCatalogServiceFalso();
+        var model = new IndexModel(items, new ItemMasterDetailServiceFalso(null), new ItemStockServiceFalso([]), new PriceListServiceFalso([], null), new CurrentUserContextFalso());
+
+        var resultado = await model.OnGetSearchItemsAsync("chuck taylor", CancellationToken.None);
+
+        Assert.False(items.GetTopLlamado);
+        Assert.Equal("chuck taylor", items.SearchTextRecibido);
     }
 }

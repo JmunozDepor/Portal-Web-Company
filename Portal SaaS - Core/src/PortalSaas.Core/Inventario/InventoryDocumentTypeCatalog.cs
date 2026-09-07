@@ -16,7 +16,8 @@ namespace PortalSaas.Core.Inventario;
 /// </summary>
 public static class InventoryDocumentTypeCatalog
 {
-    public sealed record Entry(string Table, string Resource, bool DefaultCanCreate, int ObjectCode);
+    /// <summary>Ver el doc-comment de SupportsCancel en SalesDocumentTypeCatalog.Entry.</summary>
+    public sealed record Entry(string Table, string Resource, bool DefaultCanCreate, int ObjectCode, bool SupportsCancel = true);
 
     // ObjectCode: los 2 confirmados EMPÍRICAMENTE contra Comercial GE2 real (26 jul
     // 2026, mismo criterio que SalesDocumentTypeCatalog/PurchaseDocumentTypeCatalog --
@@ -26,7 +27,7 @@ public static class InventoryDocumentTypeCatalog
     // ISeriesCatalogService.
     public static readonly IReadOnlyDictionary<InventoryDocumentType, Entry> Entries = new Dictionary<InventoryDocumentType, Entry>
     {
-        [InventoryDocumentType.InventoryTransferRequest] = new("OWTQ", "InventoryTransferRequests", true, ObjectCode: 1250000001),
+        [InventoryDocumentType.InventoryTransferRequest] = new("OWTQ", "InventoryTransferRequests", true, ObjectCode: 1250000001, SupportsCancel: false),
         [InventoryDocumentType.StockTransfer] = new("OWTR", "StockTransfers", true, ObjectCode: 67),
     };
 

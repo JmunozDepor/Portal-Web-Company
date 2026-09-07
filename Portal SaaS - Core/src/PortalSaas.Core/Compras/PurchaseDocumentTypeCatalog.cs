@@ -14,7 +14,8 @@ namespace PortalSaas.Core.Compras;
 /// </summary>
 public static class PurchaseDocumentTypeCatalog
 {
-    public sealed record Entry(string Table, string Resource, bool DefaultCanCreate, int ObjectCode);
+    /// <summary>Ver el doc-comment de SupportsCancel en SalesDocumentTypeCatalog.Entry.</summary>
+    public sealed record Entry(string Table, string Resource, bool DefaultCanCreate, int ObjectCode, bool SupportsCancel = true);
 
     // ObjectCode: PurchaseOrder (22) confirmado EMPÍRICAMENTE contra Comercial GE2 real
     // (26 jul 2026, mismo criterio que SalesDocumentTypeCatalog -- se cruzó el Series de
@@ -24,8 +25,8 @@ public static class PurchaseDocumentTypeCatalog
     // ISeriesCatalogService.
     public static readonly IReadOnlyDictionary<PurchaseDocumentType, Entry> Entries = new Dictionary<PurchaseDocumentType, Entry>
     {
-        [PurchaseDocumentType.PurchaseQuotation] = new("OPQT", "PurchaseQuotations", true, ObjectCode: 23),
-        [PurchaseDocumentType.PurchaseOrder] = new("OPOR", "PurchaseOrders", true, ObjectCode: 22),
+        [PurchaseDocumentType.PurchaseQuotation] = new("OPQT", "PurchaseQuotations", true, ObjectCode: 23, SupportsCancel: false),
+        [PurchaseDocumentType.PurchaseOrder] = new("OPOR", "PurchaseOrders", true, ObjectCode: 22, SupportsCancel: false),
     };
 
     public static Entry Resolve(PurchaseDocumentType type) => Entries[type];

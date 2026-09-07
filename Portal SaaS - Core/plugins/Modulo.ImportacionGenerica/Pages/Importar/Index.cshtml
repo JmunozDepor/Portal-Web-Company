@@ -59,6 +59,14 @@
             </div>
         </div>
         <button type="submit" class="btn btn-primary">Procesar (vista previa)</button>
+        @* GET puro (OnGetTemplateAsync ya existe en el codebehind, portado del módulo
+           original -- "Formato para importar" según Módulo+Tipo de documento+Tipo de
+           línea) -- botón type="button" a propósito, no puede ir dentro de este mismo
+           submit porque dispara una descarga, no un POST de Procesar. La URL se arma en
+           JS con los valores ACTUALES del formulario (btnDescargarFormato más abajo),
+           nunca con un <a href> fijo -- el tipo de documento depende del <select> visible
+           según el Módulo elegido (mostrarTipoDocumento). *@
+        <button type="button" id="btnDescargarFormato" class="btn btn-outline-secondary">Descargar formato para importar</button>
     </form>
 </div>
 
@@ -143,7 +151,16 @@
 
             @if (Model.PreviewResult.Documents.Any(d => d.CanCreate))
             {
-                <form id="formConfirmar" asp-antiforgery="true">
+                @* asp-antiforgery="true" NO alcanza acá -- confirmado en vivo (DevTools,
+                   Elements): sin asp-page/asp-action/asp-page-handler en el mismo <form>
+                   (este es un fetch manual, no un submit real, así que nunca los tuvo),
+                   FormTagHelper no emite el <input __RequestVerificationToken> pese al
+                   atributo explícito -- causa real del HTTP 400 vacío al confirmar
+                   (antiforgery). @Html.AntiForgeryToken() no depende de esa lógica de
+                   ruteo, genera el campo oculto siempre. Mismo criterio a futuro para
+                   cualquier <form> puramente-fetch sin atributos de ruteo. *@
+                <form id="formConfirmar" method="post">
+                    @Html.AntiForgeryToken()
                     <input type="hidden" asp-for="Input.Module" />
                     <input type="hidden" asp-for="Input.SalesDocumentType" />
                     <input type="hidden" asp-for="Input.PurchaseDocumentType" />
@@ -268,27 +285,56 @@
             actualizarBarra({ current: 0, total: 0, message: 'Iniciando…' });
 
             var jobId = generarJobId();
+            // new FormData(formConfirmar) ya incluye TODOS los campos con name del form,
+            // el oculto de @Html.AntiForgeryToken() incluido -- agregarlo de nuevo acá
+            // (como hacía antes esta línea) lo duplicaba: dos valores idénticos bajo el
+            // mismo nombre "__RequestVerificationToken" en el mismo POST, y
+            // Antiforgery.ValidateRequestAsync rechaza eso con un 400 vacío en vez de
+            // tomar el primero -- causa real confirmada viendo el payload real de la
+            // request en DevTools (bug encontrado 2026-09-04, ver CLAUDE.md). Solo se
+            // valida acá que el campo esté, sin volver a agregarlo.
             var formData = new FormData(formConfirmar);
             formData.append('jobId', jobId);
 
-            var token = formConfirmar.querySelector('input[name="__RequestVerificationToken"]');
-            if (token) {
-                formData.append('__RequestVerificationToken', token.value);
+            if (!formConfirmar.querySelector('input[name="__RequestVerificationToken"]')) {
+                console.warn('formConfirmar no tiene __RequestVerificationToken -- la confirmación va a fallar con 400 (antiforgery).');
             }
 
             pollingActivo = true;
             consultarProgreso(jobId);
 
             fetch('?handler=Confirm', { method: 'POST', body: formData })
-                .then(function (respuesta) { return respuesta.json().then(function (data) { return { ok: respuesta.ok, data: data }; }); })
+                // Se lee SIEMPRE como texto primero (nunca respuesta.json() directo) --
+                // un 400 de la validación automática de antiforgery de Razor Pages (que
+                // corre ANTES de que OnPostConfirmAsync llegue a ejecutarse, así que el
+                // try/catch de ese método no lo alcanza a atrapar) devuelve texto plano/
+                // HTML, no JSON -- respuesta.json() directo tira una excepción de parseo
+                // y el .catch() de abajo mostraba siempre el mismo mensaje genérico sin
+                // importar la causa real. Acá se intenta parsear como JSON (el caso
+                // normal, controlado por OnPostConfirmAsync) y, si falla, se muestra el
+                // status HTTP + el texto crudo -- así cualquier falla de infraestructura
+                // (antiforgery, tamaño de archivo, error 500 no capturado) se ve en
+                // pantalla en vez de quedar oculta.
+                .then(function (respuesta) {
+                    return respuesta.text().then(function (texto) {
+                        var data;
+                        try {
+                            data = JSON.parse(texto);
+                        } catch (parseErr) {
+                            throw new Error('HTTP ' + respuesta.status + ' ' + respuesta.statusText + ' -- ' + texto.slice(0, 500));
+                        }
+                        return { ok: respuesta.ok, data: data };
+                    });
+                })
                 .then(function (resultado) {
                     pollingActivo = false;
                     actualizarBarra(resultado.data);
                     mostrarResultado(resultado.data);
                 })
-                .catch(function () {
+                .catch(function (err) {
                     pollingActivo = false;
-                    resultadoDiv.innerHTML = '<div class="alert alert-danger">No se pudo confirmar la importación -- revisá la conexión e intentá de nuevo.</div>';
+                    console.error('Confirmar importación: fallo al confirmar', err);
+                    resultadoDiv.innerHTML = '<div class="alert alert-danger">No se pudo confirmar la importación -- ' + escaparHtml(err.message || 'revisá la conexión e intentá de nuevo.') + '</div>';
                 })
                 .finally(function () {
                     btnConfirmar.disabled = false;
@@ -304,6 +350,48 @@
         document.getElementById('tipo-doc-inventory').style.display = modulo === 'Inventory' ? '' : 'none';
     }
     mostrarTipoDocumento(document.querySelector('[name="Input.Module"]').value);
+</script>
+
+<script>
+    // "Descargar formato para importar" -- OnGetTemplateAsync (Index.cshtml.cs) ya
+    // existe y genera el .xlsx en base a la configuración vigente para
+    // Módulo+Tipo de documento+Tipo de línea (GenericImportService.GenerateTemplateAsync);
+    // acá solo faltaba el disparador en la UI. Es un GET puro (sin antiforgery, sin
+    // efectos secundarios) -- alcanza con navegar a la URL, no hace falta fetch.
+    (function () {
+        var btnDescargarFormato = document.getElementById('btnDescargarFormato');
+        if (!btnDescargarFormato) {
+            return;
+        }
+
+        btnDescargarFormato.addEventListener('click', function () {
+            var modulo = document.querySelector('[name="Input.Module"]').value;
+            // Mismo criterio que mostrarTipoDocumento -- el <select> real depende del
+            // Módulo elegido, los otros dos quedan ocultos pero igual existen en el DOM.
+            var tipoDocumentoSelectName = modulo === 'Sales' ? 'Input.SalesDocumentType'
+                : modulo === 'Purchase' ? 'Input.PurchaseDocumentType'
+                : 'Input.InventoryDocumentType';
+            var tipoDocumento = document.querySelector('[name="' + tipoDocumentoSelectName + '"]').value;
+            var tipoLinea = document.querySelector('[name="Input.LineType"]').value;
+            var socio = document.querySelector('[name="Input.BusinessPartnerCardCode"]').value;
+
+            if (!modulo || !tipoDocumento) {
+                alert('Elegí Módulo y Tipo de documento antes de descargar el formato.');
+                return;
+            }
+
+            var params = new URLSearchParams({
+                handler: 'Template',
+                module: modulo,
+                documentType: tipoDocumento,
+                lineType: tipoLinea,
+            });
+            if (socio) {
+                params.append('businessPartnerCardCode', socio);
+            }
+            window.location.href = '?' + params.toString();
+        });
+    })();
 </script>
 
 <script src="~/js/catalog-search.js"></script>

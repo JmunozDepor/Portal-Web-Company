@@ -25,9 +25,9 @@
     "semantic_hash": "94d0e295ea7edbbce45ad2645f318a02"
   },
   "PortalSaas.sln": {
-    "mtime": 1785103659.914318,
-    "ast_hash": "78ea9e2e261d1444a88a5d17aa40badd",
-    "semantic_hash": "78ea9e2e261d1444a88a5d17aa40badd"
+    "mtime": 1786766417.883836,
+    "ast_hash": "814b6e22083f194c68f71183f7c3ef81",
+    "semantic_hash": ""
   },
   "dotnet-tools.json": {
     "mtime": 1784905433.7921884,
@@ -45,9 +45,9 @@
     "semantic_hash": "ceb30406ba7a2036bcf14135199abc3a"
   },
   "plugins/Modulo.Administracion/ModuloAdministracion.cs": {
-    "mtime": 1785117051.2714045,
-    "ast_hash": "f21f63b7163679925068f21d21c93817",
-    "semantic_hash": "f21f63b7163679925068f21d21c93817"
+    "mtime": 1788179760.8008811,
+    "ast_hash": "11c2320803da6848259f7f3042fd5916",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Administracion/Pages/AdminPageModelBase.cs": {
     "mtime": 1785001684.6519208,
@@ -55,9 +55,9 @@
     "semantic_hash": "bb88a4f67ae741dd49b4c7b8298472ab"
   },
   "plugins/Modulo.Administracion/Pages/GruposMenu/Index.cshtml": {
-    "mtime": 1785169186.4680622,
-    "ast_hash": "3f4eb228251412dfa40cdd6f484b9eab",
-    "semantic_hash": "3f4eb228251412dfa40cdd6f484b9eab"
+    "mtime": 1787921253.667273,
+    "ast_hash": "8062906ba16c6dbe34b15ef6e039aa03",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Administracion/Pages/GruposMenu/Index.cshtml.cs": {
     "mtime": 1785168628.3934827,
@@ -65,9 +65,9 @@
     "semantic_hash": "9a76a0d0b4afb8d6034afa645e4a3dcd"
   },
   "plugins/Modulo.Administracion/Pages/Modulos/Index.cshtml": {
-    "mtime": 1785117073.7028565,
-    "ast_hash": "9908cf8d05e16b05bf8188873ee1e740",
-    "semantic_hash": "9908cf8d05e16b05bf8188873ee1e740"
+    "mtime": 1787921154.7902658,
+    "ast_hash": "8220f782f32aedfaef7786017a1236b6",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Administracion/Pages/Modulos/Index.cshtml.cs": {
     "mtime": 1785117064.104804,
@@ -75,9 +75,9 @@
     "semantic_hash": "41aa4e464e8b26301dd02443ba9d3132"
   },
   "plugins/Modulo.Administracion/Pages/Perfiles/Index.cshtml": {
-    "mtime": 1785117177.3577003,
-    "ast_hash": "aa78a9f6d7c43b934271542c654e4aaa",
-    "semantic_hash": "aa78a9f6d7c43b934271542c654e4aaa"
+    "mtime": 1787921154.8082864,
+    "ast_hash": "3e6b6380e10e64c48463836c5efe3b52",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Administracion/Pages/Perfiles/Index.cshtml.cs": {
     "mtime": 1785117161.5727053,
@@ -85,19 +85,19 @@
     "semantic_hash": "cbbc66ee3ca4e7b10963b446a74baea3"
   },
   "plugins/Modulo.Administracion/Pages/Usuarios/Editar.cshtml": {
-    "mtime": 1785001958.3695488,
-    "ast_hash": "f13fab9941f204141896979b453b8adc",
-    "semantic_hash": "f13fab9941f204141896979b453b8adc"
+    "mtime": 1788544980.191286,
+    "ast_hash": "ca5038d134a6bde8cddefb98e395a5b5",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Administracion/Pages/Usuarios/Editar.cshtml.cs": {
-    "mtime": 1785001740.3203855,
-    "ast_hash": "ebfbee4911fea783776ea07225f0df4d",
-    "semantic_hash": "ebfbee4911fea783776ea07225f0df4d"
+    "mtime": 1788545034.9906008,
+    "ast_hash": "36bc10d84244659a121e8c8d924459de",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Administracion/Pages/Usuarios/Index.cshtml": {
-    "mtime": 1785001709.9269166,
-    "ast_hash": "475c1c45b6215c0726d795a07f70660f",
-    "semantic_hash": "475c1c45b6215c0726d795a07f70660f"
+    "mtime": 1787921253.7259512,
+    "ast_hash": "cec11626873f741e201070cabb88bcb1",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Administracion/Pages/Usuarios/Index.cshtml.cs": {
     "mtime": 1785001693.867495,
@@ -110,9 +110,9 @@
     "semantic_hash": "76e9d34aa299c0a1634617199b07f1a3"
   },
   "plugins/Modulo.Administracion/_ViewStart.cshtml": {
-    "mtime": 1785130449.0289576,
-    "ast_hash": "2867556e4955f36f33887afb295455ee",
-    "semantic_hash": "2867556e4955f36f33887afb295455ee"
+    "mtime": 1787921154.8843687,
+    "ast_hash": "56f4c106d0c9cd5d1351b50774f9bf8f",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Compras/Modulo.Compras.csproj": {
     "mtime": 1785031666.1130733,
@@ -125,9 +125,9 @@
     "semantic_hash": "ba3380780025612ad1f526df6ff1a935"
   },
   "plugins/Modulo.Compras/Pages/DetailGenericPurchaseDocumentModelBase.cs": {
-    "mtime": 1785644966.9244235,
-    "ast_hash": "8c84386185bda91da062f06a5ff22354",
-    "semantic_hash": "8c84386185bda91da062f06a5ff22354"
+    "mtime": 1788560577.5155647,
+    "ast_hash": "8d0f0d6b29d80f1a15df61da908f1653",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Compras/Pages/IndexGenericPurchaseDocumentModelBase.cs": {
     "mtime": 1785644958.5994697,
@@ -175,14 +175,14 @@
     "semantic_hash": "d0f8a07b8f5b070cfe995dbf88fdc3dc"
   },
   "plugins/Modulo.Compras/Pages/Shared/_TabContentCompras.cshtml": {
-    "mtime": 1785182414.338922,
-    "ast_hash": "8ba1f3d5ff3747da4e40ccdf40485700",
-    "semantic_hash": "8ba1f3d5ff3747da4e40ccdf40485700"
+    "mtime": 1788116479.7900617,
+    "ast_hash": "ed333d6ffee8348984d1aff48354c9de",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Compras/Pages/Shared/_TabGeneralCompras.cshtml": {
-    "mtime": 1785724880.053485,
-    "ast_hash": "2645f40d95063c1f79e5d0f9a90717f7",
-    "semantic_hash": "2645f40d95063c1f79e5d0f9a90717f7"
+    "mtime": 1785727662.4952614,
+    "ast_hash": "b54e4d23cf43724e76804854dfbf51e5",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Compras/Pages/_ViewImports.cshtml": {
     "mtime": 1785031674.2698479,
@@ -190,9 +190,9 @@
     "semantic_hash": "76e9d34aa299c0a1634617199b07f1a3"
   },
   "plugins/Modulo.Compras/_ViewStart.cshtml": {
-    "mtime": 1785130449.1324391,
-    "ast_hash": "2d85700ebbbcc23c2c40047e500217a1",
-    "semantic_hash": "2d85700ebbbcc23c2c40047e500217a1"
+    "mtime": 1787921154.9052162,
+    "ast_hash": "3102a6ef3f055ed207cde176f20756b2",
+    "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Modulo.ImportacionGenerica.csproj": {
     "mtime": 1785103287.6524415,
@@ -200,14 +200,14 @@
     "semantic_hash": "381540d9976de4cc65c7b7a0562bb296"
   },
   "plugins/Modulo.ImportacionGenerica/ModuloImportacionGenerica.cs": {
-    "mtime": 1785103297.928395,
-    "ast_hash": "45fe69fce4ce7606c31e37bff53566d5",
-    "semantic_hash": "45fe69fce4ce7606c31e37bff53566d5"
+    "mtime": 1786674920.0645866,
+    "ast_hash": "3882b9bbb46ed2fa5a1de6d3efaf647c",
+    "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Pages/CamposUsuario/Index.cshtml": {
-    "mtime": 1785170773.9294984,
-    "ast_hash": "c438bb816b9e8a1770875fb3ac5f3f29",
-    "semantic_hash": "c438bb816b9e8a1770875fb3ac5f3f29"
+    "mtime": 1786244873.0246937,
+    "ast_hash": "fa24d82cb7766b7e6768e6a687899b8b",
+    "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Pages/CamposUsuario/Index.cshtml.cs": {
     "mtime": 1785103400.6133978,
@@ -215,24 +215,24 @@
     "semantic_hash": "36f7d719122e595aa2f667b708c2a6f4"
   },
   "plugins/Modulo.ImportacionGenerica/Pages/Configuracion/Index.cshtml": {
-    "mtime": 1785183363.8620677,
-    "ast_hash": "f9800b98e00244eac10c092704078715",
-    "semantic_hash": "f9800b98e00244eac10c092704078715"
+    "mtime": 1788562757.3570418,
+    "ast_hash": "0937b5ba06c9651ed06183214e84dde6",
+    "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Pages/Configuracion/Index.cshtml.cs": {
-    "mtime": 1785183338.0884278,
-    "ast_hash": "710368cf7b199f74e56c69c5c82629b7",
-    "semantic_hash": "710368cf7b199f74e56c69c5c82629b7"
+    "mtime": 1786244571.8439982,
+    "ast_hash": "ef8e875e744c89a74bc5c6485383d816",
+    "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Pages/Importar/Index.cshtml": {
-    "mtime": 1785707517.0645952,
-    "ast_hash": "84816e7402c69d8f19be2d9277c232dc",
-    "semantic_hash": "84816e7402c69d8f19be2d9277c232dc"
+    "mtime": 1788747749.39422,
+    "ast_hash": "cf41ab504f01753f39fd9b524f542c67",
+    "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Pages/Importar/Index.cshtml.cs": {
-    "mtime": 1785707490.0659797,
-    "ast_hash": "9b7877cf44e25ddc9a9cfa9944002928",
-    "semantic_hash": "9b7877cf44e25ddc9a9cfa9944002928"
+    "mtime": 1788748120.1593037,
+    "ast_hash": "e1e20b10881fcf6278d6010e2cbd4374",
+    "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Pages/PageModelBaseAdmin.cs": {
     "mtime": 1785103326.4642892,
@@ -245,9 +245,9 @@
     "semantic_hash": "76e9d34aa299c0a1634617199b07f1a3"
   },
   "plugins/Modulo.ImportacionGenerica/_ViewStart.cshtml": {
-    "mtime": 1785130449.2111278,
-    "ast_hash": "a3bcd002d415e7b6c129e480edbebb6b",
-    "semantic_hash": "a3bcd002d415e7b6c129e480edbebb6b"
+    "mtime": 1787921154.913185,
+    "ast_hash": "2491454fe4990d8a35a430991ac8e238",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Inventario/Modulo.Inventario.csproj": {
     "mtime": 1785030640.7568257,
@@ -255,19 +255,19 @@
     "semantic_hash": "1c8ad0f02c3c4e0ab1e006714054a583"
   },
   "plugins/Modulo.Inventario/ModuloInventario.cs": {
-    "mtime": 1785030664.384344,
-    "ast_hash": "0af73e3b9489075f949a9de0698cf11e",
-    "semantic_hash": "0af73e3b9489075f949a9de0698cf11e"
+    "mtime": 1788613786.6646328,
+    "ast_hash": "c1179fa400138996b4beef56691b9516",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Inventario/Pages/DetailGenericInventoryDocumentModelBase.cs": {
-    "mtime": 1785712324.8918867,
-    "ast_hash": "f2b837d64451fc9f8ba460639d856eaf",
-    "semantic_hash": "f2b837d64451fc9f8ba460639d856eaf"
+    "mtime": 1788560518.0184934,
+    "ast_hash": "60fefd02ce08a9736b9329ea76e22805",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Inventario/Pages/IndexGenericInventoryDocumentModelBase.cs": {
-    "mtime": 1785644984.6975498,
-    "ast_hash": "7fcd3ecacc55682e33fca4cd6b5b549b",
-    "semantic_hash": "7fcd3ecacc55682e33fca4cd6b5b549b"
+    "mtime": 1788194062.5711458,
+    "ast_hash": "4d49c4ad965fd23627bdb622341c4c03",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Inventario/Pages/InventoryTransferRequests/Detail.cshtml": {
     "mtime": 1785030755.0007942,
@@ -290,9 +290,9 @@
     "semantic_hash": "80107afed8a7b666d3316a4dc8755bd7"
   },
   "plugins/Modulo.Inventario/Pages/Shared/_TabContentInventario.cshtml": {
-    "mtime": 1785182434.690733,
-    "ast_hash": "94bb8f6a1bcfbb5856ad9aae60818f32",
-    "semantic_hash": "94bb8f6a1bcfbb5856ad9aae60818f32"
+    "mtime": 1788116479.8226542,
+    "ast_hash": "05d58a3d5dd400e44f65497199afb437",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Inventario/Pages/Shared/_TabGeneralInventario.cshtml": {
     "mtime": 1785724908.3756843,
@@ -325,9 +325,9 @@
     "semantic_hash": "76e9d34aa299c0a1634617199b07f1a3"
   },
   "plugins/Modulo.Inventario/_ViewStart.cshtml": {
-    "mtime": 1785130449.2820613,
-    "ast_hash": "2d85700ebbbcc23c2c40047e500217a1",
-    "semantic_hash": "2d85700ebbbcc23c2c40047e500217a1"
+    "mtime": 1787921154.9318485,
+    "ast_hash": "3102a6ef3f055ed207cde176f20756b2",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Ventas/Modulo.Ventas.csproj": {
     "mtime": 1785017444.6331978,
@@ -380,9 +380,9 @@
     "semantic_hash": "e21daa58e7bb2b9d9b746ce05d08726d"
   },
   "plugins/Modulo.Ventas/Pages/DetailGenericSalesDocumentModelBase.cs": {
-    "mtime": 1785644939.554173,
-    "ast_hash": "1b1bb5e9889a03a6421b5529a330f8c5",
-    "semantic_hash": "1b1bb5e9889a03a6421b5529a330f8c5"
+    "mtime": 1788560553.271267,
+    "ast_hash": "a9b1b6fa2b24f0b83a106c049253d39a",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Ventas/Pages/IndexGenericSalesDocumentModelBase.cs": {
     "mtime": 1785644934.66945,
@@ -490,9 +490,9 @@
     "semantic_hash": "5f271dfa16cf2a5f4bf43f7490cfce63"
   },
   "plugins/Modulo.Ventas/Pages/Shared/_TabContentVentas.cshtml": {
-    "mtime": 1785182377.673508,
-    "ast_hash": "ee584abad618719baa1554c8b965ea86",
-    "semantic_hash": "ee584abad618719baa1554c8b965ea86"
+    "mtime": 1788116479.852981,
+    "ast_hash": "34cf464f943ece6fb10d2a4a3ef4a302",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Ventas/Pages/Shared/_TabFinanzasVentas.cshtml": {
     "mtime": 1785101574.1333976,
@@ -500,9 +500,9 @@
     "semantic_hash": "bfc428a4396f3b6666a053bff0090988"
   },
   "plugins/Modulo.Ventas/Pages/Shared/_TabGeneralVentas.cshtml": {
-    "mtime": 1785724851.4872935,
-    "ast_hash": "5ec3693010137f4d24d52a7b1204e6b1",
-    "semantic_hash": "5ec3693010137f4d24d52a7b1204e6b1"
+    "mtime": 1785727653.3517187,
+    "ast_hash": "021f7fbffe36b5d8e552e60b667755b6",
+    "semantic_hash": ""
   },
   "plugins/Modulo.Ventas/Pages/Shared/_TabLogisticaVentas.cshtml": {
     "mtime": 1785101568.889028,
@@ -515,14 +515,14 @@
     "semantic_hash": "76e9d34aa299c0a1634617199b07f1a3"
   },
   "plugins/Modulo.Ventas/_ViewStart.cshtml": {
-    "mtime": 1785130449.3421192,
-    "ast_hash": "2d85700ebbbcc23c2c40047e500217a1",
-    "semantic_hash": "2d85700ebbbcc23c2c40047e500217a1"
+    "mtime": 1787921154.948669,
+    "ast_hash": "3102a6ef3f055ed207cde176f20756b2",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Componentes/DocumentFormViewModel.cs": {
-    "mtime": 1785017007.4372065,
-    "ast_hash": "eb90858e335b51ad2cbe161644d48954",
-    "semantic_hash": "eb90858e335b51ad2cbe161644d48954"
+    "mtime": 1788560477.7459316,
+    "ast_hash": "bbfa7f52fd47aa9ce52cba4d9ecd019d",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Componentes/DocumentListViewModel.cs": {
     "mtime": 1785170038.6549833,
@@ -590,9 +590,9 @@
     "semantic_hash": "885f3ed7f4e6083e587f0a860cabd8cb"
   },
   "src/PortalSaas.Abstractions/Contratos/IExternalDatabaseConnectionService.cs": {
-    "mtime": 1785103563.6764722,
-    "ast_hash": "0a27efef5cf652453efeab8d243553b6",
-    "semantic_hash": "0a27efef5cf652453efeab8d243553b6"
+    "mtime": 1787922194.96254,
+    "ast_hash": "f888fe77eee03b9a35f7a8f29552e407",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IGeneralLedgerAccountCatalogService.cs": {
     "mtime": 1785128818.8345578,
@@ -600,29 +600,29 @@
     "semantic_hash": "563df85f0a32ca82fa3fa0d679d5a458"
   },
   "src/PortalSaas.Abstractions/Contratos/IGenericImportConfigService.cs": {
-    "mtime": 1785102911.2437096,
-    "ast_hash": "70bed70610b1c74cac0b693a58a09c96",
-    "semantic_hash": "70bed70610b1c74cac0b693a58a09c96"
+    "mtime": 1786244173.0403707,
+    "ast_hash": "b93167a481a4f5aaaf1d56747faf6661",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IGenericImportProgressStore.cs": {
-    "mtime": 1785102916.6236138,
-    "ast_hash": "9c4beb6badeb408e8b0ea0656919aab8",
-    "semantic_hash": "9c4beb6badeb408e8b0ea0656919aab8"
+    "mtime": 1787924911.040772,
+    "ast_hash": "fc846148674c6dcae777131454ed97d3",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IGenericImportService.cs": {
-    "mtime": 1785102929.3885407,
-    "ast_hash": "63277c83d43bd6c9707376400327662e",
-    "semantic_hash": "63277c83d43bd6c9707376400327662e"
+    "mtime": 1786244748.6689487,
+    "ast_hash": "e8ce0c50fc8b235451d469fa7e34df58",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IGenericImportUserFieldService.cs": {
-    "mtime": 1785102822.3965676,
-    "ast_hash": "3913b345a3ac32f004413f7da1793c5f",
-    "semantic_hash": "3913b345a3ac32f004413f7da1793c5f"
+    "mtime": 1786200666.84558,
+    "ast_hash": "7fac4db702c0be05d658348ce40330fa",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IHanaService.cs": {
-    "mtime": 1784985366.3362753,
-    "ast_hash": "7175abedad7e3c2108ce4094f7826b06",
-    "semantic_hash": "7175abedad7e3c2108ce4094f7826b06"
+    "mtime": 1787367797.7209885,
+    "ast_hash": "7752119a182467397ebb3b5929e2ae84",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IInstallationFingerprintProvider.cs": {
     "mtime": 1785380978.146996,
@@ -630,14 +630,14 @@
     "semantic_hash": "fefc7f52f785322ca27e259c6c497aa8"
   },
   "src/PortalSaas.Abstractions/Contratos/IInventoryDocumentService.cs": {
-    "mtime": 1785707197.007598,
-    "ast_hash": "4649b9830ba65f6ed87fa9f1cd66c006",
-    "semantic_hash": "4649b9830ba65f6ed87fa9f1cd66c006"
+    "mtime": 1788560451.6358788,
+    "ast_hash": "a73c3b12cfcdeaa697a2dbd98fc7e36d",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IItemCatalogService.cs": {
-    "mtime": 1785102984.7698047,
-    "ast_hash": "33ac51c19cf577797d847e1c8f1f12be",
-    "semantic_hash": "33ac51c19cf577797d847e1c8f1f12be"
+    "mtime": 1788749576.909658,
+    "ast_hash": "bbe213f0514dcb3735ec78d92dc3b253",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IItemCrossReferenceService.cs": {
     "mtime": 1785073592.0034218,
@@ -670,9 +670,9 @@
     "semantic_hash": "21201e7420e5f35523222f864d7887a7"
   },
   "src/PortalSaas.Abstractions/Contratos/IModuloPortal.cs": {
-    "mtime": 1784911322.2039814,
-    "ast_hash": "20f7f7513ca078c25ac2326c26dfa296",
-    "semantic_hash": "20f7f7513ca078c25ac2326c26dfa296"
+    "mtime": 1787922193.8735032,
+    "ast_hash": "dfdcfa4f49e4d57ca355176f9dba439f",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IOrganizationAccessGateService.cs": {
     "mtime": 1784934523.7272446,
@@ -715,19 +715,19 @@
     "semantic_hash": "f87e7db2da9be4429fd2102dff8480e3"
   },
   "src/PortalSaas.Abstractions/Contratos/IPriceListService.cs": {
-    "mtime": 1785073605.9936917,
-    "ast_hash": "8676a08db8eb59a522f2dcfe61eda2d4",
-    "semantic_hash": "8676a08db8eb59a522f2dcfe61eda2d4"
+    "mtime": 1788613786.7124646,
+    "ast_hash": "67d3525d8bbb2728681c57cc44df9fb5",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IPurchaseDocumentService.cs": {
-    "mtime": 1785707184.5496879,
-    "ast_hash": "b8948ede3151881ab839b62b0978f23d",
-    "semantic_hash": "b8948ede3151881ab839b62b0978f23d"
+    "mtime": 1788560449.8601186,
+    "ast_hash": "4c570d4e86e589f6ffeb01b8e19fe5ea",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/ISalesDocumentService.cs": {
-    "mtime": 1785707176.3954167,
-    "ast_hash": "de17a638506942587570f83db04727b9",
-    "semantic_hash": "de17a638506942587570f83db04727b9"
+    "mtime": 1788560448.014627,
+    "ast_hash": "f9e07efdee1d95817432a800e6cf9891",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/ISalesEmployeeCatalogService.cs": {
     "mtime": 1785128925.4935136,
@@ -735,9 +735,9 @@
     "semantic_hash": "80728035e3cc0167fed768d4b03b331f"
   },
   "src/PortalSaas.Abstractions/Contratos/ISapConnectionProvider.cs": {
-    "mtime": 1784985377.1103399,
-    "ast_hash": "dc3cc99e2d35cb5191080b3ec26bc1c4",
-    "semantic_hash": "dc3cc99e2d35cb5191080b3ec26bc1c4"
+    "mtime": 1788556698.8652701,
+    "ast_hash": "78ab7efb91685f37f23715677fdd39d1",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/ISapConnectionTestService.cs": {
     "mtime": 1784987775.4694543,
@@ -770,9 +770,9 @@
     "semantic_hash": "c63405bb16b05fcd4abc0f0f53764fc8"
   },
   "src/PortalSaas.Abstractions/Contratos/ITenantUserAdminService.cs": {
-    "mtime": 1785001584.039812,
-    "ast_hash": "7a05c1704db610644301eefa6828fe21",
-    "semantic_hash": "7a05c1704db610644301eefa6828fe21"
+    "mtime": 1788545019.003697,
+    "ast_hash": "50c3b8c45a3e34347b69cfdeb8ace309",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IUnitOfMeasureCatalogService.cs": {
     "mtime": 1785129013.3076751,
@@ -855,9 +855,9 @@
     "semantic_hash": "a3ccb014fc0eb61d5e3cc8f7803326db"
   },
   "src/PortalSaas.Abstractions/Modelos/ExternalDatabaseConnection.cs": {
-    "mtime": 1785103553.7863877,
-    "ast_hash": "30bed0015a43b784030e8bdcee7c4de8",
-    "semantic_hash": "30bed0015a43b784030e8bdcee7c4de8"
+    "mtime": 1787922192.639542,
+    "ast_hash": "3fea8ef80ddb838768b9e2a682dc9a14",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/GeneralLedgerAccountDto.cs": {
     "mtime": 1785046584.3992097,
@@ -865,9 +865,9 @@
     "semantic_hash": "4378be209d998ca9ac0bb0e76492106e"
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportConfigDto.cs": {
-    "mtime": 1785102601.6702816,
-    "ast_hash": "821e1f508cf6cf22141fb5f15140532b",
-    "semantic_hash": "821e1f508cf6cf22141fb5f15140532b"
+    "mtime": 1786244121.3420696,
+    "ast_hash": "d98f27b7a4cee73baece83804d2d4c8e",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportFieldDataType.cs": {
     "mtime": 1785102566.6604307,
@@ -885,9 +885,9 @@
     "semantic_hash": "be4ff86ff189dfe5513acb6b4eab661b"
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportLogicalField.cs": {
-    "mtime": 1785102584.2228754,
-    "ast_hash": "3cfc4edc4952b11b3304171134ab01fc",
-    "semantic_hash": "3cfc4edc4952b11b3304171134ab01fc"
+    "mtime": 1786244108.3068721,
+    "ast_hash": "f1de7f8ae5e4b39a10548b6080861f13",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportModule.cs": {
     "mtime": 1785102549.892196,
@@ -895,9 +895,9 @@
     "semantic_hash": "db1fe4a67dadbe776d3180f88fcbca4f"
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportParametersDto.cs": {
-    "mtime": 1785102608.5997276,
-    "ast_hash": "9546f6d10a3410129a6e9e706c485e28",
-    "semantic_hash": "9546f6d10a3410129a6e9e706c485e28"
+    "mtime": 1786200677.6584973,
+    "ast_hash": "d0cc33b5104487f57b72d907e88bddb9",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportPriceSource.cs": {
     "mtime": 1785102561.8180704,
@@ -905,14 +905,14 @@
     "semantic_hash": "3e0f39e3360967d4a537af888d152795"
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportProgressDto.cs": {
-    "mtime": 1785102653.869527,
-    "ast_hash": "b7f9a27c84a5ade57ae9a50dfe26df66",
-    "semantic_hash": "b7f9a27c84a5ade57ae9a50dfe26df66"
+    "mtime": 1787924911.0478177,
+    "ast_hash": "3e7c670211bd8cf4512365d38472c9d3",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportRowDto.cs": {
-    "mtime": 1785102647.3611794,
-    "ast_hash": "558d6acae3c93873cb5062fd48a7623b",
-    "semantic_hash": "558d6acae3c93873cb5062fd48a7623b"
+    "mtime": 1786244187.5845983,
+    "ast_hash": "21ab56e7f5d96669539cfd3e484f3e06",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportUserFieldDto.cs": {
     "mtime": 1785102591.9382842,
@@ -920,9 +920,9 @@
     "semantic_hash": "f599cbe62520e0cd343b40ff844f6b13"
   },
   "src/PortalSaas.Abstractions/Modelos/InventoryDocumentDto.cs": {
-    "mtime": 1785712252.9871488,
-    "ast_hash": "22782c3e0f6f238688eab5e450b72436",
-    "semantic_hash": "22782c3e0f6f238688eab5e450b72436"
+    "mtime": 1788194040.0652826,
+    "ast_hash": "a6e712e1b2b80f4424049717653a0c4a",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/InventoryDocumentType.cs": {
     "mtime": 1785030516.9436185,
@@ -950,9 +950,9 @@
     "semantic_hash": "f3df54fc1e9395c79ac0b430511014b2"
   },
   "src/PortalSaas.Abstractions/Modelos/LicenseStatusPayload.cs": {
-    "mtime": 1785380890.636912,
-    "ast_hash": "6f9f15295138b126f41b1c9f1efe3018",
-    "semantic_hash": "6f9f15295138b126f41b1c9f1efe3018"
+    "mtime": 1785761050.0897393,
+    "ast_hash": "3d0373916ac3ad85d3b05b4271305b0f",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/LimitCheckResult.cs": {
     "mtime": 1784911467.625988,
@@ -995,9 +995,9 @@
     "semantic_hash": "1906bec26d8fbc3cd038d668bfef7eac"
   },
   "src/PortalSaas.Abstractions/Modelos/PurchaseDocumentDto.cs": {
-    "mtime": 1785102378.8640795,
-    "ast_hash": "9745c041aa08fdfdfb44e54531f82edf",
-    "semantic_hash": "9745c041aa08fdfdfb44e54531f82edf"
+    "mtime": 1786834787.5881357,
+    "ast_hash": "7720532dddfd829fd43b42cfa45b11da",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/PurchaseDocumentType.cs": {
     "mtime": 1785031565.2606635,
@@ -1005,9 +1005,9 @@
     "semantic_hash": "0cd5323e177b763b5f8e16af3d1dd8e6"
   },
   "src/PortalSaas.Abstractions/Modelos/SalesDocumentDto.cs": {
-    "mtime": 1785102363.8898017,
-    "ast_hash": "8be526a042988edbe65d158fb4e78403",
-    "semantic_hash": "8be526a042988edbe65d158fb4e78403"
+    "mtime": 1786834787.6034045,
+    "ast_hash": "3bbb8060d264f1d9a4cd38ec332734c5",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/SalesDocumentType.cs": {
     "mtime": 1785022828.7067893,
@@ -1050,9 +1050,9 @@
     "semantic_hash": "9e0c96010707b1a02b13de2c1c44c446"
   },
   "src/PortalSaas.Abstractions/Modelos/TenantUserAdmin.cs": {
-    "mtime": 1785001570.7501771,
-    "ast_hash": "79716f196efe5ffbdfeea55cec9d7ad8",
-    "semantic_hash": "79716f196efe5ffbdfeea55cec9d7ad8"
+    "mtime": 1788545013.1096325,
+    "ast_hash": "7b392c92caf0e34e491b568fb12ad515",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/UnitOfMeasureDto.cs": {
     "mtime": 1785096368.8336008,
@@ -1095,9 +1095,9 @@
     "semantic_hash": "d41467b3bc0de9536c325fbc2a2e780b"
   },
   "src/PortalSaas.Core/Administracion/TenantUserAdminService.cs": {
-    "mtime": 1785116991.1443474,
-    "ast_hash": "26272b22af7bb89a26f657a371ced315",
-    "semantic_hash": "26272b22af7bb89a26f657a371ced315"
+    "mtime": 1788545107.486476,
+    "ast_hash": "cc97128e3f0fb0ca93bfeac2f5f55609",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Catalogos/BranchCatalogService.cs": {
     "mtime": 1785128738.97467,
@@ -1140,14 +1140,14 @@
     "semantic_hash": "eddd0486cf3ad9b6fa4955d8e3c8c516"
   },
   "src/PortalSaas.Core/Catalogos/GeneralLedgerAccountCatalogService.cs": {
-    "mtime": 1785128826.1294792,
-    "ast_hash": "cb87519434e48f41502cf85f9140cf8f",
-    "semantic_hash": "cb87519434e48f41502cf85f9140cf8f"
+    "mtime": 1788360212.5200505,
+    "ast_hash": "42f046006087c863f302d718d16f4848",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Catalogos/ItemCatalogService.cs": {
-    "mtime": 1785725018.5553048,
-    "ast_hash": "2195938daf5832f10e8fa75af8c72e23",
-    "semantic_hash": "2195938daf5832f10e8fa75af8c72e23"
+    "mtime": 1788749585.5566096,
+    "ast_hash": "5402f2cde229c23540ffcf2df39b85b9",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Catalogos/ItemCrossReferenceService.cs": {
     "mtime": 1785073673.2281833,
@@ -1165,9 +1165,9 @@
     "semantic_hash": "644b2f8bf15a51397b216b772064939c"
   },
   "src/PortalSaas.Core/Catalogos/PriceListService.cs": {
-    "mtime": 1785073712.9759827,
-    "ast_hash": "292f33afd38e3a38fe6f6facea8a9556",
-    "semantic_hash": "292f33afd38e3a38fe6f6facea8a9556"
+    "mtime": 1788613786.741204,
+    "ast_hash": "b8e053abdc4d36f48c664cbcc4b0ca58",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Catalogos/SalesEmployeeCatalogService.cs": {
     "mtime": 1785128933.5168438,
@@ -1210,9 +1210,9 @@
     "semantic_hash": "91d2312e55df1adbe5119e5c3602c36e"
   },
   "src/PortalSaas.Core/Comercial/ContractLimitService.cs": {
-    "mtime": 1784938322.7365508,
-    "ast_hash": "3bd92afe743edf353be1524ab463a208",
-    "semantic_hash": "3bd92afe743edf353be1524ab463a208"
+    "mtime": 1785761101.9850326,
+    "ast_hash": "83ff3fa6756ad6507d9550e89b029e00",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Comercial/Licenciamiento/InstallationFingerprintProvider.cs": {
     "mtime": 1785380987.103385,
@@ -1220,14 +1220,14 @@
     "semantic_hash": "a115c454df08e6aec5e6016b703cb29b"
   },
   "src/PortalSaas.Core/Comercial/Licenciamiento/LicenseActivationService.cs": {
-    "mtime": 1785380954.9456453,
-    "ast_hash": "c5d1e99ca860a1dfc7c76e3ce6ad9bd8",
-    "semantic_hash": "c5d1e99ca860a1dfc7c76e3ce6ad9bd8"
+    "mtime": 1785761056.179654,
+    "ast_hash": "21a1ff5a7c6d5ca4a9b818bd38e14d2b",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Comercial/Licenciamiento/LicenseActivatorBackgroundService.cs": {
-    "mtime": 1785381019.962468,
-    "ast_hash": "03f4c4be9425f09245cb4e8ac45b9e6e",
-    "semantic_hash": "03f4c4be9425f09245cb4e8ac45b9e6e"
+    "mtime": 1787921155.02982,
+    "ast_hash": "2cb485eed577e5c09f262a8d0ee344c1",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Comercial/Licenciamiento/LicenseTokenService.cs": {
     "mtime": 1785381143.020135,
@@ -1235,9 +1235,9 @@
     "semantic_hash": "1b6a1f40eb6af25f0d6da8e0da4f713b"
   },
   "src/PortalSaas.Core/Comercial/ModuleAccessService.cs": {
-    "mtime": 1785129065.3755581,
-    "ast_hash": "28fff95ce92f2bf1d11362d2f325443e",
-    "semantic_hash": "28fff95ce92f2bf1d11362d2f325443e"
+    "mtime": 1787924911.0528288,
+    "ast_hash": "a19e82f6df43f96eda26b412b70ecadd",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Comercial/OrganizationAccessGateService.cs": {
     "mtime": 1785381088.6920888,
@@ -1250,19 +1250,19 @@
     "semantic_hash": "2cb367183dbd728fdc4e8bc29de54204"
   },
   "src/PortalSaas.Core/Compras/PurchaseDocumentService.cs": {
-    "mtime": 1785707281.478554,
-    "ast_hash": "efefed3eac8fb2146ccbe893dc137e44",
-    "semantic_hash": "efefed3eac8fb2146ccbe893dc137e44"
+    "mtime": 1788749681.5565708,
+    "ast_hash": "af15a7b2f932a9255e65994f34701f82",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Compras/PurchaseDocumentTypeCatalog.cs": {
-    "mtime": 1785100330.8579884,
-    "ast_hash": "ea9f14cc9ab4bb242cd9df72e4e84271",
-    "semantic_hash": "ea9f14cc9ab4bb242cd9df72e4e84271"
+    "mtime": 1788556746.7246885,
+    "ast_hash": "eb0331e2a48a42264a1ba61c97709f8e",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Compras/SapPurchaseDocumentModels.cs": {
-    "mtime": 1785102423.4034567,
-    "ast_hash": "640633624da0ce80d2334133b0a06050",
-    "semantic_hash": "640633624da0ce80d2334133b0a06050"
+    "mtime": 1786834787.6205473,
+    "ast_hash": "ae8d734d342c9b5b1c7d48aaba37989d",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Correo/EmailSenderService.cs": {
     "mtime": 1784914426.5029407,
@@ -1275,9 +1275,9 @@
     "semantic_hash": "346a94833f0e138d68daa009ca9c8156"
   },
   "src/PortalSaas.Core/Correo/GoogleServiceAccountJwtBuilder.cs": {
-    "mtime": 1784914379.6405177,
-    "ast_hash": "bb0b8fac4504f6cecfbd7bfb6e6cb845",
-    "semantic_hash": "bb0b8fac4504f6cecfbd7bfb6e6cb845"
+    "mtime": 1786238972.7984042,
+    "ast_hash": "1487e0bd0ef041f81fa8f670e8f4d301",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Correo/GoogleWorkspaceEmailSender.cs": {
     "mtime": 1784922505.502624,
@@ -1300,24 +1300,24 @@
     "semantic_hash": "c5e5d77540788b2944babcff5d762113"
   },
   "src/PortalSaas.Core/ImportacionGenerica/GenericImportConfigService.cs": {
-    "mtime": 1785103089.5855422,
-    "ast_hash": "27b26a9998fc2a55f5cd85b461491b43",
-    "semantic_hash": "27b26a9998fc2a55f5cd85b461491b43"
+    "mtime": 1786244157.8247051,
+    "ast_hash": "1de8180d30376f2835d1e4b280857e72",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/ImportacionGenerica/GenericImportProgressStore.cs": {
-    "mtime": 1785103096.1528797,
-    "ast_hash": "dc5b4d69b39442a2327919c1c93a8d30",
-    "semantic_hash": "dc5b4d69b39442a2327919c1c93a8d30"
+    "mtime": 1787924911.0572052,
+    "ast_hash": "2663cd9d816d6a76ed5f09b5be32ae87",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/ImportacionGenerica/GenericImportService.cs": {
-    "mtime": 1785707413.209087,
-    "ast_hash": "1acaee6cb6b2fc0e0eb76729026dc104",
-    "semantic_hash": "1acaee6cb6b2fc0e0eb76729026dc104"
+    "mtime": 1787924911.0627234,
+    "ast_hash": "39855933bf43c8d1f4e379fa70f01df7",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/ImportacionGenerica/GenericImportUserFieldService.cs": {
-    "mtime": 1785103067.9599063,
-    "ast_hash": "21bf32b7effdde8afd4db35c623b4cb0",
-    "semantic_hash": "21bf32b7effdde8afd4db35c623b4cb0"
+    "mtime": 1786200649.7852404,
+    "ast_hash": "177fc8e7f500116d2b1245058cd07b72",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/ImportacionGenerica/IGenericImportValidationRule.cs": {
     "mtime": 1785103105.0916066,
@@ -1325,14 +1325,14 @@
     "semantic_hash": "8f2bff1cd31c0e20b537c9a9b3ecc30e"
   },
   "src/PortalSaas.Core/Infraestructura/ExternalDatabaseConnectionService.cs": {
-    "mtime": 1785103587.57085,
-    "ast_hash": "b139191f26b40a31416ec944e0edc333",
-    "semantic_hash": "b139191f26b40a31416ec944e0edc333"
+    "mtime": 1787922194.9711034,
+    "ast_hash": "61bb42724532d32f94e06d5284426d3a",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Infraestructura/MenuNavigationService.cs": {
-    "mtime": 1785163851.1078885,
-    "ast_hash": "cbf64a4acc74672485c76e5543ec59e4",
-    "semantic_hash": "cbf64a4acc74672485c76e5543ec59e4"
+    "mtime": 1787921153.6200736,
+    "ast_hash": "dd4c0c59b9b6dce4fba566f319e62489",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Infraestructura/MenuSyncService.cs": {
     "mtime": 1784935316.3392844,
@@ -1360,9 +1360,9 @@
     "semantic_hash": "b5f5194303cf8b20f8e2da41bc76b156"
   },
   "src/PortalSaas.Core/Infraestructura/SapSessionCache.cs": {
-    "mtime": 1784985469.3785276,
-    "ast_hash": "b00c6f966a64580927611f850d178f3e",
-    "semantic_hash": "b00c6f966a64580927611f850d178f3e"
+    "mtime": 1787924911.0687695,
+    "ast_hash": "e1ca0edcce0bd4b2265fede422cee550",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Infraestructura/UserHomeShortcutService.cs": {
     "mtime": 1785129347.4993665,
@@ -1370,19 +1370,19 @@
     "semantic_hash": "9bc15d5fa534f310264520151be7cf8f"
   },
   "src/PortalSaas.Core/Inventario/InventoryDocumentService.cs": {
-    "mtime": 1785712269.1527855,
-    "ast_hash": "e90af50910286a06c1f98461dd063084",
-    "semantic_hash": "e90af50910286a06c1f98461dd063084"
+    "mtime": 1788749636.8593678,
+    "ast_hash": "11a25475a7838bd3b391d368de320d69",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Inventario/InventoryDocumentTypeCatalog.cs": {
-    "mtime": 1785100338.8120608,
-    "ast_hash": "0ed4fccf0d44ee1a55c20a1132409c72",
-    "semantic_hash": "0ed4fccf0d44ee1a55c20a1132409c72"
+    "mtime": 1788556750.948132,
+    "ast_hash": "a34c2b69cc452e0c788790275d01c9fc",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Inventario/SapInventoryDocumentModels.cs": {
-    "mtime": 1785712233.5527773,
-    "ast_hash": "9bb30e53a14fb7132fd35e5b738182a7",
-    "semantic_hash": "9bb30e53a14fb7132fd35e5b738182a7"
+    "mtime": 1788193256.2932374,
+    "ast_hash": "524dd4a8dfc7c6e1ba7eb87124f70569",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/PortalSaas.Core.csproj": {
     "mtime": 1785103627.3004606,
@@ -1390,9 +1390,9 @@
     "semantic_hash": "50f1ffb62c9f8a00c5c7e82b20ed7550"
   },
   "src/PortalSaas.Core/Sap/HanaService.cs": {
-    "mtime": 1784987740.7366765,
-    "ast_hash": "8f5c079335136701d350ffd4b12bba1c",
-    "semantic_hash": "8f5c079335136701d350ffd4b12bba1c"
+    "mtime": 1787921155.067285,
+    "ast_hash": "d807afbb929c701f36c24d1d9152a35a",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Sap/HanaToSqlServerTranslator.cs": {
     "mtime": 1784985417.2079782,
@@ -1405,14 +1405,14 @@
     "semantic_hash": "fce4c82eae13151f339b447e3f96a93e"
   },
   "src/PortalSaas.Core/Sap/SapAdditionalFieldsHelper.cs": {
-    "mtime": 1785102343.9425137,
-    "ast_hash": "11c7837dc738fc56173f67b1a6d295e9",
-    "semantic_hash": "11c7837dc738fc56173f67b1a6d295e9"
+    "mtime": 1788749617.450161,
+    "ast_hash": "7fbcf7079d1009242512b39038845017",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Sap/SapConnectionProvider.cs": {
-    "mtime": 1784985500.2958715,
-    "ast_hash": "6c85f62b2f9c72da6ebbd680a9dce7b6",
-    "semantic_hash": "6c85f62b2f9c72da6ebbd680a9dce7b6"
+    "mtime": 1787921155.075488,
+    "ast_hash": "e263e6c929a4d90e212d72b26b9a9197",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Sap/SapConnectionStringFactory.cs": {
     "mtime": 1784987722.9701288,
@@ -1425,9 +1425,9 @@
     "semantic_hash": "c97bac2da0fde8c2f2217e8ca6d17d6a"
   },
   "src/PortalSaas.Core/Sap/SapSession.cs": {
-    "mtime": 1784985489.1505866,
-    "ast_hash": "fc158f0263892e91bf8fcf81d9db1895",
-    "semantic_hash": "fc158f0263892e91bf8fcf81d9db1895"
+    "mtime": 1788556704.8487954,
+    "ast_hash": "f7b1a8991744911cd3593c365763626f",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Seguridad/AuthenticationService.cs": {
     "mtime": 1784913468.631356,
@@ -1435,9 +1435,9 @@
     "semantic_hash": "f079a04e41301413e5644192f2777277"
   },
   "src/PortalSaas.Core/Seguridad/CurrentCompanyAccessor.cs": {
-    "mtime": 1785006274.1541219,
-    "ast_hash": "754c28fad5dd4823da99b7d0485a76dd",
-    "semantic_hash": "754c28fad5dd4823da99b7d0485a76dd"
+    "mtime": 1786834787.669881,
+    "ast_hash": "3b47cfac76ffaf938bb2db3fcac0cb22",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Seguridad/CurrentUserContext.cs": {
     "mtime": 1785163876.2553132,
@@ -1475,24 +1475,24 @@
     "semantic_hash": "6b3fd1665a96e86b891e53bc3ad4fc08"
   },
   "src/PortalSaas.Core/Ventas/SalesDocumentService.cs": {
-    "mtime": 1785707243.6482048,
-    "ast_hash": "6f367177a154a784a94103dccb143680",
-    "semantic_hash": "6f367177a154a784a94103dccb143680"
+    "mtime": 1788749659.3439133,
+    "ast_hash": "4b518e13c76600c0a6956c4cf6632ec5",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Ventas/SalesDocumentTypeCatalog.cs": {
-    "mtime": 1785100322.2249703,
-    "ast_hash": "26a6827228a36019949576d5f3c6c210",
-    "semantic_hash": "26a6827228a36019949576d5f3c6c210"
+    "mtime": 1788556742.3046465,
+    "ast_hash": "78c01c1049ae4bcafa6c5175946be751",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Ventas/SapSalesDocumentModels.cs": {
-    "mtime": 1785102408.7339404,
-    "ast_hash": "b285ab63a6742f2d17c57fc7d7ba175e",
-    "semantic_hash": "b285ab63a6742f2d17c57fc7d7ba175e"
+    "mtime": 1786834787.6870954,
+    "ast_hash": "d42ef3cf7c63826bc21f524759022e16",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.PostgreSql/DesignTimeDbContextFactory.cs": {
-    "mtime": 1784910297.0102227,
-    "ast_hash": "868846b755cf09536dcc041eacc3a61d",
-    "semantic_hash": "868846b755cf09536dcc041eacc3a61d"
+    "mtime": 1787924911.075057,
+    "ast_hash": "9ee3c22ccf2b9a3fdfbe18c1cb86f3b9",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260724162645_InitialCreate.Designer.cs": {
     "mtime": 1784910405.6761117,
@@ -1675,14 +1675,14 @@
     "semantic_hash": "0fb617d296141ace7ce8870d521c3c21"
   },
   "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/PortalSaasDbContextModelSnapshot.cs": {
-    "mtime": 1785380858.868057,
-    "ast_hash": "4cbeb3cc1e5d9b557d3963b05462c14e",
-    "semantic_hash": "4cbeb3cc1e5d9b557d3963b05462c14e"
+    "mtime": 1788749800.0794528,
+    "ast_hash": "ff0505f7dcc3ec1de5c8ea6e2f1dc28d",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.PostgreSql/PortalSaas.Data.Migrations.PostgreSql.csproj": {
-    "mtime": 1784910387.917195,
-    "ast_hash": "a839dbfeb9ae85ab22e50ef806c680fc",
-    "semantic_hash": "a839dbfeb9ae85ab22e50ef806c680fc"
+    "mtime": 1787921155.1897125,
+    "ast_hash": "7bdeb65c183babefeca07dc2a2d48d45",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.PostgreSql/appsettings.Development.json": {
     "mtime": 1784910899.6271987,
@@ -1690,9 +1690,9 @@
     "semantic_hash": "9c1978dd6f31906e289e412fd7cdbbf2"
   },
   "src/PortalSaas.Data.Migrations.SqlServer/DesignTimeDbContextFactory.cs": {
-    "mtime": 1784910305.633718,
-    "ast_hash": "38a898824241dbc38fed4ccc90f84050",
-    "semantic_hash": "38a898824241dbc38fed4ccc90f84050"
+    "mtime": 1787924911.094849,
+    "ast_hash": "4fd2e699f3b73ea28310b49706a6e3d9",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260724221555_InitialCreate.Designer.cs": {
     "mtime": 1784931355.461347,
@@ -1825,14 +1825,14 @@
     "semantic_hash": "4fcb747b62968754217d49a354fc63b2"
   },
   "src/PortalSaas.Data.Migrations.SqlServer/Migrations/PortalSaasDbContextModelSnapshot.cs": {
-    "mtime": 1785380846.2212756,
-    "ast_hash": "3e93f8bea3e4cef2830ebe32be72141a",
-    "semantic_hash": "3e93f8bea3e4cef2830ebe32be72141a"
+    "mtime": 1788749809.0666893,
+    "ast_hash": "6419080db8d44e96f8406f8e36323c8f",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.SqlServer/PortalSaas.Data.Migrations.SqlServer.csproj": {
-    "mtime": 1784910391.5783057,
-    "ast_hash": "b61bd103c439a376804a342780ed1e5c",
-    "semantic_hash": "b61bd103c439a376804a342780ed1e5c"
+    "mtime": 1787921155.28528,
+    "ast_hash": "6842ec5f223079a271dda787d8848c8b",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.SqlServer/appsettings.Development.json": {
     "mtime": 1784931085.7468276,
@@ -1845,9 +1845,9 @@
     "semantic_hash": "0369e54b1be9d2176cfe112b63a1b10a"
   },
   "src/PortalSaas.Data/Entities/Company.cs": {
-    "mtime": 1784909931.5453365,
-    "ast_hash": "5fa3cecd84e2835e10e1e7c269f64524",
-    "semantic_hash": "5fa3cecd84e2835e10e1e7c269f64524"
+    "mtime": 1788749592.0089853,
+    "ast_hash": "f62d46d120f6d976e27cafeea42868a0",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data/Entities/EmailSettings.cs": {
     "mtime": 1784914310.8481412,
@@ -1855,9 +1855,9 @@
     "semantic_hash": "1e7b3a0c2030e957db935ea68b1eb998"
   },
   "src/PortalSaas.Data/Entities/GenericImportConfig.cs": {
-    "mtime": 1785102712.3663826,
-    "ast_hash": "9a2fe5635613d59c714064603c8dd4ca",
-    "semantic_hash": "9a2fe5635613d59c714064603c8dd4ca"
+    "mtime": 1786244130.75004,
+    "ast_hash": "cc7d90cb3f2ca115e96a802ec0114bdc",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data/Entities/GenericImportConfigField.cs": {
     "mtime": 1785102719.741923,
@@ -1865,9 +1865,9 @@
     "semantic_hash": "c78d4f4c140cda7e4fde4e4f929bb0de"
   },
   "src/PortalSaas.Data/Entities/GenericImportUserField.cs": {
-    "mtime": 1785102701.2361677,
-    "ast_hash": "4a4a95ee7ca7a04529136159702c632d",
-    "semantic_hash": "4a4a95ee7ca7a04529136159702c632d"
+    "mtime": 1786200529.3281937,
+    "ast_hash": "8356c53345b877e3861f0aba4913c453",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data/Entities/Instance.cs": {
     "mtime": 1784905299.864699,
@@ -1890,9 +1890,9 @@
     "semantic_hash": "a87ed535bae6d86c3bd008d83ae47a0e"
   },
   "src/PortalSaas.Data/Entities/ModuleExternalConnection.cs": {
-    "mtime": 1785103513.6049342,
-    "ast_hash": "4f5812e5bab478bcb2d0ecc06d731e2c",
-    "semantic_hash": "4f5812e5bab478bcb2d0ecc06d731e2c"
+    "mtime": 1786200881.61353,
+    "ast_hash": "3260002fe06e319a8043678fedabb9b8",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data/Entities/OnPremiseLicense.cs": {
     "mtime": 1785380763.4192271,
@@ -1985,9 +1985,9 @@
     "semantic_hash": "e9a1a215f83c873e58fd17757e8d06fc"
   },
   "src/PortalSaas.Data/Entities/UserPreference.cs": {
-    "mtime": 1784913128.0081718,
-    "ast_hash": "92937c709e5b05f00e8777b4d69a5efb",
-    "semantic_hash": "92937c709e5b05f00e8777b4d69a5efb"
+    "mtime": 1787921155.346474,
+    "ast_hash": "b44eb5177cfe5e2f9531a687aa399eea",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Data/Entities/UserSession.cs": {
     "mtime": 1785130250.7114944,
@@ -2000,9 +2000,9 @@
     "semantic_hash": "adf919a5cbd81f52efb83d0ad47c5984"
   },
   "src/PortalSaas.Data/PortalSaasDbContext.cs": {
-    "mtime": 1785380814.4203405,
-    "ast_hash": "56a1ce3961a32591de9eae4cc0274cc5",
-    "semantic_hash": "56a1ce3961a32591de9eae4cc0274cc5"
+    "mtime": 1788749596.7237656,
+    "ast_hash": "6a6a23c741d3d78b7137f2a50260a27e",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Comandos/PlatformAdminSeeder.cs": {
     "mtime": 1784926807.5146258,
@@ -2020,9 +2020,9 @@
     "semantic_hash": "9ae96ebffd93aad1e231cb9e83dcc767"
   },
   "src/PortalSaas.Host/Pages/Account/ForgotPassword.cshtml": {
-    "mtime": 1784923550.9931154,
-    "ast_hash": "ed15c62374c35bbd59cbb310a2941e7e",
-    "semantic_hash": "ed15c62374c35bbd59cbb310a2941e7e"
+    "mtime": 1786241337.8984897,
+    "ast_hash": "5b74f238f323f735f59b1000f6575f9b",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Account/ForgotPassword.cshtml.cs": {
     "mtime": 1784923543.6116967,
@@ -2030,14 +2030,14 @@
     "semantic_hash": "3c1150d7251fdb74a805004cf530b25c"
   },
   "src/PortalSaas.Host/Pages/Account/Login.cshtml": {
-    "mtime": 1785155944.2134542,
-    "ast_hash": "1015c79df5e8bf112f4ac1352346af92",
-    "semantic_hash": "1015c79df5e8bf112f4ac1352346af92"
+    "mtime": 1787921155.3668354,
+    "ast_hash": "d10f1b022086bd576486db8226e3db44",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Account/Login.cshtml.cs": {
-    "mtime": 1785707470.1770487,
-    "ast_hash": "7dca148edeff336d66be4514a649fcb3",
-    "semantic_hash": "7dca148edeff336d66be4514a649fcb3"
+    "mtime": 1786328921.9346218,
+    "ast_hash": "f595980a411ed6ff794a482b39156367",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Account/Logout.cshtml": {
     "mtime": 1784923514.9875948,
@@ -2050,29 +2050,29 @@
     "semantic_hash": "f0ca590fd7c80ee703c82a34d9df11cb"
   },
   "src/PortalSaas.Host/Pages/Account/ResetPassword.cshtml": {
-    "mtime": 1784923574.6251109,
-    "ast_hash": "a8fd733f51d28193a778205635906cd7",
-    "semantic_hash": "a8fd733f51d28193a778205635906cd7"
+    "mtime": 1786241337.951863,
+    "ast_hash": "31b5fa90af53fa288224c9d6086466c4",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Account/ResetPassword.cshtml.cs": {
-    "mtime": 1784937577.170994,
-    "ast_hash": "2b2ff69a9e38fa1c3716346d54296ad1",
-    "semantic_hash": "2b2ff69a9e38fa1c3716346d54296ad1"
+    "mtime": 1788544924.2124188,
+    "ast_hash": "de0ca8cfcee9ffbd5b2ccee722464816",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Account/SelectCompany.cshtml": {
-    "mtime": 1785159400.8892984,
-    "ast_hash": "7f8256e04640ca6d6560581caf981f03",
-    "semantic_hash": "7f8256e04640ca6d6560581caf981f03"
+    "mtime": 1787921155.3904705,
+    "ast_hash": "4fe7d8af5d6ef9ee443d961ad9d99a03",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Account/SelectCompany.cshtml.cs": {
-    "mtime": 1785643992.351642,
-    "ast_hash": "d018005d06a6216d6810f71f75c862b0",
-    "semantic_hash": "d018005d06a6216d6810f71f75c862b0"
+    "mtime": 1787921152.2788687,
+    "ast_hash": "f7c7062f6dd24bff85bcf99f40d5e8da",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Login.cshtml": {
-    "mtime": 1784926846.309856,
-    "ast_hash": "39558d500eedef9ef73e7dc11a01482b",
-    "semantic_hash": "39558d500eedef9ef73e7dc11a01482b"
+    "mtime": 1787921155.4981055,
+    "ast_hash": "edfeb85e972a64b0319c4c54c1e047b1",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Login.cshtml.cs": {
     "mtime": 1785643997.6959355,
@@ -2090,9 +2090,9 @@
     "semantic_hash": "97f6a07f7f642e277a23f3a4cfa0a2c2"
   },
   "src/PortalSaas.Host/Pages/Admin/MenuGroups/Create.cshtml": {
-    "mtime": 1784936729.3044226,
-    "ast_hash": "5b1c24f0bb32116ff012bd6867546b19",
-    "semantic_hash": "5b1c24f0bb32116ff012bd6867546b19"
+    "mtime": 1787921155.5174668,
+    "ast_hash": "67ffc92a7da39c84c986bfefda644e27",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/MenuGroups/Create.cshtml.cs": {
     "mtime": 1784937635.5786324,
@@ -2100,9 +2100,9 @@
     "semantic_hash": "8fc85b41c7663116c38ff719aecba9be"
   },
   "src/PortalSaas.Host/Pages/Admin/MenuGroups/Edit.cshtml": {
-    "mtime": 1785164006.9489548,
-    "ast_hash": "c91edbf0aa7c14673e5f5537c7b1f80c",
-    "semantic_hash": "c91edbf0aa7c14673e5f5537c7b1f80c"
+    "mtime": 1787921155.533374,
+    "ast_hash": "698adb37a67db58394aa7ef5b9a05764",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/MenuGroups/Edit.cshtml.cs": {
     "mtime": 1785163951.8182771,
@@ -2110,9 +2110,9 @@
     "semantic_hash": "9fbe0058b8572387a111a12fd0c7ddd3"
   },
   "src/PortalSaas.Host/Pages/Admin/MenuGroups/Index.cshtml": {
-    "mtime": 1785129914.8744462,
-    "ast_hash": "4f8beffc82058fa6572232d5e25c5a0f",
-    "semantic_hash": "4f8beffc82058fa6572232d5e25c5a0f"
+    "mtime": 1786370823.6741474,
+    "ast_hash": "64bc09c837e47c383ab2ecca1ea7caa7",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/MenuGroups/Index.cshtml.cs": {
     "mtime": 1785129906.4407094,
@@ -2120,39 +2120,39 @@
     "semantic_hash": "3f3341f767e080253d8d409a07494b2d"
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/Create.cshtml": {
-    "mtime": 1784936615.444387,
-    "ast_hash": "48383acf2584585e0bc3b2cfff81744e",
-    "semantic_hash": "48383acf2584585e0bc3b2cfff81744e"
+    "mtime": 1788749745.8511858,
+    "ast_hash": "c78730914d4ce22de19114849e658095",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/Create.cshtml.cs": {
-    "mtime": 1784937611.7026284,
-    "ast_hash": "dd112f0400d55188c62a5aff572f7150",
-    "semantic_hash": "dd112f0400d55188c62a5aff572f7150"
+    "mtime": 1788749736.3353264,
+    "ast_hash": "4e68e57b12b612ab850e66af711c0c37",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/Edit.cshtml": {
-    "mtime": 1784936643.2260633,
-    "ast_hash": "56cc2bc5f38eae4c7c3f54f958e3c773",
-    "semantic_hash": "56cc2bc5f38eae4c7c3f54f958e3c773"
+    "mtime": 1788749723.6453667,
+    "ast_hash": "0b7629794b1fd4b4c0d423db55b7cd56",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/Edit.cshtml.cs": {
-    "mtime": 1784937620.6598852,
-    "ast_hash": "629e007a43c7ffc543f2d007bb2cbb2a",
-    "semantic_hash": "629e007a43c7ffc543f2d007bb2cbb2a"
+    "mtime": 1788749716.0804095,
+    "ast_hash": "79269a7e460f27c1a7d4711a8c2b7d13",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/Index.cshtml": {
-    "mtime": 1785130009.0303674,
-    "ast_hash": "81b9730c2766041655ba0e1f7d950a2a",
-    "semantic_hash": "81b9730c2766041655ba0e1f7d950a2a"
+    "mtime": 1787921155.646886,
+    "ast_hash": "98ec2ee016c6c9a43648efdb0fc68a0d",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/Index.cshtml.cs": {
-    "mtime": 1785129997.3586917,
-    "ast_hash": "6a365048599544c4ad6d9e7d0087e727",
-    "semantic_hash": "6a365048599544c4ad6d9e7d0087e727"
+    "mtime": 1787922197.5077977,
+    "ast_hash": "e68d63d65dcf98f7c6c1cddb5525408d",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Create.cshtml": {
-    "mtime": 1784926936.150002,
-    "ast_hash": "875ce7a5444c782a56d0d7baacb47473",
-    "semantic_hash": "875ce7a5444c782a56d0d7baacb47473"
+    "mtime": 1787921155.6713982,
+    "ast_hash": "4893564514b9539c2209e8fa20fa2603",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Create.cshtml.cs": {
     "mtime": 1784937568.8149245,
@@ -2160,9 +2160,9 @@
     "semantic_hash": "4dbc5f9bbeaed0acce336f7477c520a9"
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/DocumentPermissions/Index.cshtml": {
-    "mtime": 1785072625.252182,
-    "ast_hash": "d7f14a022e20c597445a9789b6e3ef3b",
-    "semantic_hash": "d7f14a022e20c597445a9789b6e3ef3b"
+    "mtime": 1787921155.6861517,
+    "ast_hash": "3307fc38ed0a8f7f704ac8b257557446",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/DocumentPermissions/Index.cshtml.cs": {
     "mtime": 1785072610.4368377,
@@ -2170,9 +2170,9 @@
     "semantic_hash": "18651e2fe0f0bffc5b73774642c99a79"
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Edit.cshtml": {
-    "mtime": 1784926969.3047366,
-    "ast_hash": "c336b22b4ebf979cb9befa987fc5846b",
-    "semantic_hash": "c336b22b4ebf979cb9befa987fc5846b"
+    "mtime": 1787921155.7051122,
+    "ast_hash": "363a50414302de7c84a7d77ca72d6df1",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Edit.cshtml.cs": {
     "mtime": 1784937573.3009932,
@@ -2180,29 +2180,29 @@
     "semantic_hash": "e32e1f24d78fdebb3ab6b3afdae54116"
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/EmailSettings/Index.cshtml": {
-    "mtime": 1785015591.9285753,
-    "ast_hash": "9590eefbd8986d1a07030547ecfe03ed",
-    "semantic_hash": "9590eefbd8986d1a07030547ecfe03ed"
+    "mtime": 1787921159.832228,
+    "ast_hash": "93bcc183807df962fc56b7ed49f3dabe",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/EmailSettings/Index.cshtml.cs": {
-    "mtime": 1785015440.0026374,
-    "ast_hash": "55a9a261321b0d3535ca2256e0a02907",
-    "semantic_hash": "55a9a261321b0d3535ca2256e0a02907"
+    "mtime": 1787921159.8653083,
+    "ast_hash": "dba6c522af1ac1ad9236fd2628060448",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Index.cshtml": {
-    "mtime": 1785072653.5504582,
-    "ast_hash": "0817661ba1d074c898d0299a86a94ca2",
-    "semantic_hash": "0817661ba1d074c898d0299a86a94ca2"
+    "mtime": 1787964993.6684477,
+    "ast_hash": "d872f2e3a0c076678232f72ee6ba6c65",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Index.cshtml.cs": {
-    "mtime": 1784926907.2689993,
-    "ast_hash": "425aa55b19144f16aa03c50e267ecaf3",
-    "semantic_hash": "425aa55b19144f16aa03c50e267ecaf3"
+    "mtime": 1787965006.2658572,
+    "ast_hash": "1e5bf6f14aa67913a3afea32db7621d3",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Instances/Create.cshtml": {
-    "mtime": 1784936544.7017102,
-    "ast_hash": "65a0ec32ed172442dee573e5a28df88f",
-    "semantic_hash": "65a0ec32ed172442dee573e5a28df88f"
+    "mtime": 1787921155.735286,
+    "ast_hash": "5a839ef5112ecb6aba71f90a55fb4435",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Instances/Create.cshtml.cs": {
     "mtime": 1784937599.5651505,
@@ -2210,9 +2210,9 @@
     "semantic_hash": "5be3ce2e7edaa07bf40fcecbe94645e4"
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Instances/Edit.cshtml": {
-    "mtime": 1784936568.781269,
-    "ast_hash": "a83d1e3ab974117aa403997f04a1a484",
-    "semantic_hash": "a83d1e3ab974117aa403997f04a1a484"
+    "mtime": 1787921155.745521,
+    "ast_hash": "ad581f846d97244b36b43d498af0da4b",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Instances/Edit.cshtml.cs": {
     "mtime": 1784937603.9650302,
@@ -2220,9 +2220,9 @@
     "semantic_hash": "91bb106c810389fdf166e0c64496e998"
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Instances/Index.cshtml": {
-    "mtime": 1785129979.193084,
-    "ast_hash": "ae5602592bb2705807574cf7335d1cca",
-    "semantic_hash": "ae5602592bb2705807574cf7335d1cca"
+    "mtime": 1787921155.7726636,
+    "ast_hash": "a25268035c89d22618ad01e78eb64fbc",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Instances/Index.cshtml.cs": {
     "mtime": 1785129969.1711373,
@@ -2230,9 +2230,9 @@
     "semantic_hash": "8f2095b80c93d8f58f2f771ee397f333"
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Licenses/Conflicts.cshtml": {
-    "mtime": 1785381201.1315298,
-    "ast_hash": "6eeb3070947ca9ff3e689c6ae5363409",
-    "semantic_hash": "6eeb3070947ca9ff3e689c6ae5363409"
+    "mtime": 1786370823.7921157,
+    "ast_hash": "bf6d662d1e2f9930bbc630dc3f5b9487",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Licenses/Conflicts.cshtml.cs": {
     "mtime": 1785381189.3923934,
@@ -2240,69 +2240,69 @@
     "semantic_hash": "437504b694be9b9d8a92a7642cdb921e"
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Licenses/Create.cshtml": {
-    "mtime": 1784938367.8949194,
-    "ast_hash": "3c151f296d3d26c7044aac01a5fb0092",
-    "semantic_hash": "3c151f296d3d26c7044aac01a5fb0092"
+    "mtime": 1787921155.8153582,
+    "ast_hash": "a9df0dd4a2f3da1cc60914890d47004d",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Licenses/Create.cshtml.cs": {
-    "mtime": 1784938361.31524,
-    "ast_hash": "2141f0864baef35b1f5a7c46fd87f34f",
-    "semantic_hash": "2141f0864baef35b1f5a7c46fd87f34f"
+    "mtime": 1787924911.1251464,
+    "ast_hash": "0bd87cfa5c813f4c23c944cba23f3b29",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Licenses/Edit.cshtml": {
-    "mtime": 1784938393.8687148,
-    "ast_hash": "0251801adfc6e2a428374a11079710ab",
-    "semantic_hash": "0251801adfc6e2a428374a11079710ab"
+    "mtime": 1787921155.833321,
+    "ast_hash": "69abd56e844fb30f115e2fe3af072e0a",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Licenses/Edit.cshtml.cs": {
-    "mtime": 1784938388.5808716,
-    "ast_hash": "ce7332a05bf34a04a550b358b0b4ace0",
-    "semantic_hash": "ce7332a05bf34a04a550b358b0b4ace0"
+    "mtime": 1787924911.1402967,
+    "ast_hash": "1c0d59b5d350e91eaeffadf050d2d278",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Licenses/Index.cshtml": {
-    "mtime": 1785381172.7103522,
-    "ast_hash": "29131116f99f43f9f3273a98f0bdb625",
-    "semantic_hash": "29131116f99f43f9f3273a98f0bdb625"
+    "mtime": 1787921155.8508847,
+    "ast_hash": "97129807e6b1949b95ec90ac9c90f383",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Licenses/Index.cshtml.cs": {
-    "mtime": 1785381163.113227,
-    "ast_hash": "2f1bd4cdcbadbbecb992de9cdb6e5d1b",
-    "semantic_hash": "2f1bd4cdcbadbbecb992de9cdb6e5d1b"
+    "mtime": 1787921155.8700945,
+    "ast_hash": "aaa1b097131e600d4fda9ec693f08cc5",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Modules/Index.cshtml": {
-    "mtime": 1785072566.5228953,
-    "ast_hash": "3bcffbac23cbfb3d5b82fe2efe2aa1f4",
-    "semantic_hash": "3bcffbac23cbfb3d5b82fe2efe2aa1f4"
+    "mtime": 1787921155.8870196,
+    "ast_hash": "1b5d4c0c33024a325b28100ef16c31e8",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Modules/Index.cshtml.cs": {
-    "mtime": 1785129203.9350495,
-    "ast_hash": "eb78da91edaf04c2f7dfd6424e7e548f",
-    "semantic_hash": "eb78da91edaf04c2f7dfd6424e7e548f"
+    "mtime": 1787924911.1569026,
+    "ast_hash": "5e0b2343b468401ab3ba5a45f22696ab",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Subscriptions/Create.cshtml": {
-    "mtime": 1784933156.845393,
-    "ast_hash": "297b50f85fa458dd3f3c0b8c8c117551",
-    "semantic_hash": "297b50f85fa458dd3f3c0b8c8c117551"
+    "mtime": 1787921155.910132,
+    "ast_hash": "9e57c677cfef4992e6f3bd717f4c20a9",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Subscriptions/Create.cshtml.cs": {
-    "mtime": 1784933151.455612,
-    "ast_hash": "753b1b192eb0c82577eb2555ce41f869",
-    "semantic_hash": "753b1b192eb0c82577eb2555ce41f869"
+    "mtime": 1787924911.1637552,
+    "ast_hash": "f3e222e9c7e8f9a8e2b19e7979b4461a",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Subscriptions/Edit.cshtml": {
-    "mtime": 1784933087.9590647,
-    "ast_hash": "a1f0ae5fbe0e6e5a029c98521690d250",
-    "semantic_hash": "a1f0ae5fbe0e6e5a029c98521690d250"
+    "mtime": 1787921155.9336922,
+    "ast_hash": "6dd1c0db23bde3e54b79dbd4b943b69c",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Subscriptions/Edit.cshtml.cs": {
-    "mtime": 1784933757.518638,
-    "ast_hash": "bb7d9d1879e34e38f7a1547d4c25a634",
-    "semantic_hash": "bb7d9d1879e34e38f7a1547d4c25a634"
+    "mtime": 1787924911.1757789,
+    "ast_hash": "10ae3584ee42e7bf49082b8fdc629670",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Subscriptions/Index.cshtml": {
-    "mtime": 1784933043.1473773,
-    "ast_hash": "f97d5a95b1745e8cf3eec03da3b142f7",
-    "semantic_hash": "f97d5a95b1745e8cf3eec03da3b142f7"
+    "mtime": 1787921155.9530008,
+    "ast_hash": "faa1392a10eda94ac952e4aa34e3df13",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Subscriptions/Index.cshtml.cs": {
     "mtime": 1784933033.1821597,
@@ -2310,29 +2310,29 @@
     "semantic_hash": "e33de8795a2a6da1fb453b35da51a1aa"
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Users/Create.cshtml": {
-    "mtime": 1784932020.4638367,
-    "ast_hash": "1d6d3c27425d41037ebbdafebce4adfe",
-    "semantic_hash": "1d6d3c27425d41037ebbdafebce4adfe"
+    "mtime": 1787921253.973897,
+    "ast_hash": "36fb4625513c5c9c925609f35fbffd90",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Users/Create.cshtml.cs": {
-    "mtime": 1784937587.2115598,
-    "ast_hash": "b92fd86c21dfd0e2f23f8e61c3ec7bd4",
-    "semantic_hash": "b92fd86c21dfd0e2f23f8e61c3ec7bd4"
+    "mtime": 1787921159.903836,
+    "ast_hash": "53d708784d4ccab8313b4e7345008128",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Users/Index.cshtml": {
-    "mtime": 1784936866.1393273,
-    "ast_hash": "b1007a8954eb7e3c568eede2dfb35975",
-    "semantic_hash": "b1007a8954eb7e3c568eede2dfb35975"
+    "mtime": 1787921253.9912105,
+    "ast_hash": "974d77276a5d1247f463219200eccf45",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Users/Index.cshtml.cs": {
-    "mtime": 1784931990.693741,
-    "ast_hash": "b3c5895f3cc9a30fffcf05f2ec5ad20d",
-    "semantic_hash": "b3c5895f3cc9a30fffcf05f2ec5ad20d"
+    "mtime": 1787921159.935102,
+    "ast_hash": "8f064807554cee9012be1ea11fc0343d",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Users/Permissions.cshtml": {
-    "mtime": 1785164310.873061,
-    "ast_hash": "cf395f5a6ff035a7450b9bca94bd54d0",
-    "semantic_hash": "cf395f5a6ff035a7450b9bca94bd54d0"
+    "mtime": 1787921156.0713804,
+    "ast_hash": "b1ff6cef9fa54ffc1ffc4273bb734149",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Users/Permissions.cshtml.cs": {
     "mtime": 1784936820.2705193,
@@ -2340,9 +2340,9 @@
     "semantic_hash": "43ff2031df3503d3da2b44bbae831b5a"
   },
   "src/PortalSaas.Host/Pages/Admin/Plans/Create.cshtml": {
-    "mtime": 1784933003.6536894,
-    "ast_hash": "8848e5a48ae9066e82642d30104b3298",
-    "semantic_hash": "8848e5a48ae9066e82642d30104b3298"
+    "mtime": 1787921156.131242,
+    "ast_hash": "e0f0328f5015ea107f394b827386fab3",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Plans/Create.cshtml.cs": {
     "mtime": 1784937591.354701,
@@ -2350,19 +2350,19 @@
     "semantic_hash": "9a949e5f4a25ad877d143f0a301755af"
   },
   "src/PortalSaas.Host/Pages/Admin/Plans/Edit.cshtml": {
-    "mtime": 1785072425.9529502,
-    "ast_hash": "8c28beff2e4c2f843ad2e1257c347068",
-    "semantic_hash": "8c28beff2e4c2f843ad2e1257c347068"
+    "mtime": 1787921156.1670568,
+    "ast_hash": "19d1e54b79057cd35dc8903a907b177e",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Plans/Edit.cshtml.cs": {
-    "mtime": 1785072405.68799,
-    "ast_hash": "3b70d0d63d44beca09f6886e49b3faff",
-    "semantic_hash": "3b70d0d63d44beca09f6886e49b3faff"
+    "mtime": 1787924911.1907637,
+    "ast_hash": "e50ef2ea54f39010a2858db982ffaeca",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Plans/Index.cshtml": {
-    "mtime": 1785129881.9626942,
-    "ast_hash": "0c31924b96243a0dc22f6f502184105a",
-    "semantic_hash": "0c31924b96243a0dc22f6f502184105a"
+    "mtime": 1786370823.8842473,
+    "ast_hash": "a7ef0fc23de08983022a46d73677df5b",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Plans/Index.cshtml.cs": {
     "mtime": 1785129866.822157,
@@ -2370,19 +2370,19 @@
     "semantic_hash": "ce2dde92cc1a5db98b649865fde5192a"
   },
   "src/PortalSaas.Host/Pages/Admin/PlatformModules/Create.cshtml": {
-    "mtime": 1785129276.8588085,
-    "ast_hash": "c6a9b0e1c27f1b69edf575e3a06aa100",
-    "semantic_hash": "c6a9b0e1c27f1b69edf575e3a06aa100"
+    "mtime": 1787921156.2233436,
+    "ast_hash": "1b29a651e8400856394683a672533d22",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/PlatformModules/Create.cshtml.cs": {
-    "mtime": 1785129276.6741383,
-    "ast_hash": "d126c95be61f1aea6f4c92c8fefcb0ac",
-    "semantic_hash": "d126c95be61f1aea6f4c92c8fefcb0ac"
+    "mtime": 1786329918.2645333,
+    "ast_hash": "78c529346022970bffc9228c05032d60",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/PlatformModules/Edit.cshtml": {
-    "mtime": 1785129276.998345,
-    "ast_hash": "86f91430732b64835c87b91c7ee62b68",
-    "semantic_hash": "86f91430732b64835c87b91c7ee62b68"
+    "mtime": 1787921156.2839856,
+    "ast_hash": "e0f8b7511ea24c12dd3380e48da33dd1",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/PlatformModules/Edit.cshtml.cs": {
     "mtime": 1785130096.202162,
@@ -2390,9 +2390,9 @@
     "semantic_hash": "47926d3fd95208dc787da8ce54e98f43"
   },
   "src/PortalSaas.Host/Pages/Admin/PlatformModules/Import.cshtml": {
-    "mtime": 1785130000.1626422,
-    "ast_hash": "837c3d9e02255cdf32dbb76d95b50373",
-    "semantic_hash": "837c3d9e02255cdf32dbb76d95b50373"
+    "mtime": 1787921156.364303,
+    "ast_hash": "b5cb8d1d6d0a4a973220feef152ec375",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/PlatformModules/Import.cshtml.cs": {
     "mtime": 1785129988.0323725,
@@ -2400,9 +2400,9 @@
     "semantic_hash": "64658dc36c01f4cc4e838557cd6d696b"
   },
   "src/PortalSaas.Host/Pages/Admin/PlatformModules/Index.cshtml": {
-    "mtime": 1785129938.6266797,
-    "ast_hash": "a34b7f10c70ea318320b9a3ba32c33ba",
-    "semantic_hash": "a34b7f10c70ea318320b9a3ba32c33ba"
+    "mtime": 1786370823.9050434,
+    "ast_hash": "9e5ae0f45310f4f23e50a03b202f1777",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/PlatformModules/Index.cshtml.cs": {
     "mtime": 1785129929.658163,
@@ -2410,9 +2410,9 @@
     "semantic_hash": "88a5b3639ce30afdd967b17f8026e250"
   },
   "src/PortalSaas.Host/Pages/Admin/Profiles/Create.cshtml": {
-    "mtime": 1784936674.8275962,
-    "ast_hash": "ad27466e4a0306335b3687d44a0f5069",
-    "semantic_hash": "ad27466e4a0306335b3687d44a0f5069"
+    "mtime": 1787921156.5023339,
+    "ast_hash": "566c181ac1f0adec72af380f23088d71",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Profiles/Create.cshtml.cs": {
     "mtime": 1784937624.859458,
@@ -2420,9 +2420,9 @@
     "semantic_hash": "21da170e1c3938cfb7115d2137d6fc96"
   },
   "src/PortalSaas.Host/Pages/Admin/Profiles/Edit.cshtml": {
-    "mtime": 1784936696.5942712,
-    "ast_hash": "7298cc2478dc0c4f4515c21d469c7fdf",
-    "semantic_hash": "7298cc2478dc0c4f4515c21d469c7fdf"
+    "mtime": 1787921156.6293108,
+    "ast_hash": "a6b2e7afc503d31e7a42a3d4d1b30ae0",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Profiles/Edit.cshtml.cs": {
     "mtime": 1784937631.639953,
@@ -2430,9 +2430,9 @@
     "semantic_hash": "84c36a1091a24b5b5c31d362cf113d66"
   },
   "src/PortalSaas.Host/Pages/Admin/Profiles/Index.cshtml": {
-    "mtime": 1785129898.5456376,
-    "ast_hash": "acf63b299f5a696d6d9c50425748ef86",
-    "semantic_hash": "acf63b299f5a696d6d9c50425748ef86"
+    "mtime": 1786370823.9260848,
+    "ast_hash": "8eabd6db54c6e788bc4014555cb6f6b4",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Profiles/Index.cshtml.cs": {
     "mtime": 1785129890.3292453,
@@ -2440,9 +2440,9 @@
     "semantic_hash": "6b46662835f3d1fc08c9b0996792a761"
   },
   "src/PortalSaas.Host/Pages/Admin/Sessions/Index.cshtml": {
-    "mtime": 1785130435.1013267,
-    "ast_hash": "9fdc28c17accb1bc7b5fdbb8338115f6",
-    "semantic_hash": "9fdc28c17accb1bc7b5fdbb8338115f6"
+    "mtime": 1786370823.9478693,
+    "ast_hash": "16a931beb301c7a0833987cfe9a6188d",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Sessions/Index.cshtml.cs": {
     "mtime": 1785130423.4494717,
@@ -2450,9 +2450,9 @@
     "semantic_hash": "8e55bd9530fce98e9220cabe524ac1aa"
   },
   "src/PortalSaas.Host/Pages/Admin/Sistema/Index.cshtml": {
-    "mtime": 1785130064.3768246,
-    "ast_hash": "df3746926df1150e40b8615f9013ba0b",
-    "semantic_hash": "df3746926df1150e40b8615f9013ba0b"
+    "mtime": 1787921156.731245,
+    "ast_hash": "0b0f87f4115a91655f7710c7537f9c21",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Sistema/Index.cshtml.cs": {
     "mtime": 1785130056.6835363,
@@ -2460,24 +2460,24 @@
     "semantic_hash": "63b5501edf9392d37fc64c6ba0ffcb11"
   },
   "src/PortalSaas.Host/Pages/Admin/_ViewStart.cshtml": {
-    "mtime": 1784926898.6715362,
-    "ast_hash": "846d9f37f8c1167512fab628966d3e09",
-    "semantic_hash": "846d9f37f8c1167512fab628966d3e09"
+    "mtime": 1787921156.796559,
+    "ast_hash": "27cdf77eaf489bcd53eb30d06889ae83",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Error.cshtml": {
-    "mtime": 1784923242.385918,
-    "ast_hash": "34b4b090be52ec4885be6fa2afff5c8d",
-    "semantic_hash": "34b4b090be52ec4885be6fa2afff5c8d"
+    "mtime": 1788193265.3645399,
+    "ast_hash": "93590b0834556c425185f62cb3fa48b8",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Error.cshtml.cs": {
-    "mtime": 1784923242.4059174,
-    "ast_hash": "2b1facd397aa20b53da7ebe279d2a64f",
-    "semantic_hash": "2b1facd397aa20b53da7ebe279d2a64f"
+    "mtime": 1786234363.3996763,
+    "ast_hash": "fd8f9f10eb6d97e671ee6d076d17cebf",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Home/Index.cshtml": {
-    "mtime": 1785129483.158311,
-    "ast_hash": "44ab856d838e465c03d3d012346a1c4c",
-    "semantic_hash": "44ab856d838e465c03d3d012346a1c4c"
+    "mtime": 1788116479.8861651,
+    "ast_hash": "8fe4d38726a1ca6f6e170ad8fa102d66",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Home/Index.cshtml.cs": {
     "mtime": 1785129451.1188765,
@@ -2485,14 +2485,14 @@
     "semantic_hash": "b11d1add24bac39a2f5b4a2dfeb4c7c6"
   },
   "src/PortalSaas.Host/Pages/Home/Preferences.cshtml": {
-    "mtime": 1784923606.705588,
-    "ast_hash": "959b6e507b105bbec46cc6f1731d72cd",
-    "semantic_hash": "959b6e507b105bbec46cc6f1731d72cd"
+    "mtime": 1787921156.8651528,
+    "ast_hash": "88cdc4c610220f3bffda2029e8c5aa78",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Home/Preferences.cshtml.cs": {
-    "mtime": 1784923669.0927525,
-    "ast_hash": "5e8a0215af6a1eebf613b6dddc239324",
-    "semantic_hash": "5e8a0215af6a1eebf613b6dddc239324"
+    "mtime": 1787921156.8986883,
+    "ast_hash": "4017ca8f62e0c9ab0ba3c1d6600a038d",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Index.cshtml": {
     "mtime": 1784923469.3179986,
@@ -2505,34 +2505,29 @@
     "semantic_hash": "748e3772472f4f42bf9d93d49fa2d6e6"
   },
   "src/PortalSaas.Host/Pages/Shared/Components/DocumentForm/Default.cshtml": {
-    "mtime": 1785100476.7855272,
-    "ast_hash": "64b98bf8a150cde4b586ff526a53ab34",
-    "semantic_hash": "64b98bf8a150cde4b586ff526a53ab34"
+    "mtime": 1788560492.0034542,
+    "ast_hash": "7d376755fd769e105f6caee871527ede",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Shared/Components/DocumentList/Default.cshtml": {
-    "mtime": 1785170115.8711128,
-    "ast_hash": "6ef87ea040a10fe3455632dfc9906214",
-    "semantic_hash": "6ef87ea040a10fe3455632dfc9906214"
+    "mtime": 1786067582.6344824,
+    "ast_hash": "24fb4336817c27c25c7ee8e8137b7d76",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Shared/Components/SidebarMenu/Default.cshtml": {
-    "mtime": 1785156369.8756049,
-    "ast_hash": "88a3b22b2da37c985b8d416c0e51bdfb",
-    "semantic_hash": "88a3b22b2da37c985b8d416c0e51bdfb"
+    "mtime": 1787921156.940987,
+    "ast_hash": "194ed728ba41381da0773d2a22ffda7a",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Shared/Components/SidebarMenu/_MenuNode.cshtml": {
-    "mtime": 1785707436.966631,
-    "ast_hash": "3c5ff087507cccab4ecdec7b0eb9a084",
-    "semantic_hash": "3c5ff087507cccab4ecdec7b0eb9a084"
-  },
-  "src/PortalSaas.Host/Pages/Shared/_AdminLayout.cshtml": {
-    "mtime": 1785130468.2299442,
-    "ast_hash": "b7bd303dc9245b98071870f1f046a37f",
-    "semantic_hash": "b7bd303dc9245b98071870f1f046a37f"
+    "mtime": 1787921156.9564416,
+    "ast_hash": "a62abffc345bd9d1a202f0d62b897d3c",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Shared/_Layout.cshtml": {
-    "mtime": 1785156362.7253253,
-    "ast_hash": "f8bae073ff4f3b35f49c0cae3aa4f9eb",
-    "semantic_hash": "f8bae073ff4f3b35f49c0cae3aa4f9eb"
+    "mtime": 1786229846.8686068,
+    "ast_hash": "c097d813519d3dc0e1bd29caac109424",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Shared/_ValidationScriptsPartial.cshtml": {
     "mtime": 1784923242.6803641,
@@ -2540,24 +2535,24 @@
     "semantic_hash": "04c9739bd41a158c3fb95b9ec3020c94"
   },
   "src/PortalSaas.Host/Pages/_ViewImports.cshtml": {
-    "mtime": 1784926946.522215,
-    "ast_hash": "d18b90921e22125f80bb612afb428e67",
-    "semantic_hash": "d18b90921e22125f80bb612afb428e67"
+    "mtime": 1786797797.4798346,
+    "ast_hash": "45cde99baf10f74223ef7b0e9c571afa",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/_ViewStart.cshtml": {
-    "mtime": 1785130453.8144157,
-    "ast_hash": "7561c6fc075cb4c5c87759a1477a44f3",
-    "semantic_hash": "7561c6fc075cb4c5c87759a1477a44f3"
+    "mtime": 1787921157.026506,
+    "ast_hash": "60f38a828c13f632a9b3ff76da124791",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/PortalSaas.Host.csproj": {
-    "mtime": 1785116596.4613872,
-    "ast_hash": "1b8ea6a655ea0b25d16cca084a113407",
-    "semantic_hash": "1b8ea6a655ea0b25d16cca084a113407"
+    "mtime": 1786797797.4908307,
+    "ast_hash": "be715398c6ea19890529c7509c6cac8a",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Program.cs": {
-    "mtime": 1785381059.7744577,
-    "ast_hash": "8dfc05eb1a74a373fc84814dc446c6b4",
-    "semantic_hash": "8dfc05eb1a74a373fc84814dc446c6b4"
+    "mtime": 1788749691.8021197,
+    "ast_hash": "19a4319040d25d9d697596e79476bfbd",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/Properties/launchSettings.json": {
     "mtime": 1785710010.1720104,
@@ -2585,9 +2580,9 @@
     "semantic_hash": "dc628b75a48bde04c49bcf954eabba70"
   },
   "src/PortalSaas.Host/appsettings.json": {
-    "mtime": 1785381096.5715625,
-    "ast_hash": "6ae9b90e8f60213e3afd8380e76c63c3",
-    "semantic_hash": "6ae9b90e8f60213e3afd8380e76c63c3"
+    "mtime": 1786328963.7710783,
+    "ast_hash": "5bf1c9a163cc2d07108eafdc7003bf86",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/wwwroot/js/catalog-search.js": {
     "mtime": 1785183287.4011903,
@@ -2605,14 +2600,14 @@
     "semantic_hash": "e0dfb6ba115ad45b5340ccb2478d29b9"
   },
   "src/PortalSaas.Host/wwwroot/js/document-lines-editor.js": {
-    "mtime": 1785172229.4818797,
-    "ast_hash": "1c7979aabe35681956d9f9d688f2beaf",
-    "semantic_hash": "1c7979aabe35681956d9f9d688f2beaf"
+    "mtime": 1786498907.0336454,
+    "ast_hash": "22f490174eee50cf395793d26d1b0a83",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/wwwroot/js/sidebar.js": {
-    "mtime": 1785707415.565209,
-    "ast_hash": "4e9ad5a3162d1ac8932d62cd6bef7837",
-    "semantic_hash": "4e9ad5a3162d1ac8932d62cd6bef7837"
+    "mtime": 1788116480.012249,
+    "ast_hash": "dcaf2e101225dcf920b6cacb7ea64f4e",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Host/wwwroot/js/site.js": {
     "mtime": 1784923242.7043574,
@@ -2620,39 +2615,39 @@
     "semantic_hash": "53e309eeca51b3b6de20c4d24e1b2b63"
   },
   "src/PortalSaas.Host/wwwroot/js/theme-switcher.js": {
-    "mtime": 1785081576.7777476,
-    "ast_hash": "11c2fe02a51a4beb922f2d3d2148b9ba",
-    "semantic_hash": "11c2fe02a51a4beb922f2d3d2148b9ba"
+    "mtime": 1787921157.2337816,
+    "ast_hash": "70a0bab09bcc4f6f38f56d1cac16544d",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/AuthenticationServiceTests.cs": {
-    "mtime": 1784922999.0587168,
-    "ast_hash": "eb72f3d22eae64bb5a7470908a22860f",
-    "semantic_hash": "eb72f3d22eae64bb5a7470908a22860f"
+    "mtime": 1787924911.21396,
+    "ast_hash": "74105ee90e44aa8238826a21c68a4707",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/BranchAndSeriesCatalogServiceTests.cs": {
-    "mtime": 1785096453.3909538,
-    "ast_hash": "f8ff9f61eca27bd7a09e213393ec938d",
-    "semantic_hash": "f8ff9f61eca27bd7a09e213393ec938d"
+    "mtime": 1787367874.649334,
+    "ast_hash": "99a45e10241d7159b76b73068575d22b",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/ContractLimitServiceTests.cs": {
-    "mtime": 1784938573.6956613,
-    "ast_hash": "60f75b4ddbe8ae58b9ffc9430522680b",
-    "semantic_hash": "60f75b4ddbe8ae58b9ffc9430522680b"
+    "mtime": 1787924911.2199588,
+    "ast_hash": "325f52ead99dfffd957f7918ca451b56",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/CurrentCompanyAccessorTests.cs": {
-    "mtime": 1784985709.082201,
-    "ast_hash": "106107fa3b453a6e96faf0574f3abef6",
-    "semantic_hash": "106107fa3b453a6e96faf0574f3abef6"
+    "mtime": 1786834787.7406542,
+    "ast_hash": "3a499b6ebd8aad4c027771396e9568f3",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/CurrentUserContextTests.cs": {
-    "mtime": 1785006285.2051504,
-    "ast_hash": "3f793e3087a3bf4b767ba7232fb1e9c6",
-    "semantic_hash": "3f793e3087a3bf4b767ba7232fb1e9c6"
+    "mtime": 1787924911.2254753,
+    "ast_hash": "063f5ee2865e99a9b21b00fabcf06f87",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/EmailSenderServiceTests.cs": {
-    "mtime": 1784923000.255088,
-    "ast_hash": "4f31696bdbd1bc92fbc179b1df00305a",
-    "semantic_hash": "4f31696bdbd1bc92fbc179b1df00305a"
+    "mtime": 1787924911.230658,
+    "ast_hash": "211d94498e2a860fd02dbc2a7a1f620b",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/GmailMessageBuilderTests.cs": {
     "mtime": 1784914473.410174,
@@ -2670,9 +2665,9 @@
     "semantic_hash": "85e9261f3a709d1b4e3dcca2cb6f5d1b"
   },
   "tests/PortalSaas.Core.Tests/MenuSyncServiceTests.cs": {
-    "mtime": 1784935340.5949082,
-    "ast_hash": "f35acf987e4b97a4c90ca996aea55486",
-    "semantic_hash": "f35acf987e4b97a4c90ca996aea55486"
+    "mtime": 1787924911.2394972,
+    "ast_hash": "0d9d0ad5dd25920610d31e2b6334fb43",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/MicrosoftGraphPayloadBuilderTests.cs": {
     "mtime": 1784914462.055518,
@@ -2680,19 +2675,19 @@
     "semantic_hash": "7108e9cd52485de9f4645262eaf6dda1"
   },
   "tests/PortalSaas.Core.Tests/ModuleAccessServiceTests.cs": {
-    "mtime": 1785129317.1198363,
-    "ast_hash": "495b40d715ab8bc3fd30c9e49e6cc81b",
-    "semantic_hash": "495b40d715ab8bc3fd30c9e49e6cc81b"
+    "mtime": 1787924911.2446861,
+    "ast_hash": "d94784341e9333745c078114e45144d3",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/OrganizationAccessGateServiceTests.cs": {
-    "mtime": 1785381314.43302,
-    "ast_hash": "ee22b2e0f656a941750fef9fd0dc0a77",
-    "semantic_hash": "ee22b2e0f656a941750fef9fd0dc0a77"
+    "mtime": 1787924911.2540934,
+    "ast_hash": "3ac2313840a6526a79eefe017a07ff70",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/OrganizationDocumentPermissionServiceTests.cs": {
-    "mtime": 1785047404.4806294,
-    "ast_hash": "409778e3e28360f2aa1722cc81bf6d91",
-    "semantic_hash": "409778e3e28360f2aa1722cc81bf6d91"
+    "mtime": 1787924911.2616165,
+    "ast_hash": "711ab8d1682592d80db1de9495c03f09",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/PasswordHasherTests.cs": {
     "mtime": 1784913506.0739987,
@@ -2700,19 +2695,19 @@
     "semantic_hash": "8ae6a600559683967df906e3085e3c63"
   },
   "tests/PortalSaas.Core.Tests/PasswordResetServiceTests.cs": {
-    "mtime": 1784922999.204298,
-    "ast_hash": "49165a74d748ea6f16c036aa5dc55289",
-    "semantic_hash": "49165a74d748ea6f16c036aa5dc55289"
+    "mtime": 1787924911.2712662,
+    "ast_hash": "5dac261ebbe83d5bc3ae2c0cebac493a",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/PlatformAdminAuthenticationServiceTests.cs": {
-    "mtime": 1784926785.0374658,
-    "ast_hash": "c572a278e861b8e5dafc1222a337a528",
-    "semantic_hash": "c572a278e861b8e5dafc1222a337a528"
+    "mtime": 1787924911.279869,
+    "ast_hash": "662f014dafeb9af6117cd8f7def916ba",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/PortalSaas.Core.Tests.csproj": {
-    "mtime": 1784985313.257356,
-    "ast_hash": "65bfb6eb069e55ed3e468ddee4520785",
-    "semantic_hash": "65bfb6eb069e55ed3e468ddee4520785"
+    "mtime": 1788613786.773051,
+    "ast_hash": "78610f735f15d54d08b519267a7e6cbf",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/ProviderConfigDeserializationTests.cs": {
     "mtime": 1784921935.147752,
@@ -2725,14 +2720,14 @@
     "semantic_hash": "86d7c31cdd995108f8532eb72fc2d607"
   },
   "tests/PortalSaas.Core.Tests/TenantUserAdminServiceTests.cs": {
-    "mtime": 1785001882.4503393,
-    "ast_hash": "40aca6d4dd975d39b9b1157b26ec98e6",
-    "semantic_hash": "40aca6d4dd975d39b9b1157b26ec98e6"
+    "mtime": 1788545051.8376653,
+    "ast_hash": "af431b0eb23eac842c709193b3b04c53",
+    "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/UserPreferenceServiceTests.cs": {
-    "mtime": 1784922999.2994063,
-    "ast_hash": "8434d9f3f3ee9284e488c4d25069a596",
-    "semantic_hash": "8434d9f3f3ee9284e488c4d25069a596"
+    "mtime": 1787924911.3002875,
+    "ast_hash": "0af183d4b8b7ab1403481eaa92ac5db6",
+    "semantic_hash": ""
   },
   "tools/PortalSaas.Tools.EmailSmokeTest/PortalSaas.Tools.EmailSmokeTest.csproj": {
     "mtime": 1784915048.7773979,
@@ -2740,9 +2735,9 @@
     "semantic_hash": "c11e8b96d4a5cdc8646b065ff75769e4"
   },
   "tools/PortalSaas.Tools.EmailSmokeTest/Program.cs": {
-    "mtime": 1784923000.4236045,
-    "ast_hash": "59d8952ecf922172c80d92f41d67bae2",
-    "semantic_hash": "59d8952ecf922172c80d92f41d67bae2"
+    "mtime": 1787924911.3118565,
+    "ast_hash": "3d4dd0e7fbff6435a571cc14393f98f4",
+    "semantic_hash": ""
   },
   ".github/copilot-instructions.md": {
     "mtime": 1785077874.5613253,
@@ -2755,9 +2750,9 @@
     "semantic_hash": "cf4b95677dcbaf326adba022043e1795"
   },
   "CLAUDE.md": {
-    "mtime": 1785382333.6504712,
-    "ast_hash": "aa6367fadea870507d8e891a12bc38fc",
-    "semantic_hash": "aa6367fadea870507d8e891a12bc38fc"
+    "mtime": 1787924910.997605,
+    "ast_hash": "9b799e638e3168d56a2398fc24c35d8c",
+    "semantic_hash": ""
   },
   "contexto_proyecto.txt": {
     "mtime": 1785078227.6168284,
@@ -2825,18 +2820,1098 @@
     "semantic_hash": "26980233da0768267e8e25047707bccb"
   },
   "docs/10-RUNBOOK-IIS-PILOTO.md": {
-    "mtime": 1785643737.4732282,
-    "ast_hash": "37328f198c9d28adb1cc65bb2576ae2b",
-    "semantic_hash": "37328f198c9d28adb1cc65bb2576ae2b"
+    "mtime": 1786230568.4739833,
+    "ast_hash": "6cfe3ac6e4c3c6e81ebddcbc966a4ef8",
+    "semantic_hash": ""
   },
   "docs/11-ESTADO-PILOTO-DESARROLLO.md": {
-    "mtime": 1785720612.0647695,
-    "ast_hash": "2e2cdeb5b059d12cbf4562f278c8b1ad",
-    "semantic_hash": "2e2cdeb5b059d12cbf4562f278c8b1ad"
+    "mtime": 1786373980.4024162,
+    "ast_hash": "840f547c6c40dc476fe08a670629434f",
+    "semantic_hash": ""
   },
   "tools/PortalSaas.Tools.EmailSmokeTest/README.md": {
     "mtime": 1784916275.3721914,
     "ast_hash": "39b5751f5024fe33719ad2c2c7410f62",
     "semantic_hash": "39b5751f5024fe33719ad2c2c7410f62"
+  },
+  "plugins/Modulo.Administracion/Pages/ConexionesExternas/Editar.cshtml": {
+    "mtime": 1787922196.4550347,
+    "ast_hash": "5e685eab68904e276ab634b32f98d175",
+    "semantic_hash": ""
+  },
+  "plugins/Modulo.Administracion/Pages/ConexionesExternas/Editar.cshtml.cs": {
+    "mtime": 1787922196.4676597,
+    "ast_hash": "5ee79d55e71935729f66bc559b0ec890",
+    "semantic_hash": ""
+  },
+  "plugins/Modulo.Administracion/Pages/ConexionesExternas/Index.cshtml": {
+    "mtime": 1787922196.115106,
+    "ast_hash": "eda84d077534ee886976ccce40ca4df3",
+    "semantic_hash": ""
+  },
+  "plugins/Modulo.Administracion/Pages/ConexionesExternas/Index.cshtml.cs": {
+    "mtime": 1787922196.4869435,
+    "ast_hash": "bb5f514a803cfde173f506fc6cdd1a34",
+    "semantic_hash": ""
+  },
+  "plugins/Modulo.Administracion/Pages/Menus/Index.cshtml": {
+    "mtime": 1787921154.3999577,
+    "ast_hash": "fd7456f0d63b581f80cf5edcdda7fea3",
+    "semantic_hash": ""
+  },
+  "plugins/Modulo.Administracion/Pages/Menus/Index.cshtml.cs": {
+    "mtime": 1787921154.4173043,
+    "ast_hash": "60cd6c7cd49c1fb0eb128c58a6ac71c6",
+    "semantic_hash": ""
+  },
+  "plugins/Modulo.ImportacionGenerica/Pages/CamposUsuario/NativeFieldCatalog.cs": {
+    "mtime": 1786244864.8425837,
+    "ast_hash": "ec8937e9666a02471ef702e446bf1634",
+    "semantic_hash": ""
+  },
+  "publish-all.ps1": {
+    "mtime": 1786677174.0886278,
+    "ast_hash": "e0016f744ce138d928d2d6b55db3e697",
+    "semantic_hash": ""
+  },
+  "scripts/dump-postgres.ps1": {
+    "mtime": 1787921154.948669,
+    "ast_hash": "36562e060e4554bb816218bc2fd93df1",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/IApiKeyAuthenticator.cs": {
+    "mtime": 1786813207.371691,
+    "ast_hash": "f21d046bb684572c4ce572a913a347d0",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/ICompanyExternalConnectionService.cs": {
+    "mtime": 1787922193.8629227,
+    "ast_hash": "8e84915df059a8a1d36882f99cad0c0f",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/ICurrentCompanyOverride.cs": {
+    "mtime": 1786834787.5272682,
+    "ast_hash": "362ae81f0dc083493eb68cd8bed0a946",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/IIntegrationConnectorConfigService.cs": {
+    "mtime": 1786964325.672889,
+    "ast_hash": "79b239f01e5dd4dda0a965ca8ce8e2e4",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/IOrganizationMenuOverrideService.cs": {
+    "mtime": 1787921153.182812,
+    "ast_hash": "0e36029210330d3657861af451a3a861",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/IUserContactLookupService.cs": {
+    "mtime": 1786536975.9554386,
+    "ast_hash": "71d198634db126a273ffec98a1775182",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/IWmsInboundIngestionService.cs": {
+    "mtime": 1786828726.3647852,
+    "ast_hash": "b09e62d47a03a0c4b475ff031aa6bb96",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/Integraciones/IIntegrationConnector.cs": {
+    "mtime": 1787921155.0106578,
+    "ast_hash": "f38d843410f01bcfa18be69ed75dd224",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/Integraciones/IIntegrationEntityReader.cs": {
+    "mtime": 1787921155.0152833,
+    "ast_hash": "1337f6fa69f203f028fa6961da51c836",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/Integraciones/IIntegrationEntityWriter.cs": {
+    "mtime": 1786766417.905724,
+    "ast_hash": "4c7c38c793721d58b290148c8bf2edb4",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/Integraciones/IIntegrationFieldMappingService.cs": {
+    "mtime": 1786766417.9117215,
+    "ast_hash": "d25c8b585f8b92985e2d97f1e30f4eb0",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/Integraciones/IntegrationPushResult.cs": {
+    "mtime": 1786834787.564847,
+    "ast_hash": "28180fd9764b94146d9ae65418fe4b65",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/Integraciones/IntegrationRecord.cs": {
+    "mtime": 1786766417.9208827,
+    "ast_hash": "8151de940bbcad7e50a7c6af4ddca3aa",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/CompanyExternalConnectionModels.cs": {
+    "mtime": 1787922197.2916248,
+    "ast_hash": "f8d0165f4c0e6ec455390212137b7a9c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/ExternalConnectionType.cs": {
+    "mtime": 1787922192.6295736,
+    "ast_hash": "4db0a024af8bbd8635ef26bfe124a105",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/MenuOverride.cs": {
+    "mtime": 1787921152.6391625,
+    "ast_hash": "db26eba073363462331e4c120f4f430c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/ModuleCompanyDto.cs": {
+    "mtime": 1786536975.9641643,
+    "ast_hash": "12c349a50348be92766d0c4d3e65876d",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/UserContactDto.cs": {
+    "mtime": 1786536975.9641643,
+    "ast_hash": "c706094786c49f131c5d803dbadfabad",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/WmsFieldMapperKeys.cs": {
+    "mtime": 1786937510.3804672,
+    "ast_hash": "83a757f788741c1daf509c8570dd045a",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/WmsServiceConfigKeys.cs": {
+    "mtime": 1786748093.1255507,
+    "ast_hash": "4931ca0d785e90977d7c5a17f40bd32c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Administracion/CompanyExternalConnectionService.cs": {
+    "mtime": 1787922194.6373837,
+    "ast_hash": "404aec3aced337f0b1d1f36b226d1e91",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Administracion/LegacyExternalConnectionBackfill.cs": {
+    "mtime": 1787922197.3112817,
+    "ast_hash": "a117ce4f7179a3a10e47376b8be800c6",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Administracion/OrganizationMenuOverrideService.cs": {
+    "mtime": 1787921154.4312165,
+    "ast_hash": "7d5770b5acbfd131ddb11f75aa331e0f",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Comercial/Licenciamiento/LicenseHeartbeatService.cs": {
+    "mtime": 1787921155.037337,
+    "ast_hash": "d8e6bc1480fd9a55aa47c67beb4d68b9",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Infraestructura/UserContactLookupService.cs": {
+    "mtime": 1786536975.9807842,
+    "ast_hash": "7feb43f6da7eacd1542a2a7fc22feecc",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Infraestructura/UserProfileCultureProvider.cs": {
+    "mtime": 1787921155.0433996,
+    "ast_hash": "934ebf79c86a60533ab01821fac3fb6c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Integraciones/SapDocumentConnector.cs": {
+    "mtime": 1787921155.0584092,
+    "ast_hash": "bee75b41eb07341bbc9a250f4f918f3f",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Integraciones/SqlDirectConnector.cs": {
+    "mtime": 1787368368.962783,
+    "ast_hash": "6a1835dea08ce5f446319e969d2bf0df",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Sap/FlexibleNullableInt32Converter.cs": {
+    "mtime": 1788193245.7787938,
+    "ast_hash": "f1f3e2e51c872b5056324282dfe38b4d",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Seguridad/ApiKeyAuthenticationHandler.cs": {
+    "mtime": 1786813207.3880978,
+    "ast_hash": "e18ad07a88568e3e1b903405f369b02c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Seguridad/ApiKeyAuthenticator.cs": {
+    "mtime": 1786813207.3941646,
+    "ast_hash": "a61a813e3f439db02e1ffef94e6d9e7e",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Seguridad/ApiKeyGenerator.cs": {
+    "mtime": 1786813207.4049478,
+    "ast_hash": "8cdabc949f92b9e2ad9f669b85bcf8a0",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Seguridad/CurrentCompanyOverride.cs": {
+    "mtime": 1786834787.674964,
+    "ast_hash": "6398804fda3e72a6b07bf528fea17143",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260808003406_AddUserPreferenceDefaultCompany.Designer.cs": {
+    "mtime": 1786149246.085717,
+    "ast_hash": "c55837febd17db4665ec55ee8e65642d",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260808003406_AddUserPreferenceDefaultCompany.cs": {
+    "mtime": 1786149246.078151,
+    "ast_hash": "0abcfca69db94506e933720e19007be4",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260808145239_AddCompanyScopeToGenericImport.Designer.cs": {
+    "mtime": 1786200759.7429855,
+    "ast_hash": "e3a04afb2ae4f6161843bc05410fb929",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260808145239_AddCompanyScopeToGenericImport.cs": {
+    "mtime": 1786200759.7350154,
+    "ast_hash": "022885d748c1dd037578f7f9dae93709",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260808145634_EnforceCompanyScopeOnExternalConnections.Designer.cs": {
+    "mtime": 1786200994.5511975,
+    "ast_hash": "0a962cc1981e181f77839d14c2b7ecac",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260808145634_EnforceCompanyScopeOnExternalConnections.cs": {
+    "mtime": 1786200994.5456734,
+    "ast_hash": "b81b30bd15ee1be958d225ca841fde6f",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260809030145_AddBusinessPartnerFromFile.Designer.cs": {
+    "mtime": 1786244505.3057396,
+    "ast_hash": "e8872fce6da64f74a15ce4266afee573",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260809030145_AddBusinessPartnerFromFile.cs": {
+    "mtime": 1786244505.2947388,
+    "ast_hash": "bdf9c4a0800287cfb0b69d420f4f3076",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260815035304_AddIntegrationTables.Designer.cs": {
+    "mtime": 1786766417.9298525,
+    "ast_hash": "fea89de53c657146b6db4de72bce7e86",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260815035304_AddIntegrationTables.cs": {
+    "mtime": 1786766417.9408565,
+    "ast_hash": "36c1e76e67283f7053c8d33e013d661a",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260815163730_AddApiClientCredentials.Designer.cs": {
+    "mtime": 1786813207.4049478,
+    "ast_hash": "ecf568edc91756c1d1bf653e30548e18",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260815163730_AddApiClientCredentials.cs": {
+    "mtime": 1786813207.4246738,
+    "ast_hash": "9450ef9b4d73ead301ace2d720a6ba0c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260815165404_AddApiClientCredentialsCompanyForeignKey.Designer.cs": {
+    "mtime": 1786813207.4375749,
+    "ast_hash": "c375960e9d4c389936f492c79eab4f50",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260815165404_AddApiClientCredentialsCompanyForeignKey.cs": {
+    "mtime": 1786813207.45112,
+    "ast_hash": "cdd4083fe3a24a18fe35f409e406c75c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260816041419_AddWmsCloudConnectorType.Designer.cs": {
+    "mtime": 1786854291.5886433,
+    "ast_hash": "51978055e02d2f61a41e5668c0a1de89",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260816041419_AddWmsCloudConnectorType.cs": {
+    "mtime": 1786854291.605564,
+    "ast_hash": "c57db1e1503ef27d518717222fbdf02e",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260819201303_UpdateUserPreferenceThemeValues.Designer.cs": {
+    "mtime": 1787921155.098172,
+    "ast_hash": "505e33cb9129ae697aed444d1299d151",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260819201303_UpdateUserPreferenceThemeValues.cs": {
+    "mtime": 1787921155.1053686,
+    "ast_hash": "fac355c09ca8857bbeae7c42a3a41572",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260821205355_AddIntegrationRunLogDetalleConsulta.Designer.cs": {
+    "mtime": 1787921155.115417,
+    "ast_hash": "62e98fbd734c5268559a4d3304894021",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260821205355_AddIntegrationRunLogDetalleConsulta.cs": {
+    "mtime": 1787921155.125746,
+    "ast_hash": "62ffd6b0dbf985ad6491cc3170618b8d",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260822014141_AddIntegrationDefinitionLastSuccessfulSyncAt.Designer.cs": {
+    "mtime": 1787921155.1374912,
+    "ast_hash": "3b42ee547ec78304802d071ff8037dc9",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260822014141_AddIntegrationDefinitionLastSuccessfulSyncAt.cs": {
+    "mtime": 1787921155.1553829,
+    "ast_hash": "1bc929cf7896ab149d5ed53f7f0dbd53",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260822061340_AddSqlConnectorType.Designer.cs": {
+    "mtime": 1787921155.1590974,
+    "ast_hash": "6ab5adb08ddc8062a8095974668f567c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260822061340_AddSqlConnectorType.cs": {
+    "mtime": 1787921155.1681476,
+    "ast_hash": "779db28d62fc5a277db9a7f8d7a66300",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260825135107_AddOrganizationMenuOverrides.Designer.cs": {
+    "mtime": 1787921152.6471438,
+    "ast_hash": "1e1630f86af7c9b3f84427f27cc39249",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260825135107_AddOrganizationMenuOverrides.cs": {
+    "mtime": 1787921152.656427,
+    "ast_hash": "403d73d941774eb05ac6dc3e71dc3c1c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260827220011_AddCompanyExternalConnections.Designer.cs": {
+    "mtime": 1787922197.3255515,
+    "ast_hash": "dc19e3a22ec8c3798e9eaa8caca2c5c4",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260827220011_AddCompanyExternalConnections.cs": {
+    "mtime": 1787922197.337098,
+    "ast_hash": "e3dbfebacd9b7c4b1b8f951e887f7ba4",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260808003400_AddUserPreferenceDefaultCompany.Designer.cs": {
+    "mtime": 1786149240.96383,
+    "ast_hash": "2f9582ee3c6d75587d492beef7e473d9",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260808003400_AddUserPreferenceDefaultCompany.cs": {
+    "mtime": 1786149240.9578292,
+    "ast_hash": "41908a5fba1f84d429645372e0a81103",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260808145230_AddCompanyScopeToGenericImport.Designer.cs": {
+    "mtime": 1786200750.2330854,
+    "ast_hash": "ecc0aaa6c3e353f7ce2ecb9861b6f6eb",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260808145230_AddCompanyScopeToGenericImport.cs": {
+    "mtime": 1786200750.2231934,
+    "ast_hash": "03f64b6b1d923c00cd9e0d90b5c9ea0a",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260808145614_EnforceCompanyScopeOnExternalConnections.Designer.cs": {
+    "mtime": 1786200974.2834527,
+    "ast_hash": "6865328fe2dbf9833e2c875176553fef",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260808145614_EnforceCompanyScopeOnExternalConnections.cs": {
+    "mtime": 1786200974.2782545,
+    "ast_hash": "cba0966984d3f1d559b3bdf8c59e9f64",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260809030135_AddBusinessPartnerFromFile.Designer.cs": {
+    "mtime": 1786244495.722461,
+    "ast_hash": "e37a4093b0d75fb3b1a254ca228c9195",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260809030135_AddBusinessPartnerFromFile.cs": {
+    "mtime": 1786244495.7164435,
+    "ast_hash": "8967152cc54f13ac29fca3d5be7620e1",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260815035309_AddIntegrationTables.Designer.cs": {
+    "mtime": 1786766417.962324,
+    "ast_hash": "87f04b8f31a182d8537a615642d75dc7",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260815035309_AddIntegrationTables.cs": {
+    "mtime": 1786766417.9729395,
+    "ast_hash": "ea97ba2c87f80aa5432d27d4629bfd03",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260815163741_AddApiClientCredentials.Designer.cs": {
+    "mtime": 1786813207.4765022,
+    "ast_hash": "221d56de7b6dfdf1cba4234ba4a6d13f",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260815163741_AddApiClientCredentials.cs": {
+    "mtime": 1786813207.4870267,
+    "ast_hash": "bea8e40d3c2963b9446077daa8f20f3d",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260815165412_AddApiClientCredentialsCompanyForeignKey.Designer.cs": {
+    "mtime": 1786813207.4977083,
+    "ast_hash": "d9ccfa96b5a58167f6013d6877c01235",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260815165412_AddApiClientCredentialsCompanyForeignKey.cs": {
+    "mtime": 1786813207.5018363,
+    "ast_hash": "f75ac3836cac5a9d42024850e9c11fbc",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260816041430_AddWmsCloudConnectorType.Designer.cs": {
+    "mtime": 1786854291.6222112,
+    "ast_hash": "d3055e298cacdf67e5553de1e8d572f2",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260816041430_AddWmsCloudConnectorType.cs": {
+    "mtime": 1786854291.6270673,
+    "ast_hash": "db08b044b45427b50ea5e91c75b85549",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260819201316_UpdateUserPreferenceThemeValues.Designer.cs": {
+    "mtime": 1787921155.1953733,
+    "ast_hash": "6a7dea156475638cc27c3e3cf64d7d18",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260819201316_UpdateUserPreferenceThemeValues.cs": {
+    "mtime": 1787921155.2119086,
+    "ast_hash": "eeb8b137ecca0ca9d825f6bb00e28d36",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260821205407_AddIntegrationRunLogDetalleConsulta.Designer.cs": {
+    "mtime": 1787921155.217988,
+    "ast_hash": "fbb873973ec6869ba47696c2d369149c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260821205407_AddIntegrationRunLogDetalleConsulta.cs": {
+    "mtime": 1787921155.2254758,
+    "ast_hash": "25aff79f1b43945c31ab78285e3946da",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260822014150_AddIntegrationDefinitionLastSuccessfulSyncAt.Designer.cs": {
+    "mtime": 1787921155.2303193,
+    "ast_hash": "b15876875f79bc7ebf8769352c5f0432",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260822014150_AddIntegrationDefinitionLastSuccessfulSyncAt.cs": {
+    "mtime": 1787921155.2450848,
+    "ast_hash": "bc40e5687bf7a15aad579801866e9217",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260822061400_AddSqlConnectorType.Designer.cs": {
+    "mtime": 1787921155.2525806,
+    "ast_hash": "539253f8d55c56c0a456319b977e2436",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260822061400_AddSqlConnectorType.cs": {
+    "mtime": 1787921155.2652323,
+    "ast_hash": "1de1fce43165d30c6814b1f0e1580b95",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260825135116_AddOrganizationMenuOverrides.Designer.cs": {
+    "mtime": 1787921152.6720564,
+    "ast_hash": "3f51921214d742aec6abc34d547de46b",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260825135116_AddOrganizationMenuOverrides.cs": {
+    "mtime": 1787921152.682965,
+    "ast_hash": "58f6f09a355302778093aade6d639b20",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260827220025_AddCompanyExternalConnections.Designer.cs": {
+    "mtime": 1787922197.3658452,
+    "ast_hash": "83dfb92ae73b9c3f788a4b39913c26ec",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260827220025_AddCompanyExternalConnections.cs": {
+    "mtime": 1787922197.3818746,
+    "ast_hash": "508ae54096be9219f76387deedc0195f",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data/Entities/ApiClientCredential.cs": {
+    "mtime": 1786813207.5272348,
+    "ast_hash": "0aafabf7409d14f430c87caa6e30b6d2",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data/Entities/CompanyExternalConnection.cs": {
+    "mtime": 1787922193.084336,
+    "ast_hash": "806b8b3fd8509578002b3e8317fbe015",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data/Entities/CompanyModuleConnection.cs": {
+    "mtime": 1787922193.108023,
+    "ast_hash": "34cd9760ff994f7ef9c5b2c505b53ad0",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data/Entities/Integraciones/IntegrationDefinition.cs": {
+    "mtime": 1787921155.2950861,
+    "ast_hash": "cad25a27a1c50de93f1f4f157055cdc0",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data/Entities/Integraciones/IntegrationFieldMapping.cs": {
+    "mtime": 1786766418.014382,
+    "ast_hash": "36e72b7f17d5477225854d56f725d0ce",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data/Entities/Integraciones/IntegrationRunLog.cs": {
+    "mtime": 1787921155.329034,
+    "ast_hash": "d8a3f2354a56a75d73a26f41f1476096",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data/Entities/OrganizationMenuOverride.cs": {
+    "mtime": 1787921152.7086558,
+    "ast_hash": "1ff381d7c7b0d2f6e48d9fddd776164c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Infraestructura/CompanySessionActivator.cs": {
+    "mtime": 1786229825.0901473,
+    "ast_hash": "21180b39b874ceacad7d14fee1c67241",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Account/SwitchCompany.cshtml": {
+    "mtime": 1786066004.6276455,
+    "ast_hash": "325415bd8b40def67cce0deb7a251512",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Account/SwitchCompany.cshtml.cs": {
+    "mtime": 1786229857.5182574,
+    "ast_hash": "ee08df1441013dd14b4ab5ca70197757",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Integraciones/Bitacora.cshtml": {
+    "mtime": 1787921155.4092355,
+    "ast_hash": "5f641d89a157f26c563170ddf8206153",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Integraciones/Bitacora.cshtml.cs": {
+    "mtime": 1786797797.3888109,
+    "ast_hash": "9148ffbbcccc27b3fcb44fd97dfe3b8e",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Integraciones/Index.cshtml": {
+    "mtime": 1787921155.4310136,
+    "ast_hash": "e0c4324db3ab94f1e13059dbcd394ea1",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Integraciones/Index.cshtml.cs": {
+    "mtime": 1787921155.4501235,
+    "ast_hash": "5b82956dfdd2a606fec117bb0448dcfa",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Integraciones/Nuevo.cshtml": {
+    "mtime": 1787921155.466437,
+    "ast_hash": "d308213cdd7b019e517b5e1f0783dfff",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Integraciones/Nuevo.cshtml.cs": {
+    "mtime": 1787921155.4923625,
+    "ast_hash": "02911c6524ef109fe2df71a068c28c1d",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/ApiKeys/Index.cshtml": {
+    "mtime": 1786813207.551908,
+    "ast_hash": "32dbae572c3e52a944e109797f0640e0",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/ApiKeys/Index.cshtml.cs": {
+    "mtime": 1786813207.5809822,
+    "ast_hash": "68035d4a365798bcdd7875b305d0edce",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/ExternalConnections/Create.cshtml": {
+    "mtime": 1787922197.4304817,
+    "ast_hash": "e211b9da49ef40a77ae1957fe1150870",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/ExternalConnections/Create.cshtml.cs": {
+    "mtime": 1787922195.6312888,
+    "ast_hash": "30fc96d92a902bc0a49535a77e22d179",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/ExternalConnections/Edit.cshtml": {
+    "mtime": 1787922197.4581318,
+    "ast_hash": "819eff155a2f698dad224fc8d5776998",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/ExternalConnections/Edit.cshtml.cs": {
+    "mtime": 1787922195.6713028,
+    "ast_hash": "69a9dcd5eaaa7ec880642dd8d51b155d",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/ExternalConnections/Index.cshtml": {
+    "mtime": 1787922195.6992178,
+    "ast_hash": "80e5795b4b3e95ea5e7915a881e86710",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/ExternalConnections/Index.cshtml.cs": {
+    "mtime": 1787922197.4848094,
+    "ast_hash": "f5c6c3e498a87c23b665c71cf89d7312",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/Licenses/Activate.cshtml": {
+    "mtime": 1787921155.7893765,
+    "ast_hash": "1684c4706fed591cc3af80fc22bcf199",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/Licenses/Activate.cshtml.cs": {
+    "mtime": 1787921155.803761,
+    "ast_hash": "35951b3ae7fe486dbee187c4e30ffb64",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/OrganizationSubnavViewModel.cs": {
+    "mtime": 1787921155.8964562,
+    "ast_hash": "74dab594f3067a6a408e5f94ea62367f",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Admin/Organizations/_OrganizationSubnav.cshtml": {
+    "mtime": 1787965024.2847624,
+    "ast_hash": "da667b5be1f8a1aa4a6934019203e45a",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Shared/Components/CompanySwitcher/Default.cshtml": {
+    "mtime": 1788186639.4068034,
+    "ast_hash": "d4dee3328817abfc2fb08272f4243b96",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Shared/_LayoutMaestro.cshtml": {
+    "mtime": 1788116479.9250097,
+    "ast_hash": "1eac5bdd5d235a0364c732582d67ea27",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Shared/_ModuloBackLink.cshtml": {
+    "mtime": 1787921156.9888797,
+    "ast_hash": "f3a1d90753363aa8cdf46bc7b2b9fb83",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Shared/_ModuloLayout.cshtml": {
+    "mtime": 1787921157.0005448,
+    "ast_hash": "d3b9ed7bfc337d4fce5ea0f9565601f7",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Pages/Shared/_ModuloSubnav.cshtml": {
+    "mtime": 1787921157.015102,
+    "ast_hash": "c4ccefba87b854b4efdc3e8500bf9666",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Resources/SharedResources.cs": {
+    "mtime": 1787921157.048186,
+    "ast_hash": "712ebd667a346ed47c155e94f746cafa",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/ViewComponents/CompanySwitcherViewComponent.cs": {
+    "mtime": 1786066032.223056,
+    "ast_hash": "7025a7b9ede46ab775ccfca79593fd45",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Wms/SecureXmlHelper.cs": {
+    "mtime": 1786828726.3995874,
+    "ast_hash": "6a46d19017443fcc82b8e2ebcb85df54",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/Wms/WmsInboundEndpoints.cs": {
+    "mtime": 1786828726.3995874,
+    "ast_hash": "80660646be6363f8360fdb170219587c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/wwwroot/js/drawer.js": {
+    "mtime": 1787921157.1765127,
+    "ast_hash": "95c6b7b7b9dc0a543fd68420d31561b5",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/wwwroot/js/sidebar-resize.js": {
+    "mtime": 1787921157.1895049,
+    "ast_hash": "be0ec67d2a1cc920fc256c0d756e569a",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Host/wwwroot/lib/sheetjs/xlsx.full.min.js": {
+    "mtime": 1785727855.4631221,
+    "ast_hash": "6b3130af1ceadf07caa0ec08af7addff",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Integrations/IntegrationConnectorConfigService.cs": {
+    "mtime": 1786964325.7465022,
+    "ast_hash": "cbb522553ccf209d4b58e1b932897485",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Integrations/IntegrationFieldMappingService.cs": {
+    "mtime": 1786766418.104763,
+    "ast_hash": "1a7904bd6238a3af5fa3f422ed1b61eb",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Integrations/IntegrationSyncHostedService.cs": {
+    "mtime": 1787921157.2460613,
+    "ast_hash": "1ed626e2cd0d72de54c3613f544cd59b",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Integrations/PortalSaas.Integrations.csproj": {
+    "mtime": 1786766418.1207914,
+    "ast_hash": "a5ac69038ab290aee43e5eb2669e2715",
+    "semantic_hash": ""
+  },
+  "stop-web.ps1": {
+    "mtime": 1786970691.5074272,
+    "ast_hash": "db785891ef95ab0277cd434fa001eec2",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Administracion/CompanyExternalConnectionEntitiesTests.cs": {
+    "mtime": 1787922193.1237993,
+    "ast_hash": "44730216b2962704d64726e5cae64247",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Administracion/CompanyExternalConnectionServiceTests.cs": {
+    "mtime": 1787922194.6450522,
+    "ast_hash": "d111f5eaa5ca61e8131680def558b8e3",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Administracion/ExternalConnectionContractsTests.cs": {
+    "mtime": 1787922193.8943968,
+    "ast_hash": "3f3e52c7e27b882227f5a39d7b2fe65b",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Administracion/LegacyExternalConnectionBackfillTests.cs": {
+    "mtime": 1787922195.3113537,
+    "ast_hash": "11bf022faf9543a206d67416e415f3e2",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Infraestructura/ExternalDatabaseConnectionServiceTests.cs": {
+    "mtime": 1787922194.9781108,
+    "ast_hash": "c8f5e95a498381feec0d9f5c6005ece7",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Infraestructura/UserContactLookupServiceTests.cs": {
+    "mtime": 1786536976.0143535,
+    "ast_hash": "bda3fb12e872f5c723e145b6e6945ae1",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Integraciones/IntegrationConectorTipoTests.cs": {
+    "mtime": 1786854291.6877425,
+    "ast_hash": "5079d1f036da6b00e59b384495bd78ad",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Integraciones/IntegrationFieldMappingServiceTests.cs": {
+    "mtime": 1786766418.12934,
+    "ast_hash": "95cec88254fb6614b8c339d0363e4480",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Integraciones/IntegrationRecordTests.cs": {
+    "mtime": 1787369384.786858,
+    "ast_hash": "75b2c9278e2f4ea1cd7ed1f4796c3deb",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Integraciones/IntegrationSyncHostedServiceTests.cs": {
+    "mtime": 1787921157.2589855,
+    "ast_hash": "f7b51c359ed7a53eda4f41d765b12b81",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Integraciones/SapDocumentConnectorTests.cs": {
+    "mtime": 1788560772.7192287,
+    "ast_hash": "e45305a3351071a6acf49bec35ab7abd",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Integraciones/SqlDirectConnectorTests.cs": {
+    "mtime": 1787368061.5888116,
+    "ast_hash": "1b2754f9fb8a78bdf4fe7d681363d6c1",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Integrations/IntegrationConnectorConfigServiceTests.cs": {
+    "mtime": 1786964325.7606306,
+    "ast_hash": "34e34a040bec48511b8dfd146dfe07f6",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Inventario/InventoryDocumentServiceMapLineTests.cs": {
+    "mtime": 1788193274.6596124,
+    "ast_hash": "f5974417fbdeedaff55292a36633ed5e",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/MenuNavigationServiceTests.cs": {
+    "mtime": 1787921153.6334968,
+    "ast_hash": "1b39859a4fdc0c0acfa14bada29abbb9",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/OrganizationMenuOverrideServiceTests.cs": {
+    "mtime": 1787921154.4412467,
+    "ast_hash": "4ac464219bda2277892f21037a54710e",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Seguridad/ApiKeyAuthenticatorTests.cs": {
+    "mtime": 1786813207.6517067,
+    "ast_hash": "a5fea389abd1cbfcc579ed6b8ce4cd65",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Seguridad/ApiKeyGeneratorTests.cs": {
+    "mtime": 1786813207.6739962,
+    "ast_hash": "2e136f7070034a27515ce4f6ee496543",
+    "semantic_hash": ""
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1786242449.4591558,
+    "ast_hash": "5c4f111224a0b0fb6bc5ba0bf9b960c0",
+    "semantic_hash": ""
+  },
+  "DESIGN.md": {
+    "mtime": 1786366744.6296291,
+    "ast_hash": "d6e9ce395e80951d4514dcaf3e135d88",
+    "semantic_hash": ""
+  },
+  "docker-compose.prod.yml": {
+    "mtime": 1787921154.740023,
+    "ast_hash": "34058a225ef9921afbef20f3e701f1dd",
+    "semantic_hash": ""
+  },
+  "docs/05C-BASES-POSTGRES-OPERATIVAS.md": {
+    "mtime": 1787933929.0150297,
+    "ast_hash": "c3ff5fc4017a2f0a57e6ac0b1d4f9aec",
+    "semantic_hash": ""
+  },
+  "docs/10-DOCKER-POSTGRES-PRODUCCION.md": {
+    "mtime": 1787921154.7454598,
+    "ast_hash": "32ccf308206daabe4d8c4ec3e63a6eaa",
+    "semantic_hash": ""
+  },
+  "docs/12-MOTOR-INTEGRACION-ERP-PENDIENTES.md": {
+    "mtime": 1786899119.4226408,
+    "ast_hash": "5681c3653e836ec51e701dd92ce3c2f8",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-11-escalabilidad-horizontal.md": {
+    "mtime": 1786499371.9986615,
+    "ast_hash": "cd0b064fc574473579118af7fc4c2a6c",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-14-motor-integracion-erp.md": {
+    "mtime": 1786751513.8132267,
+    "ast_hash": "d495e33e7db91713ddedd95f836e004c",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-15-auth-maquina-a-maquina.md": {
+    "mtime": 1786811583.4995084,
+    "ast_hash": "e850c4d39bf43e5636acbcf0bed10261",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-15-motor-integracion-erp-fase2.md": {
+    "mtime": 1786792480.4374394,
+    "ast_hash": "ce4a8b838b5b1f7bd1fb23e13513b8d0",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-15-wms-ingestion-ronda-a.md": {
+    "mtime": 1786817190.3355768,
+    "ast_hash": "aa58a8f0d70bc8ab3082bbf4394ae2ba",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-15-wms-ronda-b-motor-sap.md": {
+    "mtime": 1786830815.040037,
+    "ast_hash": "8f3faa6ebf36fdcb50ec51f2d4cffa6b",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-15-wms-ronda-c-sap-a-wms.md": {
+    "mtime": 1786850188.207272,
+    "ast_hash": "b75d5719c4489a1d748d09196017014f",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-16-wms-ronda-d-picking.md": {
+    "mtime": 1786855820.412204,
+    "ast_hash": "d56cff98cf727013d56a81c8d3539078",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-27-catalogo-conexiones-externas-por-compania.md": {
+    "mtime": 1787922193.0602171,
+    "ast_hash": "bb9d3a3db5d71d557dd37ed755530ce4",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-08-28-diseno-responsive-multidispositivo.md": {
+    "mtime": 1787970168.099725,
+    "ast_hash": "f20b4a2964b0acff5ea094d16c710910",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-14-motor-integracion-erp-design.md": {
+    "mtime": 1786751086.9684715,
+    "ast_hash": "440c44bfb8d58b7afb426f7b65b4de88",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-15-auth-maquina-a-maquina-design.md": {
+    "mtime": 1786811033.5250852,
+    "ast_hash": "e80bdae98693520162e2b1b5f7f26beb",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-15-motor-integracion-erp-fase2-design.md": {
+    "mtime": 1786792313.6733177,
+    "ast_hash": "3cb5a41df42d626db4474141de820417",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-15-wms-ingestion-ronda-a-design.md": {
+    "mtime": 1786816397.5481193,
+    "ast_hash": "4da544fdebdd4c1eeb482802778fa4df",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-15-wms-ronda-b-motor-sap-design.md": {
+    "mtime": 1786830517.358624,
+    "ast_hash": "177b3ff7ca42046a86b1aaaa06460899",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-15-wms-ronda-c-sap-a-wms-design.md": {
+    "mtime": 1786849592.6713157,
+    "ast_hash": "eb38f32fa1c17319caa28fd696ed9385",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-16-admin-integraciones-alta-design.md": {
+    "mtime": 1786924977.6407588,
+    "ast_hash": "b83dbae62dc796be190cdfc3f9148fc3",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-16-wms-ronda-d-picking-design.md": {
+    "mtime": 1786855546.2022822,
+    "ast_hash": "714c4ce27746736f8475e57e4ec7f013",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-16-wms-ronda-e-confirmacion-design.md": {
+    "mtime": 1786899792.7627394,
+    "ast_hash": "97b429487661ea02916190db35cc6e81",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-27-catalogo-conexiones-externas-por-compania-design.md": {
+    "mtime": 1787922197.2794118,
+    "ast_hash": "875bd8afc9fe729250e3c81261ebc8bb",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-08-28-diseno-responsive-multidispositivo-design.md": {
+    "mtime": 1787969757.7247972,
+    "ast_hash": "6e065fe50f0e063c6451086323297e47",
+    "semantic_hash": ""
+  },
+  "plugins/Modulo.Inventario/Pages/ProductMaster/Index.cshtml": {
+    "mtime": 1788749682.0066054,
+    "ast_hash": "ef0dd1e716104e8bb09ee96c5ef0cabc",
+    "semantic_hash": ""
+  },
+  "plugins/Modulo.Inventario/Pages/ProductMaster/Index.cshtml.cs": {
+    "mtime": 1788749599.9406712,
+    "ast_hash": "e63f5b0cdd2be1ca45d1bc18e4470980",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/IItemMasterDetailService.cs": {
+    "mtime": 1788613786.6950202,
+    "ast_hash": "f4d4b92b5a1ba92e35120eef626eb2fe",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/IItemStockService.cs": {
+    "mtime": 1788613786.6950202,
+    "ast_hash": "6393d2df4c53c63d8097f3cadaf29477",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/ItemMasterDetailDto.cs": {
+    "mtime": 1788613786.7124646,
+    "ast_hash": "a2cb86aa96910b56d0376c10c3913f1b",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/PriceListOptionDto.cs": {
+    "mtime": 1788613786.725523,
+    "ast_hash": "e2432d42e5896b6d84eccf7720997357",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/WarehouseStockDto.cs": {
+    "mtime": 1788613786.7313426,
+    "ast_hash": "c6c3224403c39a7285dcf59f2d105309",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Catalogos/ItemMasterDetailService.cs": {
+    "mtime": 1788613786.7313426,
+    "ast_hash": "4a4a4fe0573ed5bb058cf1988c4e18a5",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Catalogos/ItemStockService.cs": {
+    "mtime": 1788613786.741204,
+    "ast_hash": "b21c64a09c2fb690e86b05e2af03b78a",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Seguridad/PasswordPolicy.cs": {
+    "mtime": 1788544767.458987,
+    "ast_hash": "76da5de916e50e78c235944efa4539c1",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Seguridad/RandomPasswordGenerator.cs": {
+    "mtime": 1788544811.5946412,
+    "ast_hash": "6edbb9b95d3e4f10b0064e06053d0e6a",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/ItemMasterDetailServiceTests.cs": {
+    "mtime": 1788613786.7629092,
+    "ast_hash": "b2dfdf94b57607326a6999f0cc82dd1b",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/ItemStockServiceTests.cs": {
+    "mtime": 1788613786.7694225,
+    "ast_hash": "e70ec916b9f27e6abf791101de81a198",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/PriceListServiceTests.cs": {
+    "mtime": 1788613786.773051,
+    "ast_hash": "39ff8c353da9f929c10c5509c1f5b317",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/ProductMasterIndexModelTests.cs": {
+    "mtime": 1788749637.989498,
+    "ast_hash": "e13c135dd4735eb767dd439bffdb81a8",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Seguridad/PasswordPolicyTests.cs": {
+    "mtime": 1788544746.8557267,
+    "ast_hash": "633f9e10af4ec1f394dbc98a016bb2cd",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Seguridad/RandomPasswordGeneratorTests.cs": {
+    "mtime": 1788544793.6557024,
+    "ast_hash": "350fbdad68b7b17a9697aff698530a60",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-09-04-gestion-contrasenas-admin.md": {
+    "mtime": 1788544697.024813,
+    "ast_hash": "6384831b236d9c783096827e99808535",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-09-05-maestro-producto.md": {
+    "mtime": 1788583529.110889,
+    "ast_hash": "750fd7a184de44120ab967db1c27cffa",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-09-04-gestion-contrasenas-admin-design.md": {
+    "mtime": 1788544529.5486014,
+    "ast_hash": "738374c7fb834ad1313be07c020c8f76",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-09-05-maestro-producto-design.md": {
+    "mtime": 1788583035.7040172,
+    "ast_hash": "61dc22caf15afb23003d85b9714ebb69",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Sap/SapTraceabilityFieldResolver.cs": {
+    "mtime": 1788749608.719276,
+    "ast_hash": "5a3d915bfa55ef51a0758f9160a63b95",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260907025640_AddCompanyTraceabilityUdfName.Designer.cs": {
+    "mtime": 1788749800.065831,
+    "ast_hash": "36d73fa32be67b2595fb5388e201a75e",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260907025640_AddCompanyTraceabilityUdfName.cs": {
+    "mtime": 1788749800.0514681,
+    "ast_hash": "7f417767727a7a628152bf6c9bf515c5",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260907025649_AddCompanyTraceabilityUdfName.Designer.cs": {
+    "mtime": 1788749809.0564559,
+    "ast_hash": "05e86611648a4c9614d39b69f85b6ef2",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260907025649_AddCompanyTraceabilityUdfName.cs": {
+    "mtime": 1788749809.0511107,
+    "ast_hash": "71d51b413589c5be4b9f5e2e37c19eea",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/Sap/SapTraceabilityFieldResolverTests.cs": {
+    "mtime": 1788749887.69954,
+    "ast_hash": "a464232fde95e3a07c169959412a7c98",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-09-06-reporte-resultado-importacion-generica-design.md": {
+    "mtime": 1788749059.36516,
+    "ast_hash": "c208d72220e9f04fdc49b7110ee5d30f",
+    "semantic_hash": ""
   }
 }

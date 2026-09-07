@@ -41,7 +41,7 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
         await LoadAsync(ct);
     }
 
-    public async Task<IActionResult> OnPostToggleAsync(bool enabled, CancellationToken ct)
+    public async Task<IActionResult> OnPostToggleAsync(CancellationToken ct)
     {
         var settings = await _db.RendicionesSettings.FirstOrDefaultAsync(x => x.CompanyId == _currentCompany.CompanyId, ct);
         if (settings is null)
@@ -49,11 +49,28 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
             settings = new RendicionesSettings { CompanyId = _currentCompany.CompanyId };
             _db.RendicionesSettings.Add(settings);
         }
+
+        // Se alterna contra el estado REAL en base, no contra un valor que venga del
+        // formulario -- una página cacheada/reenviada con el hidden viejo mandaba a
+        // "desactivar" aunque el botón dijera "Activar".
+        var enabled = !settings.SapCatalogSyncEnabled;
         settings.SapCatalogSyncEnabled = enabled;
         settings.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(ct);
 
-        SuccessMessage = enabled ? "Sincronización con SAP activada." : "Sincronización con SAP desactivada. Los catálogos ahora se editan a mano.";
+        if (!enabled)
+        {
+            SuccessMessage = "Sincronización con SAP desactivada. Los catálogos ahora se editan a mano.";
+            return RedirectToPage();
+        }
+
+        // Activar dispara una primera sincronización de una: el usuario espera ver los
+        // catálogos poblados al prender el switch, no una pantalla vacía hasta apretar
+        // "Sincronizar ahora" aparte.
+        var synced = await RunSyncAsync(ct);
+        SuccessMessage = synced is null
+            ? "Sincronización con SAP activada."
+            : "Sincronización con SAP activada. " + synced;
         return RedirectToPage();
     }
 
@@ -66,12 +83,24 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
             return RedirectToPage();
         }
 
+        var synced = await RunSyncAsync(ct);
+        if (synced is not null)
+        {
+            SuccessMessage = synced;
+        }
+        return RedirectToPage();
+    }
+
+    /// <summary>
+    /// Corre la sincronización de ambos catálogos y devuelve el resumen para mostrar, o
+    /// <c>null</c> si falló (en ese caso ya dejó <see cref="ErrorMessage"/> seteado y logueó).
+    /// </summary>
+    private async Task<string?> RunSyncAsync(CancellationToken ct)
+    {
         try
         {
             var costCenterResult = await _sync.SyncCostCentersAsync(_currentCompany.CompanyId, ct);
             var glAccountResult = await _sync.SyncGlAccountsAsync(_currentCompany.CompanyId, ct);
-            SuccessMessage = $"Sincronizado. Centros de costo: {costCenterResult.Created} nuevos, {costCenterResult.Updated} actualizados, {costCenterResult.Deactivated} desactivados. " +
-                              $"Cuentas contables: {glAccountResult.Created} nuevas, {glAccountResult.Updated} actualizadas, {glAccountResult.Deactivated} desactivadas.";
 
             var allWarnings = costCenterResult.Warnings.Concat(glAccountResult.Warnings).ToList();
             if (allWarnings.Count > 0)
@@ -79,13 +108,16 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
                 _logger.LogWarning("Sincronización SAP con advertencias para la compañía {CompanyId}: {Warnings}", _currentCompany.CompanyId, string.Join(" | ", allWarnings));
                 WarningMessage = string.Join(" ", allWarnings);
             }
+
+            return $"Sincronizado. Centros de costo: {costCenterResult.Created} nuevos, {costCenterResult.Updated} actualizados, {costCenterResult.Deactivated} desactivados. " +
+                   $"Cuentas contables: {glAccountResult.Created} nuevas, {glAccountResult.Updated} actualizadas, {glAccountResult.Deactivated} desactivadas.";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Falló la sincronización de catálogos SAP para la compañía {CompanyId}", _currentCompany.CompanyId);
             ErrorMessage = "No se pudo sincronizar con SAP. Intentá nuevamente más tarde o contactá a soporte.";
+            return null;
         }
-        return RedirectToPage();
     }
 
     public async Task<IActionResult> OnPostAgregarCentroCostoAsync(CancellationToken ct)

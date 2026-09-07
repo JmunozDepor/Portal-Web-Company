@@ -94,6 +94,59 @@ public sealed class GenericImportValidationRuleEngineTests
         Assert.False(result.ContainsKey(2));
     }
 
+    // ---- Task 7: PriceVsFixedList / PriceVsCustomerList ------------------------
+
+    private static GenericImportRowDto RowWithPrice(int rowNumber, string itemCode, decimal unitPrice, string cardCode = "C001") => new()
+    {
+        RowNumber = rowNumber,
+        GroupingKey = "G1",
+        IsValid = true,
+        ItemCode = itemCode,
+        UnitPrice = unitPrice,
+        BusinessPartnerCardCode = cardCode,
+    };
+
+    [Fact]
+    public async Task PriceVsFixedListRule_marca_precio_fuera_de_tolerancia()
+    {
+        var rule = new PriceVsFixedListRule(new FakePriceListService(new Dictionary<string, decimal> { ["I001"] = 100m }));
+        var rows = new[] { RowWithPrice(1, "I001", 100m), RowWithPrice(2, "I001", 80m) };
+        var parameters = new Dictionary<string, object?> { ["priceListNum"] = 1, ["tolerancePercent"] = 5m };
+
+        var result = await rule.ValidateAsync(rows, GenericImportModule.Sales, parameters, CancellationToken.None);
+
+        Assert.False(result.ContainsKey(1));
+        Assert.True(result.ContainsKey(2));
+    }
+
+    [Fact]
+    public async Task PriceVsCustomerListRule_usa_la_lista_asignada_al_cliente()
+    {
+        var rule = new PriceVsCustomerListRule(
+            new FakePriceListService(new Dictionary<string, decimal> { ["I001"] = 200m }),
+            new FakeBusinessPartnerDefaultsService(priceListCode: 2));
+        var rows = new[] { RowWithPrice(1, "I001", 200m), RowWithPrice(2, "I001", 150m) };
+        var parameters = new Dictionary<string, object?> { ["tolerancePercent"] = 0m };
+
+        var result = await rule.ValidateAsync(rows, GenericImportModule.Sales, parameters, CancellationToken.None);
+
+        Assert.False(result.ContainsKey(1));
+        Assert.True(result.ContainsKey(2));
+    }
+
+    [Fact]
+    public async Task PriceVsCustomerListRule_sin_lista_asignada_no_valida_nada()
+    {
+        var rule = new PriceVsCustomerListRule(
+            new FakePriceListService(new Dictionary<string, decimal> { ["I001"] = 200m }),
+            new FakeBusinessPartnerDefaultsService(priceListCode: null));
+        var rows = new[] { RowWithPrice(1, "I001", 1m) };
+
+        var result = await rule.ValidateAsync(rows, GenericImportModule.Sales, new Dictionary<string, object?> { ["tolerancePercent"] = 0m }, CancellationToken.None);
+
+        Assert.Empty(result);
+    }
+
     // ---- Fakes escritos a mano (este proyecto no usa Moq/NSubstitute) ----------
 
     private sealed class FakeCustomerCatalogService : ICustomerCatalogService
@@ -122,5 +175,22 @@ public sealed class GenericImportValidationRuleEngineTests
         public Task<IReadOnlyList<ItemDto>> GetByCodesAsync(IReadOnlyCollection<string> itemCodes, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<ItemDto>>([]);
         public Task<IReadOnlyList<ItemDto>> GetTopAsync(int limit = 30, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<ItemDto>>([]);
         public Task<IReadOnlyDictionary<string, bool>> GetActiveStatusAsync(IReadOnlyList<string> itemCodes, CancellationToken ct = default) => Task.FromResult(_active);
+    }
+
+    private sealed class FakePriceListService : IPriceListService
+    {
+        private readonly IReadOnlyDictionary<string, decimal> _prices;
+        public FakePriceListService(IReadOnlyDictionary<string, decimal> prices) => _prices = prices;
+        public Task<decimal?> GetPriceAsync(string itemCode, int priceList, CancellationToken ct = default) => Task.FromResult(_prices.TryGetValue(itemCode, out var p) ? p : (decimal?)null);
+        public Task<IReadOnlyDictionary<string, decimal>> GetPricesAsync(IReadOnlyCollection<string> itemCodes, int priceList, CancellationToken ct = default) => Task.FromResult(_prices);
+        public Task<IReadOnlyList<PriceListOptionDto>> ListAllAsync(CancellationToken ct = default) => Task.FromResult<IReadOnlyList<PriceListOptionDto>>([]);
+    }
+
+    private sealed class FakeBusinessPartnerDefaultsService : IBusinessPartnerDefaultsService
+    {
+        private readonly int? _priceListCode;
+        public FakeBusinessPartnerDefaultsService(int? priceListCode) => _priceListCode = priceListCode;
+        public Task<BusinessPartnerDefaultsDto?> GetAsync(string cardCode, CancellationToken ct = default) =>
+            Task.FromResult<BusinessPartnerDefaultsDto?>(new BusinessPartnerDefaultsDto { CardCode = cardCode, PriceListCode = _priceListCode });
     }
 }

@@ -49,6 +49,20 @@ dotnet tool run dotnet-ef database update \
   --connection "Host=172.16.122.171;Port=5432;Database=<db>;Username=admin_saas;Password=<real>"
 ```
 
+## Historial de aplicación de `AddGenericImportValidationRules` (2026-09-07)
+
+Motor de reglas de validación pre-carga de Importación Genérica —
+tabla `generic_import_validation_rule_assignments` (1:N con
+`generic_import_configs`, `DeleteBehavior.Cascade`), ver
+`docs/superpowers/plans/2026-09-07-reglas-validacion-importacion-generica.md`.
+Aplicada con éxito contra las **4 bases operativas** (`portalsaas_saas_qa`,
+`portalsaas_saas_prod`, `ps_comdepor`, `ps_comdepor_qa`) el 2026-09-07 —
+`20260907163712_AddGenericImportValidationRules`, la única `(Pending)` en cada
+una (todas ya tenían `AddCompanyTraceabilityUdfName` y el resto al día). Sin
+backfill ni primer arranque requerido (tabla nueva, arranca vacía). La
+migración gemela de SQL Server quedó generada solo por paridad — no hay BD
+SQL Server de plataforma activa (confirmado con el dueño del proyecto).
+
 ## Historial de aplicación de `AddCompanyExternalConnections` (2026-08-28)
 
 Catálogo de conexiones externas por compañía (`company_external_connections` +

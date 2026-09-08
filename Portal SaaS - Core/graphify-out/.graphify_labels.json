@@ -495,16 +495,10 @@
   "493": "InitialCreate",
   "494": "AddPlanToOnPremiseLicense",
   "495": "AddApiClientCredentialsCompanyForeignKey",
-  "496": ".PuedePersistirYLeerConexionConBinding",
   "497": "InputModel",
-  "498": ".GenerateAndSetPasswordAsync",
   "499": "20260724162645_InitialCreate.Designer.cs",
   "500": "20260724171946_AddAuthenticationAndPreferences.Designer.cs",
   "501": "20260726220745_AddModuleExternalConnections.Designer.cs",
   "502": "20260815035304_AddIntegrationTables.Designer.cs",
-  "503": "20260815165412_AddApiClientCredentialsCompanyForeignKey.Designer.cs",
-  "504": "20260819201316_UpdateUserPreferenceThemeValues.Designer.cs",
-  "505": "20260827220025_AddCompanyExternalConnections.Designer.cs",
-  "506": "Index.cshtml",
-  "507": "SalesDocumentTypeCatalog"
+  "506": "Index.cshtml"
 }

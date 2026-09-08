@@ -148,7 +148,7 @@ public sealed class IntegrationSyncHostedService : BackgroundService
             var definicion = await contexto.IntegrationDefinitions.FirstOrDefaultAsync(d => d.Id == definicionId, cancellationToken);
             if (definicion is not null)
             {
-                definicion.NextRunAt = null;
+                definicion.NextRunAt = CalcularProximaCorrida(definicion);
             }
 
             contexto.IntegrationRunLogs.Add(new IntegrationRunLog
@@ -281,7 +281,7 @@ public sealed class IntegrationSyncHostedService : BackgroundService
         finally
         {
             log.FinalizadoEn = DateTimeOffset.UtcNow;
-            definicion.NextRunAt = null;
+            definicion.NextRunAt = CalcularProximaCorrida(definicion);
             contexto.IntegrationRunLogs.Add(log);
 
             try
@@ -297,6 +297,17 @@ public sealed class IntegrationSyncHostedService : BackgroundService
             }
         }
     }
+
+    /// <summary>Cuándo vuelve a correr una integración después de terminar (con éxito, error o
+    /// timeout): si sigue activa y tiene un intervalo configurado, se reprograma para dentro de
+    /// ese intervalo contado desde AHORA -- no desde la hora teórica de disparo, así una corrida
+    /// que tardó más que el intervalo no genera una cola de corridas encimadas. Sin intervalo,
+    /// queda en null: solo vuelve a correr si alguien la dispara a mano ("Ejecutar ahora" fija
+    /// NextRunAt).</summary>
+    private static DateTimeOffset? CalcularProximaCorrida(IntegrationDefinition definicion) =>
+        definicion is { Activo: true, IntervaloMinutos: { } minutos } && minutos > 0
+            ? DateTimeOffset.UtcNow.AddMinutes(minutos)
+            : null;
 
     /// <summary>IIntegrationConnector.DescribirConsulta no debería lanzar (ver contrato de la
     /// interfaz), pero un conector de terceros podría no respetarlo -- no dejar que describir

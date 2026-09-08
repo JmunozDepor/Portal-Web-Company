@@ -74,6 +74,7 @@ public sealed class ModuloGestionDistribucionGastos : IModuloPortal
             Code = "eerr",
             ParentCode = "raiz",
             Name = "Gestión Gastos EERR",
+            Icon = "bi-file-earmark-bar-graph",
             PageRoute = "/gestiongastos/panel",
             Order = 1,
         };

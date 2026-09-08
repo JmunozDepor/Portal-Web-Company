@@ -1,0 +1,74 @@
+@model Modulo.Wms.Pages.Shared.WmsPagerModel
+@{
+    if (Model.TotalPages <= 1)
+    {
+        return;
+    }
+
+    var current = Math.Clamp(Model.CurrentPage, 1, Model.TotalPages);
+    var start = Math.Max(1, current - Model.Window);
+    var end = Math.Min(Model.TotalPages, current + Model.Window);
+
+    Dictionary<string, string> Ruta(int page)
+    {
+        var data = new Dictionary<string, string>();
+        foreach (var par in Model.RouteValues)
+        {
+            if (!string.IsNullOrEmpty(par.Value))
+            {
+                data[par.Key] = par.Value!;
+            }
+        }
+        data[Model.PageParam] = page.ToString();
+        return data;
+    }
+}
+
+<nav class="mt-3 d-flex flex-wrap align-items-center justify-content-between gap-2" aria-label="Paginación">
+    <span class="small text-muted">
+        Página <strong>@current</strong> de <strong>@Model.TotalPages</strong>
+        <span class="text-nowrap">&middot; @Model.TotalCount.ToString("N0") registro(s)</span>
+    </span>
+
+    <div class="d-flex flex-wrap gap-1">
+        <a class="btn btn-sm btn-secondary @(current == 1 ? "disabled" : null)"
+           asp-all-route-data="Ruta(1)" aria-label="Primera página" tabindex="@(current == 1 ? "-1" : null)">&laquo;</a>
+        <a class="btn btn-sm btn-secondary @(current == 1 ? "disabled" : null)"
+           asp-all-route-data="Ruta(current - 1)" aria-label="Página anterior" tabindex="@(current == 1 ? "-1" : null)">&lsaquo; Anterior</a>
+
+        @if (start > 1)
+        {
+            <span class="btn btn-sm border-0 text-muted px-2">&hellip;</span>
+        }
+
+        @for (var p = start; p <= end; p++)
+        {
+            <a class="btn btn-sm @(p == current ? "btn-primary" : "btn-secondary")"
+               asp-all-route-data="Ruta(p)" aria-current="@(p == current ? "page" : null)">@p</a>
+        }
+
+        @if (end < Model.TotalPages)
+        {
+            <span class="btn btn-sm border-0 text-muted px-2">&hellip;</span>
+        }
+
+        <a class="btn btn-sm btn-secondary @(current == Model.TotalPages ? "disabled" : null)"
+           asp-all-route-data="Ruta(current + 1)" aria-label="Página siguiente" tabindex="@(current == Model.TotalPages ? "-1" : null)">Siguiente &rsaquo;</a>
+        <a class="btn btn-sm btn-secondary @(current == Model.TotalPages ? "disabled" : null)"
+           asp-all-route-data="Ruta(Model.TotalPages)" aria-label="Última página" tabindex="@(current == Model.TotalPages ? "-1" : null)">&raquo;</a>
+    </div>
+
+    <form method="get" class="d-flex align-items-center gap-1">
+        @foreach (var par in Model.RouteValues)
+        {
+            if (!string.IsNullOrEmpty(par.Value))
+            {
+                <input type="hidden" name="@par.Key" value="@par.Value" />
+            }
+        }
+        <label class="small text-muted mb-0" for="wmsPagerGoto">Ir a</label>
+        <input id="wmsPagerGoto" type="number" name="@Model.PageParam" min="1" max="@Model.TotalPages"
+               value="@current" class="form-control form-control-sm" style="width: 4.25rem;" aria-label="Número de página" />
+        <button type="submit" class="btn btn-sm btn-secondary">Ir</button>
+    </form>
+</nav>

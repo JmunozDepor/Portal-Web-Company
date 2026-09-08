@@ -49,6 +49,19 @@ dotnet tool run dotnet-ef database update \
   --connection "Host=172.16.122.171;Port=5432;Database=<db>;Username=admin_saas;Password=<real>"
 ```
 
+## Historial de aplicación de `AddIntegrationDefinitionRunInterval` (2026-09-08)
+
+Programación por intervalo de las integraciones del motor genérico —
+columna `run_interval_minutes` (`int?`) en `integration_definitions`. El
+`IntegrationSyncHostedService` la usa para reprogramar `NextRunAt = ahora +
+run_interval_minutes` al terminar cada corrida (antes quedaba en `null` y la
+integración corría una sola vez). Aplicada con éxito contra las **4 bases
+operativas** (`ps_comdepor`, `portalsaas_saas_prod`, `portalsaas_saas_qa`,
+`ps_comdepor_qa`) el 2026-09-08 — `20260908003604_AddIntegrationDefinitionRunInterval`,
+la única `(Pending)` en cada una. Columna nullable aditiva, sin backfill ni
+primer arranque requerido. La migración gemela de SQL Server quedó generada
+solo por paridad — no hay BD SQL Server de plataforma activa.
+
 ## Historial de aplicación de `AddGenericImportValidationRules` (2026-09-07)
 
 Motor de reglas de validación pre-carga de Importación Genérica —

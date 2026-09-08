@@ -1300,8 +1300,8 @@
     "semantic_hash": "c5e5d77540788b2944babcff5d762113"
   },
   "src/PortalSaas.Core/ImportacionGenerica/GenericImportConfigService.cs": {
-    "mtime": 1788799205.457375,
-    "ast_hash": "3bebdc6e21758181c6a0585c31027bdf",
+    "mtime": 1788810121.2177403,
+    "ast_hash": "5620a514ff37b8447908bd1978642450",
     "semantic_hash": ""
   },
   "src/PortalSaas.Core/ImportacionGenerica/GenericImportProgressStore.cs": {
@@ -1670,8 +1670,8 @@
     "semantic_hash": "0fb617d296141ace7ce8870d521c3c21"
   },
   "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/PortalSaasDbContextModelSnapshot.cs": {
-    "mtime": 1788799032.1253083,
-    "ast_hash": "44b2719754e0d07819819b7b8aec11a6",
+    "mtime": 1788827764.1610794,
+    "ast_hash": "6a9986b2415de1971ff1d9a7552728cb",
     "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.PostgreSql/PortalSaas.Data.Migrations.PostgreSql.csproj": {
@@ -1820,8 +1820,8 @@
     "semantic_hash": "4fcb747b62968754217d49a354fc63b2"
   },
   "src/PortalSaas.Data.Migrations.SqlServer/Migrations/PortalSaasDbContextModelSnapshot.cs": {
-    "mtime": 1788799042.0614498,
-    "ast_hash": "1274c75af780ee1259fa1944b3cb6c6c",
+    "mtime": 1788827775.549852,
+    "ast_hash": "82d705b93a496078a5be12fc2c6a96a4",
     "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.SqlServer/PortalSaas.Data.Migrations.SqlServer.csproj": {
@@ -1995,8 +1995,8 @@
     "semantic_hash": "adf919a5cbd81f52efb83d0ad47c5984"
   },
   "src/PortalSaas.Data/PortalSaasDbContext.cs": {
-    "mtime": 1788799010.9665458,
-    "ast_hash": "50fea4bba34feadd72842e874a479f5e",
+    "mtime": 1788827656.7553358,
+    "ast_hash": "21c9a9a64828cf34873523df334e018a",
     "semantic_hash": ""
   },
   "src/PortalSaas.Host/Comandos/PlatformAdminSeeder.cs": {
@@ -3335,8 +3335,8 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Data/Entities/Integraciones/IntegrationDefinition.cs": {
-    "mtime": 1787921155.2950861,
-    "ast_hash": "cad25a27a1c50de93f1f4f157055cdc0",
+    "mtime": 1788827651.9934502,
+    "ast_hash": "089256bab9f478e36de66060333146f7",
     "semantic_hash": ""
   },
   "src/PortalSaas.Data/Entities/Integraciones/IntegrationFieldMapping.cs": {
@@ -3380,8 +3380,8 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Integraciones/Index.cshtml": {
-    "mtime": 1787921155.4310136,
-    "ast_hash": "e0c4324db3ab94f1e13059dbcd394ea1",
+    "mtime": 1788827713.1588788,
+    "ast_hash": "754b28d72146223a01879d1e8d9d55d6",
     "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Integraciones/Index.cshtml.cs": {
@@ -3390,13 +3390,13 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Integraciones/Nuevo.cshtml": {
-    "mtime": 1787921155.466437,
-    "ast_hash": "d308213cdd7b019e517b5e1f0783dfff",
+    "mtime": 1788827703.437549,
+    "ast_hash": "474d4ac2eb64ac8afa267bb46f15f978",
     "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Integraciones/Nuevo.cshtml.cs": {
-    "mtime": 1787921155.4923625,
-    "ast_hash": "02911c6524ef109fe2df71a068c28c1d",
+    "mtime": 1788827696.64386,
+    "ast_hash": "c53069a1c6c3a96e7458d62e516f4af7",
     "semantic_hash": ""
   },
   "src/PortalSaas.Host/Pages/Admin/Organizations/Companies/ApiKeys/Index.cshtml": {
@@ -3530,8 +3530,8 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Integrations/IntegrationSyncHostedService.cs": {
-    "mtime": 1787921157.2460613,
-    "ast_hash": "1ed626e2cd0d72de54c3613f544cd59b",
+    "mtime": 1788827675.0869281,
+    "ast_hash": "06852d9cbe16fc430b1716c13f4ebb52",
     "semantic_hash": ""
   },
   "src/PortalSaas.Integrations/PortalSaas.Integrations.csproj": {
@@ -3590,8 +3590,8 @@
     "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/Integraciones/IntegrationSyncHostedServiceTests.cs": {
-    "mtime": 1787921157.2589855,
-    "ast_hash": "f7b51c359ed7a53eda4f41d765b12b81",
+    "mtime": 1788827738.259581,
+    "ast_hash": "55c5fc87d1d718321065eb15c7ccde39",
     "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/Integraciones/SapDocumentConnectorTests.cs": {
@@ -3650,8 +3650,8 @@
     "semantic_hash": ""
   },
   "docs/05C-BASES-POSTGRES-OPERATIVAS.md": {
-    "mtime": 1787933929.0150297,
-    "ast_hash": "c3ff5fc4017a2f0a57e6ac0b1d4f9aec",
+    "mtime": 1788805307.39292,
+    "ast_hash": "87607d0bd61e1f5d8597ad74ac90cbd5",
     "semantic_hash": ""
   },
   "docs/10-DOCKER-POSTGRES-PRODUCCION.md": {
@@ -4010,8 +4010,8 @@
     "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/ImportacionGenerica/GenericImportConfigServiceValidationRulesTests.cs": {
-    "mtime": 1788799179.6053357,
-    "ast_hash": "227fab499ba6c0cce298c6ea8e72690f",
+    "mtime": 1788810132.74715,
+    "ast_hash": "64b4150f5e752bccd0ef671fb22eddfe",
     "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/ImportacionGenerica/Reglas/GenericImportValidationRuleEngineTests.cs": {
@@ -4027,6 +4027,26 @@
   "docs/superpowers/specs/2026-09-07-reglas-validacion-importacion-generica-design.md": {
     "mtime": 1788781918.824986,
     "ast_hash": "57c381f3210e844f676195bf43e0c033",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260908003604_AddIntegrationDefinitionRunInterval.Designer.cs": {
+    "mtime": 1788827764.1561484,
+    "ast_hash": "32e9b5823fbce35fb59f73f3214f823b",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260908003604_AddIntegrationDefinitionRunInterval.cs": {
+    "mtime": 1788827764.1508963,
+    "ast_hash": "4dfcd083334716d1e41cde172669d18e",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260908003615_AddIntegrationDefinitionRunInterval.Designer.cs": {
+    "mtime": 1788827775.5412312,
+    "ast_hash": "f35b69670ac9503cfeadfd305137b6fd",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260908003615_AddIntegrationDefinitionRunInterval.cs": {
+    "mtime": 1788827775.5382435,
+    "ast_hash": "4f436e2191873b247729849e75d81f4f",
     "semantic_hash": ""
   }
 }

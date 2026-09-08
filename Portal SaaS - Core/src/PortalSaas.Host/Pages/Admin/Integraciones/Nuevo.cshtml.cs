@@ -99,7 +99,7 @@ public class NuevoModel : PageModel
             ConectorTipo = definicion.ConectorTipo,
             Direccion = definicion.Direccion,
             Activo = definicion.Activo,
-            ProgramacionCron = definicion.ProgramacionCron,
+            IntervaloMinutos = definicion.IntervaloMinutos,
         };
 
         // Precarga los campos no-secretos del bloque de config -- la Clave/password
@@ -194,7 +194,21 @@ public class NuevoModel : PageModel
         definicion.ConectorTipo = Input.ConectorTipo;
         definicion.Direccion = Input.Direccion;
         definicion.Activo = Input.Activo;
-        definicion.ProgramacionCron = string.IsNullOrWhiteSpace(Input.ProgramacionCron) ? null : Input.ProgramacionCron.Trim();
+        definicion.IntervaloMinutos = Input.IntervaloMinutos is > 0 ? Input.IntervaloMinutos : null;
+
+        // Arranque de la programación: si quedó activa y con un intervalo, y no tiene ya una
+        // corrida encolada, se marca para el próximo ciclo del motor (hasta 1 min) -- así
+        // empieza a correr sola sin necesitar un "Ejecutar ahora" manual. Si se desactivó,
+        // se desencola cualquier corrida pendiente. Si se le sacó el intervalo pero sigue
+        // activa, no se toca NextRunAt (respeta un "Ejecutar ahora" que ya se haya disparado).
+        if (!definicion.Activo)
+        {
+            definicion.NextRunAt = null;
+        }
+        else if (definicion.IntervaloMinutos is > 0 && definicion.NextRunAt is null)
+        {
+            definicion.NextRunAt = DateTimeOffset.UtcNow;
+        }
 
         definicion.ConectorConfigCifrado = await ArmarConfigCifradaAsync(definicion);
 
@@ -301,8 +315,9 @@ public class NuevoModel : PageModel
         [Display(Name = "Activa")]
         public bool Activo { get; set; } = true;
 
-        [Display(Name = "Programación cron")]
-        public string? ProgramacionCron { get; set; }
+        [Range(1, 43200, ErrorMessage = "El intervalo debe estar entre 1 minuto y 43200 (30 días).")]
+        [Display(Name = "Ejecutar cada (minutos)")]
+        public int? IntervaloMinutos { get; set; }
 
         // Bloque Sap
         [Display(Name = "Tipo de entidad SAP")]

@@ -68,6 +68,20 @@
         var preferences = await UserPreferences.GetOrCreateDefaultAsync(currentUserId);
         serverTheme = preferences.Theme;
     }
+
+    // Paleta rápida de tema en el topbar (a la izquierda del menú de usuario).
+    // Cada swatch postea a /Account/SetTheme, que persiste en la cuenta (misma
+    // fuente de verdad que /Home/Preferences). El color de cada uno sale de los
+    // --theme-preview-* de design-tokens.css, nunca de un literal en el markup.
+    var themeSwatches = new[]
+    {
+        (Value: PortalSaas.Data.Entities.UserThemePreference.Claro, Label: "Claro"),
+        (Value: PortalSaas.Data.Entities.UserThemePreference.Oscuro, Label: "Oscuro"),
+        (Value: PortalSaas.Data.Entities.UserThemePreference.Teal, Label: "Teal"),
+        (Value: PortalSaas.Data.Entities.UserThemePreference.Violeta, Label: "Violeta"),
+    };
+    var activeTheme = serverTheme ?? PortalSaas.Data.Entities.UserThemePreference.Claro;
+    var themeReturnUrl = Context.Request.Path + Context.Request.QueryString;
 }
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
@@ -207,6 +221,21 @@
                     </button>
                     <span class="topbar-title">@ViewData["Title"] <span class="badge-status badge-status--neutral">Administración</span></span>
                     <div class="topbar-right">
+                        @* Paleta de colores -- a la izquierda del menú de usuario, igual que en
+                           el shell de tenant. Acá el cambio es 100% cliente (localStorage vía
+                           theme-switcher.js): PlatformAdmin no tiene fila UserPreference, así
+                           que no hay endpoint /Account/SetTheme que valga (otro esquema de
+                           cookie, sin User.Id). *@
+                        <div class="topbar-theme" role="group" aria-label="Paleta de colores">
+                            @foreach (var swatch in themeSwatches)
+                            {
+                                <button type="button"
+                                        class="topbar-theme-swatch"
+                                        data-theme-switch="@swatch.Value"
+                                        title="Tema @swatch.Label"
+                                        aria-label="Cambiar al tema @swatch.Label"></button>
+                            }
+                        </div>
                         <details class="user-menu">
                             <summary>
                                 <span class="user-avatar">@initials</span>
@@ -275,6 +304,21 @@
                         <button type="button" class="topbar-icon-btn" disabled title="Notificaciones (próximamente)"><i class="bi bi-bell"></i></button>
                         <button type="button" class="topbar-icon-btn" disabled title="Mensajes (próximamente)"><i class="bi bi-chat-dots"></i></button>
                         <button type="button" class="topbar-icon-btn" disabled title="Crear (próximamente)"><i class="bi bi-plus-lg"></i></button>
+                        @* Paleta de colores -- justo a la izquierda del menú de usuario. *@
+                        <div class="topbar-theme" role="group" aria-label="Paleta de colores">
+                            @foreach (var swatch in themeSwatches)
+                            {
+                                <form method="post" asp-page="/Account/SetTheme" asp-route-returnUrl="@themeReturnUrl">
+                                    <input type="hidden" name="theme" value="@swatch.Value" />
+                                    <button type="submit"
+                                            class="topbar-theme-swatch"
+                                            data-theme-swatch="@swatch.Value"
+                                            aria-pressed="@(swatch.Value == activeTheme ? "true" : "false")"
+                                            title="Tema @swatch.Label"
+                                            aria-label="Cambiar al tema @swatch.Label"></button>
+                                </form>
+                            }
+                        </div>
                         <details class="user-menu">
                             <summary>
                                 <span class="user-avatar">@initials</span>
@@ -350,13 +394,18 @@
            para cualquier sesión autenticada (tenant o admin) por el drawer
            off-canvas en <=900px (Task 3). *@
         <script src="~/js/sidebar.js" asp-append-version="true"></script>
+        @* theme-switcher.js: cablea los swatches de .topbar-theme (click ->
+           localStorage 'ps-theme' + data-theme en <html>) y marca el swatch activo.
+           Necesario también para PlatformAdmin -- su tema es 100% cliente. Para
+           tenant, el swatch hace POST a /Account/SetTheme (server), pero este script
+           igual sincroniza el marcador "activo" y cierra el <details> al click afuera. *@
+        <script src="~/js/theme-switcher.js" asp-append-version="true"></script>
     }
     @if (isAuthenticated && !isPlatformAdmin)
     {
         <script src="~/js/sidebar-resize.js" asp-append-version="true"></script>
         <script src="~/js/doc-list.js" asp-append-version="true"></script>
         <script src="~/js/doc-tabs.js" asp-append-version="true"></script>
-        <script src="~/js/theme-switcher.js" asp-append-version="true"></script>
     }
 
     @await RenderSectionAsync("Scripts", required: false)

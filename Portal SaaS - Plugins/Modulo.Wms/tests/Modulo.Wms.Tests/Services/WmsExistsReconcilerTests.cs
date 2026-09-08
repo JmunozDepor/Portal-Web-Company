@@ -36,6 +36,7 @@ public class WmsExistsReconcilerTests
         private readonly IReadOnlyList<ModuleCompanyDto> _companias;
         public FakeExternalDatabaseConnectionService(IReadOnlyList<ModuleCompanyDto> companias) => _companias = companias;
         public Task<ExternalDatabaseConnection> ResolveConnectionAsync(string moduleCode, Guid companyId, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<ExternalDatabaseConnection> ResolveConnectionAsync(string moduleCode, Guid companyId, string purpose, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<IReadOnlyList<ModuleCompanyDto>> ListActiveCompanyIdsAsync(string moduleCode, CancellationToken ct = default) => Task.FromResult(_companias);
     }
 

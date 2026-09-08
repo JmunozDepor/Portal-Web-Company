@@ -14,7 +14,19 @@ public class IntegrationDefinition
     public string ConectorConfigCifrado { get; set; } = string.Empty;
     public IntegrationDireccion Direccion { get; set; }
     public bool Activo { get; set; } = true;
+
+    /// <summary>Legado, ya no se usa -- reemplazado por <see cref="IntervaloMinutos"/>. La columna
+    /// (cron_schedule) se conserva solo para no forzar una migración destructiva; ninguna
+    /// pantalla la muestra ni ningún proceso la lee.</summary>
     public string? ProgramacionCron { get; set; }
+
+    /// <summary>Cada cuántos minutos se reprograma la integración para correr sola. Null = solo
+    /// corre cuando se la dispara a mano con "Ejecutar ahora" (fija <see cref="NextRunAt"/>).
+    /// Con un valor, el hosted service de sincronización vuelve a fijar
+    /// <see cref="NextRunAt"/> = ahora + IntervaloMinutos al terminar cada corrida. El mínimo
+    /// efectivo real es 1 minuto: es cada cuánto el motor revisa qué hay pendiente.</summary>
+    public int? IntervaloMinutos { get; set; }
+
     public DateTimeOffset? NextRunAt { get; set; }
 
     /// <summary>Marca de tiempo de la última corrida Bajada exitosa (Resultado=Exito), usada

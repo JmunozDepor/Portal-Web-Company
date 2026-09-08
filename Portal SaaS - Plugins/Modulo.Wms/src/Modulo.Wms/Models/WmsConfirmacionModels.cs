@@ -14,4 +14,6 @@ public class WmsConfirmacionFiltro
     public WmsTipoTransaccion Tipo { get; set; }
     public string? Estado { get; set; }
     public string? Documento { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
 }

@@ -48,6 +48,7 @@ else
                     <th>Conector</th>
                     <th>Dirección</th>
                     <th>Estado</th>
+                    <th>Programación</th>
                     <th>Próxima ejecución</th>
                     <th></th>
                 </tr>
@@ -71,6 +72,7 @@ else
                                 <span class="badge bg-secondary">Inactiva</span>
                             }
                         </td>
+                        <td>@(integracion.IntervaloMinutos is int cadaMin ? $"Cada {cadaMin} min" : "Manual")</td>
                         <td>@(integracion.NextRunAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
                         <td class="text-end">
                             <a asp-page="/Admin/Integraciones/Nuevo" asp-route-id="@integracion.Id" class="btn btn-sm btn-outline-secondary">Editar</a>

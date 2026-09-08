@@ -704,6 +704,10 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("business_entity");
 
+                    b.Property<int?>("IntervaloMinutos")
+                        .HasColumnType("int")
+                        .HasColumnName("run_interval_minutes");
+
                     b.Property<string>("ModuloOrigen")
                         .IsRequired()
                         .HasMaxLength(100)

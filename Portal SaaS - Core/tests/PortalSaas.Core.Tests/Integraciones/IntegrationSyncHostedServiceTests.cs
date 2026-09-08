@@ -150,6 +150,96 @@ public class IntegrationSyncHostedServiceTests
     }
 
     [Fact]
+    public async Task EjecutarCicloAsync_ConIntervaloMinutos_ReprogramaNextRunAtHaciaAdelante()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var conectorFalso = new ConectorFalso();
+        var readerFalso = new ReaderFalso(new List<IntegrationRecord>(), entidadNegocio: "PickingConfirmado");
+
+        var services = new ServiceCollection();
+        services.AddDbContext<PortalSaasDbContext>(o => o.UseInMemoryDatabase(dbName));
+        services.AddSingleton<IIntegrationConnector>(conectorFalso);
+        services.AddSingleton<IIntegrationEntityReader>(readerFalso);
+        services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
+        services.AddScoped<ISecretoCifradoService, SecretoCifradoServiceFalso>();
+        services.AddScoped<ICurrentCompanyOverride, CurrentCompanyOverride>();
+        services.AddSingleton<Microsoft.Extensions.Logging.ILogger<IntegrationSyncHostedService>>(NullLogger<IntegrationSyncHostedService>.Instance);
+        var proveedor = services.BuildServiceProvider();
+
+        var definicion = new IntegrationDefinition
+        {
+            Nombre = "Test", ModuloOrigen = "Wms", EntidadNegocio = "PickingConfirmado",
+            ConectorTipo = IntegrationConectorTipo.Sap, ConectorConfigCifrado = "{}",
+            Direccion = IntegrationDireccion.Subida, Activo = true,
+            IntervaloMinutos = 10,
+            NextRunAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        };
+
+        using (var scope = proveedor.CreateScope())
+        {
+            var contexto = scope.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+            contexto.IntegrationDefinitions.Add(definicion);
+            await contexto.SaveChangesAsync();
+        }
+
+        var antesDeCorrer = DateTimeOffset.UtcNow;
+        var servicio = new IntegrationSyncHostedService(proveedor.GetRequiredService<IServiceScopeFactory>(), NullLogger<IntegrationSyncHostedService>.Instance);
+        await servicio.EjecutarCicloAsync(CancellationToken.None);
+
+        using var scopeVerificacion = proveedor.CreateScope();
+        var contextoVerificacion = scopeVerificacion.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+        var actualizada = await contextoVerificacion.IntegrationDefinitions.SingleAsync(d => d.Id == definicion.Id);
+
+        Assert.NotNull(actualizada.NextRunAt);
+        // Reprogramada ~10 min hacia adelante desde el fin de la corrida (con margen para el tiempo de ejecución del test).
+        Assert.True(actualizada.NextRunAt >= antesDeCorrer.AddMinutes(9));
+        Assert.True(actualizada.NextRunAt <= DateTimeOffset.UtcNow.AddMinutes(11));
+    }
+
+    [Fact]
+    public async Task EjecutarCicloAsync_SinIntervalo_DejaNextRunAtEnNull()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var conectorFalso = new ConectorFalso();
+        var readerFalso = new ReaderFalso(new List<IntegrationRecord>(), entidadNegocio: "PickingConfirmado");
+
+        var services = new ServiceCollection();
+        services.AddDbContext<PortalSaasDbContext>(o => o.UseInMemoryDatabase(dbName));
+        services.AddSingleton<IIntegrationConnector>(conectorFalso);
+        services.AddSingleton<IIntegrationEntityReader>(readerFalso);
+        services.AddScoped<IIntegrationFieldMappingService, IntegrationFieldMappingService>();
+        services.AddScoped<ISecretoCifradoService, SecretoCifradoServiceFalso>();
+        services.AddScoped<ICurrentCompanyOverride, CurrentCompanyOverride>();
+        services.AddSingleton<Microsoft.Extensions.Logging.ILogger<IntegrationSyncHostedService>>(NullLogger<IntegrationSyncHostedService>.Instance);
+        var proveedor = services.BuildServiceProvider();
+
+        var definicion = new IntegrationDefinition
+        {
+            Nombre = "Test", ModuloOrigen = "Wms", EntidadNegocio = "PickingConfirmado",
+            ConectorTipo = IntegrationConectorTipo.Sap, ConectorConfigCifrado = "{}",
+            Direccion = IntegrationDireccion.Subida, Activo = true,
+            IntervaloMinutos = null,
+            NextRunAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        };
+
+        using (var scope = proveedor.CreateScope())
+        {
+            var contexto = scope.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+            contexto.IntegrationDefinitions.Add(definicion);
+            await contexto.SaveChangesAsync();
+        }
+
+        var servicio = new IntegrationSyncHostedService(proveedor.GetRequiredService<IServiceScopeFactory>(), NullLogger<IntegrationSyncHostedService>.Instance);
+        await servicio.EjecutarCicloAsync(CancellationToken.None);
+
+        using var scopeVerificacion = proveedor.CreateScope();
+        var contextoVerificacion = scopeVerificacion.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
+        var actualizada = await contextoVerificacion.IntegrationDefinitions.SingleAsync(d => d.Id == definicion.Id);
+
+        Assert.Null(actualizada.NextRunAt);
+    }
+
+    [Fact]
     public async Task EjecutarCicloAsync_ConReaderYPushExitoso_LlamaAckConExitoTrue()
     {
         var dbName = Guid.NewGuid().ToString();

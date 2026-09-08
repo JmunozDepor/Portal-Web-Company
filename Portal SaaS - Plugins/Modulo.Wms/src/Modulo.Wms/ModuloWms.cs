@@ -41,6 +41,7 @@ public sealed class ModuloWms : IModuloPortal
             Code = "dashboard",
             ParentCode = "raiz",
             Name = "Dashboard",
+            Icon = "bi-speedometer2",
             PageRoute = "/wms/dashboard",
             Order = 0,
         };
@@ -50,6 +51,7 @@ public sealed class ModuloWms : IModuloPortal
             Code = "transacciones",
             ParentCode = "raiz",
             Name = "Transacciones",
+            Icon = "bi-arrow-left-right",
             PageRoute = "/wms/transacciones",
             Order = 1,
         };
@@ -59,6 +61,7 @@ public sealed class ModuloWms : IModuloPortal
             Code = "confirmaciones",
             ParentCode = "raiz",
             Name = "Confirmaciones",
+            Icon = "bi-check2-circle",
             PageRoute = "/wms/confirmaciones",
             Order = 2,
         };
@@ -68,6 +71,7 @@ public sealed class ModuloWms : IModuloPortal
             Code = "archivos-wms",
             ParentCode = "raiz",
             Name = "Archivos WMS",
+            Icon = "bi-file-earmark-text",
             PageRoute = "/wms/archivos-wms",
             Order = 3,
         };
@@ -77,6 +81,7 @@ public sealed class ModuloWms : IModuloPortal
             Code = "mapeo-campos",
             ParentCode = "raiz",
             Name = "Mapeo de Campos",
+            Icon = "bi-diagram-2",
             PageRoute = "/wms/mapeo-campos",
             Order = 4,
         };
@@ -86,6 +91,7 @@ public sealed class ModuloWms : IModuloPortal
             Code = "configuracion-servicio",
             ParentCode = "raiz",
             Name = "Configuración del Servicio",
+            Icon = "bi-gear",
             PageRoute = "/wms/configuracion-servicio",
             Order = 5,
         };
@@ -95,6 +101,7 @@ public sealed class ModuloWms : IModuloPortal
             Code = "estado-servicio",
             ParentCode = "raiz",
             Name = "Estado del Servicio",
+            Icon = "bi-heart-pulse",
             PageRoute = "/wms/estado-servicio",
             Order = 6,
         };

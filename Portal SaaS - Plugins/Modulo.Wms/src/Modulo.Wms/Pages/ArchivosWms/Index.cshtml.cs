@@ -23,11 +23,14 @@ public sealed class IndexModel : WmsPageModelBase
     [BindProperty(SupportsGet = true)]
     public string? Estado { get; set; }
 
-    public List<WmsOracleInboundStage> Archivos { get; private set; } = new();
+    [BindProperty(SupportsGet = true)]
+    public int Pagina { get; set; } = 1;
+
+    public WmsPagedResult<WmsOracleInboundStage> Resultado { get; private set; } = new();
 
     public async Task OnGetAsync(CancellationToken ct)
     {
-        Archivos = await _service.ListarAsync(_currentCompany.CompanyId, TipoDoc, Estado, ct);
+        Resultado = await _service.ListarAsync(_currentCompany.CompanyId, TipoDoc, Estado, Pagina, 25, ct);
     }
 
     public async Task<IActionResult> OnPostReintentarAsync(long id, CancellationToken ct)

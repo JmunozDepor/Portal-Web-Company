@@ -4,6 +4,6 @@ namespace Modulo.Wms.Services;
 
 public interface IWmsArchivoService
 {
-    Task<List<WmsOracleInboundStage>> ListarAsync(Guid companyId, string? tipoDoc, string? estado, CancellationToken cancellationToken);
+    Task<WmsPagedResult<WmsOracleInboundStage>> ListarAsync(Guid companyId, string? tipoDoc, string? estado, int page, int pageSize, CancellationToken cancellationToken);
     Task ReintentarAsync(Guid companyId, long id, CancellationToken cancellationToken);
 }

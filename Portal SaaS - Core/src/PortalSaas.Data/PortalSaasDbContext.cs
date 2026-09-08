@@ -580,6 +580,7 @@ public sealed class PortalSaasDbContext : DbContext
                 .HasMaxLength(20);
             entity.Property(e => e.Activo).HasColumnName("is_active");
             entity.Property(e => e.ProgramacionCron).HasColumnName("cron_schedule").HasMaxLength(100);
+            entity.Property(e => e.IntervaloMinutos).HasColumnName("run_interval_minutes");
             entity.Property(e => e.NextRunAt).HasColumnName("next_run_at");
             entity.Property(e => e.UltimaSincronizacionExitosa).HasColumnName("last_successful_sync_at");
             entity.HasIndex(e => new { e.CompanyId, e.Activo });

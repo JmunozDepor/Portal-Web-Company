@@ -51,6 +51,9 @@ public class WmsSlshStageParserTests
         public Task<ExternalDatabaseConnection> ResolveConnectionAsync(string moduleCode, Guid companyId, CancellationToken ct = default)
             => throw new NotImplementedException("No usado por este test -- WmsDbContext se respalda con InMemory, ver BuildProvider.");
 
+        public Task<ExternalDatabaseConnection> ResolveConnectionAsync(string moduleCode, Guid companyId, string purpose, CancellationToken ct = default)
+            => throw new NotImplementedException("No usado por este test -- WmsDbContext se respalda con InMemory, ver BuildProvider.");
+
         public Task<IReadOnlyList<ModuleCompanyDto>> ListActiveCompanyIdsAsync(string moduleCode, CancellationToken ct = default)
             => Task.FromResult(_companias);
     }

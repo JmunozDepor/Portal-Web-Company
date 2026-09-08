@@ -21,6 +21,29 @@ public static class WmsTipoTransaccionInfo
     };
 }
 
+public sealed record WmsProcesadorInfo(string Key, string Nombre, string Etapa, int CadaSegundos);
+
+/// <summary>
+/// Lista blanca de los procesos runtime que SON del módulo WMS: los BackgroundService
+/// registrados en ModuloWms.RegisterServices y nada más. El envío SAP↔WMS Cloud
+/// (Bajada/Subida) lo corre el motor de Integraciones del Core (IntegrationSyncHostedService)
+/// y NO se lista acá a propósito -- para no mezclar procesos del Core con los del módulo en
+/// el panel "Estado de los procesadores". El dashboard SIEMPRE muestra estos 4 (aunque
+/// alguno todavía no haya escrito un heartbeat), y solo estos -- una fila espuria o legada
+/// en wms_oracle_service_heartbeats (ej. del viejo WmsSapIntegration.Service standalone) no
+/// aparece.
+/// </summary>
+public static class WmsProcesadoresDelModulo
+{
+    public static readonly IReadOnlyList<WmsProcesadorInfo> Todos = new[]
+    {
+        new WmsProcesadorInfo("Wms.SlshStageParser", "Parseo de confirmaciones de traslado (SLSH)", "Confirmaciones WMS→SAP", 15),
+        new WmsProcesadorInfo("Wms.SvshStageParser", "Parseo de confirmaciones de ingreso (SVSH)", "Confirmaciones WMS→SAP", 15),
+        new WmsProcesadorInfo("Wms.StageErrorReconciler", "Reconciliación de errores en Oracle stage", "Envío SAP→WMS", 60),
+        new WmsProcesadorInfo("Wms.ExistsReconciler", "Confirmación de recepción en WMS", "Envío SAP→WMS", 300),
+    };
+}
+
 public class WmsDashboardResumen
 {
     public int TotalTransacciones { get; set; }
@@ -39,9 +62,15 @@ public class WmsDashboardResumen
 public class WmsProcesadorEstado
 {
     public string ProcessorKey { get; set; } = string.Empty;
+    public string Nombre { get; set; } = string.Empty;
+    public string Etapa { get; set; } = string.Empty;
+    public int CadaSegundos { get; set; }
     public string? Status { get; set; }
     public DateTimeOffset? LastRunAt { get; set; }
     public string? LastError { get; set; }
+
+    /// <summary>true = todavía no escribió ningún heartbeat (nunca corrió en esta compañía).</summary>
+    public bool SinEjecutar => LastRunAt is null;
 }
 
 public class WmsEstadisticaTipo

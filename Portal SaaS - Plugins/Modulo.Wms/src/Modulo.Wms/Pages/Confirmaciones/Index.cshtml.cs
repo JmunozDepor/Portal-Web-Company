@@ -26,13 +26,16 @@ public sealed class IndexModel : WmsPageModelBase
     [BindProperty(SupportsGet = true)]
     public string? Documento { get; set; }
 
+    [BindProperty(SupportsGet = true)]
+    public int Pagina { get; set; } = 1;
+
     public WmsPagedResult<WmsConfirmacionRow> Resultado { get; private set; } = new();
 
     public string TipoLabel => WmsTipoTransaccionInfo.Labels[Tipo];
 
     public async Task OnGetAsync(CancellationToken ct)
     {
-        Resultado = await _service.BuscarAsync(_currentCompany.CompanyId, new WmsConfirmacionFiltro { Tipo = Tipo, Estado = Estado, Documento = Documento }, ct);
+        Resultado = await _service.BuscarAsync(_currentCompany.CompanyId, new WmsConfirmacionFiltro { Tipo = Tipo, Estado = Estado, Documento = Documento, Page = Pagina }, ct);
     }
 
     public async Task<IActionResult> OnPostResetearAsync(WmsTipoTransaccion tipo, string documento, CancellationToken ct)

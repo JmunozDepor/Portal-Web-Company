@@ -215,23 +215,23 @@
     "semantic_hash": "36f7d719122e595aa2f667b708c2a6f4"
   },
   "plugins/Modulo.ImportacionGenerica/Pages/Configuracion/Index.cshtml": {
-    "mtime": 1788562757.3570418,
-    "ast_hash": "0937b5ba06c9651ed06183214e84dde6",
+    "mtime": 1788800217.4005394,
+    "ast_hash": "233c055d0b2957093dd77e8eb37372e5",
     "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Pages/Configuracion/Index.cshtml.cs": {
-    "mtime": 1786244571.8439982,
-    "ast_hash": "ef8e875e744c89a74bc5c6485383d816",
+    "mtime": 1788800174.7499795,
+    "ast_hash": "10524358077a1361d1b4c49647cd5d22",
     "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Pages/Importar/Index.cshtml": {
-    "mtime": 1788747749.39422,
-    "ast_hash": "cf41ab504f01753f39fd9b524f542c67",
+    "mtime": 1788800298.630521,
+    "ast_hash": "e8ba0a3d0f937e6bb6c854d86db680ab",
     "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Pages/Importar/Index.cshtml.cs": {
-    "mtime": 1788748120.1593037,
-    "ast_hash": "e1e20b10881fcf6278d6010e2cbd4374",
+    "mtime": 1788800267.5538025,
+    "ast_hash": "b48a10b8b639eb3f6102f199ead25470",
     "semantic_hash": ""
   },
   "plugins/Modulo.ImportacionGenerica/Pages/PageModelBaseAdmin.cs": {
@@ -575,9 +575,9 @@
     "semantic_hash": "824f567d79521e02d743ce5387bf374b"
   },
   "src/PortalSaas.Abstractions/Contratos/ICustomerCatalogService.cs": {
-    "mtime": 1785017048.2885778,
-    "ast_hash": "3d68c03dff18ac78e3b18fcea50dd9ab",
-    "semantic_hash": "3d68c03dff18ac78e3b18fcea50dd9ab"
+    "mtime": 1788799296.3369207,
+    "ast_hash": "d27a82c83c05acc9cbb78ef87b297f51",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IEmailSenderService.cs": {
     "mtime": 1784914337.0836034,
@@ -600,8 +600,8 @@
     "semantic_hash": "563df85f0a32ca82fa3fa0d679d5a458"
   },
   "src/PortalSaas.Abstractions/Contratos/IGenericImportConfigService.cs": {
-    "mtime": 1786244173.0403707,
-    "ast_hash": "b93167a481a4f5aaaf1d56747faf6661",
+    "mtime": 1788799186.2072783,
+    "ast_hash": "0ab8271caa52e22500b933864c5e8593",
     "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IGenericImportProgressStore.cs": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IGenericImportService.cs": {
-    "mtime": 1786244748.6689487,
-    "ast_hash": "e8ce0c50fc8b235451d469fa7e34df58",
+    "mtime": 1788800059.2916038,
+    "ast_hash": "1ba451b6978705a9d8ead2ceae0ccde9",
     "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IGenericImportUserFieldService.cs": {
@@ -635,8 +635,8 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IItemCatalogService.cs": {
-    "mtime": 1788749576.909658,
-    "ast_hash": "bbe213f0514dcb3735ec78d92dc3b253",
+    "mtime": 1788799307.0352705,
+    "ast_hash": "6a7ea0e59b3ee08af9d9b3a28873c235",
     "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IItemCrossReferenceService.cs": {
@@ -760,9 +760,9 @@
     "semantic_hash": "e70ddd0f56190dcb3ae16121d2f76ee6"
   },
   "src/PortalSaas.Abstractions/Contratos/ISupplierCatalogService.cs": {
-    "mtime": 1785031559.6626732,
-    "ast_hash": "7b01e6a8161e8d3b8ec76a2fd1e9d3f7",
-    "semantic_hash": "7b01e6a8161e8d3b8ec76a2fd1e9d3f7"
+    "mtime": 1788799301.8692145,
+    "ast_hash": "8e2d1b5fe1651471cf3208e6e1a597a1",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/ITaxCodeCatalogService.cs": {
     "mtime": 1785128990.4704356,
@@ -865,8 +865,8 @@
     "semantic_hash": "4378be209d998ca9ac0bb0e76492106e"
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportConfigDto.cs": {
-    "mtime": 1786244121.3420696,
-    "ast_hash": "d98f27b7a4cee73baece83804d2d4c8e",
+    "mtime": 1788798937.3342488,
+    "ast_hash": "1290fc552a02123d0706396469751594",
     "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportFieldDataType.cs": {
@@ -910,8 +910,8 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportRowDto.cs": {
-    "mtime": 1786244187.5845983,
-    "ast_hash": "21ab56e7f5d96669539cfd3e484f3e06",
+    "mtime": 1788798929.6386085,
+    "ast_hash": "446e259349d0ee0355511aa1beb9401e",
     "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/GenericImportUserFieldDto.cs": {
@@ -1130,9 +1130,9 @@
     "semantic_hash": "4a545082fd227e5c4989dff2537f19bb"
   },
   "src/PortalSaas.Core/Catalogos/CustomerCatalogService.cs": {
-    "mtime": 1785128682.9774818,
-    "ast_hash": "61cb080b3732ad3b4dc0109e8fc56844",
-    "semantic_hash": "61cb080b3732ad3b4dc0109e8fc56844"
+    "mtime": 1788799315.9303782,
+    "ast_hash": "40ef299df74f8f7f4106bbad107c68da",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Catalogos/EmployeeCatalogService.cs": {
     "mtime": 1785128808.0072358,
@@ -1145,8 +1145,8 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Core/Catalogos/ItemCatalogService.cs": {
-    "mtime": 1788749585.5566096,
-    "ast_hash": "5402f2cde229c23540ffcf2df39b85b9",
+    "mtime": 1788799331.0134852,
+    "ast_hash": "8cf3f30c5e99208737233d4e895d201a",
     "semantic_hash": ""
   },
   "src/PortalSaas.Core/Catalogos/ItemCrossReferenceService.cs": {
@@ -1190,9 +1190,9 @@
     "semantic_hash": "843320fd2be87b40071d3053f12a995b"
   },
   "src/PortalSaas.Core/Catalogos/SupplierCatalogService.cs": {
-    "mtime": 1785128693.4301543,
-    "ast_hash": "6f2d52f94fa19e2e41fa519fc02be174",
-    "semantic_hash": "6f2d52f94fa19e2e41fa519fc02be174"
+    "mtime": 1788799323.6416438,
+    "ast_hash": "0b9af4a843361d7c3b708d5114d73855",
+    "semantic_hash": ""
   },
   "src/PortalSaas.Core/Catalogos/TaxCodeCatalogService.cs": {
     "mtime": 1785128998.6881585,
@@ -1300,8 +1300,8 @@
     "semantic_hash": "c5e5d77540788b2944babcff5d762113"
   },
   "src/PortalSaas.Core/ImportacionGenerica/GenericImportConfigService.cs": {
-    "mtime": 1786244157.8247051,
-    "ast_hash": "1de8180d30376f2835d1e4b280857e72",
+    "mtime": 1788799205.457375,
+    "ast_hash": "3bebdc6e21758181c6a0585c31027bdf",
     "semantic_hash": ""
   },
   "src/PortalSaas.Core/ImportacionGenerica/GenericImportProgressStore.cs": {
@@ -1310,19 +1310,14 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Core/ImportacionGenerica/GenericImportService.cs": {
-    "mtime": 1787924911.0627234,
-    "ast_hash": "39855933bf43c8d1f4e379fa70f01df7",
+    "mtime": 1788800076.27148,
+    "ast_hash": "e78b450d8ccad487d96b13e2eaa38bcc",
     "semantic_hash": ""
   },
   "src/PortalSaas.Core/ImportacionGenerica/GenericImportUserFieldService.cs": {
     "mtime": 1786200649.7852404,
     "ast_hash": "177fc8e7f500116d2b1245058cd07b72",
     "semantic_hash": ""
-  },
-  "src/PortalSaas.Core/ImportacionGenerica/IGenericImportValidationRule.cs": {
-    "mtime": 1785103105.0916066,
-    "ast_hash": "8f2bff1cd31c0e20b537c9a9b3ecc30e",
-    "semantic_hash": "8f2bff1cd31c0e20b537c9a9b3ecc30e"
   },
   "src/PortalSaas.Core/Infraestructura/ExternalDatabaseConnectionService.cs": {
     "mtime": 1787922194.9711034,
@@ -1675,8 +1670,8 @@
     "semantic_hash": "0fb617d296141ace7ce8870d521c3c21"
   },
   "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/PortalSaasDbContextModelSnapshot.cs": {
-    "mtime": 1788749800.0794528,
-    "ast_hash": "ff0505f7dcc3ec1de5c8ea6e2f1dc28d",
+    "mtime": 1788799032.1253083,
+    "ast_hash": "44b2719754e0d07819819b7b8aec11a6",
     "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.PostgreSql/PortalSaas.Data.Migrations.PostgreSql.csproj": {
@@ -1825,8 +1820,8 @@
     "semantic_hash": "4fcb747b62968754217d49a354fc63b2"
   },
   "src/PortalSaas.Data.Migrations.SqlServer/Migrations/PortalSaasDbContextModelSnapshot.cs": {
-    "mtime": 1788749809.0666893,
-    "ast_hash": "6419080db8d44e96f8406f8e36323c8f",
+    "mtime": 1788799042.0614498,
+    "ast_hash": "1274c75af780ee1259fa1944b3cb6c6c",
     "semantic_hash": ""
   },
   "src/PortalSaas.Data.Migrations.SqlServer/PortalSaas.Data.Migrations.SqlServer.csproj": {
@@ -1855,8 +1850,8 @@
     "semantic_hash": "1e7b3a0c2030e957db935ea68b1eb998"
   },
   "src/PortalSaas.Data/Entities/GenericImportConfig.cs": {
-    "mtime": 1786244130.75004,
-    "ast_hash": "cc7d90cb3f2ca115e96a802ec0114bdc",
+    "mtime": 1788799003.8733182,
+    "ast_hash": "bd57ee121a048759fa0b5951a3ab7719",
     "semantic_hash": ""
   },
   "src/PortalSaas.Data/Entities/GenericImportConfigField.cs": {
@@ -2000,8 +1995,8 @@
     "semantic_hash": "adf919a5cbd81f52efb83d0ad47c5984"
   },
   "src/PortalSaas.Data/PortalSaasDbContext.cs": {
-    "mtime": 1788749596.7237656,
-    "ast_hash": "6a6a23c741d3d78b7137f2a50260a27e",
+    "mtime": 1788799010.9665458,
+    "ast_hash": "50fea4bba34feadd72842e874a479f5e",
     "semantic_hash": ""
   },
   "src/PortalSaas.Host/Comandos/PlatformAdminSeeder.cs": {
@@ -2550,8 +2545,8 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Host/Program.cs": {
-    "mtime": 1788749691.8021197,
-    "ast_hash": "19a4319040d25d9d697596e79476bfbd",
+    "mtime": 1788799997.2044065,
+    "ast_hash": "7b6af1a60716a00e4bb89bf9d3385ef0",
     "semantic_hash": ""
   },
   "src/PortalSaas.Host/Properties/launchSettings.json": {
@@ -3790,8 +3785,8 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Contratos/IItemStockService.cs": {
-    "mtime": 1788613786.6950202,
-    "ast_hash": "6393d2df4c53c63d8097f3cadaf29477",
+    "mtime": 1788799280.0666077,
+    "ast_hash": "b003c308d5f2a1b6a9313d5722808479",
     "semantic_hash": ""
   },
   "src/PortalSaas.Abstractions/Modelos/ItemMasterDetailDto.cs": {
@@ -3815,8 +3810,8 @@
     "semantic_hash": ""
   },
   "src/PortalSaas.Core/Catalogos/ItemStockService.cs": {
-    "mtime": 1788613786.741204,
-    "ast_hash": "b21c64a09c2fb690e86b05e2af03b78a",
+    "mtime": 1788799289.191387,
+    "ast_hash": "9d234d3161ea1b673f8797c3d418f093",
     "semantic_hash": ""
   },
   "src/PortalSaas.Core/Seguridad/PasswordPolicy.cs": {
@@ -3845,8 +3840,8 @@
     "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/ProductMasterIndexModelTests.cs": {
-    "mtime": 1788749637.989498,
-    "ast_hash": "e13c135dd4735eb767dd439bffdb81a8",
+    "mtime": 1788799439.74759,
+    "ast_hash": "5f3fc8a245b8e8daaf5aae8154b0f7b1",
     "semantic_hash": ""
   },
   "tests/PortalSaas.Core.Tests/Seguridad/PasswordPolicyTests.cs": {
@@ -3912,6 +3907,126 @@
   "docs/superpowers/specs/2026-09-06-reporte-resultado-importacion-generica-design.md": {
     "mtime": 1788749059.36516,
     "ast_hash": "c208d72220e9f04fdc49b7110ee5d30f",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Contratos/ICustomerShipToAddressService.cs": {
+    "mtime": 1788799393.519653,
+    "ast_hash": "5c24498b14c2430781d02192a57bd8bb",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/GenericImportValidationRuleAssignmentDto.cs": {
+    "mtime": 1788798924.7727401,
+    "ast_hash": "27d643e00009bbe44cff4c0b1c2def3b",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/GenericImportValidationRuleType.cs": {
+    "mtime": 1788798919.1930425,
+    "ast_hash": "0bfe218efd7d5d59299b912d140f3a78",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Abstractions/Modelos/GenericImportValidationSeverity.cs": {
+    "mtime": 1788798921.2969992,
+    "ast_hash": "5189f3326f56e60d0fca013429629f56",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/Catalogos/CustomerShipToAddressService.cs": {
+    "mtime": 1788799399.6424947,
+    "ast_hash": "253f11351ad87997676dc59191449db3",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/ImportacionGenerica/Reglas/CustomerActiveInSapRule.cs": {
+    "mtime": 1788799574.645553,
+    "ast_hash": "a5ca6eace5d6a06eab8cf3391f43753c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/ImportacionGenerica/Reglas/CustomerBranchValidRule.cs": {
+    "mtime": 1788799803.957743,
+    "ast_hash": "3a0238962fd11848fcfdba725260f946",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/ImportacionGenerica/Reglas/GenericImportValidationRuleEngine.cs": {
+    "mtime": 1788799862.2462611,
+    "ast_hash": "3e1d486dc6fec60771462cdacb613fe3",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/ImportacionGenerica/Reglas/IGenericImportValidationRule.cs": {
+    "mtime": 1788799503.5091681,
+    "ast_hash": "94d75f01516f510abea5e786f1e118a6",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/ImportacionGenerica/Reglas/ItemActiveInSapRule.cs": {
+    "mtime": 1788799583.4869323,
+    "ast_hash": "bc5c387da1acd5c924079b63c9c9dc2c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/ImportacionGenerica/Reglas/PositiveQuantityRule.cs": {
+    "mtime": 1788799511.065682,
+    "ast_hash": "85c7c0b633cb1a6ce6cb6283d200c800",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/ImportacionGenerica/Reglas/PriceVsCustomerListRule.cs": {
+    "mtime": 1788799672.8191943,
+    "ast_hash": "feb146dbbf5656198139e850b0ea5866",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/ImportacionGenerica/Reglas/PriceVsFixedListRule.cs": {
+    "mtime": 1788799658.3435907,
+    "ast_hash": "ee4b046d567b4188196009439e2ff087",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/ImportacionGenerica/Reglas/StockAvailableRule.cs": {
+    "mtime": 1788799737.537103,
+    "ast_hash": "69d0fbfa726cf4929c58e2160cccb095",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Core/ImportacionGenerica/Reglas/ValidDiscountPercentRule.cs": {
+    "mtime": 1788799518.3261685,
+    "ast_hash": "e445f10c9ada7293acf6424f7cc6654b",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260907163712_AddGenericImportValidationRules.Designer.cs": {
+    "mtime": 1788799032.1157725,
+    "ast_hash": "babc109c3ca92447b70206a5d8e3696c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.PostgreSql/Migrations/20260907163712_AddGenericImportValidationRules.cs": {
+    "mtime": 1788799032.1122475,
+    "ast_hash": "9de4ff31dda6311c6ce45481f3e34f77",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260907163721_AddGenericImportValidationRules.Designer.cs": {
+    "mtime": 1788799042.0533144,
+    "ast_hash": "ae1b006fc4a5597bb6e4e55fcc788c6c",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data.Migrations.SqlServer/Migrations/20260907163721_AddGenericImportValidationRules.cs": {
+    "mtime": 1788799042.0471606,
+    "ast_hash": "3729878527c52ed612a31ad56158874e",
+    "semantic_hash": ""
+  },
+  "src/PortalSaas.Data/Entities/GenericImportValidationRuleAssignment.cs": {
+    "mtime": 1788798999.8772106,
+    "ast_hash": "e48ecd2f8a979711ac8cbf94a8d12931",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/ImportacionGenerica/GenericImportConfigServiceValidationRulesTests.cs": {
+    "mtime": 1788799179.6053357,
+    "ast_hash": "227fab499ba6c0cce298c6ea8e72690f",
+    "semantic_hash": ""
+  },
+  "tests/PortalSaas.Core.Tests/ImportacionGenerica/Reglas/GenericImportValidationRuleEngineTests.cs": {
+    "mtime": 1788799885.1257167,
+    "ast_hash": "ecdddf8f744725540f20bdd9dd3aa90d",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-09-07-reglas-validacion-importacion-generica.md": {
+    "mtime": 1788784373.1269398,
+    "ast_hash": "b9d6319e92add76727a4426ebf12c8e9",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-09-07-reglas-validacion-importacion-generica-design.md": {
+    "mtime": 1788781918.824986,
+    "ast_hash": "57c381f3210e844f676195bf43e0c033",
     "semantic_hash": ""
   }
 }

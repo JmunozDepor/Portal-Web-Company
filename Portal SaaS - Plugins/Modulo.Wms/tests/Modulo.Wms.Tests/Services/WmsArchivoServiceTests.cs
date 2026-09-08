@@ -52,9 +52,10 @@ public class WmsArchivoServiceTests
         await contexto.SaveChangesAsync();
 
         var service = new WmsArchivoService(contexto);
-        var resultado = await service.ListarAsync(companyId, "SLSH", null, CancellationToken.None);
+        var resultado = await service.ListarAsync(companyId, "SLSH", null, 1, 25, CancellationToken.None);
 
-        Assert.Single(resultado);
-        Assert.Equal("a.xml", resultado[0].NombreArchivo);
+        Assert.Single(resultado.Items);
+        Assert.Equal("a.xml", resultado.Items[0].NombreArchivo);
+        Assert.Equal(1, resultado.TotalCount);
     }
 }

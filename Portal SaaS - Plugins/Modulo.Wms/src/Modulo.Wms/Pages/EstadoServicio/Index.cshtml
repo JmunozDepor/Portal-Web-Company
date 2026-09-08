@@ -3,27 +3,42 @@
 @{
     ViewData["Title"] = "Estado del Servicio";
 }
+@* Migrado al Design System unificado (2026-09-07) -- .card-ps .doc-list +
+   .document-list-table .line-items-table + .badge-status en vez de .table +
+   .badge bg-* (verde/rojo/gris fijos de Bootstrap), para heredar el tema del
+   proyecto base. *@
 
-<h1 class="h3 mb-3">Estado del Servicio</h1>
+<div class="card-ps doc-list">
+    <div class="doc-list-header">
+        <h2 class="h4 mb-0">Estado del Servicio</h2>
+    </div>
 
-@if (Model.Heartbeats.Count == 0)
-{
-    <p class="text-muted">Todavía no hay ciclos registrados. Los procesos del plugin reportan su estado en cada ciclo (cada 15-60s según el proceso).</p>
-}
-
-<table class="table table-sm">
-    <thead><tr><th>Proceso</th><th>Estado</th><th>Última ejecución</th><th>Último error</th></tr></thead>
-    <tbody>
-    @foreach (var hb in Model.Heartbeats)
+    @if (Model.Heartbeats.Count == 0)
     {
-        <tr>
-            <td>@hb.ProcessorKey</td>
-            <td>
-                <span class="badge @(hb.Status == "OK" ? "bg-success" : hb.Status == "ERROR" ? "bg-danger" : "bg-secondary")">@hb.Status</span>
-            </td>
-            <td>@(hb.LastRunAt?.ToString("dd-MM HH:mm:ss") ?? "—")</td>
-            <td>@hb.LastError</td>
-        </tr>
+        <p class="text-muted">Todavía no hay ciclos registrados. Los procesos del plugin reportan su estado en cada ciclo (cada 15-60s según el proceso).</p>
     }
-    </tbody>
-</table>
+
+    <div class="document-list-table-wrapper">
+        <table class="table table-striped document-list-table line-items-table align-middle">
+            <thead><tr><th>Proceso</th><th>Estado</th><th>Última ejecución</th><th>Último error</th></tr></thead>
+            <tbody>
+            @foreach (var hb in Model.Heartbeats)
+            {
+                var badge = hb.Status == "OK" ? "badge-status--success"
+                    : hb.Status == "ERROR" ? "badge-status--danger"
+                    : "badge-status--neutral";
+                <tr>
+                    <td>@hb.ProcessorKey</td>
+                    <td><span class="badge-status @badge">@hb.Status</span></td>
+                    <td>@(hb.LastRunAt?.ToString("dd-MM HH:mm:ss") ?? "—")</td>
+                    <td class="small text-danger">@hb.LastError</td>
+                </tr>
+            }
+            @if (Model.Heartbeats.Count == 0)
+            {
+                <tr><td colspan="4" class="text-center text-muted py-4">Sin heartbeats.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

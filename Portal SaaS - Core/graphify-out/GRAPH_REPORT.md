@@ -1,16 +1,16 @@
 # Graph Report - Portal SaaS - Core  (2026-09-07)
 
 ## Corpus Check
-- 799 files · ~577,955 words
+- 803 files · ~584,523 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5463 nodes · 10358 edges · 508 communities (295 shown, 213 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 453 edges (avg confidence: 0.8)
+- 5488 nodes · 10406 edges · 502 communities (288 shown, 214 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 457 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `fdca93cb`
+- Built from commit: `9dadca09`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -482,27 +482,21 @@
 - InitialCreate
 - AddPlanToOnPremiseLicense
 - AddApiClientCredentialsCompanyForeignKey
-- .PuedePersistirYLeerConexionConBinding
 - InputModel
-- .GenerateAndSetPasswordAsync
 - 20260724162645_InitialCreate.Designer.cs
 - 20260724171946_AddAuthenticationAndPreferences.Designer.cs
 - 20260726220745_AddModuleExternalConnections.Designer.cs
 - 20260815035304_AddIntegrationTables.Designer.cs
-- 20260815165412_AddApiClientCredentialsCompanyForeignKey.Designer.cs
-- 20260819201316_UpdateUserPreferenceThemeValues.Designer.cs
-- 20260827220025_AddCompanyExternalConnections.Designer.cs
 - Index.cshtml
-- SalesDocumentTypeCatalog
 
 ## God Nodes (most connected - your core abstractions)
 1. `PortalSaas.Abstractions.Modelos` - 263 edges
 2. `PortalSaas.Abstractions.Contratos` - 238 edges
 3. `PortalSaasDbContext` - 184 edges
-4. `PortalSaas.Data` - 180 edges
+4. `PortalSaas.Data` - 182 edges
 5. `PortalSaas.Data.Entities` - 132 edges
-6. `PortalSaas.Data.Migrations.PostgreSql.Migrations` - 69 edges
-7. `PortalSaas.Data.Migrations.SqlServer.Migrations` - 59 edges
+6. `PortalSaas.Data.Migrations.PostgreSql.Migrations` - 71 edges
+7. `PortalSaas.Data.Migrations.SqlServer.Migrations` - 61 edges
 8. `Organization` - 53 edges
 9. `SalesDocumentType` - 45 edges
 10. `InventoryDocumentType` - 44 edges
@@ -510,14 +504,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `ModuloAdministracion` --implements--> `IModuloPortal`  [EXTRACTED]
   plugins/Modulo.Administracion/ModuloAdministracion.cs → src/PortalSaas.Abstractions/Contratos/IModuloPortal.cs
-- `AdminPageModelBase` --references--> `ICurrentUserContext`  [EXTRACTED]
-  plugins/Modulo.Administracion/Pages/AdminPageModelBase.cs → src/PortalSaas.Abstractions/Contratos/ICurrentUserContext.cs
-- `EditarModel` --references--> `ICompanyExternalConnectionService`  [EXTRACTED]
-  plugins/Modulo.Administracion/Pages/ConexionesExternas/Editar.cshtml.cs → src/PortalSaas.Abstractions/Contratos/ICompanyExternalConnectionService.cs
 - `EditarModel` --references--> `ITenantUserAdminService`  [EXTRACTED]
   plugins/Modulo.Administracion/Pages/ConexionesExternas/Editar.cshtml.cs → src/PortalSaas.Abstractions/Contratos/ITenantUserAdminService.cs
-- `EditarModel` --references--> `ExternalConnectionEditModel`  [EXTRACTED]
-  plugins/Modulo.Administracion/Pages/ConexionesExternas/Editar.cshtml.cs → src/PortalSaas.Abstractions/Modelos/CompanyExternalConnectionModels.cs
+- `IndexModel` --references--> `ITenantUserAdminService`  [EXTRACTED]
+  plugins/Modulo.Administracion/Pages/ConexionesExternas/Index.cshtml.cs → src/PortalSaas.Abstractions/Contratos/ITenantUserAdminService.cs
+- `IndexModel` --references--> `CompanyOptionDto`  [EXTRACTED]
+  plugins/Modulo.Administracion/Pages/ConexionesExternas/Index.cshtml.cs → src/PortalSaas.Abstractions/Modelos/TenantUserAdmin.cs
+- `IndexModel` --references--> `IOrganizationProfileService`  [EXTRACTED]
+  plugins/Modulo.Administracion/Pages/GruposMenu/Index.cshtml.cs → src/PortalSaas.Abstractions/Contratos/IOrganizationProfileService.cs
 
 ## Import Cycles
 - None detected.
@@ -527,115 +521,115 @@
 - **Commercial Layer Core Entities** — organizations, plans, subscriptions, on_premise_licenses, platform_admins, usage_metrics [EXTRACTED 1.00]
 - **Core Service Abstractions** — iauthenticationservice, ipasswordresetservice, iemailsenderservice, icontractlimitservice [EXTRACTED 0.95]
 
-## Communities (508 total, 213 thin omitted)
+## Communities (502 total, 214 thin omitted)
 
 ### Community 0 - "Abstractions - Contratos"
 Cohesion: 0.03
-Nodes (29): PortalSaas.Abstractions.Contratos, Modulo.Ventas, Modulo.Ventas.Pages.Receipts, Modulo.Compras.Pages.PurchaseQuotations, Modulo.Compras.Pages.PurchaseOrders, Modulo.Inventario, Modulo.Inventario.Pages.ProductMaster, PortalSaas.Abstractions.Modelos (+21 more)
+Nodes (30): PortalSaas.Abstractions.Contratos, Modulo.Ventas, Modulo.Ventas.Pages.Receipts, Modulo.Compras.Pages.PurchaseQuotations, Modulo.Compras.Pages.PurchaseOrders, Modulo.Inventario, Modulo.Inventario.Pages.ProductMaster, PortalSaas.Abstractions.Modelos (+22 more)
 
 ### Community 1 - "Tests"
 Cohesion: 0.06
 Nodes (43): ActiveLimits, LicensingRequest, CancellationToken, Guid, Task, IContractLimitService, CancellationToken, Task (+35 more)
 
 ### Community 2 - "Host - Pages"
-Cohesion: 0.03
-Nodes (47): PortalSaas.Host.Pages.Admin.Organizations.Users, PortalSaas.Core.Administracion, PortalSaas.Data.Entities, PortalSaas.Host.Pages.Admin.Organizations.Licenses, PortalSaas.Core.Comercial, PortalSaas.Host.Pages.Admin.Organizations.Companies.ExternalConnections, PortalSaas.Core.Tests.Administracion, PortalSaas.Data (+39 more)
+Cohesion: 0.04
+Nodes (44): PortalSaas.Host.Pages.Admin.Organizations.Users, PortalSaas.Core.Administracion, PortalSaas.Data.Entities, PortalSaas.Host.Pages.Admin.Organizations.Licenses, PortalSaas.Core.Comercial, PortalSaas.Host.Pages.Admin.Organizations.Companies.ExternalConnections, PortalSaas.Core.Tests.Administracion, PortalSaas.Data (+36 more)
 
 ### Community 3 - "Core - Administracion"
-Cohesion: 0.32
-Nodes (7): TenantUserOperationResult, CancellationToken, Guid, IReadOnlyDictionary, IReadOnlyList, Task, TenantUserAdminService
+Cohesion: 0.07
+Nodes (41): PermissionsInputModel, Dictionary, Guid, IActionResult, ILogger, InputModel, List, SelectListItem (+33 more)
 
 ### Community 4 - "Host - Pages"
-Cohesion: 0.21
-Nodes (11): PortalSaas.Host.Pages.Home, List, MenuNodeDto, CancellationToken, Dictionary, IActionResult, IReadOnlyList, List (+3 more)
+Cohesion: 0.29
+Nodes (8): PortalSaas.Host.Pages.Home, List, MenuNodeDto, Dictionary, IReadOnlyList, List, HomeShortcutDto, IndexModel
 
 ### Community 5 - "Tests"
 Cohesion: 0.29
 Nodes (8): CancellationToken, Guid, IReadOnlySet, Task, ModuleAccessService, Fact, Task, ModuleAccessServiceTests
 
 ### Community 6 - "Tests"
-Cohesion: 0.08
-Nodes (21): IndexGenericPurchaseDocumentModelBase, object, CancellationToken, FilterInput, IActionResult, Task, IndexGenericPurchaseDocumentModelBase, IndexModel (+13 more)
+Cohesion: 0.15
+Nodes (13): CancellationToken, Task, IOrganizationDocumentPermissionService, OrganizationDocumentPermissionService, CancellationToken, IReadOnlyDictionary, IReadOnlyList, Parameters (+5 more)
 
 ### Community 7 - "Data - Entities"
-Cohesion: 0.10
-Nodes (19): Guid, ICollection, MenuGroup, MenuGroupItem, Guid, UserMenuGroup, IActionResult, List (+11 more)
+Cohesion: 0.14
+Nodes (10): Guid, ICollection, MenuGroup, MenuGroupItem, Guid, UserMenuGroup, IActionResult, List (+2 more)
 
 ### Community 8 - "Abstractions - Contratos"
-Cohesion: 0.08
-Nodes (28): GenericImportValidationRuleType, CancellationToken, IReadOnlyDictionary, IReadOnlyList, Task, CustomerActiveInSapRule, IReadOnlyList, CustomerBranchValidRule (+20 more)
+Cohesion: 0.07
+Nodes (35): InputModel, GenericImportModule, GenericImportValidationRuleType, IReadOnlyList, CustomerBranchValidRule, CancellationToken, IReadOnlyDictionary, IReadOnlyList (+27 more)
 
 ### Community 9 - "Data.Migrations.SqlServer - Migrations"
 Cohesion: 0.02
-Nodes (43): PortalSaas.Data.Migrations.SqlServer.Migrations, ModelBuilder, InitialCreate, ModelBuilder, SeedFixedActions, ModelBuilder, AddPlanToOnPremiseLicense, ModelBuilder (+35 more)
+Nodes (43): PortalSaas.Data.Migrations.SqlServer.Migrations, ModelBuilder, InitialCreate, ModelBuilder, AddCoreMenuAndPermissions, ModelBuilder, AddGenericImportModule, ModelBuilder (+35 more)
 
 ### Community 10 - "Core - Sap"
 Cohesion: 0.08
 Nodes (23): HanaCommand, IsSimpleType, Properties, PropertyInfo, SqlCommand, DbDataReader, IReadOnlyDictionary, Type (+15 more)
 
 ### Community 11 - "Core - Administracion"
-Cohesion: 0.05
-Nodes (47): Dictionary, Guid, IActionResult, InputModel, IReadOnlyList, List, SelectListItem, Task (+39 more)
+Cohesion: 0.16
+Nodes (16): Dictionary, Guid, IActionResult, InputModel, IReadOnlyList, List, SelectListItem, Task (+8 more)
 
 ### Community 12 - "Host - Pages"
-Cohesion: 0.06
-Nodes (24): Modulo.ImportacionGenerica.Pages.CamposUsuario, Modulo.ImportacionGenerica.Pages.Importar, Modulo.Inventario.Pages, PortalSaas.Host.ViewComponents, Modulo.Ventas.Pages, PortalSaas.Abstractions.Componentes, Modulo.Administracion.Pages.GruposMenu, PortalSaas.Host.Pages.Admin.Sessions (+16 more)
+Cohesion: 0.05
+Nodes (26): Modulo.ImportacionGenerica.Pages.CamposUsuario, Modulo.ImportacionGenerica.Pages.Importar, Modulo.Inventario.Pages, PortalSaas.Host.ViewComponents, Modulo.Ventas.Pages, PortalSaas.Host.Pages.Admin.Organizations.Companies, PortalSaas.Abstractions.Componentes, Modulo.Administracion.Pages.GruposMenu (+18 more)
 
 ### Community 13 - "Data.Migrations.PostgreSql - Migrations"
 Cohesion: 0.03
-Nodes (31): PortalSaas.Data.Migrations.PostgreSql.Migrations, ModelBuilder, InitialCreate, MigrationBuilder, AddAuthenticationAndPreferences, ModelBuilder, AddEmailSettings, ModelBuilder (+23 more)
+Nodes (33): PortalSaas.Data.Migrations.PostgreSql.Migrations, ModelBuilder, InitialCreate, ModelBuilder, AddPlatformAdmins, MigrationBuilder, FixCompanyOrganizationCascade, ModelBuilder (+25 more)
 
 ### Community 14 - "Core - Infraestructura"
-Cohesion: 0.05
-Nodes (16): PortalSaas.Host.Pages.Admin.Organizations.DocumentPermissions, PortalSaas.Core.Tests.Inventario, PortalSaas.Core.Compras, PortalSaas.Core.Tests.Sap, PortalSaas.Core.Ventas, PortalSaas.Core.Infraestructura, PortalSaas.Core.Inventario, PortalSaas.Core.Tests.Infraestructura (+8 more)
+Cohesion: 0.07
+Nodes (12): PortalSaas.Host.Pages.Admin.Organizations.DocumentPermissions, PortalSaas.Core.Tests.Inventario, PortalSaas.Core.Compras, PortalSaas.Core.Tests.Sap, PortalSaas.Core.Ventas, PortalSaas.Core.Inventario, PortalSaas.Core.Sap, Entry (+4 more)
 
 ### Community 15 - "Tests"
-Cohesion: 0.19
-Nodes (12): CancellationToken, Db, Fact, Guid, Hijo, Org, Raiz, Task (+4 more)
+Cohesion: 0.32
+Nodes (7): Db, Fact, Hijo, Org, Raiz, Task, MenuNavigationServiceTests
 
 ### Community 16 - "Tests"
-Cohesion: 0.10
-Nodes (22): Label, CancellationToken, Guid, Task, IUserPreferenceService, UserPreferenceDto, CancellationToken, Guid (+14 more)
+Cohesion: 0.08
+Nodes (27): Label, CancellationToken, Guid, Task, IUserPreferenceService, UserPreferenceDto, CancellationToken, Guid (+19 more)
 
 ### Community 17 - "Host - Pages"
-Cohesion: 0.04
-Nodes (41): Modulo.Administracion.Pages, PortalSaas.Host.Pages, Modulo.ImportacionGenerica.Pages, PageModel, PageHandlerExecutingContext, AdminPageModelBase, PageHandlerExecutingContext, PageModelBaseAdmin (+33 more)
+Cohesion: 0.05
+Nodes (30): PortalSaas.Host.Pages, PageModel, IActionResult, InputModel, Task, CreateModel, IActionResult, IEnumerable (+22 more)
 
 ### Community 18 - "Abstractions - Contratos"
 Cohesion: 0.07
 Nodes (30): AuthenticateResult, AuthenticationHandler, AuthenticationSchemeOptions, CancellationToken, Guid, Task, ApiKeyAuthenticationResult, IApiKeyAuthenticator (+22 more)
 
 ### Community 19 - "Data - Entities"
-Cohesion: 0.09
-Nodes (18): Guid, Company, DateTimeOffset, Guid, ICollection, CompanyExternalConnection, DateTimeOffset, Guid (+10 more)
+Cohesion: 0.06
+Nodes (26): DateTimeOffset, Guid, AuditLog, Guid, Company, DateTimeOffset, Guid, ICollection (+18 more)
 
 ### Community 20 - "Data - Entities"
-Cohesion: 0.06
-Nodes (36): DateTimeOffset, Guid, ICollection, IReadOnlyCollection, string, Organization, OrganizationMode, OrganizationStatus (+28 more)
+Cohesion: 0.09
+Nodes (25): DateTimeOffset, Guid, ICollection, IReadOnlyCollection, string, Organization, OrganizationMode, OrganizationStatus (+17 more)
 
 ### Community 21 - "Abstractions - Contratos"
-Cohesion: 0.20
-Nodes (10): PageModelBaseAdmin, CancellationToken, IActionResult, InputModel, IReadOnlyList, List, SelectListItem, Task (+2 more)
+Cohesion: 0.29
+Nodes (4): Modulo.ImportacionGenerica.Pages, Exception, PageHandlerExecutingContext, PageModelBaseAdmin
 
 ### Community 22 - "Host - Pages"
-Cohesion: 0.12
-Nodes (17): decimal, ItemDto, PriceListOptionDto, CancellationToken, Fact, Guid, IReadOnlyCollection, IReadOnlyDictionary (+9 more)
+Cohesion: 0.19
+Nodes (13): decimal, CancellationToken, Guid, IReadOnlyCollection, IReadOnlyDictionary, IReadOnlyList, ItemCode, Task (+5 more)
 
 ### Community 23 - "Host - Properties"
 Cohesion: 0.08
 Nodes (25): ASPNETCORE_ENVIRONMENT, applicationUrl, commandName, dotnetRunMessages, environmentVariables, launchBrowser, applicationUrl, commandName (+17 more)
 
 ### Community 24 - "Core - ImportacionGenerica"
-Cohesion: 0.12
-Nodes (16): DataTable, RawRow, CancellationToken, IReadOnlyList, Task, IGenericImportUserFieldService, GenericImportFieldDataType, GenericImportUserFieldDto (+8 more)
+Cohesion: 0.13
+Nodes (18): Action, DataTable, RawRow, GenericImportParametersDto, IReadOnlyList, GenericImportDocumentDto, GenericImportResultDto, CancellationToken (+10 more)
 
 ### Community 25 - "Data.Migrations.PostgreSql - Migrations"
 Cohesion: 0.20
 Nodes (8): IReadOnlyDictionary, GenericImportRowDto, CancellationToken, IReadOnlyDictionary, Task, Fact, Task, GenericImportValidationRuleEngineTests
 
 ### Community 26 - "ImportacionGenerica Plugin - Importar"
-Cohesion: 0.23
-Nodes (11): CancellationToken, IActionResult, IFormFile, ILogger, InputModel, JsonResult, List, SelectListItem (+3 more)
+Cohesion: 0.17
+Nodes (15): CancellationToken, IActionResult, IFormFile, ILogger, InputModel, JsonResult, List, SelectListItem (+7 more)
 
 ### Community 27 - "Core - Sap"
 Cohesion: 0.13
@@ -646,8 +640,8 @@ Cohesion: 0.18
 Nodes (9): CancellationToken, IReadOnlyList, Task, ISeriesCatalogService, SeriesDto, CancellationToken, IReadOnlyList, Task (+1 more)
 
 ### Community 29 - "Host - Pages"
-Cohesion: 0.05
-Nodes (30): DateTimeOffset, Guid, AuditLog, ICollection, Menu, Guid, OrganizationMenuOverride, DateTimeOffset (+22 more)
+Cohesion: 0.11
+Nodes (16): ICollection, Menu, Guid, OrganizationMenuOverride, Guid, UserHomeShortcut, Guid, UserMenuProfile (+8 more)
 
 ### Community 30 - "Tests"
 Cohesion: 0.09
@@ -662,23 +656,23 @@ Cohesion: 0.21
 Nodes (9): Admin, Guid, AuthenticationResult, CancellationToken, Task, Db, Fact, Task (+1 more)
 
 ### Community 33 - "Core - ImportacionGenerica"
-Cohesion: 0.14
-Nodes (14): FieldInput, InputModel, InputModel, GenericImportLineType, GenericImportModule, GenericImportPriceSource, GenericImportValidationRuleAssignmentDto, CancellationToken (+6 more)
+Cohesion: 0.12
+Nodes (15): IReadOnlyList, GenericImportConfigDto, GenericImportConfigFieldDto, GenericImportLineType, GenericImportValidationRuleAssignmentDto, CancellationToken, IReadOnlyDictionary, IReadOnlyList (+7 more)
 
 ### Community 34 - "Core - Catalogos"
 Cohesion: 0.18
 Nodes (9): CancellationToken, IReadOnlyList, Task, IBranchCatalogService, BranchDto, CancellationToken, IReadOnlyList, Task (+1 more)
 
 ### Community 35 - "Compras Plugin - DetailGenericPurchaseDocumentModelBase.cs"
-Cohesion: 0.19
-Nodes (11): CancellationToken, Func, IActionResult, InputModel, JsonResult, SelectListItem, string, Task (+3 more)
+Cohesion: 0.12
+Nodes (18): CancellationToken, Func, IActionResult, InputModel, JsonResult, SelectListItem, string, Task (+10 more)
 
 ### Community 36 - "Inventario Plugin - DetailGenericInventoryDocumentModelBase.cs"
-Cohesion: 0.11
-Nodes (22): CancellationToken, DateOnly, Func, IActionResult, InputModel, JsonResult, LineInput, List (+14 more)
+Cohesion: 0.26
+Nodes (9): CancellationToken, Func, IActionResult, InputModel, JsonResult, SelectListItem, string, Task (+1 more)
 
 ### Community 37 - "Ventas Plugin - DetailGenericSalesDocumentModelBase.cs"
-Cohesion: 0.23
+Cohesion: 0.22
 Nodes (9): CancellationToken, Func, IActionResult, InputModel, JsonResult, SelectListItem, string, Task (+1 more)
 
 ### Community 38 - "Core - Inventario"
@@ -686,20 +680,20 @@ Cohesion: 0.25
 Nodes (6): IReadOnlyDictionary, CancellationToken, Task, Fact, Task, SapTraceabilityFieldResolverTests
 
 ### Community 39 - "Tests"
-Cohesion: 0.21
-Nodes (10): CancellationToken, Task, CancellationToken, Db, Fact, Guid, Org, Task (+2 more)
+Cohesion: 0.31
+Nodes (7): CancellationToken, Task, Db, Fact, Org, Task, OrganizationDocumentPermissionServiceTests
 
 ### Community 40 - "Administracion Plugin - AdminPageModelBase.cs"
-Cohesion: 0.35
-Nodes (6): ExternalConnectionEditModel, CancellationToken, Guid, IReadOnlyList, Task, CompanyExternalConnectionService
+Cohesion: 0.05
+Nodes (50): orgId, Exception, Guid, IActionResult, IReadOnlyList, Task, EditarModel, Guid (+42 more)
 
 ### Community 41 - "Abstractions - PortalSaas.Abstractions.csproj"
 Cohesion: 0.11
 Nodes (11): Microsoft.Extensions.DependencyInjection.Abstractions (8.0.2), net8.0, Microsoft.NET.Sdk.Razor, net8.0, Microsoft.NET.Sdk.Razor, net8.0, Microsoft.NET.Sdk.Razor, net8.0 (+3 more)
 
 ### Community 42 - "ImportacionGenerica Plugin - Configuracion"
-Cohesion: 0.16
-Nodes (16): CancellationToken, IActionResult, InputModel, IReadOnlyList, JsonResult, List, SelectListItem, Task (+8 more)
+Cohesion: 0.14
+Nodes (18): FieldInput, CancellationToken, IActionResult, InputModel, IReadOnlyList, JsonResult, List, SelectListItem (+10 more)
 
 ### Community 43 - "Tests"
 Cohesion: 0.29
@@ -710,12 +704,12 @@ Cohesion: 0.22
 Nodes (7): BackgroundService, CancellationToken, IConfiguration, ILogger, IServiceScopeFactory, Task, LicenseActivatorBackgroundService
 
 ### Community 45 - "Ventas Plugin - ReserveInvoices"
-Cohesion: 0.23
-Nodes (5): Fact, InlineData, Task, Theory, SapDocumentConnectorTests
+Cohesion: 0.13
+Nodes (10): object, Dictionary, Fact, InlineData, IReadOnlyList, Task, Theory, SapDocumentConnectorTests (+2 more)
 
 ### Community 46 - "Ventas Plugin - Returns"
-Cohesion: 0.11
-Nodes (19): DetailGenericSalesDocumentModelBase, DetailModel, CancellationToken, FilterInput, IActionResult, Task, IndexGenericSalesDocumentModelBase, DetailModel (+11 more)
+Cohesion: 0.20
+Nodes (9): CancellationToken, FilterInput, IActionResult, Task, IndexGenericSalesDocumentModelBase, CancellationToken, IReadOnlyList, Task (+1 more)
 
 ### Community 47 - "Host - Pages"
 Cohesion: 0.20
@@ -723,42 +717,42 @@ Nodes (12): DefaultCanCreate, DocumentType, Engine, RowViewModel, Dictionary, Gu
 
 ### Community 48 - "Abstractions - Contratos"
 Cohesion: 0.09
-Nodes (24): CancellationToken, Task, IOrganizationDocumentPermissionService, DateTime, PurchaseDocumentFilter, PurchaseDocumentLineDto, PurchaseDocumentListResult, PurchaseDocumentSummaryDto (+16 more)
+Nodes (24): DetailGenericPurchaseDocumentModelBase, IndexGenericPurchaseDocumentModelBase, DetailModel, IndexModel, DetailModel, IndexModel, DateTime, PurchaseDocumentDto (+16 more)
 
 ### Community 49 - "Abstractions - Contratos"
 Cohesion: 0.08
-Nodes (25): DetailGenericInventoryDocumentModelBase, IndexGenericInventoryDocumentModelBase, DetailModel, IndexModel, DetailModel, IndexModel, DateTime, InventoryDocumentDto (+17 more)
+Nodes (26): DetailGenericInventoryDocumentModelBase, IndexGenericInventoryDocumentModelBase, CancellationToken, FilterInput, IActionResult, Task, IndexGenericInventoryDocumentModelBase, DetailModel (+18 more)
 
 ### Community 50 - "Abstractions - Contratos"
 Cohesion: 0.19
-Nodes (12): CancellationToken, IReadOnlyCollection, IReadOnlyDictionary, IReadOnlyList, Task, IItemCatalogService, CancellationToken, IReadOnlyCollection (+4 more)
+Nodes (13): CancellationToken, IReadOnlyCollection, IReadOnlyDictionary, IReadOnlyList, Task, IItemCatalogService, ItemDto, CancellationToken (+5 more)
 
 ### Community 51 - "Host - Pages"
 Cohesion: 0.38
 Nodes (5): IActionResult, IEnumerable, InputModel, Task, EditModel
 
 ### Community 52 - "Core - Compras"
-Cohesion: 0.07
-Nodes (30): PortalSaas.Data.Migrations.PostgreSql, PortalSaas.Data.Migrations.SqlServer, DbContext, DbSet, IDesignTimeDbContextFactory, DateTimeOffset, Guid, ICollection (+22 more)
+Cohesion: 0.08
+Nodes (24): PortalSaas.Data.Migrations.PostgreSql, PortalSaas.Data.Migrations.SqlServer, DbContext, DbSet, IDesignTimeDbContextFactory, IntegrationConectorTipo, IntegrationDireccion, DateTimeOffset (+16 more)
 
 ### Community 53 - "Host - Pages"
 Cohesion: 0.12
 Nodes (8): PortalSaas.Host.Pages.Account, PortalSaas.Host.Infraestructura, IAuthenticationService, int, AuthenticationService, InputModel, InputModel, InputModel
 
 ### Community 54 - "Core - Ventas"
-Cohesion: 0.18
-Nodes (10): Entry, ExtraFilter, SalesDocumentLineDto, CancellationToken, IReadOnlyDictionary, IReadOnlyList, Parameters, Task (+2 more)
+Cohesion: 0.08
+Nodes (28): DetailGenericSalesDocumentModelBase, Entry, ExtraFilter, DetailModel, DetailModel, DetailModel, DetailModel, DetailModel (+20 more)
 
 ### Community 55 - "Core - Sap"
 Cohesion: 0.07
-Nodes (21): Error, ISecretoCifradoService, ConnectionString, EngineType, SapConnectionStringFactory, CancellationToken, Guid, Task (+13 more)
+Nodes (20): ISecretoCifradoService, ConnectionString, EngineType, SapConnectionStringFactory, DateTimeOffset, Guid, ICollection, IntegrationDefinition (+12 more)
 
 ### Community 56 - "Abstractions - Contratos"
 Cohesion: 0.23
 Nodes (10): CancellationToken, IReadOnlyList, Task, ICostCenterCatalogService, CostCenterDto, CancellationToken, int, IReadOnlyList (+2 more)
 
 ### Community 57 - "Abstractions - Contratos"
-Cohesion: 0.19
+Cohesion: 0.18
 Nodes (12): CancellationToken, IReadOnlyDictionary, IReadOnlyList, Task, ICustomerCatalogService, CustomerDto, CustomerFilter, CancellationToken (+4 more)
 
 ### Community 58 - "Abstractions - Modelos"
@@ -766,12 +760,12 @@ Cohesion: 0.12
 Nodes (17): CancellationToken, Guid, IReadOnlyList, Task, IExternalDatabaseConnectionService, string, ExternalDatabaseConnection, ExternalDatabaseEngineType (+9 more)
 
 ### Community 59 - "Host - Pages"
-Cohesion: 0.23
-Nodes (10): CancellationToken, Guid, Task, ISapConnectionTestService, SapConnectionTestResult, Guid, IActionResult, List (+2 more)
+Cohesion: 0.15
+Nodes (16): Error, CancellationToken, Guid, Task, ISapConnectionTestService, SapConnectionTestResult, CancellationToken, Guid (+8 more)
 
 ### Community 60 - "Abstractions - Contratos"
-Cohesion: 0.18
-Nodes (12): CancellationToken, IReadOnlyDictionary, IReadOnlyList, Task, ISupplierCatalogService, SupplierDto, SupplierFilter, CancellationToken (+4 more)
+Cohesion: 0.14
+Nodes (17): CancellationToken, IReadOnlyDictionary, IReadOnlyList, Task, ISupplierCatalogService, SupplierDto, SupplierFilter, CancellationToken (+9 more)
 
 ### Community 61 - "Host - Infraestructura"
 Cohesion: 0.19
@@ -786,16 +780,16 @@ Cohesion: 0.18
 Nodes (11): Guid, ICollection, IReadOnlyCollection, string, Instance, InstanceEngineType, Guid, IActionResult (+3 more)
 
 ### Community 64 - "Tests"
-Cohesion: 0.21
-Nodes (9): Claims, Header, JsonElement, PrivateKeyPem, PublicKey, RSA, Signature, Fact (+1 more)
+Cohesion: 0.14
+Nodes (12): Claims, Header, JsonElement, PrivateKeyPem, PublicKey, RSA, Signature, DateTimeOffset (+4 more)
 
 ### Community 65 - "Abstractions - Contratos"
 Cohesion: 0.07
 Nodes (26): 1. Propósito del repositorio, 2. Fuente de verdad y precedentes, 3.1 Dependencias, 3.2 Modularidad, 3.3 Separación de responsabilidades, 3. Reglas de arquitectura obligatorias, 4.1 Estilo de código, 4.2 Seguridad (+18 more)
 
 ### Community 66 - "Abstractions - Contratos"
-Cohesion: 0.08
-Nodes (25): CancellationToken, Guid, Task, IEmailSenderService, CancellationToken, Guid, Task, IPasswordResetService (+17 more)
+Cohesion: 0.15
+Nodes (11): CancellationToken, Guid, Task, IEmailSenderService, IHttpClientFactory, EmailSenderService, IActionResult, ILogger (+3 more)
 
 ### Community 67 - "Core - ImportacionGenerica"
 Cohesion: 0.33
@@ -806,8 +800,8 @@ Cohesion: 0.16
 Nodes (13): PortalSaas.Core.Tests.ImportacionGenerica.Reglas, CancellationToken, IReadOnlyCollection, IReadOnlyDictionary, IReadOnlyList, ItemCode, WhsCode, FakeCustomerCatalogService (+5 more)
 
 ### Community 69 - "Host - Pages"
-Cohesion: 0.07
-Nodes (15): Modulo.Ventas.Pages.ReserveInvoices, Modulo.Ventas.Pages.SalesOrders, Modulo.Ventas.Pages.Returns, Modulo.Ventas.Pages.ReturnRequests, Modulo.Ventas.Pages.CustomerInvoices, Modulo.Ventas.Pages.CreditNotes, IndexGenericSalesDocumentModelBase, IndexModel (+7 more)
+Cohesion: 0.08
+Nodes (14): Modulo.Ventas.Pages.ReserveInvoices, Modulo.Ventas.Pages.SalesOrders, Modulo.Ventas.Pages.Returns, Modulo.Ventas.Pages.ReturnRequests, Modulo.Ventas.Pages.CustomerInvoices, Modulo.Ventas.Pages.CreditNotes, IndexGenericSalesDocumentModelBase, IndexModel (+6 more)
 
 ### Community 70 - "Abstractions - Modelos"
 Cohesion: 0.10
@@ -870,12 +864,12 @@ Cohesion: 0.24
 Nodes (9): ApplicationPartManager, Assembly, Dictionary, ILogger, IReadOnlyDictionary, IReadOnlyList, IServiceCollection, List (+1 more)
 
 ### Community 85 - "Core - ImportacionGenerica"
-Cohesion: 0.24
+Cohesion: 0.28
 Nodes (5): ConcurrentDictionary, IGenericImportProgressStore, GenericImportDocumentResultDto, GenericImportProgressDto, GenericImportProgressStore
 
 ### Community 86 - "Host - Pages"
 Cohesion: 0.20
-Nodes (12): Action, CancellationToken, IReadOnlyList, Task, IGenericImportService, GenericImportParametersDto, IReadOnlyList, GenericImportDocumentDto (+4 more)
+Nodes (12): IActionResult, InputModel, IReadOnlyList, List, Task, IndexModel, InputModel, CancellationToken (+4 more)
 
 ### Community 87 - "Core - Infraestructura"
 Cohesion: 0.17
@@ -886,24 +880,24 @@ Cohesion: 0.18
 Nodes (10): B1SLayer (2.1.4), ClosedXML (0.104.1), ExcelDataReader (3.7.0), ExcelDataReader.DataSet (3.7.0), Microsoft.Data.SqlClient (5.2.2), Microsoft.EntityFrameworkCore (8.0.8), Npgsql (8.0.5), net8.0 (+2 more)
 
 ### Community 89 - "Abstractions - Modelos"
-Cohesion: 0.30
-Nodes (6): CancellationToken, Guid, IReadOnlyDictionary, IReadOnlyList, Task, ITenantUserAdminService
+Cohesion: 0.15
+Nodes (13): DateTimeOffset, Guid, ICollection, IReadOnlyCollection, string, OnPremiseLicense, OnPremiseLicenseStatus, DateTimeOffset (+5 more)
 
 ### Community 90 - "Tests"
 Cohesion: 0.35
 Nodes (6): CancellationToken, Guid, Task, Fact, Task, EmailSenderServiceTests
 
 ### Community 91 - "Data - Entities"
-Cohesion: 0.33
-Nodes (5): Guid, IReadOnlyCollection, string, EmailProviderType, EmailSettings
+Cohesion: 0.50
+Nodes (3): IReadOnlyCollection, string, EmailProviderType
 
 ### Community 92 - "Data - Entities"
-Cohesion: 0.06
-Nodes (36): IInstallationFingerprintProvider, string, InstallationFingerprintProvider, CancellationToken, IConfiguration, IHttpClientFactory, Task, ILicenseHeartbeatService (+28 more)
+Cohesion: 0.12
+Nodes (16): IInstallationFingerprintProvider, string, InstallationFingerprintProvider, CancellationToken, IConfiguration, IHttpClientFactory, Task, ILicenseHeartbeatService (+8 more)
 
 ### Community 93 - "Host - Pages"
-Cohesion: 0.27
-Nodes (8): Dictionary, IActionResult, InputModel, List, SelectListItem, Task, EditModel, InputModel
+Cohesion: 0.13
+Nodes (14): ICollection, Plan, Guid, IActionResult, IEnumerable, InputModel, List, SelectListItem (+6 more)
 
 ### Community 94 - "Host - Pages"
 Cohesion: 0.29
@@ -922,32 +916,32 @@ Cohesion: 0.13
 Nodes (14): CancellationToken, Task, IBusinessPartnerDefaultsService, BusinessPartnerDefaultsDto, CancellationToken, Task, BusinessPartnerDefaultsService, CancellationToken (+6 more)
 
 ### Community 98 - "Abstractions - Contratos"
-Cohesion: 0.23
-Nodes (9): CancellationToken, Guid, ILogger, int, IServiceScopeFactory, List, Task, TimeSpan (+1 more)
+Cohesion: 0.18
+Nodes (12): CancellationToken, Guid, ILogger, int, IServiceScopeFactory, List, Task, TimeSpan (+4 more)
 
 ### Community 99 - "Abstractions - Contratos"
 Cohesion: 0.11
 Nodes (18): Global Constraints, Mapa de archivos, Motor de Reglas de Validación Pre-Carga (Importación Genérica) — Implementation Plan, Task 10: Motor orquestador `GenericImportValidationRuleEngine`, Task 11: Integrar el motor en `GenericImportService` + DI, Task 12: `GenerateValidationReportAsync` (reporte .xlsx), Task 13: UI de configuración por Formato (`Pages/Configuracion`), Task 14: UI de vista previa (advertencias) + reporte descargable (+10 more)
 
 ### Community 100 - "Host - Pages"
-Cohesion: 0.24
-Nodes (11): PermissionsInputModel, Dictionary, Guid, IActionResult, ILogger, InputModel, List, SelectListItem (+3 more)
+Cohesion: 0.32
+Nodes (7): OrganizationMenuGroupDto, CancellationToken, Guid, IReadOnlyDictionary, IReadOnlyList, Task, OrganizationMenuGroupService
 
 ### Community 101 - "Host - Pages"
 Cohesion: 0.33
 Nodes (7): Guid, IActionResult, InputModel, List, SelectListItem, Task, CreateModel
 
 ### Community 102 - "Host - Pages"
-Cohesion: 0.10
-Nodes (25): ICollection, Plan, Guid, IActionResult, IEnumerable, InputModel, List, SelectListItem (+17 more)
+Cohesion: 0.21
+Nodes (11): DateTimeOffset, Db, ECDsa, Fact, IConfiguration, InlineData, Org, string (+3 more)
 
 ### Community 103 - "Core - Infraestructura"
 Cohesion: 0.22
 Nodes (6): AssemblyDependencyResolver, AssemblyLoadContext, AssemblyName, Assembly, HashSet, PluginLoadContext
 
 ### Community 104 - "Compras Plugin - PurchaseQuotations"
-Cohesion: 0.10
-Nodes (15): PortalSaas.Host.Pages.Admin.Integraciones, PortalSaas.Core.Tests.Integrations, PortalSaas.Data.Entities.Integraciones, PortalSaas.Host.Licenciamiento, PortalSaas.Abstractions.Contratos.Integraciones, PortalSaas.Core.Integraciones, PortalSaas.Integrations, PortalSaas.Core.Tests.Integraciones (+7 more)
+Cohesion: 0.09
+Nodes (16): PortalSaas.Host.Pages.Admin.Integraciones, PortalSaas.Core.Tests.Integrations, PortalSaas.Data.Entities.Integraciones, PortalSaas.Host.Licenciamiento, PortalSaas.Abstractions.Contratos.Integraciones, PortalSaas.Core.Integraciones, PortalSaas.Integrations, PortalSaas.Host.Comandos (+8 more)
 
 ### Community 105 - "ImportacionGenerica Plugin - Configuracion"
 Cohesion: 0.10
@@ -966,12 +960,12 @@ Cohesion: 0.17
 Nodes (10): coverlet.collector (6.0.0), Microsoft.NET.Test.Sdk (17.8.0), xunit (2.5.3), xunit.runner.visualstudio (2.5.3), net8.0, Microsoft.NET.Sdk.Razor, net8.0, Microsoft.EntityFrameworkCore.InMemory (8.0.8) (+2 more)
 
 ### Community 109 - "Abstractions - Modelos"
-Cohesion: 0.23
-Nodes (8): EmailMessage, CancellationToken, HttpClient, Task, Microsoft365EmailSender, Microsoft365ProviderConfig, TokenResponse, MicrosoftGraphPayloadBuilder
+Cohesion: 0.16
+Nodes (12): EmailMessage, CancellationToken, HttpClient, Task, Microsoft365EmailSender, Microsoft365ProviderConfig, TokenResponse, MicrosoftGraphPayloadBuilder (+4 more)
 
 ### Community 110 - "Core - Catalogos"
-Cohesion: 0.13
-Nodes (18): CancellationToken, IActionResult, IReadOnlyList, JsonResult, string, Task, IndexModel, CancellationToken (+10 more)
+Cohesion: 0.14
+Nodes (16): CancellationToken, IActionResult, IReadOnlyList, JsonResult, string, Task, IndexModel, CancellationToken (+8 more)
 
 ### Community 111 - "Core - Correo"
 Cohesion: 0.36
@@ -982,16 +976,16 @@ Cohesion: 0.36
 Nodes (6): CancellationToken, HttpClient, Task, GoogleWorkspaceEmailSender, GoogleWorkspaceProviderConfig, TokenResponse
 
 ### Community 113 - "Core - Correo"
-Cohesion: 0.24
-Nodes (10): ConnectionTestResultDto, ExternalConnectionDto, ExternalConnectionKind, ExternalConnectionRequirement, ModuleConnectionBindingDto, Guid, IActionResult, IReadOnlyList (+2 more)
+Cohesion: 0.40
+Nodes (4): IReadOnlyList, IServiceCollection, IModuloPortal, ExternalConnectionRequirement
 
 ### Community 114 - "Host - Pages"
-Cohesion: 0.41
-Nodes (6): orgId, companyId, Fact, Guid, Task, CompanyExternalConnectionServiceTests
+Cohesion: 0.19
+Nodes (8): CancellationToken, Guid, Task, IPasswordResetService, IActionResult, InputModel, Task, ResetPasswordModel
 
 ### Community 115 - "Host - Pages"
-Cohesion: 0.42
-Nodes (5): CancellationToken, Guid, IReadOnlyList, Task, ICompanyExternalConnectionService
+Cohesion: 0.35
+Nodes (5): OrganizationProfileDto, CancellationToken, IReadOnlyList, Task, OrganizationProfileService
 
 ### Community 116 - "Host - Pages"
 Cohesion: 0.36
@@ -1002,20 +996,20 @@ Cohesion: 0.05
 Nodes (37): Auditoría de paridad visual completa (A/B/C) -- 26 jul 2026 (mismo día), Bug real: Cantidad/Precio/%Desc se veían vacíos en un documento existente -- cultura del servidor rompe `<input type="number">` -- 26 jul 2026 (mismo día), Bug real de despliegue local: Host corriendo desde la carpeta AnyCPU vieja, no x64 -- 26 jul 2026 (mismo día), Bug real de plataforma: `_Layout.cshtml` no renderizaba la sección `"Styles"` -- 27 jul 2026, Bug real de plataforma: `PluginLoadContext` duplicaba ensamblados del framework compartido -- 27 jul 2026, Bug real de plataforma: `ServesOwnWwwRoot` nunca estaba implementado -- 27 jul 2026, Bug real en `Modulo.Rendiciones`: sin `[Authorize]`, un request anónimo crasheaba con 500 -- 27 jul 2026, Bug real: migración `AddLicensingSignedToken` sin aplicar en Postgres dev (29 jul 2026) (+29 more)
 
 ### Community 118 - "ImportacionGenerica Plugin - Modulo.ImportacionGenerica.csproj"
-Cohesion: 0.23
-Nodes (8): Guid, Task, IIntegrationFieldMappingService, Guid, IntegrationFieldMapping, List, Task, IntegrationFieldMappingService
+Cohesion: 0.16
+Nodes (11): Guid, Task, IIntegrationFieldMappingService, Guid, IntegrationFieldMapping, List, Task, IntegrationFieldMappingService (+3 more)
 
 ### Community 119 - "Host - Pages"
 Cohesion: 0.25
 Nodes (5): PortalSaas.Host.Pages.Admin, InputModel, IActionResult, Task, LogoutModel
 
 ### Community 120 - "Inventario Plugin - InventoryTransferRequests"
-Cohesion: 0.21
-Nodes (11): Exito, CancellationToken, CompanyId, DateTimeOffset, Func, Guid, IReadOnlyList, List (+3 more)
+Cohesion: 0.13
+Nodes (18): Exito, CancellationToken, Guid, IReadOnlyList, Task, IIntegrationEntityWriter, IReadOnlyDictionary, IntegrationRecord (+10 more)
 
 ### Community 121 - "Host - Pages"
-Cohesion: 0.29
-Nodes (6): IActionResult, IConfiguration, InputModel, IWebHostEnvironment, Task, ImportModel
+Cohesion: 0.15
+Nodes (11): DateTimeOffset, Guid, IReadOnlyCollection, string, Subscription, SubscriptionStatus, Guid, IActionResult (+3 more)
 
 ### Community 122 - "Core - Infraestructura"
 Cohesion: 0.29
@@ -1026,15 +1020,15 @@ Cohesion: 0.36
 Nodes (5): CancellationToken, IReadOnlyDictionary, IReadOnlyList, Task, IHanaService
 
 ### Community 124 - "Abstractions - Contratos"
-Cohesion: 0.18
-Nodes (12): IActionResult, InputModel, IReadOnlyList, Task, IndexModel, CancellationToken, Dictionary, IReadOnlyList (+4 more)
+Cohesion: 0.31
+Nodes (9): Dictionary, Guid, IActionResult, InputModel, List, SelectListItem, Task, InputModel (+1 more)
 
 ### Community 125 - "Abstractions - Modelos"
 Cohesion: 0.05
 Nodes (41): IGrouping, CancellationToken, Guid, Task, CancellationToken, Guid, Task, IOrganizationAccessGateService (+33 more)
 
 ### Community 126 - "Core - Inventario"
-Cohesion: 0.40
+Cohesion: 0.38
 Nodes (5): DateTime, IReadOnlyDictionary, List, SapInventoryDocumentHeader, SapInventoryDocumentLine
 
 ### Community 127 - "Core - Sap"
@@ -1078,12 +1072,12 @@ Cohesion: 0.25
 Nodes (7): Microsoft.Extensions.FileProviders.Embedded (8.0.8), Microsoft.NET.Sdk.Web, net8.0, EFCore.NamingConventions (8.0.0), Microsoft.EntityFrameworkCore.Design (8.0.8), Microsoft.EntityFrameworkCore.SqlServer (8.0.8), Npgsql.EntityFrameworkCore.PostgreSQL (8.0.10)
 
 ### Community 137 - "Core - ImportacionGenerica"
-Cohesion: 0.39
-Nodes (5): CancellationToken, Guid, IReadOnlyList, Task, IUserHomeShortcutService
+Cohesion: 0.21
+Nodes (10): CancellationToken, Guid, IReadOnlyList, Task, IUserHomeShortcutService, CancellationToken, Guid, IReadOnlyList (+2 more)
 
 ### Community 138 - "Host - Pages"
-Cohesion: 0.27
-Nodes (6): InputModel, GenericImportFieldLevel, CancellationToken, IReadOnlyList, Task, GenericImportUserFieldService
+Cohesion: 0.10
+Nodes (21): PageModelBaseAdmin, CancellationToken, IActionResult, InputModel, IReadOnlyList, List, SelectListItem, Task (+13 more)
 
 ### Community 139 - "Host - Pages"
 Cohesion: 0.38
@@ -1094,8 +1088,8 @@ Cohesion: 0.24
 Nodes (5): byte, int, SecretoCifradoService, Fact, SecretoCifradoServiceTests
 
 ### Community 141 - "Host - Pages"
-Cohesion: 0.16
-Nodes (15): IReadOnlyDictionary, IntegrationRecord, CancellationToken, IReadOnlyList, Task, ISapConnectionProvider, ISapSession, CancellationToken (+7 more)
+Cohesion: 0.17
+Nodes (13): CancellationToken, IReadOnlyList, Task, ISapConnectionProvider, ISapSession, CancellationToken, DateTimeOffset, int (+5 more)
 
 ### Community 142 - "Core - Correo"
 Cohesion: 0.33
@@ -1106,24 +1100,24 @@ Cohesion: 0.40
 Nodes (3): IEnumerable, IServiceCollection, ModuloImportacionGenerica
 
 ### Community 145 - "Compras Plugin - ModuloCompras.cs"
-Cohesion: 0.42
-Nodes (6): Exception, Guid, IActionResult, IReadOnlyList, Task, IndexModel
+Cohesion: 0.36
+Nodes (7): Guid, IActionResult, InputModel, List, SelectListItem, Task, ActivateModel
 
 ### Community 146 - "Ventas Plugin - IndexGenericSalesDocumentModelBase.cs"
-Cohesion: 0.20
-Nodes (11): DateTimeOffset, Guid, IReadOnlyDictionary, IReadOnlyList, CompanyOptionDto, LeafMenuDto, MenuGroupOptionDto, ProfileOptionDto (+3 more)
+Cohesion: 0.22
+Nodes (7): Guid, ICollection, Profile, IActionResult, List, Task, IndexModel
 
 ### Community 147 - "Core - Compras"
-Cohesion: 0.17
-Nodes (6): Guid, List, GenericImportConfig, GenericImportConfigField, Guid, GenericImportUserField
+Cohesion: 0.36
+Nodes (7): Guid, IActionResult, InputModel, List, SelectListItem, Task, CreateModel
 
 ### Community 148 - "Core - Correo"
 Cohesion: 0.20
 Nodes (9): CancellationToken, Guid, IEnumerable, string, Task, LegacyExternalConnectionBackfill, Fact, Task (+1 more)
 
 ### Community 149 - "Core - Sap"
-Cohesion: 0.19
-Nodes (14): CancellationToken, Dictionary, Guid, IReadOnlyList, List, Task, OrganizationMenuOverrideService, Db (+6 more)
+Cohesion: 0.05
+Nodes (45): AdminPageModelBase, IActionResult, InputModel, IReadOnlyList, Task, IndexModel, IActionResult, IReadOnlyList (+37 more)
 
 ### Community 150 - "Core - Ventas"
 Cohesion: 0.13
@@ -1142,8 +1136,8 @@ Cohesion: 0.47
 Nodes (4): IActionResult, InputModel, Task, EditModel
 
 ### Community 154 - "Host - Pages"
-Cohesion: 0.53
-Nodes (3): Fact, Task, IntegrationSyncHostedServiceTests
+Cohesion: 0.31
+Nodes (7): CancellationToken, IReadOnlyDictionary, IReadOnlyList, ItemCode, Task, WhsCode, ItemStockService
 
 ### Community 155 - "Tests"
 Cohesion: 0.33
@@ -1158,20 +1152,20 @@ Cohesion: 0.50
 Nodes (3): IServiceProvider, Task, PlatformAdminSeeder
 
 ### Community 158 - "Administracion Plugin - ModuloAdministracion.cs"
-Cohesion: 0.22
-Nodes (5): IEnumerable, IServiceCollection, ModuloAdministracion, IEnumerable, MenuItemDefinition
+Cohesion: 0.40
+Nodes (3): IEnumerable, IServiceCollection, ModuloAdministracion
 
 ### Community 159 - "ImportacionGenerica Plugin - ModuloImportacionGenerica.cs"
-Cohesion: 0.12
-Nodes (19): Guid, HttpContext, Task, CompanySessionActivator, ICompanySessionActivator, Guid, IActionResult, IConfiguration (+11 more)
+Cohesion: 0.09
+Nodes (25): DateTimeOffset, Guid, PasswordResetToken, DateTimeOffset, Guid, User, Guid, HttpContext (+17 more)
 
 ### Community 160 - "Inventario Plugin - ModuloInventario.cs"
 Cohesion: 0.40
 Nodes (3): IEnumerable, IServiceCollection, ModuloInventario
 
 ### Community 161 - "Ventas Plugin - ModuloVentas.cs"
-Cohesion: 0.40
-Nodes (3): IEnumerable, IServiceCollection, ModuloVentas
+Cohesion: 0.22
+Nodes (5): IEnumerable, IServiceCollection, ModuloVentas, IEnumerable, MenuItemDefinition
 
 ### Community 162 - "Data.Migrations.PostgreSql - Migrations"
 Cohesion: 0.36
@@ -1185,6 +1179,10 @@ Nodes (13): Catálogo general de conexiones externas por compañía — Plan de 
 Cohesion: 0.14
 Nodes (13): 1. Sistema de breakpoints (`design-tokens.css`), 2. App shell responsive — drawer off-canvas (`sidebar.css` + `_LayoutMaestro.cshtml` + `sidebar.js`), 3. Topbar responsive (`sidebar.css`), 4. Login (`site.css`, bloque `.login-*`), 5. Home + motores genéricos, 6. Archivos tocados, Componentes y responsabilidades, Diseño (+5 more)
 
+### Community 167 - "Data.Migrations.PostgreSql - Migrations"
+Cohesion: 0.39
+Nodes (6): Guid, IActionResult, ILogger, InputModel, Task, CreateModel
+
 ### Community 168 - "Data.Migrations.PostgreSql - Migrations"
 Cohesion: 0.25
 Nodes (6): LimitSql, int, IReadOnlyDictionary, Parameters, CatalogSqlHelper, WhereSql
@@ -1194,8 +1192,8 @@ Cohesion: 0.22
 Nodes (7): OriginModule, CancellationToken, Code, Guid, IHttpContextAccessor, Task, CurrentUserContext
 
 ### Community 171 - "Data.Migrations.PostgreSql - Migrations"
-Cohesion: 0.43
-Nodes (5): Guid, IActionResult, IReadOnlyList, Task, EditarModel
+Cohesion: 0.25
+Nodes (6): CancellationToken, IReadOnlyList, Task, IViewComponentResult, Task, SidebarMenuViewComponent
 
 ### Community 172 - "Data.Migrations.PostgreSql - Migrations"
 Cohesion: 0.58
@@ -1209,17 +1207,25 @@ Nodes (7): Guid, ICurrentCompanyOverride, Guid, IHttpContextAccessor, CurrentCom
 Cohesion: 0.17
 Nodes (12): CancellationToken, DateTimeOffset, IReadOnlyList, Task, SqlDirectConnector, CancellationToken, Fact, IReadOnlyDictionary (+4 more)
 
+### Community 176 - "Data.Migrations.SqlServer - Migrations"
+Cohesion: 0.53
+Nodes (5): DateTime, IReadOnlyDictionary, List, SapPurchaseDocumentHeader, SapPurchaseDocumentLine
+
 ### Community 177 - "Data.Migrations.SqlServer - Migrations"
-Cohesion: 0.19
-Nodes (10): AdminPageModelBase, IActionResult, IReadOnlyList, Task, IndexModel, CancellationToken, IReadOnlyList, Task (+2 more)
+Cohesion: 0.33
+Nodes (5): Guid, IActionResult, List, Task, IndexModel
+
+### Community 178 - "Data.Migrations.SqlServer - Migrations"
+Cohesion: 0.40
+Nodes (4): IActionResult, List, Task, IndexModel
 
 ### Community 181 - "Data.Migrations.SqlServer - Migrations"
 Cohesion: 0.28
 Nodes (7): CancellationToken, Fact, IReadOnlyDictionary, IReadOnlyList, Task, HanaServiceFalso, ItemMasterDetailServiceTests
 
 ### Community 185 - "Data.Migrations.SqlServer - Migrations"
-Cohesion: 0.10
-Nodes (11): Migration, MigrationBuilder, AddLicensingSignedToken, MigrationBuilder, AddModuleExternalConnections, MigrationBuilder, AddLicensingSignedToken, MigrationBuilder (+3 more)
+Cohesion: 0.08
+Nodes (13): Migration, MigrationBuilder, AddPlanToOnPremiseLicense, MigrationBuilder, AddOrganizationDocumentPermissions, MigrationBuilder, UpdateUserPreferenceThemeValues, MigrationBuilder (+5 more)
 
 ### Community 186 - "Host - wwwroot"
 Cohesion: 0.33
@@ -1230,8 +1236,8 @@ Cohesion: 0.20
 Nodes (9): 0. Por qué existe este proyecto y no se hace todo dentro de `PortalSAP_v2`, 1. Qué es esto, -1. Qué hay en esta carpeta, 2. Qué se reutiliza de `PortalSAP_v2` y cómo, 3. Arquitectura general (sin cambios respecto a `PortalSAP_v2`), 4. Dos bases de datos, dos decisiones distintas, 5. Capa comercial — resumen, 6. Próximos pasos sugeridos (+1 more)
 
 ### Community 188 - "Tests"
-Cohesion: 0.08
-Nodes (4): PortalSaas.Core.Tests, PortalSaas.Host.Comandos, PortalSaas.Core.Seguridad, PortalSaas.Core.Tests.Seguridad
+Cohesion: 0.07
+Nodes (7): PortalSaas.Core.Tests, PortalSaas.Core.Seguridad, PortalSaas.Core.Tests.Seguridad, PortalSaas.Core.Correo, IHttpClientFactory, HttpClient, HttpClientFactoryStub
 
 ### Community 189 - "Data - PortalSaas.Data.csproj"
 Cohesion: 0.25
@@ -1257,6 +1263,10 @@ Nodes (12): DateTime, List, SapWmsBpAddressRow, SapWmsItemRow, SapWmsOrderBaseLi
 Cohesion: 0.28
 Nodes (7): Guid, IActionResult, IEnumerable, InputModel, Task, EditModel, InputModel
 
+### Community 195 - "Data.Migrations.PostgreSql - Migrations"
+Cohesion: 0.53
+Nodes (3): CancellationToken, IActionResult, Task
+
 ### Community 198 - "Data.Migrations.PostgreSql - Migrations"
 Cohesion: 0.28
 Nodes (7): CancellationToken, Fact, IReadOnlyDictionary, IReadOnlyList, Task, BranchAndSeriesCatalogServiceTests, HanaServiceFalso
@@ -1264,14 +1274,6 @@ Nodes (7): CancellationToken, Fact, IReadOnlyDictionary, IReadOnlyList, Task, Br
 ### Community 200 - "Data.Migrations.PostgreSql - Migrations"
 Cohesion: 0.17
 Nodes (11): 1.1 Fuente principal — IBM Plex Sans, 1.2 Fuente monoespaciada — IBM Plex Mono, 1.3 Migración, sin tocar la densidad ya calibrada, 1. Tipografía, 2.1 Qué migrar, pantalla por pantalla, 2.2 Formularios de `/Admin/*` (Create/Edit), 2.3 Navbar/topbar de `/Admin/*`, 2.4 Botones y badges de `/Admin/*` (+3 more)
-
-### Community 203 - "Data.Migrations.PostgreSql - Migrations"
-Cohesion: 0.46
-Nodes (5): CancellationToken, Guid, IReadOnlyList, Task, UserHomeShortcutService
-
-### Community 204 - "Data.Migrations.PostgreSql - Migrations"
-Cohesion: 0.50
-Nodes (5): Guid, IActionResult, IReadOnlyCollection, Task, CreateModel
 
 ### Community 206 - "Data.Migrations.SqlServer - Migrations"
 Cohesion: 0.17
@@ -1289,13 +1291,9 @@ Nodes (3): Modulo.ImportacionGenerica.Pages.Configuracion.IndexModel, PortalSaas
 Cohesion: 0.50
 Nodes (3): Modulo.ImportacionGenerica.Pages.Importar.IndexModel, PortalSaas.Abstractions.Modelos, route:/importacion-generica/importar
 
-### Community 271 - "referencia-original"
-Cohesion: 0.50
-Nodes (5): Guid, IActionResult, IReadOnlyCollection, Task, EditModel
-
 ### Community 304 - "Core - Catalogos"
-Cohesion: 0.10
-Nodes (18): CancellationToken, IReadOnlyList, Task, IMenuNavigationService, CancellationToken, Dictionary, HashSet, IReadOnlyList (+10 more)
+Cohesion: 0.16
+Nodes (12): IMenuNavigationService, CancellationToken, Dictionary, HashSet, IReadOnlyList, List, OrganizationMenuOverride, Task (+4 more)
 
 ### Community 306 - "WmsApiRest.webservices - Controllers"
 Cohesion: 0.39
@@ -1373,10 +1371,6 @@ Nodes (9): Contexto, Criterio de éxito, Decisión, Etapa 1 — Bajada: SAP → 
 Cohesion: 0.20
 Nodes (9): Contexto, Criterio de éxito, Decisión, Estado nuevo en `WmsSapStageStatus`, Fuera de alcance, Migración Wms — Ronda E: Confirmación de llegada a WMS + detección de rechazos — Diseño, `WmsCloudValidationClient` (nuevo, `Modulo.Wms`), `WmsExistsChecker` (nuevo `BackgroundService`, `Modulo.Wms`) (+1 more)
 
-### Community 350 - ".GetVisibleMenuAsync"
-Cohesion: 0.33
-Nodes (5): Guid, IActionResult, IReadOnlyList, Task, IndexModel
-
 ### Community 351 - ".ListAsync"
 Cohesion: 0.29
 Nodes (5): CancellationToken, IReadOnlyList, Task, AddressCodeRow, CustomerShipToAddressService
@@ -1433,10 +1427,6 @@ Nodes (8): Contexto, Criterio de éxito, Decisión, Etapa 1 — Bajada: SAP → 
 Cohesion: 0.25
 Nodes (6): JsonConverter, JsonSerializerOptions, Type, FlexibleNullableInt32Converter, Utf8JsonReader, Utf8JsonWriter
 
-### Community 365 - "IModuleAccessService"
-Cohesion: 0.23
-Nodes (9): CancellationToken, Guid, IReadOnlySet, Task, IModuleAccessService, CancellationToken, IReadOnlyList, Task (+1 more)
-
 ### Community 366 - "IndexModel"
 Cohesion: 0.31
 Nodes (7): CancellationToken, Dictionary, Guid, IActionResult, List, Task, IndexModel
@@ -1446,7 +1436,7 @@ Cohesion: 0.38
 Nodes (5): CancellationToken, IReadOnlyList, Task, GenericImportValidationRuleEngine, IGenericImportValidationRuleEngine
 
 ### Community 368 - "IndexModel"
-Cohesion: 0.62
+Cohesion: 0.64
 Nodes (3): Fact, Task, GenericImportConfigServiceValidationRulesTests
 
 ### Community 369 - "HanaServiceFalso"
@@ -1456,10 +1446,6 @@ Nodes (4): CancellationToken, IReadOnlyList, Task, ICustomerShipToAddressService
 ### Community 370 - "Checklist de migración — motor SQL Server contra `sqlsap.cdepor.cl`"
 Cohesion: 0.25
 Nodes (7): 1. Migraciones que se van a aplicar (estado real, 26 jul 2026), 2. Incompatibilidades Postgres/SQL Server ya encontradas y corregidas en el modelo, 3. Caveats generales a vigilar en migraciones futuras (no encontrados todavía, prevención), 4. Pasos de aplicación contra `sqlsap.cdepor.cl`, 5. Verificación post-aplicación, 6. Rollback, Checklist de migración — motor SQL Server contra `sqlsap.cdepor.cl`
-
-### Community 371 - "DocumentListViewModel"
-Cohesion: 0.40
-Nodes (3): DateTimeOffset, string, GoogleServiceAccountJwtBuilder
 
 ### Community 372 - ".LeerPendientesAsync"
 Cohesion: 0.36
@@ -1474,12 +1460,8 @@ Cohesion: 0.29
 Nodes (6): 1. Principio rector, 2. Entidades nuevas (capa comercial — no existían en `PortalSAP_v2`), 3. Entidades existentes, ahora colgando de `organizations`, 4. Esquema (PostgreSQL, primer corte — a refinar antes de implementar), 5. Reglas de negocio que el código debe validar (no solo el esquema), Modelo Core — Capa Comercial
 
 ### Community 377 - "Bases Postgres operativas — servidor `172.16.122.171`"
-Cohesion: 0.29
-Nodes (6): Bases operativas (mantener esta tabla actualizada), Bases Postgres operativas — servidor `172.16.122.171`, Historial de aplicación de `AddCompanyExternalConnections` (2026-08-28), Historial de aplicación de `AddOrganizationMenuOverrides` (2026-08-25), Regla dura, Servidor
-
-### Community 379 - ".EscribirAsync"
-Cohesion: 0.29
-Nodes (5): CancellationToken, Guid, IReadOnlyList, Task, IIntegrationEntityWriter
+Cohesion: 0.25
+Nodes (7): Bases operativas (mantener esta tabla actualizada), Bases Postgres operativas — servidor `172.16.122.171`, Historial de aplicación de `AddCompanyExternalConnections` (2026-08-28), Historial de aplicación de `AddGenericImportValidationRules` (2026-09-07), Historial de aplicación de `AddOrganizationMenuOverrides` (2026-08-25), Regla dura, Servidor
 
 ### Community 380 - "Email Smoke Test"
 Cohesion: 0.29
@@ -1510,16 +1492,16 @@ Cohesion: 0.40
 Nodes (4): 07 — Theming Visual por Tenant (pendiente de implementar), Decisiones ya cerradas (no reabrir sin razón nueva), Qué es, Reglas de compatibilidad para módulos nuevos (mientras esta feature no se implementa)
 
 ### Community 389 - "ModuloCompras"
-Cohesion: 0.22
-Nodes (6): IEnumerable, IServiceCollection, ModuloCompras, IReadOnlyList, IServiceCollection, IModuloPortal
+Cohesion: 0.40
+Nodes (3): IEnumerable, IServiceCollection, ModuloCompras
 
 ### Community 390 - "Organization.cs"
-Cohesion: 0.10
-Nodes (20): CancellationToken, IReadOnlyDictionary, IReadOnlyList, ItemCode, Task, WhsCode, IItemStockService, WarehouseStockDto (+12 more)
+Cohesion: 0.24
+Nodes (8): CancellationToken, IReadOnlyDictionary, IReadOnlyList, ItemCode, Task, WhsCode, IItemStockService, WarehouseStockDto
 
 ### Community 404 - "AddOrganizationMenuOverrides"
 Cohesion: 0.40
-Nodes (4): DateTime, SalesDocumentFilter, SalesDocumentListResult, SalesDocumentSummaryDto
+Nodes (4): CancellationToken, Guid, IActionResult, Task
 
 ### Community 405 - "AddCoreMenuAndPermissions"
 Cohesion: 0.23
@@ -1527,15 +1509,11 @@ Nodes (8): CancellationToken, IReadOnlyCollection, IReadOnlyDictionary, IReadOnl
 
 ### Community 408 - "AddCompanyScopeToGenericImport"
 Cohesion: 0.50
-Nodes (3): Fact, Task, IntegrationFieldMappingServiceTests
+Nodes (4): DateOnly, LineInput, List, InputModel
 
 ### Community 411 - "AddIntegrationTables"
 Cohesion: 0.30
 Nodes (7): EmailSettings, Guid, IActionResult, IEnumerable, InputModel, Task, IndexModel
-
-### Community 413 - "AddWmsCloudConnectorType"
-Cohesion: 0.50
-Nodes (3): IHttpClientFactory, HttpClient, HttpClientFactoryStub
 
 ### Community 415 - "AddIntegrationRunLogDetalleConsulta"
 Cohesion: 0.18
@@ -1561,13 +1539,9 @@ Nodes (3): Modulo.Administracion.Pages.ConexionesExternas.IndexModel, PortalSaas
 Cohesion: 0.50
 Nodes (3): PortalSaas.Host.Pages.Admin.Organizations.Companies.ExternalConnections.IndexModel, PortalSaas.Abstractions.Modelos, route:{companyId:guid}
 
-### Community 424 - ".BuildTree"
-Cohesion: 0.50
-Nodes (3): IReadOnlyCollection, string, ExternalConnectionType
-
 ### Community 446 - "CurrentUserContextFijo"
-Cohesion: 0.29
-Nodes (5): Guid, ICurrentUserContext, CancellationToken, Guid, CurrentUserContextFijo
+Cohesion: 0.09
+Nodes (16): Modulo.Administracion.Pages, PageHandlerExecutingContext, AdminPageModelBase, Guid, ICurrentUserContext, CancellationToken, Guid, CurrentCompanyAccessorFijo (+8 more)
 
 ### Community 477 - "Global Constraints"
 Cohesion: 0.22
@@ -1585,33 +1559,25 @@ Nodes (5): CancellationToken, IReadOnlyDictionary, IReadOnlyList, Task, HanaServ
 Cohesion: 0.47
 Nodes (5): DateTime, IReadOnlyDictionary, List, SapSalesDocumentHeader, SapSalesDocumentLine
 
-### Community 496 - ".PuedePersistirYLeerConexionConBinding"
-Cohesion: 0.50
-Nodes (3): Fact, Task, CompanyExternalConnectionEntitiesTests
-
-### Community 507 - "SalesDocumentTypeCatalog"
-Cohesion: 0.67
-Nodes (3): IReadOnlyDictionary, IReadOnlyList, SalesDocumentTypeCatalog
-
 ## Knowledge Gaps
-- **818 isolated node(s):** `net8.0`, `Microsoft.NET.Sdk.Razor`, `Modulo.Administracion`, `Modulo.Administracion.Pages`, `route:/organizacion/conexiones-externas/editar/{id:long?}` (+813 more)
+- **819 isolated node(s):** `net8.0`, `Microsoft.NET.Sdk.Razor`, `Modulo.Administracion`, `Modulo.Administracion.Pages`, `route:/organizacion/conexiones-externas/editar/{id:long?}` (+814 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **213 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **214 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PortalSaasDbContext` connect `Core - Compras` to `Tests`, `Core - Administracion`, `Tests`, `Data - Entities`, `Core - Sap`, `Core - Administracion`, `Core - Infraestructura`, `Tests`, `Tests`, `Host - Pages`, `Abstractions - Contratos`, `Data - Entities`, `Data - Entities`, `Host - Pages`, `Tests`, `Tests`, `Tests`, `Core - ImportacionGenerica`, `Core - Inventario`, `Tests`, `Administracion Plugin - AdminPageModelBase.cs`, `Tests`, `Host - Pages`, `Abstractions - Contratos`, `Host - Pages`, `Host - Pages`, `Core - Sap`, `Abstractions - Modelos`, `Host - Pages`, `Data - Entities`, `Abstractions - Contratos`, `Host - Pages`, `Core - Infraestructura`, `Tests`, `Data - Entities`, `Data - Entities`, `Host - Pages`, `Host - Pages`, `Tests`, `Abstractions - Contratos`, `Host - Pages`, `Host - Pages`, `Compras Plugin - PurchaseQuotations`, `Core - Correo`, `Host - Pages`, `Host - Pages`, `ImportacionGenerica Plugin - Modulo.ImportacionGenerica.csproj`, `Host - Pages`, `Core - Infraestructura`, `Abstractions - Modelos`, `Host - Pages`, `Host - Pages`, `Host - Pages`, `Core - Comercial`, `ImportacionGenerica Plugin - PageModelBaseAdmin.cs`, `Host - Pages`, `Host - Pages`, `Core - Compras`, `Core - Correo`, `Core - Sap`, `Host - Pages`, `ImportacionGenerica Plugin - ModuloImportacionGenerica.cs`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data - Entities`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `referencia-original`, `Core - Catalogos`, `WmsApiRest.webservices - Controllers`, `.GetDecryptedConfigAsync`, `IModuleAccessService`, `IndexModel`, `IndexModel`, `AddCompanyScopeToGenericImport`, `AddIntegrationTables`, `.PuedePersistirYLeerConexionConBinding`?**
-  _High betweenness centrality (0.169) - this node is a cross-community bridge._
-- **Why does `PortalSaas.Data` connect `Host - Pages` to `Data.Migrations.SqlServer - Migrations`, `Host - Pages`, `Data.Migrations.PostgreSql - Migrations`, `Core - Infraestructura`, `AddBusinessPartnerFromFile`, `Host - Pages`, `20260724171946_AddAuthenticationAndPreferences.Designer.cs`, `20260808145239_AddCompanyScopeToGenericImport.Designer.cs`, `20260808145634_EnforceCompanyScopeOnExternalConnections.Designer.cs`, `20260815035304_AddIntegrationTables.Designer.cs`, `20260822014141_AddIntegrationDefinitionLastSuccessfulSyncAt.Designer.cs`, `Core - Compras`, `Host - Pages`, `20260827220011_AddCompanyExternalConnections.Designer.cs`, `20260724231937_SeedFixedActions.Designer.cs`, `20260808145614_EnforceCompanyScopeOnExternalConnections.Designer.cs`, `20260821205407_AddIntegrationRunLogDetalleConsulta.Designer.cs`, `Tests`, `Core - ImportacionGenerica`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `IndexModel`, `.BuildSignedAssertion`, `UserPreference`, `CreateModel`, `AddGenericImportModule`, `AddPlatformModuleExclusiveOrganization`, `AddIntegrationRunLogDetalleConsulta`, `Data.Migrations.PostgreSql - Migrations`, `AddOrganizationMenuOverrides`, `Compras Plugin - PurchaseQuotations`, `InputModel`, `.GenerateAndSetPasswordAsync`, `20260724162645_InitialCreate.Designer.cs`, `20260724171946_AddAuthenticationAndPreferences.Designer.cs`, `20260726220745_AddModuleExternalConnections.Designer.cs`, `20260815035304_AddIntegrationTables.Designer.cs`, `20260815165412_AddApiClientCredentialsCompanyForeignKey.Designer.cs`, `20260819201316_UpdateUserPreferenceThemeValues.Designer.cs`?**
+- **Why does `PortalSaasDbContext` connect `Core - Compras` to `Abstractions - Contratos`, `Tests`, `Core - Administracion`, `Tests`, `Tests`, `Data - Entities`, `Core - Sap`, `Tests`, `Tests`, `Host - Pages`, `Abstractions - Contratos`, `Data - Entities`, `Data - Entities`, `Host - Pages`, `Tests`, `Tests`, `Tests`, `Core - ImportacionGenerica`, `Core - Inventario`, `Tests`, `Administracion Plugin - AdminPageModelBase.cs`, `Tests`, `Host - Pages`, `Host - Pages`, `Host - Pages`, `Core - Sap`, `Abstractions - Modelos`, `Host - Pages`, `Data - Entities`, `Abstractions - Contratos`, `Host - Pages`, `Core - Infraestructura`, `Abstractions - Modelos`, `Tests`, `Data - Entities`, `Host - Pages`, `Host - Pages`, `Tests`, `Abstractions - Contratos`, `Host - Pages`, `Host - Pages`, `Host - Pages`, `Compras Plugin - PurchaseQuotations`, `Abstractions - Modelos`, `Host - Pages`, `Host - Pages`, `ImportacionGenerica Plugin - Modulo.ImportacionGenerica.csproj`, `Host - Pages`, `Core - Infraestructura`, `Abstractions - Contratos`, `Abstractions - Modelos`, `Host - Pages`, `Host - Pages`, `Host - Pages`, `Core - Comercial`, `ImportacionGenerica Plugin - PageModelBaseAdmin.cs`, `Core - ImportacionGenerica`, `Host - Pages`, `Host - Pages`, `Compras Plugin - ModuloCompras.cs`, `Ventas Plugin - IndexGenericSalesDocumentModelBase.cs`, `Core - Compras`, `Core - Correo`, `Core - Sap`, `Host - Pages`, `ImportacionGenerica Plugin - ModuloImportacionGenerica.cs`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.SqlServer - Migrations`, `Data.Migrations.SqlServer - Migrations`, `Data - Entities`, `Data.Migrations.PostgreSql - Migrations`, `Core - Catalogos`, `WmsApiRest.webservices - Controllers`, `.GetDecryptedConfigAsync`, `IndexModel`, `IndexModel`, `AddIntegrationTables`?**
+  _High betweenness centrality (0.158) - this node is a cross-community bridge._
+- **Why does `PortalSaas.Data` connect `Host - Pages` to `Abstractions - Contratos`, `Data.Migrations.SqlServer - Migrations`, `Host - Pages`, `Data.Migrations.PostgreSql - Migrations`, `Core - Infraestructura`, `AddBusinessPartnerFromFile`, `Host - Pages`, `AddWmsCloudConnectorType`, `.BuildTree`, `20260724162645_InitialCreate.Designer.cs`, `20260724171946_AddAuthenticationAndPreferences.Designer.cs`, `20260808003406_AddUserPreferenceDefaultCompany.Designer.cs`, `20260808145239_AddCompanyScopeToGenericImport.Designer.cs`, `20260808145634_EnforceCompanyScopeOnExternalConnections.Designer.cs`, `20260815035304_AddIntegrationTables.Designer.cs`, `20260822014141_AddIntegrationDefinitionLastSuccessfulSyncAt.Designer.cs`, `Core - Compras`, `Host - Pages`, `20260827220011_AddCompanyExternalConnections.Designer.cs`, `20260808145614_EnforceCompanyScopeOnExternalConnections.Designer.cs`, `20260724231937_SeedFixedActions.Designer.cs`, `20260816041430_AddWmsCloudConnectorType.Designer.cs`, `20260821205407_AddIntegrationRunLogDetalleConsulta.Designer.cs`, `Tests`, `Core - ImportacionGenerica`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `Data.Migrations.PostgreSql - Migrations`, `WmsFieldMapperKeys.cs`, `Data.Migrations.PostgreSql - Migrations`, `IndexModel`, `.BuildSignedAssertion`, `UserPreference`, `CreateModel`, `AddGenericImportModule`, `AddPlatformModuleExclusiveOrganization`, `AddIntegrationRunLogDetalleConsulta`, `Data.Migrations.PostgreSql - Migrations`, `AddOrganizationMenuOverrides`, `Compras Plugin - PurchaseQuotations`, `InputModel`, `20260724162645_InitialCreate.Designer.cs`, `20260724171946_AddAuthenticationAndPreferences.Designer.cs`, `20260726220745_AddModuleExternalConnections.Designer.cs`, `20260815035304_AddIntegrationTables.Designer.cs`?**
   _High betweenness centrality (0.152) - this node is a cross-community bridge._
-- **Why does `PortalSaas.Abstractions.Modelos` connect `Abstractions - Contratos` to `Tests`, `Host - Pages`, `Index.cshtml.cs`, `Host - Pages`, `Host - Pages`, `Tests`, `Organization.cs`, `Abstractions - Contratos`, `Host - Pages`, `Core - Administracion`, `Host - Pages`, `Abstractions - Modelos`, `Core - Infraestructura`, `Tests`, `Ventas Plugin - IndexGenericSalesDocumentModelBase.cs`, `AddOrganizationMenuOverrides`, `Host - Pages`, `Core - ImportacionGenerica`, `Core - Sap`, `Tests`, `Host - Pages`, `Administracion Plugin - ModuloAdministracion.cs`, `Tests`, `Core - ImportacionGenerica`, `Core - Catalogos`, `.BuildTree`, `ImportacionGenerica Plugin - Configuracion`, `Ventas Plugin - Returns`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Data.Migrations.SqlServer - Migrations`, `Host - Pages`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Modelos`, `Host - Pages`, `Abstractions - Contratos`, `Tests`, `Core - ImportacionGenerica`, `Abstractions - Modelos`, `Data.Migrations.PostgreSql - Migrations`, `Data - Entities`, `Host - Pages`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `WmsFieldMapperKeys.cs`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Core - ImportacionGenerica`, `Host - Pages`, `WmsServiceConfigKeys.cs`, `Abstractions - Modelos`, `Abstractions - Contratos`, `Compras Plugin - PurchaseQuotations`, `Abstractions - Modelos`, `NuevoModel`, `Core - Correo`, `Core - Correo`, `CompanySwitcherViewComponent`, `Abstractions - Contratos`, `Abstractions - Modelos`?**
-  _High betweenness centrality (0.139) - this node is a cross-community bridge._
+- **Why does `PortalSaas.Abstractions.Modelos` connect `Abstractions - Contratos` to `Tests`, `Host - Pages`, `Index.cshtml.cs`, `Host - Pages`, `Core - Administracion`, `Host - Pages`, `Organization.cs`, `Abstractions - Contratos`, `Host - Pages`, `Host - Pages`, `Abstractions - Modelos`, `Core - Infraestructura`, `Host - Pages`, `Tests`, `Core - Sap`, `Core - ImportacionGenerica`, `Core - Sap`, `Tests`, `Host - Pages`, `Tests`, `Core - ImportacionGenerica`, `Core - Catalogos`, `Ventas Plugin - ModuloVentas.cs`, `Administracion Plugin - AdminPageModelBase.cs`, `ImportacionGenerica Plugin - Configuracion`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Host - Pages`, `Core - Ventas`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Modelos`, `Host - Pages`, `Abstractions - Contratos`, `Tests`, `Core - ImportacionGenerica`, `Abstractions - Modelos`, `Data.Migrations.PostgreSql - Migrations`, `Data - Entities`, `Host - Pages`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Abstractions - Contratos`, `Core - ImportacionGenerica`, `Host - Pages`, `WmsServiceConfigKeys.cs`, `Abstractions - Modelos`, `Abstractions - Contratos`, `Host - Pages`, `Abstractions - Modelos`, `Core - Catalogos`, `NuevoModel`, `Core - Correo`, `Host - Pages`, `CompanySwitcherViewComponent`, `Abstractions - Modelos`?**
+  _High betweenness centrality (0.144) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `PortalSaasDbContext` (e.g. with `Company` and `Organization`) actually correct?**
   _`PortalSaasDbContext` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `net8.0`, `Microsoft.NET.Sdk.Razor`, `Modulo.Administracion` to the rest of the system?**
-  _818 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _819 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Abstractions - Contratos` be split into smaller, more focused modules?**
-  _Cohesion score 0.031246273106738224 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03007518796992481 - nodes in this community are weakly interconnected._
 - **Should `Tests` be split into smaller, more focused modules?**
   _Cohesion score 0.05546218487394958 - nodes in this community are weakly interconnected._

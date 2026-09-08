@@ -3,39 +3,52 @@
 @{
     ViewData["Title"] = "Dashboard WMS";
 }
+@* Migrado al Design System unificado (2026-09-07): sin paleta --wms-* con hex a
+   fuego, todo el color sale de design-tokens.css. El <style> de abajo es SOLO ajuste
+   de densidad/legibilidad de esta pantalla (scoped a .wms-dashboard, no toca el CSS
+   compartido del Host) -- pedido explícito: el dashboard del WMS original se leía más
+   grande y las 2 tablas del medio tenían alto de fila desparejo. *@
 
 <style>
-    :root {
-        --wms-primary: #0d6efd; --wms-success: #198754; --wms-warning: #b3790a; --wms-danger: #dc3545;
-        --wms-accent: #6f42c1; --wms-muted: #6c757d; --wms-border: #dee2e6; --wms-tint: #f8f9fa;
+    /* --- Ajustes locales del Dashboard WMS (2026-09-07) --- */
+    .wms-dashboard .kpi-tile-value { font-size: 30px; }
+    .wms-dashboard .kpi-tile-label { font-size: 11.5px; }
+
+    /* Tipografía de tabla un punto más grande que el default del DS (13px). */
+    .wms-dashboard .line-items-table { font-size: 14px; }
+    .wms-dashboard .line-items-table thead th { font-size: 11.5px; }
+
+    /* Alto de fila idéntico en "Transacciones por tipo" y "Panorama general": la
+       primera tiene pill de estado (más alta que texto plano) y en columna angosta
+       llegaba a envolver en 2 líneas. Padding vertical fijo + pill en una sola línea. */
+    .wms-dashboard .line-items-table td { padding-top: .6rem; padding-bottom: .6rem; line-height: 1.45; }
+    .wms-dashboard .line-items-table tbody tr { height: 46px; }
+    .wms-dashboard .badge-status { white-space: nowrap; }
+
+    /* Barra de período + botón de refresco (como el dashboard original). */
+    .wms-dashboard .dash-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .wms-dashboard .dash-updated { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+    .wms-dashboard .dash-refresh {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border-radius: var(--radius-sm);
+        border: 1px solid var(--card-border); background: var(--card-bg);
+        color: var(--text-main); text-decoration: none; font-size: 16px; line-height: 1;
     }
-    .wms-kpi { border-left: 4px solid var(--wms-border); }
-    .wms-kpi.wms-total { border-left-color: var(--wms-muted); }
-    .wms-kpi.wms-ok { border-left-color: var(--wms-success); }
-    .wms-kpi.wms-primary { border-left-color: var(--wms-accent); }
-    .wms-kpi.wms-warn { border-left-color: var(--wms-warning); }
-    .wms-kpi.wms-err { border-left-color: var(--wms-danger); }
-    .wms-kpi .value { font-variant-numeric: tabular-nums; }
-    .wms-pill { display: inline-flex; align-items: center; gap: .4rem; font-size: .75rem; font-weight: 600; padding: .2rem .55rem; border-radius: 999px; }
-    .wms-pill .dot { width: .4rem; height: .4rem; border-radius: 50%; background: currentColor; }
-    .wms-pill.ok { color: var(--wms-success); background: rgba(25, 135, 84, .12); }
-    .wms-pill.warn { color: var(--wms-warning); background: rgba(255, 193, 7, .2); }
-    .wms-pill.err { color: var(--wms-danger); background: rgba(220, 53, 69, .12); }
-    .wms-pill.off { color: var(--wms-muted); background: #e9ecef; }
-    .wms-proc-cell { background: #fff; border: 1px solid var(--wms-border); border-radius: .4rem; padding: .75rem 1rem; height: 100%; }
-    .wms-proc-cell .name { font-size: .82rem; font-weight: 600; }
-    .wms-proc-cell .key { font-size: .72rem; color: var(--wms-muted); font-family: var(--wms-mono, ui-monospace, monospace); }
-    .table-tabular td, .table-tabular th { font-variant-numeric: tabular-nums; }
-    .wms-panel-title { font-size: .85rem; font-weight: 600; }
-    .wms-panel-tag { font-size: .72rem; color: var(--wms-muted); }
+    .wms-dashboard .dash-refresh:hover { background: color-mix(in srgb, var(--bs-primary) 8%, transparent); }
 </style>
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <h1 class="h3 mb-0">Dashboard de Integración WMS</h1>
-    <div class="btn-group">
-        <a class="btn btn-sm @(Model.DiasAtras == 1 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="1">Hoy</a>
-        <a class="btn btn-sm @(Model.DiasAtras == 7 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="7">7 días</a>
-        <a class="btn btn-sm @(Model.DiasAtras == 30 ? "btn-primary" : "btn-outline-secondary")" asp-route-DiasAtras="30">30 días</a>
+<div class="wms-dashboard">
+
+<div class="doc-list-header">
+    <h2 class="h4 mb-0">Dashboard de Integración WMS</h2>
+    <div class="dash-toolbar">
+        <span class="dash-updated">Actualizado @DateTime.Now.ToString("HH:mm:ss")</span>
+        <div class="btn-group">
+            <a class="btn btn-sm @(Model.DiasAtras == 1 ? "btn-primary" : "btn-secondary")" asp-route-DiasAtras="1">Hoy</a>
+            <a class="btn btn-sm @(Model.DiasAtras == 7 ? "btn-primary" : "btn-secondary")" asp-route-DiasAtras="7">7 días</a>
+            <a class="btn btn-sm @(Model.DiasAtras == 30 ? "btn-primary" : "btn-secondary")" asp-route-DiasAtras="30">30 días</a>
+        </div>
+        <a class="dash-refresh" asp-route-DiasAtras="@Model.DiasAtras" title="Actualizar" aria-label="Actualizar">&#x21bb;</a>
     </div>
 </div>
 
@@ -52,84 +65,64 @@
     </div>
 }
 
-<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-5 g-3 mb-3">
-    <div class="col">
-        <div class="card wms-kpi wms-total h-100">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase">Total transacciones</div>
-                <div class="h3 mb-0 value">@Model.Resumen.TotalTransacciones.ToString("N0")</div>
-            </div>
-        </div>
+<div class="kpi-row">
+    <div class="kpi-tile" style="--kpi-accent: var(--text-muted);">
+        <p class="kpi-tile-label">Total transacciones</p>
+        <div class="kpi-tile-value">@Model.Resumen.TotalTransacciones.ToString("N0")</div>
     </div>
-    <div class="col">
-        <div class="card wms-kpi wms-ok h-100">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase">Confirmadas en WMS</div>
-                <div class="h3 mb-0 value text-success">@Model.Resumen.TotalOk.ToString("N0")</div>
-            </div>
-        </div>
+    <div class="kpi-tile" style="--kpi-accent: var(--bs-success);">
+        <p class="kpi-tile-label">Confirmadas en WMS</p>
+        <div class="kpi-tile-value text-success">@Model.Resumen.TotalOk.ToString("N0")</div>
     </div>
-    <div class="col">
-        <div class="card wms-kpi wms-primary h-100">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase">Enviadas, sin confirmar</div>
-                <div class="h3 mb-0 value" style="color: var(--wms-accent);">@Model.Resumen.TotalEnviado.ToString("N0")</div>
-            </div>
-        </div>
+    <div class="kpi-tile" style="--kpi-accent: var(--accent);">
+        <p class="kpi-tile-label">Enviadas, sin confirmar</p>
+        <div class="kpi-tile-value" style="color: var(--accent);">@Model.Resumen.TotalEnviado.ToString("N0")</div>
     </div>
-    <div class="col">
-        <div class="card wms-kpi wms-warn h-100">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase">Pendientes de enviar</div>
-                <div class="h3 mb-0 value" style="color: var(--wms-warning);">@Model.Resumen.TotalPendiente.ToString("N0")</div>
-            </div>
-        </div>
+    <div class="kpi-tile" style="--kpi-accent: var(--bs-warning);">
+        <p class="kpi-tile-label">Pendientes de enviar</p>
+        <div class="kpi-tile-value text-warning">@Model.Resumen.TotalPendiente.ToString("N0")</div>
     </div>
-    <div class="col">
-        <div class="card wms-kpi wms-err h-100">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase">Con error</div>
-                <div class="h3 mb-0 value text-danger">@Model.Resumen.TotalError.ToString("N0")</div>
-            </div>
-        </div>
+    <div class="kpi-tile" style="--kpi-accent: var(--bs-danger);">
+        <p class="kpi-tile-label">Con error</p>
+        <div class="kpi-tile-value text-danger">@Model.Resumen.TotalError.ToString("N0")</div>
     </div>
 </div>
 
 <div class="row g-3 mb-3">
     <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-                <span class="wms-panel-title">Transacciones por tipo</span>
-                <span class="wms-panel-tag">@(Model.DiasAtras == 1 ? "Hoy" : $"últimos {Model.DiasAtras} días")</span>
+        <div class="card-ps h-100">
+            <div class="doc-list-header mb-2">
+                <h3 class="h6 mb-0">Transacciones por tipo</h3>
+                <span class="doc-list-contador mb-0">@(Model.DiasAtras == 1 ? "Hoy" : $"últimos {Model.DiasAtras} días")</span>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm table-hover table-tabular mb-0 align-middle">
-                    <thead><tr><th>Tipo</th><th class="text-end">OK</th><th class="text-end" style="color: var(--wms-accent);">Enviado</th><th class="text-end">Error</th><th class="text-end">Pend.</th><th>Últ. ejec.</th></tr></thead>
+                <table class="table table-striped document-list-table line-items-table align-middle mb-0">
+                    <thead><tr><th>Tipo</th><th class="text-end">OK</th><th class="text-end">Enviado</th><th class="text-end">Error</th><th class="text-end">Pend.</th><th>Últ. ejec.</th></tr></thead>
                     <tbody>
                     @foreach (var fila in Model.Resumen.PorTipo)
                     {
                         <tr>
                             <td>@fila.Label</td>
                             <td class="text-end text-success">@fila.Ok.ToString("N0")</td>
-                            <td class="text-end" style="color: var(--wms-accent);">@fila.Enviado.ToString("N0")</td>
+                            <td class="text-end" style="color: var(--accent);">@fila.Enviado.ToString("N0")</td>
                             <td class="text-end text-danger">@fila.Error.ToString("N0")</td>
-                            <td class="text-end" style="color: var(--wms-warning);">@fila.Pendiente.ToString("N0")</td>
+                            <td class="text-end text-warning">@fila.Pendiente.ToString("N0")</td>
                             <td>
                                 @if (fila.UltimaEjecucion is null)
                                 {
-                                    <span class="wms-pill off"><span class="dot"></span>sin datos</span>
+                                    <span class="badge-status badge-status--neutral">sin datos</span>
                                 }
                                 else if (fila.UltimoEstado == "ERROR")
                                 {
-                                    <span class="wms-pill err"><span class="dot"></span>error &middot; @fila.UltimaEjecucion.Value.ToLocalTime().ToString("dd-MM HH:mm")</span>
+                                    <span class="badge-status badge-status--danger">error &middot; @fila.UltimaEjecucion.Value.ToLocalTime().ToString("dd-MM HH:mm")</span>
                                 }
                                 else if (fila.Total == 0)
                                 {
-                                    <span class="wms-pill off"><span class="dot"></span>sin actividad &middot; corrió @fila.UltimaEjecucion.Value.ToLocalTime().ToString("dd-MM HH:mm")</span>
+                                    <span class="badge-status badge-status--neutral">sin actividad &middot; @fila.UltimaEjecucion.Value.ToLocalTime().ToString("dd-MM HH:mm")</span>
                                 }
                                 else
                                 {
-                                    <span class="wms-pill ok"><span class="dot"></span>@fila.UltimaEjecucion.Value.ToLocalTime().ToString("dd-MM HH:mm")</span>
+                                    <span class="badge-status badge-status--success">@fila.UltimaEjecucion.Value.ToLocalTime().ToString("dd-MM HH:mm")</span>
                                 }
                             </td>
                         </tr>
@@ -140,23 +133,23 @@
         </div>
     </div>
     <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-                <span class="wms-panel-title">Panorama general</span>
-                <span class="wms-panel-tag">todo el histórico</span>
+        <div class="card-ps h-100">
+            <div class="doc-list-header mb-2">
+                <h3 class="h6 mb-0">Panorama general</h3>
+                <span class="doc-list-contador mb-0">todo el histórico</span>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm table-hover table-tabular mb-0 align-middle">
-                    <thead><tr><th>Tipo</th><th class="text-end">Confirmado</th><th class="text-end" style="color: var(--wms-accent);">Enviado</th><th class="text-end">Error</th><th class="text-end">Pend.</th></tr></thead>
+                <table class="table table-striped document-list-table line-items-table align-middle mb-0">
+                    <thead><tr><th>Tipo</th><th class="text-end">Confirmado</th><th class="text-end">Enviado</th><th class="text-end">Error</th><th class="text-end">Pend.</th></tr></thead>
                     <tbody>
                     @foreach (var fila in Model.Historico.PorTipo)
                     {
                         <tr>
                             <td>@fila.Label</td>
                             <td class="text-end text-success">@fila.Ok.ToString("N0")</td>
-                            <td class="text-end" style="color: var(--wms-accent);">@fila.Enviado.ToString("N0")</td>
+                            <td class="text-end" style="color: var(--accent);">@fila.Enviado.ToString("N0")</td>
                             <td class="text-end text-danger">@fila.Error.ToString("N0")</td>
-                            <td class="text-end" style="color: var(--wms-warning);">@fila.Pendiente.ToString("N0")</td>
+                            <td class="text-end text-warning">@fila.Pendiente.ToString("N0")</td>
                         </tr>
                     }
                     </tbody>
@@ -166,37 +159,50 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-        <span class="wms-panel-title">Estado de los procesadores</span>
-        <span class="wms-panel-tag">heartbeat en vivo</span>
+<div class="card-ps">
+    <div class="doc-list-header mb-2">
+        <h3 class="h6 mb-0">Estado de los procesadores</h3>
+        <span class="doc-list-contador mb-0">procesos del módulo WMS &middot; heartbeat en vivo</span>
     </div>
-    <div class="card-body">
-        @if (Model.Resumen.Procesadores.Count == 0)
+    <div class="row g-2">
+        @foreach (var proc in Model.Resumen.Procesadores)
         {
-            <div class="text-muted small">Todavía no hay heartbeats registrados para esta compañía.</div>
-        }
-        else
-        {
-            <div class="row g-2">
-                @foreach (var proc in Model.Resumen.Procesadores)
-                {
-                    var esError = string.Equals(proc.Status, "ERROR", StringComparison.OrdinalIgnoreCase);
-                    <div class="col-md-4 col-lg-3">
-                        <div class="wms-proc-cell">
-                            <div class="d-flex justify-content-between align-items-start gap-2">
-                                <span class="name">@proc.ProcessorKey</span>
-                                <span class="wms-pill @(esError ? "err" : "ok")"><span class="dot"></span>@(proc.Status ?? "—")</span>
-                            </div>
-                            <div class="key mt-1">@(proc.LastRunAt?.ToLocalTime().ToString("dd-MM HH:mm:ss") ?? "sin ejecutar")</div>
-                            @if (esError && !string.IsNullOrEmpty(proc.LastError))
-                            {
-                                <div class="text-danger small mt-1">@proc.LastError</div>
-                            }
-                        </div>
+            var esError = string.Equals(proc.Status, "ERROR", StringComparison.OrdinalIgnoreCase);
+            var sinConfig = string.Equals(proc.Status, "SIN_CONFIG", StringComparison.OrdinalIgnoreCase);
+            var accent = proc.SinEjecutar ? "var(--text-muted)"
+                : esError ? "var(--bs-danger)"
+                : sinConfig ? "var(--bs-warning)"
+                : "var(--bs-success)";
+            var badgeClase = proc.SinEjecutar ? "badge-status--neutral"
+                : esError ? "badge-status--danger"
+                : sinConfig ? "badge-status--warning"
+                : "badge-status--success";
+            var badgeTexto = proc.SinEjecutar ? "sin ejecutar" : sinConfig ? "sin config" : (proc.Status ?? "—");
+            <div class="col-md-6 col-lg-3">
+                <div class="kpi-tile h-100" style="--kpi-accent: @accent;">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <span class="small fw-semibold">@proc.Nombre</span>
+                        <span class="badge-status @badgeClase">@badgeTexto</span>
                     </div>
-                }
+                    <div class="text-muted mt-1" style="font-size: 11px; font-family: var(--wms-mono, ui-monospace, monospace);">
+                        @proc.ProcessorKey &middot; cada @proc.CadaSegundos s
+                    </div>
+                    <div class="small text-muted mt-1">
+                        @(proc.LastRunAt?.ToLocalTime().ToString("dd-MM HH:mm:ss") ?? "nunca corrió en esta compañía")
+                        <span class="badge-status badge-status--neutral ms-1">@proc.Etapa</span>
+                    </div>
+                    @if (esError && !string.IsNullOrEmpty(proc.LastError))
+                    {
+                        <div class="text-danger small mt-1">@proc.LastError</div>
+                    }
+                </div>
             </div>
         }
     </div>
+    <p class="text-muted mt-2 mb-0" style="font-size: 11px;">
+        El envío SAP&nbsp;&rarr;&nbsp;WMS Cloud (Bajada/Subida) lo programa el motor de Integraciones de la plataforma
+        y no se lista acá &mdash; su bitácora está en <em>Admin &rsaquo; Integraciones</em>.
+    </p>
+</div>
+
 </div>

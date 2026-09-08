@@ -73,9 +73,18 @@ public class WmsConfirmacionService : IWmsConfirmacionService
             agrupado = agrupado.Where(r => r.Documento.Contains(filtro.Documento, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
-        agrupado = agrupado.Take(200).ToList();
+        var total = agrupado.Count;
+        var pageSize = filtro.PageSize <= 0 ? 25 : filtro.PageSize;
+        var totalPages = (int)Math.Ceiling((double)total / pageSize);
+        var page = Math.Clamp(filtro.Page, 1, Math.Max(totalPages, 1));
 
-        return new WmsPagedResult<WmsConfirmacionRow> { Items = agrupado, TotalCount = agrupado.Count, Page = 1, PageSize = Math.Max(agrupado.Count, 1) };
+        var items = agrupado
+            .OrderBy(r => r.Documento, StringComparer.OrdinalIgnoreCase)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new WmsPagedResult<WmsConfirmacionRow> { Items = items, TotalCount = total, Page = page, PageSize = pageSize };
     }
 
     public async Task ResetearAsync(Guid companyId, WmsTipoTransaccion tipo, string documento, CancellationToken cancellationToken)

@@ -81,8 +81,13 @@
             </select>
         </div>
         <div class="col-md-4">
-            <label asp-for="Input.ProgramacionCron" class="form-label"></label>
-            <input asp-for="Input.ProgramacionCron" class="form-control" placeholder="No usado por el motor actual" />
+            <label asp-for="Input.IntervaloMinutos" class="form-label"></label>
+            <input asp-for="Input.IntervaloMinutos" class="form-control" type="number" min="1" placeholder="Vacío = solo con 'Ejecutar ahora'" />
+            <div class="form-text">
+                Con un valor, la integración corre sola cada N minutos (el motor revisa cada 1 min,
+                ese es el mínimo real). Vacío = solo corre cuando la disparás con "Ejecutar ahora".
+            </div>
+            <span asp-validation-for="Input.IntervaloMinutos" class="text-danger"></span>
         </div>
 
         <div class="col-12">

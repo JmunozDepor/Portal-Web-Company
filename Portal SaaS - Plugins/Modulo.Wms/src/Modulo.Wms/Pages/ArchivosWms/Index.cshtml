@@ -2,65 +2,101 @@
 @model Modulo.Wms.Pages.ArchivosWms.IndexModel
 @{
     ViewData["Title"] = "Archivos WMS";
-}
 
-<h1 class="h3 mb-3">Archivos WMS</h1>
-
-@if (Model.SuccessMessage is not null)
-{
-    <div class="alert alert-success">@Model.SuccessMessage</div>
-}
-@if (Model.ErrorMessage is not null)
-{
-    <div class="alert alert-danger">@Model.ErrorMessage</div>
-}
-
-<form method="get" class="row g-2 mb-3">
-    <div class="col-auto">
-        @* Dominio actual de TipoDoc para WmsOracleInboundStage: solo SLSH (órdenes) y
-           SVSH (ingreso), que son los únicos tipos que WmsSlshStageParser/
-           WmsSvshStageParser insertan vía WmsInboundIngestionService. Otros TipoDoc
-           ("Item", "Order", "Store", "IbShipment") existen en WmsExportValidation
-           (staging de salida SAP->Oracle), no en esta tabla de entrada cruda. *@
-        <select name="TipoDoc" class="form-select form-select-sm">
-            <option value="">Todos</option>
-            @foreach (var tipo in new[] { "SLSH", "SVSH" })
-            {
-                <option value="@tipo" selected="@(Model.TipoDoc == tipo ? "selected" : null)">@tipo</option>
-            }
-        </select>
-    </div>
-    <div class="col-auto">
-        <select name="Estado" class="form-select form-select-sm">
-            <option value="">Todos</option>
-            @foreach (var estado in Enum.GetNames(typeof(Modulo.Wms.Models.WmsInboundEstado)))
-            {
-                <option value="@estado" selected="@(Model.Estado == estado ? "selected" : null)">@estado</option>
-            }
-        </select>
-    </div>
-    <div class="col-auto"><button type="submit" class="btn btn-sm btn-primary">Filtrar</button></div>
-</form>
-
-<table class="table table-sm">
-    <thead><tr><th>Archivo</th><th>Tipo</th><th>Estado</th><th>Intentos</th><th>Error</th><th>Insertado</th><th></th></tr></thead>
-    <tbody>
-    @foreach (var archivo in Model.Archivos)
+    string BadgeEstado(Modulo.Wms.Models.WmsInboundEstado estado) => estado switch
     {
-        <tr>
-            <td>@archivo.NombreArchivo</td>
-            <td>@archivo.TipoDoc</td>
-            <td>@archivo.Estado</td>
-            <td>@archivo.Intentos</td>
-            <td>@archivo.MensajeError</td>
-            <td>@archivo.InsertedAt.ToString("dd-MM HH:mm")</td>
-            <td>
-                <form method="post" asp-page-handler="Reintentar" class="d-inline">
-                    <input type="hidden" name="id" value="@archivo.Id" />
-                    <button type="submit" class="btn btn-sm btn-outline-secondary">Reintentar</button>
-                </form>
-            </td>
-        </tr>
+        Modulo.Wms.Models.WmsInboundEstado.Aplanado => "badge-status--success",
+        Modulo.Wms.Models.WmsInboundEstado.ErrorEstructura or Modulo.Wms.Models.WmsInboundEstado.ErrorStaging => "badge-status--danger",
+        Modulo.Wms.Models.WmsInboundEstado.Pendiente => "badge-status--warning",
+        _ => "badge-status--neutral",
+    };
+}
+@* Migrado al Design System unificado (2026-09-07) -- misma estructura que el
+   listado de documentos del Host (/ventas/ordenes): .card-ps .doc-list +
+   .filter-card + .document-list-table .line-items-table + .badge-status, sobre
+   tokens del tema activo, sin .table/.badge sueltos ni CSS de módulo. *@
+
+<div class="card-ps doc-list">
+    <div class="doc-list-header">
+        <h2 class="h4 mb-0">Archivos WMS</h2>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
     }
-    </tbody>
-</table>
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="get" class="filter-card">
+        <div class="col-auto">
+            <label class="form-label">Tipo</label>
+            @* Dominio actual de TipoDoc para WmsOracleInboundStage: solo SLSH (órdenes) y
+               SVSH (ingreso), que son los únicos tipos que WmsSlshStageParser/
+               WmsSvshStageParser insertan vía WmsInboundIngestionService. Otros TipoDoc
+               ("Item", "Order", "Store", "IbShipment") existen en WmsExportValidation
+               (staging de salida SAP->Oracle), no en esta tabla de entrada cruda. *@
+            <select name="TipoDoc" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var tipo in new[] { "SLSH", "SVSH" })
+                {
+                    <option value="@tipo" selected="@(Model.TipoDoc == tipo ? "selected" : null)">@tipo</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label">Estado</label>
+            <select name="Estado" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var estado in Enum.GetNames(typeof(Modulo.Wms.Models.WmsInboundEstado)))
+                {
+                    <option value="@estado" selected="@(Model.Estado == estado ? "selected" : null)">@estado</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+        </div>
+    </form>
+
+    <div class="document-list-table-wrapper">
+        <table class="table table-striped document-list-table line-items-table align-middle">
+            <thead><tr><th>Archivo</th><th>Tipo</th><th>Estado</th><th class="text-end">Intentos</th><th>Error</th><th>Insertado</th><th class="doc-list-col-detalle"></th></tr></thead>
+            <tbody>
+            @foreach (var archivo in Model.Resultado.Items)
+            {
+                <tr>
+                    <td>@archivo.NombreArchivo</td>
+                    <td>@archivo.TipoDoc</td>
+                    <td><span class="badge-status @BadgeEstado(archivo.Estado)">@archivo.Estado</span></td>
+                    <td class="text-end">@archivo.Intentos</td>
+                    <td class="small text-danger">@archivo.MensajeError</td>
+                    <td class="small">@archivo.InsertedAt.ToString("dd-MM HH:mm")</td>
+                    <td class="doc-list-col-detalle">
+                        <form method="post" asp-page-handler="Reintentar" class="d-inline">
+                            <input type="hidden" name="id" value="@archivo.Id" />
+                            <button type="submit" class="btn btn-sm btn-secondary">Reintentar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Resultado.Items.Count == 0)
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">Sin archivos.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    @{
+        var pagerRoute = new Dictionary<string, string?>
+        {
+            ["TipoDoc"] = Model.TipoDoc,
+            ["Estado"] = Model.Estado,
+        };
+        var pager = Modulo.Wms.Pages.Shared.WmsPagerModel.Desde(Model.Resultado, "Pagina", pagerRoute);
+    }
+    <partial name="_WmsPager" model="pager" />
+</div>

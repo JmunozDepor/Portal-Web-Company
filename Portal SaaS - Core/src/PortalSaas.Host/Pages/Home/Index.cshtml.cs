@@ -17,12 +17,15 @@ public class IndexModel : PageModel
     private readonly ICurrentUserContext _currentUser;
     private readonly IMenuNavigationService _menuNavigation;
     private readonly IUserHomeShortcutService _shortcuts;
+    private readonly IUserSessionService _sessions;
 
-    public IndexModel(ICurrentUserContext currentUser, IMenuNavigationService menuNavigation, IUserHomeShortcutService shortcuts)
+    public IndexModel(ICurrentUserContext currentUser, IMenuNavigationService menuNavigation, IUserHomeShortcutService shortcuts,
+        IUserSessionService sessions)
     {
         _currentUser = currentUser;
         _menuNavigation = menuNavigation;
         _shortcuts = shortcuts;
+        _sessions = sessions;
     }
 
     public string? Email { get; private set; }
@@ -81,6 +84,15 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostLogoutAsync()
     {
+        // Mismo criterio que Pages/Account/Logout.cshtml.cs -- revocar la fila de
+        // "clientes conectados" de una, sin esto este logout dejaba la sesión colgada
+        // en /Admin/Sessions hasta que la cookie expirara sola.
+        var sessionToken = User.FindFirstValue("SessionToken");
+        if (sessionToken is not null)
+        {
+            await _sessions.RevokeByTokenAsync(sessionToken);
+        }
+
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return RedirectToPage("/Account/Login");
     }

@@ -15,6 +15,14 @@ namespace PortalSaas.Core.Seguridad;
 /// </summary>
 public sealed class UserSessionService : IUserSessionService
 {
+    // Igual que el ExpireTimeSpan de la cookie de sesión de tenant (Program.cs,
+    // AddCookie) -- una fila user_sessions se crea por cada login y solo se marca
+    // IsRevoked en el logout explícito, así que quien cierra el navegador sin
+    // desloguearse deja la fila viva para siempre. Para "clientes conectados" del
+    // backoffice se descartan las más viejas que la vida de la cookie: si nadie tocó
+    // esa sesión en 8 h, la cookie ya caducó y el usuario no está realmente conectado.
+    private static readonly TimeSpan SessionCookieLifetime = TimeSpan.FromHours(8);
+
     private readonly PortalSaasDbContext _db;
 
     public UserSessionService(PortalSaasDbContext db)
@@ -64,12 +72,14 @@ public sealed class UserSessionService : IUserSessionService
 
     public async Task<IReadOnlyList<UserSessionDto>> ListActiveAsync(Guid? organizationId = null, CancellationToken ct = default)
     {
+        var cutoff = DateTimeOffset.UtcNow - SessionCookieLifetime;
+
         var query = _db.UserSessions
             .AsNoTracking()
             .Include(s => s.User)
             .Include(s => s.Organization)
             .Include(s => s.Company)
-            .Where(s => !s.IsRevoked);
+            .Where(s => !s.IsRevoked && s.CreatedAt >= cutoff);
 
         if (organizationId is { } orgId)
         {

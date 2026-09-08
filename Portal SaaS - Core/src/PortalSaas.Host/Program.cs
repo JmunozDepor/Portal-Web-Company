@@ -116,6 +116,7 @@ builder.Services.AddScoped<PortalSaas.Abstractions.Contratos.IAuthenticationServ
 builder.Services.AddScoped<IPlatformAdminAuthenticationService, PlatformAdminAuthenticationService>();
 builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
 builder.Services.AddScoped<IUserSessionService, UserSessionService>();
+builder.Services.AddHostedService<StaleUserSessionCleanupHostedService>();
 builder.Services.AddScoped<ICompanySessionActivator, CompanySessionActivator>();
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();

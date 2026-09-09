@@ -14,8 +14,10 @@ namespace PortalSaas.Core.Seguridad;
 /// ListActiveAsync, que las oculta pero no las borra). Corre una vez al arrancar y
 /// después cada hora. Borra:
 ///   - las revocadas (ya no sirven para nada: la cookie se rechaza igual sin la fila),
-///   - las más viejas que la vida de la cookie de sesión (si nadie la tocó en 8 h,
-///     la cookie ya caducó -- mismo umbral que ListActiveAsync).
+///   - las sin actividad hace más que la vida de la cookie de sesión: si nadie tocó
+///     esa sesión en 8 h, con SlidingExpiration la cookie ya caducó -- se mide contra
+///     LastSeenAt, NUNCA contra CreatedAt (una sesión activa desde hace más de 8 h
+///     tiene la cookie viva y no debe borrarse), mismo umbral que ListActiveAsync.
 /// </summary>
 public sealed class StaleUserSessionCleanupHostedService : BackgroundService
 {
@@ -74,7 +76,7 @@ public sealed class StaleUserSessionCleanupHostedService : BackgroundService
         // es chico (una fila por login de unos pocos usuarios de tenant) y así el
         // borrado funciona igual con cualquier provider EF, tests incluidos.
         var vencidas = await db.UserSessions
-            .Where(s => s.IsRevoked || s.CreatedAt < cutoff)
+            .Where(s => s.IsRevoked || s.LastSeenAt < cutoff)
             .ToListAsync(ct);
 
         if (vencidas.Count == 0)

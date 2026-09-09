@@ -31,6 +31,10 @@ public sealed class MenuSyncService
         var existing = await _db.Menus.ToListAsync(ct);
         var byKey = existing.ToDictionary(m => (m.OriginModule, m.Code));
 
+        // Claves realmente emitidas por GetMenu() en este ciclo -- lo que un módulo
+        // cargado dejó de emitir (ej. se borró una página) se desactiva más abajo.
+        var seenKeys = new HashSet<(string, string)>();
+
         // Paso 1: upsert de cada nodo, SIN resolver padre todavía -- un padre puede
         // estar declarado en otro módulo que todavía no se procesó en este loop.
         foreach (var module in modules)
@@ -38,6 +42,7 @@ public sealed class MenuSyncService
             foreach (var item in module.GetMenu())
             {
                 var key = (module.ModuleCode, item.Code);
+                seenKeys.Add(key);
                 if (byKey.TryGetValue(key, out var menu))
                 {
                     menu.Name = item.Name;
@@ -100,11 +105,19 @@ public sealed class MenuSyncService
             }
         }
 
-        // Fase de desactivación: nodos de un módulo que ya no corresponde a ningún
-        // plugin cargado (plugin retirado del todo).
+        // Fase de desactivación:
+        //  (a) nodos de un módulo que ya no corresponde a ningún plugin cargado
+        //      (plugin retirado del todo);
+        //  (b) nodos de un módulo que SÍ está cargado pero que ya no emite esa clave
+        //      en GetMenu() -- ej. se borró la página "Configuración del Servicio" de
+        //      Modulo.Wms (2026-09-08) y su fila menus quedaba activa para siempre
+        //      porque este servicio nunca revisaba "clave no vista este ciclo".
+        // Soft-delete siempre (IsActive=false), nunca DELETE: si la clave reaparece en
+        // un ciclo futuro, el Paso 1 la vuelve a activar sin perder su Id/hijos.
         foreach (var menu in existing)
         {
-            if (!loadedModuleCodes.Contains(menu.OriginModule))
+            if (!loadedModuleCodes.Contains(menu.OriginModule)
+                || !seenKeys.Contains((menu.OriginModule, menu.Code)))
             {
                 menu.IsActive = false;
             }

@@ -314,15 +314,16 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.ProviderId).HasColumnName("provider_id").IsRequired();
             e.Property(x => x.Year).HasColumnName("year").IsRequired();
             e.Property(x => x.Month).HasColumnName("month").IsRequired();
+            e.Property(x => x.Day).HasColumnName("day").IsRequired().HasDefaultValue(0);
             e.Property(x => x.UsedUnits).HasColumnName("used_units");
             e.HasOne(x => x.Provider)
                 .WithMany()
                 .HasForeignKey(x => x.ProviderId)
                 .HasConstraintName("fk_external_service_usages_external_service_providers")
                 .OnDelete(DeleteBehavior.Cascade);
-            e.HasIndex(x => new { x.ProviderId, x.Year, x.Month })
+            e.HasIndex(x => new { x.ProviderId, x.Year, x.Month, x.Day })
                 .IsUnique()
-                .HasDatabaseName("uq_external_service_usages_provider_year_month");
+                .HasDatabaseName("uq_external_service_usages_provider_year_month_day");
         });
 
         modelBuilder.Entity<RendicionesSettings>(e =>

@@ -31,13 +31,16 @@ public class StaleUserSessionCleanupHostedServiceTests
         return (org.Id, user.Id);
     }
 
-    private static void AgregarSesion(PortalSaasDbContext db, Guid orgId, Guid userId, DateTimeOffset createdAt, bool revocada = false) =>
+    // lastSeenAt = última actividad de la sesión (ver UserSession.LastSeenAt) -- es
+    // contra este valor, no CreatedAt, que la purga decide si está muerta.
+    private static void AgregarSesion(PortalSaasDbContext db, Guid orgId, Guid userId, DateTimeOffset lastSeenAt, bool revocada = false) =>
         db.UserSessions.Add(new UserSession
         {
             UserId = userId,
             OrganizationId = orgId,
             TokenHash = Guid.NewGuid().ToString(),
-            CreatedAt = createdAt,
+            CreatedAt = lastSeenAt,
+            LastSeenAt = lastSeenAt,
             IsRevoked = revocada,
         });
 
@@ -52,8 +55,19 @@ public class StaleUserSessionCleanupHostedServiceTests
             var db = scope.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
             AgregarSesion(db, orgId, userId, DateTimeOffset.UtcNow.AddMinutes(-10));                 // vigente
             AgregarSesion(db, orgId, userId, DateTimeOffset.UtcNow.AddMinutes(-10), revocada: true); // revocada -> borrar
-            AgregarSesion(db, orgId, userId, DateTimeOffset.UtcNow.AddHours(-9));                    // vieja -> borrar
-            AgregarSesion(db, orgId, userId, DateTimeOffset.UtcNow.AddDays(-30));                    // vieja -> borrar
+            AgregarSesion(db, orgId, userId, DateTimeOffset.UtcNow.AddHours(-9));                    // sin actividad -> borrar
+            AgregarSesion(db, orgId, userId, DateTimeOffset.UtcNow.AddDays(-30));                    // sin actividad -> borrar
+
+            // Logueada hace 10 h pero activa hace 5 min: con SlidingExpiration la cookie
+            // sigue viva -- NO se borra (era el bug: se medía contra CreatedAt).
+            db.UserSessions.Add(new UserSession
+            {
+                UserId = userId,
+                OrganizationId = orgId,
+                TokenHash = Guid.NewGuid().ToString(),
+                CreatedAt = DateTimeOffset.UtcNow.AddHours(-10),
+                LastSeenAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            });
             await db.SaveChangesAsync();
         }
 
@@ -67,8 +81,9 @@ public class StaleUserSessionCleanupHostedServiceTests
 
         using var verify = sp.CreateScope();
         var db2 = verify.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
-        var restante = Assert.Single(await db2.UserSessions.ToListAsync());
-        Assert.False(restante.IsRevoked);
+        var restantes = await db2.UserSessions.ToListAsync();
+        Assert.Equal(2, restantes.Count);
+        Assert.All(restantes, s => Assert.False(s.IsRevoked));
     }
 
     [Fact]

@@ -1454,6 +1454,45 @@ namespace Modulo.Wms.Migrations.Postgres.Migrations
                     b.ToTable("wms_oracle_stage_svsh", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Wms.Models.WmsRuntimeSetting", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Clave")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("clave");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Valor")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Clave")
+                        .IsUnique()
+                        .HasDatabaseName("uk_wms_runtime_settings_clave");
+
+                    b.ToTable("wms_runtime_settings", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Wms.Models.WmsSapStageInboundDtl", b =>
                 {
                     b.Property<long>("LineId")
@@ -1844,55 +1883,6 @@ namespace Modulo.Wms.Migrations.Postgres.Migrations
                         .HasDatabaseName("ix_wms_sap_stage_store_company_pk");
 
                     b.ToTable("wms_sap_stage_store", (string)null);
-                });
-
-            modelBuilder.Entity("Modulo.Wms.Models.WmsServiceConfig", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("company_id");
-
-                    b.Property<string>("ConfigKey")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("config_key");
-
-                    b.Property<string>("ConfigValue")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("config_value");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId")
-                        .HasDatabaseName("ix_wms_oracle_service_configs_company_id");
-
-                    b.HasIndex("CompanyId", "ConfigKey")
-                        .IsUnique()
-                        .HasDatabaseName("uk_wms_oracle_service_configs_key");
-
-                    b.ToTable("wms_oracle_service_configs", (string)null);
                 });
 
             modelBuilder.Entity("Modulo.Wms.Models.WmsServiceHeartbeat", b =>

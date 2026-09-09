@@ -1,3 +1,5 @@
+using Modulo.Rendiciones.Models;
+
 namespace Modulo.Rendiciones.Servicios;
 
 /// <summary>
@@ -28,5 +30,11 @@ public interface IExternalServiceProviderSelector
     Task<SelectedProvider?> SelectAvailableAsync(Guid companyId, string serviceType, CancellationToken ct = default);
 }
 
-/// <summary>Credenciales ya descifradas de un proveedor elegido -- vive solo en memoria, nunca se persiste así.</summary>
-public sealed record SelectedProvider(long ProviderId, string? Endpoint, string ApiKey);
+/// <summary>
+/// Credenciales ya descifradas de un proveedor elegido -- vive solo en memoria, nunca
+/// se persiste así. <see cref="QuotaPeriod"/> (ver Models.QuotaPeriods) lo resuelve el
+/// selector a partir del ServiceType para que el extractor pueda registrar el consumo
+/// (IExternalServiceUsageService.RecordAsync) contra el balde correcto sin volver a
+/// mirar el tipo de servicio.
+/// </summary>
+public sealed record SelectedProvider(long ProviderId, string? Endpoint, string ApiKey, string QuotaPeriod = QuotaPeriods.Monthly);

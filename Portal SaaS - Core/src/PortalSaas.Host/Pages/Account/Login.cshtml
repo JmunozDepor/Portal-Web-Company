@@ -65,6 +65,13 @@
                 <h2>Iniciar sesión</h2>
                 <p class="login-subtitle">Ingresá los datos de tu organización para continuar.</p>
 
+                @if (Model.InfoMessage is not null)
+                {
+                    <div class="login-info-banner">
+                        @Model.InfoMessage
+                    </div>
+                }
+
                 @if (Model.ErrorMessage is not null)
                 {
                     <div class="login-error-banner">

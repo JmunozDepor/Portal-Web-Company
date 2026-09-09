@@ -46,6 +46,38 @@ public class WmsSapStageStoreWriterTests
     }
 
     [Fact]
+    public async Task EscribirAsync_BatchConPkDuplicado_InsertaUnaSolaFilaConLaUltima()
+    {
+        // La Query de Bajada puede devolver dos filas de HANA con el mismo PK calculado
+        // (CardCodes que solo difieren en guiones/mayúsculas, o >1 dirección 'S' con el
+        // mismo LineNum). Antes del dedupe eso .Add()eaba dos entidades con la misma
+        // (CompanyId, Pk) y SaveChangesAsync reventaba contra el índice único.
+        var contexto = CrearContexto();
+        var writer = new WmsSapStageStoreWriter(contexto);
+        var companyId = Guid.NewGuid();
+
+        var primera = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["PK"] = "C7603068000-0",
+            ["name"] = "Nombre viejo",
+            ["SourceUpdateDate"] = new DateTime(2026, 8, 10),
+        });
+        var segunda = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["PK"] = "C7603068000-0",
+            ["name"] = "Nombre nuevo",
+            ["SourceUpdateDate"] = new DateTime(2026, 8, 20),
+        });
+
+        await writer.EscribirAsync(companyId, [primera, segunda], CancellationToken.None);
+
+        var fila = Assert.Single(contexto.WmsSapStageStores);
+        Assert.Equal("C7603068000-0", fila.Pk);
+        Assert.Contains("\"name\":\"Nombre nuevo\"", fila.ExtraFieldsJson);
+        Assert.Equal(new DateTime(2026, 8, 20), fila.SourceUpdateDate);
+    }
+
+    [Fact]
     public async Task EscribirAsync_ConSourceUpdateDateComoStringDeHana_LoParseaSinExplotar()
     {
         // U_NX_UPDATEDATE en OCRD es un UDF tipado "nvarchar" en HANA, no timestamp nativo
@@ -67,6 +99,10 @@ public class WmsSapStageStoreWriterTests
 
         var fila = Assert.Single(contexto.WmsSapStageStores);
         Assert.Equal(new DateTime(2025, 2, 8, 13, 52, 59, 169), fila.SourceUpdateDate);
+        // Kind=Utc obligatorio: la columna es "timestamp with time zone" y Npgsql 8 rechaza
+        // en SaveChanges cualquier DateTime que no sea Utc (era el DbUpdateException que
+        // tumbaba el 100% de las corridas de Bajada de Sucursal).
+        Assert.Equal(DateTimeKind.Utc, fila.SourceUpdateDate.Kind);
     }
 
     [Fact]

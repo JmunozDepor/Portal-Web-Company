@@ -689,6 +689,12 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<int>("Day")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("day");
+
                     b.Property<int>("Month")
                         .HasColumnType("integer")
                         .HasColumnName("month");
@@ -707,9 +713,9 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderId", "Year", "Month")
+                    b.HasIndex("ProviderId", "Year", "Month", "Day")
                         .IsUnique()
-                        .HasDatabaseName("uq_external_service_usages_provider_year_month");
+                        .HasDatabaseName("uq_external_service_usages_provider_year_month_day");
 
                     b.ToTable("external_service_usages", (string)null);
                 });

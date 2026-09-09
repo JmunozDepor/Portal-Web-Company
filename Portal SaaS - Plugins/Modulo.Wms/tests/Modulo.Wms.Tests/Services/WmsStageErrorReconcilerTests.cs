@@ -69,6 +69,8 @@ public class WmsStageErrorReconcilerTests
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsStageErrorReconciler>.Instance);
         services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
+        services.AddMemoryCache();
+        services.AddScoped<IWmsRuntimeSettingsService, WmsRuntimeSettingsService>();
 
         services.AddDbContext<WmsDbContext>((sp, options) =>
         {
@@ -94,6 +96,8 @@ public class WmsStageErrorReconcilerTests
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsStageErrorReconciler>.Instance);
         services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
+        services.AddMemoryCache();
+        services.AddScoped<IWmsRuntimeSettingsService, WmsRuntimeSettingsService>();
 
         services.AddDbContext<WmsDbContext>((sp, options) =>
         {

@@ -44,6 +44,9 @@ public interface ITenantUserAdminService
 
     Task<IReadOnlyList<LeafMenuDto>> ListLeafMenusAsync(CancellationToken ct = default);
 
+    /// <summary>Árbol completo de `menus` activos (carpetas + hojas), en orden de recorrido (cada padre antes que sus hijos) -- para la grilla de permisos por nodo de Pages/Usuarios/Editar.</summary>
+    Task<IReadOnlyList<MenuTreeNodeDto>> ListMenuTreeAsync(CancellationToken ct = default);
+
     /// <summary>userId y companyId deben pertenecer a la organización actual -- si no, se trata como no encontrado.</summary>
     Task<UserPermissionsDto?> GetPermissionsAsync(Guid userId, Guid companyId, CancellationToken ct = default);
 

@@ -71,7 +71,7 @@ public sealed class AzureDocumentIntelligenceExtractorService : IReceiptExtracto
             // MISMO proveedor que se usó para la llamada.
             if (result.Pages.Count > 0)
             {
-                await _usage.RecordAsync(provider.ProviderId, result.Pages.Count, ct);
+                await _usage.RecordAsync(provider.ProviderId, result.Pages.Count, provider.QuotaPeriod, ct);
             }
 
             var document = result.Documents.Count > 0 ? result.Documents[0] : null;

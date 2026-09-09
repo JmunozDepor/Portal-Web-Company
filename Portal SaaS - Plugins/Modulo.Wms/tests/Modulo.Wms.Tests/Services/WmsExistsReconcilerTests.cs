@@ -79,6 +79,8 @@ public class WmsExistsReconcilerTests
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsExistsReconciler>.Instance);
         services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
+        services.AddMemoryCache();
+        services.AddScoped<IWmsRuntimeSettingsService, WmsRuntimeSettingsService>();
 
         services.AddDbContext<WmsDbContext>((sp, options) =>
         {
@@ -104,6 +106,8 @@ public class WmsExistsReconcilerTests
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsExistsReconciler>.Instance);
         services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
+        services.AddMemoryCache();
+        services.AddScoped<IWmsRuntimeSettingsService, WmsRuntimeSettingsService>();
 
         services.AddDbContext<WmsDbContext>((sp, options) =>
         {

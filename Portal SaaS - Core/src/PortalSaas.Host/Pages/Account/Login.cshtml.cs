@@ -41,6 +41,11 @@ public class LoginModel : PageModel
 
     public string? ErrorMessage { get; set; }
 
+    /// <summary>Aviso neutro (no error) -- hoy solo "tu sesión se cerró", cuando
+    /// OnValidatePrincipal (Program.cs) rechazó la cookie por una sesión revocada y
+    /// dejó la marca de un solo uso "portal_session_ended".</summary>
+    public string? InfoMessage { get; set; }
+
     /// <summary>
     /// True cuando Tenant:DefaultOrganizationSlug (appsettings, ver el comentario ahí)
     /// viene configurado -- el campo Organización se muestra precargado y bloqueado, en
@@ -55,6 +60,14 @@ public class LoginModel : PageModel
     {
         Input.ReturnUrl = returnUrl;
         AplicarOrganizacionBloqueadaSiCorresponde();
+
+        // Marca de un solo uso que deja OnValidatePrincipal (Program.cs) al cerrar una
+        // sesión revocada -- se consume acá para explicar por qué se volvió al login.
+        if (Request.Cookies["portal_session_ended"] == "1")
+        {
+            InfoMessage = "Tu sesión se cerró. Iniciá sesión de nuevo.";
+            Response.Cookies.Delete("portal_session_ended");
+        }
     }
 
     public async Task<IActionResult> OnPostAsync()

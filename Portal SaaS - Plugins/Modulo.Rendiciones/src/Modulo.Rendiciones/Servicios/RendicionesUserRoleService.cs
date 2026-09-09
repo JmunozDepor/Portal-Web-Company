@@ -67,4 +67,28 @@ public sealed class RendicionesUserRoleService : IRendicionesUserRoleService
 
         await _db.SaveChangesAsync(ct);
     }
+
+    public async Task ApplyRoleChangesAsync(Guid companyId, IReadOnlyCollection<(Guid UserId, string Role, bool Granted)> changes, CancellationToken ct = default)
+    {
+        if (changes.Count == 0)
+            return;
+
+        var affectedUsers = changes.Select(c => c.UserId).Distinct().ToList();
+
+        var existing = await _db.RendicionesUserRoles
+            .Where(r => r.CompanyId == companyId && affectedUsers.Contains(r.UserId))
+            .ToListAsync(ct);
+
+        foreach (var (userId, role, granted) in changes)
+        {
+            var row = existing.FirstOrDefault(r => r.UserId == userId && r.Role == role);
+
+            if (granted && row is null)
+                _db.RendicionesUserRoles.Add(new RendicionesUserRole { CompanyId = companyId, UserId = userId, Role = role });
+            else if (!granted && row is not null)
+                _db.RendicionesUserRoles.Remove(row);
+        }
+
+        await _db.SaveChangesAsync(ct);
+    }
 }

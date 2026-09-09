@@ -1,0 +1,110 @@
+@page "/wms/campos-validacion"
+@model Modulo.Wms.Pages.CamposValidacion.IndexModel
+@{
+    ViewData["Title"] = "Campos de Validación";
+}
+@* Lado Bajada -- espejo de /wms/mapeo-campos. Mismos componentes del Design System. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-2">
+        <h2 class="mb-0">Campos de Validación</h2>
+        <button type="button" class="btn-primary" data-drawer-open="drawer-nuevo-campo">+ Nuevo campo</button>
+    </div>
+    <p class="text-muted small">
+        Cuando el valor de uno de estos campos cambia en SAP entre dos corridas de Bajada, la fila
+        de staging vuelve a <strong>Pendiente</strong> y se re-envía a Oracle WMS Cloud. Los nombres
+        deben coincidir con los <em>alias en minúscula</em> de la Query de Bajada
+        (ej. <code>name</code>, <code>city</code>, <code>zip</code>).
+    </p>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <table class="table-ps">
+        <thead><tr><th>Tipo de entidad</th><th>Campo</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+        @foreach (var c in Model.Campos)
+        {
+            <tr class="@(c.IsActive ? "" : "row-inactive")">
+                <td>@c.TipoEntidad</td>
+                <td><code>@c.FieldName</code></td>
+                <td>
+                    @if (c.IsActive)
+                    {
+                        <span class="badge-status badge-status--success">Activo</span>
+                    }
+                    else
+                    {
+                        <span class="badge-status badge-status--neutral">Inactivo</span>
+                    }
+                </td>
+                <td class="col-actions">
+                    <div class="admin-row-actions">
+                        @if (c.IsActive)
+                        {
+                            <form asp-page="./Index" asp-page-handler="Desactivar" asp-route-id="@c.Id" method="post" class="d-inline-block">
+                                <button type="submit" class="btn-ghost" title="Desactivar"><i class="bi bi-slash-circle"></i></button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-page="./Index" asp-page-handler="Activar" asp-route-id="@c.Id" method="post" class="d-inline-block">
+                                <button type="submit" class="btn-ghost" title="Activar"><i class="bi bi-check-circle"></i></button>
+                            </form>
+                        }
+                        <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@c.Id" method="post" class="d-inline-block"
+                              onsubmit="return confirm('¿Eliminar este campo de validación?');">
+                            <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (Model.Campos.Count == 0)
+        {
+            <tr><td colspan="4" class="text-muted">Sin campos de validación todavía.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+@{ var drawerAbierto = !ViewData.ModelState.IsValid; }
+<div id="drawer-nuevo-campo" class="drawer-overlay @(drawerAbierto ? "is-open" : "")" data-drawer>
+    <aside class="drawer-panel @(drawerAbierto ? "is-open" : "")">
+        <div class="drawer-header">
+            <h3>Nuevo campo de validación</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" asp-page-handler="Crear">
+            <div class="drawer-body">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div class="mb-3">
+                    <label asp-for="Nuevo.TipoEntidad" class="form-label">Tipo de entidad</label>
+                    <select asp-for="Nuevo.TipoEntidad" class="form-select">
+                        @foreach (var t in Model.TiposEntidad)
+                        {
+                            <option value="@t">@t</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Nuevo.FieldName" class="form-label">Campo</label>
+                    <input asp-for="Nuevo.FieldName" class="form-control" placeholder="name / city / zip" />
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <label class="d-flex align-items-center gap-2"><input asp-for="Nuevo.IsActive" type="checkbox" /> Activo</label>
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn-primary">Crear</button>
+            </div>
+        </form>
+    </aside>
+</div>

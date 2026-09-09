@@ -135,7 +135,9 @@
                         <td class="text-end">
                             <span class="sap-code @(esPendienteCritico ? "text-warning fw-bold" : null)">@fila.RetryCount/20</span>
                         </td>
-                        <td class="small text-truncate @(esError ? "text-danger" : "text-muted")" style="max-width: 260px;" title="@fila.ErrorMsg">@(fila.ErrorMsg ?? "—")</td>
+                        <td class="small @(esError ? "text-danger" : "text-muted")">
+                            <div class="text-truncate" style="max-width: 360px;" title="@fila.ErrorMsg">@(fila.ErrorMsg ?? "—")</div>
+                        </td>
                         <td class="small">@fila.CreatedAt.ToLocalTime().ToString("dd-MM HH:mm")</td>
                         <td class="small">@(fila.SyncedAt?.ToLocalTime().ToString("dd-MM HH:mm") ?? "—")</td>
                     </tr>

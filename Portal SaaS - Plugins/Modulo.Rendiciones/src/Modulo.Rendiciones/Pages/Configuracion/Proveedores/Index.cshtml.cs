@@ -16,13 +16,15 @@ namespace Modulo.Rendiciones.Pages.Configuracion.Proveedores;
 public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly IExternalServiceProviderService _providers;
+    private readonly IExternalServiceHealthChecker _health;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IExternalServiceProviderService providers, IRendicionesUserRoleService roles,
-        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(IExternalServiceProviderService providers, IExternalServiceHealthChecker health,
+        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
         _providers = providers;
+        _health = health;
         _currentCompany = currentCompany;
     }
 
@@ -62,7 +64,13 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
 
     public async Task<IActionResult> OnPostCrearAsync(CancellationToken ct)
     {
-        if (!ModelState.IsValid)
+        // New y Edit son AMBOS [BindProperty], así que Razor Pages valida los dos en
+        // cada POST aunque el form de "Nuevo" no mande ningún campo Edit.* -- el Edit
+        // vacío disparaba "The Name field is required." y "El límite mensual debe ser
+        // mayor a 0." sobre este handler. Se descarta todo el ModelState y se re-valida
+        // SOLO el modelo que este handler realmente usa.
+        ModelState.Clear();
+        if (!TryValidateModel(New, nameof(New)))
         {
             Providers = await _providers.ListAsync(_currentCompany.CompanyId, ct);
             return Page();
@@ -84,7 +92,10 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
 
     public async Task<IActionResult> OnPostGuardarAsync(long id, CancellationToken ct)
     {
-        if (!ModelState.IsValid)
+        // Simétrico a OnPostCrearAsync: este handler solo llena Edit, así que se
+        // re-valida SOLO Edit y se ignora el New vacío del otro drawer.
+        ModelState.Clear();
+        if (!TryValidateModel(Edit, nameof(Edit)))
         {
             Providers = await _providers.ListAsync(_currentCompany.CompanyId, ct);
             Selected = Providers.FirstOrDefault(p => p.Id == id);
@@ -103,6 +114,25 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
         }
 
         return RedirectToPage(new { id });
+    }
+
+    /// <summary>
+    /// "Probar" -- verifica clave/endpoint de la cuenta contra el endpoint de metadata
+    /// del proveedor, sin consumir cuota de OCR (ver IExternalServiceHealthChecker). El
+    /// resultado vuelve como banner de éxito/error del listado.
+    /// </summary>
+    public async Task<IActionResult> OnPostProbarAsync(long id, CancellationToken ct)
+    {
+        var provider = await _providers.GetAsync(id, _currentCompany.CompanyId, ct);
+        var nombre = provider?.Name ?? $"#{id}";
+
+        var result = await _health.CheckAsync(id, _currentCompany.CompanyId, ct);
+        if (result.Ok)
+            SuccessMessage = $"«{nombre}»: {result.Message}";
+        else
+            ErrorMessage = $"«{nombre}»: {result.Message}";
+
+        return RedirectToPage();
     }
 
     public async Task<IActionResult> OnPostEliminarAsync(long id, CancellationToken ct)
@@ -127,7 +157,9 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
         [StringLength(500)]
         public string? ApiKey { get; set; }
 
-        [Range(1, int.MaxValue, ErrorMessage = "El límite mensual debe ser mayor a 0.")]
+        /// <summary>Tope de solicitudes por período de cuota: mensual para Azure, diario para Gemini (~1500 gratis).</summary>
+        [Display(Name = "Límite por período (mensual · diario para Gemini)")]
+        [Range(1, int.MaxValue, ErrorMessage = "El límite debe ser mayor a 0.")]
         public int MonthlyLimit { get; set; }
 
         public int Priority { get; set; }
@@ -151,7 +183,9 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
         [StringLength(500)]
         public string ApiKey { get; set; } = string.Empty;
 
-        [Range(1, int.MaxValue, ErrorMessage = "El límite mensual debe ser mayor a 0.")]
+        /// <summary>Tope de solicitudes por período de cuota: mensual para Azure, diario para Gemini (~1500 gratis).</summary>
+        [Display(Name = "Límite por período (mensual · diario para Gemini)")]
+        [Range(1, int.MaxValue, ErrorMessage = "El límite debe ser mayor a 0.")]
         public int MonthlyLimit { get; set; }
 
         public int Priority { get; set; }

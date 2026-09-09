@@ -43,6 +43,8 @@
 
     @if (Model.ShowFreeTextSearch || Model.Filters.Count > 0 || Model.ShowPaging)
     {
+    <details class="doc-list-filtros">
+        <summary><i class="bi bi-funnel"></i> Filtros</summary>
         <form method="get" class="filter-card">
             @if (Model.ShowFreeTextSearch)
             {
@@ -94,6 +96,7 @@
                 <button type="submit" class="btn btn-primary">Filtrar</button>
             </div>
         </form>
+    </details>
     }
 
     @* Contador entre el filtro y la tabla -- portado de .doc-list-contador, arriba de

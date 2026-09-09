@@ -20,8 +20,14 @@ public interface IUserSessionService
     /// <summary>Fija la compañía SAP activa de la sesión -- llamado desde SelectCompany.cshtml.cs, mismo momento en que se agrega el claim "CompanyId".</summary>
     Task SetCompanyAsync(string rawToken, Guid companyId, CancellationToken ct = default);
 
-    /// <summary>False si el token no existe o ya fue revocado -- chequeado en cada request por el validador de la cookie.</summary>
-    Task<bool> IsActiveAsync(string rawToken, CancellationToken ct = default);
+    /// <summary>
+    /// Valida la cookie en cada request y, si la sesión sigue activa, refresca su
+    /// marca de última actividad (LastSeenAt) -- con un límite para no escribir en
+    /// cada request. Devuelve <see cref="SessionValidationStatus.Revoked"/> solo
+    /// cuando la fila existe y fue revocada a propósito; una fila ausente devuelve
+    /// <see cref="SessionValidationStatus.NotFound"/> y NO debe cerrar la cookie.
+    /// </summary>
+    Task<SessionValidationStatus> ValidateAndTouchAsync(string rawToken, CancellationToken ct = default);
 
     /// <summary>Listado para el backoffice -- organizationId null trae todas las organizaciones (vista global).</summary>
     Task<IReadOnlyList<UserSessionDto>> ListActiveAsync(Guid? organizationId = null, CancellationToken ct = default);

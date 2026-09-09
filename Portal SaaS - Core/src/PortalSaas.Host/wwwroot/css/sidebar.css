@@ -207,7 +207,20 @@
     padding: 0;
 }
 
-html[data-sidebar="collapsed"] .sidebar-company .company-switcher {
+/* Compañía única (sin <select> que cambiar) -- mismo tratamiento visual que la opción
+   activa del switcher: texto en negrita, color primary, truncado si no entra. */
+.sidebar-company .company-switcher-single {
+    flex: 1;
+    min-width: 0;
+    color: var(--bs-primary);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+html[data-sidebar="collapsed"] .sidebar-company .company-switcher,
+html[data-sidebar="collapsed"] .sidebar-company .company-switcher-single {
     display: none;
 }
 

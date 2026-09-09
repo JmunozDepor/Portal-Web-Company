@@ -689,6 +689,12 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<int>("Day")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("day");
+
                     b.Property<int>("Month")
                         .HasColumnType("int")
                         .HasColumnName("month");
@@ -707,9 +713,9 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderId", "Year", "Month")
+                    b.HasIndex("ProviderId", "Year", "Month", "Day")
                         .IsUnique()
-                        .HasDatabaseName("uq_external_service_usages_provider_year_month");
+                        .HasDatabaseName("uq_external_service_usages_provider_year_month_day");
 
                     b.ToTable("external_service_usages", (string)null);
                 });

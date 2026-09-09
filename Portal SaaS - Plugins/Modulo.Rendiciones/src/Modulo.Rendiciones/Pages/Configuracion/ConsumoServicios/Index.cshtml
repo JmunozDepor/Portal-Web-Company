@@ -14,11 +14,13 @@
     </div>
 
 <p class="text-muted mb-3">
-    Uso del mes actual de cada proveedor configurado (podés tener más de una cuenta por
-    servicio, ver "Administrar proveedores"). Al llegar al límite de una cuenta, el
-    servicio pasa automáticamente a la siguiente por prioridad -- solo cuando TODAS
-    las cuentas de un mismo servicio están al límite se deshabilita esa funcionalidad
-    hasta el próximo mes (no se cobra de más ni se corta el resto del módulo).
+    Uso del período de cuota vigente de cada proveedor configurado -- por <strong>mes</strong> para
+    Azure, por <strong>día</strong> para Google Gemini (capa gratuita ~1500/día, se reinicia a
+    medianoche hora del Pacífico). Podés tener más de una cuenta por servicio (ver
+    "Administrar proveedores"): al llegar al límite de una, el servicio pasa automáticamente a
+    la siguiente por prioridad -- solo cuando TODAS las cuentas de un mismo servicio están al
+    límite se deshabilita esa funcionalidad hasta el próximo período (no se cobra de más ni se
+    corta el resto del módulo).
 </p>
 @* Nota de alcance: las .rnd-consumo-tile/.rnd-progreso (barra de progreso por
    proveedor) siguen viniendo de rendiciones.css a propósito -- son un
@@ -40,14 +42,14 @@
                         <span class="text-muted">(inactivo)</span>
                     }
                 </span>
-                <span class="rnd-consumo-cifras">@c.Used.ToString("N0") / @c.MonthlyLimit.ToString("N0") @Model.DisplayUnit(c.ServiceType)</span>
+                <span class="rnd-consumo-cifras">@c.Used.ToString("N0") / @c.Limit.ToString("N0") @Model.DisplayUnit(c.ServiceType) por @c.PeriodLabel</span>
             </div>
             <div class="rnd-progreso">
                 <div class="rnd-progreso-relleno" style="width:@(Math.Round(c.PercentageUsed, 1).ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div>
             </div>
             @if (c.LimitReached)
             {
-                <p class="rnd-consumo-mensaje">Límite alcanzado -- este proveedor queda deshabilitado hasta el próximo mes.</p>
+                <p class="rnd-consumo-mensaje">Límite alcanzado -- este proveedor queda deshabilitado hasta el próximo @c.PeriodLabel.</p>
             }
         </div>
     }

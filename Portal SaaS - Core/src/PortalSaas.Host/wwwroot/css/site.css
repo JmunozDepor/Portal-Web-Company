@@ -507,6 +507,63 @@ body {
   background: var(--card-bg);
 }
 
+/* Filtro colapsable -- en un viewport angosto (ej. iPhone SE, 375px) los ~8 campos
+   del filtro apilados verticalmente empujaban la tabla de resultados fuera de la
+   pantalla (reportado en los 3 motores genéricos, comparten este componente). El
+   <form> se envuelve en <details class="doc-list-filtros"> SIN `open`: en móvil
+   arranca colapsado (solo el resumen "Filtros"), el resultado se ve de una; el
+   media query de escritorio lo fuerza siempre visible y oculta el resumen, dejándolo
+   idéntico a como estaba en pantallas grandes. */
+.doc-list-filtros {
+  margin-bottom: 10px;
+}
+
+.doc-list-filtros > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bs-primary);
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+}
+
+.doc-list-filtros > summary::-webkit-details-marker {
+  display: none;
+}
+
+.doc-list-filtros[open] > summary {
+  margin-bottom: 8px;
+}
+
+.doc-list-filtros > .filter-card {
+  margin-bottom: 0;
+}
+
+@media (min-width: 768px) {
+  .doc-list-filtros > summary {
+    display: none;
+  }
+
+  /* Escritorio: siempre visible, sin depender del estado open/closed del <details>.
+     display:flex gana contra el viejo UA rule (display:none en el hijo); el
+     ::details-content + content-visibility:visible cubre los motores nuevos
+     (Chrome/Edge 131+) donde el colapso ya no es display:none -- pseudo-elemento
+     desconocido en navegadores viejos, la regla se ignora sin efecto. */
+  .doc-list-filtros > .filter-card {
+    display: flex !important;
+  }
+
+  .doc-list-filtros::details-content {
+    content-visibility: visible !important;
+  }
+}
+
 /* Panel de KPI (resumen numérico arriba de un listado, ej. /Admin/Organizations) --
    grid de tarjetas con una franja de color a la izquierda (--kpi-accent, fijada
    inline por tarjeta) que se lee de un vistazo, mismo criterio de "estado en forma,
@@ -867,6 +924,19 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* Sin esto, un hijo flex (la tabla, o el <form> que la envuelve en algún plugin
+     como Modulo.Wms) con contenido no-quebrable muy ancho -- ej. un mensaje de error
+     XML largo en una celda -- fuerza su ancho mínimo de contenido y la tarjeta
+     entera "se sale del recuadro" hacia la derecha. min-width:0 deja que el hijo se
+     encoja por debajo de su contenido; el scroll horizontal de una tabla ancha
+     queda contenido en .document-list-table-wrapper (overflow:auto), no en la
+     página. */
+  min-width: 0;
+}
+
+.doc-list > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Formulario de documento -- portado de .doc-form/.doc-form-volver/.doc-form-header
@@ -1912,6 +1982,20 @@ body {
   font-size: 12.5px;
   background: color-mix(in srgb, var(--bs-danger) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--bs-danger) 35%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  margin: -6px 0 16px;
+}
+
+/* Aviso neutro (no error) sobre el formulario de login -- ej. "tu sesión se cerró"
+   tras un cierre forzado desde el backoffice. Mismo formato que .login-error-banner
+   pero con el color de acento del tema en vez del rojo de error. */
+.login-info-banner {
+  display: block;
+  color: var(--bs-primary);
+  font-size: 12.5px;
+  background: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bs-primary) 30%, transparent);
   border-radius: var(--radius-sm);
   padding: 9px 11px;
   margin: -6px 0 16px;

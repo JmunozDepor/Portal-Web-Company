@@ -23,4 +23,11 @@ public interface IRendicionesUserRoleService
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> ListAllAsync(Guid companyId, CancellationToken ct = default);
 
     Task SetRoleAsync(Guid companyId, Guid userId, string role, bool granted, CancellationToken ct = default);
+
+    /// <summary>
+    /// Aplica varios altas/bajas de rol en una sola transacción -- para el guardado por
+    /// lotes de la pantalla "Usuarios y roles" (el usuario marca/desmarca todo lo que
+    /// quiere y recién al apretar "Guardar cambios" se persiste el diff completo).
+    /// </summary>
+    Task ApplyRoleChangesAsync(Guid companyId, IReadOnlyCollection<(Guid UserId, string Role, bool Granted)> changes, CancellationToken ct = default);
 }

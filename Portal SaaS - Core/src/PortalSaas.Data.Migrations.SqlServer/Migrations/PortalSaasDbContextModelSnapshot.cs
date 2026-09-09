@@ -2063,6 +2063,10 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("is_revoked");
 
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("last_seen_at");
+
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("organization_id");

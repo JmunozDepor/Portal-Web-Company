@@ -23,6 +23,11 @@ public sealed class UserSessionService : IUserSessionService
     // esa sesión en 8 h, la cookie ya caducó y el usuario no está realmente conectado.
     private static readonly TimeSpan SessionCookieLifetime = TimeSpan.FromHours(8);
 
+    /// <summary>Cada cuánto, como mucho, se reescribe LastSeenAt en un request autenticado
+    /// (ver ValidateAndTouchAsync) -- chico frente a la vida de la cookie para que la
+    /// purga nunca alcance a una sesión activa, grande para no escribir en cada click.</summary>
+    private static readonly TimeSpan TouchThrottle = TimeSpan.FromMinutes(5);
+
     private readonly PortalSaasDbContext _db;
 
     public UserSessionService(PortalSaasDbContext db)
@@ -34,11 +39,14 @@ public sealed class UserSessionService : IUserSessionService
     {
         var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
+        var ahora = DateTimeOffset.UtcNow;
         _db.UserSessions.Add(new UserSession
         {
             UserId = userId,
             OrganizationId = organizationId,
             TokenHash = HashToken(rawToken),
+            CreatedAt = ahora,
+            LastSeenAt = ahora,
             IpAddress = ipAddress,
             // Recortado a la misma longitud máxima de la columna -- un User-Agent real
             // nunca debería pasar los 300 caracteres, pero un valor mal formado no debe
@@ -63,11 +71,52 @@ public sealed class UserSessionService : IUserSessionService
         await _db.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> IsActiveAsync(string rawToken, CancellationToken ct = default)
+    public async Task<SessionValidationStatus> ValidateAndTouchAsync(string rawToken, CancellationToken ct = default)
     {
-        var tokenHash = HashToken(rawToken);
-        var session = await _db.UserSessions.AsNoTracking().FirstOrDefaultAsync(s => s.TokenHash == tokenHash, ct);
-        return session is not null && !session.IsRevoked;
+        string tokenHash;
+        try
+        {
+            tokenHash = HashToken(rawToken);
+        }
+        catch (FormatException)
+        {
+            // Claim "SessionToken" con un valor que no es base64 (cookie manipulada o
+            // corrupta) -- se trata como token inexistente, nunca tira una excepción
+            // hacia el middleware de autenticación.
+            return SessionValidationStatus.NotFound;
+        }
+
+        var session = await _db.UserSessions.FirstOrDefaultAsync(s => s.TokenHash == tokenHash, ct);
+
+        if (session is null)
+        {
+            return SessionValidationStatus.NotFound;
+        }
+
+        if (session.IsRevoked)
+        {
+            return SessionValidationStatus.Revoked;
+        }
+
+        // Refresco acotado -- solo si pasó el umbral desde la última vez, para no
+        // escribir en cada request. Un fallo al guardar la marca de actividad NUNCA
+        // debe voltear un request de una sesión que sí es válida: se ignora y se
+        // reintenta en el próximo request.
+        var ahora = DateTimeOffset.UtcNow;
+        if (ahora - session.LastSeenAt >= TouchThrottle)
+        {
+            session.LastSeenAt = ahora;
+            try
+            {
+                await _db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                _db.Entry(session).State = EntityState.Detached;
+            }
+        }
+
+        return SessionValidationStatus.Active;
     }
 
     public async Task<IReadOnlyList<UserSessionDto>> ListActiveAsync(Guid? organizationId = null, CancellationToken ct = default)
@@ -79,7 +128,10 @@ public sealed class UserSessionService : IUserSessionService
             .Include(s => s.User)
             .Include(s => s.Organization)
             .Include(s => s.Company)
-            .Where(s => !s.IsRevoked && s.CreatedAt >= cutoff);
+            // Contra LastSeenAt, no CreatedAt -- la cookie usa SlidingExpiration, así que
+            // "conectado" es "tuvo actividad dentro de la vida de la cookie", no "se logueó
+            // hace menos de 8 h" (ver UserSession.LastSeenAt).
+            .Where(s => !s.IsRevoked && s.LastSeenAt >= cutoff);
 
         if (organizationId is { } orgId)
         {
@@ -102,7 +154,8 @@ public sealed class UserSessionService : IUserSessionService
             CompanyName: s.Company?.Name,
             IpAddress: s.IpAddress,
             UserAgent: s.UserAgent,
-            CreatedAt: s.CreatedAt)).ToList();
+            CreatedAt: s.CreatedAt,
+            LastSeenAt: s.LastSeenAt)).ToList();
     }
 
     public async Task RevokeAsync(Guid sessionId, CancellationToken ct = default)

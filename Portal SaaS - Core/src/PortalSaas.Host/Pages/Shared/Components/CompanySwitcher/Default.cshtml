@@ -1,5 +1,12 @@
 @model PortalSaas.Host.ViewComponents.CompanySwitcherViewModel
-@if (Model.Companies.Count > 0)
+@if (Model.Companies.Count == 1)
+{
+    @* Una sola compañía accesible -- no hay nada para cambiar, pero igual se muestra
+       cuál es (antes acá no se renderizaba nada y el wrapper .sidebar-company quedaba
+       solo con el ícono de edificio). *@
+    <span class="company-switcher-single" title="Compañía activa">@Model.Companies[0].Text</span>
+}
+else if (Model.Companies.Count > 1)
 {
     @* asp-page dispara la inyección automática del antiforgery token (FormTagHelper) --
        igual criterio que SelectCompany.cshtml, ver su comentario histórico. El submit es

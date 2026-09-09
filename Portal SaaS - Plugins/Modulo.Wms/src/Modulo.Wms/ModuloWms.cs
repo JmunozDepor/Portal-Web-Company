@@ -88,13 +88,29 @@ public sealed class ModuloWms : IModuloPortal
 
         yield return new MenuItemDefinition
         {
-            Code = "configuracion-servicio",
+            Code = "campos-validacion",
             ParentCode = "raiz",
-            Name = "Configuración del Servicio",
-            Icon = "bi-gear",
-            PageRoute = "/wms/configuracion-servicio",
+            Name = "Campos de Validación",
+            Icon = "bi-check2-square",
+            PageRoute = "/wms/campos-validacion",
             Order = 5,
         };
+
+        yield return new MenuItemDefinition
+        {
+            Code = "ajustes-motor",
+            ParentCode = "raiz",
+            Name = "Ajustes del Motor",
+            Icon = "bi-sliders",
+            PageRoute = "/wms/ajustes-motor",
+            Order = 6,
+        };
+
+        // "Configuración del Servicio" (/wms/configuracion-servicio) y su tabla
+        // wms_oracle_service_configs fueron ELIMINADAS (2026-09-08): eran passthrough del
+        // Windows Service externo WmsSapIntegration.Service (en retiro) y nada del Portal
+        // las leía. Reemplazadas por /wms/ajustes-motor (wms_runtime_settings) para los
+        // umbrales que sí usa este plugin. Ver ARQUITECTURA.md "Deuda de migración".
 
         yield return new MenuItemDefinition
         {
@@ -103,7 +119,7 @@ public sealed class ModuloWms : IModuloPortal
             Name = "Estado del Servicio",
             Icon = "bi-heart-pulse",
             PageRoute = "/wms/estado-servicio",
-            Order = 6,
+            Order = 7,
         };
     }
 
@@ -141,8 +157,10 @@ public sealed class ModuloWms : IModuloPortal
             }
         });
 
+        services.AddMemoryCache();
         services.AddScoped<IFieldMappingService, FieldMappingService>();
-        services.AddScoped<IServiceConfigService, ServiceConfigService>();
+        services.AddScoped<IValidationFieldService, ValidationFieldService>();
+        services.AddScoped<IWmsRuntimeSettingsService, WmsRuntimeSettingsService>();
         services.AddScoped<IWmsInboundIngestionService, WmsInboundIngestionService>();
         services.AddScoped<IIntegrationEntityReader, WmsSlshInventoryReader>();
         services.AddScoped<IIntegrationEntityReader, WmsSapStageItemReader>();

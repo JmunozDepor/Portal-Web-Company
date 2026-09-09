@@ -73,6 +73,8 @@ public class WmsSlshStageParserTests
         services.AddLogging();
         services.AddSingleton(NullLogger<WmsSlshStageParser>.Instance);
         services.AddScoped<IWmsServiceHeartbeatRecorder, WmsServiceHeartbeatRecorder>();
+        services.AddMemoryCache();
+        services.AddScoped<Modulo.Wms.Services.IWmsRuntimeSettingsService, Modulo.Wms.Services.WmsRuntimeSettingsService>();
 
         services.AddDbContext<WmsDbContext>((sp, options) =>
         {

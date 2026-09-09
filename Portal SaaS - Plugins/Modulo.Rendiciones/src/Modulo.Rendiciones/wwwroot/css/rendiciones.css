@@ -462,6 +462,13 @@
     animation: rnd-fade-up .32s ease backwards;
 }
 
+/* Fila de archivo que no se pudo importar (Importar con OCR) -- acento rojo, sin hover. */
+.rnd-card-row--error {
+    border-color: color-mix(in srgb, var(--bs-danger) 45%, var(--card-border));
+    background: color-mix(in srgb, var(--bs-danger) 6%, var(--card-bg));
+}
+.rnd-card-row--error .rnd-card-icon { color: var(--bs-danger); }
+
 .rnd-card-row:nth-child(n+1)  { animation-delay: calc(var(--rnd-row-i, 0) * 35ms); }
 .rnd-card-list .rnd-card-row:nth-child(1)  { --rnd-row-i: 0; }
 .rnd-card-list .rnd-card-row:nth-child(2)  { --rnd-row-i: 1; }

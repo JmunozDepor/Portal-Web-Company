@@ -17,13 +17,18 @@ namespace PortalSaas.Core.Infraestructura;
 /// -- la expansión de ancestros y el armado del árbol corren enteramente en memoria
 /// sobre la lista ya cargada, ver ExpandWithAncestors/MenuTreeHelper.BuildTree.
 ///
-/// Visibilidad = UNIÓN de "heredado del grupo" (MenuGroupItem.DefaultProfileId) y
-/// "asignación manual" (UserMenuProfile) -- corregido 27 jul 2026 (bug real reportado:
-/// un usuario con SOLO un MenuGroup asignado, sin ninguna fila individual en
-/// UserMenuProfile, no veía nada de ese grupo porque antes exigía la intersección de
-/// las dos cosas). La autorización real (qué ACCIÓN puede hacer, no solo si el nodo
-/// aparece) vive en CurrentUserContext.HasActionAsync, con la misma resolución
-/// override-o-herencia -- ver el doc-comment de MenuGroupItem.DefaultProfileId.
+/// Visibilidad = UNIÓN de "pertenece al grupo" (CUALQUIER MenuGroupItem del grupo,
+/// tenga o no DefaultProfileId) y "asignación manual" (UserMenuProfile). Corregido dos
+/// veces: 27 jul 2026 (un usuario con SOLO un MenuGroup asignado, sin fila individual
+/// en UserMenuProfile, no veía nada del grupo porque se exigía la intersección) y
+/// 2026-09-08 (se seguía exigiendo MenuGroupItem.DefaultProfileId != null, así que un
+/// nodo agregado al grupo "solo para navegación" -- sin perfil por defecto -- quedaba
+/// INVISIBLE, lo que contradecía el texto de la pantalla de grupos de menú "sin perfil,
+/// el nodo queda solo como navegación" y ocultaba módulos como Rendiciones, que
+/// autoriza sus páginas por su propia tabla de roles, no por Profile de core). La
+/// autorización real (qué ACCIÓN puede hacer, no solo si el nodo aparece) vive en
+/// CurrentUserContext.HasActionAsync + el gate de cada página/plugin -- un nodo visible
+/// sin perfil no otorga ningún permiso por sí solo.
 /// </summary>
 public sealed class MenuNavigationService : IMenuNavigationService
 {
@@ -109,14 +114,15 @@ public sealed class MenuNavigationService : IMenuNavigationService
         var userId = _currentUser.UserId;
         var companyId = _currentCompany.CompanyId;
 
-        // Segunda consulta real -- nodos que el usuario ve por HERENCIA de grupo: un
-        // MenuGroup lo incluye Y ese ítem de grupo tiene un DefaultProfileId (ver
-        // MenuGroupItem.DefaultProfileId) -- un grupo puede incluir un nodo solo para
-        // navegación sin otorgar ningún permiso por sí solo, ese caso no cuenta acá.
+        // Segunda consulta real -- nodos que el usuario ve por pertenecer a un MenuGroup
+        // (por compañía). Alcanza con que el nodo esté en el grupo: un MenuGroupItem SIN
+        // DefaultProfileId igual se ve (queda "solo navegación", sin permisos heredados
+        // -- la autorización real la resuelve HasActionAsync / el gate de la propia
+        // página o plugin). Antes esto exigía DefaultProfileId != null y el nodo quedaba
+        // invisible -- ver el doc-comment de la clase para el porqué del cambio.
         var inheritedMenuIds = await _db.UserMenuGroups
             .Where(ug => ug.UserId == userId && ug.CompanyId == companyId)
             .SelectMany(ug => ug.MenuGroup.MenuGroupItems)
-            .Where(item => item.DefaultProfileId != null)
             .Select(item => item.MenuId)
             .Distinct()
             .ToListAsync(ct);

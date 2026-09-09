@@ -40,6 +40,33 @@ public class WmsSapStageItemWriterTests
     }
 
     [Fact]
+    public async Task EscribirAsync_ConSourceUpdateDate_LaGuardaTipadaEnUtc_YNoEnExtraFields()
+    {
+        await using var contexto = CrearContexto();
+        var writer = new WmsSapStageItemWriter(contexto);
+        var companyId = Guid.NewGuid();
+
+        // OITM.UpdateDate llega como DateTime nativo de HANA (Kind=Unspecified). Sin ToUtc,
+        // el INSERT a la columna timestamptz revienta con Npgsql 8. Además antes esta clave
+        // caía a extra_fields porque el writer no la separaba.
+        var registro = new IntegrationRecord(new Dictionary<string, object?>
+        {
+            ["item_alternate_code"] = "ITM001",
+            ["description"] = "Artículo",
+            ["SourceUpdateDate"] = new DateTime(2026, 3, 1, 9, 30, 0, DateTimeKind.Unspecified),
+            ["brand_code"] = "NIKE",
+        });
+
+        await writer.EscribirAsync(companyId, [registro], CancellationToken.None);
+
+        var fila = Assert.Single(contexto.WmsSapStageItems);
+        Assert.Equal(new DateTime(2026, 3, 1, 9, 30, 0), fila.SourceUpdateDate);
+        Assert.Equal(DateTimeKind.Utc, fila.SourceUpdateDate.Kind);
+        Assert.DoesNotContain("SourceUpdateDate", fila.ExtraFieldsJson);
+        Assert.Contains("brand_code", fila.ExtraFieldsJson);
+    }
+
+    [Fact]
     public async Task EscribirAsync_ItemYaPendienteSinCambios_NoDuplica()
     {
         await using var contexto = CrearContexto();

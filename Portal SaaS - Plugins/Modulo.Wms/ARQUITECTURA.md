@@ -133,6 +133,49 @@ retomar:**
   `WmsSapIntegration.Service`, no tocado en esta entrega).
 - Toda la Fase 2 (maestro SAP, outbox, `wms_oracle_export_*`, licenciamiento).
 
+## Deuda de migración — código a eliminar tras validar el flujo nuevo (2026-09-08)
+
+Al portar `WmsPortal.Web` se arrastraron piezas pensadas para el escenario
+**anterior a la corrección 2026-08-15** (el que asumía que
+`WmsSapIntegration.Service` seguía corriendo standalone y el Portal solo editaba
+su config). Con la decisión de **reemplazar ese servicio** (ver la corrección
+2026-08-15 más abajo), ese código quedó sin consumidor dentro del Portal —
+**nadie lo lee en runtime, solo lo escribe su propia página CRUD**. Es peso
+muerto, no diseño intencional.
+
+**Regla dura (dato duro):** este código **no es base para ningún proyecto ni
+módulo nuevo**. Solo se puede levantar una pieza puntual si algo la necesita de
+forma explícita y justificada; nunca volver a cablear la página, el servicio ni
+la tabla al pipeline. Si aparece en un `grep` como referencia, tratarlo como
+código en retiro, no como ejemplo a seguir.
+
+**A eliminar** (todo el cluster de "Configuración del Servicio"), **una vez
+validado end-to-end el flujo nuevo en producción — no solo en el piloto por
+compañía** y una vez apagado `WmsSapIntegration.Service` para todas las
+compañías:
+
+| Pieza | Ruta |
+|---|---|
+| Página `/wms/configuracion-servicio` | `src/Modulo.Wms/Pages/ConfiguracionServicio/Index.cshtml` (+ `.cs`) — sigue accesible por URL, ya fuera del menú |
+| ~~Entrada de menú `configuracion-servicio`~~ | **YA REMOVIDA (2026-09-08)** de `src/Modulo.Wms/ModuloWms.cs` (`GetMenu`) — `MenuSyncService` desactiva el nodo huérfano |
+| Registro DI de `IServiceConfigService` | `src/Modulo.Wms/ModuloWms.cs` (`RegisterServices`) |
+| Servicio | `src/Modulo.Wms/Services/IServiceConfigService.cs` + `ServiceConfigService.cs` |
+| Entidad | `src/Modulo.Wms/Models/WmsServiceConfig.cs` |
+| Contrato de claves (whitelist del servicio externo) | `Portal SaaS - Core/src/PortalSaas.Abstractions/Modelos/WmsServiceConfigKeys.cs` |
+| `DbSet` + mapeo | `src/Modulo.Wms/Data/WmsDbContext.cs` (`ServiceConfigs`, `modelBuilder.Entity<WmsServiceConfig>`) |
+| Tabla | `wms_oracle_service_configs` (creada en `InitialCreate`, los dos motores) — requiere una migración `DropTable` en `Modulo.Wms.Migrations.Postgres` y `.SqlServer` |
+
+**NO tocar (esto sí está vivo en el modelo nuevo):**
+- `/wms/mapeo-campos` + `wms_oracle_field_mappings` + `FieldMappingService` +
+  `WmsFieldMapperKeys` + `WmsFieldTemplateResolver` — lo consume
+  `WmsCloudConnector.PushAsync` al armar el XML que se postea a Oracle.
+- `/wms/estado-servicio` + `wms_oracle_service_heartbeats` +
+  `WmsServiceHeartbeat` + `WmsServiceHeartbeatRecorder` — lo escriben los 4
+  `BackgroundService` in-process del plugin.
+- `WmsInboundIngestionService` — no es deuda vieja: es una pieza **nueva
+  incompleta** (sin caller todavía), a la espera del endpoint + auth
+  máquina-a-máquina de la Ronda 0.
+
 ## Qué es esto
 
 `WMS_Suite` integra SAP Business One (HANA) con WMS Oracle Cloud (antes
@@ -161,12 +204,19 @@ standalone, con una sola excepción acotada (ver Fase 1).
   otra opción (ver más abajo). Decisión tomada explícitamente después de
   evaluar la alternativa (resolver el schema por `Company` sin mover el dato) y
   descartarla a favor de esta.
-- **`WmsSapIntegration.Service` no se migra al Portal en esta fase** — sigue
-  siendo un Windows Service standalone. La única excepción: gana una conexión
-  de solo lectura/escritura a 3 tablas puntuales del Portal (mapeo, config,
-  heartbeat — ver Fase 1). Esto es un cable angosto, **no** es la integración
-  completa `ICompanyProvider`↔Portal (esa sigue diferida, es un problema más
-  grande y aparte).
+- **`WmsSapIntegration.Service` SÍ se reemplaza, gradualmente** (decisión de
+  negocio actualizada 2026-08-15 — ver la corrección completa en "Fase 2 —
+  alcance" más abajo). La nota original de esta lista decía "no se migra, sigue
+  standalone" con una excepción acotada de 3 tablas (mapeo/config/heartbeat);
+  esa nota está **obsoleta** y fue lo que causó confusión sobre si el servicio
+  externo seguía operando. Estado real: la mayor parte del ciclo ya corre
+  dentro del Portal (4 `BackgroundService` in-process + el motor de
+  Integraciones del Core con los conectores WMS); faltan la ingesta del XML
+  crudo (endpoint + auth máquina-a-máquina) y el outbox HANA (Fase 2, ítem 1).
+  Durante el piloto convive: corre en una compañía de bajo volumen y el
+  servicio externo sigue para el resto hasta paridad. De esta corrección se
+  desprende la **"Deuda de migración"** de más arriba (la config passthrough
+  `wms_oracle_service_configs` quedó sin uso y se elimina tras validar todo).
 - **No se construye una abstracción formal `IWmsAdapter`/`IErpAdapter` todavía**
   — el mismo roadmap de `WMS_Suite` ya la había marcado como backlog
   ("no priorizar hasta un segundo caso real"). En su lugar, el crecimiento a

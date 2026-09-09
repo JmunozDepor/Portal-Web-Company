@@ -1,0 +1,73 @@
+@page "/wms/ajustes-motor"
+@model Modulo.Wms.Pages.AjustesMotor.IndexModel
+@{
+    ViewData["Title"] = "Ajustes del Motor";
+}
+@* wms_runtime_settings -- whitelist fija, sin alta libre. Design System unificado. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-2">
+        <h2 class="mb-0">Ajustes del Motor</h2>
+    </div>
+    <p class="text-muted small">
+        Umbrales de reintento de los procesos en segundo plano, editables sin redeploy. Valen para
+        <strong>todo este entorno</strong> (no por compañía). Si un valor no fue tocado, corre con su
+        <em>default de código</em>. Los intervalos de ciclo (cada cuántos segundos corre cada proceso)
+        no son configurables acá: requieren redeploy.
+    </p>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <table class="table-ps">
+        <thead><tr><th>Ajuste</th><th>Proceso</th><th>Default</th><th style="width: 12rem;">Valor</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+        @foreach (var (meta, valorEfectivo, esDefault) in Model.Ajustes)
+        {
+            var formId = $"ajuste-{meta.Clave.Replace('.', '-')}";
+            <tr>
+                <td>
+                    <div class="fw-semibold">@meta.Etiqueta</div>
+                    <div class="small text-muted">@meta.Ayuda</div>
+                    <div class="small text-muted"><code>@meta.Clave</code></div>
+                </td>
+                <td><code>@meta.UsadoPor</code></td>
+                <td>@meta.Default</td>
+                <td>
+                    <input type="number" name="valor" value="@valorEfectivo" min="0" class="form-control" form="@formId" />
+                    @if (esDefault)
+                    {
+                        <span class="badge-status badge-status--neutral mt-1">usando default</span>
+                    }
+                    else
+                    {
+                        <span class="badge-status badge-status--success mt-1">personalizado</span>
+                    }
+                </td>
+                <td class="col-actions">
+                    <div class="admin-row-actions">
+                        <button type="submit" class="btn-ghost" title="Guardar" form="@formId"><i class="bi bi-check-lg"></i></button>
+                        @if (!esDefault)
+                        {
+                            <form asp-page="./Index" asp-page-handler="Restaurar" asp-route-clave="@meta.Clave" method="post" class="d-inline-block">
+                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Restaurar default"><i class="bi bi-arrow-counterclockwise"></i></button>
+                            </form>
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    @foreach (var (meta, _, _) in Model.Ajustes)
+    {
+        <form id="ajuste-@meta.Clave.Replace('.', '-')" asp-page="./Index" asp-page-handler="Guardar" asp-route-clave="@meta.Clave"></form>
+    }
+</div>

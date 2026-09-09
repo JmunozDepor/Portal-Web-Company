@@ -1454,6 +1454,45 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                     b.ToTable("wms_oracle_stage_svsh", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Wms.Models.WmsRuntimeSetting", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Clave")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)")
+                        .HasColumnName("clave");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Valor")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Clave")
+                        .IsUnique()
+                        .HasDatabaseName("uk_wms_runtime_settings_clave");
+
+                    b.ToTable("wms_runtime_settings", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Wms.Models.WmsSapStageInboundDtl", b =>
                 {
                     b.Property<long>("LineId")
@@ -1793,23 +1832,6 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("LineId"));
 
-                    b.Property<string>("CardCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("card_code");
-
-                    b.Property<string>("CardName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
-                        .HasColumnName("card_name");
-
-                    b.Property<string>("City")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("city");
-
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("company_id");
@@ -1822,6 +1844,16 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)")
                         .HasColumnName("error_msg");
+
+                    b.Property<string>("ExtraFieldsJson")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("extra_fields");
+
+                    b.Property<string>("Pk")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("pk");
 
                     b.Property<int>("RetryCount")
                         .HasColumnType("int")
@@ -1837,79 +1869,20 @@ namespace Modulo.Wms.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("status");
 
-                    b.Property<string>("Street")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
-                        .HasColumnName("street");
-
                     b.Property<DateTimeOffset?>("SyncedAt")
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("synced_at");
-
-                    b.Property<string>("ZipCode")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasColumnName("zip_code");
 
                     b.HasKey("LineId");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_wms_sap_stage_store_status");
 
-                    b.HasIndex("CompanyId", "CardCode")
+                    b.HasIndex("CompanyId", "Pk")
                         .IsUnique()
-                        .HasDatabaseName("ix_wms_sap_stage_store_company_cardcode");
+                        .HasDatabaseName("ix_wms_sap_stage_store_company_pk");
 
                     b.ToTable("wms_sap_stage_store", (string)null);
-                });
-
-            modelBuilder.Entity("Modulo.Wms.Models.WmsServiceConfig", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("company_id");
-
-                    b.Property<string>("ConfigKey")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
-                        .HasColumnName("config_key");
-
-                    b.Property<string>("ConfigValue")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
-                        .HasColumnName("config_value");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
-                        .HasColumnName("is_active");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("datetimeoffset")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId")
-                        .HasDatabaseName("ix_wms_oracle_service_configs_company_id");
-
-                    b.HasIndex("CompanyId", "ConfigKey")
-                        .IsUnique()
-                        .HasDatabaseName("uk_wms_oracle_service_configs_key");
-
-                    b.ToTable("wms_oracle_service_configs", (string)null);
                 });
 
             modelBuilder.Entity("Modulo.Wms.Models.WmsServiceHeartbeat", b =>

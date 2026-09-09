@@ -41,6 +41,7 @@
                     <th>Compañía activa</th>
                     <th>Dirección IP</th>
                     <th>Conectado desde</th>
+                    <th>Última actividad</th>
                     <th></th>
                 </tr>
             </thead>
@@ -53,6 +54,7 @@
                         <td>@(sesion.CompanyName ?? "-")</td>
                         <td>@(sesion.IpAddress ?? "-")</td>
                         <td>@sesion.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@sesion.LastSeenAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                         <td class="text-end">
                             <form method="post" asp-page-handler="Revoke" asp-route-sessionId="@sesion.SessionId" asp-route-organizationId="@Model.OrganizationId" asp-antiforgery="true"
                                   onsubmit="return confirm('¿Desconectar a @sesion.Username? Va a tener que volver a iniciar sesión.');">

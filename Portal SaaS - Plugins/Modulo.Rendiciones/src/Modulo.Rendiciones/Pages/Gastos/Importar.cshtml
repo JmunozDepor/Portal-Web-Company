@@ -63,30 +63,46 @@
     <div class="rnd-card-list" style="margin-top:20px;">
         @foreach (var r in Model.Results)
         {
-            <a asp-page="./Detalle" asp-route-id="@r.ExpenseId" class="rnd-card-row">
-                <div class="rnd-card-icon"><i class="bi bi-receipt"></i></div>
-                <div class="rnd-card-main">
-                    <div class="rnd-card-title">@r.FileName</div>
-                    <div class="rnd-card-sub">
-                        @if (r.Extracted.Error is not null)
+            if (r.ExpenseId > 0)
+            {
+                <a asp-page="./Detalle" asp-route-id="@r.ExpenseId" class="rnd-card-row">
+                    <div class="rnd-card-icon"><i class="bi bi-receipt"></i></div>
+                    <div class="rnd-card-main">
+                        <div class="rnd-card-title">@r.FileName</div>
+                        <div class="rnd-card-sub">
+                            @if (r.Extracted.Error is not null)
+                            {
+                                <span>@r.Extracted.Error</span>
+                            }
+                            else
+                            {
+                                <span>@(r.Extracted.SupplierName ?? "Proveedor no detectado") · Falta elegir categoría</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="rnd-card-meta">
+                        @if (r.Warnings.Count > 0)
                         {
-                            <span>@r.Extracted.Error</span>
+                            <span class="rnd-badge rnd-badge--warning" title="@string.Join(" ", r.Warnings)">Posible duplicado</span>
                         }
-                        else
-                        {
-                            <span>@(r.Extracted.SupplierName ?? "Proveedor no detectado") · Falta elegir categoría</span>
-                        }
+                        <span class="rnd-badge rnd-badge--neutral">Revisar</span>
+                        <span class="rnd-card-amount">@(r.Extracted.Amount?.ToString("N2") ?? "—")</span>
+                    </div>
+                </a>
+            }
+            else
+            {
+                <div class="rnd-card-row rnd-card-row--error">
+                    <div class="rnd-card-icon"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="rnd-card-main">
+                        <div class="rnd-card-title">@r.FileName</div>
+                        <div class="rnd-card-sub"><span>@r.Extracted.Error</span></div>
+                    </div>
+                    <div class="rnd-card-meta">
+                        <span class="rnd-badge rnd-badge--danger">No importado</span>
                     </div>
                 </div>
-                <div class="rnd-card-meta">
-                    @if (r.Warnings.Count > 0)
-                    {
-                        <span class="rnd-badge rnd-badge--warning" title="@string.Join(" ", r.Warnings)">Posible duplicado</span>
-                    }
-                    <span class="rnd-badge rnd-badge--neutral">Revisar</span>
-                    <span class="rnd-card-amount">@(r.Extracted.Amount?.ToString("N2") ?? "—")</span>
-                </div>
-            </a>
+            }
         }
     </div>
 }

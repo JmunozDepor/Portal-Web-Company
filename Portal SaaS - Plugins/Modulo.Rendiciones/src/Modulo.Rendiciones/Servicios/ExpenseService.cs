@@ -56,6 +56,7 @@ public sealed class ExpenseService : IExpenseService
 
         expense.Status = "Loose";
         expense.ExpenseReportId = null;
+        expense.Date = NormalizeDate(expense.Date);
         _db.ExpenseReportLines.Add(expense);
         await _db.SaveChangesAsync(ct);
         return new ExpenseSavedResult(expense.Id, result.Warnings);
@@ -75,7 +76,7 @@ public sealed class ExpenseService : IExpenseService
 
         expense.ExpenseTypeId = data.ExpenseTypeId;
         expense.DocumentTypeId = data.DocumentTypeId;
-        expense.Date = data.Date;
+        expense.Date = NormalizeDate(data.Date);
         expense.Amount = data.Amount;
         expense.TaxAmount = data.TaxAmount;
         expense.Currency = data.Currency;
@@ -164,4 +165,14 @@ public sealed class ExpenseService : IExpenseService
 
         return expense;
     }
+
+    /// <summary>
+    /// La fecha del gasto es un dato de calendario (sin hora ni zona) pero la columna es
+    /// <c>timestamptz</c>: Npgsql 8 rechaza un DateTimeOffset con offset != 0. Los orígenes
+    /// (OCR con <c>DateTime.Today</c>, <c>&lt;input type="date"&gt;</c> ligado a DateTime)
+    /// llegan con offset local (-03:00 en Chile) y revientan el SaveChanges. Se guarda el
+    /// día elegido tal cual, a medianoche UTC.
+    /// </summary>
+    private static DateTimeOffset NormalizeDate(DateTimeOffset value) =>
+        new(value.Date, TimeSpan.Zero);
 }

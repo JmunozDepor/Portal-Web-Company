@@ -46,13 +46,17 @@ public sealed class CompanySwitcherViewComponent : ViewComponent
             .Select(c => new SelectListItem($"{c.Code} — {c.Name}", c.Id.ToString()))
             .ToListAsync();
 
-        // Con 0 o 1 compañía visible no hay nada para "cambiar" -- el selector no aporta
-        // y solo agrega ruido al topbar.
-        if (companies.Count <= 1)
+        // Con 0 compañías visibles no hay nada que mostrar (el usuario entró sin
+        // compañía activa -- las funciones que dependen de SAP simplemente no aplican).
+        if (companies.Count == 0)
         {
             return View(new CompanySwitcherViewModel([], null));
         }
 
+        // Con exactamente 1 no hay nada para "cambiar", pero SÍ hay que mostrar cuál es
+        // -- la vista la renderiza como texto plano (no un <select>), si no el wrapper
+        // .sidebar-company queda solo con el ícono de edificio y el usuario no ve en qué
+        // compañía está (bug real reportado).
         return View(new CompanySwitcherViewModel(companies, currentCompanyId));
     }
 }

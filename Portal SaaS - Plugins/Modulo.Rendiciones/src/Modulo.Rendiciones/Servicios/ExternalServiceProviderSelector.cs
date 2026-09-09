@@ -1,3 +1,4 @@
+using Modulo.Rendiciones.Models;
 using PortalSaas.Abstractions.Contratos;
 
 namespace Modulo.Rendiciones.Servicios;
@@ -18,11 +19,12 @@ public sealed class ExternalServiceProviderSelector : IExternalServiceProviderSe
 
     public async Task<SelectedProvider?> SelectForReservationAsync(Guid companyId, string serviceType, int quantity, CancellationToken ct = default)
     {
+        var quotaPeriod = QuotaPeriods.ForServiceType(serviceType);
         var candidates = await _providers.ListByServiceAsync(companyId, serviceType, ct);
         foreach (var provider in candidates)
         {
-            if (await _usage.TryReserveAsync(provider.Id, quantity, provider.MonthlyLimit, ct))
-                return new SelectedProvider(provider.Id, provider.Endpoint, _secretos.Decrypt(provider.ApiKeyEncrypted));
+            if (await _usage.TryReserveAsync(provider.Id, quantity, provider.MonthlyLimit, quotaPeriod, ct))
+                return new SelectedProvider(provider.Id, provider.Endpoint, _secretos.Decrypt(provider.ApiKeyEncrypted), quotaPeriod);
         }
 
         return null;
@@ -30,12 +32,13 @@ public sealed class ExternalServiceProviderSelector : IExternalServiceProviderSe
 
     public async Task<SelectedProvider?> SelectAvailableAsync(Guid companyId, string serviceType, CancellationToken ct = default)
     {
+        var quotaPeriod = QuotaPeriods.ForServiceType(serviceType);
         var candidates = await _providers.ListByServiceAsync(companyId, serviceType, ct);
         foreach (var provider in candidates)
         {
-            var used = await _usage.GetCurrentMonthUsageAsync(provider.Id, ct);
+            var used = await _usage.GetCurrentUsageAsync(provider.Id, quotaPeriod, ct);
             if (used < provider.MonthlyLimit)
-                return new SelectedProvider(provider.Id, provider.Endpoint, _secretos.Decrypt(provider.ApiKeyEncrypted));
+                return new SelectedProvider(provider.Id, provider.Endpoint, _secretos.Decrypt(provider.ApiKeyEncrypted), quotaPeriod);
         }
 
         return null;

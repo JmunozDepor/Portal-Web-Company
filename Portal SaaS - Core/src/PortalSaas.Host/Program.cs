@@ -306,11 +306,16 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
         // "Desconectar" desde /Admin/Sessions (ver IUserSessionService.RevokeAsync) no
         // invalida la cookie por sí solo -- una cookie de Identity es autocontenida, sin
-        // estado del lado del servidor. Este evento corre en cada request autenticada:
-        // si la sesión (claim "SessionToken") fue revocada o no existe, se hace
-        // RejectPrincipal, forzando el próximo request a caer al login -- sin esto, el
-        // botón "Desconectar" del backoffice no tendría ningún efecto real hasta que la
-        // cookie expire sola (hasta 8h).
+        // estado del lado del servidor. Este evento corre en cada request autenticada y
+        // ADEMÁS refresca la marca de actividad de la sesión (LastSeenAt).
+        //
+        // Solo se cierra la cookie cuando la fila fue REVOCADA a propósito (botón
+        // "Desconectar", o logout). Una fila AUSENTE -- purgada por
+        // StaleUserSessionCleanupHostedService, base recreada, deploy -- NO cierra una
+        // cookie que sigue siendo criptográficamente válida y no expiró: hacerlo solo
+        // provocaba un rebote mudo al login, sin ningún mensaje, imposible de
+        // diagnosticar (era la causa de "usuario con permisos correctos que no pasa del
+        // login").
         options.Events = new CookieAuthenticationEvents
         {
             OnValidatePrincipal = async context =>
@@ -322,10 +327,22 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
                 }
 
                 var sessions = context.HttpContext.RequestServices.GetRequiredService<IUserSessionService>();
-                if (!await sessions.IsActiveAsync(sessionToken))
+                var estado = await sessions.ValidateAndTouchAsync(sessionToken);
+                if (estado == PortalSaas.Abstractions.Modelos.SessionValidationStatus.Revoked)
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+                    // Marca de un solo uso, vida corta -- la lee Account/Login.OnGet para
+                    // mostrar "tu sesión se cerró" en vez de una pantalla de login muda.
+                    context.HttpContext.Response.Cookies.Append("portal_session_ended", "1", new CookieOptions
+                    {
+                        MaxAge = TimeSpan.FromMinutes(5),
+                        IsEssential = true,
+                        HttpOnly = true,
+                        SameSite = SameSiteMode.Lax,
+                        Path = "/",
+                    });
                 }
             },
         };

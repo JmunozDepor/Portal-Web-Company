@@ -19,7 +19,7 @@ namespace Modulo.Wms.Services;
 public sealed class WmsExistsReconciler : BackgroundService
 {
     private static readonly TimeSpan IntervaloCiclo = TimeSpan.FromSeconds(300);
-    private const int MaxIntentos = 20;
+    private const int MaxIntentosDefault = 20;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<WmsExistsReconciler> _logger;
@@ -109,26 +109,29 @@ public sealed class WmsExistsReconciler : BackgroundService
 
             var contexto = scope.ServiceProvider.GetRequiredService<WmsDbContext>();
             var validador = scope.ServiceProvider.GetRequiredService<IWmsValidationApiClient>();
+            var runtimeSettings = scope.ServiceProvider.GetRequiredService<IWmsRuntimeSettingsService>();
+            var maxIntentos = await runtimeSettings.GetIntAsync(
+                WmsRuntimeSettingsKeys.ExistsReconcilerMaxIntentos, MaxIntentosDefault, cancellationToken);
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "Item", "item", "stage_item", "item_alternate_code",
                 contexto.WmsSapStageItems.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
                 f => f.ItemCode, (f) => { f.Status = WmsSapStageStatus.ProcesadoWms; f.SyncedAt = DateTimeOffset.UtcNow; },
-                (f) => f.Status = WmsSapStageStatus.ErrorWms, cancellationToken);
+                (f) => f.Status = WmsSapStageStatus.ErrorWms, maxIntentos, cancellationToken);
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "Store", "facility", "stage_store", "code",
                 contexto.WmsSapStageStores.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
                 f => f.Pk, (f) => { f.Status = WmsSapStageStatus.ProcesadoWms; f.SyncedAt = DateTimeOffset.UtcNow; },
-                (f) => f.Status = WmsSapStageStatus.ErrorWms, cancellationToken);
+                (f) => f.Status = WmsSapStageStatus.ErrorWms, maxIntentos, cancellationToken);
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "Order", "order_hdr", "stage_order_hdr", "order_nbr",
                 contexto.WmsSapStageOrderHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
                 f => f.OrderNbr, (f) => { f.Status = WmsSapStageStatus.ProcesadoWms; f.SyncedAt = DateTimeOffset.UtcNow; },
-                (f) => f.Status = WmsSapStageStatus.ErrorWms, cancellationToken);
+                (f) => f.Status = WmsSapStageStatus.ErrorWms, maxIntentos, cancellationToken);
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "IbShipment", "ib_shipment", "stage_ib_shipment", "shipment_nbr",
                 contexto.WmsSapStageInboundHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
                 f => f.SapDocEntry.ToString(), (f) => { f.Status = WmsSapStageStatus.ProcesadoWms; f.SyncedAt = DateTimeOffset.UtcNow; },
-                (f) => f.Status = WmsSapStageStatus.ErrorWms, cancellationToken);
+                (f) => f.Status = WmsSapStageStatus.ErrorWms, maxIntentos, cancellationToken);
 
             await heartbeat.RecordAsync(companyId, "Wms.ExistsReconciler", "OK", cancellationToken: cancellationToken);
         }
@@ -144,7 +147,7 @@ public sealed class WmsExistsReconciler : BackgroundService
         string tipoDoc, string entidadFinal, string entidadStage, string keyField,
         Func<List<TFila>> obtenerPendientes, Func<TFila, string> obtenerClave,
         Action<TFila> marcarConfirmado, Action<TFila> marcarErrorDefinitivo,
-        CancellationToken cancellationToken)
+        int maxIntentos, CancellationToken cancellationToken)
         where TFila : class
     {
         var pendientes = obtenerPendientes();
@@ -188,7 +191,7 @@ public sealed class WmsExistsReconciler : BackgroundService
             }
 
             validacion.Intentos++;
-            if (validacion.Intentos >= MaxIntentos)
+            if (validacion.Intentos >= maxIntentos)
             {
                 marcarErrorDefinitivo(fila);
                 validacion.WmsErrorMsg = $"No confirmado en Oracle WMS Cloud tras {validacion.Intentos} intentos.";

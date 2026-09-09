@@ -28,7 +28,7 @@ public class WmsDbContext : DbContext
 
     public DbSet<WmsFieldMapping> FieldMappings => Set<WmsFieldMapping>();
     public DbSet<WmsValidationField> ValidationFields => Set<WmsValidationField>();
-    public DbSet<WmsServiceConfig> ServiceConfigs => Set<WmsServiceConfig>();
+    public DbSet<WmsRuntimeSetting> RuntimeSettings => Set<WmsRuntimeSetting>();
     public DbSet<WmsServiceHeartbeat> ServiceHeartbeats => Set<WmsServiceHeartbeat>();
     public DbSet<WmsOracleInboundStage> WmsOracleInboundStages => Set<WmsOracleInboundStage>();
     public DbSet<WmsOracleStageSlsh> WmsOracleStageSlsh => Set<WmsOracleStageSlsh>();
@@ -75,21 +75,21 @@ public class WmsDbContext : DbContext
                 .HasDatabaseName("uk_wms_validation_fields_key");
         });
 
-        modelBuilder.Entity<WmsServiceConfig>(e =>
+        // wms_runtime_settings -- ajustes de motor a nivel de este entorno (una fila por
+        // BD de módulo, no por compañía): umbrales de reintento de los background
+        // services, editables sin redeploy desde /wms/ajustes-motor. Reemplaza a la
+        // difunta wms_oracle_service_configs (pass-through del Windows Service externo
+        // en retiro, eliminada 2026-09-08).
+        modelBuilder.Entity<WmsRuntimeSetting>(e =>
         {
-            e.ToTable("wms_oracle_service_configs");
+            e.ToTable("wms_runtime_settings");
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
-            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
-            e.Property(x => x.ConfigKey).HasColumnName("config_key").HasMaxLength(150).IsRequired();
-            e.Property(x => x.ConfigValue).HasColumnName("config_value").HasMaxLength(500);
-            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.Clave).HasColumnName("clave").HasMaxLength(120).IsRequired();
+            e.Property(x => x.Valor).HasColumnName("valor").HasMaxLength(200).IsRequired();
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
-            e.Property(x => x.UpdatedBy).HasColumnName("updated_by").HasMaxLength(50);
-            e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_wms_oracle_service_configs_company_id");
-            e.HasIndex(x => new { x.CompanyId, x.ConfigKey })
-                .IsUnique()
-                .HasDatabaseName("uk_wms_oracle_service_configs_key");
+            e.Property(x => x.UpdatedBy).HasColumnName("updated_by").HasMaxLength(80);
+            e.HasIndex(x => x.Clave).IsUnique().HasDatabaseName("uk_wms_runtime_settings_clave");
         });
 
         modelBuilder.Entity<WmsServiceHeartbeat>(e =>

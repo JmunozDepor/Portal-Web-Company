@@ -143,4 +143,40 @@ public class MenuSyncServiceTests
         var menu = Assert.Single(db.Menus);
         Assert.True(menu.IsActive);
     }
+
+    [Fact]
+    public async Task SyncAsync_ModuloCargadoDejaDeEmitirUnItem_LoDesactiva()
+    {
+        var db = CrearContexto();
+        var conConfig = new ModuloDePrueba("Wms",
+            new MenuItemDefinition { Code = "raiz", Name = "WMS", Order = 0 },
+            new MenuItemDefinition { Code = "config", ParentCode = "raiz", Name = "Config", Order = 1 },
+            new MenuItemDefinition { Code = "estado", ParentCode = "raiz", Name = "Estado", Order = 2 });
+        await new MenuSyncService(db).SyncAsync([conConfig]);
+
+        // El módulo SIGUE cargado pero ya no emite "config" (se borró la página).
+        var sinConfig = new ModuloDePrueba("Wms",
+            new MenuItemDefinition { Code = "raiz", Name = "WMS", Order = 0 },
+            new MenuItemDefinition { Code = "estado", ParentCode = "raiz", Name = "Estado", Order = 2 });
+        await new MenuSyncService(db).SyncAsync([sinConfig]);
+
+        var config = db.Menus.Single(m => m.Code == "config");
+        Assert.False(config.IsActive);
+        Assert.True(db.Menus.Single(m => m.Code == "estado").IsActive);
+        Assert.True(db.Menus.Single(m => m.Code == "raiz").IsActive);
+    }
+
+    [Fact]
+    public async Task SyncAsync_ItemVuelveAEmitirse_SeReactiva()
+    {
+        var db = CrearContexto();
+        var conConfig = new ModuloDePrueba("Wms",
+            new MenuItemDefinition { Code = "config", Name = "Config", Order = 1 });
+        await new MenuSyncService(db).SyncAsync([conConfig]);
+        await new MenuSyncService(db).SyncAsync([new ModuloDePrueba("Wms")]); // deja de emitirlo
+
+        await new MenuSyncService(db).SyncAsync([conConfig]); // lo vuelve a emitir
+
+        Assert.True(db.Menus.Single(m => m.Code == "config").IsActive);
+    }
 }

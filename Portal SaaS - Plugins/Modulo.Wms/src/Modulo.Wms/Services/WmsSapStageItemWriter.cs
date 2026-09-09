@@ -45,6 +45,11 @@ public class WmsSapStageItemWriter : IIntegrationEntityWriter
             var existente = existentes.GetValueOrDefault(itemCode);
 
             var (itemName, barCode, extraFieldsJson) = SepararCampos(registro);
+            // Cursor de cambio (OITM.UpdateDate) -> columna tipada. ToUtc obligatorio: la
+            // columna es timestamptz y Npgsql 8 rechaza cualquier Kind != Utc en
+            // SaveChanges (ver WmsSourceDate). Antes no se asignaba -> quedaba en
+            // default(DateTime) y el dato del cursor se perdía en extra_fields.
+            var sourceUpdateDate = WmsSourceDate.ToUtc(registro["SourceUpdateDate"]);
 
             if (existente is null)
             {
@@ -55,6 +60,7 @@ public class WmsSapStageItemWriter : IIntegrationEntityWriter
                     ItemName = itemName,
                     BarCode = barCode,
                     ExtraFieldsJson = extraFieldsJson,
+                    SourceUpdateDate = sourceUpdateDate,
                     Status = WmsSapStageStatus.Pendiente,
                 });
                 continue;
@@ -78,6 +84,7 @@ public class WmsSapStageItemWriter : IIntegrationEntityWriter
             existente.ItemName = itemName;
             existente.BarCode = barCode;
             existente.ExtraFieldsJson = extraFieldsJson;
+            existente.SourceUpdateDate = sourceUpdateDate;
         }
 
         await _contexto.SaveChangesAsync(cancellationToken);
@@ -86,7 +93,8 @@ public class WmsSapStageItemWriter : IIntegrationEntityWriter
     /// <summary>
     /// "description"/"barcode" son las claves que trae SqlDirectConnector (nombres de
     /// columna reales de la query, ver spec) -- item_name/bar_code son las columnas
-    /// tipadas que las reciben. El resto de las claves del registro cae a extra_fields.
+    /// tipadas que las reciben. "SourceUpdateDate" también tiene columna tipada propia
+    /// (cursor de cambio). El resto de las claves del registro cae a extra_fields.
     /// </summary>
     private static (string ItemName, string? BarCode, string ExtraFieldsJson) SepararCampos(IntegrationRecord registro)
     {
@@ -94,7 +102,7 @@ public class WmsSapStageItemWriter : IIntegrationEntityWriter
         var barCode = (string?)registro["barcode"];
 
         var extra = registro.Fields
-            .Where(kvp => kvp.Key is not ("item_alternate_code" or "description" or "barcode"))
+            .Where(kvp => kvp.Key is not ("item_alternate_code" or "description" or "barcode" or "SourceUpdateDate"))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         return (itemName, barCode, System.Text.Json.JsonSerializer.Serialize(extra));

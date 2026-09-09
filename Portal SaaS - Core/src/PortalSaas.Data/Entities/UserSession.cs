@@ -10,7 +10,8 @@ namespace PortalSaas.Data.Entities;
 ///
 /// Revocar acá (IsRevoked = true) no invalida la cookie por sí solo -- la valida
 /// CookieAuthenticationEvents.OnValidatePrincipal (Program.cs), que en cada request
-/// chequea si la sesión sigue activa y fuerza el cierre si no.
+/// chequea si la sesión fue REVOCADA a propósito y solo entonces fuerza el cierre.
+/// Una fila ausente (purgada, base recreada) NO invalida una cookie todavía vigente.
 /// </summary>
 public sealed class UserSession
 {
@@ -38,6 +39,17 @@ public sealed class UserSession
     public string? UserAgent { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    // Última vez que la cookie de esta sesión se validó en un request (ver
+    // CookieAuthenticationEvents.OnValidatePrincipal en Program.cs). La cookie usa
+    // SlidingExpiration, así que su vida real se cuenta desde la última actividad, no
+    // desde el login -- por eso la purga de sesiones muertas y "clientes conectados"
+    // se miden contra este campo y no contra CreatedAt (si no, a un usuario activo
+    // desde hace más de 8 h se le borraba la fila con la cookie todavía viva y el
+    // siguiente request lo echaba al login sin aviso). Se refresca como mucho una vez
+    // cada pocos minutos (ver UserSessionService.ValidateAndTouchAsync), no en cada
+    // request, para no escribir de más.
+    public DateTimeOffset LastSeenAt { get; set; } = DateTimeOffset.UtcNow;
 
     public bool IsRevoked { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }

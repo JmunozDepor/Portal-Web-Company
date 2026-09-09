@@ -4,76 +4,193 @@
     ViewData["Title"] = "Usuarios y roles";
 }
 @* Migrado al Design System unificado (2026-08-19) -- ya no carga rendiciones.css.
-   Sin drawer: es una matriz de permisos pura (checkboxes que se auto-envían),
-   no hay formulario de creación. *@
+   La pantalla lista SOLO a los usuarios que ya forman parte del proceso (tienen al
+   menos un rol). "Agregar usuario al proceso" (drawer) suma a alguien de la empresa;
+   dejar una fila con los 3 roles desmarcados + Guardar lo saca del proceso. Un usuario
+   que no está acá recibe la página de restricción (Pages/SinAcceso.cshtml) al entrar a
+   cualquier pantalla del módulo. La matriz no se auto-envía: se marca/desmarca todo y
+   recién "Guardar cambios" persiste el diff (OnPostGuardarAsync). *@
 
 <div class="card-surface">
-    <h2 class="mb-1">Usuarios y roles</h2>
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1">
+        <h2 class="mb-0">Usuarios y roles del proceso</h2>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn-secondary" data-drawer-open="drawer-agregar-usuario">+ Agregar usuario</button>
+            <button type="submit" form="form-roles" class="btn-primary">Guardar cambios</button>
+        </div>
+    </div>
     <p class="text-muted mb-3">
-        Quién puede declarar gastos (Rendidor), revisar informes (Aprobador) y administrar este módulo (Administrador).
-        Ninguno de los tres es automático -- si un usuario no tiene ningún rol marcado acá, no puede entrar a ninguna pantalla del módulo.
+        Acá se administra <strong>quiénes participan del proceso de Rendiciones</strong> de esta compañía y con qué rol:
+        declarar gastos (Rendidor), revisar informes (Aprobador) o administrar el módulo (Administrador).
+        No todos los usuarios de la empresa están en el proceso -- se agregan explícitamente con el botón
+        <strong>Agregar usuario</strong>. Un usuario que no aparece en esta lista no puede entrar a ninguna
+        pantalla del módulo. Quitarle los 3 roles y guardar lo saca del proceso.
+        Los cambios en las casillas no se guardan hasta que apretás <strong>Guardar cambios</strong>.
     </p>
 
     @if (Model.SuccessMessage is not null)
     {
         <div class="alert alert-success">@Model.SuccessMessage</div>
     }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
 
-    <table class="table-ps">
-        <thead>
-            <tr>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Rendidor</th>
-                <th>Aprobador</th>
-                <th>Administrador</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var row in Model.Rows)
-            {
+    <div class="filter-card mb-3">
+        <div class="col-auto flex-grow-1" style="max-width:360px;">
+            <label for="buscador-usuarios" class="form-label">Buscar usuario</label>
+            <input type="search" id="buscador-usuarios" class="form-control" placeholder="Nombre o correo..." autocomplete="off" />
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="Guardar" id="form-roles">
+        <table class="table-ps">
+            <thead>
                 <tr>
-                    <td>@row.Username</td>
-                    <td>@row.Email</td>
-                    @if (row.IsPlatformAdmin)
-                    {
-                        <td colspan="3">
-                            <span class="badge-status badge-status--neutral" title="Admin de la organización -- siempre tiene acceso a todo el módulo">Siempre (admin de la organización)</span>
-                        </td>
-                    }
-                    else
-                    {
-                        <td>
-                            <form method="post" asp-antiforgery="true">
-                                <input type="hidden" name="userId" value="@row.Id" />
-                                <input type="hidden" name="role" value="Rendidor" />
-                                <input type="hidden" name="granted" value="@(!row.IsRendidor)" />
-                                <input type="checkbox" checked="@row.IsRendidor" onchange="this.form.requestSubmit()" />
-                            </form>
-                        </td>
-                        <td>
-                            <form method="post" asp-antiforgery="true">
-                                <input type="hidden" name="userId" value="@row.Id" />
-                                <input type="hidden" name="role" value="Aprobador" />
-                                <input type="hidden" name="granted" value="@(!row.IsAprobador)" />
-                                <input type="checkbox" checked="@row.IsAprobador" onchange="this.form.requestSubmit()" />
-                            </form>
-                        </td>
-                        <td>
-                            <form method="post" asp-antiforgery="true">
-                                <input type="hidden" name="userId" value="@row.Id" />
-                                <input type="hidden" name="role" value="Administrador" />
-                                <input type="hidden" name="granted" value="@(!row.IsAdministrador)" />
-                                <input type="checkbox" checked="@row.IsAdministrador" onchange="this.form.requestSubmit()" />
-                            </form>
-                        </td>
-                    }
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Estado</th>
+                    <th>Rendidor</th>
+                    <th>Aprobador</th>
+                    <th>Administrador</th>
+                    <th class="col-actions"></th>
                 </tr>
-            }
-            @if (Model.Rows.Count == 0)
-            {
-                <tr><td colspan="5" class="text-muted">Sin usuarios en esta organización todavía.</td></tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr data-buscable="@($"{row.Username} {row.Email}".ToLowerInvariant())">
+                        <td>
+                            @row.Username
+                            @if (row.IsPlatformAdmin)
+                            {
+                                <span class="badge-status badge-status--neutral" title="Administrador de la organización">admin org</span>
+                            }
+                        </td>
+                        <td>@row.Email</td>
+                        <td>
+                            @if (!row.IsActive)
+                            {
+                                <span class="badge-status badge-status--neutral">Inactivo</span>
+                            }
+                            else if (row.IsLocked)
+                            {
+                                <span class="badge-status badge-status--danger">Bloqueado</span>
+                            }
+                            else
+                            {
+                                <span class="badge-status badge-status--success">Activo</span>
+                            }
+                        </td>
+                        <td>
+                            <input type="checkbox" name="seleccion" value="@(row.Id + "|Rendidor")" checked="@row.IsRendidor" />
+                        </td>
+                        <td>
+                            <input type="checkbox" name="seleccion" value="@(row.Id + "|Aprobador")" checked="@row.IsAprobador" />
+                        </td>
+                        <td>
+                            <input type="checkbox" name="seleccion" value="@(row.Id + "|Administrador")" checked="@row.IsAdministrador" />
+                        </td>
+                        <td class="col-actions">
+                            <div class="admin-row-actions">
+                                @if (row.IsActive)
+                                {
+                                    <button type="submit" form="form-activo-@row.Id" class="btn-ghost btn-ghost--danger" title="Desactivar usuario">
+                                        <i class="bi bi-person-x"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="submit" form="form-activo-@row.Id" class="btn-ghost" title="Activar usuario">
+                                        <i class="bi bi-person-check"></i>
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-muted">Todavía no hay usuarios en el proceso de Rendiciones. Agregá el primero con <strong>+ Agregar usuario</strong>.</td></tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="mt-3">
+            <button type="submit" class="btn-primary">Guardar cambios</button>
+        </div>
+    </form>
 </div>
+
+@* Formularios de activar/desactivar -- FUERA del form de la matriz (HTML no permite
+   forms anidados); cada botón de la fila los referencia por el atributo form="...". *@
+@foreach (var row in Model.Rows)
+{
+    <form method="post" asp-page-handler="ToggleActivo" asp-route-userId="@row.Id" id="form-activo-@row.Id" class="d-none"
+          onsubmit="return confirm('@(row.IsActive ? "¿Desactivar" : "¿Activar") a @row.Username?');"></form>
+}
+
+@* Drawer -- alta de un participante nuevo. Postea a OnPostAgregarAsync. *@
+<div id="drawer-agregar-usuario" class="drawer-overlay" data-drawer>
+    <aside class="drawer-panel">
+        <div class="drawer-header">
+            <h3>Agregar usuario al proceso</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" asp-page-handler="Agregar">
+            <div class="drawer-body">
+                @if (Model.UsuariosDisponibles.Count == 0)
+                {
+                    <p class="text-muted">Ya están todos los usuarios de la empresa dentro del proceso.</p>
+                }
+                else
+                {
+                    <div class="mb-3">
+                        <label for="nuevoUsuarioId" class="form-label">Usuario de la empresa</label>
+                        <select name="nuevoUsuarioId" id="nuevoUsuarioId" class="form-select">
+                            <option value="">-- Seleccionar --</option>
+                            @foreach (var u in Model.UsuariosDisponibles)
+                            {
+                                <option value="@u.Id">@u.Username — @u.Email</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <span class="form-label d-block">Roles iniciales</span>
+                        <label class="d-flex align-items-center gap-2"><input type="checkbox" name="rolesIniciales" value="Rendidor" /> Rendidor</label>
+                        <label class="d-flex align-items-center gap-2"><input type="checkbox" name="rolesIniciales" value="Aprobador" /> Aprobador</label>
+                        <label class="d-flex align-items-center gap-2"><input type="checkbox" name="rolesIniciales" value="Administrador" /> Administrador</label>
+                    </div>
+                    <p class="text-muted" style="font-size:12px;">
+                        Elegí al menos un rol. Después completá su flujo (grupo de aprobación, centro de costo)
+                        en las pantallas de configuración correspondientes.
+                    </p>
+                }
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                @if (Model.UsuariosDisponibles.Count > 0)
+                {
+                    <button type="submit" class="btn-primary">Agregar al proceso</button>
+                }
+            </div>
+        </form>
+    </aside>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var input = document.getElementById('buscador-usuarios');
+            if (!input) return;
+            var rows = Array.prototype.slice.call(document.querySelectorAll('tr[data-buscable]'));
+            input.addEventListener('input', function () {
+                var q = this.value.trim().toLowerCase();
+                rows.forEach(function (tr) {
+                    tr.hidden = q !== '' && tr.getAttribute('data-buscable').indexOf(q) === -1;
+                });
+            });
+        })();
+    </script>
+}

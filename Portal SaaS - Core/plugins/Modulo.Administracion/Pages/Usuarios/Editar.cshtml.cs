@@ -14,15 +14,19 @@ public class EditarModel : AdminPageModelBase
     private readonly IEmailSenderService _emailSenderService;
     private readonly ILogger<EditarModel> _logger;
 
+    private readonly ICurrentCompanyAccessor _currentCompany;
+
     public EditarModel(
         ITenantUserAdminService usuarios,
         ICurrentUserContext currentUser,
+        ICurrentCompanyAccessor currentCompany,
         IPasswordResetService passwordResetService,
         IEmailSenderService emailSenderService,
         ILogger<EditarModel> logger)
         : base(currentUser)
     {
         _usuarios = usuarios;
+        _currentCompany = currentCompany;
         _passwordResetService = passwordResetService;
         _emailSenderService = emailSenderService;
         _logger = logger;
@@ -42,7 +46,7 @@ public class EditarModel : AdminPageModelBase
     public string? NuevaPasswordGenerada { get; set; }
 
     public List<MenuGroupOptionDto> AllMenuGroups { get; set; } = [];
-    public List<LeafMenuDto> LeafMenus { get; set; } = [];
+    public List<MenuTreeNodeDto> MenuTree { get; set; } = [];
     public List<SelectListItem> ProfileOptions { get; set; } = [];
 
     [BindProperty]
@@ -273,10 +277,18 @@ public class EditarModel : AdminPageModelBase
             return;
         }
 
-        SelectedCompanyId = companyId is { } id && companies.Any(c => c.Id == id) ? id : companies[0].Id;
+        // Preferencia de compañía para la grilla de permisos: 1) la que vino en el
+        // querystring (el selector de la pestaña); 2) la compañía con la que el admin
+        // está conectado en esta sesión -- así los <select> arrancan en la empresa que
+        // uno está viendo, no en otra, y se reduce el riesgo de asignar permisos en la
+        // compañía equivocada; 3) la primera de la lista, como último recurso.
+        SelectedCompanyId =
+            companyId is { } id && companies.Any(c => c.Id == id) ? id
+            : _currentCompany.HasCompany && companies.Any(c => c.Id == _currentCompany.CompanyId) ? _currentCompany.CompanyId
+            : companies[0].Id;
 
         AllMenuGroups = (await _usuarios.ListMenuGroupsAsync()).ToList();
-        LeafMenus = (await _usuarios.ListLeafMenusAsync()).ToList();
+        MenuTree = (await _usuarios.ListMenuTreeAsync()).ToList();
         ProfileOptions = (await _usuarios.ListProfilesAsync()).Select(p => new SelectListItem(p.Name, p.Id.ToString())).ToList();
 
         var permisos = await _usuarios.GetPermissionsAsync(userId, SelectedCompanyId);

@@ -172,13 +172,16 @@ public sealed class WmsSlshStageParser : BackgroundService
     /// </summary>
     private async Task RegistrarFalloDePersistenciaAsync(Guid companyId, long entryId, Exception fallo, CancellationToken cancellationToken)
     {
-        const int MaxIntentos = 3;
+        const int MaxIntentosDefault = 3;
 
         try
         {
             using var recoveryScope = _scopeFactory.CreateScope();
             recoveryScope.ServiceProvider.GetRequiredService<ICurrentCompanyOverride>().Set(companyId);
             var recoveryContexto = recoveryScope.ServiceProvider.GetRequiredService<WmsDbContext>();
+            var maxIntentos = await recoveryScope.ServiceProvider
+                .GetRequiredService<IWmsRuntimeSettingsService>()
+                .GetIntAsync(WmsRuntimeSettingsKeys.SlshParserMaxIntentos, MaxIntentosDefault, cancellationToken);
 
             var entryFresco = await recoveryContexto.WmsOracleInboundStages
                 .FirstOrDefaultAsync(s => s.Id == entryId, cancellationToken);
@@ -191,7 +194,7 @@ public sealed class WmsSlshStageParser : BackgroundService
             entryFresco.Intentos++;
             entryFresco.ProcessedAt = DateTimeOffset.UtcNow;
 
-            if (entryFresco.Intentos >= MaxIntentos)
+            if (entryFresco.Intentos >= maxIntentos)
             {
                 entryFresco.Estado = WmsInboundEstado.ErrorStaging;
                 entryFresco.MensajeError = $"Fallo de persistencia tras {entryFresco.Intentos} intentos: {fallo.Message}";

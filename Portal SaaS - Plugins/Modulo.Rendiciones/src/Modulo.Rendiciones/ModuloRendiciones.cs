@@ -61,6 +61,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "gastos",
             ParentCode = "grupo-rendidor",
             Name = "Mis Gastos",
+            Icon = "bi-wallet2",
             PageRoute = "/rendiciones/gastos",
             Order = 1,
         };
@@ -70,6 +71,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "informes",
             ParentCode = "grupo-rendidor",
             Name = "Informes",
+            Icon = "bi-journal-text",
             PageRoute = "/rendiciones/informes",
             Order = 2,
         };
@@ -79,6 +81,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "fondos",
             ParentCode = "grupo-rendidor",
             Name = "Fondos por Rendir",
+            Icon = "bi-cash-stack",
             PageRoute = "/rendiciones/fondos",
             Order = 3,
         };
@@ -98,6 +101,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "aprobaciones",
             ParentCode = "grupo-aprobador",
             Name = "Aprobaciones",
+            Icon = "bi-check2-circle",
             PageRoute = "/rendiciones/aprobaciones",
             Order = 1,
         };
@@ -117,6 +121,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "reportes-cierre",
             ParentCode = "grupo-reporte",
             Name = "Cierre y Reportes",
+            Icon = "bi-file-earmark-spreadsheet",
             PageRoute = "/rendiciones/reportes/cierre",
             Order = 1,
         };
@@ -136,6 +141,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "config-usuarios-roles",
             ParentCode = "grupo-administrador",
             Name = "Usuarios y Roles",
+            Icon = "bi-people",
             PageRoute = "/rendiciones/configuracion/usuarios-roles",
             Order = 0,
         };
@@ -145,6 +151,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "config-tipos-gasto",
             ParentCode = "grupo-administrador",
             Name = "Tipos de Gasto",
+            Icon = "bi-tags",
             PageRoute = "/rendiciones/configuracion/tipos-gasto",
             Order = 1,
         };
@@ -154,6 +161,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "config-tipos-documento",
             ParentCode = "grupo-administrador",
             Name = "Tipos de Documento",
+            Icon = "bi-file-earmark-text",
             PageRoute = "/rendiciones/configuracion/tipos-documento",
             Order = 2,
         };
@@ -163,6 +171,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "config-grupos",
             ParentCode = "grupo-administrador",
             Name = "Grupos de Aprobación",
+            Icon = "bi-diagram-3",
             PageRoute = "/rendiciones/configuracion/grupos",
             Order = 3,
         };
@@ -172,6 +181,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "config-centros-costo-usuario",
             ParentCode = "grupo-administrador",
             Name = "Centros de Costo por Usuario",
+            Icon = "bi-person-lines-fill",
             PageRoute = "/rendiciones/configuracion/centros-costo-usuario",
             Order = 4,
         };
@@ -181,6 +191,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "config-politicas-gasto",
             ParentCode = "grupo-administrador",
             Name = "Políticas de Gasto",
+            Icon = "bi-clipboard-check",
             PageRoute = "/rendiciones/configuracion/politicas-gasto",
             Order = 5,
         };
@@ -190,6 +201,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "config-proveedores",
             ParentCode = "grupo-administrador",
             Name = "Proveedores de Servicios Externos",
+            Icon = "bi-building",
             PageRoute = "/rendiciones/configuracion/proveedores",
             Order = 6,
         };
@@ -199,6 +211,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "config-consumo-servicios",
             ParentCode = "grupo-administrador",
             Name = "Consumo de Servicios Externos",
+            Icon = "bi-graph-up",
             PageRoute = "/rendiciones/configuracion/consumo-servicios",
             Order = 7,
         };
@@ -208,6 +221,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "config-notificaciones",
             ParentCode = "grupo-administrador",
             Name = "Notificaciones",
+            Icon = "bi-bell",
             PageRoute = "/rendiciones/configuracion/notificaciones",
             Order = 8,
         };
@@ -217,6 +231,7 @@ public sealed class ModuloRendiciones : IModuloPortal
             Code = "config-integracion",
             ParentCode = "grupo-administrador",
             Name = "Integración",
+            Icon = "bi-plug",
             PageRoute = "/rendiciones/configuracion/integracion",
             Order = 9,
         };
@@ -275,7 +290,19 @@ public sealed class ModuloRendiciones : IModuloPortal
         services.AddSingleton<IReceiptImageProcessor, SkiaReceiptImageProcessor>();
         services.AddScoped<IExpensePolicyService, ExpensePolicyService>();
         services.AddScoped<IExpenseService, ExpenseService>();
-        services.AddScoped<IReceiptExtractorService, AzureDocumentIntelligenceExtractorService>();
+        // OCR de comprobantes: dos motores intercambiables (Azure Document Intelligence
+        // y Google Gemini), elegidos en runtime por CompositeReceiptExtractorService
+        // según lo que la compañía tenga configurado en Configuracion > Proveedores.
+        services.AddScoped<AzureDocumentIntelligenceExtractorService>();
+        // Guardrail de RPM de Gemini -- estado compartido por proceso, Singleton.
+        services.AddSingleton<GeminiRateLimiter>();
+        services.AddHttpClient<GeminiReceiptExtractorService>();
+        services.AddScoped<IReceiptExtractorService, CompositeReceiptExtractorService>();
+        // "Probar" de Configuracion > Proveedores: chequea clave/endpoint contra el
+        // endpoint de metadata de cada servicio, sin consumir cuota de OCR. Timeout
+        // corto -- es interactivo, no debe colgar la pantalla.
+        services.AddHttpClient<IExternalServiceHealthChecker, ExternalServiceHealthChecker>()
+            .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(15));
         // Typed client -- IRoutingService se resuelve con un HttpClient propio manejado
         // por HttpClientFactory (pooling de sockets), no un "new HttpClient()" a mano.
         services.AddHttpClient<IRoutingService, AzureMapsRoutingService>();

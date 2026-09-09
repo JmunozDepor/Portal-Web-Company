@@ -24,10 +24,29 @@ este repo en texto plano.
 | `ps_comdepor` | BD on-premise productivo (Comercial Depor) | Operativa |
 | `ps_comdepor_qa` | BD on-premise productivo — testing | Operativa, **candidata a baja** (dueño del proyecto: "creo que se eliminará porque ahora no se está usando" — confirmar antes de dejar de migrarla) |
 
-Otras bases vistas en el mismo servidor al inspeccionarlo (`ps_comdepor_rg`,
-`ps_comdepor_rg_qa`, `ps_comdepor_wms`, `ps_comdepor_wms_qa`) — **no forman parte de
-esta plataforma** (no se les aplicó ninguna migración de este repo), no tocarlas sin
-confirmación explícita de que sí corresponden.
+Otras bases vistas en el mismo servidor al inspeccionarlo (`ps_comdepor_wms`,
+`ps_comdepor_wms_qa`) — **no forman parte de las migraciones de ESTE repo**
+(`PortalSaas.Data.Migrations.PostgreSql` / `PortalSaasDbContext`), no tocarlas con
+`dotnet ef` de este proyecto.
+
+**Bases de PLUGINS externos (base propia por módulo, no la de la plataforma)** — se
+migran con el proyecto de migraciones de SU repo, no con el de acá:
+
+| Base | Módulo / repo | Contexto EF | Migraciones |
+|---|---|---|---|
+| `ps_comdepor_rg` | `Modulo.Rendiciones` (prod) | `RendicionesDbContext` | `Portal SaaS - Plugins/Modulo.Rendiciones/src/Modulo.Rendiciones.Migrations.Postgres` |
+| `ps_comdepor_rg_qa` | `Modulo.Rendiciones` (qa) | `RendicionesDbContext` | ídem |
+| `ps_comdepor_wms` / `_qa` | `Modulo.Wms` | `WmsDbContext` | repo de `Modulo.Wms` |
+
+Comando Rendiciones (usuario técnico `admin_saas`, misma clave que el resto de
+`172.16.122.171`):
+
+```bash
+dotnet ef database update \
+  --project src/Modulo.Rendiciones.Migrations.Postgres \
+  --startup-project src/Modulo.Rendiciones.Migrations.Postgres \
+  --connection "Host=172.16.122.171;Port=5432;Database=ps_comdepor_rg[_qa];Username=admin_saas;Password=<real>"
+```
 
 ## Regla dura
 

@@ -36,7 +36,13 @@ public abstract class RendicionesRolePageModelBase : RendicionesPageModelBase
         var hasRole = await _roles.HasAnyRoleAsync(_currentCompany.CompanyId, _currentUser.UserId, RequiredRoles, _currentUser.IsAdmin);
         if (!hasRole)
         {
-            context.Result = new ForbidResult();
+            // El usuario no forma parte del proceso de Rendiciones (ningún rol para la
+            // compañía activa). En vez de un 403 crudo que rebota al login, se lo manda
+            // a una página de restricción clara -- ver Pages/SinAcceso.cshtml y
+            // Pages/Configuracion/UsuariosRoles para cómo se lo agrega al proceso.
+            // SinAcceso solo hereda RendicionesPageModelBase (sin gate de rol), así que
+            // no hay bucle de redirección.
+            context.Result = new RedirectToPageResult("/SinAcceso");
             return;
         }
 

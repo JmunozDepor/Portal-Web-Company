@@ -157,6 +157,10 @@
             {
                 <form method="get" style="width:260px;">
                     <input type="hidden" name="id" value="@Model.Detalle!.Id" />
+                    @* Sin esto, el GET que dispara el <select> recarga la página y el
+                       script de pestañas vuelve a arrancar en "Datos" -- el usuario
+                       perdía la pestaña Permisos en cada cambio de compañía. *@
+                    <input type="hidden" name="tab" value="permisos" />
                     <label class="form-label">Compañía</label>
                     <select name="companyId" class="form-select" onchange="this.form.submit()">
                         @foreach (var company in Model.Companies)
@@ -196,29 +200,72 @@
                     </div>
                 }
 
-                <span class="d-block mb-2 fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);">Perfil por nodo de menú</span>
-                @if (Model.LeafMenus.Count == 0)
+                <span class="d-block mb-2 fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);">Permisos por pantalla</span>
+                <p class="text-muted" style="font-size:12.5px;">
+                    El árbol refleja el menú de la aplicación. Asigná un perfil a cada pantalla que este
+                    usuario deba usar en
+                    <strong>@(Model.Companies.FirstOrDefault(c => c.Value == Model.SelectedCompanyId.ToString())?.Text ?? "esta compañía")</strong>.
+                    En una carpeta, elegir un perfil lo aplica <strong>en cascada</strong> a todas sus pantallas
+                    (podés ajustar cualquiera después). El guardado solo persiste el perfil de cada pantalla,
+                    no el de las carpetas.
+                </p>
+                @if (Model.MenuTree.Count == 0)
                 {
-                    <p class="text-muted">Todavía no hay nodos de menú finales.</p>
+                    <p class="text-muted">Todavía no hay nodos de menú.</p>
                 }
                 else
                 {
-                    <table class="table-ps">
-                        <thead><tr><th>Menú</th><th style="width:220px;">Perfil</th></tr></thead>
-                        <tbody>
-                            @foreach (var menu in Model.LeafMenus)
+                    <div class="d-flex align-items-center gap-2 mb-2" style="font-size:12.5px;">
+                        <label for="perfil-todas" class="text-muted mb-0">Aplicar a TODAS las pantallas:</label>
+                        <select id="perfil-todas" class="form-select form-select-sm" style="width:auto;">
+                            <option value="__skip__" selected>— elegir —</option>
+                            @foreach (var profile in Model.ProfileOptions)
                             {
-                                var actual = Model.Permissions.ProfileByMenu.GetValueOrDefault(menu.Id);
-                                <tr>
-                                    <td>@menu.Name <span class="text-muted" style="font-size:11px;">(@($"{menu.OriginModule}.{menu.Code}"))</span></td>
+                                <option value="@profile.Value">@profile.Text</option>
+                            }
+                            <option value="">Sin asignar (limpiar todo)</option>
+                        </select>
+                    </div>
+                    <table class="table-ps" id="tabla-permisos-arbol">
+                        <thead><tr><th>Pantalla</th><th style="width:240px;">Perfil</th></tr></thead>
+                        <tbody>
+                            @foreach (var nodo in Model.MenuTree)
+                            {
+                                var esCarpeta = nodo.PagePath is null;
+                                var actual = Model.Permissions.ProfileByMenu.GetValueOrDefault(nodo.Id);
+                                <tr data-menu-id="@nodo.Id" data-parent-id="@(nodo.Level == 0 ? "" : nodo.ParentMenuId?.ToString())" data-carpeta="@(esCarpeta ? "1" : "0")"
+                                    style="@(esCarpeta ? "background:color-mix(in srgb, var(--bs-primary) 4%, transparent);" : "")">
                                     <td>
-                                        <select name="Permissions.ProfileByMenu[@menu.Id]" class="form-select form-select-sm">
-                                            <option value="" selected="@(actual is null or 0)">Sin asignar</option>
-                                            @foreach (var profile in Model.ProfileOptions)
-                                            {
-                                                <option value="@profile.Value" selected="@(profile.Value == actual?.ToString())">@profile.Text</option>
-                                            }
-                                        </select>
+                                        <span style="display:inline-block;width:@(nodo.Level * 20)px;"></span>
+                                        <i class="bi @(nodo.Icon ?? (esCarpeta ? "bi-folder2" : "bi-dot"))"></i>
+                                        <span class="@(esCarpeta ? "fw-semibold" : "")">@nodo.Name</span>
+                                        @if (!esCarpeta)
+                                        {
+                                            <span class="text-muted" style="font-size:11px;">(@($"{nodo.OriginModule}.{nodo.Code}"))</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (esCarpeta)
+                                        {
+                                            <select class="form-select form-select-sm perfil-cascada" data-menu-id="@nodo.Id" title="Aplica el perfil a todas las pantallas de esta carpeta">
+                                                <option value="__skip__" selected>— heredar en pantallas —</option>
+                                                @foreach (var profile in Model.ProfileOptions)
+                                                {
+                                                    <option value="@profile.Value">@profile.Text</option>
+                                                }
+                                                <option value="">Sin asignar (limpiar)</option>
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <select name="Permissions.ProfileByMenu[@nodo.Id]" class="form-select form-select-sm perfil-hoja">
+                                                <option value="" selected="@(actual is null or 0)">Sin asignar</option>
+                                                @foreach (var profile in Model.ProfileOptions)
+                                                {
+                                                    <option value="@profile.Value" selected="@(profile.Value == actual?.ToString())">@profile.Text</option>
+                                                }
+                                            </select>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -257,15 +304,34 @@
         // independientes que se ocultan entre sí).
         (function () {
             var botones = document.querySelectorAll('[data-tab-btn]');
+
+            function activar(nombre) {
+                var destino = null;
+                botones.forEach(function (b) {
+                    var esEste = b.dataset.tabBtn === nombre;
+                    b.classList.toggle('active', esEste);
+                    if (esEste) { destino = b; }
+                });
+                if (destino === null) { return false; }
+                document.querySelectorAll('[data-tab-panel]').forEach(function (p) {
+                    p.style.display = (p.getAttribute('data-tab-panel') === nombre) ? 'block' : 'none';
+                });
+                return true;
+            }
+
             botones.forEach(function (btn) {
                 btn.addEventListener('click', function () {
-                    botones.forEach(function (b) { b.classList.remove('active'); });
-                    btn.classList.add('active');
-                    document.querySelectorAll('[data-tab-panel]').forEach(function (p) {
-                        p.style.display = (p.getAttribute('data-tab-panel') === btn.dataset.tabBtn) ? 'block' : 'none';
-                    });
+                    activar(btn.dataset.tabBtn);
+                    // Deja la pestaña en el hash para que un F5 no la pierda.
+                    history.replaceState(null, '', '#' + btn.dataset.tabBtn);
                 });
             });
+
+            // Al cargar: respeta ?tab=... (lo manda el selector de compañía de Permisos
+            // en su GET) o el #hash de un F5; si no, queda "datos" como en el markup.
+            var params = new URLSearchParams(window.location.search);
+            var inicial = params.get('tab') || window.location.hash.replace('#', '');
+            if (inicial) { activar(inicial); }
         })();
 
         function copiarPassword() {
@@ -273,5 +339,58 @@
             input.select();
             navigator.clipboard.writeText(input.value);
         }
+
+        // Cascada de perfil en el árbol de permisos: elegir un perfil en la fila de una
+        // carpeta lo aplica a TODAS las pantallas (hojas) de su subárbol; el <select>
+        // "Aplicar a TODAS" hace lo mismo sobre el árbol entero. Solo toca los <select>
+        // de las hojas (los únicos con name -> son los que se postean); las carpetas no
+        // persisten perfil. El valor "__skip__" no hace nada (placeholder).
+        (function () {
+            var tabla = document.getElementById('tabla-permisos-arbol');
+            if (!tabla) { return; }
+
+            var filas = Array.prototype.slice.call(tabla.querySelectorAll('tr[data-menu-id]'));
+            var hijosPorPadre = {};
+            filas.forEach(function (fila) {
+                var padre = fila.getAttribute('data-parent-id') || '';
+                (hijosPorPadre[padre] = hijosPorPadre[padre] || []).push(fila);
+            });
+
+            function selectsHojaBajo(menuId) {
+                var out = [];
+                (function bajar(id) {
+                    (hijosPorPadre[id] || []).forEach(function (fila) {
+                        var sel = fila.querySelector('select.perfil-hoja');
+                        if (sel) { out.push(sel); }
+                        bajar(fila.getAttribute('data-menu-id'));
+                    });
+                })(menuId);
+                return out;
+            }
+
+            function aplicar(selects, valor) {
+                selects.forEach(function (sel) {
+                    sel.value = valor;
+                    sel.dispatchEvent(new Event('change', { bubbles: false }));
+                });
+            }
+
+            tabla.querySelectorAll('select.perfil-cascada').forEach(function (sel) {
+                sel.addEventListener('change', function () {
+                    if (sel.value === '__skip__') { return; }
+                    aplicar(selectsHojaBajo(sel.getAttribute('data-menu-id')), sel.value);
+                    sel.value = '__skip__';
+                });
+            });
+
+            var todas = document.getElementById('perfil-todas');
+            if (todas) {
+                todas.addEventListener('change', function () {
+                    if (todas.value === '__skip__') { return; }
+                    aplicar(Array.prototype.slice.call(tabla.querySelectorAll('select.perfil-hoja')), todas.value);
+                    todas.value = '__skip__';
+                });
+            }
+        })();
     </script>
 }

@@ -72,7 +72,9 @@
                     <td>@archivo.TipoDoc</td>
                     <td><span class="badge-status @BadgeEstado(archivo.Estado)">@archivo.Estado</span></td>
                     <td class="text-end">@archivo.Intentos</td>
-                    <td class="small text-danger">@archivo.MensajeError</td>
+                    <td class="small text-danger">
+                        <div class="text-truncate" style="max-width: 360px;" title="@archivo.MensajeError">@(string.IsNullOrEmpty(archivo.MensajeError) ? "—" : archivo.MensajeError)</div>
+                    </td>
                     <td class="small">@archivo.InsertedAt.ToString("dd-MM HH:mm")</td>
                     <td class="doc-list-col-detalle">
                         <form method="post" asp-page-handler="Reintentar" class="d-inline">

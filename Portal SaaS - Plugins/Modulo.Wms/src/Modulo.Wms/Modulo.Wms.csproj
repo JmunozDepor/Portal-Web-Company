@@ -57,7 +57,10 @@
     <ModuloVersion>1.0.0</ModuloVersion>
   </PropertyGroup>
 
-  <Target Name="PublicarComoPlugin" AfterTargets="Build">
+  <!-- SkipPluginPublish=true evita la copia a dist/ (que falla si PortalSaas.Host esta
+       corriendo y tiene el DLL cargado). Sirve para chequeos de compilacion o generar
+       migraciones con el Host arriba. publish-dist.ps1 (que si detiene el Host) no lo usa. -->
+  <Target Name="PublicarComoPlugin" AfterTargets="Build" Condition="'$(SkipPluginPublish)' != 'true'">
     <ItemGroup>
       <ArchivosDelModulo Include="$(OutputPath)**\*.*" />
     </ItemGroup>

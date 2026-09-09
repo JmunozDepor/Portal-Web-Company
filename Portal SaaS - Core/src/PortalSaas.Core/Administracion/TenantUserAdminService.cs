@@ -214,6 +214,82 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<MenuTreeNodeDto>> ListMenuTreeAsync(CancellationToken ct = default)
+    {
+        var todos = await _db.Menus
+            .Where(m => m.IsActive)
+            .Select(m => new { m.Id, m.ParentMenuId, m.OriginModule, m.Code, m.Name, m.Icon, m.PagePath, m.Order })
+            .ToListAsync(ct);
+
+        // Clave 0 = sin padre (raíz) -- los Id reales de Menu son identity, siempre >= 1,
+        // así que 0 nunca colisiona con un padre real y evita un Dictionary<long?, ...>
+        // (ToDictionary exige clave notnull).
+        var hijosPorPadre = todos
+            .GroupBy(m => m.ParentMenuId ?? 0L)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(m => m.OriginModule).ThenBy(m => m.Order).ThenBy(m => m.Name).ToList());
+
+        var ordenado = new List<MenuTreeNodeDto>(todos.Count);
+        var visitados = new HashSet<long>();
+
+        void Recorrer(long parentId, int level)
+        {
+            if (!hijosPorPadre.TryGetValue(parentId, out var hijos))
+            {
+                return;
+            }
+
+            foreach (var m in hijos)
+            {
+                if (!visitados.Add(m.Id))
+                {
+                    continue;
+                }
+
+                ordenado.Add(new MenuTreeNodeDto
+                {
+                    Id = m.Id,
+                    ParentMenuId = m.ParentMenuId,
+                    OriginModule = m.OriginModule,
+                    Code = m.Code,
+                    Name = m.Name,
+                    Icon = m.Icon,
+                    PagePath = m.PagePath,
+                    Level = level,
+                });
+                Recorrer(m.Id, level + 1);
+            }
+        }
+
+        Recorrer(0L, 0);
+
+        // Huérfanos: nodos cuyo padre está inactivo (y por eso no salió en la consulta)
+        // -- se muestran igual, a nivel raíz, para no perderlos de la grilla de permisos.
+        foreach (var m in todos.Where(m => !visitados.Contains(m.Id)).OrderBy(m => m.OriginModule).ThenBy(m => m.Order))
+        {
+            if (!visitados.Add(m.Id))
+            {
+                continue;
+            }
+
+            ordenado.Add(new MenuTreeNodeDto
+            {
+                Id = m.Id,
+                ParentMenuId = m.ParentMenuId,
+                OriginModule = m.OriginModule,
+                Code = m.Code,
+                Name = m.Name,
+                Icon = m.Icon,
+                PagePath = m.PagePath,
+                Level = 0,
+            });
+            Recorrer(m.Id, 1);
+        }
+
+        return ordenado;
+    }
+
     public async Task<UserPermissionsDto?> GetPermissionsAsync(Guid userId, Guid companyId, CancellationToken ct = default)
     {
         if (!await IsOwnUserAsync(userId, ct) || !await IsOwnCompanyAsync(companyId, ct))

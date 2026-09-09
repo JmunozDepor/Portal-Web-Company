@@ -79,6 +79,30 @@ public sealed class LeafMenuDto
     public required string Name { get; init; }
 }
 
+/// <summary>
+/// Nodo del árbol completo de `menus` (carpetas + hojas) para la grilla de permisos
+/// por nodo de Pages/Usuarios/Editar -- a diferencia de <see cref="LeafMenuDto"/>
+/// (solo hojas), trae el vínculo padre y la profundidad para poder dibujar el árbol.
+/// La lista viene en orden de recorrido: cada padre siempre antes que sus hijos.
+/// </summary>
+public sealed class MenuTreeNodeDto
+{
+    public required long Id { get; init; }
+    public long? ParentMenuId { get; init; }
+    public required string OriginModule { get; init; }
+    public required string Code { get; init; }
+    public required string Name { get; init; }
+
+    /// <summary>Icono Bootstrap (bi-*) del nodo, si tiene.</summary>
+    public string? Icon { get; init; }
+
+    /// <summary>Null = nodo de agrupación (carpeta): no navegable, no recibe Profile.</summary>
+    public string? PagePath { get; init; }
+
+    /// <summary>Profundidad (0 = raíz) -- para indentar la fila sin recursión en la vista.</summary>
+    public required int Level { get; init; }
+}
+
 public sealed class UserPermissionsDto
 {
     public required IReadOnlyList<long> MenuGroupIds { get; init; }

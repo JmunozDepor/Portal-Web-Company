@@ -44,7 +44,9 @@
                     <td>@fila.Documento</td>
                     <td><span class="badge-status @BadgeEstado(fila.Status)">@fila.Status</span></td>
                     <td class="text-end">@fila.LineasCount</td>
-                    <td class="small text-danger">@fila.ErrorMsg</td>
+                    <td class="small text-danger">
+                        <div class="text-truncate" style="max-width: 360px;" title="@fila.ErrorMsg">@(string.IsNullOrEmpty(fila.ErrorMsg) ? "—" : fila.ErrorMsg)</div>
+                    </td>
                     <td class="doc-list-col-detalle">
                         <form method="post" asp-page-handler="Resetear" class="d-inline">
                             <input type="hidden" name="tipo" value="@((int)Model.Tipo)" />

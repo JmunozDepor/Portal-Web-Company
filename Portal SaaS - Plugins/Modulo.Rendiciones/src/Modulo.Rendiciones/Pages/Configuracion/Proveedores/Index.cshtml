@@ -28,11 +28,32 @@
 }
 
 <p class="text-muted mb-3">
-    Cada tipo de servicio (Azure Maps, Azure Document Intelligence) puede tener más de
-    una cuenta configurada -- cuando la de mayor prioridad (número más bajo) agota su
-    cuota mensual gratuita, el sistema prueba automáticamente la siguiente antes de
-    dar el servicio por no disponible. La clave se guarda cifrada y nunca se vuelve a
-    mostrar -- dejar el campo en blanco al editar no la cambia.
+    Cada tipo de servicio (Azure Maps, Azure Document Intelligence, Google Gemini) puede
+    tener más de una cuenta configurada -- cuando la de mayor prioridad (número más bajo)
+    agota su cuota gratuita del período (mensual para Azure, <strong>diaria para Gemini</strong>),
+    el sistema prueba automáticamente la siguiente antes de dar el servicio por no disponible.
+    La clave se guarda cifrada y nunca se vuelve a mostrar -- dejar el campo en blanco al editar
+    no la cambia. El botón <i class="bi bi-heart-pulse"></i> <strong>Probar</strong> de cada fila
+    verifica la clave y el endpoint contra el servicio <strong>sin gastar cuota</strong>, y muestra
+    el motivo exacto si algo falla (clave inválida, endpoint mal escrito, modelo inexistente).
+</p>
+<p class="text-muted mb-3">
+    <strong>Google Gemini (capa gratuita):</strong> límite <strong>diario</strong> ~1500 solicitudes
+    (poné <code>1500</code> en "Límite por período"), se reinicia a medianoche hora del Pacífico.
+    Modelo por defecto <code>gemini-2.5-flash</code>; para el tope diario plano de 1500 poné
+    <code>gemini-2.5-flash-lite</code> en el campo Endpoint. Además hay un tope por minuto
+    (~10 req/min) que el módulo respeta solo.
+</p>
+<p class="text-muted mb-3">
+    Para el OCR de comprobantes hay dos motores intercambiables: <strong>Azure Document
+    Intelligence</strong> (cuota por páginas) y <strong>Google Gemini</strong> (cuota por
+    solicitudes; obtené una clave gratis en Google AI Studio). Si configurás los dos,
+    Azure tiene prioridad y Gemini queda de respaldo cuando aquél agota su cupo. En una
+    cuenta de Gemini el <em>Endpoint</em> es opcional -- si lo dejás en blanco se usa el
+    modelo por defecto; si querés fijar otro, poné ahí <strong>solo el id del modelo</strong>
+    (ej. <code>gemini-2.5-flash</code>), <strong>nunca la URL completa</strong> ni con
+    <code>:generateContent</code>. En Azure Document Intelligence el <em>Endpoint</em> sí es
+    la URL del recurso (<code>https://&lt;nombre&gt;.cognitiveservices.azure.com/</code>).
 </p>
 
 <table class="table-ps">
@@ -40,7 +61,7 @@
         <tr>
             <th>Servicio</th>
             <th>Nombre</th>
-            <th>Límite mensual</th>
+            <th>Límite / período</th>
             <th>Prioridad</th>
             <th>Estado</th>
             <th class="col-actions"></th>
@@ -65,6 +86,9 @@
                     }
                 </td>
                 <td class="col-actions">
+                    <form method="post" asp-page="./Index" asp-page-handler="Probar" asp-route-id="@p.Id" class="d-inline">
+                        <button type="submit" class="btn-ghost" title="Probar funcionalidad (verifica clave y endpoint sin consumir cuota)"><i class="bi bi-heart-pulse"></i></button>
+                    </form>
                     <a asp-page="./Index" asp-route-id="@p.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
                 </td>
             </tr>
@@ -86,6 +110,11 @@
                 <h3>Editar: @selected.Name</h3>
                 <a href="~/rendiciones/configuracion/proveedores" class="btn-ghost" aria-label="Cerrar"><i class="bi bi-x-lg"></i></a>
             </div>
+            @* El form de "Eliminar" va SEPARADO (sibling), nunca anidado dentro del de
+               "Guardar" -- un <form> dentro de otro es HTML inválido: el navegador
+               descarta el <form> interno pero respeta su </form>, cerrando el form
+               externo antes de tiempo, y el checkbox "Activo" (con su hidden value=false)
+               y el botón Guardar quedaban fuera -> desmarcar "Activo" no se posteaba. *@
             <form method="post" asp-page-handler="Guardar" asp-route-id="@selected.Id">
                 <div class="drawer-body">
                     <div asp-validation-summary="All" class="text-danger mb-3"></div>
@@ -100,7 +129,7 @@
                         </div>
                         <div class="mb-3">
                             <label asp-for="Edit.Endpoint" class="form-label"></label>
-                            <input asp-for="Edit.Endpoint" class="form-control" placeholder="Solo Document Intelligence" />
+                            <input asp-for="Edit.Endpoint" class="form-control" placeholder="Document Intelligence: URL del recurso (https://xxx.cognitiveservices.azure.com/) · Gemini: SOLO el id del modelo (gemini-2.5-flash) o vacío" />
                         </div>
                         <div class="mb-3">
                             <label asp-for="Edit.ApiKey" class="form-label"></label>
@@ -115,19 +144,21 @@
                             <input asp-for="Edit.Priority" class="form-control" />
                         </div>
                     </div>
-                    <div class="mb-3 d-flex align-items-center gap-2">
-                        <label class="d-flex align-items-center gap-2"><input asp-for="Edit.IsActive" type="checkbox" /> Activo</label>
+                    <div class="mb-3">
+                        <label class="d-flex align-items-center gap-2">
+                            <input asp-for="Edit.IsActive" type="checkbox" />
+                            <span>Activo <span class="text-muted">— desmarcá para que el sistema deje de usar esta cuenta</span></span>
+                        </label>
                     </div>
                 </div>
                 <div class="drawer-footer">
-                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@selected.Id" method="post"
-                          onsubmit="return confirm('¿Eliminar este proveedor?');" class="me-auto">
-                        <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
-                    </form>
+                    <button type="submit" form="form-eliminar-proveedor" class="btn btn-outline-danger btn-sm me-auto"
+                            onclick="return confirm('¿Eliminar este proveedor?');">Eliminar</button>
                     <a href="~/rendiciones/configuracion/proveedores" class="btn-secondary">Cancelar</a>
                     <button type="submit" class="btn-primary">Guardar</button>
                 </div>
             </form>
+            <form id="form-eliminar-proveedor" method="post" asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@selected.Id" hidden></form>
         }
     </aside>
 </div>
@@ -159,7 +190,7 @@
                 </div>
                 <div class="mb-3">
                     <label asp-for="New.Endpoint" class="form-label">Endpoint</label>
-                    <input asp-for="New.Endpoint" class="form-control" placeholder="Solo Document Intelligence" />
+                    <input asp-for="New.Endpoint" class="form-control" placeholder="Document Intelligence: URL del recurso (https://xxx.cognitiveservices.azure.com/) · Gemini: SOLO el id del modelo (gemini-2.5-flash) o vacío" />
                 </div>
                 <div class="mb-3">
                     <label asp-for="New.ApiKey" class="form-label">Clave</label>
@@ -167,8 +198,8 @@
                 </div>
                 <div class="drawer-grid">
                     <div class="mb-3">
-                        <label asp-for="New.MonthlyLimit" class="form-label">Límite mensual</label>
-                        <input asp-for="New.MonthlyLimit" class="form-control" placeholder="Ej. 250000" />
+                        <label asp-for="New.MonthlyLimit" class="form-label">Límite por período</label>
+                        <input asp-for="New.MonthlyLimit" class="form-control" placeholder="Gemini: 1500 / día · Azure DI: 250000 / mes" />
                     </div>
                     <div class="mb-3">
                         <label asp-for="New.Priority" class="form-label">Prioridad</label>

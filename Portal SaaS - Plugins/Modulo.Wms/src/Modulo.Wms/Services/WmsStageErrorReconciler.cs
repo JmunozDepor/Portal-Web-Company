@@ -19,7 +19,7 @@ namespace Modulo.Wms.Services;
 public sealed class WmsStageErrorReconciler : BackgroundService
 {
     private static readonly TimeSpan IntervaloCiclo = TimeSpan.FromSeconds(60);
-    private const int StatusIdRechazado = 101;
+    private const int StatusIdRechazadoDefault = 101;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<WmsStageErrorReconciler> _logger;
@@ -109,22 +109,25 @@ public sealed class WmsStageErrorReconciler : BackgroundService
 
             var contexto = scope.ServiceProvider.GetRequiredService<WmsDbContext>();
             var validador = scope.ServiceProvider.GetRequiredService<IWmsValidationApiClient>();
+            var runtimeSettings = scope.ServiceProvider.GetRequiredService<IWmsRuntimeSettingsService>();
+            var statusRechazado = await runtimeSettings.GetIntAsync(
+                WmsRuntimeSettingsKeys.StageErrorReconcilerStatusRechazado, StatusIdRechazadoDefault, cancellationToken);
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "Item", "stage_item", "item_alternate_code",
                 contexto.WmsSapStageItems.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
-                f => f.ItemCode, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+                f => f.ItemCode, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, statusRechazado, cancellationToken);
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "Store", "stage_store", "code",
                 contexto.WmsSapStageStores.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
-                f => f.Pk, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+                f => f.Pk, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, statusRechazado, cancellationToken);
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "Order", "stage_order_hdr", "order_nbr",
                 contexto.WmsSapStageOrderHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
-                f => f.OrderNbr, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+                f => f.OrderNbr, (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, statusRechazado, cancellationToken);
 
             await ProcesarEntidadAsync(contexto, validador, config, companyId, "IbShipment", "stage_ib_shipment", "shipment_nbr",
                 contexto.WmsSapStageInboundHdrs.Where(f => f.CompanyId == companyId && f.Status == WmsSapStageStatus.Enviado).ToList,
-                f => f.SapDocEntry.ToString(), (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, cancellationToken);
+                f => f.SapDocEntry.ToString(), (f, msg) => { f.Status = WmsSapStageStatus.ErrorWms; f.ErrorMsg = msg; }, statusRechazado, cancellationToken);
 
             await heartbeat.RecordAsync(companyId, "Wms.StageErrorReconciler", "OK", cancellationToken: cancellationToken);
         }
@@ -139,7 +142,7 @@ public sealed class WmsStageErrorReconciler : BackgroundService
         WmsDbContext contexto, IWmsValidationApiClient validador, WmsCloudConfigParaReconciliacion config, Guid companyId,
         string tipoDoc, string entidadStage, string keyField,
         Func<List<TFila>> obtenerPendientes, Func<TFila, string> obtenerClave, Action<TFila, string?> marcarError,
-        CancellationToken cancellationToken)
+        int statusIdRechazado, CancellationToken cancellationToken)
         where TFila : class
     {
         var pendientes = obtenerPendientes();
@@ -150,7 +153,7 @@ public sealed class WmsStageErrorReconciler : BackgroundService
                 config.LgfApiBaseUrl!, config.Usuario, config.Clave, entidadStage, keyField, clave, config.ParentCompanyCode,
                 filtrarPorUrl: true, cancellationToken);
 
-            if (!resultado.Found || resultado.StatusId != StatusIdRechazado)
+            if (!resultado.Found || resultado.StatusId != statusIdRechazado)
             {
                 continue;
             }

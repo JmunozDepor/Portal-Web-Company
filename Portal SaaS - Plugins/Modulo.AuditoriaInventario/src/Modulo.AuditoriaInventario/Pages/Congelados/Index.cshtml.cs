@@ -56,6 +56,12 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
             return Page();
         }
 
+        if (!await _db.Branches.AnyAsync(b => b.Id == Input.BranchId.Value && b.CompanyId == _currentCompany.CompanyId, ct))
+        {
+            ErrorMessage = "La sucursal seleccionada no es válida.";
+            return Page();
+        }
+
         CongeladoParseResult resultado;
         await using (var stream = Input.Archivo.OpenReadStream())
         {
@@ -110,7 +116,7 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
 
         var branchIds = snapshots.Select(s => s.BranchId).Distinct().ToList();
         var branches = await _db.Branches
-            .Where(b => branchIds.Contains(b.Id))
+            .Where(b => branchIds.Contains(b.Id) && b.CompanyId == _currentCompany.CompanyId)
             .ToDictionaryAsync(b => b.Id, b => b.Name, ct);
 
         var lineCounts = await _db.FrozenInventoryLines

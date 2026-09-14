@@ -55,7 +55,7 @@ public sealed class AuditoriaInventarioApiService : IAuditoriaInventarioApiServi
     {
         await using var db = await CreateDbContextAsync(companyId, ct);
 
-        var user = await db.CaptureUsers.FirstOrDefaultAsync(u => u.Username == username && u.IsActive, ct);
+        var user = await db.CaptureUsers.FirstOrDefaultAsync(u => u.CompanyId == companyId && u.Username == username && u.IsActive, ct);
         if (user is null || !PasswordHasher.Verify(password, user.PasswordHash, user.PasswordSalt))
         {
             return null;

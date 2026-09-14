@@ -1,3 +1,4 @@
+using System.Globalization;
 using ClosedXML.Excel;
 using Modulo.AuditoriaInventario.Servicios;
 
@@ -40,6 +41,44 @@ public class CongeladoExcelParserTests
         Assert.Equal("7801234567890", resultado.Filas[0].Barcode);
         Assert.Equal(10, resultado.Filas[0].Quantity);
         Assert.Equal(1500.50m, resultado.Filas[0].UnitCost);
+    }
+
+    [Fact]
+    public void Parse_CeldaDeCostoNumericaBajoCulturaEsCl_NoCorrompeElValor()
+    {
+        // Reproduce el bug: ExcelDataReader devuelve la celda numérica como double
+        // (no string) -- fila[indice].ToString() sin proveedor de formato usa
+        // CultureInfo.CurrentCulture. Bajo es-CL (coma decimal, punto de millar),
+        // 1500.5 se renderizaría como "1500,5", que decimal.TryParse con
+        // NumberStyles.Number e InvariantCulture leería como 15005 (10x).
+        var culturaOriginal = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("es-CL");
+
+            using var wb = new XLWorkbook();
+            var ws = wb.Worksheets.Add("Congelado");
+            ws.Cell(1, 1).Value = "Codigo de Barra";
+            ws.Cell(1, 2).Value = "Cantidad";
+            ws.Cell(1, 3).Value = "Costo Unitario";
+            ws.Cell(2, 1).Value = "7801234567890";
+            ws.Cell(2, 2).Value = 10;
+            ws.Cell(2, 3).Value = 1500.5; // double real, no string -- clave del repro.
+
+            using var ms = new MemoryStream();
+            wb.SaveAs(ms);
+            ms.Position = 0;
+
+            var resultado = CongeladoExcelParser.Parse(ms);
+
+            Assert.Empty(resultado.Errores);
+            Assert.Single(resultado.Filas);
+            Assert.Equal(1500.5m, resultado.Filas[0].UnitCost);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culturaOriginal;
+        }
     }
 
     [Fact]

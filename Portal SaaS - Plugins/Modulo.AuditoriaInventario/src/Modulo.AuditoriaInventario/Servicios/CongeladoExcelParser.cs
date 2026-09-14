@@ -48,7 +48,30 @@ public static class CongeladoExcelParser
         var filas = new List<CongeladoFilaParseada>();
         var errores = new List<CongeladoFilaError>();
 
-        string? Celda(DataRow fila, int indice) => indice < table.Columns.Count ? fila[indice]?.ToString()?.Trim() : null;
+        // ExcelDataReader devuelve las celdas numéricas de un .xlsx como double/decimal
+        // en crudo (no string) -- .ToString() sin proveedor de formato usa
+        // CultureInfo.CurrentCulture, que en el Host es es-CL (coma decimal, punto de
+        // millar). Aguas abajo Parse() usa decimal.TryParse con InvariantCulture y
+        // NumberStyles.Number (que acepta separador de miles), así que "1500,5" bajo
+        // es-CL se leería como 15005 -- corrupción silenciosa. Formateamos explícito
+        // con InvariantCulture para los tipos numéricos que puede devolver el reader.
+        string? Celda(DataRow fila, int indice)
+        {
+            if (indice >= table.Columns.Count)
+            {
+                return null;
+            }
+
+            var valor = fila[indice];
+            return valor switch
+            {
+                null or DBNull => null,
+                double d => d.ToString(CultureInfo.InvariantCulture),
+                decimal m => m.ToString(CultureInfo.InvariantCulture),
+                int i => i.ToString(CultureInfo.InvariantCulture),
+                _ => valor.ToString()?.Trim(),
+            };
+        }
 
         for (var i = 1; i < table.Rows.Count; i++)
         {

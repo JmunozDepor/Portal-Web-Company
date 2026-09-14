@@ -127,7 +127,6 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
         // PWA no tiene una).
         services.AddScoped<IAuditoriaInventarioApiService, AuditoriaInventarioApiService>();
 
-        // TODO: registrar acá los servicios de dominio a medida que se implementen
-        // (IDiferenciaEngine, IAjusteService) -- ver PENDIENTE.md.
+        services.AddScoped<IDiferenciaEngine, DiferenciaEngine>();
     }
 }

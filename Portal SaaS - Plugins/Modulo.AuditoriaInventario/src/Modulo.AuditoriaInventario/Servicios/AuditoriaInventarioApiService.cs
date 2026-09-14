@@ -23,10 +23,12 @@ public sealed class AuditoriaInventarioApiService : IAuditoriaInventarioApiServi
     private const int MaestroPageSize = 1000;
 
     private readonly IExternalDatabaseConnectionService _externalDb;
+    private readonly IDiferenciaEngine _diferenciaEngine;
 
-    public AuditoriaInventarioApiService(IExternalDatabaseConnectionService externalDb)
+    public AuditoriaInventarioApiService(IExternalDatabaseConnectionService externalDb, IDiferenciaEngine diferenciaEngine)
     {
         _externalDb = externalDb;
+        _diferenciaEngine = diferenciaEngine;
     }
 
     private async Task<AuditoriaInventarioDbContext> CreateDbContextAsync(Guid companyId, CancellationToken ct)
@@ -166,8 +168,14 @@ public sealed class AuditoriaInventarioApiService : IAuditoriaInventarioApiServi
         }
         else
         {
+            var estabaCerrada = existing.Status == "CLOSED";
             existing.Status = request.Status;
             existing.ClosedAt = request.Status == "CLOSED" ? DateTimeOffset.UtcNow : existing.ClosedAt;
+
+            if (request.Status == "CLOSED" && !estabaCerrada)
+            {
+                await _diferenciaEngine.CalcularDiferenciasAsync(db, existing.Id, ct);
+            }
         }
 
         await db.SaveChangesAsync(ct);

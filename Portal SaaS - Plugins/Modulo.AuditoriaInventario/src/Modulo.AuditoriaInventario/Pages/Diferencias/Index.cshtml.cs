@@ -1,36 +1,38 @@
 using Microsoft.EntityFrameworkCore;
 using Modulo.AuditoriaInventario.Data;
+using PortalSaas.Abstractions.Contratos;
 
 namespace Modulo.AuditoriaInventario.Pages.Diferencias;
 
 /// <summary>
-/// Listado de diferencias calculadas (capturado vs. congelado). El motor que las
-/// calcula (InventoryDifference materializado al cerrar una sesión) queda
-/// pendiente -- ver PENDIENTE.md. Esta pantalla ya lista lo que exista en
-/// InventoryDifference.
+/// Listado de diferencias calculadas (capturado vs. congelado), materializadas por
+/// DiferenciaEngine al cerrar una sesión.
 /// </summary>
 public sealed class IndexModel : AuditoriaInventarioPageModelBase
 {
     private readonly AuditoriaInventarioDbContext _db;
+    private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(AuditoriaInventarioDbContext db)
+    public IndexModel(AuditoriaInventarioDbContext db, ICurrentCompanyAccessor currentCompany)
     {
         _db = db;
+        _currentCompany = currentCompany;
     }
 
     public IReadOnlyList<DiferenciaRowDto> Diferencias { get; private set; } = Array.Empty<DiferenciaRowDto>();
 
     public async Task OnGetAsync(CancellationToken ct)
     {
-        // Nota: InventoryDifference no lleva company_id directo (llega vía
-        // InventorySession/FrozenInventorySnapshot) -- cuando se implemente el motor,
-        // filtrar acá por la Company actual a través de esos joins.
-        Diferencias = await _db.InventoryDifferences
-            .OrderByDescending(d => d.CalculatedAt)
-            .Take(200)
-            .Select(d => new DiferenciaRowDto(
+        // InventoryDifference no lleva company_id directo -- llega vía InventorySession.
+        Diferencias = await (
+            from d in _db.InventoryDifferences
+            join s in _db.InventorySessions on d.SessionId equals s.Id
+            where s.CompanyId == _currentCompany.CompanyId
+            orderby d.CalculatedAt descending
+            select new DiferenciaRowDto(
                 d.Id, d.SessionId, d.Barcode, d.CapturedQuantity, d.FrozenQuantity,
                 d.QuantityDiff, d.AmountDiff, d.CalculatedAt))
+            .Take(200)
             .ToListAsync(ct);
     }
 

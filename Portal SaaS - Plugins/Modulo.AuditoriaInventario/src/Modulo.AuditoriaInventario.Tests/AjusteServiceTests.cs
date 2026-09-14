@@ -12,7 +12,7 @@ public class AjusteServiceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
 
-    private static async Task<(AuditoriaInventarioDbContext Db, InventoryAdjustment Ajuste)> PrepararEscenarioAsync(
+    private static async Task<(AuditoriaInventarioDbContext Db, InventoryAdjustment Ajuste, Guid CompanyId)> PrepararEscenarioAsync(
         string? sapCompanyCode, string? sapWarehouseCode, string? sapMaterialCode)
     {
         var db = CrearContexto();
@@ -53,17 +53,17 @@ public class AjusteServiceTests
         db.InventoryAdjustments.Add(ajuste);
         await db.SaveChangesAsync();
 
-        return (db, ajuste);
+        return (db, ajuste, companyId);
     }
 
     [Fact]
     public async Task AprobarAsync_ConMapeoSapCompleto_EncolaYCambiaEstado()
     {
-        var (db, ajuste) = await PrepararEscenarioAsync("1000", "WH01", "MAT-AAA");
+        var (db, ajuste, companyId) = await PrepararEscenarioAsync("1000", "WH01", "MAT-AAA");
         var service = new AjusteService();
         var aprobadoPor = Guid.NewGuid();
 
-        var resultado = await service.AprobarAsync(db, ajuste.Id, aprobadoPor);
+        var resultado = await service.AprobarAsync(db, ajuste.Id, companyId, aprobadoPor);
 
         Assert.True(resultado.Exitoso);
         var recargado = await db.InventoryAdjustments.FirstAsync(a => a.Id == ajuste.Id);
@@ -81,10 +81,10 @@ public class AjusteServiceTests
     [Fact]
     public async Task AprobarAsync_SinCodigoSapEnSucursal_RechazaSinCambiarEstado()
     {
-        var (db, ajuste) = await PrepararEscenarioAsync(null, null, "MAT-AAA");
+        var (db, ajuste, companyId) = await PrepararEscenarioAsync(null, null, "MAT-AAA");
         var service = new AjusteService();
 
-        var resultado = await service.AprobarAsync(db, ajuste.Id, Guid.NewGuid());
+        var resultado = await service.AprobarAsync(db, ajuste.Id, companyId, Guid.NewGuid());
 
         Assert.False(resultado.Exitoso);
         var recargado = await db.InventoryAdjustments.FirstAsync(a => a.Id == ajuste.Id);
@@ -95,12 +95,27 @@ public class AjusteServiceTests
     [Fact]
     public async Task AprobarAsync_SinProductoMapeadoASap_RechazaSinCambiarEstado()
     {
-        var (db, ajuste) = await PrepararEscenarioAsync("1000", "WH01", null);
+        var (db, ajuste, companyId) = await PrepararEscenarioAsync("1000", "WH01", null);
         var service = new AjusteService();
 
-        var resultado = await service.AprobarAsync(db, ajuste.Id, Guid.NewGuid());
+        var resultado = await service.AprobarAsync(db, ajuste.Id, companyId, Guid.NewGuid());
 
         Assert.False(resultado.Exitoso);
+        Assert.Empty(await db.SapAdjustmentQueueItems.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AprobarAsync_AjusteDeOtraCompania_RechazaSinEncolar()
+    {
+        var (db, ajuste, _) = await PrepararEscenarioAsync("1000", "WH01", "MAT-AAA");
+        var service = new AjusteService();
+        var otraCompanyId = Guid.NewGuid();
+
+        var resultado = await service.AprobarAsync(db, ajuste.Id, otraCompanyId, Guid.NewGuid());
+
+        Assert.False(resultado.Exitoso);
+        var recargado = await db.InventoryAdjustments.FirstAsync(a => a.Id == ajuste.Id);
+        Assert.Equal("PROPOSED", recargado.Status);
         Assert.Empty(await db.SapAdjustmentQueueItems.ToListAsync());
     }
 }

@@ -45,7 +45,7 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
 
     public async Task<IActionResult> OnPostAprobarAsync(long id, CancellationToken ct)
     {
-        var resultado = await _ajusteService.AprobarAsync(_db, id, _currentUser.UserId, ct);
+        var resultado = await _ajusteService.AprobarAsync(_db, id, _currentCompany.CompanyId, _currentUser.UserId, ct);
         if (!resultado.Exitoso)
         {
             ErrorMessage = resultado.Mensaje;
@@ -58,7 +58,17 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
 
     public async Task<IActionResult> OnPostRechazarAsync(long id, CancellationToken ct)
     {
-        var ajuste = await _db.InventoryAdjustments.FirstOrDefaultAsync(a => a.Id == id, ct);
+        // Mismo join por CompanyId que OnGetAsync -- InventoryAdjustment no lleva
+        // company_id directo, así que el scoping por compañía tiene que pasar por
+        // InventoryDifference -> InventorySession.
+        var ajuste = await (
+            from a in _db.InventoryAdjustments
+            join d in _db.InventoryDifferences on a.DifferenceId equals d.Id
+            join s in _db.InventorySessions on d.SessionId equals s.Id
+            where a.Id == id && s.CompanyId == _currentCompany.CompanyId
+            select a)
+            .FirstOrDefaultAsync(ct);
+
         if (ajuste is null || ajuste.Status != "PROPOSED")
         {
             ErrorMessage = "El ajuste ya no está disponible para rechazar.";

@@ -10,7 +10,7 @@ namespace Modulo.AuditoriaInventario.Servicios;
 /// </summary>
 public interface IAjusteService
 {
-    Task<AprobarAjusteResultado> AprobarAsync(AuditoriaInventarioDbContext db, long adjustmentId, Guid approvedByUserId, CancellationToken ct = default);
+    Task<AprobarAjusteResultado> AprobarAsync(AuditoriaInventarioDbContext db, long adjustmentId, Guid companyId, Guid approvedByUserId, CancellationToken ct = default);
 }
 
 public sealed record AprobarAjusteResultado(bool Exitoso, string Mensaje);

@@ -6,7 +6,7 @@ namespace Modulo.AuditoriaInventario.Servicios;
 
 public sealed class AjusteService : IAjusteService
 {
-    public async Task<AprobarAjusteResultado> AprobarAsync(AuditoriaInventarioDbContext db, long adjustmentId, Guid approvedByUserId, CancellationToken ct = default)
+    public async Task<AprobarAjusteResultado> AprobarAsync(AuditoriaInventarioDbContext db, long adjustmentId, Guid companyId, Guid approvedByUserId, CancellationToken ct = default)
     {
         var ajuste = await db.InventoryAdjustments.FirstOrDefaultAsync(a => a.Id == adjustmentId, ct);
         if (ajuste is null || ajuste.Status != "PROPOSED")
@@ -24,6 +24,13 @@ public sealed class AjusteService : IAjusteService
         if (sesion is null)
         {
             return new AprobarAjusteResultado(false, "La sesión asociada a esta diferencia ya no existe.");
+        }
+
+        if (sesion.CompanyId != companyId)
+        {
+            // Mismo mensaje que "no disponible para aprobar" -- no revelar que existe
+            // una fila coincidente en otra compañía.
+            return new AprobarAjusteResultado(false, "El ajuste ya no está disponible para aprobar.");
         }
 
         var sucursal = await db.Branches.FirstOrDefaultAsync(b => b.Id == sesion.BranchId, ct);

@@ -80,6 +80,16 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
             PageRoute = "/auditoria-inventario/ajustes",
             Order = 4,
         };
+
+        yield return new MenuItemDefinition
+        {
+            Code = "sucursales",
+            ParentCode = "raiz",
+            Name = "Sucursales",
+            Icon = "bi-shop",
+            PageRoute = "/auditoria-inventario/sucursales",
+            Order = 5,
+        };
     }
 
     public void RegisterServices(IServiceCollection services)

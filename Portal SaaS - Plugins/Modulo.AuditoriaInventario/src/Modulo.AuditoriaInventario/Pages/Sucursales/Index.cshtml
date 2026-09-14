@@ -1,0 +1,87 @@
+@page "/auditoria-inventario/sucursales"
+@model Modulo.AuditoriaInventario.Pages.Sucursales.IndexModel
+@{
+    ViewData["Title"] = "Sucursales";
+    var formularioAbierto = Model.Editando is not null || !ViewData.ModelState.IsValid;
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Sucursales</h2>
+        <button type="button" class="btn-primary" data-drawer-open="drawer-sucursal">+ Nueva sucursal</button>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <table class="table-ps">
+        <thead><tr><th>Código</th><th>Nombre</th><th>Cód. SAP compañía</th><th>Cód. SAP bodega</th><th>Activa</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var s in Model.Sucursales)
+            {
+                <tr class="@(s.IsActive ? "" : "row-inactive")">
+                    <td>@s.BranchCode</td>
+                    <td>@s.Name</td>
+                    <td>@(s.SapCompanyCode ?? "-")</td>
+                    <td>@(s.SapWarehouseCode ?? "-")</td>
+                    <td>@(s.IsActive ? "Sí" : "No")</td>
+                    <td class="col-actions">
+                        <a href="~/auditoria-inventario/sucursales?editando=@s.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                        <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@s.Id" method="post" class="d-inline-block"
+                              onsubmit="return confirm('¿Eliminar la sucursal &quot;@s.Name&quot;?');">
+                            <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Sucursales.Count == 0)
+            {
+                <tr><td colspan="6" class="text-muted">Sin sucursales todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+
+    <div id="drawer-sucursal" class="drawer-overlay @(formularioAbierto ? "is-open" : "")" data-drawer>
+        <aside class="drawer-panel @(formularioAbierto ? "is-open" : "")">
+            <div class="drawer-header">
+                <h3>@(Model.Editando is null ? "Nueva sucursal" : "Editar sucursal")</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form asp-page="./Index" asp-page-handler="Guardar" asp-route-editando="@Model.Editando" method="post">
+                <div class="drawer-body">
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                    <div class="mb-3">
+                        <label asp-for="Input.BranchCode" class="form-label">Código</label>
+                        <input asp-for="Input.BranchCode" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.Name" class="form-label">Nombre</label>
+                        <input asp-for="Input.Name" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.SapCompanyCode" class="form-label">Código SAP compañía</label>
+                        <input asp-for="Input.SapCompanyCode" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.SapWarehouseCode" class="form-label">Código SAP bodega</label>
+                        <input asp-for="Input.SapWarehouseCode" class="form-control" />
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input asp-for="Input.IsActive" type="checkbox" class="form-check-input" />
+                        <label asp-for="Input.IsActive" class="form-check-label">Activa</label>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+</div>

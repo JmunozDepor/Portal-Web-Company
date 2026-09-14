@@ -1,0 +1,63 @@
+@page "/auditoria-inventario/sesiones"
+@model Modulo.AuditoriaInventario.Pages.Sesiones.IndexModel
+@{
+    ViewData["Title"] = "Sesiones de Conteo";
+}
+
+<div class="card-surface">
+    <h2 class="mb-1">Sesiones de Conteo</h2>
+    <p class="text-muted mb-3">
+        Sesiones de captura en curso e históricas, creadas desde la aplicación móvil
+        de captura. Esta pantalla es de solo seguimiento -- las sesiones se abren y
+        cierran desde el dispositivo del auditor.
+    </p>
+
+    <form method="get" class="mb-3 d-flex gap-2 align-items-end">
+        <div>
+            <label class="form-label">Estado</label>
+            <select name="EstadoFiltro" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                <option value="ACTIVE" selected="@(Model.EstadoFiltro == "ACTIVE")">Activa</option>
+                <option value="CLOSED" selected="@(Model.EstadoFiltro == "CLOSED")">Cerrada</option>
+                <option value="SYNCED" selected="@(Model.EstadoFiltro == "SYNCED")">Sincronizada</option>
+            </select>
+        </div>
+    </form>
+
+    @if (Model.Sesiones.Count == 0)
+    {
+        <p class="text-muted">No hay sesiones de conteo para el filtro seleccionado.</p>
+    }
+    else
+    {
+        <div class="document-list-table-wrapper">
+            <table class="table document-list-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Sucursal</th>
+                        <th>Nro. Inventario</th>
+                        <th>Responsable</th>
+                        <th>Estado</th>
+                        <th>Valida Maestro</th>
+                        <th>Inicio</th>
+                        <th>Cierre</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.Sesiones)
+                    {
+                        <tr>
+                            <td>@s.BranchName</td>
+                            <td>@s.InventoryNumber</td>
+                            <td>@s.ResponsibleUserName</td>
+                            <td>@s.Status</td>
+                            <td>@(s.ValidateAgainstMaster ? "Sí" : "No")</td>
+                            <td>@s.StartedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
+                            <td>@(s.ClosedAt?.ToLocalTime().ToString("dd-MM-yyyy HH:mm") ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

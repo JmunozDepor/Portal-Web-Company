@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Modulo.AuditoriaInventario</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <!-- PluginManager carga el .dll directo de una carpeta (AssemblyLoadContext
+         aislado) esperando que Microsoft.EntityFrameworkCore.SqlServer/Npgsql estén
+         físicamente al lado, mismo motivo que Modulo.Rendiciones.csproj/Modulo.Wms.csproj. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Permite a Modulo.AuditoriaInventario.Tests ejercer lógica interna (motor de
+         diferencias, cola SAP) a través de un contenedor DI real, mismo criterio que
+         Modulo.Wms.csproj. -->
+    <InternalsVisibleTo Include="Modulo.AuditoriaInventario.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- REGLA DURA (ver docs/09-GUIA-DESARROLLO-PLUGINS.md §1 del portal): un plugin
+         referencia SOLO PortalSaas.Abstractions. Nunca PortalSaas.Core ni PortalSaas.Host,
+         nunca otro plugin (en particular: nunca Modulo.Inventario ni
+         Modulo.ImportacionGenerica: este módulo es deliberadamente autocontenido,
+         decisión explícita del dueño del proyecto).
+
+         TEMPORAL: ProjectReference relativa cruzando repos (asume que este repo y
+         "Portal SaaS - Core" viven como carpetas hermanas bajo
+         "Proyecto Portal Web-Company"), mismo criterio que Modulo.Rendiciones.csproj /
+         Modulo.Wms.csproj, reemplazar por PackageReference NuGet apenas ese paquete
+         exista. -->
+    <ProjectReference Include="..\..\..\..\Portal SaaS - Core\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Base de datos propia del módulo, motor dual (Postgres/SQL Server), resuelta
+         self-service vía IExternalDatabaseConnectionService (PortalSaas.Abstractions),
+         que decide en runtime cuál de los dos proveedores de EF Core usar según lo que
+         la Company tenga configurado. REGLA (ver docs/09-GUIA-DESARROLLO-PLUGINS.md
+         §1/§6): un plugin con base propia NUNCA asume un solo motor, referencia los DOS
+         proveedores y elige en runtime, nunca en tiempo de compilación. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+  </ItemGroup>
+
+  <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo, mismo
+       patrón que Modulo.Rendiciones/Modulo.Wms, ver docs/09-GUIA-DESARROLLO-PLUGINS.md
+       §7 del portal para cómo llega de ahí a artifacts/plugins/ del Host. -->
+  <PropertyGroup>
+    <ModuloVersion>1.0.0</ModuloVersion>
+  </PropertyGroup>
+
+  <!-- SkipPluginPublish=true evita la copia a dist/ (falla si PortalSaas.Host está
+       corriendo y tiene el DLL cargado), mismo criterio que Modulo.Wms.csproj. -->
+  <Target Name="PublicarComoPlugin" AfterTargets="Build" Condition="'$(SkipPluginPublish)' != 'true'">
+    <ItemGroup>
+      <ArchivosDelModulo Include="$(OutputPath)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ArchivosDelModulo)"
+          DestinationFolder="..\..\dist\$(MSBuildProjectName)\$(ModuloVersion)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

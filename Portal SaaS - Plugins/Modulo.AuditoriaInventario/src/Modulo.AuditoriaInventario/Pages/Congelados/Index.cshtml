@@ -1,0 +1,49 @@
+@page "/auditoria-inventario/congelados"
+@model Modulo.AuditoriaInventario.Pages.Congelados.IndexModel
+@{
+    ViewData["Title"] = "Congelados";
+}
+
+<div class="card-surface">
+    <h2 class="mb-1">Inventario Congelado</h2>
+    <p class="text-muted mb-3">
+        Congelado extraído del punto de venta y cargado vía Excel contra un Nro. de
+        Inventario. La carga de archivo está pendiente de implementar (ver
+        PENDIENTE.md) -- esta pantalla ya lista lo cargado hasta ahora.
+    </p>
+
+    @* TODO: formulario de carga de Excel (archivo + Sucursal + Nro. de Inventario). *@
+
+    @if (Model.Congelados.Count == 0)
+    {
+        <p class="text-muted">Todavía no hay congelados cargados.</p>
+    }
+    else
+    {
+        <div class="document-list-table-wrapper">
+            <table class="table document-list-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Sucursal</th>
+                        <th>Nro. Inventario</th>
+                        <th>Archivo</th>
+                        <th>Líneas</th>
+                        <th>Cargado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Congelados)
+                    {
+                        <tr>
+                            <td>@c.BranchName</td>
+                            <td>@c.InventoryNumber</td>
+                            <td>@c.FileName</td>
+                            <td>@c.LineCount.ToString("N0")</td>
+                            <td>@c.LoadedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

@@ -1,0 +1,49 @@
+@page "/auditoria-inventario/diferencias"
+@model Modulo.AuditoriaInventario.Pages.Diferencias.IndexModel
+@{
+    ViewData["Title"] = "Diferencias";
+}
+
+<div class="card-surface">
+    <h2 class="mb-1">Diferencias de Inventario</h2>
+    <p class="text-muted mb-3">
+        Comparación entre lo capturado por el equipo de auditoría y el inventario
+        congelado, por cantidad y monto. El motor de cálculo está pendiente de
+        implementar (ver PENDIENTE.md).
+    </p>
+
+    @if (Model.Diferencias.Count == 0)
+    {
+        <p class="text-muted">Todavía no hay diferencias calculadas.</p>
+    }
+    else
+    {
+        <div class="document-list-table-wrapper">
+            <table class="table document-list-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Código de Barra</th>
+                        <th>Capturado</th>
+                        <th>Congelado</th>
+                        <th>Diferencia Cant.</th>
+                        <th>Diferencia Monto</th>
+                        <th>Calculado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.Diferencias)
+                    {
+                        <tr>
+                            <td>@d.Barcode</td>
+                            <td>@d.CapturedQuantity</td>
+                            <td>@d.FrozenQuantity</td>
+                            <td class="@(d.QuantityDiff < 0 ? "text-danger" : d.QuantityDiff > 0 ? "text-success" : "")">@d.QuantityDiff</td>
+                            <td class="@(d.AmountDiff < 0 ? "text-danger" : d.AmountDiff > 0 ? "text-success" : "")">@d.AmountDiff.ToString("N2")</td>
+                            <td>@d.CalculatedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

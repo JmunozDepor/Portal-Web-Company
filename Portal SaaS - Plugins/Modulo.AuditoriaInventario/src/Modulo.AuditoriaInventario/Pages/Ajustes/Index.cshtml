@@ -1,0 +1,64 @@
+@page "/auditoria-inventario/ajustes"
+@model Modulo.AuditoriaInventario.Pages.Ajustes.IndexModel
+@{
+    ViewData["Title"] = "Ajustes";
+}
+
+<div class="card-surface">
+    <h2 class="mb-1">Ajustes de Inventario</h2>
+    <p class="text-muted mb-3">
+        Ajustes propuestos a partir de una diferencia detectada. Requieren
+        aprobación manual antes de encolarse hacia SAP -- nunca se envían
+        automáticamente.
+    </p>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    @if (Model.Ajustes.Count == 0)
+    {
+        <p class="text-muted">Todavía no hay ajustes propuestos.</p>
+    }
+    else
+    {
+        <div class="document-list-table-wrapper">
+            <table class="table document-list-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Estado</th>
+                        <th>Propuesto</th>
+                        <th>Aprobado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model.Ajustes)
+                    {
+                        <tr>
+                            <td>@a.Status</td>
+                            <td>@a.ProposedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
+                            <td>@(a.ApprovedAt?.ToLocalTime().ToString("dd-MM-yyyy HH:mm") ?? "-")</td>
+                            <td>
+                                @if (a.Status == "PROPOSED")
+                                {
+                                    <form method="post" asp-page-handler="Aprobar" asp-route-id="@a.Id" class="d-inline" asp-antiforgery="true">
+                                        <button type="submit" class="btn btn-sm btn-success">Aprobar</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Rechazar" asp-route-id="@a.Id" class="d-inline" asp-antiforgery="true">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

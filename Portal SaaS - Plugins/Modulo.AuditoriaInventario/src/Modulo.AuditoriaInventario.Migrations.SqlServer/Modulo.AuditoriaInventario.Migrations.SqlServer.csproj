@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Proyecto de solo herramientas: nunca se referencia desde el plugin en
+         runtime. Ver el comentario equivalente en
+         Modulo.AuditoriaInventario.Migrations.Postgres para el motivo de separarlo
+         del proyecto del plugin. Comercial Depor (cliente on-premise) resuelve a
+         este motor vía IExternalDatabaseConnectionService. -->
+    <ProjectReference Include="..\Modulo.AuditoriaInventario\Modulo.AuditoriaInventario.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

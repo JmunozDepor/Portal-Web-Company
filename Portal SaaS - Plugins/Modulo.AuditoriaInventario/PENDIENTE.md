@@ -129,3 +129,22 @@ proyecto principal (`Proyecto Portal Web-Company`).
    endpoints de lectura para la PWA.
 8. Sin probar de punta a punta: ningún flujo real con el Host corriendo, ninguna
    llamada real desde una PWA.
+
+## Fuera de alcance — revisión final del plan (14 sep 2026)
+
+La revisión final de todo el branch del plan
+`docs/superpowers/plans/2026-09-14-auditoria-inventario-logica-negocio.md` (7
+tareas) encontró dos gaps que se dejan deliberadamente sin tocar en esta ronda de
+fixes -- necesitan su propia tarea futura:
+
+1. **No existe el flujo "proponer ajuste desde una diferencia"**: nada en el portal
+   crea hoy un `InventoryAdjustment` en estado `PROPOSED` -- la cola de
+   aprobación/mapeo SAP de `Ajustes/Index` (Tarea 4 del plan) es funcionalmente
+   inalcanzable desde la UI hasta que exista esa pantalla.
+2. Dos consultas sin scope por `CompanyId`, **preexistentes** (no introducidas por
+   este plan, ninguna tarea las tocó) y marcadas como deuda técnica conocida, fuera
+   de alcance de esta ronda de fixes:
+   `AuditoriaInventarioApiService.UploadCapturasAsync` escribe `SessionId`/
+   `SectorId` provistos por el cliente sin validar que le pertenezcan a la
+   compañía, y el camino CREATE de `UpsertSesionAsync` (el de UPDATE sí valida)
+   acepta `request.BranchId` sin validarlo contra la compañía del caller.

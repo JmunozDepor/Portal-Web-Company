@@ -40,7 +40,20 @@ public sealed class DiferenciaEngine : IDiferenciaEngine
             .ToListAsync(ct);
 
         var existentes = await db.InventoryDifferences.Where(d => d.SessionId == sessionId).ToListAsync(ct);
-        db.InventoryDifferences.RemoveRange(existentes);
+
+        // InventoryAdjustment.DifferenceId -> InventoryDifference.Id es
+        // DeleteBehavior.Restrict -- si alguna de estas diferencias ya tiene un
+        // ajuste propuesto/aprobado encima, borrarla revienta con DbUpdateException
+        // contra una base real (el InMemory provider de los tests no valida FKs).
+        // No fallamos todo el recálculo por eso: dejamos esas filas intactas y solo
+        // reemplazamos el resto.
+        var idsExistentes = existentes.Select(d => d.Id).ToList();
+        var idsConAjuste = await db.InventoryAdjustments
+            .Where(a => idsExistentes.Contains(a.DifferenceId))
+            .Select(a => a.DifferenceId)
+            .ToListAsync(ct);
+        var aBorrar = existentes.Where(d => !idsConAjuste.Contains(d.Id)).ToList();
+        db.InventoryDifferences.RemoveRange(aBorrar);
 
         var ahora = DateTimeOffset.UtcNow;
         var nuevas = new List<InventoryDifference>();

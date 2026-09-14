@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Modulo.AuditoriaInventario.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Modulo.AuditoriaInventario.Migrations.Postgres.Migrations
 {
     [DbContext(typeof(AuditoriaInventarioDbContext))]
-    partial class AuditoriaInventarioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914191804_AddSapMappingColumns")]
+    partial class AddSapMappingColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

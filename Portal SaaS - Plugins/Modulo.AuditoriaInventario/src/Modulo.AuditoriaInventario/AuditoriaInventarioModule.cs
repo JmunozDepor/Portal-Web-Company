@@ -128,5 +128,6 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
         services.AddScoped<IAuditoriaInventarioApiService, AuditoriaInventarioApiService>();
 
         services.AddScoped<IDiferenciaEngine, DiferenciaEngine>();
+        services.AddScoped<IAjusteService, AjusteService>();
     }
 }

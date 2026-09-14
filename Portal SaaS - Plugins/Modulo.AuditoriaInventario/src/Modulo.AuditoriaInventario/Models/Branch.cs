@@ -12,4 +12,8 @@ public class Branch
     public required string Name { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public string? SapCompanyCode { get; set; }
+
+    public string? SapWarehouseCode { get; set; }
 }

@@ -51,6 +51,16 @@ namespace Modulo.AuditoriaInventario.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(200)")
                         .HasColumnName("name");
 
+                    b.Property<string>("SapCompanyCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("sap_company_code");
+
+                    b.Property<string>("SapWarehouseCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("sap_warehouse_code");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "BranchCode")
@@ -536,6 +546,11 @@ namespace Modulo.AuditoriaInventario.Migrations.SqlServer.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("product_code");
+
+                    b.Property<string>("SapMaterialCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("sap_material_code");
 
                     b.Property<string>("Source")
                         .IsRequired()

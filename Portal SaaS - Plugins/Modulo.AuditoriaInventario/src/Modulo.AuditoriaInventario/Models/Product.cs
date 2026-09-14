@@ -25,6 +25,8 @@ public class Product
 
     public string? Line { get; set; }
 
+    public string? SapMaterialCode { get; set; }
+
     /// <summary>MANUAL | INTEGRACION.</summary>
     public string Source { get; set; } = "MANUAL";
 

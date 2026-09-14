@@ -52,6 +52,7 @@ public class AuditoriaInventarioDbContext : DbContext
             e.Property(x => x.Line).HasColumnName("line").HasMaxLength(100);
             e.Property(x => x.Source).HasColumnName("source").HasMaxLength(20).IsRequired();
             e.Property(x => x.LoadedAt).HasColumnName("loaded_at").IsRequired();
+            e.Property(x => x.SapMaterialCode).HasColumnName("sap_material_code").HasMaxLength(50);
             // Búsqueda por código de barra es la ruta caliente de la PWA (150K+ filas) --
             // único por compañía, nunca dos productos con el mismo barcode en la misma Company.
             e.HasIndex(x => new { x.CompanyId, x.Barcode }).IsUnique().HasDatabaseName("uq_products_company_id_barcode");
@@ -67,6 +68,8 @@ public class AuditoriaInventarioDbContext : DbContext
             e.Property(x => x.BranchCode).HasColumnName("branch_code").HasMaxLength(20).IsRequired();
             e.Property(x => x.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
             e.Property(x => x.IsActive).HasColumnName("is_active").IsRequired();
+            e.Property(x => x.SapCompanyCode).HasColumnName("sap_company_code").HasMaxLength(20);
+            e.Property(x => x.SapWarehouseCode).HasColumnName("sap_warehouse_code").HasMaxLength(20);
             e.HasIndex(x => new { x.CompanyId, x.BranchCode }).IsUnique().HasDatabaseName("uq_branches_company_id_branch_code");
         });
 

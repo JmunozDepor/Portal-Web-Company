@@ -1,0 +1,83 @@
+@page "/auditoria-inventario/capturadores"
+@model Modulo.AuditoriaInventario.Pages.Capturadores.IndexModel
+@{
+    ViewData["Title"] = "Capturadores";
+    var formularioAbierto = Model.Editando is not null || !ViewData.ModelState.IsValid;
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Capturadores</h2>
+        <button type="button" class="btn-primary" data-drawer-open="drawer-capturador">+ Nuevo capturador</button>
+    </div>
+
+    <p class="text-muted mb-3">Usuarios livianos para el equipo de captura (PWA) -- login independiente del portal.</p>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <table class="table-ps">
+        <thead><tr><th>Usuario</th><th>Nombre completo</th><th>Activo</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var c in Model.Capturadores)
+            {
+                <tr class="@(c.IsActive ? "" : "row-inactive")">
+                    <td>@c.Username</td>
+                    <td>@(c.FullName ?? "-")</td>
+                    <td>@(c.IsActive ? "Sí" : "No")</td>
+                    <td class="col-actions">
+                        <a href="~/auditoria-inventario/capturadores?editando=@c.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                        <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@c.Id" method="post" class="d-inline-block"
+                              onsubmit="return confirm('¿Eliminar el capturador &quot;@c.Username&quot;?');">
+                            <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Capturadores.Count == 0)
+            {
+                <tr><td colspan="4" class="text-muted">Sin capturadores todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+
+    <div id="drawer-capturador" class="drawer-overlay @(formularioAbierto ? "is-open" : "")" data-drawer>
+        <aside class="drawer-panel @(formularioAbierto ? "is-open" : "")">
+            <div class="drawer-header">
+                <h3>@(Model.Editando is null ? "Nuevo capturador" : "Editar capturador")</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form asp-page="./Index" asp-page-handler="Guardar" asp-route-editando="@Model.Editando" method="post">
+                <div class="drawer-body">
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                    <div class="mb-3">
+                        <label asp-for="Input.Username" class="form-label">Usuario</label>
+                        <input asp-for="Input.Username" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.FullName" class="form-label">Nombre completo</label>
+                        <input asp-for="Input.FullName" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.Password" class="form-label">Contraseña</label>
+                        <input asp-for="Input.Password" type="password" class="form-control" placeholder="@(Model.Editando is null ? "" : "Dejar en blanco para no cambiarla")" />
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input asp-for="Input.IsActive" type="checkbox" class="form-check-input" />
+                        <label asp-for="Input.IsActive" class="form-check-label">Activo</label>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+</div>

@@ -100,6 +100,16 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
             PageRoute = "/auditoria-inventario/sectores",
             Order = 6,
         };
+
+        yield return new MenuItemDefinition
+        {
+            Code = "capturadores",
+            ParentCode = "raiz",
+            Name = "Capturadores",
+            Icon = "bi-person-badge",
+            PageRoute = "/auditoria-inventario/capturadores",
+            Order = 7,
+        };
     }
 
     public void RegisterServices(IServiceCollection services)

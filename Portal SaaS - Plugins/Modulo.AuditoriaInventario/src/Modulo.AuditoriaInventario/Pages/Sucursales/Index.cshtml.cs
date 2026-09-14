@@ -62,6 +62,10 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
             {
                 var sucursal = await _db.Branches.FirstOrDefaultAsync(b => b.Id == id && b.CompanyId == _currentCompany.CompanyId, ct)
                     ?? throw new InvalidOperationException("La sucursal no existe.");
+                if (await _db.Branches.AnyAsync(b => b.CompanyId == _currentCompany.CompanyId && b.BranchCode == Input.BranchCode && b.Id != id, ct))
+                {
+                    throw new InvalidOperationException($"Ya existe una sucursal con el código '{Input.BranchCode}'.");
+                }
                 AplicarInput(sucursal);
                 SuccessMessage = "Sucursal actualizada.";
             }

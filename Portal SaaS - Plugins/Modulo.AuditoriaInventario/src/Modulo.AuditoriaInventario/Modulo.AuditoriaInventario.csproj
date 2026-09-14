@@ -52,6 +52,18 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Parser del Excel de congelado exportado desde el punto de venta; ver
+         Servicios/CongeladoExcelParser.cs. Solo LEE .xlsx/.xls, no escribe. -->
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
+    <!-- ExcelReaderConfiguration hace Encoding.GetEncoding(1252) incondicionalmente
+         (para el fallback de .xls legacy), lo que revienta en .NET Core/8 sin este
+         provider registrado; no está documentado en el brief, se detectó corriendo
+         los tests (CongeladoExcelParserTests) contra el paquete real. -->
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+  </ItemGroup>
+
   <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo, mismo
        patrón que Modulo.Rendiciones/Modulo.Wms, ver docs/09-GUIA-DESARROLLO-PLUGINS.md
        §7 del portal para cómo llega de ahí a artifacts/plugins/ del Host. -->

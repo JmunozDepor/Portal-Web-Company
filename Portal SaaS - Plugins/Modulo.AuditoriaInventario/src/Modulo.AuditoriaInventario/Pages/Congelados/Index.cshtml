@@ -8,11 +8,48 @@
     <h2 class="mb-1">Inventario Congelado</h2>
     <p class="text-muted mb-3">
         Congelado extraído del punto de venta y cargado vía Excel contra un Nro. de
-        Inventario. La carga de archivo está pendiente de implementar (ver
-        PENDIENTE.md) -- esta pantalla ya lista lo cargado hasta ahora.
+        Inventario.
     </p>
 
-    @* TODO: formulario de carga de Excel (archivo + Sucursal + Nro. de Inventario). *@
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    @if (Model.ErroresDeCarga.Count > 0)
+    {
+        <ul class="text-danger">
+            @foreach (var error in Model.ErroresDeCarga)
+            {
+                <li>@error</li>
+            }
+        </ul>
+    }
+
+    <form method="post" asp-page-handler="Cargar" enctype="multipart/form-data" class="d-flex align-items-end gap-3 flex-wrap mb-4">
+        <div class="mb-0" style="min-width:220px;">
+            <label asp-for="Input.BranchId" class="form-label">Sucursal</label>
+            <select asp-for="Input.BranchId" class="form-select">
+                <option value="">Seleccionar...</option>
+                @foreach (var b in Model.SucursalesActivas)
+                {
+                    <option value="@b.Id">@b.Name</option>
+                }
+            </select>
+        </div>
+        <div class="mb-0">
+            <label asp-for="Input.InventoryNumber" class="form-label">Nro. Inventario</label>
+            <input asp-for="Input.InventoryNumber" class="form-control" />
+        </div>
+        <div class="mb-0">
+            <label asp-for="Input.Archivo" class="form-label">Archivo Excel</label>
+            <input asp-for="Input.Archivo" type="file" class="form-control" accept=".xlsx,.xls" />
+        </div>
+        <button type="submit" class="btn-primary">Cargar</button>
+    </form>
 
     @if (Model.Congelados.Count == 0)
     {

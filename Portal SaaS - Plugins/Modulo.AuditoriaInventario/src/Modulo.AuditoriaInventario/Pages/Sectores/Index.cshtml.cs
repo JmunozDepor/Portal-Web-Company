@@ -53,6 +53,11 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
 
         try
         {
+            if (Input.BranchId is not null && !await _db.Branches.AnyAsync(b => b.Id == Input.BranchId && b.CompanyId == _currentCompany.CompanyId, ct))
+            {
+                throw new InvalidOperationException("La sucursal seleccionada no es válida.");
+            }
+
             if (editando is { } id)
             {
                 var sector = await _db.InventorySectors.FirstOrDefaultAsync(s => s.Id == id && s.CompanyId == _currentCompany.CompanyId, ct)

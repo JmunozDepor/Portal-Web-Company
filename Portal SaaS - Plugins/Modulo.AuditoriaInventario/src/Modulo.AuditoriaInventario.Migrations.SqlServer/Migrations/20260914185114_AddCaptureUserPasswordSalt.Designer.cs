@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Modulo.AuditoriaInventario.Data;
 
@@ -11,9 +12,11 @@ using Modulo.AuditoriaInventario.Data;
 namespace Modulo.AuditoriaInventario.Migrations.SqlServer.Migrations
 {
     [DbContext(typeof(AuditoriaInventarioDbContext))]
-    partial class AuditoriaInventarioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914185114_AddCaptureUserPasswordSalt")]
+    partial class AddCaptureUserPasswordSalt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

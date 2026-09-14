@@ -92,6 +92,7 @@ public class AuditoriaInventarioDbContext : DbContext
             e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
             e.Property(x => x.Username).HasColumnName("username").HasMaxLength(50).IsRequired();
             e.Property(x => x.PasswordHash).HasColumnName("password_hash").IsRequired();
+            e.Property(x => x.PasswordSalt).HasColumnName("password_salt").HasMaxLength(200).IsRequired();
             e.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(200);
             e.Property(x => x.IsActive).HasColumnName("is_active").IsRequired();
             e.HasIndex(x => new { x.CompanyId, x.Username }).IsUnique().HasDatabaseName("uq_capture_users_company_id_username");

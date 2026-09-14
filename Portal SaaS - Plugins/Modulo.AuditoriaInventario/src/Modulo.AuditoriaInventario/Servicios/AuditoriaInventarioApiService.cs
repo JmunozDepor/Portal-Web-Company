@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Modulo.AuditoriaInventario.Data;
 using Modulo.AuditoriaInventario.Models;
@@ -54,9 +53,8 @@ public sealed class AuditoriaInventarioApiService : IAuditoriaInventarioApiServi
     {
         await using var db = await CreateDbContextAsync(companyId, ct);
 
-        var passwordHash = HashPassword(password);
         var user = await db.CaptureUsers.FirstOrDefaultAsync(u => u.Username == username && u.IsActive, ct);
-        if (user is null || user.PasswordHash != passwordHash)
+        if (user is null || !PasswordHasher.Verify(password, user.PasswordHash, user.PasswordSalt))
         {
             return null;
         }
@@ -219,8 +217,4 @@ public sealed class AuditoriaInventarioApiService : IAuditoriaInventarioApiServi
         await db.SaveChangesAsync(ct);
         return procesadas;
     }
-
-    /// <summary>TODO seguridad: placeholder SHA-256 sin sal -- ver PENDIENTE.md, migrar antes de producción.</summary>
-    private static string HashPassword(string password) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(password)));
 }

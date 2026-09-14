@@ -129,6 +129,12 @@ namespace Modulo.AuditoriaInventario.Migrations.Postgres.Migrations
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
+                    b.Property<string>("PasswordSalt")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("password_salt");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)

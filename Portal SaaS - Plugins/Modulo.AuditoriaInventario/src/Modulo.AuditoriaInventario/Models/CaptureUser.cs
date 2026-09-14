@@ -17,6 +17,8 @@ public class CaptureUser
 
     public required string PasswordHash { get; set; }
 
+    public required string PasswordSalt { get; set; }
+
     public string? FullName { get; set; }
 
     public bool IsActive { get; set; } = true;

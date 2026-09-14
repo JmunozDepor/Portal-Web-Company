@@ -26,7 +26,7 @@ public class AuditoriaInventarioDbContextTests
         db.Branches.Add(branch);
         await db.SaveChangesAsync();
 
-        var user = new CaptureUser { CompanyId = companyId, Username = "auditor1", PasswordHash = "x" };
+        var user = new CaptureUser { CompanyId = companyId, Username = "auditor1", PasswordHash = "x", PasswordSalt = "x" };
         db.CaptureUsers.Add(user);
         await db.SaveChangesAsync();
 
@@ -80,7 +80,7 @@ public class AuditoriaInventarioDbContextTests
         db.InventorySectors.Add(sector);
         await db.SaveChangesAsync();
 
-        var user = new CaptureUser { CompanyId = companyId, Username = "auditor1", PasswordHash = "x" };
+        var user = new CaptureUser { CompanyId = companyId, Username = "auditor1", PasswordHash = "x", PasswordSalt = "x" };
         db.CaptureUsers.Add(user);
         await db.SaveChangesAsync();
 

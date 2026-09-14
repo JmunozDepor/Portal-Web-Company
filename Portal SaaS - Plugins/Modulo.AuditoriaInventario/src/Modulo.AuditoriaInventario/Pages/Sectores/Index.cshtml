@@ -1,0 +1,79 @@
+@page "/auditoria-inventario/sectores"
+@model Modulo.AuditoriaInventario.Pages.Sectores.IndexModel
+@{
+    ViewData["Title"] = "Sectores";
+    var formularioAbierto = Model.Editando is not null || !ViewData.ModelState.IsValid;
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Sectores de Captura</h2>
+        <button type="button" class="btn-primary" data-drawer-open="drawer-sector">+ Nuevo sector</button>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <table class="table-ps">
+        <thead><tr><th>Nombre</th><th>Sucursal</th><th>Activo</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var s in Model.Sectores)
+            {
+                <tr class="@(s.IsActive ? "" : "row-inactive")">
+                    <td>@s.Name</td>
+                    <td>@s.BranchName</td>
+                    <td>@(s.IsActive ? "Sí" : "No")</td>
+                    <td class="col-actions">
+                        <a href="~/auditoria-inventario/sectores?editando=@s.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                        <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@s.Id" method="post" class="d-inline-block"
+                              onsubmit="return confirm('¿Eliminar el sector &quot;@s.Name&quot;?');">
+                            <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Sectores.Count == 0)
+            {
+                <tr><td colspan="4" class="text-muted">Sin sectores todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+
+    <div id="drawer-sector" class="drawer-overlay @(formularioAbierto ? "is-open" : "")" data-drawer>
+        <aside class="drawer-panel @(formularioAbierto ? "is-open" : "")">
+            <div class="drawer-header">
+                <h3>@(Model.Editando is null ? "Nuevo sector" : "Editar sector")</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form asp-page="./Index" asp-page-handler="Guardar" asp-route-editando="@Model.Editando" method="post">
+                <div class="drawer-body">
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                    <div class="mb-3">
+                        <label asp-for="Input.Name" class="form-label">Nombre</label>
+                        <input asp-for="Input.Name" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.BranchId" class="form-label">Sucursal</label>
+                        <select asp-for="Input.BranchId" asp-items="Model.SucursalesDisponibles" class="form-select">
+                            <option value="">Todas las sucursales</option>
+                        </select>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input asp-for="Input.IsActive" type="checkbox" class="form-check-input" />
+                        <label asp-for="Input.IsActive" class="form-check-label">Activo</label>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+</div>

@@ -21,18 +21,23 @@ public sealed class ImportarModel : RendicionesRendidorPageModelBase
     private const int MaxFiles = 5;
 
     private readonly IReceiptExtractorService _extractor;
+    private readonly IReceiptSuggestionService _suggestions;
+    private readonly IExpenseTypeService _expenseTypes;
     private readonly IAttachmentStorageService _attachments;
     private readonly IExpenseService _expenses;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
     private readonly ILogger<ImportarModel> _logger;
 
-    public ImportarModel(IReceiptExtractorService extractor, IAttachmentStorageService attachments, IExpenseService expenses,
+    public ImportarModel(IReceiptExtractorService extractor, IReceiptSuggestionService suggestions,
+        IExpenseTypeService expenseTypes, IAttachmentStorageService attachments, IExpenseService expenses,
         IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany,
         ILogger<ImportarModel> logger)
         : base(roles, currentUser, currentCompany)
     {
         _extractor = extractor;
+        _suggestions = suggestions;
+        _expenseTypes = expenseTypes;
         _attachments = attachments;
         _expenses = expenses;
         _currentUser = currentUser;
@@ -63,6 +68,8 @@ public sealed class ImportarModel : RendicionesRendidorPageModelBase
             return Page();
         }
 
+        var tipos = await _expenseTypes.ListActiveAsync(_currentCompany.CompanyId, ct);
+
         foreach (var file in Archivos)
         {
             if (file.Length == 0)
@@ -75,33 +82,50 @@ public sealed class ImportarModel : RendicionesRendidorPageModelBase
                 var content = stream.ToArray();
 
                 var extracted = await _extractor.ExtractAsync(_currentCompany.CompanyId, content, file.ContentType, ct);
+                var p = await _suggestions.BuildAsync(_currentCompany.CompanyId, extracted, ct);
 
                 var receiptId = await _attachments.SaveAsync(_currentCompany.CompanyId, _currentUser.UserId,
                     file.FileName, file.ContentType, content, ct);
 
-                // ExpenseTypeId null: la política de tope no aplica todavía (no hay
-                // categoría hasta que se revise), pero la detección de duplicados por
-                // número de documento SÍ corre acá -- es justo el caso que más importa
-                // (una foto/PDF importada dos veces por error).
-                // El OCR devuelve texto libre no confiable: recortarlo a los límites de la
-                // tabla antes de insertar (si no, un RUT mal leído de 25 caracteres o un
-                // nombre larguísimo revientan el SaveChanges con "value too long").
-                var saved = await _expenses.CreateAsync(new ExpenseReportLine
+                // La categoría pre-seleccionada (memoria confiable del proveedor) se
+                // persiste directo; si dispara una política BLOQUEANTE, se reintenta sin
+                // categoría para no perder la importación -- queda para revisar.
+                // El OCR devuelve texto libre no confiable: recortarlo a los largos de la
+                // tabla antes de insertar (un RUT mal leído de 25 chars revienta el SaveChanges).
+                ExpenseReportLine Build(long? expenseTypeId) => new()
                 {
                     CompanyId = _currentCompany.CompanyId,
                     UserId = _currentUser.UserId,
-                    ExpenseTypeId = null,
-                    Date = extracted.Date ?? DateTime.Today,
-                    Amount = SafeAmount(extracted.Amount),
-                    TaxAmount = extracted.TaxAmount is { } t && t >= 0m && t < MaxAmount ? t : null,
+                    ExpenseTypeId = expenseTypeId,
+                    DocumentTypeId = p.DocumentTypeId,
+                    Date = p.Date ?? DateTime.Today,
+                    TransactionTime = p.TransactionTime,
+                    Amount = SafeAmount(p.Amount),
+                    TaxAmount = SafeMoney(p.TaxAmount),
+                    NetAmount = SafeMoney(p.NetAmount),
+                    ExemptAmount = SafeMoney(p.ExemptAmount),
                     Currency = "CLP",
-                    DocumentNumber = Clamp(extracted.DocumentNumber, 50),
-                    SupplierTaxId = Clamp(extracted.SupplierTaxId, 20),
-                    SupplierName = Clamp(extracted.SupplierName, 200),
+                    DocumentNumber = Clamp(p.DocumentNumber, 50),
+                    SupplierTaxId = Clamp(p.SupplierTaxId, 20),
+                    SupplierName = Clamp(p.SupplierName, 200),
+                    CaptureSource = p.CaptureSource,
                     ExpenseReceiptId = receiptId,
-                }, ct);
+                };
 
-                Results.Add(new ImportResult(file.FileName, saved.Id, extracted, saved.Warnings));
+                ExpenseSavedResult saved;
+                try
+                {
+                    saved = await _expenses.CreateAsync(Build(p.ExpenseTypeId), ct);
+                }
+                catch (InvalidOperationException) when (p.ExpenseTypeId is not null)
+                {
+                    saved = await _expenses.CreateAsync(Build(null), ct);
+                }
+
+                var sugeridaId = p.ExpenseTypeId ?? p.SuggestedExpenseTypeId;
+                var sugeridaNombre = sugeridaId is { } sid ? tipos.FirstOrDefault(t => t.Id == sid)?.Name : null;
+                Results.Add(new ImportResult(file.FileName, saved.Id, extracted, saved.Warnings,
+                    p.ExpenseTypeId is not null, sugeridaNombre));
             }
             catch (Exception ex)
             {
@@ -113,7 +137,7 @@ public sealed class ImportarModel : RendicionesRendidorPageModelBase
                 Results.Add(new ImportResult(file.FileName, 0,
                     new ExtractedReceiptDto(null, null, null, null, null, null, null,
                         Error: $"No se pudo importar este archivo: {DescribeError(ex)}"),
-                    Array.Empty<string>()));
+                    Array.Empty<string>(), false, null));
             }
         }
 
@@ -143,6 +167,9 @@ public sealed class ImportarModel : RendicionesRendidorPageModelBase
     private static decimal SafeAmount(decimal? amount) =>
         amount is { } a && a >= 0m && a < MaxAmount ? a : 0m;
 
+    private static decimal? SafeMoney(decimal? amount) =>
+        amount is { } a && a >= 0m && a < MaxAmount ? a : null;
+
     /// <summary>Recorta a <paramref name="max"/> caracteres (null/blank -&gt; null) -- el OCR no respeta longitudes.</summary>
     private static string? Clamp(string? value, int max)
     {
@@ -169,5 +196,7 @@ public sealed class ImportarModel : RendicionesRendidorPageModelBase
         return string.Join(" → ", mensajes);
     }
 
-    public sealed record ImportResult(string FileName, long ExpenseId, ExtractedReceiptDto Extracted, IReadOnlyList<string> Warnings);
+    public sealed record ImportResult(
+        string FileName, long ExpenseId, ExtractedReceiptDto Extracted, IReadOnlyList<string> Warnings,
+        bool CategoryPreselected, string? SuggestedCategoryName);
 }

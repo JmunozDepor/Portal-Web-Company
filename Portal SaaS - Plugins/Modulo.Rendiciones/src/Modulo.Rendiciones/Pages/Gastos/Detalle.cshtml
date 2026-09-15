@@ -146,6 +146,16 @@ else
                         }
                     </select>
                     <span asp-validation-for="Input.ExpenseTypeId" class="text-danger"></span>
+                    @if (Model.SuggestedCategoryName is not null && Model.SuggestedCategoryId is { } sugId)
+                    {
+                        <p class="text-muted mt-1">
+                            Sugerido para este proveedor:
+                            <button type="button" class="btn-link p-0" style="border:0;background:none;text-decoration:underline;cursor:pointer;"
+                                    onclick="document.getElementById('rnd-select-tipo-gasto').value='@sugId';document.getElementById('rnd-select-tipo-gasto').dispatchEvent(new Event('change'));">
+                                @Model.SuggestedCategoryName
+                            </button>
+                        </p>
+                    }
                 </div>
                 <div class="form-group">
                     <label asp-for="Input.DocumentTypeId">Tipo de documento</label>
@@ -160,6 +170,11 @@ else
                 <div class="form-group">
                     <label asp-for="Input.Date">Fecha</label>
                     <input asp-for="Input.Date" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="Input.TransactionTime">Hora</label>
+                    <input asp-for="Input.TransactionTime" type="time" class="form-control" />
+                    <small class="text-muted">Hora de la transacción (opcional). Se lee del comprobante si figura.</small>
                 </div>
 
                 <div id="rnd-campos-km" style="display:none;">
@@ -184,6 +199,14 @@ else
                         <label asp-for="Input.Amount">Monto total</label>
                         <input asp-for="Input.Amount" class="form-control" />
                         <span asp-validation-for="Input.Amount" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Input.NetAmount">Monto neto / afecto</label>
+                        <input asp-for="Input.NetAmount" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Input.ExemptAmount">Monto exento</label>
+                        <input asp-for="Input.ExemptAmount" class="form-control" />
                     </div>
                     <div class="form-group">
                         <label asp-for="Input.TaxAmount">Monto IVA</label>

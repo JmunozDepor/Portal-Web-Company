@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Modulo.Rendiciones.Data;
 using Modulo.Rendiciones.Models;
 
@@ -10,13 +11,18 @@ public sealed class ExpenseService : IExpenseService
     private readonly IAttachmentStorageService _attachments;
     private readonly IExpensePolicyService _policies;
     private readonly IRoutingService _routing;
+    private readonly ISupplierHintService _hints;
+    private readonly ILogger<ExpenseService> _logger;
 
-    public ExpenseService(RendicionesDbContext db, IAttachmentStorageService attachments, IExpensePolicyService policies, IRoutingService routing)
+    public ExpenseService(RendicionesDbContext db, IAttachmentStorageService attachments, IExpensePolicyService policies,
+        IRoutingService routing, ISupplierHintService hints, ILogger<ExpenseService> logger)
     {
         _db = db;
         _attachments = attachments;
         _policies = policies;
         _routing = routing;
+        _hints = hints;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<ExpenseReportLine>> ListLooseAsync(Guid companyId, Guid userId, CancellationToken ct = default) =>
@@ -59,6 +65,8 @@ public sealed class ExpenseService : IExpenseService
         expense.Date = NormalizeDate(expense.Date);
         _db.ExpenseReportLines.Add(expense);
         await _db.SaveChangesAsync(ct);
+
+        await LearnFromAsync(expense.CompanyId, expense, ct);
         return new ExpenseSavedResult(expense.Id, result.Warnings);
     }
 
@@ -77,8 +85,11 @@ public sealed class ExpenseService : IExpenseService
         expense.ExpenseTypeId = data.ExpenseTypeId;
         expense.DocumentTypeId = data.DocumentTypeId;
         expense.Date = NormalizeDate(data.Date);
+        expense.TransactionTime = data.TransactionTime;
         expense.Amount = data.Amount;
         expense.TaxAmount = data.TaxAmount;
+        expense.NetAmount = data.NetAmount;
+        expense.ExemptAmount = data.ExemptAmount;
         expense.Currency = data.Currency;
         expense.DocumentNumber = data.DocumentNumber;
         expense.SupplierTaxId = data.SupplierTaxId;
@@ -92,6 +103,8 @@ public sealed class ExpenseService : IExpenseService
             expense.ExpenseReceiptId = data.ExpenseReceiptId;
 
         await _db.SaveChangesAsync(ct);
+
+        await LearnFromAsync(companyId, expense, ct);
         return result.Warnings;
     }
 
@@ -175,4 +188,25 @@ public sealed class ExpenseService : IExpenseService
     /// </summary>
     private static DateTimeOffset NormalizeDate(DateTimeOffset value) =>
         new(value.Date, TimeSpan.Zero);
+
+    /// <summary>
+    /// Aprende del guardado confirmado: memoriza para el RUT del proveedor su nombre, su
+    /// categoría (moda) y su tipo de documento habitual, para proponerlos la próxima vez.
+    /// Nunca debe romper el guardado -- un fallo acá solo se loguea.
+    /// </summary>
+    private async Task LearnFromAsync(Guid companyId, ExpenseReportLine expense, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(expense.SupplierTaxId))
+            return;
+
+        try
+        {
+            await _hints.RegisterAsync(companyId, expense.SupplierTaxId, expense.SupplierName,
+                expense.ExpenseTypeId, expense.DocumentTypeId, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo actualizar la memoria del proveedor tras guardar el gasto {ExpenseId}.", expense.Id);
+        }
+    }
 }

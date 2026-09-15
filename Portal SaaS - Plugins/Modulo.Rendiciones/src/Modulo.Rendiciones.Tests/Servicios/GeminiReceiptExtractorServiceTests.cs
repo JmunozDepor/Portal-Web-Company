@@ -167,7 +167,20 @@ public class GeminiReceiptExtractorServiceTests
         new(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
 
     private static GeminiReceiptExtractorService Build(StubHandler handler, StubUsage usage, SelectedProvider? available, GeminiRateLimiter? rateLimiter = null) =>
-        new(new HttpClient(handler), new StubSelector(available), usage, rateLimiter ?? new GeminiRateLimiter(), NullLogger<GeminiReceiptExtractorService>.Instance);
+        new(new HttpClient(handler), new StubSelector(available), usage, new StubExpenseTypes(),
+            rateLimiter ?? new GeminiRateLimiter(), NullLogger<GeminiReceiptExtractorService>.Instance);
+
+    private sealed class StubExpenseTypes : IExpenseTypeService
+    {
+        public Task<IReadOnlyList<Models.ExpenseType>> ListActiveAsync(Guid companyId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Models.ExpenseType>>(Array.Empty<Models.ExpenseType>());
+        public Task<IReadOnlyList<Models.ExpenseType>> ListAllAsync(Guid companyId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Models.ExpenseType>>(Array.Empty<Models.ExpenseType>());
+        public Task<long> CreateAsync(Guid companyId, string name, string? sapGlAccount, bool isMileage, decimal? ratePerKm, CancellationToken ct = default) =>
+            Task.FromResult(1L);
+        public Task UpdateAsync(long id, Guid companyId, string name, string? sapGlAccount, bool isActive, bool isMileage, decimal? ratePerKm, CancellationToken ct = default) =>
+            Task.CompletedTask;
+    }
 
     private sealed class StubHandler : HttpMessageHandler
     {

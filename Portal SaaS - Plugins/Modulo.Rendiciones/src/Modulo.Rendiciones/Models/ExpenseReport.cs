@@ -16,6 +16,18 @@ public class ExpenseReport
 
     public long? ExpenseFundId { get; set; }
 
+    /// <summary>
+    /// Glosa/concepto del informe -- describe qué agrupa esta rendición (ej. "Viaje a
+    /// Antofagasta, visita a cliente"). Texto libre, lo carga el dueño en la cabecera.
+    /// </summary>
+    public string? Purpose { get; set; }
+
+    /// <summary>
+    /// Número interno de reporte que le asigna la empresa, distinto del <see cref="Id"/>
+    /// correlativo del sistema. Texto libre.
+    /// </summary>
+    public string? InternalNumber { get; set; }
+
     /// <summary>Snapshot del centro de costo (dimensión 1 de SAP) para esta rendición.</summary>
     public string? CostCenterCode { get; set; }
 

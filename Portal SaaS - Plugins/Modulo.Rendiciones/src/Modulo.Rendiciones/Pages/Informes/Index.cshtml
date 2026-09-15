@@ -36,8 +36,14 @@ else
             <a asp-page="./Detalle" asp-route-id="@r.Id" class="rnd-card-row">
                 <div class="rnd-card-icon"><i class="bi bi-folder2-open"></i></div>
                 <div class="rnd-card-main">
-                    <div class="rnd-card-title">Informe #@r.Id @(r.Round > 1 ? $"· ronda {r.Round}" : "")</div>
-                    <div class="rnd-card-sub">@r.CreatedAt.ToString("dd-MM-yyyy") · @(r.CostCenterName ?? r.CostCenterCode ?? "sin centro de costo") · @r.Lines.Count gasto(s)</div>
+                    <div class="rnd-card-title">
+                        Informe #@r.Id
+                        @if (!string.IsNullOrWhiteSpace(r.InternalNumber)) { <text>· N.º @r.InternalNumber</text> }
+                        @(r.Round > 1 ? $"· ronda {r.Round}" : "")
+                    </div>
+                    <div class="rnd-card-sub">
+                        @(!string.IsNullOrWhiteSpace(r.Purpose) ? r.Purpose + " · " : "")@r.CreatedAt.ToString("dd-MM-yyyy") · @(r.CostCenterName ?? r.CostCenterCode ?? "sin centro de costo") · @r.Lines.Count gasto(s)
+                    </div>
                 </div>
                 <div class="rnd-card-meta">
                     <span class="rnd-badge @RendicionesUi.BadgeClass(r.Status)">@r.Status</span>

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Modulo.Rendiciones.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
 {
     [DbContext(typeof(RendicionesDbContext))]
-    partial class RendicionesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909122325_AddReceiptCaptureAndSupplierHints")]
+    partial class AddReceiptCaptureAndSupplierHints
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -382,16 +385,6 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
                     b.Property<long?>("ExpenseFundId")
                         .HasColumnType("bigint")
                         .HasColumnName("expense_fund_id");
-
-                    b.Property<string>("InternalNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("internal_number");
-
-                    b.Property<string>("Purpose")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("purpose");
 
                     b.Property<DateTimeOffset?>("ResolvedAt")
                         .HasColumnType("timestamp with time zone")

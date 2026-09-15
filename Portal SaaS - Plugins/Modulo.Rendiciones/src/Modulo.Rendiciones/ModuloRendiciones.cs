@@ -290,6 +290,11 @@ public sealed class ModuloRendiciones : IModuloPortal
         services.AddSingleton<IReceiptImageProcessor, SkiaReceiptImageProcessor>();
         services.AddScoped<IExpensePolicyService, ExpensePolicyService>();
         services.AddScoped<IExpenseService, ExpenseService>();
+        // Captura enriquecida + memoria de proveedor: arma la propuesta que precarga el
+        // formulario de gasto a partir de lo que leyó el OCR, y aprende de cada guardado
+        // confirmado (RUT del proveedor -> nombre, categoría habitual, tipo de documento).
+        services.AddScoped<ISupplierHintService, SupplierHintService>();
+        services.AddScoped<IReceiptSuggestionService, ReceiptSuggestionService>();
         // OCR de comprobantes: dos motores intercambiables (Azure Document Intelligence
         // y Google Gemini), elegidos en runtime por CompositeReceiptExtractorService
         // según lo que la compañía tenga configurado en Configuracion > Proveedores.

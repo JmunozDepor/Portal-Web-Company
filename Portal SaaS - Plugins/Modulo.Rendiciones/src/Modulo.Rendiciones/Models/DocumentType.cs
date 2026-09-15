@@ -13,6 +13,14 @@ public class DocumentType
 
     public required string Name { get; set; }
 
+    /// <summary>
+    /// Código SII del tipo de DTE (33 factura afecta, 34 factura exenta, 39 boleta
+    /// afecta, 41 boleta exenta, 61 nota de crédito, 52 guía de despacho...). Nullable:
+    /// una fila de mantención local puede no corresponder a un DTE. Lo usa el OCR para
+    /// mapear el tipo de documento leído a esta fila (ver ChileanDocumentKind).
+    /// </summary>
+    public int? SiiCode { get; set; }
+
     public bool AppliesTax { get; set; } = true;
 
     public decimal TaxPercentage { get; set; } = 19.00m;

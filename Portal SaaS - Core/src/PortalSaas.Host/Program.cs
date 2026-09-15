@@ -21,6 +21,7 @@ using PortalSaas.Core.Seguridad;
 using PortalSaas.Core.Usuarios;
 using PortalSaas.Core.Ventas;
 using PortalSaas.Data;
+using PortalSaas.Host.AuditoriaInventario;
 using PortalSaas.Host.Comandos;
 using PortalSaas.Host.Infraestructura;
 using PortalSaas.Host.Licenciamiento;
@@ -522,20 +523,66 @@ app.UseRequestLocalization(localizationOptions);
 // ASP.NET Core Identity aplica por default a sus propias páginas. Solo para requests
 // autenticados -- assets estáticos (CSS/JS/imágenes) siguen cacheando normal, esto no
 // los toca (corre después de UseStaticFiles).
+//
+// Extendido (2026-09-09) a las páginas de formulario servidas a usuarios ANÓNIMOS que
+// embeben un token antiforgery (/Account/*, /Admin/Login): sin no-store, el navegador de
+// un celular -- o el proxy que publica portal.grupodepor.cl -- puede servir una copia
+// CACHEADA del login con un token viejo mientras la cookie .AspNetCore.Antiforgery.*
+// fresca nunca se guardó; el primer POST revienta con "HTTP ERROR 400" y "se arregla"
+// recién al recargar. Síntoma reportado como recurrente en el primer acceso, sobre todo
+// desde smartphones.
 app.Use(async (context, next) =>
 {
-    if (context.User.Identity?.IsAuthenticated == true)
+    var path = context.Request.Path;
+    var esFormularioAnonimo =
+        path.StartsWithSegments("/Account", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/Admin/Login", StringComparison.OrdinalIgnoreCase);
+
+    if (context.User.Identity?.IsAuthenticated == true || esFormularioAnonimo)
     {
         context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
         context.Response.Headers.Pragma = "no-cache";
         context.Response.Headers.Expires = "0";
     }
+
     await next();
+});
+
+// Fallback amable ante un token antiforgery inválido en el login: en vez del "HTTP ERROR
+// 400" crudo del framework, se rebota a un GET limpio de la misma página -- que ya emite
+// token + cookie frescos y coherentes -- con un aviso (?authRetry=1). El no-store de
+// arriba ataca la causa (página cacheada); esto cubre el caso residual (App Pool
+// reciclado con la pestaña ya abierta) sin dejar al usuario frente a un 400 sin
+// explicación. Acotado a los POST de esas rutas concretas: un 400 ahí es, en la
+// práctica, siempre el token antiforgery -- una validación de modelo de Razor Pages
+// devuelve la página con 200, no 400.
+var rutasLoginPost = new[] { "/Account/Login", "/Account/SelectCompany", "/Admin/Login" };
+app.Use(async (context, next) =>
+{
+    await next();
+
+    if (HttpMethods.IsPost(context.Request.Method)
+        && context.Response.StatusCode == StatusCodes.Status400BadRequest
+        && !context.Response.HasStarted
+        && rutasLoginPost.Any(r => context.Request.Path.Equals(r, StringComparison.OrdinalIgnoreCase)))
+    {
+        context.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Antiforgery")
+            .LogWarning(
+                "Token antiforgery inválido en POST {Path} -- se rebota a un GET limpio (?authRetry=1).",
+                context.Request.Path);
+
+        var queryString = context.Request.QueryString.HasValue
+            ? context.Request.QueryString.Value + "&authRetry=1"
+            : "?authRetry=1";
+        context.Response.Redirect(context.Request.PathBase + context.Request.Path + queryString);
+    }
 });
 
 app.UseAuthorization();
 app.MapRazorPages();
 app.MapWmsInboundEndpoints();
+app.MapAuditoriaInventarioInboundEndpoints();
 
 // Solo el servidor central expone activación/heartbeat de licencias -- una
 // instalación on-premise nunca recibe estas llamadas, las hace (ver

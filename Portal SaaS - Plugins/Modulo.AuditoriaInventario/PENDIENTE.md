@@ -1,11 +1,15 @@
 # Pendiente — Modulo.AuditoriaInventario
 
-Estado: **scaffold + API corregida + migraciones generadas (14 sep 2026)**. Compila
-y los tests pasan en todo el conjunto (`Modulo.AuditoriaInventario`, los dos
-proyectos de migraciones con migración `InitialCreate` real generada y compilando,
-el proyecto de tests, y `PortalSaas.Host`/`PortalSaas.Abstractions` con los agregados
-de este módulo). Lógica de negocio real (motor de diferencias, importador de Excel,
-mapeo SAP) todavía no implementada.
+Estado: **lógica de negocio real implementada (15 sep 2026)**. El plan
+`docs/superpowers/plans/2026-09-14-auditoria-inventario-logica-negocio.md` (7
+tareas) completó: hash de contraseña con sal para `CaptureUser`, motor de
+diferencias (`DiferenciaEngine`), importador de Excel para congelados, mapeo SAP
++ gate de aprobación manual (`AjusteService`), y las 3 pantallas de administración
+de catálogo (Sucursales/Sectores/Capturadores) que faltaban. Una revisión final de
+todo el branch encontró y corrigió 2 fugas cross-tenant (login y aprobación de
+ajustes sin filtro de compañía) más 3 gaps menores -- ver "Fuera de alcance" más
+abajo para lo que quedó deliberadamente sin tocar. Compila y los 18 tests pasan en
+todo el conjunto. Pusheado a `origin/main`.
 
 ## Corrección de arquitectura importante (14 sep 2026)
 
@@ -96,39 +100,75 @@ proyecto principal (`Proyecto Portal Web-Company`).
 
 ## Pendiente — próximos pasos, en orden sugerido
 
-1. ~~Confirmar que el Host descubre controllers MVC de un plugin~~ -- **resuelto
-   (14 sep 2026)**: no los descubre, se corrigió al patrón Minimal API en el Host
-   (ver sección de arriba). Sigue pendiente la verificación **end-to-end real**
-   (Host corriendo, request real desde un cliente HTTP) -- lo de acá es
-   compilación + lectura de código, no una prueba en caliente.
-2. **Seguridad de la API**: `AuditoriaInventarioApiService.HashPassword` usa
-   SHA-256 simple como placeholder -- reemplazar por un hasher con sal antes de
-   cualquier ambiente real. El token opaco (`CaptureAuthToken`) es intencionalmente
-   simple (no JWT) -- ver el comentario en `CaptureAuthToken.cs`. `ResolveTokenAsync`
-   hoy recorre todas las compañías activas del módulo hasta encontrar el token
-   (aceptable a la escala de "cantidad de compañías", revisar si no escala).
-3. **Motor de diferencias** (`InventoryDifference`): falta el servicio que, al
-   cerrar una sesión, cruza `InventoryCapture` agregado por sesión+sector+barcode
-   contra `FrozenInventoryLine` del snapshot correspondiente y materializa el
-   resultado (cantidad y monto, usando `FrozenInventoryLine.UnitCost`).
-4. **Importador de congelados**: parseo de Excel (extraído del punto de venta)
-   contra un `InventoryNumber`, con mapeo de columnas y validación -- hoy
-   `Congelados/Index` solo lista lo ya cargado.
-5. **Mapeo SAP**: agregar `CodigoSap`/campos equivalentes a `Branch`/`Product` (o
-   una tabla de mapeo aparte) para poder completar `SapCompanyCode`/
-   `SapWarehouseCode`/`SapMaterialCode` al aprobar un ajuste -- hoy
-   `Ajustes/Index.OnPostAprobarAsync` solo cambia el estado, no genera la fila en
-   `SapAdjustmentQueueItem` todavía.
-6. ~~Migraciones reales~~ -- **hecho (14 sep 2026)**: `InitialCreate` generada y
-   compilando en ambos motores. Falta aplicarlas contra un entorno de prueba real
-   (`dotnet ef database update`, sin Postgres/SQL Server levantado en esta sesión)
-   y confirmar el flujo de publicación hasta `artifacts/plugins/` del Host (ver
-   `docs/09-GUIA-DESARROLLO-PLUGINS.md` §7 del portal).
-7. **Catálogo de sectores/sucursales**: hoy no hay pantalla de administración para
-   cargar `Branch`/`InventorySector`/`CaptureUser` -- solo el modelo y los
-   endpoints de lectura para la PWA.
+1. Verificación **end-to-end real** (Host corriendo, request real desde un
+   cliente HTTP) -- sigue sin hacerse; lo hecho hasta ahora es compilación +
+   tests unitarios/InMemory, no una prueba en caliente contra Postgres/SQL Server
+   reales ni contra la PWA (que tampoco existe todavía como repo).
+2. ~~Seguridad de la API~~ -- **hecho (14 sep 2026)**: `PasswordHasher` (PBKDF2 +
+   sal, mismo algoritmo que `PortalSaas.Core.Seguridad.PasswordHasher`) reemplazó
+   el placeholder SHA-256. El token opaco (`CaptureAuthToken`) sigue siendo
+   intencionalmente simple (no JWT) -- eso no cambió. `ResolveTokenAsync` sigue
+   recorriendo todas las compañías activas (sin cambios, aceptable a la escala
+   actual).
+3. ~~Motor de diferencias~~ -- **hecho (14 sep 2026)**: `DiferenciaEngine`
+   (`Servicios/DiferenciaEngine.cs`) cruza `InventoryCapture` agregado por
+   sesión+sector+barcode contra `FrozenInventoryLine` del snapshot
+   correspondiente al cerrar una sesión (`UpsertSesionAsync`), materializa
+   `InventoryDifference`.
+4. ~~Importador de congelados~~ -- **hecho (14 sep 2026)**: `CongeladoExcelParser`
+   (ExcelDataReader, mapeo por columna A/B/C) + formulario de carga en
+   `Congelados/Index`, con validación por fila y acumulación de errores sin
+   abortar el archivo completo.
+5. ~~Mapeo SAP~~ -- **hecho (14 sep 2026)**: `Branch.SapCompanyCode`/
+   `SapWarehouseCode` y `Product.SapMaterialCode` agregados; `AjusteService`
+   resuelve el mapeo y genera la fila en `SapAdjustmentQueueItem` al aprobar
+   (único punto de escritura en esa cola, con scope de compañía verificado).
+   **Pero ver el punto 9 más abajo**: hoy no hay forma de llegar a un ajuste
+   `PROPOSED` desde la UI, así que este flujo sigue siendo inalcanzable en la
+   práctica.
+6. ~~Migraciones reales~~ -- **hecho contra producción real (15 sep 2026)**: las 3
+   migraciones (`InitialCreate`, `AddCaptureUserPasswordSalt`,
+   `AddSapMappingColumns`) se aplicaron con `dotnet ef database update` contra una
+   base nueva, propia del módulo, creada en el Postgres real de producción
+   (`Host=172.16.122.171;Port=5432;Database=ps_comdepor_ai`, mismo servidor que
+   `ps_comdepor`/`portalsaas_saas_prod`, usuario técnico `admin_saas`) -- **13
+   tablas confirmadas** (12 + `__EFMigrationsHistory`). Sigue pendiente:
+   - Confirmar el flujo de publicación hasta `artifacts/plugins/` del Host (ver
+     `docs/09-GUIA-DESARROLLO-PLUGINS.md` §7 del portal) -- la base ya existe,
+     pero el plugin en sí todavía no se copió/cargó contra un Host real.
+   - **Registrar la conexión en la plataforma** para que el módulo resuelva contra
+     `ps_comdepor_ai` en runtime -- `CompanyId` real de Comercial Depor
+     confirmado: `46326209-2ccb-4423-9bbb-b3c6a9fc4569` (tabla `companies` de
+     `ps_comdepor`, no de `portalsaas_saas_prod` -- la instancia on-premise tiene
+     su propio catálogo de compañías/organizaciones, autocontenido). Falta crear
+     la fila en `company_external_connections` (Nombre sugerido:
+     "AuditoriaInventario", Tipo `db_postgres`, Host `172.16.122.171`, Port
+     `5432`, DatabaseName `ps_comdepor_ai`, TechnicalUsername `admin_saas`) +
+     el binding en `company_module_connections` (ModuleCode `AuditoriaInventario`,
+     Purpose `Default`) -- vía `/Admin/Organizations/Companies/
+     46326209-2ccb-4423-9bbb-b3c6a9fc4569/ExternalConnections/Create` del Host
+     que sirve esa instancia on-premise (login `PlatformAdmin`), NO escribiendo
+     `company_external_connections`/`company_module_connections` a mano: esa
+     página cifra `TechnicalSecretKey` con la `MasterSecretKey` real, evitando
+     manejarla fuera de la app.
+   - **Nota de arquitectura descubierta en este despliegue**: `module_external_
+     connections` (mencionada en sesiones anteriores) es una tabla LEGACY, sin
+     lector de runtime desde hace tiempo -- el modelo real es
+     `company_external_connections` + `company_module_connections`, resuelto por
+     `ExternalDatabaseConnectionService`. No usar la tabla legacy para nada nuevo.
+7. ~~Catálogo de sectores/sucursales~~ -- **hecho (14 sep 2026)**: pantallas de
+   administración para `Branch` (Sucursales), `InventorySector` (Sectores) y
+   `CaptureUser` (Capturadores), con drawer + alta/edición/baja, todas con scope
+   de compañía verificado (incluye 2 fixes de tenant-isolation encontrados en
+   revisión: unicidad de código/usuario al editar, y validación de que el
+   `BranchId` elegido pertenezca a la compañía actual).
 8. Sin probar de punta a punta: ningún flujo real con el Host corriendo, ninguna
-   llamada real desde una PWA.
+   llamada real desde una PWA (mismo punto que el 1).
+9. **Nuevo -- falta el flujo "proponer ajuste desde una diferencia"**: nada en el
+   portal crea hoy un `InventoryAdjustment` en estado `PROPOSED` a partir de una
+   `InventoryDifference` -- sin esta pantalla, la cola de aprobación/mapeo SAP del
+   punto 5 es funcionalmente inalcanzable desde la UI. Encontrado en la revisión
+   final del plan de la Tarea 4-7 (15 sep 2026).
 
 ## Fuera de alcance — revisión final del plan (14 sep 2026)
 

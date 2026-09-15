@@ -1,7 +1,61 @@
 @page "/rendiciones/informes/{id:long}"
+@using Modulo.Rendiciones.Models
 @model Modulo.Rendiciones.Pages.Informes.DetalleModel
 @{
     ViewData["Title"] = $"Informe #{Model.Report.Id}";
+
+    // Cada gasto del informe se muestra con el MISMO formulario de "Nuevo/Editar gasto"
+    // pero bloqueado (fieldset disabled), para identificar de un vistazo los valores
+    // cargados -- pedido explícito. Función local para no depender de un partial (las
+    // vistas del plugin se cargan por AssemblyLoadContext).
+    void RenderLineReview(ExpenseReportLine d)
+    {
+        var esKm = d.ExpenseType?.IsMileage == true;
+        var hasReceipt = d.ExpenseReceiptId is not null;
+        var receiptUrl = hasReceipt ? Url.Page("/Gastos/Comprobante", new { id = d.Id }) : null;
+        <div class="@(hasReceipt ? "rnd-gasto-split" : "")">
+            <div class="rnd-gasto-form rnd-review">
+                <fieldset disabled>
+                    <div class="form-group"><label>Categoría del gasto</label><input class="form-control" value="@(d.ExpenseType?.Name ?? "")" /></div>
+                    <div class="form-group"><label>Tipo de documento</label><input class="form-control" value="@(d.DocumentType?.Name ?? "")" /></div>
+                    <div class="form-group"><label>Fecha</label><input class="form-control" value="@d.Date.ToString("dd-MM-yyyy")" /></div>
+                    <div class="form-group"><label>Hora</label><input class="form-control" value="@(d.TransactionTime?.ToString("HH:mm") ?? "")" /></div>
+                    @if (esKm)
+                    {
+                        <div class="form-group"><label>Origen</label><input class="form-control" value="@d.Origin" /></div>
+                        <div class="form-group"><label>Destino</label><input class="form-control" value="@d.Destination" /></div>
+                        <div class="form-group"><label>Distancia (km)</label><input class="form-control" value="@(d.DistanceKm?.ToString("N2") ?? "")" /></div>
+                        <div class="form-group"><label>Tarifa por km</label><input class="form-control" value="@(d.AppliedRatePerKm?.ToString("N2") ?? "")" /></div>
+                    }
+                    <div class="form-group"><label>Monto total</label><input class="form-control" value="@d.Amount.ToString("N2")" /></div>
+                    @if (!esKm)
+                    {
+                        <div class="form-group"><label>Monto neto / afecto</label><input class="form-control" value="@(d.NetAmount?.ToString("N2") ?? "")" /></div>
+                        <div class="form-group"><label>Monto exento</label><input class="form-control" value="@(d.ExemptAmount?.ToString("N2") ?? "")" /></div>
+                        <div class="form-group"><label>Monto IVA</label><input class="form-control" value="@(d.TaxAmount?.ToString("N2") ?? "")" /></div>
+                    }
+                    <div class="form-group"><label>Moneda</label><input class="form-control" value="@d.Currency" /></div>
+                    <div class="form-group"><label>Folio</label><input class="form-control" value="@d.DocumentNumber" /></div>
+                    <div class="form-group"><label>RUT proveedor</label><input class="form-control" value="@d.SupplierTaxId" /></div>
+                    <div class="form-group"><label>Proveedor</label><input class="form-control" value="@d.SupplierName" /></div>
+                    <div class="form-group"><label>Glosa</label><input class="form-control" value="@d.Notes" /></div>
+                </fieldset>
+            </div>
+            @if (hasReceipt)
+            {
+                <div class="rnd-gasto-visor">
+                    <div class="rnd-gasto-visor-header">
+                        <span><i class="bi bi-paperclip"></i> Comprobante</span>
+                        <div class="rnd-visor-actions">
+                            <a href="@receiptUrl" target="_blank" title="Expandir / abrir visor completo"><i class="bi bi-arrows-fullscreen"></i></a>
+                            <a href="@Url.Page("/Gastos/ComprobanteArchivo", new { id = d.Id })" download title="Descargar"><i class="bi bi-download"></i></a>
+                        </div>
+                    </div>
+                    <iframe src="@receiptUrl" title="Comprobante" loading="lazy"></iframe>
+                </div>
+            }
+        </div>
+    }
 }
 @section Styles {
     <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
@@ -9,10 +63,20 @@
 
 <div class="card-ps admin-card">
     <div class="admin-card-header">
-        <h2>Informe #@Model.Report.Id</h2>
+        <h2>
+            Informe #@Model.Report.Id
+            @if (!string.IsNullOrWhiteSpace(Model.Report.InternalNumber))
+            {
+                <span class="admin-muted">· N.º interno @Model.Report.InternalNumber</span>
+            }
+        </h2>
         <a asp-page="./Index" class="btn-module-action">&larr; Volver</a>
         <span class="admin-muted">@Model.Report.Status @(Model.Report.Round > 1 ? $"· ronda {Model.Report.Round}" : "")</span>
     </div>
+    @if (!string.IsNullOrWhiteSpace(Model.Report.Purpose))
+    {
+        <p class="admin-muted" style="margin-top:-4px;"><i class="bi bi-tag"></i> @Model.Report.Purpose</p>
+    }
 
 @if (Model.SuccessMessage is not null)
 {
@@ -26,6 +90,18 @@
 <div class="admin-subcard">
     <h3>Cabecera</h3>
     <form method="post" asp-page-handler="GuardarCabecera" asp-route-id="@Model.Report.Id">
+        <div class="form-group">
+            <label asp-for="Header.Purpose">Glosa / concepto del informe</label>
+            <input asp-for="Header.Purpose" class="form-control" maxlength="500"
+                   placeholder="Ej. Viaje a Antofagasta - visita a cliente" disabled="@(!Model.IsEditable)" />
+            <span asp-validation-for="Header.Purpose" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="Header.InternalNumber">Número interno de reporte</label>
+            <input asp-for="Header.InternalNumber" class="form-control" maxlength="50"
+                   placeholder="El que usa la empresa (distinto del #@Model.Report.Id)" disabled="@(!Model.IsEditable)" />
+            <span asp-validation-for="Header.InternalNumber" class="text-danger"></span>
+        </div>
         <div class="form-group">
             <label asp-for="Header.CostCenterCode">Centro de costo</label>
             <select asp-for="Header.CostCenterCode" class="form-control" disabled="@(!Model.IsEditable)">
@@ -55,70 +131,59 @@
 
 <div class="admin-subcard">
     <h3>Gastos incluidos</h3>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Fecha</th>
-                <th>Categoría</th>
-                <th>Proveedor</th>
-                <th>Monto</th>
-                <th>Comprobante</th>
-                @if (Model.IsEditable)
-                {
-                    <th class="admin-col-accion"></th>
-                }
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var d in Model.Report.Lines.OrderBy(d => d.Date))
+
+    @if (Model.Report.Lines.Count == 0)
+    {
+        <p class="admin-muted">Sin gastos todavía.</p>
+    }
+    else
+    {
+        <div class="rnd-review-list">
+            @foreach (var d in Model.Report.Lines.OrderBy(x => x.Date))
             {
-                <tr>
-                    <td>@d.Date.ToString("dd-MM-yyyy")</td>
-                    <td>@(d.ExpenseType?.Name ?? "—")</td>
-                    <td>@d.SupplierName</td>
-                    <td>@d.Currency @d.Amount.ToString("N2")</td>
-                    <td>
-                        @if (d.ExpenseReceiptId is not null)
-                        {
-                            <a asp-page="/Gastos/Comprobante" asp-route-id="@d.Id" target="_blank" class="btn-module-action"><i class="bi bi-paperclip"></i> Ver</a>
+                <details class="rnd-review-line" open>
+                    <summary>
+                        <span class="rnd-review-sum-main">
+                            <strong>@d.Date.ToString("dd-MM-yyyy")</strong>
+                            <span>· @(d.ExpenseType?.Name ?? "Sin categoría")</span>
+                            <span class="admin-muted">· @(d.SupplierName ?? "sin proveedor")</span>
+                        </span>
+                        <span class="rnd-review-sum-amount">@d.Currency @d.Amount.ToString("N2")</span>
+                    </summary>
+                    <div class="rnd-review-body">
+                        @{ RenderLineReview(d); }
+                        <div class="rnd-review-actions">
+                            @if (d.ExpenseReceiptId is not null)
+                            {
+                                <a asp-page="/Gastos/Comprobante" asp-route-id="@d.Id" target="_blank" class="btn-module-action"><i class="bi bi-paperclip"></i> Ver comprobante</a>
+                            }
+                            else
+                            {
+                                <span class="admin-muted"><i class="bi bi-paperclip"></i> Sin comprobante adjunto</span>
+                            }
                             @if (Model.IsEditable)
                             {
-                                <form asp-page="./Detalle" asp-page-handler="QuitarComprobante" asp-route-id="@Model.Report.Id" asp-route-lineId="@d.Id" method="post" style="display:inline-block;"
-                                      onsubmit="return confirm('¿Quitar el documento adjunto de este gasto?');">
-                                    <button type="submit" class="btn-module-action btn-module-danger"><i class="bi bi-x"></i> Quitar documento</button>
+                                @if (d.ExpenseReceiptId is not null)
+                                {
+                                    <form asp-page="./Detalle" asp-page-handler="QuitarComprobante" asp-route-id="@Model.Report.Id" asp-route-lineId="@d.Id" method="post" style="display:inline-block;"
+                                          onsubmit="return confirm('¿Quitar el documento adjunto de este gasto?');">
+                                        <button type="submit" class="btn-module-action btn-module-danger"><i class="bi bi-x"></i> Quitar documento</button>
+                                    </form>
+                                }
+                                <form asp-page="./Detalle" asp-page-handler="DesvincularGasto" asp-route-id="@Model.Report.Id" asp-route-lineId="@d.Id" method="post" style="display:inline-block;">
+                                    <button type="submit" class="btn-module-action btn-module-danger">Quitar del informe</button>
                                 </form>
                             }
-                        }
-                        else
-                        {
-                            <span class="admin-muted">—</span>
-                        }
-                    </td>
-                    @if (Model.IsEditable)
-                    {
-                        <td class="admin-col-accion">
-                            <form asp-page="./Detalle" asp-page-handler="DesvincularGasto" asp-route-id="@Model.Report.Id" asp-route-lineId="@d.Id" method="post" style="display:inline-block;">
-                                <button type="submit" class="btn-module-action btn-module-danger">Quitar</button>
-                            </form>
-                        </td>
-                    }
-                </tr>
+                        </div>
+                    </div>
+                </details>
             }
-            @if (Model.Report.Lines.Count == 0)
-            {
-                <tr><td colspan="@(Model.IsEditable ? 6 : 5)" class="admin-muted">Sin gastos todavía.</td></tr>
-            }
-        </tbody>
-        @if (Model.Report.Lines.Count > 0)
-        {
-            <tfoot>
-                <tr>
-                    <td colspan="3"><strong>Total</strong></td>
-                    <td colspan="@(Model.IsEditable ? 3 : 2)"><strong>@Model.Report.Lines.Sum(d => d.Amount).ToString("N2")</strong></td>
-                </tr>
-            </tfoot>
-        }
-    </table>
+        </div>
+        <div class="rnd-review-total">
+            <span>Total</span>
+            <strong>@Model.Report.Lines.Sum(d => d.Amount).ToString("N2")</strong>
+        </div>
+    }
 
     @if (Model.IsEditable)
     {

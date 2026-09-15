@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Modulo.Rendiciones.Models;
 
 namespace Modulo.Rendiciones.Data;
@@ -43,6 +45,7 @@ public class RendicionesDbContext : DbContext
     public DbSet<CostCenter> CostCenters => Set<CostCenter>();
     public DbSet<GlAccount> GlAccounts => Set<GlAccount>();
     public DbSet<RendicionesUserRole> RendicionesUserRoles => Set<RendicionesUserRole>();
+    public DbSet<SupplierHint> SupplierHints => Set<SupplierHint>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -85,6 +88,7 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
             e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
             e.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+            e.Property(x => x.SiiCode).HasColumnName("sii_code");
             e.Property(x => x.AppliesTax).HasColumnName("applies_tax");
             e.Property(x => x.TaxPercentage).HasColumnName("tax_percentage").HasPrecision(5, 2);
             e.Property(x => x.IsActive).HasColumnName("is_active");
@@ -200,6 +204,8 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
             e.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
             e.Property(x => x.ExpenseFundId).HasColumnName("expense_fund_id");
+            e.Property(x => x.Purpose).HasColumnName("purpose").HasMaxLength(500);
+            e.Property(x => x.InternalNumber).HasColumnName("internal_number").HasMaxLength(50);
             e.Property(x => x.CostCenterCode).HasColumnName("cost_center_code").HasMaxLength(50);
             e.Property(x => x.CostCenterName).HasColumnName("cost_center_name").HasMaxLength(200);
             e.Property(x => x.Round).HasColumnName("round");
@@ -239,8 +245,12 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.ExpenseTypeId).HasColumnName("expense_type_id");
             e.Property(x => x.DocumentTypeId).HasColumnName("document_type_id");
             e.Property(x => x.Date).HasColumnName("expense_date");
+            e.Property(x => x.TransactionTime).HasColumnName("transaction_time");
             e.Property(x => x.Amount).HasColumnName("amount").HasPrecision(18, 2);
             e.Property(x => x.TaxAmount).HasColumnName("tax_amount").HasPrecision(18, 2);
+            e.Property(x => x.NetAmount).HasColumnName("net_amount").HasPrecision(18, 2);
+            e.Property(x => x.ExemptAmount).HasColumnName("exempt_amount").HasPrecision(18, 2);
+            e.Property(x => x.CaptureSource).HasColumnName("capture_source").HasMaxLength(20);
             e.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
             e.Property(x => x.DocumentNumber).HasColumnName("document_number").HasMaxLength(50);
             e.Property(x => x.SupplierTaxId).HasColumnName("supplier_tax_id").HasMaxLength(20);
@@ -373,6 +383,51 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.Source).HasColumnName("source").IsRequired().HasConversion<int>();
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
             e.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique().HasDatabaseName("uq_rendiciones_gl_accounts_company_id_code");
+        });
+
+        modelBuilder.Entity<SupplierHint>(e =>
+        {
+            e.ToTable("supplier_hints");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.SupplierTaxId).HasColumnName("supplier_tax_id").HasMaxLength(20).IsRequired();
+            e.Property(x => x.SupplierName).HasColumnName("supplier_name").HasMaxLength(200);
+            e.Property(x => x.DefaultExpenseTypeId).HasColumnName("default_expense_type_id");
+            e.Property(x => x.TimesCategoryConfirmed).HasColumnName("times_category_confirmed");
+            e.Property(x => x.DefaultDocumentTypeId).HasColumnName("default_document_type_id");
+            e.Property(x => x.TimesSeen).HasColumnName("times_seen");
+            e.Property(x => x.LastSeenAt).HasColumnName("last_seen_at");
+
+            // Historial mínimo para calcular la moda de categoría sin tabla hija --
+            // {expenseTypeId: veces} como JSON. ValueComparer explícito: EF no rastrea
+            // cambios de un Dictionary mutable sin él.
+            var opts = new JsonSerializerOptions();
+            e.Property(x => x.CategoryCounts)
+                .HasColumnName("category_counts")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, opts),
+                    v => string.IsNullOrWhiteSpace(v)
+                        ? new Dictionary<long, int>()
+                        : JsonSerializer.Deserialize<Dictionary<long, int>>(v, opts) ?? new Dictionary<long, int>())
+                .Metadata.SetValueComparer(new ValueComparer<Dictionary<long, int>>(
+                    (a, b) => a != null && b != null && a.Count == b.Count && !a.Except(b).Any(),
+                    d => d.Aggregate(0, (acc, kv) => HashCode.Combine(acc, kv.Key.GetHashCode(), kv.Value)),
+                    d => new Dictionary<long, int>(d)));
+
+            e.HasOne<ExpenseType>()
+                .WithMany()
+                .HasForeignKey(x => x.DefaultExpenseTypeId)
+                .HasConstraintName("fk_supplier_hints_expense_types")
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<DocumentType>()
+                .WithMany()
+                .HasForeignKey(x => x.DefaultDocumentTypeId)
+                .HasConstraintName("fk_supplier_hints_document_types")
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.CompanyId, x.SupplierTaxId })
+                .IsUnique()
+                .HasDatabaseName("uq_supplier_hints_company_id_supplier_tax_id");
         });
     }
 }

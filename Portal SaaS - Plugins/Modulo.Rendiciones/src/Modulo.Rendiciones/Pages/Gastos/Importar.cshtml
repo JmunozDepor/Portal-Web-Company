@@ -76,7 +76,25 @@
                             }
                             else
                             {
-                                <span>@(r.Extracted.SupplierName ?? "Proveedor no detectado") · Falta elegir categoría</span>
+                                <span>
+                                    @(r.Extracted.SupplierName ?? "Proveedor no detectado")
+                                    @if (r.Extracted.TransactionTime is { } hora)
+                                    {
+                                        <text> · @hora.ToString("HH:mm")</text>
+                                    }
+                                    @if (r.CategoryPreselected && r.SuggestedCategoryName is not null)
+                                    {
+                                        <text> · Categoría: @r.SuggestedCategoryName</text>
+                                    }
+                                    else if (r.SuggestedCategoryName is not null)
+                                    {
+                                        <text> · Categoría sugerida: @r.SuggestedCategoryName</text>
+                                    }
+                                    else
+                                    {
+                                        <text> · Falta elegir categoría</text>
+                                    }
+                                </span>
                             }
                         </div>
                     </div>

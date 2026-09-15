@@ -24,6 +24,13 @@ public class LoginModel : PageModel
     public void OnGet(string? returnUrl = null)
     {
         Input.ReturnUrl = returnUrl;
+
+        // Rebote desde OnPostAsync con el token antiforgery inválido (ver el fallback en
+        // Program.cs) -- este GET ya trae token + cookie frescos.
+        if (Request.Query.ContainsKey("authRetry"))
+        {
+            ErrorMessage = "La sesión del formulario expiró. Volvé a ingresar tus datos.";
+        }
     }
 
     public async Task<IActionResult> OnPostAsync()

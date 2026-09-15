@@ -23,13 +23,14 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
     private readonly IUserCostCenterService _userCostCenters;
     private readonly IAttachmentStorageService _attachments;
     private readonly IRoutingService _routing;
+    private readonly ISupplierHintService _supplierHints;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
     public DetalleModel(IExpenseService expenses, IExpenseTypeService expenseTypes, IDocumentTypeService documentTypes,
         IExpensePolicyService policies, IExpenseApprovalGroupService approvalGroups, IUserCostCenterService userCostCenters,
-        IAttachmentStorageService attachments, IRoutingService routing, IRendicionesUserRoleService roles,
-        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        IAttachmentStorageService attachments, IRoutingService routing, ISupplierHintService supplierHints,
+        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
         _expenses = expenses;
@@ -40,9 +41,14 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
         _userCostCenters = userCostCenters;
         _attachments = attachments;
         _routing = routing;
+        _supplierHints = supplierHints;
         _currentUser = currentUser;
         _currentCompany = currentCompany;
     }
+
+    /// <summary>Nombre de la categoría que la memoria del proveedor propone, si el gasto todavía no tiene una elegida. Null = no hay sugerencia.</summary>
+    public string? SuggestedCategoryName { get; private set; }
+    public long? SuggestedCategoryId { get; private set; }
 
     public bool IsNew { get; private set; } = true;
     public ExpenseReportLine? Expense { get; private set; }
@@ -89,13 +95,17 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
         IsNew = false;
         Expense = expense;
         await ResolvePolicyLabelAsync(expense, ct);
+        await ResolveSuggestedCategoryAsync(expense, ct);
         Input = new ExpenseInput
         {
             ExpenseTypeId = expense.ExpenseTypeId ?? 0,
             DocumentTypeId = expense.DocumentTypeId,
             Date = expense.Date.DateTime,
+            TransactionTime = expense.TransactionTime,
             Amount = expense.Amount,
             TaxAmount = expense.TaxAmount,
+            NetAmount = expense.NetAmount,
+            ExemptAmount = expense.ExemptAmount,
             Currency = expense.Currency,
             DocumentNumber = expense.DocumentNumber,
             SupplierTaxId = expense.SupplierTaxId,
@@ -154,8 +164,11 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
                 ExpenseTypeId = Input.ExpenseTypeId,
                 DocumentTypeId = Input.DocumentTypeId,
                 Date = Input.Date,
+                TransactionTime = Input.TransactionTime,
                 Amount = Input.Amount,
                 TaxAmount = Input.TaxAmount,
+                NetAmount = Input.NetAmount,
+                ExemptAmount = Input.ExemptAmount,
                 Currency = Input.Currency,
                 DocumentNumber = Input.DocumentNumber,
                 SupplierTaxId = Input.SupplierTaxId,
@@ -252,6 +265,27 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
         PolicyLabel = policy is null ? "Sin política" : (policy.MaxAmount is { } max ? $"Tope {max:N0}" : "Sin tope");
     }
 
+    private async Task ResolveSuggestedCategoryAsync(ExpenseReportLine expense, CancellationToken ct)
+    {
+        if (expense.ExpenseTypeId is not null || string.IsNullOrWhiteSpace(expense.SupplierTaxId))
+            return;
+
+        var rut = RutChileno.NormalizeOrNull(expense.SupplierTaxId);
+        if (rut is null)
+            return;
+
+        var hint = await _supplierHints.GetAsync(_currentCompany.CompanyId, rut, ct);
+        if (hint?.DefaultExpenseTypeId is not { } catId)
+            return;
+
+        var tipo = ExpenseTypes.FirstOrDefault(t => t.Id == catId);
+        if (tipo is null)
+            return;
+
+        SuggestedCategoryId = tipo.Id;
+        SuggestedCategoryName = tipo.Name;
+    }
+
     private async Task<long> SaveReceiptAsync(IFormFile file, CancellationToken ct)
     {
         using var stream = new MemoryStream();
@@ -289,12 +323,22 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
         [DataType(DataType.Date)]
         public DateTime Date { get; set; } = DateTime.Today;
 
+        /// <summary>Hora de la transacción -- campo propio, separado de la fecha. Opcional. Relevante para auditoría.</summary>
+        [DataType(DataType.Time)]
+        public TimeOnly? TransactionTime { get; set; }
+
         /// <summary>Para un tipo de gasto de kilometraje, se recalcula server-side (ver ExpenseService) -- acá solo se valida &gt; 0 para los tipos normales, ver OnPostGuardarAsync.</summary>
         [Range(0, double.MaxValue)]
         public decimal Amount { get; set; }
 
         [Range(0, double.MaxValue)]
         public decimal? TaxAmount { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public decimal? NetAmount { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public decimal? ExemptAmount { get; set; }
 
         [Required]
         [StringLength(3, MinimumLength = 3, ErrorMessage = "Usar el código de moneda de 3 letras (ej. CLP, USD).")]

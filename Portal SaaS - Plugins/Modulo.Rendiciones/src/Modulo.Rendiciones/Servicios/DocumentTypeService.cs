@@ -25,6 +25,12 @@ public sealed class DocumentTypeService : IDocumentTypeService
             .OrderBy(t => t.Name)
             .ToListAsync(ct);
 
+    public async Task<DocumentType?> FindBySiiCodeAsync(Guid companyId, int siiCode, CancellationToken ct = default) =>
+        await _db.DocumentTypes
+            .Where(t => t.CompanyId == companyId && t.IsActive && t.SiiCode == siiCode)
+            .OrderBy(t => t.Id)
+            .FirstOrDefaultAsync(ct);
+
     public async Task<long> CreateAsync(Guid companyId, string name, bool appliesTax, decimal taxPercentage, CancellationToken ct = default)
     {
         var type = new DocumentType

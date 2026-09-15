@@ -60,6 +60,8 @@ public sealed class DetalleModel : RendicionesRendidorOAprobadorPageModelBase
         {
             CostCenterCode = Report.CostCenterCode,
             ExpenseFundId = Report.ExpenseFundId,
+            Purpose = Report.Purpose,
+            InternalNumber = Report.InternalNumber,
         };
         return Page();
     }
@@ -74,7 +76,7 @@ public sealed class DetalleModel : RendicionesRendidorOAprobadorPageModelBase
             var costCenterName = CostCenters.FirstOrDefault(c => c.Code == Header.CostCenterCode)?.Name;
 
             await _reports.UpdateHeaderAsync(id, _currentCompany.CompanyId, Header.ExpenseFundId,
-                Header.CostCenterCode, costCenterName, ct);
+                Header.CostCenterCode, costCenterName, Header.Purpose, Header.InternalNumber, ct);
             SuccessMessage = "Cabecera actualizada.";
         }
         catch (Exception ex)
@@ -238,5 +240,11 @@ public sealed class DetalleModel : RendicionesRendidorOAprobadorPageModelBase
     {
         public string? CostCenterCode { get; set; }
         public long? ExpenseFundId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(500)]
+        public string? Purpose { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(50)]
+        public string? InternalNumber { get; set; }
     }
 }

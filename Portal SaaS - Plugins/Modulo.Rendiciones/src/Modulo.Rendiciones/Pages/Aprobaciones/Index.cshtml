@@ -37,8 +37,14 @@ else
             <a href="~/rendiciones/informes/@r.Id" class="rnd-card-row">
                 <div class="rnd-card-icon"><i class="bi bi-folder2-open"></i></div>
                 <div class="rnd-card-main">
-                    <div class="rnd-card-title">Informe #@r.Id — @(r.CostCenterName ?? r.CostCenterCode ?? "sin centro de costo")</div>
-                    <div class="rnd-card-sub">Enviado @(r.SubmittedAt?.ToString("dd-MM-yyyy") ?? "—") · Nivel @r.CurrentLevel · @r.Lines.Count gasto(s)</div>
+                    <div class="rnd-card-title">
+                        Informe #@r.Id
+                        @if (!string.IsNullOrWhiteSpace(r.InternalNumber)) { <text>· N.º @r.InternalNumber</text> }
+                        — @(r.CostCenterName ?? r.CostCenterCode ?? "sin centro de costo")
+                    </div>
+                    <div class="rnd-card-sub">
+                        @(!string.IsNullOrWhiteSpace(r.Purpose) ? r.Purpose + " · " : "")Enviado @(r.SubmittedAt?.ToString("dd-MM-yyyy") ?? "—") · Nivel @r.CurrentLevel · @r.Lines.Count gasto(s)
+                    </div>
                 </div>
                 <div class="rnd-card-meta">
                     <span class="rnd-card-amount">@r.Lines.Sum(d => d.Amount).ToString("N2")</span>

@@ -18,7 +18,8 @@ public interface IExpenseReportService
         string? costCenterCode, string? costCenterName, CancellationToken ct = default);
 
     Task UpdateHeaderAsync(long reportId, Guid companyId, long? expenseFundId,
-        string? costCenterCode, string? costCenterName, CancellationToken ct = default);
+        string? costCenterCode, string? costCenterName, string? purpose, string? internalNumber,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Adjunta gastos sueltos existentes al informe (Status pasa a InReport). Solo si

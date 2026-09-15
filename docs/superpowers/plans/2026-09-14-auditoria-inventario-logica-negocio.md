@@ -2144,6 +2144,11 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
                 var capturador = await _db.CaptureUsers.FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == _currentCompany.CompanyId, ct)
                     ?? throw new InvalidOperationException("El capturador no existe.");
 
+                if (await _db.CaptureUsers.AnyAsync(c => c.CompanyId == _currentCompany.CompanyId && c.Username == Input.Username && c.Id != id, ct))
+                {
+                    throw new InvalidOperationException($"Ya existe un capturador con el usuario '{Input.Username}'.");
+                }
+
                 capturador.Username = Input.Username;
                 capturador.FullName = string.IsNullOrWhiteSpace(Input.FullName) ? null : Input.FullName;
                 capturador.IsActive = Input.IsActive;
@@ -2347,7 +2352,7 @@ Expected: Build succeeded, 0 errores.
 - [ ] **Step 5: Correr toda la suite completa una última vez**
 
 Run: `dotnet test Modulo.AuditoriaInventario.Tests/Modulo.AuditoriaInventario.Tests.csproj`
-Expected: todos los tests (Task 1: 3 + 3 existentes, Task 2: 2, Task 3: 4, Task 4: 3 = 15 nuevos + 3 existentes = 18) en PASS.
+Expected: todos los tests en PASS -- 3 existentes (`AuditoriaInventarioDbContextTests`) + 12 nuevos (Task 1: 3 `PasswordHasherTests`, Task 2: 2 `DiferenciaEngineTests`, Task 3: 4 `CongeladoExcelParserTests`, Task 4: 3 `AjusteServiceTests`) = 15 tests en total.
 
 - [ ] **Step 6: Commit**
 

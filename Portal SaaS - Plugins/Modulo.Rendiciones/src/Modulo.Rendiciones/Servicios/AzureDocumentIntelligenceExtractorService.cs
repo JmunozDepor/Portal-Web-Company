@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Azure;
 using Azure.AI.DocumentIntelligence;
@@ -29,6 +30,8 @@ public sealed class AzureDocumentIntelligenceExtractorService : IReceiptExtracto
     private static readonly Regex ChileanTaxIdRegex = new(@"\b\d{1,2}\.\d{3}\.\d{3}-[\dkK]\b", RegexOptions.Compiled);
     private static readonly Regex DocumentNumberRegex = new(@"(?:folio|n[°º]?\s*(?:de\s+)?(?:boleta|factura)?)\s*[:\-#]?\s*(\d{3,10})",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    // Hora impresa: "HORA: 14:35", "14:35:07", "14:35 hrs" -- se toma la primera coincidencia plausible.
+    private static readonly Regex TimeRegex = new(@"\b([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?\b", RegexOptions.Compiled);
 
     private readonly IExternalServiceProviderSelector _selector;
     private readonly IExternalServiceUsageService _usage;
@@ -78,6 +81,7 @@ public sealed class AzureDocumentIntelligenceExtractorService : IReceiptExtracto
 
             decimal? amount = null;
             decimal? taxAmount = null;
+            decimal? netAmount = null;
             DateTime? date = null;
             string? supplierName = null;
             float? confidence = document?.Confidence;
@@ -90,6 +94,9 @@ public sealed class AzureDocumentIntelligenceExtractorService : IReceiptExtracto
                 if (document.Fields.TryGetValue("TotalTax", out var taxField) && taxField.ValueCurrency is { } tax)
                     taxAmount = (decimal)tax.Amount;
 
+                if (document.Fields.TryGetValue("SubTotal", out var subField) && subField.ValueCurrency is { } sub)
+                    netAmount = (decimal)sub.Amount;
+
                 if (document.Fields.TryGetValue("InvoiceDate", out var dateField) && dateField.ValueDate is { } d)
                     date = d.DateTime;
 
@@ -98,10 +105,33 @@ public sealed class AzureDocumentIntelligenceExtractorService : IReceiptExtracto
             }
 
             var text = result.Content ?? string.Empty;
-            var taxId = ChileanTaxIdRegex.Match(text) is { Success: true } mTaxId ? mTaxId.Value : null;
+            var taxIdRaw = ChileanTaxIdRegex.Match(text) is { Success: true } mTaxId ? mTaxId.Value : null;
+            var taxId = RutChileno.NormalizeOrNull(taxIdRaw) ?? taxIdRaw;
             var documentNumber = DocumentNumberRegex.Match(text) is { Success: true } mDoc ? mDoc.Groups[1].Value : null;
 
-            return new ExtractedReceiptDto(amount, taxAmount, date, documentNumber, taxId, supplierName, confidence);
+            TimeOnly? transactionTime = null;
+            if (TimeRegex.Match(text) is { Success: true } mTime
+                && TimeOnly.TryParse(mTime.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedTime))
+            {
+                transactionTime = parsedTime;
+            }
+
+            return new ExtractedReceiptDto(
+                Amount: amount,
+                TaxAmount: taxAmount,
+                Date: date,
+                DocumentNumber: documentNumber,
+                SupplierTaxId: taxId,
+                SupplierName: supplierName,
+                Confidence: confidence,
+                Error: null,
+                TransactionTime: transactionTime,
+                NetAmount: netAmount,
+                ExemptAmount: null,
+                SiiDocumentCode: ChileanDocumentKind.SiiCodeFromText(text),
+                Items: null,
+                SuggestedCategoryText: null,
+                Source: ReceiptSource.AzureOcr);
         }
         catch (Exception ex)
         {

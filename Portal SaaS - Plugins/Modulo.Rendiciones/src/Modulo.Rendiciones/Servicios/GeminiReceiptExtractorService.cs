@@ -76,13 +76,26 @@ public sealed class GeminiReceiptExtractorService : IReceiptExtractorService
         return value.Length == 0 ? DefaultModel : value;
     }
 
-    private const string Prompt =
-        "Sos un extractor de datos de comprobantes de gasto chilenos (boletas, facturas, vouchers). " +
+    private const string PromptBase =
+        "Sos un extractor de datos de comprobantes de gasto chilenos (boletas y facturas electrónicas, vouchers). " +
         "Devolvé SOLO los campos que aparezcan de forma clara en el documento; para cualquier dato que no " +
         "figure o no puedas leer con seguridad, devolvé null (no inventes ni estimes). " +
-        "amount = monto total a pagar con impuestos incluidos. taxAmount = monto de IVA. " +
-        "date = fecha de emisión en formato yyyy-MM-dd. documentNumber = número de boleta/factura o folio. " +
-        "supplierTaxId = RUT del emisor en formato 12.345.678-9. supplierName = razón social o nombre del emisor.";
+        "amount = monto total a pagar con impuestos incluidos. netAmount = monto neto/afecto (facturas). " +
+        "exemptAmount = monto exento. taxAmount = monto de IVA. " +
+        "date = fecha de emisión en formato yyyy-MM-dd. time = hora de la transacción en formato HH:mm (24h) si aparece impresa. " +
+        "documentNumber = número de boleta/factura o folio. " +
+        "supplierTaxId = RUT del emisor en formato 12.345.678-9. supplierName = razón social o nombre del emisor. " +
+        "documentType = uno de: factura_electronica, factura_exenta, boleta_electronica, boleta_exenta, nota_credito, nota_debito, guia_despacho, otro (según el encabezado impreso). " +
+        "items = lista breve de las descripciones de los ítems/productos del comprobante (máximo 10).";
+
+    private const string PromptCategoriaSuffix =
+        " suggestedCategory = la categoría de gasto que mejor describe este comprobante, ELEGIDA EXACTAMENTE de esta lista: {0}. " +
+        "Si ninguna aplica con claridad, devolvé null.";
+
+    private static string BuildPrompt(IReadOnlyList<string> categorias) =>
+        categorias.Count == 0
+            ? PromptBase
+            : PromptBase + string.Format(CultureInfo.InvariantCulture, PromptCategoriaSuffix, string.Join(", ", categorias));
 
     // Subconjunto de OpenAPI que acepta Gemini como responseSchema. Todo opcional y
     // nullable: el prompt ya obliga a usar null cuando el dato no está.
@@ -92,27 +105,36 @@ public sealed class GeminiReceiptExtractorService : IReceiptExtractorService
         properties = new
         {
             amount = new { type = "number", nullable = true },
+            netAmount = new { type = "number", nullable = true },
+            exemptAmount = new { type = "number", nullable = true },
             taxAmount = new { type = "number", nullable = true },
             date = new { type = "string", nullable = true },
+            time = new { type = "string", nullable = true },
             documentNumber = new { type = "string", nullable = true },
+            documentType = new { type = "string", nullable = true },
             supplierTaxId = new { type = "string", nullable = true },
             supplierName = new { type = "string", nullable = true },
+            items = new { type = "array", nullable = true, items = new { type = "string" } },
+            suggestedCategory = new { type = "string", nullable = true },
         },
     };
 
     private readonly HttpClient _http;
     private readonly IExternalServiceProviderSelector _selector;
     private readonly IExternalServiceUsageService _usage;
+    private readonly IExpenseTypeService _expenseTypes;
     private readonly GeminiRateLimiter _rateLimiter;
     private readonly ILogger<GeminiReceiptExtractorService> _logger;
 
     public GeminiReceiptExtractorService(HttpClient http, IExternalServiceProviderSelector selector,
-        IExternalServiceUsageService usage, GeminiRateLimiter rateLimiter, ILogger<GeminiReceiptExtractorService> logger)
+        IExternalServiceUsageService usage, IExpenseTypeService expenseTypes, GeminiRateLimiter rateLimiter,
+        ILogger<GeminiReceiptExtractorService> logger)
     {
         _http = http;
         _http.BaseAddress ??= new Uri(BaseUrl);
         _selector = selector;
         _usage = usage;
+        _expenseTypes = expenseTypes;
         _rateLimiter = rateLimiter;
         _logger = logger;
     }
@@ -135,6 +157,7 @@ public sealed class GeminiReceiptExtractorService : IReceiptExtractorService
             }
 
             var model = ResolveModel(provider.Endpoint);
+            var categorias = await LoadCategoriasAsync(companyId, ct);
 
             var body = new
             {
@@ -144,7 +167,7 @@ public sealed class GeminiReceiptExtractorService : IReceiptExtractorService
                     {
                         parts = new object[]
                         {
-                            new { text = Prompt },
+                            new { text = BuildPrompt(categorias) },
                             new { inlineData = new { mimeType = NormalizeMimeType(mimeType), data = Convert.ToBase64String(content) } },
                         },
                     },
@@ -203,12 +226,34 @@ public sealed class GeminiReceiptExtractorService : IReceiptExtractorService
                 DocumentNumber: ReadString(fields, "documentNumber"),
                 SupplierTaxId: ReadString(fields, "supplierTaxId"),
                 SupplierName: ReadString(fields, "supplierName"),
-                Confidence: null);
+                Confidence: null,
+                Error: null,
+                TransactionTime: ReadTime(fields, "time"),
+                NetAmount: ReadDecimal(fields, "netAmount"),
+                ExemptAmount: ReadDecimal(fields, "exemptAmount"),
+                SiiDocumentCode: ChileanDocumentKind.SiiCodeForSlug(ReadString(fields, "documentType")),
+                Items: ReadStringArray(fields, "items"),
+                SuggestedCategoryText: ReadString(fields, "suggestedCategory"),
+                Source: ReceiptSource.GeminiOcr);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "No se pudo extraer el comprobante con Google Gemini.");
             return Fail("No se pudo leer el documento automáticamente -- completá los campos a mano.");
+        }
+    }
+
+    private async Task<IReadOnlyList<string>> LoadCategoriasAsync(Guid companyId, CancellationToken ct)
+    {
+        try
+        {
+            var tipos = await _expenseTypes.ListActiveAsync(companyId, ct);
+            return tipos.Where(t => !t.IsMileage).Select(t => t.Name).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo cargar el catálogo de tipos de gasto para la sugerencia de categoría.");
+            return Array.Empty<string>();
         }
     }
 
@@ -281,5 +326,34 @@ public sealed class GeminiReceiptExtractorService : IReceiptExtractorService
         return DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
             ? date.Date
             : null;
+    }
+
+    /// <summary>Hora "HH:mm" (o "HH:mm:ss") -&gt; TimeOnly. Descarta valores fuera de rango.</summary>
+    private static TimeOnly? ReadTime(JsonElement obj, string name)
+    {
+        var raw = ReadString(obj, name);
+        if (raw is null)
+            return null;
+
+        foreach (var fmt in new[] { "HH:mm", "H:mm", "HH:mm:ss", "h:mm tt", "hh:mm tt" })
+        {
+            if (TimeOnly.TryParseExact(raw, fmt, CultureInfo.InvariantCulture, DateTimeStyles.None, out var t))
+                return t;
+        }
+        return TimeOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var any) ? any : null;
+    }
+
+    private static IReadOnlyList<string>? ReadStringArray(JsonElement obj, string name)
+    {
+        if (!obj.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var list = new List<string>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String && NullIfBlank(item.GetString()) is { } s)
+                list.Add(s);
+        }
+        return list.Count == 0 ? null : list;
     }
 }

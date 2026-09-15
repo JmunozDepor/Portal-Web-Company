@@ -68,6 +68,14 @@ public class LoginModel : PageModel
             InfoMessage = "Tu sesión se cerró. Iniciá sesión de nuevo.";
             Response.Cookies.Delete("portal_session_ended");
         }
+
+        // Rebote desde OnPostAsync con el token antiforgery inválido (ver el fallback en
+        // Program.cs) -- pasó por caché una copia vieja de esta página. Este GET ya trae
+        // token + cookie frescos, solo hay que reingresar los datos.
+        if (InfoMessage is null && Request.Query.ContainsKey("authRetry"))
+        {
+            InfoMessage = "La sesión del formulario expiró. Volvé a ingresar tus datos.";
+        }
     }
 
     public async Task<IActionResult> OnPostAsync()

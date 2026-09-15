@@ -637,6 +637,98 @@
     font-size: 12.5px;
 }
 
+/* --- Revisión de un informe (Pages/Informes/Detalle.cshtml, también la usa el
+   aprobador): cada gasto se muestra con EL MISMO formulario de "Nuevo/Editar gasto"
+   pero bloqueado, para identificar de un vistazo los valores cargados -- pedido
+   explícito. --- */
+.rnd-review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.rnd-review-line {
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    background: var(--card-bg);
+    overflow: hidden;
+}
+
+.rnd-review-line > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.rnd-review-line[open] > summary {
+    border-bottom: 1px solid var(--card-border);
+}
+
+.rnd-review-sum-main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: baseline;
+    min-width: 0;
+}
+
+.rnd-review-sum-amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.rnd-review-body {
+    padding: 12px 14px;
+}
+
+/* El formulario "espejo" usa la MISMA columna angosta que el form de "Nuevo/Editar
+   gasto" (.rnd-gasto-form ya es flex:0 0 340px) + el visor del comprobante a la
+   derecha (.rnd-gasto-split / .rnd-gasto-visor), para que se vea idéntico. */
+.rnd-gasto-form.rnd-review fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+}
+
+/* Campos bloqueados pero legibles -- sin el gris "deshabilitado" que cuesta leer. */
+.rnd-gasto-form.rnd-review .form-control:disabled {
+    opacity: 1;
+    background: color-mix(in srgb, var(--card-border) 22%, transparent);
+    color: inherit;
+    -webkit-text-fill-color: currentColor;
+    cursor: default;
+}
+
+.rnd-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.rnd-review-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 2px solid var(--card-border);
+    font-size: 14px;
+}
+
+.rnd-review-total strong {
+    font-variant-numeric: tabular-nums;
+    font-size: 16px;
+}
+
 /* Pastilla informativa "Política" arriba del formulario -- grupo de aprobación +
    centros de costo del usuario ACTUAL, de solo lectura (nunca se postea, no es un
    campo de Input). Ver el comentario largo de DetalleModel.ApprovalGroupSummary

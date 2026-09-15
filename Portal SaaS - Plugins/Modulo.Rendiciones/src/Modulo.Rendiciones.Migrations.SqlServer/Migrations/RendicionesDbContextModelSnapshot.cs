@@ -95,6 +95,10 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("name");
 
+                    b.Property<int?>("SiiCode")
+                        .HasColumnType("int")
+                        .HasColumnName("sii_code");
+
                     b.Property<decimal>("TaxPercentage")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)")
@@ -379,6 +383,16 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("expense_fund_id");
 
+                    b.Property<string>("InternalNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("internal_number");
+
+                    b.Property<string>("Purpose")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("purpose");
+
                     b.Property<DateTimeOffset?>("ResolvedAt")
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("resolved_at");
@@ -475,6 +489,11 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("applied_rate_per_km");
 
+                    b.Property<string>("CaptureSource")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("capture_source");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("company_id");
@@ -508,6 +527,11 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("document_type_id");
 
+                    b.Property<decimal?>("ExemptAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("exempt_amount");
+
                     b.Property<long?>("ExpenseReceiptId")
                         .HasColumnType("bigint")
                         .HasColumnName("expense_receipt_id");
@@ -519,6 +543,11 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                     b.Property<long?>("ExpenseTypeId")
                         .HasColumnType("bigint")
                         .HasColumnName("expense_type_id");
+
+                    b.Property<decimal?>("NetAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("net_amount");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
@@ -550,6 +579,10 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("tax_amount");
+
+                    b.Property<TimeOnly?>("TransactionTime")
+                        .HasColumnType("time")
+                        .HasColumnName("transaction_time");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier")
@@ -852,6 +885,68 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                     b.ToTable("rendiciones_user_roles", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Rendiciones.Models.SupplierHint", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CategoryCounts")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("category_counts");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<long?>("DefaultDocumentTypeId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("default_document_type_id");
+
+                    b.Property<long?>("DefaultExpenseTypeId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("default_expense_type_id");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<string>("SupplierName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("supplier_name");
+
+                    b.Property<string>("SupplierTaxId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("supplier_tax_id");
+
+                    b.Property<int>("TimesCategoryConfirmed")
+                        .HasColumnType("int")
+                        .HasColumnName("times_category_confirmed");
+
+                    b.Property<int>("TimesSeen")
+                        .HasColumnType("int")
+                        .HasColumnName("times_seen");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DefaultDocumentTypeId");
+
+                    b.HasIndex("DefaultExpenseTypeId");
+
+                    b.HasIndex("CompanyId", "SupplierTaxId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_supplier_hints_company_id_supplier_tax_id");
+
+                    b.ToTable("supplier_hints", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Rendiciones.Models.UserCostCenter", b =>
                 {
                     b.Property<long>("Id")
@@ -994,6 +1089,21 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasConstraintName("fk_external_service_usages_external_service_providers");
 
                     b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("Modulo.Rendiciones.Models.SupplierHint", b =>
+                {
+                    b.HasOne("Modulo.Rendiciones.Models.DocumentType", null)
+                        .WithMany()
+                        .HasForeignKey("DefaultDocumentTypeId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_supplier_hints_document_types");
+
+                    b.HasOne("Modulo.Rendiciones.Models.ExpenseType", null)
+                        .WithMany()
+                        .HasForeignKey("DefaultExpenseTypeId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_supplier_hints_expense_types");
                 });
 
             modelBuilder.Entity("Modulo.Rendiciones.Models.ExpenseReport", b =>

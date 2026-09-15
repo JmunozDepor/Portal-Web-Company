@@ -40,6 +40,7 @@ public sealed class ExpenseReportService : IExpenseReportService
     public async Task<ExpenseReport?> GetAsync(long id, Guid companyId, CancellationToken ct = default) =>
         await _db.ExpenseReports
             .Include(r => r.Lines).ThenInclude(d => d.ExpenseType)
+            .Include(r => r.Lines).ThenInclude(d => d.DocumentType)
             .FirstOrDefaultAsync(r => r.Id == id && r.CompanyId == companyId, ct);
 
     public async Task<long> CreateReportAsync(Guid companyId, Guid userId, IReadOnlyList<long> expenseIds, long? expenseFundId,
@@ -66,12 +67,15 @@ public sealed class ExpenseReportService : IExpenseReportService
     }
 
     public async Task UpdateHeaderAsync(long reportId, Guid companyId, long? expenseFundId,
-        string? costCenterCode, string? costCenterName, CancellationToken ct = default)
+        string? costCenterCode, string? costCenterName, string? purpose, string? internalNumber,
+        CancellationToken ct = default)
     {
         var report = await RequireEditableAsync(reportId, companyId, ct);
         report.ExpenseFundId = expenseFundId;
         report.CostCenterCode = costCenterCode;
         report.CostCenterName = costCenterName;
+        report.Purpose = string.IsNullOrWhiteSpace(purpose) ? null : purpose.Trim();
+        report.InternalNumber = string.IsNullOrWhiteSpace(internalNumber) ? null : internalNumber.Trim();
         await _db.SaveChangesAsync(ct);
     }
 

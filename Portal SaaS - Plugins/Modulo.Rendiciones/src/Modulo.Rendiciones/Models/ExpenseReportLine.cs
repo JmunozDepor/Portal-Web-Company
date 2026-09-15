@@ -34,11 +34,30 @@ public class ExpenseReportLine
 
     public DateTimeOffset Date { get; set; }
 
+    /// <summary>
+    /// Hora de la transacción, SEPARADA de <see cref="Date"/> (que es solo calendario).
+    /// Relevante para auditoría (ej. "almuerzo fuera de horario"). Nullable: muchas
+    /// facturas no la imprimen. Se captura del comprobante por OCR.
+    /// </summary>
+    public TimeOnly? TransactionTime { get; set; }
+
     /// <summary>Monto total (bruto, impuesto incluido).</summary>
     public decimal Amount { get; set; }
 
     /// <summary>Porción de Amount que corresponde a impuesto. Editable -- se sugiere desde DocumentType.TaxPercentage pero no se fuerza.</summary>
     public decimal? TaxAmount { get; set; }
+
+    /// <summary>Monto afecto (neto) leído del comprobante -- para facturas. Nullable: en boletas se deriva (Amount / 1,19).</summary>
+    public decimal? NetAmount { get; set; }
+
+    /// <summary>Monto exento leído del comprobante (facturas/boletas exentas). Nullable.</summary>
+    public decimal? ExemptAmount { get; set; }
+
+    /// <summary>
+    /// De dónde salieron los datos de esta línea: <c>document</c> (OCR), <c>mixed</c>
+    /// (OCR + memoria de proveedor), <c>manual</c>. Informativo para el auditor.
+    /// </summary>
+    public string? CaptureSource { get; set; }
 
     public required string Currency { get; set; }
 

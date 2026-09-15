@@ -109,6 +109,14 @@ public class SelectCompanyModel : PageModel
         }
 
         Input.ReturnUrl = returnUrl;
+
+        // Rebote desde OnPostAsync con el token antiforgery inválido (ver el fallback en
+        // Program.cs) -- este GET ya trae token + cookie frescos.
+        if (ErrorMessage is null && Request.Query.ContainsKey("authRetry"))
+        {
+            ErrorMessage = "La sesión del formulario expiró. Elegí tu compañía de nuevo.";
+        }
+
         await CargarCompaniasConAccesoAsync(userId);
         AplicarCompaniaBloqueadaSiCorresponde();
         return Page();

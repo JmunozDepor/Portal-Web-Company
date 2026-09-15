@@ -66,6 +66,7 @@ describe('syncSesionesPendientes', () => {
 });
 
 describe('syncCapturasPendientes', () => {
+
   it('divide en lotes de 100 y sincroniza todo', async () => {
     for (let i = 0; i < 101; i++) {
       await createCaptura({
@@ -96,5 +97,71 @@ describe('syncCapturasPendientes', () => {
     const capturas = await getCapturasBySesion('s1');
     expect(capturas[0].syncStatus).toBe('error');
     expect(capturas[0].lastError).toBe('SectorId invalido');
+  });
+
+  it('un 401 se relanza sin marcar las capturas como error', async () => {
+    await createCaptura({
+      id: 'cap-401', sessionId: 's1', sectorId: 1, barcode: '401', productCode: null,
+      quantity: 1, inMaster: null, capturedAt: '2026-01-01T00:00:00Z', syncStatus: 'pending', lastError: null,
+    });
+    vi.spyOn(endpoints, 'uploadCapturasBatch').mockRejectedValue(new ApiError(401, 'expirado'));
+
+    await expect(syncCapturasPendientes('tok')).rejects.toMatchObject({ status: 401 });
+
+    const capturas = await getCapturasBySesion('s1');
+    expect(capturas[0].syncStatus).toBe('pending');
+  });
+
+  it('deja pending las capturas si hay un error de red', async () => {
+    await createCaptura({
+      id: 'cap-net', sessionId: 's1', sectorId: 1, barcode: 'NET', productCode: null,
+      quantity: 1, inMaster: null, capturedAt: '2026-01-01T00:00:00Z', syncStatus: 'pending', lastError: null,
+    });
+    vi.spyOn(endpoints, 'uploadCapturasBatch').mockRejectedValue(new Error('network down'));
+
+    await syncCapturasPendientes('tok');
+
+    const capturas = await getCapturasBySesion('s1');
+    expect(capturas[0].syncStatus).toBe('pending');
+  });
+
+  it('marca como error solo el lote que falla, no todas las capturas pendientes', async () => {
+    // Create 150 capturas in separate sessions: 100 in session1, 50 in session2
+    // This lets us verify batch-scoping without needing complex mock logic
+    for (let i = 0; i < 100; i++) {
+      await createCaptura({
+        id: `cap-b1-${i}`, sessionId: 'sess1', sectorId: 1, barcode: `B1-${i}`, productCode: null,
+        quantity: 1, inMaster: null, capturedAt: '2026-01-01T00:00:00Z', syncStatus: 'pending', lastError: null,
+      });
+    }
+    for (let i = 0; i < 50; i++) {
+      await createCaptura({
+        id: `cap-b2-${i}`, sessionId: 'sess2', sectorId: 1, barcode: `B2-${i}`, productCode: null,
+        quantity: 1, inMaster: null, capturedAt: '2026-01-01T00:00:00Z', syncStatus: 'pending', lastError: null,
+      });
+    }
+
+    // Mock: first batch succeeds, second batch fails
+    let callCount = 0;
+    vi.spyOn(endpoints, 'uploadCapturasBatch').mockImplementation(async () => {
+      callCount++;
+      if (callCount === 1) {
+        return { processed: 100 };
+      }
+      throw new ApiError(400, 'lote invalido');
+    });
+
+    await syncCapturasPendientes('tok');
+
+    // Verify first batch synced (by session)
+    const batch1 = await getCapturasBySesion('sess1');
+    expect(batch1).toHaveLength(100);
+    expect(batch1.every((c) => c.syncStatus === 'synced')).toBe(true);
+
+    // Verify second batch errored (by session)
+    const batch2 = await getCapturasBySesion('sess2');
+    expect(batch2).toHaveLength(50);
+    expect(batch2.every((c) => c.syncStatus === 'error')).toBe(true);
+    expect(batch2[0].lastError).toBe('lote invalido');
   });
 });

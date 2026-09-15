@@ -8,12 +8,13 @@ export async function syncProductos(token: string, onProgress?: (count: number) 
 
   while (hasMore) {
     const page = await getProductos(token, afterId);
-    if (page.items.length > 0) {
-      await upsertProductos(page.items);
-      afterId = page.items[page.items.length - 1].id;
-      total += page.items.length;
-      onProgress?.(total);
+    if (page.items.length === 0) {
+      break; // Salir si la página está vacía, previene loop infinito con hasMore=true
     }
+    await upsertProductos(page.items);
+    afterId = page.items[page.items.length - 1].id;
+    total += page.items.length;
+    onProgress?.(total);
     hasMore = page.hasMore;
   }
 

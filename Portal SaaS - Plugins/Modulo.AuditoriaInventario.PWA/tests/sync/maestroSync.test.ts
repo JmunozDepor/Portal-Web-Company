@@ -24,6 +24,19 @@ describe('syncProductos', () => {
     const producto = await getProductoByBarcode('B');
     expect(producto?.productCode).toBe('P2');
   });
+
+  it('sale del loop si el servidor devuelve pagina vacia con hasMore=true', async () => {
+    const spy = vi.spyOn(endpoints, 'getProductos');
+    spy.mockResolvedValueOnce({
+      items: [],
+      hasMore: true,
+    });
+
+    const total = await syncProductos('tok');
+
+    expect(total).toBe(0);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('syncSucursales', () => {

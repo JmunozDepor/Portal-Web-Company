@@ -3,7 +3,7 @@ import { db } from '../../src/db/schema';
 import {
   upsertProductos, getProductoByBarcode, createSesion, getSesion,
   updateSesion, getSesionesPendientes, createCaptura, getCapturasPendientes,
-  getPendingCounts,
+  getPendingCounts, getProductosCount, reintentarErrores,
 } from '../../src/db/repositories';
 
 beforeEach(async () => {
@@ -50,5 +50,38 @@ describe('repositories', () => {
     expect(counts.capturas).toBe(1);
     const pendientes = await getCapturasPendientes();
     expect(pendientes).toHaveLength(1);
+  });
+
+  it('getProductosCount informa si el maestro local esta vacio', async () => {
+    expect(await getProductosCount()).toBe(0);
+    await upsertProductos([
+      { id: 1, barcode: '1', productCode: 'P1', description: null, brand: null, line: null },
+      { id: 2, barcode: '2', productCode: 'P2', description: null, brand: null, line: null },
+    ]);
+    expect(await getProductosCount()).toBe(2);
+  });
+
+  it('reintentarErrores devuelve a pending las filas en error y limpia lastError', async () => {
+    await createSesion({
+      id: 'sesion-err', branchId: 10, inventoryNumber: 'INV-E', startedAt: new Date().toISOString(),
+      status: 'ACTIVE', validateAgainstMaster: true, syncStatus: 'error', lastError: 'boom',
+    });
+    await createSesion({
+      id: 'sesion-ok', branchId: 10, inventoryNumber: 'INV-O', startedAt: new Date().toISOString(),
+      status: 'ACTIVE', validateAgainstMaster: true, syncStatus: 'synced', lastError: null,
+    });
+    await createCaptura({
+      id: 'cap-err', sessionId: 'sesion-err', sectorId: 1, barcode: '9', productCode: null,
+      quantity: 1, inMaster: null, capturedAt: new Date().toISOString(), syncStatus: 'error', lastError: 'boom',
+    });
+
+    const movidas = await reintentarErrores();
+
+    expect(movidas).toEqual({ sesiones: 1, capturas: 1 });
+    const sesionErr = await getSesion('sesion-err');
+    expect(sesionErr?.syncStatus).toBe('pending');
+    expect(sesionErr?.lastError).toBeNull();
+    expect((await getSesion('sesion-ok'))?.syncStatus).toBe('synced');
+    expect((await getCapturasPendientes()).map((c) => c.id)).toEqual(['cap-err']);
   });
 });

@@ -21,6 +21,10 @@ export async function getProductoByBarcode(barcode: string): Promise<ProductoRow
   return db.productos.where('barcode').equals(barcode).first();
 }
 
+export async function getProductosCount(): Promise<number> {
+  return db.productos.count();
+}
+
 export async function upsertSucursales(items: SucursalRow[]): Promise<void> {
   await db.sucursales.bulkPut(items);
 }
@@ -71,6 +75,19 @@ export async function getCapturasBySesion(sessionId: string): Promise<CapturaRow
 
 export async function getCapturasPendientes(): Promise<CapturaRow[]> {
   return db.capturas.where('syncStatus').equals('pending').toArray();
+}
+
+/**
+ * Devuelve las filas en estado 'error' a 'pending' para que el proximo tick de
+ * sincronizacion vuelva a intentarlas. Es el unico camino de reintento y lo
+ * dispara el boton "Sincronizar ahora".
+ */
+export async function reintentarErrores(): Promise<{ sesiones: number; capturas: number }> {
+  const sesiones = await db.sesiones.where('syncStatus').equals('error')
+    .modify({ syncStatus: 'pending', lastError: null });
+  const capturas = await db.capturas.where('syncStatus').equals('error')
+    .modify({ syncStatus: 'pending', lastError: null });
+  return { sesiones, capturas };
 }
 
 export async function getPendingCounts(): Promise<{ sesiones: number; capturas: number; errores: number }> {

@@ -1,8 +1,17 @@
 import { useState } from 'react';
-import { useAuth } from './useAuth';
 
-export function LoginPage() {
-  const { error, login } = useAuth();
+export interface LoginPageProps {
+  /** Mensaje de error del ultimo intento, provisto por el unico useAuth() de App. */
+  error: string | null;
+  onLogin: (companyCode: string, username: string, password: string) => Promise<boolean>;
+}
+
+/**
+ * Formulario de login. NO instancia useAuth(): el estado de autenticacion vive
+ * en App (una sola instancia del hook) y llega por props, para que un login
+ * exitoso actualice el guard de rutas.
+ */
+export function LoginPage({ error, onLogin }: LoginPageProps) {
   const [companyCode, setCompanyCode] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -11,8 +20,11 @@ export function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    await login(companyCode, username, password);
-    setSubmitting(false);
+    try {
+      await onLogin(companyCode, username, password);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (

@@ -51,4 +51,30 @@ describe('startSyncLoop', () => {
 
     handle.stop();
   });
+
+  it('una llamada solapada a runOnce es un no-op mientras hay una corrida en vuelo', async () => {
+    let liberar: (() => void) | undefined;
+    const enVuelo = new Promise<void>((resolve) => { liberar = resolve; });
+    vi.spyOn(uploadSync, 'syncSesionesPendientes').mockImplementation(() => enVuelo);
+    vi.spyOn(uploadSync, 'syncCapturasPendientes').mockResolvedValue();
+    vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
+
+    const handle = startSyncLoop({ getToken: () => 'tok', onUnauthorized: vi.fn(), intervalMs: 1000 });
+
+    const primera = handle.runOnce();
+    // Segunda invocacion (boton manual / tick / evento online) mientras la
+    // primera sigue esperando la red: no debe disparar una segunda subida.
+    await handle.runOnce();
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(uploadSync.syncSesionesPendientes).toHaveBeenCalledTimes(1);
+
+    liberar!();
+    await primera;
+
+    // Terminada la primera, una nueva corrida vuelve a estar permitida.
+    await handle.runOnce();
+    expect(uploadSync.syncSesionesPendientes).toHaveBeenCalledTimes(2);
+
+    handle.stop();
+  });
 });

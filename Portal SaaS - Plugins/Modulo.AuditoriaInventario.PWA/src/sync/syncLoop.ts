@@ -15,11 +15,17 @@ export interface SyncLoopHandle {
 export function startSyncLoop(options: SyncLoopOptions): SyncLoopHandle {
   const intervalMs = options.intervalMs ?? 30000;
   let stopped = false;
+  let running = false;
 
   async function runOnce(): Promise<void> {
     if (stopped) return;
+    // Guarda de concurrencia: el tick del intervalo, el evento 'online' y el
+    // boton manual pueden solaparse en una conexion lenta y subir dos veces las
+    // mismas filas pending. Una invocacion solapada es un no-op.
+    if (running) return;
     const token = options.getToken();
     if (!token) return;
+    running = true;
     try {
       await syncSesionesPendientes(token);
       await syncCapturasPendientes(token);
@@ -28,6 +34,8 @@ export function startSyncLoop(options: SyncLoopOptions): SyncLoopHandle {
         stopped = true;
         options.onUnauthorized();
       }
+    } finally {
+      running = false;
     }
   }
 

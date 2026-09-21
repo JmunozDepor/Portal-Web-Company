@@ -3,7 +3,9 @@ import { syncSesionesPendientes, syncCapturasPendientes } from '../../src/sync/u
 import * as endpoints from '../../src/api/endpoints';
 import { ApiError } from '../../src/api/client';
 import { db } from '../../src/db/schema';
-import { createSesion, createCaptura, getSesion, getCapturasBySesion } from '../../src/db/repositories';
+import {
+  createSesion, createCaptura, getSesion, getCapturasBySesion, updateSesion, reintentarErrores,
+} from '../../src/db/repositories';
 
 beforeEach(async () => {
   await db.sesiones.clear();
@@ -163,5 +165,83 @@ describe('syncCapturasPendientes', () => {
     expect(batch2).toHaveLength(50);
     expect(batch2.every((c) => c.syncStatus === 'error')).toBe(true);
     expect(batch2[0].lastError).toBe('lote invalido');
+  });
+});
+
+function sesion(id: string, overrides: Partial<Parameters<typeof createSesion>[0]> = {}) {
+  return {
+    id, branchId: 1, inventoryNumber: `INV-${id}`, startedAt: '2026-01-01T00:00:00Z',
+    status: 'ACTIVE' as const, validateAgainstMaster: true,
+    syncStatus: 'pending' as const, lastError: null, ...overrides,
+  };
+}
+
+function captura(id: string, sessionId: string, overrides: Partial<Parameters<typeof createCaptura>[0]> = {}) {
+  return {
+    id, sessionId, sectorId: 1, barcode: `B-${id}`, productCode: null, quantity: 1,
+    inMaster: null, capturedAt: '2026-01-01T00:00:00Z',
+    syncStatus: 'pending' as const, lastError: null, ...overrides,
+  };
+}
+
+describe('capturas de sesiones en error (I-3)', () => {
+  it('no sube capturas cuya sesion quedo marcada en error', async () => {
+    await createSesion(sesion('s-err', { syncStatus: 'error', lastError: 'duplicado' }));
+    await createSesion(sesion('s-ok', { syncStatus: 'synced' }));
+    await createCaptura(captura('c-err', 's-err'));
+    await createCaptura(captura('c-ok', 's-ok'));
+    const spy = vi.spyOn(endpoints, 'uploadCapturasBatch').mockResolvedValue({ processed: 1 });
+
+    await syncCapturasPendientes('tok');
+
+    // Sin el filtro las dos irian en el mismo lote y un 4xx arrastraria a 'c-ok'.
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][1].map((c) => c.id)).toEqual(['c-ok']);
+    expect((await getCapturasBySesion('s-err'))[0].syncStatus).toBe('pending');
+    expect((await getCapturasBySesion('s-ok'))[0].syncStatus).toBe('synced');
+  });
+
+  it('reintentarErrores devuelve las filas a pending y la siguiente corrida las sube', async () => {
+    await createSesion(sesion('s-r', { syncStatus: 'error', lastError: 'transitorio' }));
+    await createCaptura(captura('c-r', 's-r', { syncStatus: 'error', lastError: 'transitorio' }));
+
+    const movidas = await reintentarErrores();
+    expect(movidas).toEqual({ sesiones: 1, capturas: 1 });
+
+    vi.spyOn(endpoints, 'upsertSesion').mockResolvedValue(undefined);
+    const spy = vi.spyOn(endpoints, 'uploadCapturasBatch').mockResolvedValue({ processed: 1 });
+
+    await syncSesionesPendientes('tok');
+    await syncCapturasPendientes('tok');
+
+    expect((await getSesion('s-r'))?.syncStatus).toBe('synced');
+    expect(spy.mock.calls[0][1].map((c) => c.id)).toEqual(['c-r']);
+    expect((await getCapturasBySesion('s-r'))[0].syncStatus).toBe('synced');
+  });
+});
+
+describe('carrera cierre-vs-subida (I-5)', () => {
+  it('no pisa un cierre de sesion ocurrido mientras el POST estaba en vuelo', async () => {
+    await createSesion(sesion('s-race'));
+    vi.spyOn(endpoints, 'upsertSesion').mockImplementation(async () => {
+      // El operador presiona "Cerrar sesion" mientras la peticion viaja.
+      await updateSesion('s-race', { status: 'CLOSED', syncStatus: 'pending' });
+    });
+
+    await syncSesionesPendientes('tok');
+
+    const row = await getSesion('s-race');
+    expect(row?.status).toBe('CLOSED');
+    // Debe seguir pending para que el proximo tick suba el estado CLOSED.
+    expect(row?.syncStatus).toBe('pending');
+  });
+
+  it('marca synced normalmente cuando la fila no cambio durante el envio', async () => {
+    await createSesion(sesion('s-quieta'));
+    vi.spyOn(endpoints, 'upsertSesion').mockResolvedValue(undefined);
+
+    await syncSesionesPendientes('tok');
+
+    expect((await getSesion('s-quieta'))?.syncStatus).toBe('synced');
   });
 });

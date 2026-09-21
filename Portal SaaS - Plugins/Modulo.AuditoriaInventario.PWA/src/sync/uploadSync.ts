@@ -2,6 +2,7 @@ import { upsertSesion, uploadCapturasBatch } from '../api/endpoints';
 import { ApiError } from '../api/client';
 import {
   getSesionesPendientes, updateSesion, getCapturasPendientes, updateCaptura,
+  getSesion, getSesiones,
 } from '../db/repositories';
 import type { SesionRow, CapturaRow } from '../db/schema';
 
@@ -40,6 +41,13 @@ export async function syncSesionesPendientes(token: string): Promise<void> {
   for (const sesion of pendientes) {
     try {
       await upsertSesion(token, toSesionBody(sesion));
+      // Guarda contra lost update: si la fila cambio mientras el POST estaba en
+      // vuelo (p.ej. el operador cerro la sesion), no la marcamos 'synced' —
+      // queda 'pending' y el proximo tick sube el estado nuevo.
+      const actual = await getSesion(sesion.id);
+      if (actual && actual.status !== sesion.status) {
+        continue;
+      }
       await updateSesion(sesion.id, { syncStatus: 'synced', lastError: null });
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
@@ -54,11 +62,25 @@ export async function syncSesionesPendientes(token: string): Promise<void> {
 }
 
 export async function syncCapturasPendientes(token: string): Promise<void> {
-  const pendientes = await getCapturasPendientes();
+  const todas = await getCapturasPendientes();
+  // Una captura cuya sesion quedo en 'error' referencia un sessionId que el
+  // servidor nunca acepto: subirla haria fallar el lote completo y arrastraria
+  // a capturas de sesiones sanas. Se posponen hasta que la sesion se recupere.
+  const sesiones = await getSesiones();
+  const sesionesEnError = new Set(
+    sesiones.filter((s) => s.syncStatus === 'error').map((s) => s.id),
+  );
+  const pendientes = sesionesEnError.size === 0
+    ? todas
+    : todas.filter((c) => !sesionesEnError.has(c.sessionId));
+
   for (let i = 0; i < pendientes.length; i += BATCH_SIZE) {
     const batch = pendientes.slice(i, i + BATCH_SIZE);
     try {
       await uploadCapturasBatch(token, batch.map(toCapturaBody));
+      // Las capturas son inmutables una vez creadas (registrarCaptura solo hace
+      // add; ningun otro camino las edita), asi que no hay lost update posible
+      // y no necesitan la re-lectura previa que si lleva la sesion.
       await Promise.all(batch.map((c) => updateCaptura(c.id, { syncStatus: 'synced', lastError: null })));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {

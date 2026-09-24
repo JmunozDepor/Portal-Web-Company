@@ -36,12 +36,31 @@ public static class HanaRepository
         conexion.Open();
         using var comando = new HanaCommand(HanaQueries.Cabecera(headerQuerySource), conexion);
         using var lector = comando.ExecuteReader();
+        var ordDocEntry = lector.GetOrdinal("DocEntry");
+        var ordObjType = lector.GetOrdinal("ObjType");
+        var ordCardCode = lector.GetOrdinal("CardCode");
         while (lector.Read())
         {
-            resultado.Add(new HeaderDocument(
-                lector.GetInt32(lector.GetOrdinal("DocEntry")),
-                lector.GetString(lector.GetOrdinal("ObjType")),
-                lector.GetString(lector.GetOrdinal("CardCode"))));
+            // CardCode viene NULL para Solicitudes de traslado de inventario (OWTQ, sin
+            // cliente) -- GetString directo tira HanaException "Data is Null" acá igual que
+            // en ObtenerAsignacionBodega (ver GetStringONull más abajo).
+            var docEntry = lector.GetInt32(ordDocEntry);
+            try
+            {
+                resultado.Add(new HeaderDocument(
+                    docEntry,
+                    lector.GetString(ordObjType),
+                    GetStringONull(lector, ordCardCode)));
+            }
+            catch (Exception ex)
+            {
+                // Sin esto, el log solo mostraba el stack trace del driver -- útil para
+                // encontrar la causa en el código, pero no decía qué documento la disparó.
+                // Con el DocEntry acá, un NULL inesperado en una columna futura (no solo
+                // CardCode) se puede triagear sin tener que leer el código de nuevo.
+                throw new InvalidOperationException(
+                    $"Error leyendo fila de {headerQuerySource} con DocEntry {docEntry}: {ex.Message}", ex);
+            }
         }
 
         return resultado;

@@ -46,10 +46,23 @@ public sealed class SqlServerRepository : IWarehouseTransferRepository
 
         while (lector.Read())
         {
-            resultado.Add(new HeaderDocument(
-                lector.GetInt32(ordDocEntry),
-                lector.GetString(ordObjType),
-                lector.GetString(ordCardCode)));
+            // CardCode viene NULL para Solicitudes de traslado de inventario (OWTQ, sin
+            // cliente) -- mismo caso que en HanaRepository.ObtenerDocumentosPendientes.
+            var docEntry = lector.GetInt32(ordDocEntry);
+            try
+            {
+                resultado.Add(new HeaderDocument(
+                    docEntry,
+                    lector.GetString(ordObjType),
+                    GetStringONull(lector, ordCardCode)));
+            }
+            catch (Exception ex)
+            {
+                // Mismo motivo que en HanaRepository: sin el DocEntry acá, el log solo
+                // muestra el stack trace del driver, no qué documento lo disparó.
+                throw new InvalidOperationException(
+                    $"Error leyendo fila de {headerQuerySource} con DocEntry {docEntry}: {ex.Message}", ex);
+            }
         }
 
         return resultado;

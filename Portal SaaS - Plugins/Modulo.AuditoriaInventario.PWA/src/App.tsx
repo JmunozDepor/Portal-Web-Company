@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './features/auth/useAuth';
 import { LoginPage } from './features/auth/LoginPage';
 import { SesionesListPage } from './features/sesiones/SesionesListPage';
 import { CapturaPage } from './features/captura/CapturaPage';
 import { SyncStatusBadge } from './components/SyncStatusBadge';
-import { ExportButton } from './features/export/ExportButton';
 import { startSyncLoop, type SyncLoopHandle } from './sync/syncLoop';
 import { syncProductos, syncSucursales } from './sync/maestroSync';
 import { getSucursales, getProductosCount, reintentarErrores } from './db/repositories';
@@ -19,7 +18,12 @@ function AuthenticatedApp({ token, onLogout }: { token: string; onLogout: () => 
   const [progreso, setProgreso] = useState(0);
   const [intento, setIntento] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
   const syncHandleRef = useRef<SyncLoopHandle | null>(null);
+  // La barra de sync/logout ocupa espacio que la pantalla de Captura necesita
+  // para el escaneo -- queda solo en la lista de Sesiones, la sync de fondo
+  // (mas abajo) sigue corriendo igual este visible o no.
+  const mostrarTopbar = location.pathname === '/sesiones';
 
   // Se guarda en un ref: `navigate` cambia de identidad en cada cambio de ruta,
   // y ni la carga del maestro ni el loop de sincronizacion deben reiniciarse al
@@ -97,35 +101,48 @@ function AuthenticatedApp({ token, onLogout }: { token: string; onLogout: () => 
     await syncHandleRef.current?.runOnce();
   }, []);
 
+  // Logout manual ("Salir"): mismo camino que el 401 automatico (limpia el
+  // token y vuelve a /login); el cleanup del efecto de sync frena el loop al
+  // desmontar este componente cuando cambia la ruta.
+  const handleLogout = useCallback(() => {
+    onLogout();
+    navigate('/login');
+  }, [onLogout, navigate]);
+
   if (maestroEstado === 'cargando') {
-    return <p>Sincronizando maestro... {progreso} productos</p>;
+    return (
+      <div className="page-loading">
+        <p>Sincronizando maestro… {progreso} productos</p>
+      </div>
+    );
   }
 
   if (maestroEstado === 'error') {
     return (
-      <div>
-        <p role="alert">
+      <div className="page">
+        <p role="alert" className="alert">
           No se pudo sincronizar el maestro y no hay datos locales para trabajar sin conexión.
         </p>
-        <button onClick={() => setIntento((n) => n + 1)}>Reintentar</button>
+        <button className="btn btn--primary" onClick={() => setIntento((n) => n + 1)}>Reintentar</button>
       </div>
     );
   }
 
   return (
-    <div>
-      {maestroDesactualizado && (
-        <p role="status">
-          Sin conexión con el servidor: se está usando el maestro local, puede estar desactualizado.
-        </p>
-      )}
-      <SyncStatusBadge onSyncNow={handleSyncNow} />
-      <ExportButton />
-      <Routes>
-        <Route path="/sesiones" element={<SesionesListPage />} />
-        <Route path="/sesiones/:sesionId" element={<CapturaPage token={token} />} />
-        <Route path="*" element={<Navigate to="/sesiones" replace />} />
-      </Routes>
+    <div className="app-shell">
+      {mostrarTopbar && <SyncStatusBadge onSyncNow={handleSyncNow} onLogout={handleLogout} />}
+      <div className="page">
+        {maestroDesactualizado && (
+          <p role="status" className="status-note">
+            Sin conexión con el servidor: se está usando el maestro local, puede estar desactualizado.
+          </p>
+        )}
+        <Routes>
+          <Route path="/sesiones" element={<SesionesListPage />} />
+          <Route path="/sesiones/:sesionId" element={<CapturaPage token={token} />} />
+          <Route path="*" element={<Navigate to="/sesiones" replace />} />
+        </Routes>
+      </div>
     </div>
   );
 }
@@ -136,7 +153,11 @@ export function App() {
   const { token, loading, error, login, logout } = useAuth();
 
   if (loading) {
-    return <p>Cargando...</p>;
+    return (
+      <div className="page-loading">
+        <p>Cargando…</p>
+      </div>
+    );
   }
 
   return (

@@ -3,8 +3,11 @@ namespace Servicios.TransferenciaAutomatica.Sap;
 /// <summary>
 /// Una fila de compania.HeaderQuerySource (legado: vista calculada _SYS_BIC.".../NX_AUTO_ABS").
 /// Mismos 3 campos que leía Queries.QueryBuscarVistaCalculadaStock() del servicio legado.
+/// CardCode es nullable porque las Solicitudes de traslado de inventario (ObjType
+/// 1250000001 / OWTQ) no tienen cliente asociado -- HANA/SQL Server devuelven NULL para
+/// esas filas (ver HanaRepository.ObtenerDocumentosPendientes).
 /// </summary>
-public sealed record HeaderDocument(int DocEntry, string ObjType, string CardCode);
+public sealed record HeaderDocument(int DocEntry, string ObjType, string? CardCode);
 
 /// <summary>
 /// Una fila devuelta por compania.WarehouseAssignmentProcedure (legado: SP_DEP_ORDER_ABS)

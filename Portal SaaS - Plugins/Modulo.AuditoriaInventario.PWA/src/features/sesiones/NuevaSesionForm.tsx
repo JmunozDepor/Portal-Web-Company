@@ -22,25 +22,40 @@ export function NuevaSesionForm({ onCreated }: { onCreated: (sesion: SesionRow) 
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <label>
+    <form onSubmit={handleSubmit} className="form-panel">
+      <label className="field">
         Sucursal
-        <select value={branchId ?? ''} onChange={(e) => setBranchId(Number(e.target.value))} required>
+        <select
+          className="field__control"
+          value={branchId ?? ''}
+          onChange={(e) => setBranchId(Number(e.target.value))}
+          required
+        >
           <option value="" disabled>Elegir...</option>
           {sucursales.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
       </label>
-      <label>
+      <label className="field">
         Nro. de Inventario
-        <input value={inventoryNumber} onChange={(e) => setInventoryNumber(e.target.value)} required />
+        <input
+          className="field__control"
+          value={inventoryNumber}
+          onChange={(e) => setInventoryNumber(e.target.value)}
+          required
+        />
       </label>
-      <label>
-        <input type="checkbox" checked={validateAgainstMaster} onChange={(e) => setValidateAgainstMaster(e.target.checked)} />
+      <label className="field field--checkbox">
+        <input
+          className="field__checkbox"
+          type="checkbox"
+          checked={validateAgainstMaster}
+          onChange={(e) => setValidateAgainstMaster(e.target.checked)}
+        />
         Validar contra maestro
       </label>
-      <button type="submit">Crear sesión</button>
+      <button type="submit" className="btn btn--primary">Crear sesión</button>
     </form>
   );
 }

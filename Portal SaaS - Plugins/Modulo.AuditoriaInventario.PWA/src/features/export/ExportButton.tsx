@@ -12,13 +12,14 @@ export function ExportButton() {
   }
 
   return (
-    <div>
+    <div className="export-bar">
       <input
+        className="field__control"
         placeholder="Nombre del equipo (opcional)"
         value={deviceLabel}
         onChange={(e) => setDeviceLabel(e.target.value)}
       />
-      <button onClick={handleExport}>Exportar pendientes</button>
+      <button className="btn btn--ghost" onClick={handleExport}>Exportar pendientes</button>
     </div>
   );
 }

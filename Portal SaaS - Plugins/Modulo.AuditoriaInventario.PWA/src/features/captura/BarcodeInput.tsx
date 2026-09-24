@@ -21,6 +21,7 @@ export function BarcodeInput({ onCommit }: { onCommit: (barcode: string) => void
   return (
     <input
       ref={inputRef}
+      className="scan-input"
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}

@@ -73,6 +73,32 @@ export async function getCapturasBySesion(sessionId: string): Promise<CapturaRow
   return db.capturas.where('sessionId').equals(sessionId).toArray();
 }
 
+/**
+ * Elimina una captura individual -- solo tiene sentido llamarla mientras
+ * syncStatus !== 'synced' (verificado por el caller): una vez que el
+ * servidor ya la recibio no hay forma de avisarle que se borro (la API no
+ * tiene endpoint de borrado de capturas).
+ */
+export async function deleteCaptura(id: string): Promise<void> {
+  await db.capturas.delete(id);
+}
+
+/**
+ * Suma de `quantity` por sessionId, en una sola consulta (evita N+1 al
+ * listar sesiones con su total contado).
+ */
+export async function getCapturaTotalsBySesionIds(
+  sessionIds: string[],
+): Promise<Record<string, number>> {
+  if (sessionIds.length === 0) return {};
+  const filas = await db.capturas.where('sessionId').anyOf(sessionIds).toArray();
+  const totales: Record<string, number> = {};
+  for (const fila of filas) {
+    totales[fila.sessionId] = (totales[fila.sessionId] ?? 0) + fila.quantity;
+  }
+  return totales;
+}
+
 export async function getCapturasPendientes(): Promise<CapturaRow[]> {
   return db.capturas.where('syncStatus').equals('pending').toArray();
 }
@@ -88,6 +114,45 @@ export async function reintentarErrores(): Promise<{ sesiones: number; capturas:
   const capturas = await db.capturas.where('syncStatus').equals('error')
     .modify({ syncStatus: 'pending', lastError: null });
   return { sesiones, capturas };
+}
+
+/**
+ * Sesiones que se pueden borrar del equipo sin perder nada: CERRADAS,
+ * sincronizadas, Y con TODAS sus capturas tambien sincronizadas (una
+ * sesion 'synced' puede igual tener capturas 'pending' que llegaron
+ * despues -- no alcanza con mirar el estado de la sesion sola).
+ */
+export async function getSesionesLimpiables(): Promise<SesionRow[]> {
+  const cerradas = await db.sesiones
+    .where('status').equals('CLOSED')
+    .and((s) => s.syncStatus === 'synced')
+    .toArray();
+
+  const limpiables: SesionRow[] = [];
+  for (const sesion of cerradas) {
+    const pendientes = await db.capturas
+      .where('sessionId').equals(sesion.id)
+      .and((c) => c.syncStatus !== 'synced')
+      .count();
+    if (pendientes === 0) limpiables.push(sesion);
+  }
+  return limpiables;
+}
+
+/**
+ * Borra del equipo las sesiones devueltas por getSesionesLimpiables() junto
+ * con sus capturas -- los datos ya estan en el servidor, esto solo libera
+ * espacio local. Nunca toca una sesion/captura que no haya sincronizado.
+ */
+export async function limpiarSesionesSincronizadas(): Promise<{ sesiones: number; capturas: number }> {
+  const limpiables = await getSesionesLimpiables();
+  let totalCapturas = 0;
+  for (const sesion of limpiables) {
+    totalCapturas += await db.capturas.where('sessionId').equals(sesion.id).count();
+    await db.capturas.where('sessionId').equals(sesion.id).delete();
+    await db.sesiones.delete(sesion.id);
+  }
+  return { sesiones: limpiables.length, capturas: totalCapturas };
 }
 
 export async function getPendingCounts(): Promise<{ sesiones: number; capturas: number; errores: number }> {

@@ -4,6 +4,7 @@ import {
   upsertProductos, getProductoByBarcode, createSesion, getSesion,
   updateSesion, getSesionesPendientes, createCaptura, getCapturasPendientes,
   getPendingCounts, getProductosCount, reintentarErrores,
+  getSesionesLimpiables, limpiarSesionesSincronizadas, getCapturasBySesion,
 } from '../../src/db/repositories';
 
 beforeEach(async () => {
@@ -83,5 +84,65 @@ describe('repositories', () => {
     expect(sesionErr?.lastError).toBeNull();
     expect((await getSesion('sesion-ok'))?.syncStatus).toBe('synced');
     expect((await getCapturasPendientes()).map((c) => c.id)).toEqual(['cap-err']);
+  });
+
+  it('getSesionesLimpiables solo incluye cerradas+sincronizadas sin ninguna captura pendiente', async () => {
+    // Limpiable: cerrada, sincronizada, y su unica captura tambien sincronizo.
+    await createSesion({
+      id: 'ses-limpia', branchId: 1, inventoryNumber: 'INV-1', startedAt: new Date().toISOString(),
+      status: 'CLOSED', validateAgainstMaster: true, syncStatus: 'synced', lastError: null,
+    });
+    await createCaptura({
+      id: 'cap-1', sessionId: 'ses-limpia', sectorId: 1, barcode: '1', productCode: null,
+      quantity: 1, inMaster: null, capturedAt: new Date().toISOString(), syncStatus: 'synced', lastError: null,
+    });
+
+    // No limpiable: cerrada y sincronizada, PERO le quedo una captura pending
+    // (llego despues de que la sesion ya se marco synced).
+    await createSesion({
+      id: 'ses-con-pendiente', branchId: 1, inventoryNumber: 'INV-2', startedAt: new Date().toISOString(),
+      status: 'CLOSED', validateAgainstMaster: true, syncStatus: 'synced', lastError: null,
+    });
+    await createCaptura({
+      id: 'cap-2', sessionId: 'ses-con-pendiente', sectorId: 1, barcode: '2', productCode: null,
+      quantity: 1, inMaster: null, capturedAt: new Date().toISOString(), syncStatus: 'pending', lastError: null,
+    });
+
+    // No limpiable: todavia activa.
+    await createSesion({
+      id: 'ses-activa', branchId: 1, inventoryNumber: 'INV-3', startedAt: new Date().toISOString(),
+      status: 'ACTIVE', validateAgainstMaster: true, syncStatus: 'synced', lastError: null,
+    });
+
+    const limpiables = await getSesionesLimpiables();
+    expect(limpiables.map((s) => s.id)).toEqual(['ses-limpia']);
+  });
+
+  it('limpiarSesionesSincronizadas borra la sesion limpiable y sus capturas, sin tocar el resto', async () => {
+    await createSesion({
+      id: 'ses-limpia', branchId: 1, inventoryNumber: 'INV-1', startedAt: new Date().toISOString(),
+      status: 'CLOSED', validateAgainstMaster: true, syncStatus: 'synced', lastError: null,
+    });
+    await createCaptura({
+      id: 'cap-1', sessionId: 'ses-limpia', sectorId: 1, barcode: '1', productCode: null,
+      quantity: 1, inMaster: null, capturedAt: new Date().toISOString(), syncStatus: 'synced', lastError: null,
+    });
+    await createSesion({
+      id: 'ses-con-pendiente', branchId: 1, inventoryNumber: 'INV-2', startedAt: new Date().toISOString(),
+      status: 'CLOSED', validateAgainstMaster: true, syncStatus: 'synced', lastError: null,
+    });
+    await createCaptura({
+      id: 'cap-2', sessionId: 'ses-con-pendiente', sectorId: 1, barcode: '2', productCode: null,
+      quantity: 1, inMaster: null, capturedAt: new Date().toISOString(), syncStatus: 'pending', lastError: null,
+    });
+
+    const resultado = await limpiarSesionesSincronizadas();
+
+    expect(resultado).toEqual({ sesiones: 1, capturas: 1 });
+    expect(await getSesion('ses-limpia')).toBeUndefined();
+    expect(await getCapturasBySesion('ses-limpia')).toHaveLength(0);
+    // La que tenia una captura pendiente queda intacta, con su captura.
+    expect(await getSesion('ses-con-pendiente')).not.toBeUndefined();
+    expect(await getCapturasBySesion('ses-con-pendiente')).toHaveLength(1);
   });
 });

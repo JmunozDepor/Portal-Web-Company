@@ -1,0 +1,719 @@
+/*
+  Sistema de diseño de la PWA de Auditoría de Inventario.
+  Metáfora: hoja de libro mayor / planilla de conteo -- superficies planas,
+  renglones con línea divisoria (no tarjetas con sombra), cifras alineadas
+  como una columna contable. Un solo acento (bronce) reservado para el
+  momento de confirmar un escaneo.
+
+  Fuentes de sistema a propósito, sin webfonts: esta app es offline-first
+  (handheld sin red en bodega) y una fuente cargada desde una CDN externa
+  rompería esa garantía en el primer uso sin conexión.
+*/
+
+:root {
+  --color-bg: #f5f4ef;
+  --color-surface: #ffffff;
+  --color-ink: #1c2530;
+  --color-ink-muted: #5b6674;
+  --color-border: #ddd8cc;
+  --color-brand: #1f3a5c;
+  --color-brand-ink: #ffffff;
+  --color-accent: #a9762f;
+  --color-accent-tint: #f2e6d3;
+  --color-success: #2f7955;
+  --color-success-tint: #e4efe9;
+  --color-danger: #a63d34;
+  --color-danger-tint: #f6e6e4;
+
+  --font-serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  --radius: 4px;
+  --touch-target: 3rem; /* ~48px: objetivo táctil mínimo, pensado para dedos con guantes */
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 var(--space-4);
+  color: var(--color-ink);
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+p {
+  margin: 0 0 var(--space-3);
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+a {
+  color: var(--color-brand);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---------- Estructura general ---------- */
+
+.app-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.page {
+  flex: 1;
+  width: 100%;
+  max-width: 30rem;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-6);
+}
+
+.page-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  color: var(--color-ink-muted);
+}
+
+/* ---------- Barra superior (estado de sync) ---------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-brand);
+  color: var(--color-brand-ink);
+  padding: var(--space-2) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.topbar__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+}
+
+.topbar__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #7fb89a;
+  flex: none;
+}
+
+.topbar__dot--offline {
+  background: #d9a24b;
+}
+
+.topbar__errors {
+  color: #f4c9c2;
+  font-weight: 600;
+}
+
+.topbar__spacer {
+  flex: 1;
+}
+
+.topbar__sync-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  color: var(--color-brand-ink);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  min-height: 2.25rem;
+  cursor: pointer;
+}
+
+.topbar__sync-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- Botones ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border-color: var(--color-border);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: var(--color-brand-ink);
+  width: 100%;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #16304e;
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-ink);
+}
+
+.btn--danger {
+  background: transparent;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+/* ---------- Campos de formulario ---------- */
+
+.field {
+  display: block;
+  margin-bottom: var(--space-4);
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-ink);
+}
+
+.field__control {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-2);
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: 400;
+}
+
+.field__control:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.field--checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 400;
+}
+
+.field--checkbox .field__checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* ---------- Avisos ---------- */
+
+.alert,
+.status-note {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-4);
+  font-size: 0.9375rem;
+}
+
+.alert {
+  background: var(--color-danger-tint);
+  color: var(--color-danger);
+  border: 1px solid rgba(166, 61, 52, 0.25);
+}
+
+.status-note {
+  background: var(--color-accent-tint);
+  color: #7a5722;
+  border: 1px solid rgba(169, 118, 47, 0.25);
+}
+
+/* ---------- Login ---------- */
+
+.login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: var(--space-5);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 22rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-6) var(--space-5);
+}
+
+.login-card h1 {
+  font-size: 1.625rem;
+  margin-bottom: var(--space-1);
+}
+
+.login-card__subtitle {
+  color: var(--color-ink-muted);
+  font-size: 0.875rem;
+  margin-bottom: var(--space-5);
+}
+
+/* ---------- Sesiones ---------- */
+
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.page-header h1 {
+  margin-bottom: 0;
+}
+
+.ledger {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ledger-row {
+  display: block;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  text-decoration: none;
+  color: var(--color-ink);
+}
+
+.ledger-row:last-child {
+  border-bottom: none;
+}
+
+.ledger-row:hover {
+  background: #faf9f5;
+}
+
+.ledger-row__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-row__meta {
+  margin-top: var(--space-1);
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tag--active {
+  background: var(--color-accent-tint);
+  color: #7a5722;
+}
+
+.tag--closed {
+  background: var(--color-success-tint);
+  color: var(--color-success);
+}
+
+.form-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.empty-state {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-ink-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+}
+
+/* ---------- Captura ---------- */
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  color: var(--color-brand);
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: var(--space-2);
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.capture-header {
+  margin-bottom: var(--space-4);
+}
+
+.capture-header__title {
+  font-variant-numeric: tabular-nums;
+}
+
+.scan-field {
+  margin: var(--space-5) 0;
+}
+
+.scan-input {
+  display: block;
+  width: 100%;
+  min-height: 4rem;
+  padding: 0 var(--space-4);
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.02em;
+  border: 2px solid var(--color-brand);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.scan-input::placeholder {
+  color: var(--color-ink-muted);
+  font-weight: 400;
+  font-size: 1.0625rem;
+}
+
+.capture-form {
+  display: grid;
+  grid-template-columns: 1fr 6rem;
+  gap: var(--space-3);
+}
+
+/* Barra compacta: total del sector + disparador del resumen, una sola línea
+   de altura -- el espacio en esta pantalla es del escaneo, no de este dato. */
+.captura-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.captura-toolbar__total {
+  font-size: 0.875rem;
+  color: var(--color-ink-muted);
+}
+
+.captura-toolbar__total strong {
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.125rem;
+}
+
+.summary-panel__title {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-ink-muted);
+  margin-bottom: var(--space-2);
+}
+
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-table tr {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.summary-table tr:last-child {
+  border-bottom: none;
+}
+
+.summary-table td {
+  padding: var(--space-2) var(--space-4);
+}
+
+.summary-table__barcode {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.summary-table__qty {
+  text-align: right;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.capture-list {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.capture-list__body {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Una línea por escaneo, densa a propósito: código | maestro | cantidad |
+   estado | eliminar. El código de barra NUNCA se trunca (es el dato que
+   identifica el escaneo) -- Estado usa etiquetas cortas fijas en vez de
+   "auto" para no robarle ancho a código/maestro. */
+.capture-list__row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 3rem 2.75rem 1.75rem;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.capture-list__row:last-child {
+  border-bottom: none;
+}
+
+.capture-list__row--header {
+  background: var(--color-bg);
+  color: var(--color-ink-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+}
+
+.capture-list__estado-header {
+  text-align: right;
+}
+
+.capture-list__barcode {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.capture-list__master {
+  color: var(--color-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capture-list__master--missing {
+  color: var(--color-danger);
+}
+
+.capture-list__qty {
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.capture-list__qty-input {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.capture-list__estado {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.capture-list__estado--pending {
+  color: #7a5722;
+}
+
+.capture-list__estado--synced {
+  color: var(--color-success);
+}
+
+.capture-list__estado--error {
+  color: var(--color-danger);
+}
+
+.capture-list__delete {
+  background: transparent;
+  border: none;
+  color: var(--color-danger);
+  font-size: 1.125rem;
+  line-height: 1;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Momento protagonista: un renglón recién capturado se "sella" en bronce y
+   se asienta -- el único uso de animación no disparada por scroll de toda
+   la app. */
+.capture-list__row--new {
+  animation: sello 900ms ease-out;
+}
+
+@keyframes sello {
+  from {
+    background: var(--color-accent-tint);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+/* ---------- Resumen (ventana) ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 37, 48, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 20;
+}
+
+.modal {
+  width: 100%;
+  max-width: 30rem;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: var(--space-4);
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.modal__close {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+}
+
+/* ---------- Exportar ---------- */
+
+.export-section {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.export-bar {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.export-bar .field__control {
+  margin-top: 0;
+}
+
+.cleanup-trigger {
+  margin-top: var(--space-3);
+}

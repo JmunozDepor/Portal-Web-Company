@@ -74,7 +74,7 @@ public sealed class Worker : BackgroundService
                     _logger.LogError(ex, "Falló el ciclo de tipo de cambio para {CompanyCode}", compania.CompanyCode);
                     await _logSink.WriteAsync(new LogEntry
                     {
-                        FechaHora = DateTimeOffset.UtcNow,
+                        FechaHora = DateTimeOffset.Now,
                         Nivel = NivelLog.Error,
                         CompanyCode = compania.CompanyCode,
                         Mensaje = "Falló el ciclo de sincronización de tipo de cambio",

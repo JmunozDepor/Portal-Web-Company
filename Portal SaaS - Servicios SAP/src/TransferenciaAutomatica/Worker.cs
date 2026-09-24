@@ -64,7 +64,7 @@ public sealed class Worker : BackgroundService
                     _logger.LogError(ex, "Falló el ciclo de transferencia para {CompanyCode}", compania.CompanyCode);
                     await _logSink.WriteAsync(new LogEntry
                     {
-                        FechaHora = DateTimeOffset.UtcNow,
+                        FechaHora = DateTimeOffset.Now,
                         Nivel = NivelLog.Error,
                         CompanyCode = compania.CompanyCode,
                         Mensaje = "Falló el ciclo de transferencia automática",
@@ -160,7 +160,7 @@ public sealed class Worker : BackgroundService
                     huboPosteoExitoso = true;
                     await _logSink.WriteAsync(new LogEntry
                     {
-                        FechaHora = DateTimeOffset.UtcNow,
+                        FechaHora = DateTimeOffset.Now,
                         Nivel = NivelLog.Info,
                         CompanyCode = compania.CompanyCode,
                         Mensaje = $"StockTransfer creado para DocEntry {documento.DocEntry} (prioridad {interaccion})",
@@ -180,7 +180,7 @@ public sealed class Worker : BackgroundService
                         documento.DocEntry, interaccion, compania.CompanyCode, ex.SapErrorCode, ex.SapMessage);
                     await _logSink.WriteAsync(new LogEntry
                     {
-                        FechaHora = DateTimeOffset.UtcNow,
+                        FechaHora = DateTimeOffset.Now,
                         Nivel = NivelLog.Error,
                         CompanyCode = compania.CompanyCode,
                         Mensaje = $"SAP rechazó StockTransfer para DocEntry {documento.DocEntry} (prioridad {interaccion})",

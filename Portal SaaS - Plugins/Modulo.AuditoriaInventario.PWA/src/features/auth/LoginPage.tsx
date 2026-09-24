@@ -28,22 +28,45 @@ export function LoginPage({ error, onLogin }: LoginPageProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h1>Auditoría de Inventario</h1>
-      {error && <p role="alert">{error}</p>}
-      <label>
-        Empresa
-        <input value={companyCode} onChange={(e) => setCompanyCode(e.target.value)} required />
-      </label>
-      <label>
-        Usuario
-        <input value={username} onChange={(e) => setUsername(e.target.value)} required />
-      </label>
-      <label>
-        Contraseña
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      </label>
-      <button type="submit" disabled={submitting}>Ingresar</button>
-    </form>
+    <div className="login">
+      <div className="login-card">
+        <form onSubmit={handleSubmit}>
+          <h1>Auditoría de Inventario</h1>
+          <p className="login-card__subtitle">Conteo físico por código de barra</p>
+          {error && <p role="alert" className="alert">{error}</p>}
+          <label className="field">
+            Empresa
+            <input
+              className="field__control"
+              value={companyCode}
+              onChange={(e) => setCompanyCode(e.target.value)}
+              required
+            />
+          </label>
+          <label className="field">
+            Usuario
+            <input
+              className="field__control"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </label>
+          <label className="field">
+            Contraseña
+            <input
+              className="field__control"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </label>
+          <button type="submit" className="btn btn--primary" disabled={submitting}>
+            {submitting ? 'Ingresando…' : 'Ingresar'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

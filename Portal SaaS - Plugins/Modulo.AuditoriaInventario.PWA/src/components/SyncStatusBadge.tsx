@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getPendingCounts } from '../db/repositories';
 
-export function SyncStatusBadge({ onSyncNow }: { onSyncNow: () => void }) {
+export function SyncStatusBadge({ onSyncNow, onLogout }: { onSyncNow: () => void; onLogout: () => void }) {
   const [counts, setCounts] = useState({ sesiones: 0, capturas: 0, errores: 0 });
   const [online, setOnline] = useState(navigator.onLine);
 
@@ -21,11 +21,16 @@ export function SyncStatusBadge({ onSyncNow }: { onSyncNow: () => void }) {
   }, []);
 
   return (
-    <div>
-      <span>{online ? 'En línea' : 'Sin conexión'}</span>
-      <span> Pendientes: {counts.sesiones + counts.capturas}</span>
-      {counts.errores > 0 && <span> — Errores: {counts.errores}</span>}
-      <button onClick={onSyncNow}>Sincronizar ahora</button>
+    <div className="topbar">
+      <span className="topbar__status">
+        <span className={online ? 'topbar__dot' : 'topbar__dot topbar__dot--offline'} aria-hidden="true" />
+        {online ? 'En línea' : 'Sin conexión'}
+      </span>
+      <span className="topbar__status">Pendientes: {counts.sesiones + counts.capturas}</span>
+      {counts.errores > 0 && <span className="topbar__errors">Errores: {counts.errores}</span>}
+      <span className="topbar__spacer" />
+      <button className="topbar__sync-btn" onClick={onSyncNow}>Sincronizar ahora</button>
+      <button className="topbar__sync-btn" onClick={onLogout}>Salir</button>
     </div>
   );
 }

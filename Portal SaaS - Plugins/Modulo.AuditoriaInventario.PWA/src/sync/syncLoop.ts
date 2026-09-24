@@ -4,7 +4,6 @@ import { ApiError } from '../api/client';
 export interface SyncLoopOptions {
   getToken: () => string | null;
   onUnauthorized: () => void;
-  intervalMs?: number;
 }
 
 export interface SyncLoopHandle {
@@ -12,16 +11,21 @@ export interface SyncLoopHandle {
   runOnce: () => Promise<void>;
 }
 
+/**
+ * Sincronizacion 100% manual (pedido del dueño del proyecto, 2026-09-22):
+ * antes esto corria solo cada 30s y al reconectar, pero eso podia subir un
+ * sector a medio contar. Ahora `runOnce` solo se dispara desde el boton
+ * "Sincronizar ahora" -- el capturador decide cuando terminó de contar el
+ * sector y recien ahí sincroniza.
+ */
 export function startSyncLoop(options: SyncLoopOptions): SyncLoopHandle {
-  const intervalMs = options.intervalMs ?? 30000;
   let stopped = false;
   let running = false;
 
   async function runOnce(): Promise<void> {
     if (stopped) return;
-    // Guarda de concurrencia: el tick del intervalo, el evento 'online' y el
-    // boton manual pueden solaparse en una conexion lenta y subir dos veces las
-    // mismas filas pending. Una invocacion solapada es un no-op.
+    // Guarda de concurrencia: dos clicks rapidos en "Sincronizar ahora" no
+    // deben subir dos veces las mismas filas pending.
     if (running) return;
     const token = options.getToken();
     if (!token) return;
@@ -39,21 +43,8 @@ export function startSyncLoop(options: SyncLoopOptions): SyncLoopHandle {
     }
   }
 
-  const onlineListener = () => {
-    runOnce();
-  };
-  window.addEventListener('online', onlineListener);
-
-  const intervalId = setInterval(() => {
-    if (navigator.onLine) {
-      runOnce();
-    }
-  }, intervalMs);
-
   function stop() {
     stopped = true;
-    window.removeEventListener('online', onlineListener);
-    clearInterval(intervalId);
   }
 
   return { stop, runOnce };

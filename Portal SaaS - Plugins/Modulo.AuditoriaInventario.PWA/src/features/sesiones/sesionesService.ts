@@ -4,15 +4,18 @@ import type { SesionRow } from '../../db/schema';
 export async function crearSesion(input: {
   branchId: number;
   inventoryNumber: string;
-  validateAgainstMaster: boolean;
 }): Promise<SesionRow> {
+  // "Validar contra maestro" paso de ser un check por sesion a un ajuste
+  // global del equipo (ver Mantenedor) -- este campo se manda igual porque el
+  // contrato del servidor lo espera, pero ya no gobierna nada del lado de la
+  // PWA (CapturaPage lee getAjustes() en vivo, no esto).
   const row: SesionRow = {
     id: crypto.randomUUID(),
     branchId: input.branchId,
     inventoryNumber: input.inventoryNumber,
     startedAt: new Date().toISOString(),
     status: 'ACTIVE',
-    validateAgainstMaster: input.validateAgainstMaster,
+    validateAgainstMaster: true,
     syncStatus: 'pending',
     lastError: null,
   };

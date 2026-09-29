@@ -53,12 +53,22 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
 
         yield return new MenuItemDefinition
         {
+            Code = "avance-conteo",
+            ParentCode = "raiz",
+            Name = "Avance de Conteo",
+            Icon = "bi-graph-up",
+            PageRoute = "/auditoria-inventario/avance-conteo",
+            Order = 2,
+        };
+
+        yield return new MenuItemDefinition
+        {
             Code = "congelados",
             ParentCode = "raiz",
             Name = "Congelados",
             Icon = "bi-snow",
             PageRoute = "/auditoria-inventario/congelados",
-            Order = 2,
+            Order = 3,
         };
 
         yield return new MenuItemDefinition
@@ -68,7 +78,7 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
             Name = "Diferencias",
             Icon = "bi-bar-chart-line",
             PageRoute = "/auditoria-inventario/diferencias",
-            Order = 3,
+            Order = 4,
         };
 
         yield return new MenuItemDefinition
@@ -78,7 +88,7 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
             Name = "Ajustes",
             Icon = "bi-arrow-left-right",
             PageRoute = "/auditoria-inventario/ajustes",
-            Order = 4,
+            Order = 5,
         };
 
         yield return new MenuItemDefinition
@@ -88,7 +98,7 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
             Name = "Sucursales",
             Icon = "bi-shop",
             PageRoute = "/auditoria-inventario/sucursales",
-            Order = 5,
+            Order = 6,
         };
 
         yield return new MenuItemDefinition
@@ -98,7 +108,7 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
             Name = "Sectores",
             Icon = "bi-grid-3x3-gap",
             PageRoute = "/auditoria-inventario/sectores",
-            Order = 6,
+            Order = 7,
         };
 
         yield return new MenuItemDefinition
@@ -108,7 +118,27 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
             Name = "Capturadores",
             Icon = "bi-person-badge",
             PageRoute = "/auditoria-inventario/capturadores",
-            Order = 7,
+            Order = 8,
+        };
+
+        yield return new MenuItemDefinition
+        {
+            Code = "maestro-productos",
+            ParentCode = "raiz",
+            Name = "Maestro de Productos",
+            Icon = "bi-upc",
+            PageRoute = "/auditoria-inventario/productos",
+            Order = 9,
+        };
+
+        yield return new MenuItemDefinition
+        {
+            Code = "configuracion-captura",
+            ParentCode = "raiz",
+            Name = "Configuración de Captura",
+            Icon = "bi-sliders",
+            PageRoute = "/auditoria-inventario/configuracion-captura",
+            Order = 10,
         };
     }
 
@@ -159,5 +189,10 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
 
         services.AddScoped<IDiferenciaEngine, DiferenciaEngine>();
         services.AddScoped<IAjusteService, AjusteService>();
+
+        // IHanaService lo registra el Host (ver Program.cs) -- contrato de plataforma
+        // en PortalSaas.Abstractions, no código de Modulo.Inventario, así que usarlo acá
+        // no rompe la autocontención del módulo (confirmado con el dueño, 2026-09-28).
+        services.AddScoped<ISapProductSyncService, SapProductSyncService>();
     }
 }

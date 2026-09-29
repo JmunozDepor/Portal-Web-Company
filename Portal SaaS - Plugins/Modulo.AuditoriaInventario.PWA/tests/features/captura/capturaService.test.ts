@@ -6,7 +6,7 @@ import { db } from '../../../src/db/schema';
 beforeEach(async () => {
   await db.productos.clear();
   await db.capturas.clear();
-  await upsertProductos([{ id: 1, barcode: 'EXISTE', productCode: 'P1', description: null, brand: null, line: null }]);
+  await upsertProductos([{ id: 1, barcode: 'EXISTE', productCode: 'P1' }]);
 });
 
 describe('registrarCaptura', () => {

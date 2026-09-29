@@ -1,0 +1,39 @@
+@page "/auditoria-inventario/configuracion-captura"
+@model Modulo.AuditoriaInventario.Pages.ConfiguracionCaptura.IndexModel
+@{
+    ViewData["Title"] = "Configuración de Captura";
+}
+
+<div class="card-surface">
+    <h2 class="mb-1">Configuración de Captura</h2>
+    <p class="text-muted mb-3">
+        Formatos de código de barra que la PWA acepta al escanear. Un escaneo que no
+        cumpla ninguno de los formatos habilitados se rechaza en el equipo -- con aviso
+        y sonido -- antes de guardarse como captura.
+    </p>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="post">
+        <div class="mb-2 form-check">
+            <input asp-for="Input.AllowEan8" type="checkbox" class="form-check-input" />
+            <label asp-for="Input.AllowEan8" class="form-check-label">EAN-8 (8 dígitos)</label>
+        </div>
+        <div class="mb-2 form-check">
+            <input asp-for="Input.AllowUpcA" type="checkbox" class="form-check-input" />
+            <label asp-for="Input.AllowUpcA" class="form-check-label">UPC-A (12 dígitos)</label>
+        </div>
+        <div class="mb-3 form-check">
+            <input asp-for="Input.AllowEan13" type="checkbox" class="form-check-input" />
+            <label asp-for="Input.AllowEan13" class="form-check-label">EAN-13 (13 dígitos)</label>
+        </div>
+        <button type="submit" class="btn-primary">Guardar</button>
+    </form>
+</div>

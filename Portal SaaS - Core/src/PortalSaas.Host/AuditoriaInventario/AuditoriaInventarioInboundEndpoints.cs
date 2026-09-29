@@ -27,15 +27,65 @@ public static class AuditoriaInventarioInboundEndpoints
 
     public static void MapAuditoriaInventarioInboundEndpoints(this WebApplication app)
     {
-        app.MapPost($"{RoutePrefix}/auth/login", LoginAsync);
-        app.MapGet($"{RoutePrefix}/maestro/productos", GetProductosAsync);
-        app.MapGet($"{RoutePrefix}/maestro/sucursales", GetSucursalesAsync);
-        app.MapGet($"{RoutePrefix}/maestro/sectores", GetSectoresAsync);
-        app.MapPost($"{RoutePrefix}/sesiones", UpsertSesionAsync);
-        app.MapPost($"{RoutePrefix}/capturas/batch", UploadCapturasBatchAsync);
+        // no-store en TODA la API: son datos de login/maestro que cambian por acción del
+        // administrador (alta de capturador, ajuste de formatos, etc.) y tienen que
+        // reflejarse al toque -- mismo bug-class que el 400 recurrente de /Account/Login
+        // (ver login-400-antiforgery-cache-fix), acá vía un proxy/túnel intermedio
+        // (ej. devtunnels) cacheando un GET sin este header.
+        var group = app.MapGroup(RoutePrefix)
+            .AddEndpointFilter(async (context, next) =>
+            {
+                context.HttpContext.Response.Headers.CacheControl = "no-store";
+                return await next(context);
+            });
+
+        group.MapGet("/auth/empresas", GetEmpresasAsync);
+        group.MapGet("/auth/usuarios", GetUsuariosAsync);
+        group.MapPost("/auth/login", LoginAsync);
+        group.MapGet("/maestro/productos", GetProductosAsync);
+        group.MapGet("/maestro/productos/total", GetProductosCountAsync);
+        group.MapGet("/maestro/sucursales", GetSucursalesAsync);
+        group.MapGet("/maestro/sectores", GetSectoresAsync);
+        group.MapGet("/maestro/ajustes-captura", GetAjustesCapturaAsync);
+        group.MapPost("/sesiones", UpsertSesionAsync);
+        group.MapPost("/capturas/batch", UploadCapturasBatchAsync);
     }
 
+    /// <summary>Debe coincidir con AuditoriaInventarioModule.ModuleCode (repo del plugin) -- el Host no referencia ese ensamblado en compile-time, ver comentario de clase.</summary>
+    private const string ModuleCode = "AuditoriaInventario";
+
     private sealed record LoginRequest(string CompanyCode, string Username, string Password);
+
+    private sealed record EmpresaDto(string CompanyCode, string Name);
+
+    /// <summary>
+    /// Empresas activas con el módulo instalado -- alimenta el desplegable de
+    /// Empresa en el login de la PWA (sin auth: se llama ANTES de loguearse, mismo
+    /// criterio que GetUsuariosAsync). Expone Code/Name, nunca datos sensibles.
+    /// </summary>
+    private static async Task<IResult> GetEmpresasAsync(PortalSaasDbContext portalDb, CancellationToken ct)
+    {
+        var empresas = await portalDb.Companies.AsNoTracking()
+            .Where(c => c.IsActive && portalDb.CompanyModuleConnections.Any(b => b.CompanyId == c.Id && b.ModuleCode == ModuleCode))
+            .OrderBy(c => c.Name)
+            .Select(c => new EmpresaDto(c.Code, c.Name))
+            .ToListAsync(ct);
+
+        return Results.Ok(empresas);
+    }
+
+    private static async Task<IResult> GetUsuariosAsync(
+        string companyCode, PortalSaasDbContext portalDb, IAuditoriaInventarioApiService api, CancellationToken ct)
+    {
+        var company = await portalDb.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Code == companyCode && c.IsActive, ct);
+        if (company is null)
+        {
+            return Results.Ok(Array.Empty<CaptureUsuarioDto>());
+        }
+
+        return Results.Ok(await api.GetUsuariosAsync(company.Id, ct));
+    }
 
     private static async Task<IResult> LoginAsync(
         LoginRequest request,
@@ -83,6 +133,17 @@ public static class AuditoriaInventarioInboundEndpoints
         return Results.Ok(await api.GetProductosAsync(auth.CompanyId, afterId, ct));
     }
 
+    private static async Task<IResult> GetProductosCountAsync(HttpContext httpContext, IAuditoriaInventarioApiService api, CancellationToken ct)
+    {
+        var auth = await ResolveAuthAsync(httpContext, api, ct);
+        if (auth is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        return Results.Ok(await api.GetProductosCountAsync(auth.CompanyId, ct));
+    }
+
     private static async Task<IResult> GetSucursalesAsync(HttpContext httpContext, IAuditoriaInventarioApiService api, CancellationToken ct)
     {
         var auth = await ResolveAuthAsync(httpContext, api, ct);
@@ -104,6 +165,17 @@ public static class AuditoriaInventarioInboundEndpoints
         }
 
         return Results.Ok(await api.GetSectoresAsync(auth.CompanyId, branchId, ct));
+    }
+
+    private static async Task<IResult> GetAjustesCapturaAsync(HttpContext httpContext, IAuditoriaInventarioApiService api, CancellationToken ct)
+    {
+        var auth = await ResolveAuthAsync(httpContext, api, ct);
+        if (auth is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        return Results.Ok(await api.GetAjustesCapturaAsync(auth.CompanyId, ct));
     }
 
     private static async Task<IResult> UpsertSesionAsync(

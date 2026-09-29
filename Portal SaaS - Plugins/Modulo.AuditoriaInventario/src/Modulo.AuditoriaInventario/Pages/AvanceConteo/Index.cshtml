@@ -1,0 +1,51 @@
+@page "/auditoria-inventario/avance-conteo"
+@model Modulo.AuditoriaInventario.Pages.AvanceConteo.IndexModel
+@{
+    ViewData["Title"] = "Avance de Conteo";
+}
+
+<div class="card-surface">
+    <h2 class="mb-1">Avance de Conteo</h2>
+    <p class="text-muted mb-3">
+        Cantidad contada (ya sincronizada desde el equipo) contra el congelado cargado
+        para cada sesión -- se actualiza al momento, sin esperar a que la sesión se
+        cierre.
+    </p>
+
+    @if (Model.Filas.Count == 0)
+    {
+        <p class="text-muted">Todavía no hay sesiones de conteo.</p>
+    }
+    else
+    {
+        <div class="document-list-table-wrapper">
+            <table class="table document-list-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Sucursal</th>
+                        <th>Nro. Inventario</th>
+                        <th>Estado</th>
+                        <th class="text-end">Cant. congelada</th>
+                        <th class="text-end">Cant. contada</th>
+                        <th class="text-end">Diferencia</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Filas)
+                    {
+                        <tr>
+                            <td>@f.BranchName</td>
+                            <td>@f.InventoryNumber</td>
+                            <td>@f.Status</td>
+                            <td class="text-end">@(f.Congelado?.ToString("N0") ?? "Sin congelado")</td>
+                            <td class="text-end">@f.Contado.ToString("N0")</td>
+                            <td class="text-end @(f.Diferencia is null ? "" : f.Diferencia < 0 ? "text-danger" : f.Diferencia > 0 ? "text-success" : "")">
+                                @(f.Diferencia?.ToString("N0") ?? "—")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

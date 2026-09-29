@@ -120,6 +120,12 @@ public sealed class AuditoriaInventarioApiService : IAuditoriaInventarioApiServi
         return new CaptureMaestroPage(items, items.Count == MaestroPageSize);
     }
 
+    public async Task<int> GetProductosCountAsync(Guid companyId, CancellationToken ct = default)
+    {
+        await using var db = await CreateDbContextAsync(companyId, ct);
+        return await db.Products.CountAsync(p => p.CompanyId == companyId, ct);
+    }
+
     public async Task<IReadOnlyList<CaptureSucursalDto>> GetSucursalesAsync(Guid companyId, CancellationToken ct = default)
     {
         await using var db = await CreateDbContextAsync(companyId, ct);
@@ -128,6 +134,32 @@ public sealed class AuditoriaInventarioApiService : IAuditoriaInventarioApiServi
             .Where(b => b.CompanyId == companyId && b.IsActive)
             .OrderBy(b => b.Name)
             .Select(b => new CaptureSucursalDto(b.Id, b.BranchCode, b.Name))
+            .ToListAsync(ct);
+    }
+
+    public async Task<CaptureAjustesDto> GetAjustesCapturaAsync(Guid companyId, CancellationToken ct = default)
+    {
+        await using var db = await CreateDbContextAsync(companyId, ct);
+
+        var fila = await db.CaptureSettings.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.CompanyId == companyId, ct);
+
+        // Sin fila configurada = todavía nadie tocó Configuración de captura -- los
+        // tres formatos quedan habilitados (mismo criterio permisivo que el resto
+        // del maestro offline-first, ver comentario en CaptureSettings).
+        return fila is null
+            ? new CaptureAjustesDto(true, true, true)
+            : new CaptureAjustesDto(fila.AllowEan8, fila.AllowUpcA, fila.AllowEan13);
+    }
+
+    public async Task<IReadOnlyList<CaptureUsuarioDto>> GetUsuariosAsync(Guid companyId, CancellationToken ct = default)
+    {
+        await using var db = await CreateDbContextAsync(companyId, ct);
+
+        return await db.CaptureUsers
+            .Where(u => u.CompanyId == companyId && u.IsActive)
+            .OrderBy(u => u.Username)
+            .Select(u => new CaptureUsuarioDto(u.Username, u.FullName))
             .ToListAsync(ct);
     }
 

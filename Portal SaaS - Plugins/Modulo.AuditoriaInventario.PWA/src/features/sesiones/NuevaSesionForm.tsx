@@ -8,7 +8,6 @@ export function NuevaSesionForm({ onCreated }: { onCreated: (sesion: SesionRow) 
   const [sucursales, setSucursales] = useState<SucursalRow[]>([]);
   const [branchId, setBranchId] = useState<number | null>(null);
   const [inventoryNumber, setInventoryNumber] = useState('');
-  const [validateAgainstMaster, setValidateAgainstMaster] = useState(true);
 
   useEffect(() => {
     getSucursales().then(setSucursales);
@@ -17,7 +16,7 @@ export function NuevaSesionForm({ onCreated }: { onCreated: (sesion: SesionRow) 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (branchId === null) return;
-    const sesion = await crearSesion({ branchId, inventoryNumber, validateAgainstMaster });
+    const sesion = await crearSesion({ branchId, inventoryNumber });
     onCreated(sesion);
   }
 
@@ -45,15 +44,6 @@ export function NuevaSesionForm({ onCreated }: { onCreated: (sesion: SesionRow) 
           onChange={(e) => setInventoryNumber(e.target.value)}
           required
         />
-      </label>
-      <label className="field field--checkbox">
-        <input
-          className="field__checkbox"
-          type="checkbox"
-          checked={validateAgainstMaster}
-          onChange={(e) => setValidateAgainstMaster(e.target.checked)}
-        />
-        Validar contra maestro
       </label>
       <button type="submit" className="btn btn--primary">Crear sesión</button>
     </form>

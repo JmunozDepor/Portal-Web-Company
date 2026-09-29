@@ -1,0 +1,68 @@
+@page "/auditoria-inventario/productos"
+@model Modulo.AuditoriaInventario.Pages.MaestroProductos.IndexModel
+@{
+    ViewData["Title"] = "Maestro de Productos";
+}
+
+<div class="card-surface">
+    <h2 class="mb-1">Maestro de Productos</h2>
+    <p class="text-muted mb-3">
+        Catálogo de códigos de barra (EAN) que la PWA de captura sincroniza a cada
+        equipo para validar los escaneos contra el maestro.
+    </p>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <form method="post" asp-page-handler="SincronizarSap">
+            <button type="submit" class="btn-primary">Sincronizar desde SAP</button>
+        </form>
+        <a class="btn-secondary" asp-page-handler="DescargarJson">Descargar maestro (JSON)</a>
+        <span class="text-muted">@Model.TotalProductos.ToString("N0") producto(s) cargados en total.</span>
+    </div>
+    <p class="text-muted mb-4" style="margin-top:-0.75rem;">
+        El JSON descargado se copia al equipo y se carga desde la PWA en Mantenedor →
+        "Cargar desde archivo (JSON)", para aprovisionar sin conectividad.
+    </p>
+
+    @if (Model.UltimosCargados.Count == 0)
+    {
+        <p class="text-muted">Todavía no hay productos cargados.</p>
+    }
+    else
+    {
+        <p class="text-muted mb-2">Últimos 50 cargados/actualizados:</p>
+        <div class="document-list-table-wrapper">
+            <table class="table document-list-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Código de barra</th>
+                        <th>Código de producto</th>
+                        <th>Descripción</th>
+                        <th>Origen</th>
+                        <th>Cargado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.UltimosCargados)
+                    {
+                        <tr>
+                            <td>@p.Barcode</td>
+                            <td>@p.ProductCode</td>
+                            <td>@p.Description</td>
+                            <td>@p.Source</td>
+                            <td>@p.LoadedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

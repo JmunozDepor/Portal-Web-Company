@@ -1,5 +1,7 @@
 import { db } from './schema';
-import type { AuthConfigRow, ProductoRow, SucursalRow, SectorRow, SesionRow, CapturaRow } from './schema';
+import type {
+  AuthConfigRow, ProductoRow, SucursalRow, SectorRow, SesionRow, CapturaRow, AjusteRow, ConfiguracionCapturaRow,
+} from './schema';
 
 export async function getAuthConfig(): Promise<AuthConfigRow | undefined> {
   return db.authConfig.get('singleton');
@@ -153,6 +155,69 @@ export async function limpiarSesionesSincronizadas(): Promise<{ sesiones: number
     await db.sesiones.delete(sesion.id);
   }
   return { sesiones: limpiables.length, capturas: totalCapturas };
+}
+
+const AJUSTES_DEFAULT: AjusteRow = { id: 'singleton', validarProducto: true };
+
+/** "Validar producto" -- default del equipo, ver Mantenedor. true si nunca se guardo. */
+export async function getAjustes(): Promise<AjusteRow> {
+  return (await db.ajustes.get('singleton')) ?? AJUSTES_DEFAULT;
+}
+
+export async function setValidarProducto(valor: boolean): Promise<void> {
+  await db.ajustes.put({ id: 'singleton', validarProducto: valor });
+}
+
+const CONFIGURACION_CAPTURA_DEFAULT: ConfiguracionCapturaRow = {
+  id: 'singleton', allowEan8: true, allowUpcA: true, allowEan13: true,
+};
+
+/**
+ * Formatos de codigo de barra aceptados -- viene del ADMINISTRADOR (sincronizado,
+ * ver maestroSync), nunca editable en el equipo. true en los tres si nunca se
+ * sincronizo (mismo default permisivo que usa el servidor).
+ */
+export async function getConfiguracionCaptura(): Promise<ConfiguracionCapturaRow> {
+  return (await db.configuracionCaptura.get('singleton')) ?? CONFIGURACION_CAPTURA_DEFAULT;
+}
+
+export async function setConfiguracionCaptura(cfg: Omit<ConfiguracionCapturaRow, 'id'>): Promise<void> {
+  await db.configuracionCaptura.put({ id: 'singleton', ...cfg });
+}
+
+/**
+ * Suma de `quantity` por sectorId, acotada a UNA sesion -- para el listado de
+ * sectores (pantalla "Elegir sector") no tiene sentido sumar entre sesiones
+ * distintas, cada conteo es independiente.
+ */
+export async function getCapturaTotalsBySesionYSectores(
+  sessionId: string,
+  sectorIds: number[],
+): Promise<Record<number, number>> {
+  if (sectorIds.length === 0) return {};
+  const filas = await db.capturas.where('sessionId').equals(sessionId).toArray();
+  const totales: Record<number, number> = {};
+  for (const fila of filas) {
+    if (!sectorIds.includes(fila.sectorId)) continue;
+    totales[fila.sectorId] = (totales[fila.sectorId] ?? 0) + fila.quantity;
+  }
+  return totales;
+}
+
+/**
+ * Carga el maestro (productos + sucursales) desde un archivo JSON en vez del
+ * servidor -- para aprovisionar un equipo sin conectividad (ver Mantenedor).
+ * Mismo upsert por id que la sincronizacion normal, solo cambia el origen.
+ */
+export async function importarMaestroDesdeJson(payload: {
+  productos?: ProductoRow[];
+  sucursales?: SucursalRow[];
+}): Promise<{ productos: number; sucursales: number }> {
+  const productos = payload.productos ?? [];
+  const sucursales = payload.sucursales ?? [];
+  if (productos.length > 0) await db.productos.bulkPut(productos);
+  if (sucursales.length > 0) await db.sucursales.bulkPut(sucursales);
+  return { productos: productos.length, sucursales: sucursales.length };
 }
 
 export async function getPendingCounts(): Promise<{ sesiones: number; capturas: number; errores: number }> {

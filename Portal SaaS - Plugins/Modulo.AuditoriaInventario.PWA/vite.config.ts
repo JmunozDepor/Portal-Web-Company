@@ -1,8 +1,18 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import packageJson from './package.json';
 
 export default defineConfig({
+  // __APP_VERSION__/__BUILD_TIME__ quedan fijos al momento en que arranca `npm run
+  // dev`/`npm run build` -- se muestran en Login/TopBar (ver src/version.ts) para que
+  // el capturador pueda confirmar a simple vista que está viendo la versión que se
+  // acaba de desplegar, y no una pestaña/puerto viejo con hot-reload desconectado
+  // (2026-09-29: confusión real entre :5173 y :5174 con dos `npm run dev` sueltos).
+  define: {
+    __APP_VERSION__: JSON.stringify(packageJson.version),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     VitePWA({

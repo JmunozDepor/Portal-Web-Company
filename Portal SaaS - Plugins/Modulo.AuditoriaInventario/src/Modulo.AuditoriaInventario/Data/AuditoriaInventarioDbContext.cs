@@ -36,6 +36,7 @@ public class AuditoriaInventarioDbContext : DbContext
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
     public DbSet<SapAdjustmentQueueItem> SapAdjustmentQueueItems => Set<SapAdjustmentQueueItem>();
     public DbSet<CaptureAuthToken> CaptureAuthTokens => Set<CaptureAuthToken>();
+    public DbSet<CaptureSettings> CaptureSettings => Set<CaptureSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -252,6 +253,19 @@ public class AuditoriaInventarioDbContext : DbContext
             e.HasOne<CaptureUser>().WithMany().HasForeignKey(x => x.CaptureUserId)
                 .HasConstraintName("fk_capture_auth_tokens_capture_users").OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.Token).IsUnique().HasDatabaseName("uq_capture_auth_tokens_token");
+        });
+
+        modelBuilder.Entity<CaptureSettings>(e =>
+        {
+            e.ToTable("capture_settings");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.AllowEan8).HasColumnName("allow_ean8").IsRequired();
+            e.Property(x => x.AllowUpcA).HasColumnName("allow_upca").IsRequired();
+            e.Property(x => x.AllowEan13).HasColumnName("allow_ean13").IsRequired();
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
+            e.HasIndex(x => x.CompanyId).IsUnique().HasDatabaseName("uq_capture_settings_company_id");
         });
     }
 }

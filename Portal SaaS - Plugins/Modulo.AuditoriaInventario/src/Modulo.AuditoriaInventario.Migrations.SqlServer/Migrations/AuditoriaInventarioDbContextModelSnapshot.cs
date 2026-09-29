@@ -112,6 +112,44 @@ namespace Modulo.AuditoriaInventario.Migrations.SqlServer.Migrations
                     b.ToTable("capture_auth_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.AuditoriaInventario.Models.CaptureSettings", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("AllowEan13")
+                        .HasColumnType("bit")
+                        .HasColumnName("allow_ean13");
+
+                    b.Property<bool>("AllowEan8")
+                        .HasColumnType("bit")
+                        .HasColumnName("allow_ean8");
+
+                    b.Property<bool>("AllowUpcA")
+                        .HasColumnType("bit")
+                        .HasColumnName("allow_upca");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_capture_settings_company_id");
+
+                    b.ToTable("capture_settings", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.AuditoriaInventario.Models.CaptureUser", b =>
                 {
                     b.Property<long>("Id")

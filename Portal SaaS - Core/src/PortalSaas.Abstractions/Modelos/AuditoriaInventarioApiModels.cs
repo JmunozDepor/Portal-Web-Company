@@ -18,7 +18,13 @@ public sealed record CaptureMaestroPage(IReadOnlyList<CaptureProductoDto> Items,
 
 public sealed record CaptureSucursalDto(long Id, string BranchCode, string Name);
 
+/// <summary>Para el desplegable de Usuario en el login de la PWA -- solo capturadores activos, nunca la contraseña.</summary>
+public sealed record CaptureUsuarioDto(string Username, string? FullName);
+
 public sealed record CaptureSectorDto(long Id, string Name);
+
+/// <summary>Formatos de código de barra que la PWA debe aceptar al escanear -- configurado por el administrador, ver CaptureSettings en el plugin.</summary>
+public sealed record CaptureAjustesDto(bool AllowEan8, bool AllowUpcA, bool AllowEan13);
 
 public sealed record CaptureSesionUpsert(Guid Id, long BranchId, string InventoryNumber, DateTimeOffset StartedAt, string Status, bool ValidateAgainstMaster);
 

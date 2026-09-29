@@ -24,6 +24,22 @@ export interface SucursalDto {
   name: string;
 }
 
+export interface EmpresaDto {
+  companyCode: string;
+  name: string;
+}
+
+export interface UsuarioDto {
+  username: string;
+  fullName: string | null;
+}
+
+export interface AjustesCapturaDto {
+  allowEan8: boolean;
+  allowUpcA: boolean;
+  allowEan13: boolean;
+}
+
 export interface SectorDto {
   id: number;
   name: string;

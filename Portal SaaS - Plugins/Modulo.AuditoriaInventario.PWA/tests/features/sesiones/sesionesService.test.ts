@@ -9,14 +9,14 @@ beforeEach(async () => {
 
 describe('sesionesService', () => {
   it('crearSesion genera un GUID, queda ACTIVE y pending', async () => {
-    const sesion = await crearSesion({ branchId: 1, inventoryNumber: 'INV-1', validateAgainstMaster: true });
+    const sesion = await crearSesion({ branchId: 1, inventoryNumber: 'INV-1' });
     expect(sesion.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(sesion.status).toBe('ACTIVE');
     expect(sesion.syncStatus).toBe('pending');
   });
 
   it('cerrarSesion pasa a CLOSED y vuelve a pending aunque ya estuviera synced', async () => {
-    const sesion = await crearSesion({ branchId: 1, inventoryNumber: 'INV-2', validateAgainstMaster: false });
+    const sesion = await crearSesion({ branchId: 1, inventoryNumber: 'INV-2' });
     await db.sesiones.update(sesion.id, { syncStatus: 'synced' });
 
     await cerrarSesion(sesion.id);

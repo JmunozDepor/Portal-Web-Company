@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Razor.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PortalSaas.Abstractions.Contratos;
@@ -37,6 +38,10 @@ public sealed class PluginManager
     // puede toparse con el ALC ya recolectado por el GC -- bug real de PortalSAP_v2,
     // documentado ahí ("AssemblyLoadContext is unloading or was already unloaded").
     private readonly List<PluginLoadContext> _loadedContexts = new();
+
+    // Ruta Razor compilada ("/Pages/X/Index.cshtml") -> módulo que la registró primero.
+    // Ver RegistrarRutasRazor.
+    private readonly Dictionary<string, string> _razorPathOwners = new(StringComparer.OrdinalIgnoreCase);
 
     public PluginManager(ILogger<PluginManager> logger)
     {
@@ -104,6 +109,17 @@ public sealed class PluginManager
             return;
         }
 
+        foreach (var (ruta, duenoPrevio) in RegistrarRutasRazor(
+                     _razorPathOwners, folderName,
+                     new RazorCompiledItemLoader().LoadItems(assembly).Select(item => item.Identifier)))
+        {
+            _logger.LogError(
+                "Colisión de ruta Razor {Ruta}: la declaran {ModuloPrevio} y {Modulo}. ASP.NET Core registra UNA " +
+                "sola por ruta y descarta la otra EN SILENCIO (su @page responde 404). Mover las páginas de " +
+                "{Modulo} bajo Pages/{{NombreModulo}}/ -- ver docs/09-GUIA-DESARROLLO-PLUGINS.md §4",
+                ruta, duenoPrevio, folderName);
+        }
+
         partManager.ApplicationParts.Add(new AssemblyPart(assembly));
         partManager.ApplicationParts.Add(new CompiledRazorAssemblyPart(assembly));
 
@@ -152,5 +168,44 @@ public sealed class PluginManager
         {
             _assembliesWithOwnWwwRoot[module] = assembly;
         }
+    }
+
+    /// <summary>
+    /// Registra las rutas Razor compiladas de un módulo y devuelve las que ya declaraba
+    /// otro módulo cargado antes. Bug real recurrente (2026-09-29: /sellout/sucursales
+    /// 404 porque Modulo.AuditoriaInventario también tenía Pages/Sucursales/Index.cshtml):
+    /// las páginas se indexan por ruta relativa ("/Pages/Sucursales/Index.cshtml"), NO por
+    /// su @page, así que dos plugins con la misma carpeta se pisan aunque sus URLs sean
+    /// distintas -- gana el primero en cargar y el otro desaparece sin error.
+    /// _ViewStart/_ViewImports se excluyen: todos los plugins tienen uno en la raíz por
+    /// diseño.
+    /// </summary>
+    public static IReadOnlyList<(string Ruta, string DuenoPrevio)> RegistrarRutasRazor(
+        Dictionary<string, string> duenosPorRuta, string modulo, IEnumerable<string> rutas)
+    {
+        var colisiones = new List<(string, string)>();
+        foreach (var ruta in rutas)
+        {
+            var archivo = Path.GetFileName(ruta);
+            if (archivo.Equals("_ViewStart.cshtml", StringComparison.OrdinalIgnoreCase) ||
+                archivo.Equals("_ViewImports.cshtml", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (duenosPorRuta.TryGetValue(ruta, out var duenoPrevio))
+            {
+                if (!duenoPrevio.Equals(modulo, StringComparison.OrdinalIgnoreCase))
+                {
+                    colisiones.Add((ruta, duenoPrevio));
+                }
+            }
+            else
+            {
+                duenosPorRuta[ruta] = modulo;
+            }
+        }
+
+        return colisiones;
     }
 }

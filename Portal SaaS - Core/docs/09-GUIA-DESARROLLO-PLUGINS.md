@@ -83,6 +83,29 @@ lleva un sufijo único del propio módulo en el nombre de archivo
 (`_TabGeneralVentas.cshtml`, no `_TabGeneral.cshtml`) — nunca un nombre genérico
 que otro plugin podría reusar igual.
 
+**Lo mismo aplica a las PÁGINAS, no solo a las parciales** (bug real 2026-09-29:
+`/sellout/sucursales` respondía 404). ASP.NET Core indexa cada página por su ruta
+relativa (`/Pages/Sucursales/Index.cshtml`), **no** por su `@page`. Modulo.SellOut y
+Modulo.AuditoriaInventario tenían los dos `Pages/Sucursales/Index.cshtml` (con
+`@page` distintos): ganaba el plugin que carga primero y la página del otro
+desaparecía sin error de build, de arranque ni de runtime, solo un 404.
+
+**Regla obligatoria**: todas las páginas de un plugin viven bajo
+`Pages/{NombreModulo}/...` (ej. `Pages/SellOut/Sucursales/Index.cshtml`,
+`Pages/GestionGastos/...`), nunca directo en `Pages/{Entidad}/`. La URL no cambia,
+porque la define el `@page` absoluto. Desde 2026-09-29, `PluginManager` loguea
+`Colisión de ruta Razor ...` al arrancar si dos plugins declaran la misma ruta: ante
+un 404 en una página de plugin, buscar ese error en el log del Host.
+
+**Drawer (panel lateral de crear/editar) con ancho ajustable — automático**
+(2026-09-29): todo `.drawer-panel` dentro de un `[data-drawer]` se puede ampliar
+hacia la izquierda arrastrando su borde o con el botón expandir del header. Lo
+agrega `wwwroot/js/drawer.js` del Host, que se carga en todas las páginas del Host
+y de los plugins vía `_ModuloLayout` → `_LayoutMaestro`. El plugin no agrega
+marcado ni script; si su vista sigue el patrón estándar del drawer, ya lo tiene.
+Para excluir un panel puntual: `<aside class="drawer-panel" data-drawer-fijo>`.
+Nunca un script propio de redimensión por módulo.
+
 ## 5. Formularios — dos gotchas ya confirmados, aplican siempre
 
 - **Antiforgery**: un `<form method="post">` sin ningún otro atributo `asp-*`
@@ -235,6 +258,8 @@ handler igual debe verificar).
       handler (bug real encontrado en `Modulo.Rendiciones`: crash 500 en vez de
       redirect 302 a login, porque el DbContext del plugin exige un claim de sesión
       que no existe).
+- [ ] Páginas bajo `Pages/{NombreModulo}/` (ver §4). Al arrancar, el log del Host
+      no muestra ningún `Colisión de ruta Razor`.
 - [ ] Autorización vía `ICurrentUserContext`, nunca lógica propia.
 - [ ] Si aplica motor de documento: sin métodos `virtual` en el PageModel base,
       catálogo estático por tipo.

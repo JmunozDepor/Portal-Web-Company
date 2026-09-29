@@ -221,6 +221,54 @@
   transform: translateX(0);
 }
 
+/* Ancho ajustable (drawer.js inyecta el borde y el botón en todo drawer): el
+   panel se amplía hacia la izquierda fijando max-width inline. Sin transición
+   mientras se arrastra, para que siga al mouse sin retraso. */
+.drawer-panel.is-resizing {
+  transition: none;
+  user-select: none;
+}
+
+.drawer-resize-handle {
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 1;
+}
+
+.drawer-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 3px;
+  width: 2px;
+  height: 100%;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.drawer-resize-handle:hover::after,
+.drawer-panel.is-resizing .drawer-resize-handle::after {
+  background: var(--accent);
+}
+
+.drawer-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* En pantallas angostas el drawer ya ocupa todo el ancho: no hay nada que ampliar. */
+@media (max-width: 576px) {
+  .drawer-resize-handle,
+  .drawer-expand-toggle {
+    display: none;
+  }
+}
+
 /* Bloquea el scroll de fondo (.content, ver sidebar.css) mientras el drawer
    está abierto -- drawer.js agrega/quita esta clase en <body>. */
 body.drawer-locked .content {

@@ -25,9 +25,18 @@ public interface IAuditoriaInventarioApiService
 
     Task<CaptureMaestroPage> GetProductosAsync(Guid companyId, long afterId, CancellationToken ct = default);
 
+    /// <summary>Total real de productos en el servidor -- la PWA lo compara contra lo que tiene cacheado localmente para detectar un maestro sincronizado a medias (ver Mantenedor).</summary>
+    Task<int> GetProductosCountAsync(Guid companyId, CancellationToken ct = default);
+
     Task<IReadOnlyList<CaptureSucursalDto>> GetSucursalesAsync(Guid companyId, CancellationToken ct = default);
 
+    /// <summary>Capturadores ACTIVOS de la compañía -- alimenta el desplegable de Usuario en el login de la PWA (sin token, se llama antes de loguearse).</summary>
+    Task<IReadOnlyList<CaptureUsuarioDto>> GetUsuariosAsync(Guid companyId, CancellationToken ct = default);
+
     Task<IReadOnlyList<CaptureSectorDto>> GetSectoresAsync(Guid companyId, long? branchId, CancellationToken ct = default);
+
+    /// <summary>Todos los formatos habilitados por defecto si la compañía nunca configuró esto (ver Pages/ConfiguracionCaptura, admin-only).</summary>
+    Task<CaptureAjustesDto> GetAjustesCapturaAsync(Guid companyId, CancellationToken ct = default);
 
     Task UpsertSesionAsync(Guid companyId, long captureUserId, CaptureSesionUpsert request, CancellationToken ct = default);
 

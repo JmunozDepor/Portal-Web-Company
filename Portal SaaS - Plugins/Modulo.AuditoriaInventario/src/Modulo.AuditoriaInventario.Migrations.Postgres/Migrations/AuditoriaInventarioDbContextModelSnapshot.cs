@@ -112,6 +112,44 @@ namespace Modulo.AuditoriaInventario.Migrations.Postgres.Migrations
                     b.ToTable("capture_auth_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.AuditoriaInventario.Models.CaptureSettings", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("AllowEan13")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_ean13");
+
+                    b.Property<bool>("AllowEan8")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_ean8");
+
+                    b.Property<bool>("AllowUpcA")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_upca");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_capture_settings_company_id");
+
+                    b.ToTable("capture_settings", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.AuditoriaInventario.Models.CaptureUser", b =>
                 {
                     b.Property<long>("Id")

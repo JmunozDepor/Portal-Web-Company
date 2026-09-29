@@ -50,7 +50,7 @@ describe('useAuth', () => {
   });
 
   it('logout limpia authConfig pero no borra el maestro cacheado', async () => {
-    await upsertProductos([{ id: 1, barcode: '123', productCode: 'P1', description: null, brand: null, line: null }]);
+    await upsertProductos([{ id: 1, barcode: '123', productCode: 'P1' }]);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ token: 'tok-1', expiresAt: '2026-01-01T00:00:00Z', displayName: 'Juan' }), { status: 200 }),
     ));

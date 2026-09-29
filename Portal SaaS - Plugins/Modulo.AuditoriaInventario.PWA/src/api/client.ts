@@ -20,7 +20,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     headers.Authorization = `Bearer ${options.token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  // Datos de login/maestro que cambian por acción del administrador (alta de
+  // capturador, ajuste de formatos) -- 'no-store' evita que el navegador o un
+  // proxy/túnel intermedio (ej. devtunnels) sirvan una respuesta vieja.
+  const response = await fetch(`${BASE_URL}${path}`, { ...options, headers, cache: 'no-store' });
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');

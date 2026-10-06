@@ -29,6 +29,12 @@
                 }
             </select>
             <button type="submit">Ver</button>
+            <label style="display:flex; gap:4px; align-items:center; font-size:13px; white-space:nowrap; cursor:pointer;">
+                @* checkbox antes del hidden: si está marcado, el binder toma el primer valor ("true") *@
+                <input type="checkbox" name="soloAbiertos" value="true" checked="@Model.SoloAbiertos" onchange="this.form.submit()" />
+                <input type="hidden" name="soloAbiertos" value="false" />
+                Solo abiertos
+            </label>
         </form>
         @if (Model.HaySeleccion)
         {
@@ -42,16 +48,48 @@
             <span class="badge @badgeClass">@Model.Datos.EstadoMes</span>
         }
 
-        @if (Model.HaySeleccion && Model.Datos.Pendientes == 0 && Model.Datos.LineasTotales > 0 && Model.Datos.EstadoMes != "CERRADO")
+        @if (Model.HaySeleccion && Model.PuedeCerrar && Model.Datos.EstadoMes != "SIN_CARGAR")
         {
-            <div class="toolbar-right" style="display:flex; gap:8px;">
-                <form method="post" asp-page-handler="CerrarMes">
-                    <input type="hidden" name="anioMes" value="@Model.Datos.AnioMes" />
-                    <button type="submit">Cerrar mes</button>
-                </form>
+            <div class="toolbar-right" style="display:flex; gap:8px; align-items:center;">
+                @if (Model.MesCerrado)
+                {
+                    <form method="post" asp-page-handler="ReabrirMes"
+                          onsubmit="return confirm('¿Reabrir el período @Model.Datos.AnioMes? Volverá a admitir cambios, recarga y eliminación.');">
+                        <input type="hidden" name="anioMes" value="@Model.Datos.AnioMes" />
+                        <button type="submit"><i class="bi bi-unlock"></i> Reabrir período</button>
+                    </form>
+                }
+                else
+                {
+                    bool bloqueado = Model.Datos.LineasTotales == 0;
+                    bool conPendientes = Model.Datos.Pendientes > 0;
+                    string motivo = bloqueado
+                        ? "El mes no tiene líneas cargadas."
+                        : $"Quedan {Model.Datos.Pendientes:N0} línea(s) pendiente(s) por resolver.";
+                    string confirmacion = conPendientes
+                        ? $"ATENCIÓN: el período {Model.Datos.AnioMes} tiene {Model.Datos.Pendientes:N0} línea(s) PENDIENTE(S) sin resolver. Si lo cierras, quedarán congeladas así. ¿Cerrar de todas formas?"
+                        : $"¿Cerrar el período {Model.Datos.AnioMes}? Quedará bloqueado: no se podrá modificar, recargar ni eliminar hasta reabrirlo.";
+                    <form method="post" asp-page-handler="CerrarMes"
+                          onsubmit="return confirm(this.dataset.confirm);" data-confirm="@confirmacion">
+                        <input type="hidden" name="anioMes" value="@Model.Datos.AnioMes" />
+                        <input type="hidden" name="confirmarPendientes" value="@(conPendientes ? "true" : "false")" />
+                        <button type="submit" class="btn-primary" disabled="@bloqueado" title="@(bloqueado ? motivo : "")"><i class="bi bi-lock"></i> Cerrar período</button>
+                    </form>
+                    @if (bloqueado)
+                    {
+                        <span style="color:var(--text-muted); font-size:12px;">@motivo</span>
+                    }
+                }
             </div>
         }
     </div>
+
+    @if (Model.HaySeleccion && Model.MesCerrado)
+    {
+        <p style="color:var(--text-muted); font-size:13px; margin:0 0 12px;">
+            <i class="bi bi-lock-fill"></i> Período cerrado@(Model.FechaCierre != null ? $" el {Model.FechaCierre}" : "")@(Model.UsuarioCierre != null ? $" por {Model.UsuarioCierre}" : ""). No admite modificaciones.
+        </p>
+    }
 
     @if (!Model.HaySeleccion)
     {

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Modulo.GestionDistribucionGastos.Data;
 using Modulo.GestionDistribucionGastos.Models;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.GestionDistribucionGastos.Pages.GestionGastos;
 
@@ -21,12 +22,31 @@ public class PanelModel : PageModelBaseGestionGastos
     public List<CierreMes> MesesDisponibles { get; set; } = new();
     public DashboardViewModel Datos { get; set; } = new();
     public bool HaySeleccion => !string.IsNullOrEmpty(Datos.AnioMes);
+    public bool MesCerrado => Datos.EstadoMes == "CERRADO";
+    public string? FechaCierre { get; set; }
+    public string? UsuarioCierre { get; set; }
 
-    public async Task OnGetAsync(string? anioMes)
+    // Cerrar/reabrir el período congela o libera TODO el mes (resolución, aprobación, reglas,
+    // recarga y eliminación) -- mismo permiso APPROVE que aprobar/reabrir una cuenta puntual.
+    public bool PuedeCerrar { get; set; }
+
+    public bool SoloAbiertos { get; set; }
+
+    public async Task OnGetAsync(string? anioMes, bool? soloAbiertos)
     {
+        // Filtro "Solo abiertos" recordado en cookie: sobrevive a los redirect de los POST
+        // (Cerrar/Reabrir/Cargar) que no lo llevan en la URL.
+        if (soloAbiertos.HasValue)
+            Response.Cookies.Append("GDG_SoloAbiertos", soloAbiertos.Value ? "1" : "0", new CookieOptions { Expires = DateTimeOffset.UtcNow.AddDays(60), IsEssential = true });
+        SoloAbiertos = soloAbiertos ?? Request.Cookies["GDG_SoloAbiertos"] == "1";
+
         // El combo se arma con los meses que realmente existen en Cierre_Mes (no un año fijo hardcodeado),
         // así refleja el estado real y no deja meses cargados fuera de alcance (ej. fuera del año "de trabajo").
-        MesesDisponibles = await _db.CierreMes.OrderByDescending(c => c.AnioMes).ToListAsync();
+        // Con el filtro activo se ocultan los CERRADO, salvo el mes seleccionado (para no perderlo del combo).
+        MesesDisponibles = await _db.CierreMes
+            .Where(c => !SoloAbiertos || c.Estado != "CERRADO" || c.AnioMes == anioMes)
+            .OrderByDescending(c => c.AnioMes)
+            .ToListAsync();
 
         // Sin mes seleccionado por defecto: el usuario debe elegirlo explícitamente en el combo.
         if (string.IsNullOrEmpty(anioMes))
@@ -39,6 +59,9 @@ public class PanelModel : PageModelBaseGestionGastos
         Response.Cookies.Append("GDG_PeriodoTrabajo", anioMes, new CookieOptions { Expires = DateTimeOffset.UtcNow.AddDays(60), IsEssential = true });
 
         var cierre = await _db.CierreMes.FirstOrDefaultAsync(c => c.AnioMes == anioMes);
+        FechaCierre = cierre?.FechaCierre?.ToString("dd-MM-yyyy HH:mm");
+        UsuarioCierre = cierre?.UsuarioCierre;
+        PuedeCerrar = await TieneAccionAsync(PortalActions.Approve);
 
         var totales = await _db.DistribucionFinal
             .Where(d => d.AnioMes == anioMes)
@@ -66,6 +89,14 @@ public class PanelModel : PageModelBaseGestionGastos
     public async Task<IActionResult> OnPostCargarMesAsync(int anio, int mes)
     {
         var anioMes = $"{anio}{mes:D2}";
+
+        // La recarga REEMPLAZA el mes completo: un mes cerrado no se puede pisar.
+        if (await EstaCerradoAsync(anioMes))
+        {
+            MensajeError = $"El mes {anioMes} está cerrado: no se puede recargar. Reábrelo primero.";
+            return RedirectToPage(new { anioMes });
+        }
+
         var conn = _db.Database.GetDbConnection();
 
         try
@@ -117,34 +148,85 @@ public class PanelModel : PageModelBaseGestionGastos
         return RedirectToPage(new { anioMes });
     }
 
-    public async Task<IActionResult> OnPostCerrarMesAsync(string anioMes)
+    public async Task<IActionResult> OnPostCerrarMesAsync(string anioMes, bool confirmarPendientes = false)
     {
-        var usuario = NombreUsuarioActual;
-        var conn = _db.Database.GetDbConnection();
+        if (!await TieneAccionAsync(PortalActions.Approve))
+        {
+            MensajeError = "No tienes permiso para cerrar el período.";
+            return RedirectToPage(new { anioMes });
+        }
+
+        var cierre = await _db.CierreMes.FirstOrDefaultAsync(c => c.AnioMes == anioMes);
+        if (cierre == null)
+        {
+            MensajeError = $"El mes {anioMes} no está cargado.";
+            return RedirectToPage(new { anioMes });
+        }
+        if (cierre.Estado == "CERRADO")
+        {
+            MensajeError = $"El mes {anioMes} ya está cerrado.";
+            return RedirectToPage(new { anioMes });
+        }
+
+        // Se permite cerrar con líneas pendientes (quedan congeladas tal cual), pero solo si el
+        // usuario lo confirmó explícitamente -- el formulario manda confirmarPendientes=true.
+        var pendientes = await _db.DistribucionFinal.CountAsync(d => d.AnioMes == anioMes && d.Estado == "PENDIENTE");
+        if (pendientes > 0 && !confirmarPendientes)
+        {
+            MensajeError = $"El mes {anioMes} tiene {pendientes:N0} línea(s) pendiente(s): confirma el cierre con pendientes.";
+            return RedirectToPage(new { anioMes });
+        }
+
+        // El cierre se marca directo en Cierre_Mes (el candado que leen todas las pantallas).
+        // No se usa dbo.sp_CerrarMes: existe en CLDEPORFIN pero no está versionado en Sql/ y
+        // rechaza cualquier mes con pendientes, contra la regla de cierre confirmado de arriba.
+        cierre.Estado = "CERRADO";
+        cierre.FechaCierre = DateTime.Now;
+        cierre.UsuarioCierre = NombreUsuarioActual;
 
         try
         {
-            await conn.OpenAsync();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = "dbo.sp_CerrarMes";
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.Parameters.Add(new SqlParameter("@AnioMes", anioMes));
-            cmd.Parameters.Add(new SqlParameter("@Usuario", usuario));
-            await cmd.ExecuteNonQueryAsync();
-
-            MensajeExito = $"Mes {anioMes} cerrado correctamente.";
+            await _db.SaveChangesAsync();
+            MensajeExito = pendientes > 0
+                ? $"Mes {anioMes} cerrado con {pendientes:N0} línea(s) pendiente(s) congeladas: ya no admite modificaciones."
+                : $"Mes {anioMes} cerrado: ya no admite modificaciones.";
         }
         catch (Exception ex)
         {
             MensajeError = $"No se pudo cerrar el mes: {ex.Message}";
         }
-        finally
-        {
-            await conn.CloseAsync();
-        }
 
         return RedirectToPage(new { anioMes });
     }
+
+    // Contracara de CerrarMes: devuelve el mes a EN_PROCESO para permitir correcciones.
+    // Las cuentas aprobadas (Cuenta_Aprobada) siguen aprobadas -- se reabren una a una si hace falta.
+    public async Task<IActionResult> OnPostReabrirMesAsync(string anioMes)
+    {
+        if (!await TieneAccionAsync(PortalActions.Approve))
+        {
+            MensajeError = "No tienes permiso para reabrir el período.";
+            return RedirectToPage(new { anioMes });
+        }
+
+        var cierre = await _db.CierreMes.FirstOrDefaultAsync(c => c.AnioMes == anioMes);
+        if (cierre?.Estado != "CERRADO")
+        {
+            MensajeError = $"El mes {anioMes} no está cerrado.";
+            return RedirectToPage(new { anioMes });
+        }
+
+        cierre.Estado = "EN_PROCESO";
+        cierre.FechaCierre = null;
+        cierre.UsuarioCierre = null;
+        await _db.SaveChangesAsync();
+
+        MensajeExito = $"Mes {anioMes} reabierto: vuelve a admitir cambios.";
+        return RedirectToPage(new { anioMes });
+    }
+
+    private async Task<bool> EstaCerradoAsync(string anioMes) =>
+        await _db.CierreMes.AnyAsync(c => c.AnioMes == anioMes && c.Estado == "CERRADO");
 
     public async Task<IActionResult> OnPostEliminarMesAsync(string anioMes)
     {

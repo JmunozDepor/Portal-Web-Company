@@ -22,6 +22,10 @@ GO
 -- tocar a propósito: la venta ya está bien distribuida en esas dos dimensiones (confirmado), y
 -- vw_VentaBaseDistribucion_ExcluirCentral ya excluye IND3/IND4 de la base de participación
 -- leyendo directo del staging -- no hace falta duplicar ese default ahí.
+-- Ajuste 2026-10-05: "Incorrect syntax near 'CodSu'" al cargar 2026-01. Concatenar literales
+-- N'...' (todos < 4000) + variables da NVARCHAR(4000) aunque @SQL sea NVARCHAR(MAX): la PARTE 1
+-- (~4.300 caracteres con los defaults de arriba) se truncaba en el carácter 4000, cortando la
+-- lista de columnas en "CodSu". Fix: cada SET @SQL arranca con CAST(N'' AS NVARCHAR(MAX)).
 -- Resto del SP (fallback SYSDeb/SYSCred deshabilitado, filtros TransType<>58 / LineMemo NOT LIKE
 -- 'P.41%', recarga idempotente que preserva MANUAL) sin cambios -- ver
 -- Sql/Deshabilitar_Fallback_SysDeb_SysCred.sql para ese historial.
@@ -61,7 +65,7 @@ BEGIN
     -- Se excluyen (NroAsiento, LineaId) que ya existan en el staging del mes,
     -- es decir, las lineas que quedaron protegidas por trabajo manual aprobado.
     -----------------------------------------------------------------
-    SET @SQL = N'
+    SET @SQL = CAST(N'' AS NVARCHAR(MAX)) + N'
     INSERT INTO dbo.Staging_CentralizacionContable
         (CodigoGrupo, NombreGrupo, NroCuenta, NombreCuenta, CodigoSocio, SocioNegocio,
          CodCentroCosto, CentroCosto, CodMarca, Marca, CodCanal, Canal,
@@ -146,7 +150,7 @@ BEGIN
     -- No tiene FK desde Distribucion_Final, por lo que siempre se regenera completo
     -- (ya fue borrado en el DELETE general de arriba, junto con el resto del staging no protegido).
     -----------------------------------------------------------------
-    SET @SQL = N'
+    SET @SQL = CAST(N'' AS NVARCHAR(MAX)) + N'
     INSERT INTO dbo.Staging_CentralizacionContable
         (CodigoGrupo, NombreGrupo, NroCuenta, NombreCuenta, CodigoSocio, SocioNegocio,
          CodCentroCosto, CentroCosto, CodMarca, Marca, CodCanal, Canal,

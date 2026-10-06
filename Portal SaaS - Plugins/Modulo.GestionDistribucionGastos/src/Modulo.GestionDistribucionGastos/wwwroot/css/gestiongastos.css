@@ -41,6 +41,7 @@ button, .btn { border: 1px solid var(--card-border); background: var(--input-bg)
 button:hover, .btn:hover { background: var(--bs-body-bg); }
 .btn-primary { background: var(--accent); color: #ffffff; border-color: var(--accent); }
 .btn-primary:hover { background: var(--accent-2); }
+button:disabled { opacity: .5; cursor: not-allowed; }
 
 input[type=text], input[type=number], select, textarea {
     padding: 8px 10px; border: 1px solid var(--card-border); border-radius: 8px; font-size: 14px;

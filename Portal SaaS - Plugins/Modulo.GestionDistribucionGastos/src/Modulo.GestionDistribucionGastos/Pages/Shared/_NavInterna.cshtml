@@ -1,5 +1,10 @@
 @{
-    string? periodoActual = Context.Request.Cookies["GDG_PeriodoTrabajo"];
+    // El ?anioMes= de la URL manda: la cookie que la página escribe en este mismo request
+    // recién llega en el siguiente, así que leer solo la cookie mostraba el período anterior.
+    string? anioMesQuery = Context.Request.Query["anioMes"];
+    string? periodoActual = !string.IsNullOrEmpty(anioMesQuery) && anioMesQuery.Length == 6 && anioMesQuery.All(char.IsDigit)
+        ? anioMesQuery
+        : Context.Request.Cookies["GDG_PeriodoTrabajo"];
     string rutaActual = Context.Request.Path.Value ?? "";
     bool EsActiva(string prefijo) => rutaActual.StartsWith(prefijo, StringComparison.OrdinalIgnoreCase);
     string Clase(string prefijo) => "nav-interna-tab" + (EsActiva(prefijo) ? " active" : "");

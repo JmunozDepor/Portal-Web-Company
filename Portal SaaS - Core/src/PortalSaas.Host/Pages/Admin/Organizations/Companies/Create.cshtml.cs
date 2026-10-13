@@ -64,7 +64,8 @@ public class CreateModel : PageModel
             return Page();
         }
 
-        var instanciaValida = await _db.Instances.AnyAsync(i => i.Id == Input.InstanceId && i.OrganizationId == organizationId);
+        var instanciaValida = await _db.Instances.AnyAsync(i => i.Id == Input.InstanceId && i.OrganizationId == organizationId
+            && (i.EngineType == InstanceEngineType.Hana || i.EngineType == InstanceEngineType.SqlServer));
         if (!instanciaValida)
         {
             ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.InstanceId)}", "Instancia inválida.");
@@ -103,7 +104,7 @@ public class CreateModel : PageModel
     private async Task CargarInstanciasAsync(Guid organizationId)
     {
         Instances = await _db.Instances
-            .Where(i => i.OrganizationId == organizationId)
+            .Where(i => i.OrganizationId == organizationId && (i.EngineType == InstanceEngineType.Hana || i.EngineType == InstanceEngineType.SqlServer))
             .OrderBy(i => i.Name)
             .Select(i => new SelectListItem(i.Name, i.Id.ToString()))
             .ToListAsync();

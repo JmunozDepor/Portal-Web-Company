@@ -40,14 +40,20 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    // Bloquea el borrado si ya cuelga alguna Company de esta instancia -- borrarla
-    // dejaría esas compañías sin cómo resolver su conexión SAP.
+    // Bloquea el borrado si cuelga de esta instancia alguna Company (perdería su conexión
+    // SAP) o la base de algún módulo (la FK es Restrict: sin este chequeo, el borrado
+    // reventaría con un DbUpdateException).
     public async Task<IActionResult> OnPostDeleteAsync(Guid organizationId, long id)
     {
-        var inUse = await _db.Companies.AnyAsync(c => c.InstanceId == id);
-        if (inUse)
+        if (await _db.Companies.AnyAsync(c => c.InstanceId == id))
         {
             ErrorMessage = "No se puede eliminar: hay compañías creadas sobre esta instancia.";
+            return RedirectToPage(new { organizationId });
+        }
+
+        if (await _db.CompanyModuleConnections.AnyAsync(b => b.InstanceId == id))
+        {
+            ErrorMessage = "No se puede eliminar: hay módulos que usan una base de datos de esta instancia (ver Conexiones externas de cada compañía).";
             return RedirectToPage(new { organizationId });
         }
 

@@ -58,6 +58,9 @@
 }
 
 <p class="text-muted mt-3">
-    Compañías (schemas SAP) cuelgan de una instancia — crea al menos una acá antes de
+    Una instancia es un servidor de base de datos de la organización. De ella cuelgan las
+    compañías SAP (solo motores <code>hana</code> / <code>sqlserver</code>) y las bases externas de
+    los módulos (cualquier motor, incluido <code>postgres</code>), que se asignan en
+    <em>Conexiones externas</em> de cada compañía. Crea al menos una acá antes de
     <a asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@Model.Organization.Id">agregar compañías</a>.
 </p>

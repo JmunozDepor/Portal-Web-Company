@@ -21,51 +21,33 @@ public class EditModel : PageModel
     }
 
     public Company Company { get; private set; } = null!;
-
     public Organization Organization { get; private set; } = null!;
+    public ModuleConnectionBindingDto Binding { get; private set; } = null!;
+    public IReadOnlyList<DatabaseInstanceOptionDto> Instances { get; private set; } = [];
 
     [BindProperty]
-    public ExternalConnectionEditModel Input { get; set; } = new();
+    public ModuleDatabaseBindingInput Input { get; set; } = new();
 
-    [BindProperty]
-    public long Id { get; set; }
-
-    public IReadOnlyCollection<string> Tipos => ExternalConnectionType.All;
-
-    public async Task<IActionResult> OnGetAsync(Guid companyId, long id)
+    public async Task<IActionResult> OnGetAsync(Guid companyId, string moduleCode)
     {
-        if (!await LoadHeaderAsync(companyId))
+        if (!await CargarAsync(companyId, moduleCode))
         {
             return NotFound();
         }
 
-        var dto = await _svc.GetAsync(Company.OrganizationId, companyId, id);
-        if (dto is null)
+        Input = new ModuleDatabaseBindingInput
         {
-            return NotFound();
-        }
-
-        Id = dto.Id;
-        Input = new ExternalConnectionEditModel
-        {
-            Nombre = dto.Nombre,
-            Tipo = dto.Tipo,
-            Host = dto.Host,
-            BaseUrl = dto.BaseUrl,
-            Port = dto.Port,
-            DatabaseName = dto.DatabaseName,
-            TechnicalUsername = dto.TechnicalUsername,
-            ConfiguracionExtra = dto.ConfiguracionExtra,
-            IsActive = dto.IsActive,
-            // Secreto write-only: nunca se carga desde el DTO.
+            InstanceId = Binding.InstanceId ?? 0,
+            DatabaseName = Binding.DatabaseName ?? string.Empty,
+            UseOwnCredentials = Binding.HasOwnCredentials,
+            TechnicalUsername = Binding.OwnTechnicalUsername,
         };
-
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync(Guid companyId)
+    public async Task<IActionResult> OnPostAsync(Guid companyId, string moduleCode)
     {
-        if (!await LoadHeaderAsync(companyId))
+        if (!await CargarAsync(companyId, moduleCode))
         {
             return NotFound();
         }
@@ -77,7 +59,7 @@ public class EditModel : PageModel
 
         try
         {
-            await _svc.UpdateAsync(Company.OrganizationId, companyId, Id, Input);
+            await _svc.SetBindingAsync(Company.OrganizationId, companyId, moduleCode, Input);
         }
         catch (InvalidOperationException ex)
         {
@@ -85,10 +67,10 @@ public class EditModel : PageModel
             return Page();
         }
 
-        return RedirectToPage("Index", new { companyId });
+        return RedirectToPage("./Index", new { companyId });
     }
 
-    private async Task<bool> LoadHeaderAsync(Guid companyId)
+    private async Task<bool> CargarAsync(Guid companyId, string moduleCode)
     {
         var company = await _db.Companies.FindAsync(companyId);
         if (company is null)
@@ -96,8 +78,16 @@ public class EditModel : PageModel
             return false;
         }
 
+        var binding = await _svc.GetBindingAsync(company.OrganizationId, companyId, moduleCode);
+        if (binding is null)
+        {
+            return false;
+        }
+
         Company = company;
         Organization = (await _db.Organizations.FindAsync(company.OrganizationId))!;
+        Binding = binding;
+        Instances = await _svc.ListInstancesAsync(company.OrganizationId, companyId);
         return true;
     }
 }

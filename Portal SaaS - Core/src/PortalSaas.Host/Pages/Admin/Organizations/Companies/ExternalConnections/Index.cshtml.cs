@@ -8,6 +8,11 @@ using PortalSaas.Data.Entities;
 
 namespace PortalSaas.Host.Pages.Admin.Organizations.Companies.ExternalConnections;
 
+/// <summary>
+/// Base de datos externa de cada módulo de la compañía: Instancia + Base (+ credencial
+/// propia opcional). Una fila por módulo con RequiresExternalDatabase. Los servidores se
+/// administran en Instancias (/Admin/Organizations/Instances).
+/// </summary>
 [Authorize(AuthenticationSchemes = "PlatformAdmin")]
 public class IndexModel : PageModel
 {
@@ -21,13 +26,12 @@ public class IndexModel : PageModel
     }
 
     public Company Company { get; private set; } = null!;
-
-    public IReadOnlyList<ExternalConnectionDto> Connections { get; private set; } = [];
     public IReadOnlyList<ModuleConnectionBindingDto> Bindings { get; private set; } = [];
 
-    public long? TestedConnectionId { get; private set; }
+    public string? TestedModuleCode { get; private set; }
     public bool? TestSuccess { get; private set; }
     public string? TestError { get; private set; }
+    public long? TestElapsedMs { get; private set; }
 
     [TempData]
     public string? ErrorMessage { get; set; }
@@ -41,13 +45,11 @@ public class IndexModel : PageModel
         }
 
         Company = company;
-        Connections = await _svc.ListAsync(company.OrganizationId, companyId);
         Bindings = await _svc.ListBindingsAsync(company.OrganizationId, companyId);
-
         return Page();
     }
 
-    public async Task<IActionResult> OnPostTestConnectionAsync(Guid companyId, long id)
+    public async Task<IActionResult> OnPostTestAsync(Guid companyId, string moduleCode)
     {
         var getResult = await OnGetAsync(companyId);
         if (getResult is not PageResult)
@@ -55,12 +57,13 @@ public class IndexModel : PageModel
             return getResult;
         }
 
-        TestedConnectionId = id;
+        TestedModuleCode = moduleCode;
         try
         {
-            var r = await _svc.TestAsync(Company.OrganizationId, companyId, id);
+            var r = await _svc.TestBindingAsync(Company.OrganizationId, companyId, moduleCode);
             TestSuccess = r.Ok;
             TestError = r.Error;
+            TestElapsedMs = r.ElapsedMs;
         }
         catch (InvalidOperationException ex)
         {
@@ -70,7 +73,7 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(Guid companyId, long id)
+    public async Task<IActionResult> OnPostClearAsync(Guid companyId, string moduleCode)
     {
         var company = await _db.Companies.FindAsync(companyId);
         if (company is null)
@@ -80,38 +83,7 @@ public class IndexModel : PageModel
 
         try
         {
-            await _svc.DeleteAsync(company.OrganizationId, companyId, id);
-        }
-        catch (InvalidOperationException ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-
-        return RedirectToPage(new { companyId });
-    }
-
-    /// <summary>
-    /// Grilla "Asignación por módulo": connectionId nulo o 0 ⇒ limpiar el binding, si no
-    /// asignarlo. El servicio valida que la conexión pertenezca a la compañía.
-    /// </summary>
-    public async Task<IActionResult> OnPostSetBindingAsync(Guid companyId, string moduleCode, string purpose, long? connectionId)
-    {
-        var company = await _db.Companies.FindAsync(companyId);
-        if (company is null)
-        {
-            return NotFound();
-        }
-
-        try
-        {
-            if (connectionId is null or 0)
-            {
-                await _svc.ClearBindingAsync(company.OrganizationId, companyId, moduleCode, purpose);
-            }
-            else
-            {
-                await _svc.SetBindingAsync(company.OrganizationId, companyId, moduleCode, purpose, connectionId.Value);
-            }
+            await _svc.ClearBindingAsync(company.OrganizationId, companyId, moduleCode);
         }
         catch (InvalidOperationException ex)
         {

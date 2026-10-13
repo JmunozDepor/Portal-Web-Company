@@ -419,26 +419,30 @@ if (args is ["seed-admin", var seedAdminEmail])
     return;
 }
 
-// Backfill one-shot idempotente: copia las filas legadas de module_external_connections
-// al modelo nuevo (catálogo company_external_connections + binding
-// company_module_connection). El Host no aplica migraciones automáticamente en este
-// entorno, así que corre acá, tras Build() -- es no-op si no hay filas legadas o si ya
-// se migraron (idempotente por el binding (CompanyId, ModuleCode, "Default")).
-using (var backfillScope = app.Services.CreateScope())
+// One-shot idempotente: tras la migración InstanceAsModuleDatabaseServer, borra las
+// credenciales propias de módulo que son en realidad la misma que la de su instancia
+// (la migración no puede compararlas en SQL: AES-GCM cifra distinto la misma clave).
+// No-op en cada arranque siguiente.
+using (var normalizerScope = app.Services.CreateScope())
 {
-    var backfillLogger = backfillScope.ServiceProvider.GetRequiredService<ILogger<LegacyExternalConnectionBackfill>>();
+    var normalizerLogger = normalizerScope.ServiceProvider.GetRequiredService<ILogger<ModuleDatabaseCredentialNormalizer>>();
     try
     {
-        var backfill = new LegacyExternalConnectionBackfill(
-            backfillScope.ServiceProvider.GetRequiredService<PortalSaasDbContext>(),
-            backfillLogger);
-        using var backfillCts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-        await backfill.RunAsync(backfillCts.Token);
+        var normalizer = new ModuleDatabaseCredentialNormalizer(
+            normalizerScope.ServiceProvider.GetRequiredService<PortalSaasDbContext>(),
+            normalizerScope.ServiceProvider.GetRequiredService<ISecretoCifradoService>(),
+            normalizerLogger);
+        using var normalizerCts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        var limpiados = await normalizer.RunAsync(normalizerCts.Token);
+        if (limpiados > 0)
+        {
+            normalizerLogger.LogInformation("Normalizador: {Count} credencial(es) propia(s) de módulo eran iguales a la de su instancia y se borraron.", limpiados);
+        }
     }
     catch (Exception ex)
     {
-        // Nunca abortar el arranque del Host por el backfill legado -- se registra y se continúa.
-        backfillLogger.LogError(ex, "El backfill de conexiones externas legadas falló; el Host continúa el arranque.");
+        // Nunca abortar el arranque del Host por esto -- se registra y se continúa.
+        normalizerLogger.LogError(ex, "El normalizador de credenciales de módulo falló; el Host continúa el arranque.");
     }
 }
 

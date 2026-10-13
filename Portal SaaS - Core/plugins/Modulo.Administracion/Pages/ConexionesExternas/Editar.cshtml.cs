@@ -13,41 +13,35 @@ public sealed class EditarModel : AdminPageModelBase
     public EditarModel(ICompanyExternalConnectionService svc, ITenantUserAdminService tenant, ICurrentUserContext currentUser)
         : base(currentUser) { _svc = svc; _tenant = tenant; }
 
-    [BindProperty] public ExternalConnectionEditModel Input { get; set; } = new();
-    [BindProperty] public long? Id { get; set; }
+    [BindProperty] public ModuleDatabaseBindingInput Input { get; set; } = new();
     [BindProperty(SupportsGet = true)] public Guid CompanyId { get; set; }
-    public bool EsNuevo => Id is null;
-    public IReadOnlyList<string> Tipos => ExternalConnectionType.All.ToList();
+    public ModuleConnectionBindingDto Binding { get; private set; } = null!;
+    public IReadOnlyList<DatabaseInstanceOptionDto> Instances { get; private set; } = [];
 
-    public async Task<IActionResult> OnGetAsync(long? id)
+    public async Task<IActionResult> OnGetAsync(string moduleCode)
     {
         if (!await EsCompaniaValidaAsync()) return RedirectToPage("Index");
-        if (id is not null)
+        if (!await CargarAsync(moduleCode)) return NotFound();
+
+        Input = new ModuleDatabaseBindingInput
         {
-            var dto = await _svc.GetAsync(CurrentUser.OrganizationId, CompanyId, id.Value);
-            if (dto is null) return NotFound();
-            Id = dto.Id;
-            Input = new ExternalConnectionEditModel
-            {
-                Nombre = dto.Nombre, Tipo = dto.Tipo, Host = dto.Host, BaseUrl = dto.BaseUrl,
-                Port = dto.Port, DatabaseName = dto.DatabaseName, TechnicalUsername = dto.TechnicalUsername,
-                ConfiguracionExtra = dto.ConfiguracionExtra, IsActive = dto.IsActive,
-            };
-        }
+            InstanceId = Binding.InstanceId ?? 0,
+            DatabaseName = Binding.DatabaseName ?? string.Empty,
+            UseOwnCredentials = Binding.HasOwnCredentials,
+            TechnicalUsername = Binding.OwnTechnicalUsername,
+        };
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(string moduleCode)
     {
         if (!await EsCompaniaValidaAsync()) return Forbid();
+        if (!await CargarAsync(moduleCode)) return NotFound();
         if (!ModelState.IsValid) return Page();
         try
         {
-            if (Id is null)
-                await _svc.CreateAsync(CurrentUser.OrganizationId, CompanyId, Input);
-            else
-                await _svc.UpdateAsync(CurrentUser.OrganizationId, CompanyId, Id.Value, Input);
-            MensajeExito = "Conexión guardada.";
+            await _svc.SetBindingAsync(CurrentUser.OrganizationId, CompanyId, moduleCode, Input);
+            MensajeExito = "Base de datos guardada.";
             return RedirectToPage("Index", new { companyId = CompanyId });
         }
         catch (InvalidOperationException ex)
@@ -55,6 +49,15 @@ public sealed class EditarModel : AdminPageModelBase
             ModelState.AddModelError(string.Empty, ex.Message);
             return Page();
         }
+    }
+
+    private async Task<bool> CargarAsync(string moduleCode)
+    {
+        var binding = await _svc.GetBindingAsync(CurrentUser.OrganizationId, CompanyId, moduleCode);
+        if (binding is null) return false;
+        Binding = binding;
+        Instances = await _svc.ListInstancesAsync(CurrentUser.OrganizationId, CompanyId);
+        return true;
     }
 
     private async Task<bool> EsCompaniaValidaAsync()

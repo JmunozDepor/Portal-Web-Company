@@ -39,6 +39,10 @@ internal sealed class SapSalesDocumentHeader
     public DateTime? DocDueDate { get; set; }
     public DateTime? TaxDate { get; set; }
     public string? NumAtCard { get; set; }
+
+    /// <summary>Dirección de despacho (CRD1.Address) -- null omite el campo, SAP usa la del cliente por defecto.</summary>
+    public string? ShipToCode { get; set; }
+
     public decimal? DocTotal { get; set; }
     public string? DocumentStatus { get; set; }
     public List<SapSalesDocumentLine> DocumentLines { get; set; } = [];

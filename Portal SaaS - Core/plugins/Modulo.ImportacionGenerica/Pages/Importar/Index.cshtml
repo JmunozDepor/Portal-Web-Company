@@ -51,6 +51,19 @@
                     <div class="form-text text-warning">Carga multi-socio -- dejá este campo vacío, cada fila del Excel trae su propio socio de negocio.</div>
                 }
             </div>
+            @* Un socio (o el estándar) puede tener varios formatos para la misma
+               combinación -- se listan los del socio primero y después los estándar.
+               Se recarga por fetch (cargarFormatos, más abajo) al cambiar Módulo, Tipo de
+               documento, Tipo de línea o Socio. *@
+            <div class="form-group">
+                <label asp-for="Input.ConfigId" class="form-label"></label>
+                <select asp-for="Input.ConfigId" asp-items="Model.Formats" class="form-select" id="import-format-select">
+                    @if (Model.Formats.Count == 0)
+                    {
+                        <option value="">Sin formatos para esta combinación</option>
+                    }
+                </select>
+            </div>
         </div>
         <div class="form-row">
             <div class="form-group form-group-ancho-completo">
@@ -84,9 +97,8 @@
             {
                 // Resumen colapsable por documento -- <details>/<summary> nativo del
                 // navegador, sin JS (mismo criterio que el original, sección 7.7).
-                // Colapsado por defecto: con archivos de miles de filas, tener las
-                // tablas de todos los documentos expandidas a la vez vuelve la vista
-                // previa impracticable de recorrer.
+                // Colapsado por defecto salvo que tenga errores: con archivos de miles de
+                // filas, todos expandidos a la vez vuelven la vista previa impracticable.
                 var cantidadTotal = document.Rows.Sum(r => r.Quantity ?? 0);
                 // Solo líneas que traen precio propio -- las que dejan que SAP asigne
                 // el de la lista del socio no entran en la suma (no hay forma de saber
@@ -94,67 +106,164 @@
                 var lineasConPrecio = document.Rows.Where(r => r.UnitPrice is not null).ToList();
                 var montoTotal = lineasConPrecio.Sum(r => (r.Quantity ?? 0) * (r.UnitPrice ?? 0));
                 var lineasSinPrecio = document.Rows.Count - lineasConPrecio.Count;
-                var muestraMonto = Model.Input.Module != GenericImportModule.Inventory;
-                // Carga multi-socio: todas las filas del grupo ya comparten socio por
-                // construcción (ver GenericImportService.ProcessRow), alcanza con mirar
-                // la primera para saber de qué socio es este documento.
-                var socioDelGrupo = document.Rows[0].BusinessPartnerName ?? document.Rows[0].BusinessPartnerCardCode;
+                var esInventario = Model.Input.Module == GenericImportModule.Inventory;
+                var esCompra = Model.Input.Module == GenericImportModule.Purchase;
+                var primera = document.Rows[0];
+                var erroresCount = document.Rows.Count(r => !r.IsValid);
+                var advertenciasCount = document.Rows.Sum(r => r.Warnings.Count);
 
-                <details class="mt-3" open="@(!document.CanCreate)">
-                    <summary style="cursor:pointer">
-                        <strong>Grupo "@document.GroupingKey"</strong> --
-                        @(document.CanCreate ? "listo para crear" : "con errores, no se creará")
-                        @if (socioDelGrupo is not null)
+                // Cabecera del documento -- todas las filas del grupo comparten socio por
+                // construcción (ver GenericImportService.ProcessRow); Sucursal/Orden pueden
+                // venir distintas por fila si la agrupación no las incluye, por eso se
+                // listan los valores distintos en vez de tomar solo la primera fila.
+                var socioCodigo = primera.BusinessPartnerCardCode ?? Model.Input.BusinessPartnerCardCode;
+                var socioNombre = primera.BusinessPartnerName ?? Model.BusinessPartnerName;
+                var socioMostrado = string.IsNullOrWhiteSpace(socioCodigo) ? "Estándar de la organización"
+                    : socioNombre is null ? socioCodigo : $"{socioCodigo} — {socioNombre}";
+                string Distintos(IEnumerable<string?> valores)
+                {
+                    var lista = valores.Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim())
+                        .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    return lista.Count == 0 ? "—" : string.Join(", ", lista);
+                }
+                var sucursales = Distintos(document.Rows.Select(r => r.Branch));
+                var ordenes = Distintos(document.Rows.Select(r => r.CustomerReferenceNumber));
+
+                <details class="import-preview-doc mt-3" open="@(!document.CanCreate)">
+                    <summary>
+                        <strong>Grupo "@document.GroupingKey"</strong>
+                        @if (document.CanCreate)
                         {
-                            <text> · Socio: @socioDelGrupo</text>
+                            <span class="badge bg-success ms-1">Listo para crear</span>
                         }
-                        · @document.Rows.Count fila(s) · Cantidad total: @cantidadTotal.ToString("N2")
-                        @{
-                            var advertenciasCount = document.Rows.Sum(r => r.Warnings.Count);
+                        else
+                        {
+                            <span class="badge bg-danger ms-1">@erroresCount fila(s) con error -- no se creará</span>
                         }
                         @if (advertenciasCount > 0)
                         {
-                            <text> · @advertenciasCount advertencia(s)</text>
+                            <span class="badge bg-warning text-dark ms-1">@advertenciasCount advertencia(s)</span>
                         }
-                        @if (muestraMonto)
-                        {
-                            <text> · Monto total: @montoTotal.ToString("N2")</text>
-                            if (lineasSinPrecio > 0)
-                            {
-                                <text> (@lineasSinPrecio línea(s) sin precio propio, las asigna SAP -- no entran en esta suma)</text>
-                            }
-                        }
+                        <span class="text-muted ms-2">@document.Rows.Count fila(s) · Cantidad total: @cantidadTotal.ToString("N2")</span>
                     </summary>
-                    <table class="table table-sm mt-2">
-                        <thead>
-                            <tr>
-                                <th>Fila</th>
-                                <th>Artículo</th>
-                                <th>Cantidad</th>
-                                <th>Errores</th>
-                                <th>Advertencias</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in document.Rows)
+
+                    <div class="doc-tab-seccion mt-2">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <span class="form-label">@(esCompra ? "Proveedor" : "Cliente")</span>
+                                <div>@socioMostrado</div>
+                            </div>
+                            <div class="form-group">
+                                <span class="form-label">Sucursal</span>
+                                <div>@sucursales</div>
+                            </div>
+                            <div class="form-group">
+                                <span class="form-label">N° orden / referencia</span>
+                                <div>@ordenes</div>
+                            </div>
+                            @foreach (var (campo, valor) in primera.UserFieldsHeader)
                             {
-                                // Cascada hasta el valor crudo del Excel cuando ItemName/ItemCode/
-                                // Description vienen null (típico en una fila con error -- la
-                                // resolución contra SAP falló) -- antes mostraba "-" sin decir cuál
-                                // era el código/descripción que no existía.
-                                var articuloMostrado = row.ItemName ?? row.ItemCode ?? row.Description
-                                    ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.ItemCode)
-                                    ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.Description);
-                                <tr class="@(row.IsValid ? (row.Warnings.Count > 0 ? "table-warning" : "") : "table-danger")">
-                                    <td>@row.RowNumber</td>
-                                    <td>@articuloMostrado</td>
-                                    <td>@row.Quantity</td>
-                                    <td>@string.Join("; ", row.Errors)</td>
-                                    <td class="text-warning">@string.Join("; ", row.Warnings)</td>
-                                </tr>
+                                <div class="form-group">
+                                    <span class="form-label">@(Model.UserFieldLabels.GetValueOrDefault(campo) ?? campo)</span>
+                                    <div>@(valor?.ToString() is { Length: > 0 } texto ? texto : "—")</div>
+                                </div>
                             }
-                        </tbody>
-                    </table>
+                            @if (!esInventario)
+                            {
+                                <div class="form-group">
+                                    <span class="form-label">Monto total</span>
+                                    <div>
+                                        @montoTotal.ToString("N2")
+                                        @if (lineasSinPrecio > 0)
+                                        {
+                                            <span class="form-text d-block">@lineasSinPrecio línea(s) sin precio propio -- las asigna SAP, no entran en la suma</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="document-list-table-wrapper mt-2">
+                        <table class="table table-sm document-list-table import-preview-table">
+                            <thead>
+                                <tr>
+                                    <th>Fila</th>
+                                    <th>Código artículo</th>
+                                    <th>Descripción</th>
+                                    <th class="text-end">Cantidad</th>
+                                    <th class="text-end">Precio</th>
+                                    @if (esInventario)
+                                    {
+                                        <th>Almacén origen</th>
+                                        <th>Almacén destino</th>
+                                    }
+                                    else
+                                    {
+                                        <th>Almacén</th>
+                                    }
+                                    <th>Validaciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in document.Rows)
+                                {
+                                    // Cascada hasta el valor crudo del Excel cuando ItemCode/ItemName
+                                    // vienen null (típico en una fila con error -- la resolución
+                                    // contra SAP falló), para mostrar QUÉ código no existía.
+                                    var codigo = row.ItemCode ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.ItemCode);
+                                    var descripcion = row.ItemName ?? row.Description
+                                        ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.Description);
+                                    var almacen = row.Warehouse ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.Warehouse);
+                                    var origen = row.SourceWarehouse ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.SourceWarehouse);
+                                    var destino = row.DestinationWarehouse ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.DestinationWarehouse);
+                                    <tr class="@(row.IsValid ? (row.Warnings.Count > 0 ? "table-warning" : "") : "table-danger")">
+                                        <td>@row.RowNumber</td>
+                                        <td class="text-nowrap">@codigo</td>
+                                        <td>@descripcion</td>
+                                        <td class="text-end">@row.Quantity?.ToString("N2")</td>
+                                        <td class="text-end text-nowrap">
+                                            @if (row.UnitPrice is { } precio)
+                                            {
+                                                @precio.ToString("N2")
+                                            }
+                                            else if (row.SapReferencePrice is { } referencia)
+                                            {
+                                                <span class="text-muted" title="Precio de referencia de SAP -- no se envía, SAP asigna el de la lista del socio">@referencia.ToString("N2") (SAP)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        @if (esInventario)
+                                        {
+                                            <td title="@row.SourceWarehouseName">@origen</td>
+                                            <td title="@row.DestinationWarehouseName">@destino</td>
+                                        }
+                                        else
+                                        {
+                                            <td title="@row.WarehouseName">@almacen</td>
+                                        }
+                                        <td>
+                                            @if (row.IsValid && row.Warnings.Count == 0)
+                                            {
+                                                <span class="text-success">OK</span>
+                                            }
+                                            @foreach (var error in row.Errors)
+                                            {
+                                                <div class="text-danger">✖ @error</div>
+                                            }
+                                            @foreach (var advertencia in row.Warnings)
+                                            {
+                                                <div class="import-preview-warning">⚠ @advertencia</div>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </details>
             }
 
@@ -176,6 +285,7 @@
                     <input type="hidden" asp-for="Input.InventoryDocumentType" />
                     <input type="hidden" asp-for="Input.LineType" />
                     <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
+                    <input type="hidden" asp-for="Input.ConfigId" />
                     <input type="hidden" asp-for="Input.Base64File" />
                 </form>
                 <button type="button" class="btn btn-success" id="btnConfirmar">Confirmar creación en SAP</button>
@@ -196,6 +306,7 @@
                 <input type="hidden" asp-for="Input.InventoryDocumentType" />
                 <input type="hidden" asp-for="Input.LineType" />
                 <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
+                <input type="hidden" asp-for="Input.ConfigId" />
                 <input type="hidden" asp-for="Input.Base64File" />
                 <button type="submit" class="btn btn-outline-secondary">Descargar reporte de validación</button>
             </form>
@@ -212,6 +323,7 @@
                     <input type="hidden" asp-for="Input.InventoryDocumentType" />
                     <input type="hidden" asp-for="Input.LineType" />
                     <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
+                    <input type="hidden" asp-for="Input.ConfigId" />
                     <input type="hidden" asp-for="Input.Base64File" />
                     <button type="submit" class="btn btn-outline-secondary">Descargar archivo con errores</button>
                 </form>
@@ -411,14 +523,109 @@
             if (socio) {
                 params.append('businessPartnerCardCode', socio);
             }
+            var formato = document.getElementById('import-format-select').value;
+            if (formato) {
+                params.append('configId', formato);
+            }
             window.location.href = '?' + params.toString();
         });
     })();
 </script>
 
+<script>
+    // Selector "Formato": un socio (o el estándar) puede tener varios formatos para la
+    // misma combinación Módulo+Tipo de documento+Tipo de línea. Se recarga por fetch
+    // (OnGetFormatsAsync) cada vez que cambia alguno de esos campos o el Socio -- el
+    // render inicial ya viene del servidor (Model.Formats). Conserva la elección
+    // actual si sigue disponible, si no queda el primero (mismo que elegiría la
+    // resolución automática).
+    (function () {
+        var select = document.getElementById('import-format-select');
+        if (!select) {
+            return;
+        }
+        var timer = null;
+
+        function valor(nombre) {
+            var campo = document.querySelector('[name="' + nombre + '"]');
+            return campo ? campo.value : '';
+        }
+
+        function tipoDocumentoActual(modulo) {
+            return valor(modulo === 'Sales' ? 'Input.SalesDocumentType'
+                : modulo === 'Purchase' ? 'Input.PurchaseDocumentType'
+                : 'Input.InventoryDocumentType');
+        }
+
+        function cargarFormatos() {
+            var modulo = valor('Input.Module');
+            var params = new URLSearchParams({
+                handler: 'Formats',
+                module: modulo,
+                documentType: tipoDocumentoActual(modulo),
+                lineType: valor('Input.LineType'),
+                businessPartnerCardCode: valor('Input.BusinessPartnerCardCode').trim(),
+            });
+            var seleccionPrevia = select.value;
+
+            fetch('?' + params.toString())
+                .then(function (r) {
+                    if (!r.ok) {
+                        throw new Error('HTTP ' + r.status + ' cargando formatos');
+                    }
+                    return r.json();
+                })
+                .then(function (formatos) {
+                    select.innerHTML = '';
+                    if (formatos.length === 0) {
+                        var vacio = document.createElement('option');
+                        vacio.value = '';
+                        vacio.textContent = 'Sin formatos para esta combinación';
+                        select.appendChild(vacio);
+                        return;
+                    }
+                    formatos.forEach(function (f) {
+                        var option = document.createElement('option');
+                        option.value = f.id;
+                        option.textContent = f.label;
+                        select.appendChild(option);
+                    });
+                    if (formatos.some(function (f) { return String(f.id) === seleccionPrevia; })) {
+                        select.value = seleccionPrevia;
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Importar: ', error);
+                });
+        }
+
+        ['Input.Module', 'Input.SalesDocumentType', 'Input.PurchaseDocumentType', 'Input.InventoryDocumentType', 'Input.LineType']
+            .forEach(function (nombre) {
+                var campo = document.querySelector('select[name="' + nombre + '"]');
+                if (campo) {
+                    campo.addEventListener('change', cargarFormatos);
+                }
+            });
+
+        // Socio: con debounce mientras se tipea (input) y de inmediato al elegir una
+        // sugerencia del datalist o salir del campo (change).
+        var socio = document.querySelector('input[name="Input.BusinessPartnerCardCode"]');
+        if (socio) {
+            socio.addEventListener('input', function () {
+                clearTimeout(timer);
+                timer = setTimeout(cargarFormatos, 500);
+            });
+            socio.addEventListener('change', function () {
+                clearTimeout(timer);
+                cargarFormatos();
+            });
+        }
+    })();
+</script>
+
 <script src="~/js/catalog-search.js"></script>
 <script>
-    // Cliente si el Módulo elegido es Venta, Proveedor en cualquier otro caso (Compra/
+    // Proveedor si el Módulo elegido es Compra, Cliente en cualquier otro caso (Venta/
     // Inventario) -- ver el comentario completo en OnGetSearchBusinessPartnersAsync.
     wireCatalogSearch({
         inputSelector: '.import-business-partner-code',

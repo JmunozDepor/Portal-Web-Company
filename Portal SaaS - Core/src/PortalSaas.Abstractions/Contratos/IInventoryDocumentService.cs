@@ -21,6 +21,14 @@ public interface IInventoryDocumentService
     /// </summary>
     Task<int> CreateAsync(InventoryDocumentType type, string portalUsername, InventoryDocumentDto document, CancellationToken ct = default);
 
+    /// <summary>
+    /// Mismo payload que CreateAsync, enviado en modo SIMULADO (ver
+    /// ISapSession.SimulatePostAsync): SAP lo valida completo y lo revierte, sin crear el
+    /// documento. Usado por "Probar formato" de Importación Genérica.
+    /// </summary>
+    Task<SapSimulationResult> SimulateCreateAsync(InventoryDocumentType type, string portalUsername, InventoryDocumentDto document, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este servicio no soporta envío simulado.");
+
     /// <summary>Ver ISalesDocumentService.AddLinesAsync -- mismo patrón (releer + patchear el arreglo completo), pensado para lotes de importación masiva.</summary>
     Task AddLinesAsync(InventoryDocumentType type, int docEntry, IReadOnlyList<InventoryDocumentLineDto> newLines, CancellationToken ct = default);
 

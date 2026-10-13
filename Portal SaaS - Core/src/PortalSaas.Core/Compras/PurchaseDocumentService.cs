@@ -37,6 +37,26 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
 
     public async Task<int> CreateAsync(PurchaseDocumentType type, string portalUsername, PurchaseDocumentDto document, CancellationToken ct = default)
     {
+        var (resource, body) = await BuildCreateRequestAsync(type, portalUsername, document, ct);
+
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        var created = await session.PostAsync<SapPurchaseDocumentHeader>(resource, body, ct)
+            ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
+
+        return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
+    }
+
+    public async Task<SapSimulationResult> SimulateCreateAsync(PurchaseDocumentType type, string portalUsername, PurchaseDocumentDto document, CancellationToken ct = default)
+    {
+        var (resource, body) = await BuildCreateRequestAsync(type, portalUsername, document, ct);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        return await session.SimulatePostAsync(resource, body, ct);
+    }
+
+    /// <summary>Recurso + cuerpo del POST de creación -- compartido por CreateAsync y SimulateCreateAsync.</summary>
+    private async Task<(string Resource, object Body)> BuildCreateRequestAsync(PurchaseDocumentType type, string portalUsername,
+        PurchaseDocumentDto document, CancellationToken ct)
+    {
         var entry = PurchaseDocumentTypeCatalog.Resolve(type);
 
         var requiredDate = document.DocDueDate.ToDateTime(TimeOnly.MinValue);
@@ -66,11 +86,7 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
         var hasAdditionalFields = header.AdditionalFields is not null || header.DocumentLines.Any(l => l.AdditionalFields is not null);
         object requestBody = hasAdditionalFields ? PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten(header) : header;
 
-        var session = await _connectionProvider.GetConnectionAsync(ct);
-        var created = await session.PostAsync<SapPurchaseDocumentHeader>(entry.Resource, requestBody, ct)
-            ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
-
-        return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
+        return (entry.Resource, requestBody);
     }
 
     public async Task AddLinesAsync(PurchaseDocumentType type, int docEntry, IReadOnlyList<PurchaseDocumentLineDto> newLines, CancellationToken ct = default)

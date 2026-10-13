@@ -49,6 +49,17 @@ public interface ISapSession
     Task PostAsync(string recurso, object cuerpo, CancellationToken ct = default);
 
     /// <summary>
+    /// Envío SIMULADO de un POST de creación: SAP valida el cuerpo completo (campos,
+    /// UDF, reglas de negocio, Transaction Notification) y revierte todo -- no queda
+    /// documento ni se consume numeración. Implementado con un $batch de un solo
+    /// changeset (transaccional en Service Layer): el POST + una operación que falla a
+    /// propósito, así SAP hace rollback del changeset entero. Implementación por defecto
+    /// para no obligar a los dobles de test existentes a implementarla.
+    /// </summary>
+    Task<PortalSaas.Abstractions.Modelos.SapSimulationResult> SimulatePostAsync(string recurso, object cuerpo, CancellationToken ct = default) =>
+        throw new NotSupportedException("Esta sesión de Service Layer no soporta envío simulado.");
+
+    /// <summary>
     /// clave se pasa tal cual (nunca .ToString()) -- la implementación decide si la
     /// envuelve en comillas simples según el tipo en tiempo de ejecución. Un DocEntry es
     /// numérico en Service Layer; pasarlo como string produce "Recurso('123')" en vez de

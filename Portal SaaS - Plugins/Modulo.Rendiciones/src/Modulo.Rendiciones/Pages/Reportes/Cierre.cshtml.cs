@@ -32,12 +32,29 @@ public sealed class CierreModel : RendicionesPageModelBase
 
     public async Task OnGetAsync(CancellationToken ct)
     {
-        Lines = await _report.GenerateAsync(_currentCompany.CompanyId, From, To, ct);
+        try
+        {
+            Lines = await _report.GenerateAsync(_currentCompany.CompanyId, From, To, ct);
+        }
+        catch (Exception ex)
+        {
+            // Mostrar el motivo real (no la 500 genérica) para poder diagnosticar el período.
+            ErrorMessage = GetErrorMessage(ex);
+        }
     }
 
     public async Task<IActionResult> OnGetExportarAsync(CancellationToken ct)
     {
-        var lines = await _report.GenerateAsync(_currentCompany.CompanyId, From, To, ct);
+        IReadOnlyList<ClosingReportLine> lines;
+        try
+        {
+            lines = await _report.GenerateAsync(_currentCompany.CompanyId, From, To, ct);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = GetErrorMessage(ex);
+            return RedirectToPage(new { from = From.ToString("yyyy-MM-dd"), to = To.ToString("yyyy-MM-dd") });
+        }
 
         var csv = new StringBuilder();
         csv.AppendLine("Rendicion,Ronda,Colaborador,CentroCostoCodigo,CentroCostoNombre,TipoGasto,Fecha,Monto,Moneda,Glosa");

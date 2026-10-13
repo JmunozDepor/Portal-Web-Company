@@ -45,6 +45,19 @@ internal sealed class SapInventoryDocumentHeader
     public string? CardName { get; set; }
     public string? NumAtCard { get; set; }
 
+    /// <summary>"Destino" de la cabecera (dirección de despacho del socio) -- null omite el campo.</summary>
+    public string? ShipToCode { get; set; }
+
+    /// <summary>
+    /// "De almacén"/"Almacén destino" de la CABECERA -- SAP los usa como default para
+    /// líneas nuevas y los muestra en el documento. El portal sigue digitando el almacén
+    /// por línea (ver InventoryDocumentDto); InventoryDocumentService los deriva de las
+    /// líneas al crear. Sin esto SAP rellenaba la cabecera con el almacén por defecto del
+    /// usuario técnico (ej. BO02), distinto del de las líneas.
+    /// </summary>
+    public string? FromWarehouse { get; set; }
+    public string? ToWarehouse { get; set; }
+
     /// <summary>Campos de usuario (UDF dinámicos) -- ver SapAdditionalFieldsHelper.</summary>
     public IReadOnlyDictionary<string, object?>? AdditionalFields { get; set; }
 }

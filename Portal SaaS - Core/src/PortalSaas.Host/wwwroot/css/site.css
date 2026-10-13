@@ -1306,6 +1306,30 @@ body {
   padding: 3px 8px;
 }
 
+/* Celda con checkbox (.form-group.form-check) -- el padding de la celda pisaba el
+   padding-left: 1.5em de .form-check de Bootstrap, y el input (float + margin-left
+   negativo) quedaba pegado/encima del borde izquierdo (reportado en Importación
+   Genérica > Configuración). Flex en vez del float de Bootstrap: checkbox y texto
+   alineados con separación real, y el texto largo envuelve sin meterse bajo el input. */
+.doc-tab-seccion .form-group.form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+.doc-tab-seccion .form-group.form-check .form-check-input {
+  float: none;
+  flex-shrink: 0;
+  margin: 2px 0 0 0;
+}
+
+.doc-tab-seccion .form-group.form-check .form-check-label {
+  line-height: 1.35;
+}
+
 .doc-tab-seccion .form-group .form-label {
   font-size: 10px;
   color: var(--text-muted);
@@ -2064,4 +2088,21 @@ body {
   .login-submit {
     padding: 14px 16px;
   }
+}
+
+/* Vista previa de Importación Genérica (Pages/Importar) -- un <details> por documento
+   con cabecera (socio/sucursal/orden/campos de usuario, grilla .doc-tab-seccion) y
+   detalle de líneas. Las advertencias usan el ámbar del tema en vez de .text-warning
+   de Bootstrap (ilegible sobre fondo claro). */
+.import-preview-doc > summary {
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.import-preview-table td {
+  vertical-align: top;
+}
+
+.import-preview-warning {
+  color: color-mix(in srgb, var(--bs-warning) 75%, black);
 }

@@ -13,7 +13,7 @@ public enum GenericImportLogicalField
 {
     // Cabecera
     CustomerReferenceNumber, // NumAtCard
-    Branch,                 // ShipToCode -- solo aplica a GenericImportModule.Sales
+    Branch,                 // ShipToCode -- Sales e Inventory (dirección de despacho del socio); no aplica a Purchase
 
     /// <summary>
     /// Socio de negocio de LA FILA -- solo se resuelve cuando

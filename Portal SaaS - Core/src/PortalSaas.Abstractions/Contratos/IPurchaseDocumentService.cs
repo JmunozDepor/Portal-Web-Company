@@ -20,6 +20,14 @@ public interface IPurchaseDocumentService
     /// </summary>
     Task<int> CreateAsync(PurchaseDocumentType type, string portalUsername, PurchaseDocumentDto document, CancellationToken ct = default);
 
+    /// <summary>
+    /// Mismo payload que CreateAsync, enviado en modo SIMULADO (ver
+    /// ISapSession.SimulatePostAsync): SAP lo valida completo y lo revierte, sin crear el
+    /// documento. Usado por "Probar formato" de Importación Genérica.
+    /// </summary>
+    Task<SapSimulationResult> SimulateCreateAsync(PurchaseDocumentType type, string portalUsername, PurchaseDocumentDto document, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este servicio no soporta envío simulado.");
+
     /// <summary>Ver ISalesDocumentService.AddLinesAsync -- mismo patrón (releer + patchear el arreglo completo), pensado para lotes de importación masiva.</summary>
     Task AddLinesAsync(PurchaseDocumentType type, int docEntry, IReadOnlyList<PurchaseDocumentLineDto> newLines, CancellationToken ct = default);
 

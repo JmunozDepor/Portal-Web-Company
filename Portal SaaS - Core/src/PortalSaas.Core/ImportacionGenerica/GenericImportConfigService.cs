@@ -49,30 +49,83 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
     }
 
     public async Task<GenericImportConfigDto?> ResolveAsync(GenericImportModule module, string documentType,
-        GenericImportLineType lineType, string? businessPartnerCardCode, CancellationToken ct = default)
+        GenericImportLineType lineType, string? businessPartnerCardCode, int? configId = null, CancellationToken ct = default)
     {
-        var moduleStr = module.ToString();
-        var lineTypeStr = lineType.ToString();
-        var companyId = _currentCompany.CompanyId;
+        var cardCode = string.IsNullOrWhiteSpace(businessPartnerCardCode) ? null : businessPartnerCardCode.Trim();
+        var candidates = ActiveForCombination(module.ToString(), documentType, lineType.ToString());
 
-        if (!string.IsNullOrWhiteSpace(businessPartnerCardCode))
+        if (configId is { } id)
         {
-            var exception = await _db.GenericImportConfigs.Include(c => c.Fields).Include(c => c.ValidationRules)
-                .FirstOrDefaultAsync(c => c.CompanyId == companyId && c.Module == moduleStr
-                    && c.DocumentType == documentType && c.LineType == lineTypeStr
-                    && c.BusinessPartnerCardCode == businessPartnerCardCode && c.IsActive, ct);
+            // Formato elegido en el wizard -- mismo filtro de combinación + "del socio o
+            // estándar", así un id manipulado no puede traer el formato de otro socio.
+            var chosen = await candidates
+                .FirstOrDefaultAsync(c => c.Id == id && (c.BusinessPartnerCardCode == null || c.BusinessPartnerCardCode == cardCode), ct);
+            return chosen is null ? null : Map(chosen);
+        }
+
+        if (cardCode is not null)
+        {
+            var exception = await candidates
+                .Where(c => c.BusinessPartnerCardCode == cardCode)
+                .OrderBy(c => c.Alias)
+                .FirstOrDefaultAsync(ct);
             if (exception is not null)
             {
                 return Map(exception);
             }
         }
 
-        var standard = await _db.GenericImportConfigs.Include(c => c.Fields).Include(c => c.ValidationRules)
-            .FirstOrDefaultAsync(c => c.CompanyId == companyId && c.Module == moduleStr
-                && c.DocumentType == documentType && c.LineType == lineTypeStr
-                && c.BusinessPartnerCardCode == null && c.IsActive, ct);
+        var standard = await candidates
+            .Where(c => c.BusinessPartnerCardCode == null)
+            .OrderBy(c => c.Alias)
+            .FirstOrDefaultAsync(ct);
 
         return standard is null ? null : Map(standard);
+    }
+
+    public async Task<IReadOnlyList<GenericImportConfigDto>> ListAvailableAsync(GenericImportModule module, string documentType,
+        GenericImportLineType lineType, string? businessPartnerCardCode, CancellationToken ct = default)
+    {
+        var cardCode = string.IsNullOrWhiteSpace(businessPartnerCardCode) ? null : businessPartnerCardCode.Trim();
+        var rows = await ActiveForCombination(module.ToString(), documentType, lineType.ToString())
+            .Where(c => c.BusinessPartnerCardCode == null || c.BusinessPartnerCardCode == cardCode)
+            .ToListAsync(ct);
+
+        // Los del socio primero (son la razón de elegirlo), después los estándar.
+        return rows
+            .OrderBy(c => c.BusinessPartnerCardCode == null ? 1 : 0)
+            .ThenBy(c => c.Alias, StringComparer.CurrentCultureIgnoreCase)
+            .Select(Map)
+            .ToList();
+    }
+
+    private IQueryable<GenericImportConfig> ActiveForCombination(string module, string documentType, string lineType)
+    {
+        var companyId = _currentCompany.CompanyId;
+        return _db.GenericImportConfigs.Include(c => c.Fields).Include(c => c.ValidationRules)
+            .Where(c => c.CompanyId == companyId && c.Module == module
+                && c.DocumentType == documentType && c.LineType == lineType && c.IsActive);
+    }
+
+    /// <summary>
+    /// Alias único dentro de la misma combinación Módulo+Tipo de documento+Tipo de línea+
+    /// Socio -- es lo que distingue un formato de otro en el selector del wizard (y el
+    /// índice único de la base, ver PortalSaasDbContext). Mensaje claro en vez de la
+    /// excepción de índice de la base.
+    /// </summary>
+    private async Task EnsureAliasIsUniqueAsync(string module, string documentType, string lineType,
+        string? businessPartnerCardCode, string alias, int? excludeId, CancellationToken ct)
+    {
+        var companyId = _currentCompany.CompanyId;
+        var exists = await _db.GenericImportConfigs.AnyAsync(c => c.CompanyId == companyId && c.Module == module
+            && c.DocumentType == documentType && c.LineType == lineType
+            && c.BusinessPartnerCardCode == businessPartnerCardCode && c.Alias == alias
+            && (excludeId == null || c.Id != excludeId), ct);
+        if (exists)
+        {
+            throw new InvalidOperationException(
+                $"Ya existe un formato llamado \"{alias}\" para esta combinación de módulo, tipo de documento, tipo de línea y socio -- usá otro alias.");
+        }
     }
 
     public async Task<int> CreateAsync(GenericImportModule module, string documentType, GenericImportLineType lineType,
@@ -82,6 +135,10 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         bool businessPartnerFromFile = false,
         CancellationToken ct = default)
     {
+        alias = (alias ?? string.Empty).Trim();
+        businessPartnerCardCode = string.IsNullOrWhiteSpace(businessPartnerCardCode) ? null : businessPartnerCardCode.Trim();
+        await EnsureAliasIsUniqueAsync(module.ToString(), documentType, lineType.ToString(), businessPartnerCardCode, alias, null, ct);
+
         var entity = new GenericImportConfig
         {
             CompanyId = _currentCompany.CompanyId,
@@ -113,6 +170,9 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         var entity = await _db.GenericImportConfigs.Include(c => c.Fields).Include(c => c.ValidationRules)
             .FirstOrDefaultAsync(c => c.Id == id && c.CompanyId == _currentCompany.CompanyId, ct)
             ?? throw new InvalidOperationException("Configuración no encontrada.");
+
+        alias = (alias ?? string.Empty).Trim();
+        await EnsureAliasIsUniqueAsync(entity.Module, entity.DocumentType, entity.LineType, entity.BusinessPartnerCardCode, alias, entity.Id, ct);
 
         entity.GroupingColumn = string.IsNullOrWhiteSpace(groupingColumn) ? null : groupingColumn;
         entity.SkuIsCustomerOwn = skuIsCustomerOwn;

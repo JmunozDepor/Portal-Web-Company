@@ -89,7 +89,7 @@
         @foreach (var field in Model.Fields)
         {
             <tr>
-                <td>@field.Module</td>
+                <td>@ImportDisplayNames.Of(field.Module)</td>
                 <td>@field.Level</td>
                 <td>@field.Label</td>
                 <td>@field.SapFieldName</td>

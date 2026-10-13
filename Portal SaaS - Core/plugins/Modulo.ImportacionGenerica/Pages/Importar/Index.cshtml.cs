@@ -39,11 +39,13 @@ public sealed class IndexModel : PageModelBaseAdmin
     private readonly IInventoryDocumentService _inventory;
     private readonly ICustomerCatalogService _customers;
     private readonly ISupplierCatalogService _suppliers;
+    private readonly IGenericImportUserFieldService _userFields;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(ICurrentUserContext currentUser, IGenericImportService importService, IGenericImportProgressStore progress,
         IGenericImportConfigService configs, ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
-        ICustomerCatalogService customers, ISupplierCatalogService suppliers, ILogger<IndexModel> logger) : base(currentUser)
+        ICustomerCatalogService customers, ISupplierCatalogService suppliers, IGenericImportUserFieldService userFields,
+        ILogger<IndexModel> logger) : base(currentUser)
     {
         _importService = importService;
         _progress = progress;
@@ -53,6 +55,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         _inventory = inventory;
         _customers = customers;
         _suppliers = suppliers;
+        _userFields = userFields;
         _logger = logger;
     }
 
@@ -61,15 +64,15 @@ public sealed class IndexModel : PageModelBaseAdmin
 
     public List<SelectListItem> Modules { get; } =
     [
-        new(GenericImportModule.Sales.ToString(), GenericImportModule.Sales.ToString()),
-        new(GenericImportModule.Purchase.ToString(), GenericImportModule.Purchase.ToString()),
-        new(GenericImportModule.Inventory.ToString(), GenericImportModule.Inventory.ToString()),
+        new(ImportDisplayNames.Of(GenericImportModule.Sales), GenericImportModule.Sales.ToString()),
+        new(ImportDisplayNames.Of(GenericImportModule.Purchase), GenericImportModule.Purchase.ToString()),
+        new(ImportDisplayNames.Of(GenericImportModule.Inventory), GenericImportModule.Inventory.ToString()),
     ];
 
     public List<SelectListItem> LineTypes { get; } =
     [
-        new("Artículo", GenericImportLineType.Item.ToString()),
-        new("Servicio", GenericImportLineType.Service.ToString()),
+        new(ImportDisplayNames.Of(GenericImportLineType.Item), GenericImportLineType.Item.ToString()),
+        new(ImportDisplayNames.Of(GenericImportLineType.Service), GenericImportLineType.Service.ToString()),
     ];
 
     public List<SelectListItem> SalesDocumentTypes { get; private set; } = [];
@@ -78,18 +81,79 @@ public sealed class IndexModel : PageModelBaseAdmin
 
     public GenericImportResultDto? PreviewResult { get; private set; }
 
+    /// <summary>
+    /// Formatos disponibles para Módulo+Tipo de documento+Tipo de línea+Socio actuales
+    /// (los del socio primero, después los estándar) -- un socio puede tener varios. El
+    /// &lt;select&gt; se recarga por AJAX (OnGetFormatsAsync) al cambiar cualquiera de esos
+    /// 4 campos; esto es solo el render inicial / tras un POST.
+    /// </summary>
+    public List<SelectListItem> Formats { get; private set; } = [];
+
     /// <summary>true = la configuración vigente para Módulo+TipoDocumento+TipoLínea trae el socio por columna del Excel (carga multi-socio) -- el selector de socio del wizard queda informativo, ver Index.cshtml.</summary>
     public bool BusinessPartnerFromFile { get; private set; }
 
     public async Task OnGetAsync(CancellationToken ct)
     {
         await LoadCreatableDocumentTypesAsync(ct);
+        await LoadFormatsAsync(ct);
         await ResolveBusinessPartnerFromFileAsync(ct);
     }
+
+    /// <summary>
+    /// Formatos disponibles para la combinación + socio que el usuario tiene elegidos en
+    /// pantalla -- llamado por fetch desde Index.cshtml (cargarFormatos) cada vez que
+    /// cambia Módulo, Tipo de documento, Tipo de línea o Socio.
+    /// </summary>
+    public async Task<JsonResult> OnGetFormatsAsync(GenericImportModule module, string? documentType, GenericImportLineType lineType,
+        string? businessPartnerCardCode, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(documentType))
+        {
+            return new JsonResult(Array.Empty<object>());
+        }
+
+        var formats = await _configs.ListAvailableAsync(module, documentType, lineType, businessPartnerCardCode, ct);
+        return new JsonResult(formats.Select(f => new { f.Id, Label = FormatLabel(f) }));
+    }
+
+    private static string FormatLabel(GenericImportConfigDto format) =>
+        format.BusinessPartnerCardCode is null
+            ? $"{format.Alias} (estándar)"
+            : $"{format.Alias} ({format.BusinessPartnerCardCode})";
+
+    private async Task LoadFormatsAsync(CancellationToken ct)
+    {
+        var documentType = SelectedDocumentType();
+        if (string.IsNullOrWhiteSpace(documentType))
+        {
+            Formats = [];
+            return;
+        }
+
+        var formats = await _configs.ListAvailableAsync(Input.Module, documentType, Input.LineType, Input.BusinessPartnerCardCode, ct);
+        Formats = formats.Select(f => new SelectListItem(FormatLabel(f), f.Id.ToString())).ToList();
+
+        // Sin elección previa (o la elección ya no aplica a esta combinación/socio): el
+        // primero de la lista -- mismo que elegiría la resolución automática.
+        if (Input.ConfigId is null || formats.All(f => f.Id != Input.ConfigId))
+        {
+            Input.ConfigId = formats.Count > 0 ? formats[0].Id : null;
+            ModelState.Remove($"{nameof(Input)}.{nameof(Input.ConfigId)}");
+        }
+    }
+
+    private string? SelectedDocumentType() => Input.Module switch
+    {
+        GenericImportModule.Sales => Input.SalesDocumentType,
+        GenericImportModule.Purchase => Input.PurchaseDocumentType,
+        GenericImportModule.Inventory => Input.InventoryDocumentType,
+        _ => null,
+    };
 
     public async Task<IActionResult> OnPostProcessAsync(IFormFile file, CancellationToken ct)
     {
         await LoadCreatableDocumentTypesAsync(ct);
+        await LoadFormatsAsync(ct);
         await ResolveBusinessPartnerFromFileAsync(ct);
 
         if (file is null || file.Length == 0)
@@ -116,8 +180,49 @@ public sealed class IndexModel : PageModelBaseAdmin
         var parameters = BuildParameters();
         using var processStream = new MemoryStream(bytes);
         PreviewResult = await _importService.ProcessFileAsync(parameters, processStream, ct);
+        await LoadPreviewHeaderInfoAsync(ct);
 
         return Page();
+    }
+
+    /// <summary>
+    /// Nombre del socio del wizard (carga de un solo socio) -- en ese modo las filas no
+    /// traen BusinessPartnerName (solo en multi-socio, ver GenericImportRowDto), así que
+    /// la cabecera de la vista previa lo resuelve acá UNA vez. Null si no hay socio o SAP
+    /// no responde (solo informativo, la vista previa igual se muestra con el código).
+    /// </summary>
+    public string? BusinessPartnerName { get; private set; }
+
+    /// <summary>SapFieldName -> Etiqueta de los campos de usuario del módulo, para mostrar los de cabecera con su nombre legible en la vista previa.</summary>
+    public IReadOnlyDictionary<string, string> UserFieldLabels { get; private set; } = new Dictionary<string, string>();
+
+    private async Task LoadPreviewHeaderInfoAsync(CancellationToken ct)
+    {
+        if (PreviewResult is null || !PreviewResult.HasValidConfig)
+        {
+            return;
+        }
+
+        UserFieldLabels = (await _userFields.ListAsync(Input.Module, ct))
+            .GroupBy(f => f.SapFieldName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Label, StringComparer.OrdinalIgnoreCase);
+
+        var cardCode = Input.BusinessPartnerCardCode?.Trim();
+        if (string.IsNullOrEmpty(cardCode))
+        {
+            return;
+        }
+
+        try
+        {
+            BusinessPartnerName = Input.Module == GenericImportModule.Purchase
+                ? (await _suppliers.GetAsync(cardCode, ct))?.CardName
+                : (await _customers.GetAsync(cardCode, ct))?.CardName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo resolver el nombre del socio {CardCode} para la vista previa.", cardCode);
+        }
     }
 
     /// <summary>
@@ -194,14 +299,19 @@ public sealed class IndexModel : PageModelBaseAdmin
             return new JsonResult(Array.Empty<object>());
         }
 
-        if (module == GenericImportModule.Sales)
+        // Compra -> Proveedor; Venta e Inventario -> Cliente. Mismo criterio que la
+        // validación del motor (GenericImportService.ProcessFileAsync, validBusinessPartners)
+        // y que el selector de socio de Modulo.Inventario (OnGetSearchCustomersAsync).
+        // Antes Inventario buscaba en Proveedores: un cliente (ej. "C76") nunca aparecía
+        // en la ayuda pese a ser el socio que el motor sí acepta.
+        if (module == GenericImportModule.Purchase)
         {
-            var customers = await _customers.ListAsync(new CustomerFilter(text, Limit: 30), ct);
-            return new JsonResult(customers.Select(c => new { c.CardCode, c.CardName }));
+            var suppliers = await _suppliers.ListAsync(new SupplierFilter(text, Limit: 30), ct);
+            return new JsonResult(suppliers.Select(s => new { s.CardCode, s.CardName }));
         }
 
-        var suppliers = await _suppliers.ListAsync(new SupplierFilter(text, Limit: 30), ct);
-        return new JsonResult(suppliers.Select(s => new { s.CardCode, s.CardName }));
+        var customers = await _customers.ListAsync(new CustomerFilter(text, Limit: 30), ct);
+        return new JsonResult(customers.Select(c => new { c.CardCode, c.CardName }));
     }
 
     // POST porque el archivo (Input.Base64File) puede superar el límite práctico de una
@@ -214,6 +324,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         {
             ModelState.AddModelError(string.Empty, "Volvé a procesar el archivo antes de descargar.");
             await LoadCreatableDocumentTypesAsync(ct);
+            await LoadFormatsAsync(ct);
             await ResolveBusinessPartnerFromFileAsync(ct);
             return Page();
         }
@@ -237,6 +348,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         {
             ModelState.AddModelError(string.Empty, "Volvé a procesar el archivo antes de descargar el reporte.");
             await LoadCreatableDocumentTypesAsync(ct);
+            await LoadFormatsAsync(ct);
             await ResolveBusinessPartnerFromFileAsync(ct);
             return Page();
         }
@@ -252,9 +364,9 @@ public sealed class IndexModel : PageModelBaseAdmin
     }
 
     public async Task<IActionResult> OnGetTemplateAsync(GenericImportModule module, string documentType, GenericImportLineType lineType,
-        string? businessPartnerCardCode, CancellationToken ct)
+        string? businessPartnerCardCode, int? configId, CancellationToken ct)
     {
-        var parameters = new GenericImportParametersDto(module, documentType, lineType, businessPartnerCardCode);
+        var parameters = new GenericImportParametersDto(module, documentType, lineType, businessPartnerCardCode, configId);
         var bytes = await _importService.GenerateTemplateAsync(parameters, ct);
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "plantilla-importacion.xlsx");
     }
@@ -269,20 +381,14 @@ public sealed class IndexModel : PageModelBaseAdmin
     {
         BusinessPartnerFromFile = false;
 
-        var documentType = Input.Module switch
-        {
-            GenericImportModule.Sales => Input.SalesDocumentType,
-            GenericImportModule.Purchase => Input.PurchaseDocumentType,
-            GenericImportModule.Inventory => Input.InventoryDocumentType,
-            _ => null,
-        };
+        var documentType = SelectedDocumentType();
 
         if (string.IsNullOrWhiteSpace(documentType))
         {
             return;
         }
 
-        var config = await _configs.ResolveAsync(Input.Module, documentType, Input.LineType, Input.BusinessPartnerCardCode, ct);
+        var config = await _configs.ResolveAsync(Input.Module, documentType, Input.LineType, Input.BusinessPartnerCardCode, Input.ConfigId, ct);
         BusinessPartnerFromFile = config?.BusinessPartnerFromFile ?? false;
     }
 
@@ -297,7 +403,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         };
 
         return new GenericImportParametersDto(Input.Module, documentType ?? string.Empty,
-            Input.LineType, Input.BusinessPartnerCardCode);
+            Input.LineType, Input.BusinessPartnerCardCode, Input.ConfigId);
     }
 
     private async Task LoadCreatableDocumentTypesAsync(CancellationToken ct)
@@ -307,7 +413,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         {
             if (await _sales.CanCreateAsync(type, ct))
             {
-                salesTypes.Add(new SelectListItem(type.ToString(), type.ToString()));
+                salesTypes.Add(new SelectListItem(ImportDisplayNames.Of(type), type.ToString()));
             }
         }
         SalesDocumentTypes = salesTypes;
@@ -317,7 +423,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         {
             if (await _purchase.CanCreateAsync(type, ct))
             {
-                purchaseTypes.Add(new SelectListItem(type.ToString(), type.ToString()));
+                purchaseTypes.Add(new SelectListItem(ImportDisplayNames.Of(type), type.ToString()));
             }
         }
         PurchaseDocumentTypes = purchaseTypes;
@@ -327,7 +433,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         {
             if (await _inventory.CanCreateAsync(type, ct))
             {
-                inventoryTypes.Add(new SelectListItem(type.ToString(), type.ToString()));
+                inventoryTypes.Add(new SelectListItem(ImportDisplayNames.Of(type), type.ToString()));
             }
         }
         InventoryDocumentTypes = inventoryTypes;
@@ -354,6 +460,9 @@ public sealed class IndexModel : PageModelBaseAdmin
 
         [Display(Name = "Socio de negocio (Cliente/Proveedor -- vacío usa el estándar de la organización)")]
         public string? BusinessPartnerCardCode { get; set; }
+
+        [Display(Name = "Formato")]
+        public int? ConfigId { get; set; }
 
         public string? Base64File { get; set; }
     }

@@ -95,7 +95,7 @@ public sealed class GenericImportService : IGenericImportService
     public async Task<GenericImportResultDto> ProcessFileAsync(GenericImportParametersDto parameters, Stream file, CancellationToken ct = default)
     {
         var config = await _config.ResolveAsync(parameters.Module, parameters.DocumentType, parameters.LineType,
-            parameters.BusinessPartnerCardCode, ct);
+            parameters.BusinessPartnerCardCode, parameters.ConfigId, ct);
         if (config is null)
         {
             return new GenericImportResultDto
@@ -241,7 +241,7 @@ public sealed class GenericImportService : IGenericImportService
     public async Task<byte[]> GenerateTemplateAsync(GenericImportParametersDto parameters, CancellationToken ct = default)
     {
         var config = await _config.ResolveAsync(parameters.Module, parameters.DocumentType, parameters.LineType,
-            parameters.BusinessPartnerCardCode, ct);
+            parameters.BusinessPartnerCardCode, parameters.ConfigId, ct);
 
         using var workbook = new XLWorkbook();
         var ws = workbook.Worksheets.Add("Formato");
@@ -315,7 +315,7 @@ public sealed class GenericImportService : IGenericImportService
         IReadOnlyList<GenericImportDocumentDto> documents, CancellationToken ct = default)
     {
         var config = await _config.ResolveAsync(parameters.Module, parameters.DocumentType, parameters.LineType,
-            parameters.BusinessPartnerCardCode, ct)
+            parameters.BusinessPartnerCardCode, parameters.ConfigId, ct)
             ?? throw new InvalidOperationException("No hay una configuración vigente para regenerar el archivo.");
 
         var userFieldsCatalog = (await _userFieldsCatalog.ListAsync(parameters.Module, ct)).ToDictionary(f => f.Id);
@@ -369,7 +369,7 @@ public sealed class GenericImportService : IGenericImportService
         IReadOnlyList<GenericImportDocumentDto> documents, CancellationToken ct = default)
     {
         var config = await _config.ResolveAsync(parameters.Module, parameters.DocumentType, parameters.LineType,
-            parameters.BusinessPartnerCardCode, ct);
+            parameters.BusinessPartnerCardCode, parameters.ConfigId, ct);
         var userFieldsCatalog = (await _userFieldsCatalog.ListAsync(parameters.Module, ct)).ToDictionary(f => f.Id);
 
         using var workbook = new XLWorkbook();
@@ -528,45 +528,28 @@ public sealed class GenericImportService : IGenericImportService
 
     private static int CountOfBatches(int rowCount) => Math.Max(1, (int)Math.Ceiling(rowCount / (double)DefaultBatchSize));
 
+    public async Task<SapSimulationResult> SimulateDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
+        string portalUsername, CancellationToken ct = default)
+    {
+        return parameters.Module switch
+        {
+            GenericImportModule.Sales => await _sales.SimulateCreateAsync(Enum.Parse<SalesDocumentType>(parameters.DocumentType),
+                portalUsername, await BuildSalesDocumentAsync(parameters, document, ct), ct),
+            GenericImportModule.Purchase => await _purchase.SimulateCreateAsync(Enum.Parse<PurchaseDocumentType>(parameters.DocumentType),
+                portalUsername, BuildPurchaseDocument(parameters, document), ct),
+            GenericImportModule.Inventory => await _inventory.SimulateCreateAsync(Enum.Parse<InventoryDocumentType>(parameters.DocumentType),
+                portalUsername, BuildInventoryDocument(parameters, document), ct),
+            _ => throw new InvalidOperationException("Módulo no soportado."),
+        };
+    }
+
     private async Task<int> CreateSalesDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
         string portalUsername, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<SalesDocumentType>(parameters.DocumentType);
-        var first = document.Rows[0];
-        // Todas las filas de un grupo ya comparten socio por construcción (ver
-        // ProcessRow -- el prefijo de socio en GroupingKey garantiza esto), así que
-        // alcanza con mirar la primera. Resuelto POR documento, no una vez para todo el
-        // archivo -- en modo multi-socio cada documento puede ser de un socio distinto.
-        var cardCode = BusinessPartnerCardCodeOfDocument(document, parameters);
-        var partnerDefaults = !string.IsNullOrWhiteSpace(cardCode) ? await _partnerDefaults.GetAsync(cardCode, ct) : null;
-
-        var lines = document.Rows.Select(r => new SalesDocumentLineDto(
-            parameters.LineType == GenericImportLineType.Item ? DocumentLineType.Item : DocumentLineType.Service,
-            ItemCode: r.ItemCode,
-            Description: parameters.LineType == GenericImportLineType.Item ? (r.ItemName ?? r.ItemCode) : r.Description,
-            Quantity: r.Quantity ?? 0,
-            UnitPrice: r.UnitPrice,
-            DiscountPercent: r.DiscountPercent ?? 0,
-            WarehouseCode: r.Warehouse,
-            AccountCode: r.Account,
-            CostCenterCode: r.CostCenter,
-            CostCenterCode2: r.Dimension2,
-            CostCenterCode3: r.Dimension3,
-            AdditionalFields: r.UserFieldsLine.Count > 0 ? r.UserFieldsLine : null)).ToList();
-
-        var batches = Chunk(lines, DefaultBatchSize);
-
-        var doc = new SalesDocumentDto(
-            CustomerCardCode: cardCode,
-            CustomerName: null,
-            SalesEmployeeCode: partnerDefaults?.SalesEmployeeCode,
-            Comments: null,
-            DocDate: DateOnly.FromDateTime(DateTime.Today),
-            DocDueDate: DateOnly.FromDateTime(DateTime.Today),
-            TaxDate: DateOnly.FromDateTime(DateTime.Today),
-            CustomerReferenceNumber: first.CustomerReferenceNumber,
-            Lines: batches[0],
-            AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
+        var fullDoc = await BuildSalesDocumentAsync(parameters, document, ct);
+        var batches = Chunk(fullDoc.Lines.ToList(), DefaultBatchSize);
+        var doc = fullDoc with { Lines = batches[0] };
 
         var docEntry = await _sales.CreateAsync(type, portalUsername, doc, ct);
         reportBatch(1);
@@ -590,14 +573,19 @@ public sealed class GenericImportService : IGenericImportService
         return created?.DocNum ?? 0;
     }
 
-    private async Task<int> CreatePurchaseDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
-        string portalUsername, Action<int> reportBatch, CancellationToken ct)
+    /// <summary>Documento de Venta completo (TODAS las líneas) de un grupo -- compartido por la creación real (que lo parte en lotes) y SimulateDocumentAsync.</summary>
+    private async Task<SalesDocumentDto> BuildSalesDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
+        CancellationToken ct)
     {
-        var type = Enum.Parse<PurchaseDocumentType>(parameters.DocumentType);
         var first = document.Rows[0];
+        // Todas las filas de un grupo ya comparten socio por construcción (ver
+        // ProcessRow -- el prefijo de socio en GroupingKey garantiza esto), así que
+        // alcanza con mirar la primera. Resuelto POR documento, no una vez para todo el
+        // archivo -- en modo multi-socio cada documento puede ser de un socio distinto.
         var cardCode = BusinessPartnerCardCodeOfDocument(document, parameters);
+        var partnerDefaults = !string.IsNullOrWhiteSpace(cardCode) ? await _partnerDefaults.GetAsync(cardCode, ct) : null;
 
-        var lines = document.Rows.Select(r => new PurchaseDocumentLineDto(
+        var lines = document.Rows.Select(r => new SalesDocumentLineDto(
             parameters.LineType == GenericImportLineType.Item ? DocumentLineType.Item : DocumentLineType.Service,
             ItemCode: r.ItemCode,
             Description: parameters.LineType == GenericImportLineType.Item ? (r.ItemName ?? r.ItemCode) : r.Description,
@@ -611,18 +599,27 @@ public sealed class GenericImportService : IGenericImportService
             CostCenterCode3: r.Dimension3,
             AdditionalFields: r.UserFieldsLine.Count > 0 ? r.UserFieldsLine : null)).ToList();
 
-        var batches = Chunk(lines, DefaultBatchSize);
-
-        var doc = new PurchaseDocumentDto(
-            SupplierCardCode: cardCode,
-            SupplierName: null,
+        return new SalesDocumentDto(
+            CustomerCardCode: cardCode,
+            CustomerName: null,
+            SalesEmployeeCode: partnerDefaults?.SalesEmployeeCode,
             Comments: null,
             DocDate: DateOnly.FromDateTime(DateTime.Today),
             DocDueDate: DateOnly.FromDateTime(DateTime.Today),
             TaxDate: DateOnly.FromDateTime(DateTime.Today),
-            SupplierReferenceNumber: first.CustomerReferenceNumber,
-            Lines: batches[0],
-            AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
+            CustomerReferenceNumber: first.CustomerReferenceNumber,
+            Lines: lines,
+            AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null,
+            ShipToCode: first.Branch);
+    }
+
+    private async Task<int> CreatePurchaseDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
+        string portalUsername, Action<int> reportBatch, CancellationToken ct)
+    {
+        var type = Enum.Parse<PurchaseDocumentType>(parameters.DocumentType);
+        var fullDoc = BuildPurchaseDocument(parameters, document);
+        var batches = Chunk(fullDoc.Lines.ToList(), DefaultBatchSize);
+        var doc = fullDoc with { Lines = batches[0] };
 
         var docEntry = await _purchase.CreateAsync(type, portalUsername, doc, ct);
         reportBatch(1);
@@ -646,34 +643,48 @@ public sealed class GenericImportService : IGenericImportService
         return created?.DocNum ?? 0;
     }
 
+    /// <summary>Documento de Compra completo (TODAS las líneas) de un grupo -- ver BuildSalesDocumentAsync.</summary>
+    private static PurchaseDocumentDto BuildPurchaseDocument(GenericImportParametersDto parameters, GenericImportDocumentDto document)
+    {
+        var first = document.Rows[0];
+        var cardCode = BusinessPartnerCardCodeOfDocument(document, parameters);
+
+        var lines = document.Rows.Select(r => new PurchaseDocumentLineDto(
+            parameters.LineType == GenericImportLineType.Item ? DocumentLineType.Item : DocumentLineType.Service,
+            ItemCode: r.ItemCode,
+            Description: parameters.LineType == GenericImportLineType.Item ? (r.ItemName ?? r.ItemCode) : r.Description,
+            Quantity: r.Quantity ?? 0,
+            UnitPrice: r.UnitPrice,
+            DiscountPercent: r.DiscountPercent ?? 0,
+            WarehouseCode: r.Warehouse,
+            AccountCode: r.Account,
+            CostCenterCode: r.CostCenter,
+            CostCenterCode2: r.Dimension2,
+            CostCenterCode3: r.Dimension3,
+            AdditionalFields: r.UserFieldsLine.Count > 0 ? r.UserFieldsLine : null)).ToList();
+
+        return new PurchaseDocumentDto(
+            SupplierCardCode: cardCode,
+            SupplierName: null,
+            Comments: null,
+            DocDate: DateOnly.FromDateTime(DateTime.Today),
+            DocDueDate: DateOnly.FromDateTime(DateTime.Today),
+            TaxDate: DateOnly.FromDateTime(DateTime.Today),
+            SupplierReferenceNumber: first.CustomerReferenceNumber,
+            Lines: lines,
+            AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
+    }
+
     private async Task<int> CreateInventoryDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
         string portalUsername, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<InventoryDocumentType>(parameters.DocumentType);
-        var first = document.Rows[0];
-        // Socio opcional en Inventario (traslado interno sin cliente/proveedor) --
-        // BusinessPartnerCardCodeOfDocument devuelve "" si no hay ninguno, y ahí queda
-        // como null/vacío en el documento SAP (mismo criterio que ya usa esta pantalla
-        // para Venta/Compra, donde sí es obligatorio).
-        var cardCode = BusinessPartnerCardCodeOfDocument(document, parameters);
-
-        var lines = document.Rows.Select(r => new InventoryDocumentLineDto(
-            ItemCode: r.ItemCode ?? string.Empty,
-            Description: r.ItemName ?? r.ItemCode,
-            Quantity: r.Quantity ?? 0,
-            FromWarehouseCode: r.SourceWarehouse ?? string.Empty,
-            ToWarehouseCode: r.DestinationWarehouse ?? string.Empty,
-            AdditionalFields: r.UserFieldsLine.Count > 0 ? r.UserFieldsLine : null)).ToList();
-
-        var batches = Chunk(lines, DefaultBatchSize);
-
-        var doc = new InventoryDocumentDto(
-            DocDate: DateOnly.FromDateTime(DateTime.Today),
-            Comments: null,
-            Lines: batches[0],
-            BusinessPartnerCardCode: string.IsNullOrWhiteSpace(cardCode) ? null : cardCode,
-            CustomerReferenceNumber: first.CustomerReferenceNumber,
-            AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
+        var fullDoc = BuildInventoryDocument(parameters, document);
+        var batches = Chunk(fullDoc.Lines.ToList(), DefaultBatchSize);
+        // Almacenes de cabecera: InventoryDocumentService los deriva de las líneas de este
+        // primer lote (el más frecuente) -- en un traslado típico todas comparten
+        // origen/destino, así que coincide con el documento completo.
+        var doc = fullDoc with { Lines = batches[0] };
 
         var docEntry = await _inventory.CreateAsync(type, portalUsername, doc, ct);
         reportBatch(1);
@@ -695,6 +706,37 @@ public sealed class GenericImportService : IGenericImportService
 
         var created = await _inventory.GetAsync(type, docEntry, ct);
         return created?.DocNum ?? 0;
+    }
+
+    /// <summary>Documento de Inventario completo (TODAS las líneas) de un grupo -- ver BuildSalesDocumentAsync.</summary>
+    private static InventoryDocumentDto BuildInventoryDocument(GenericImportParametersDto parameters, GenericImportDocumentDto document)
+    {
+        var first = document.Rows[0];
+        // Socio opcional en Inventario (traslado interno sin cliente/proveedor) --
+        // BusinessPartnerCardCodeOfDocument devuelve "" si no hay ninguno, y ahí queda
+        // como null/vacío en el documento SAP (mismo criterio que ya usa esta pantalla
+        // para Venta/Compra, donde sí es obligatorio).
+        var cardCode = BusinessPartnerCardCodeOfDocument(document, parameters);
+
+        var lines = document.Rows.Select(r => new InventoryDocumentLineDto(
+            ItemCode: r.ItemCode ?? string.Empty,
+            Description: r.ItemName ?? r.ItemCode,
+            Quantity: r.Quantity ?? 0,
+            FromWarehouseCode: r.SourceWarehouse ?? string.Empty,
+            ToWarehouseCode: r.DestinationWarehouse ?? string.Empty,
+            AdditionalFields: r.UserFieldsLine.Count > 0 ? r.UserFieldsLine : null)).ToList();
+
+        return new InventoryDocumentDto(
+            DocDate: DateOnly.FromDateTime(DateTime.Today),
+            Comments: null,
+            Lines: lines,
+            BusinessPartnerCardCode: string.IsNullOrWhiteSpace(cardCode) ? null : cardCode,
+            CustomerReferenceNumber: first.CustomerReferenceNumber,
+            AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null,
+            // Sucursal -> "Destino" de la cabecera. Antes Branch se leía del Excel (y lo
+            // validaba CustomerBranchValid) pero nunca se enviaba a SAP, que dejaba la
+            // dirección por defecto del socio.
+            ShipToCode: first.Branch);
     }
 
     /// <summary>Trocea una lista en sublistas de a lo sumo <paramref name="batchSize"/> elementos -- siempre devuelve al menos 1 lote (vacío) para que el primer POST de creación tenga algo que mandar aunque no haya filas.</summary>

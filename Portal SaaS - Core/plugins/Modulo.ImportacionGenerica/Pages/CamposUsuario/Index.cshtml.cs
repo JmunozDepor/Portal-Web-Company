@@ -32,9 +32,9 @@ public sealed class IndexModel : PageModelBaseAdmin
 
     public List<SelectListItem> Modules { get; } =
     [
-        new(GenericImportModule.Sales.ToString(), GenericImportModule.Sales.ToString()),
-        new(GenericImportModule.Purchase.ToString(), GenericImportModule.Purchase.ToString()),
-        new(GenericImportModule.Inventory.ToString(), GenericImportModule.Inventory.ToString()),
+        new(ImportDisplayNames.Of(GenericImportModule.Sales), GenericImportModule.Sales.ToString()),
+        new(ImportDisplayNames.Of(GenericImportModule.Purchase), GenericImportModule.Purchase.ToString()),
+        new(ImportDisplayNames.Of(GenericImportModule.Inventory), GenericImportModule.Inventory.ToString()),
     ];
 
     public List<SelectListItem> Levels { get; } =

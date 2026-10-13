@@ -16,6 +16,16 @@
 
 <p class="text-muted mb-3">Recordatorio diario por correo a cada aprobador con informes pendientes -- un solo correo resumen por día, agrupando todos sus pendientes.</p>
 
+<div class="alert alert-light border mb-3" style="font-size:13px;">
+    <div><strong>Última ejecución:</strong> @(Model.LastRun is { } d ? d.ToString("dd-MM-yyyy") : "nunca todavía")</div>
+    <div><strong>Informes pendientes ahora:</strong> @Model.PendingReports</div>
+    <div class="text-muted mt-1">
+        Si hay informes pendientes el correo sale a la hora configurada. Si no llega, revisá que la
+        organización tenga un proveedor de correo activo en <strong>Administración &gt; Correo</strong>:
+        sin él los envíos fallan en silencio (quedan en el log del servidor).
+    </div>
+</div>
+
 <form method="post">
     <div class="mb-3">
         <label asp-for="Settings.ReminderHour" class="form-label">Hora de envío</label>

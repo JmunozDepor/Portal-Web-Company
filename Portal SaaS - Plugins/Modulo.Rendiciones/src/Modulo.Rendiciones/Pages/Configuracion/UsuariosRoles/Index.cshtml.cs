@@ -103,12 +103,6 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
             return RedirectToPage();
         }
 
-        if (user.IsAdmin)
-        {
-            ErrorMessage = $"\"{user.Username}\" es administrador de la organización -- ya tiene acceso a todo el módulo, no hace falta agregarlo.";
-            return RedirectToPage();
-        }
-
         var yaAsignados = await _roles.ListRolesAsync(_currentCompany.CompanyId, nuevoUsuarioId, ct);
         if (yaAsignados.Count > 0)
         {
@@ -180,7 +174,7 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
             .ToList();
 
         var disponibles = users
-            .Where(u => !u.IsAdmin && !rolesByUser.ContainsKey(u.Id))
+            .Where(u => !rolesByUser.ContainsKey(u.Id))
             .OrderBy(u => u.Username)
             .Select(u => new UserOption(u.Id, u.Username, u.Email))
             .ToList();

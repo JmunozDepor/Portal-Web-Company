@@ -37,6 +37,26 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
 
     public async Task<int> CreateAsync(InventoryDocumentType type, string portalUsername, InventoryDocumentDto document, CancellationToken ct = default)
     {
+        var (resource, body) = await BuildCreateRequestAsync(type, portalUsername, document, ct);
+
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        var created = await session.PostAsync<SapInventoryDocumentHeader>(resource, body, ct)
+            ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
+
+        return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
+    }
+
+    public async Task<SapSimulationResult> SimulateCreateAsync(InventoryDocumentType type, string portalUsername, InventoryDocumentDto document, CancellationToken ct = default)
+    {
+        var (resource, body) = await BuildCreateRequestAsync(type, portalUsername, document, ct);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        return await session.SimulatePostAsync(resource, body, ct);
+    }
+
+    /// <summary>Recurso + cuerpo del POST de creación -- compartido por CreateAsync y SimulateCreateAsync.</summary>
+    private async Task<(string Resource, object Body)> BuildCreateRequestAsync(InventoryDocumentType type, string portalUsername,
+        InventoryDocumentDto document, CancellationToken ct)
+    {
         var entry = InventoryDocumentTypeCatalog.Resolve(type);
 
         var udfName = await _traceability.ResolveUserFieldNameAsync(ct);
@@ -49,6 +69,9 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
             Comments = document.Comments,
             CardCode = document.BusinessPartnerCardCode,
             NumAtCard = document.CustomerReferenceNumber,
+            ShipToCode = string.IsNullOrWhiteSpace(document.ShipToCode) ? null : document.ShipToCode.Trim(),
+            FromWarehouse = HeaderWarehouse(document.Lines.Select(l => l.FromWarehouseCode)),
+            ToWarehouse = HeaderWarehouse(document.Lines.Select(l => l.ToWarehouseCode)),
             U_PortalUser = isDefaultUdf ? portalUsername : null,
             AdditionalFields = isDefaultUdf
                 ? document.AdditionalFields
@@ -59,11 +82,7 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
         var hasAdditionalFields = header.AdditionalFields is not null || header.StockTransferLines.Any(l => l.AdditionalFields is not null);
         object requestBody = hasAdditionalFields ? PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten(header) : header;
 
-        var session = await _connectionProvider.GetConnectionAsync(ct);
-        var created = await session.PostAsync<SapInventoryDocumentHeader>(entry.Resource, requestBody, ct)
-            ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
-
-        return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
+        return (entry.Resource, requestBody);
     }
 
     public async Task AddLinesAsync(InventoryDocumentType type, int docEntry, IReadOnlyList<InventoryDocumentLineDto> newLines, CancellationToken ct = default)
@@ -211,6 +230,20 @@ public sealed class InventoryDocumentService : IInventoryDocumentService
         var whereClause = clauses.Count == 0 ? string.Empty : "WHERE " + string.Join(" AND ", clauses);
         return (whereClause, parameters);
     }
+
+    /// <summary>
+    /// Almacén de cabecera derivado de las líneas: el más frecuente (en un traslado
+    /// típico todas las líneas comparten origen/destino, así que es ese mismo); null si
+    /// ninguna línea lo trae (ej. Copy-From, donde SAP lo deriva del documento base).
+    /// </summary>
+    internal static string? HeaderWarehouse(IEnumerable<string?> lineWarehouses) =>
+        lineWarehouses
+            .Where(w => !string.IsNullOrWhiteSpace(w))
+            .Select(w => w!.Trim())
+            .GroupBy(w => w, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .FirstOrDefault();
 
     private static SapInventoryDocumentLine MapLine(InventoryDocumentLineDto line) => new()
     {

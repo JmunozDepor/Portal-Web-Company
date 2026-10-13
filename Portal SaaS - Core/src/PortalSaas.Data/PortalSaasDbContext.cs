@@ -161,7 +161,10 @@ public sealed class PortalSaasDbContext : DbContext
         modelBuilder.Entity<GenericImportConfig>(entity =>
         {
             entity.ToTable("generic_import_configs");
-            entity.HasIndex(e => new { e.CompanyId, e.Module, e.DocumentType, e.LineType, e.BusinessPartnerCardCode }).IsUnique();
+            // Alias incluido (2026-10-09): un socio -- o el estándar -- puede tener varios
+            // formatos para la misma combinación, distinguidos por Alias (ver
+            // IGenericImportConfigService.ListAvailableAsync).
+            entity.HasIndex(e => new { e.CompanyId, e.Module, e.DocumentType, e.LineType, e.BusinessPartnerCardCode, e.Alias }).IsUnique();
             entity.Property(e => e.Module).HasMaxLength(20);
             entity.Property(e => e.DocumentType).HasMaxLength(50);
             entity.Property(e => e.LineType).HasMaxLength(10);

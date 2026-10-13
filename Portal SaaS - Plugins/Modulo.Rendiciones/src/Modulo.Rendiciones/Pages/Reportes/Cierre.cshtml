@@ -12,6 +12,11 @@
         <h2>Cierre de rendiciones</h2>
     </div>
 
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+    }
+
     <form method="get" class="admin-form-asignar">
         <div class="form-group">
             <label asp-for="From">Desde</label>

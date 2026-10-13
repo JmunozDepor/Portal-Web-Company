@@ -31,7 +31,10 @@ public sealed record InventoryDocumentDto(
     string? CustomerReferenceNumber = null,
     // Campos de usuario (UDF dinámicos) -- consumido por Modulo.ImportacionGenerica, ver
     // SapAdditionalFieldsHelper.
-    IReadOnlyDictionary<string, object?>? AdditionalFields = null);
+    IReadOnlyDictionary<string, object?>? AdditionalFields = null,
+    // "Destino" de la cabecera SAP (dirección de despacho del socio, CRD1.Address) --
+    // "Sucursal" de Importación Genérica. Null = SAP usa la dirección por defecto del socio.
+    string? ShipToCode = null);
 
 public sealed record InventoryDocumentLineDto(
     string ItemCode,

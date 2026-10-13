@@ -19,9 +19,22 @@ public interface IGenericImportConfigService
     /// Resuelve la configuración vigente para el socio de negocio indicado: primero
     /// busca su excepción puntual (BusinessPartnerCardCode = businessPartnerCardCode),
     /// y si no existe (o no está IsActive), cae al estándar de la organización
-    /// (BusinessPartnerCardCode IS NULL). Null si ninguna de las dos existe.
+    /// (BusinessPartnerCardCode IS NULL). Null si ninguna de las dos existe. Con varios
+    /// formatos para la misma combinación, sin configId gana el primero por Alias.
+    ///
+    /// configId: formato elegido explícitamente en el wizard -- solo se acepta si está
+    /// activo, coincide con Módulo+Tipo de documento+Tipo de línea y es del socio
+    /// indicado o un estándar (nunca el formato de OTRO socio); si no, null.
     /// </summary>
     Task<GenericImportConfigDto?> ResolveAsync(GenericImportModule module, string documentType,
+        GenericImportLineType lineType, string? businessPartnerCardCode, int? configId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Formatos activos disponibles para Módulo+Tipo de documento+Tipo de línea y el socio
+    /// indicado: primero los propios del socio, después los estándar de la organización
+    /// (cada grupo ordenado por Alias). Sin socio, solo los estándar.
+    /// </summary>
+    Task<IReadOnlyList<GenericImportConfigDto>> ListAvailableAsync(GenericImportModule module, string documentType,
         GenericImportLineType lineType, string? businessPartnerCardCode, CancellationToken ct = default);
 
     /// <summary>Reemplaza por completo el detalle de campos (borra y vuelve a crear) -- evita diffing, el volumen por configuración es chico.</summary>

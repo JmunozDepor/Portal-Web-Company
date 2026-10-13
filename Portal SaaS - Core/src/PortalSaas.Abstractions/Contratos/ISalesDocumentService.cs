@@ -28,6 +28,14 @@ public interface ISalesDocumentService
     Task<int> CreateAsync(SalesDocumentType type, string portalUsername, SalesDocumentDto document, CancellationToken ct = default);
 
     /// <summary>
+    /// Mismo payload que CreateAsync, enviado en modo SIMULADO (ver
+    /// ISapSession.SimulatePostAsync): SAP lo valida completo y lo revierte, sin crear el
+    /// documento. Usado por "Probar formato" de Importación Genérica.
+    /// </summary>
+    Task<SapSimulationResult> SimulateCreateAsync(SalesDocumentType type, string portalUsername, SalesDocumentDto document, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este servicio no soporta envío simulado.");
+
+    /// <summary>
     /// Relee el documento tal cual quedó en SAP (con los LineNum reales que SAP asignó) y
     /// patchea el arreglo de líneas COMPLETO (existentes + nuevas) -- Service Layer trata
     /// "DocumentLines" como el estado final del arreglo, así que no alcanza con mandar solo

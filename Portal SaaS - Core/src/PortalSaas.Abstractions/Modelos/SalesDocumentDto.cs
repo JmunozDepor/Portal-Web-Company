@@ -30,7 +30,11 @@ public sealed record SalesDocumentDto(
     int? PaymentTermsGroupCode = null,
     // Campos de usuario (UDF dinámicos) -- consumido por Modulo.ImportacionGenerica, ver
     // SapAdditionalFieldsHelper. Null = sin campos adicionales, payload idéntico a antes.
-    IReadOnlyDictionary<string, object?>? AdditionalFields = null);
+    IReadOnlyDictionary<string, object?>? AdditionalFields = null,
+    // Dirección de despacho del cliente (CRD1.Address, AddressType 'S') -- "Sucursal" de
+    // Importación Genérica (GenericImportLogicalField.Branch). Null = SAP usa la dirección
+    // de despacho por defecto del cliente (comportamiento de siempre).
+    string? ShipToCode = null);
 
 /// <summary>
 /// Línea de Artículo o Servicio -- SAP no permite mezclar los dos tipos en el mismo

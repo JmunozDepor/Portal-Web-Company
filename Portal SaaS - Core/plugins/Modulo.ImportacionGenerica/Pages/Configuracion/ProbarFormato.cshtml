@@ -1,0 +1,204 @@
+@page "/importacion-generica/configuracion/probar"
+@using PortalSaas.Abstractions.Modelos
+@model Modulo.ImportacionGenerica.Pages.Configuracion.ProbarFormatoModel
+@{
+    ViewData["Title"] = "Probar formato";
+    var config = Model.Config!;
+
+    string Badge(GenericImportFormatCheckSeverity severity) => severity switch
+    {
+        GenericImportFormatCheckSeverity.Ok => "bg-success",
+        GenericImportFormatCheckSeverity.Info => "bg-secondary",
+        GenericImportFormatCheckSeverity.Warning => "bg-warning text-dark",
+        _ => "bg-danger",
+    };
+    string BadgeText(GenericImportFormatCheckSeverity severity) => severity switch
+    {
+        GenericImportFormatCheckSeverity.Ok => "OK",
+        GenericImportFormatCheckSeverity.Info => "Info",
+        GenericImportFormatCheckSeverity.Warning => "Advertencia",
+        _ => "Error",
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Probar formato</h1>
+    <a asp-page="/Configuracion/Index" asp-route-editId="@config.Id" class="btn btn-outline-secondary">Volver al formato</a>
+</div>
+<p class="text-muted">
+    Valida el formato <strong>guardado</strong> contra el SAP de la compañía activa sin crear ningún documento. El envío
+    simulado manda a Service Layer el mismo JSON que usaría la importación real: SAP lo valida completo y lo revierte,
+    sin dejar registro ni consumir numeración.
+</p>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="card-ps doc-tab-seccion mb-3">
+    <span class="doc-resumen-total-titulo">Formato</span>
+    <div class="form-row">
+        <div class="form-group"><span class="form-label">Alias</span><div>@config.Alias</div></div>
+        <div class="form-group"><span class="form-label">Módulo</span><div>@ImportDisplayNames.Of(config.Module)</div></div>
+        <div class="form-group"><span class="form-label">Tipo de documento</span><div>@ImportDisplayNames.Of(config.DocumentType)</div></div>
+        <div class="form-group"><span class="form-label">Tipo de línea</span><div>@ImportDisplayNames.Of(config.LineType)</div></div>
+        <div class="form-group">
+            <span class="form-label">Socio de negocio</span>
+            <div>@(config.BusinessPartnerFromFile ? "Por fila (multi-socio)" : config.BusinessPartnerCardCode ?? "Estándar de la organización")</div>
+        </div>
+        <div class="form-group"><span class="form-label">Estado</span><div>@(config.IsActive ? "Activo" : "Inactivo")</div></div>
+    </div>
+</div>
+
+<div class="doc-columnas-2 mb-3">
+    <div class="card-ps doc-tab-seccion">
+        <span class="doc-resumen-total-titulo">1. Validar esquema</span>
+        <p class="text-muted small mb-2">
+            Sin archivo: campos obligatorios mapeados, campos que el módulo ignora, letras de columna, valores fijos contra
+            los catálogos de SAP y cada campo de usuario U_ contra la tabla del documento.
+        </p>
+        <form method="post" asp-page-handler="Schema" asp-route-id="@config.Id" asp-antiforgery="true">
+            <button type="submit" class="btn btn-primary">Validar esquema contra SAP</button>
+        </form>
+    </div>
+
+    <div class="card-ps doc-tab-seccion">
+        <span class="doc-resumen-total-titulo">2. Probar con archivo (envío simulado)</span>
+        <p class="text-muted small mb-2">
+            Sube un Excel de ejemplo: se procesa con este formato y el JSON del primer documento sin errores se envía a SAP
+            en modo simulado.
+        </p>
+        <form method="post" asp-page-handler="File" asp-route-id="@config.Id" enctype="multipart/form-data" asp-antiforgery="true">
+            <div class="form-row">
+                <div class="form-group form-group-ancho-completo">
+                    <label class="form-label">Archivo (.xlsx)</label>
+                    <input type="file" name="file" class="form-control" accept=".xlsx,.xls" />
+                </div>
+                @if (Model.NeedsTestPartner)
+                {
+                    <div class="form-group form-group-ancho-completo">
+                        <label class="form-label" for="probar-socio">Socio de prueba (formato estándar -- obligatorio para simular)</label>
+                        <input id="probar-socio" asp-for="BusinessPartnerCardCode" class="form-control probar-business-partner-code"
+                               list="probar-business-partners-datalist" autocomplete="off" />
+                        <datalist id="probar-business-partners-datalist"></datalist>
+                    </div>
+                }
+            </div>
+            <button type="submit" class="btn btn-primary mt-2">Probar con archivo</button>
+        </form>
+    </div>
+</div>
+
+@if (Model.TestKind is not null && Model.Checks.Count > 0)
+{
+    var errores = Model.Checks.Count(c => c.Severity == GenericImportFormatCheckSeverity.Error);
+    var advertencias = Model.Checks.Count(c => c.Severity == GenericImportFormatCheckSeverity.Warning);
+
+    <div class="card-ps doc-tab-seccion mb-3">
+        <span class="doc-resumen-total-titulo">Resultado -- @(Model.TestKind == "archivo" ? "prueba con archivo" : "validación de esquema")</span>
+        <div class="alert @(errores > 0 ? "alert-danger" : advertencias > 0 ? "alert-warning" : "alert-success") py-2">
+            @if (errores > 0)
+            {
+                <text>@errores error(es) -- el formato no va a funcionar hasta corregirlos.</text>
+            }
+            else if (advertencias > 0)
+            {
+                <text>Sin errores, con @advertencias advertencia(s) para revisar.</text>
+            }
+            else
+            {
+                <text>Todo OK.</text>
+            }
+        </div>
+
+        <div class="document-list-table-wrapper">
+            <table class="table table-sm document-list-table import-preview-table">
+                <thead>
+                    <tr>
+                        <th style="width:110px">Resultado</th>
+                        <th style="width:160px">Área</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var check in Model.Checks.OrderByDescending(c => c.Severity))
+                    {
+                        <tr>
+                            <td><span class="badge @Badge(check.Severity)">@BadgeText(check.Severity)</span></td>
+                            <td>@check.Area</td>
+                            <td>@check.Message</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (Model.FileResult?.Simulation is { } simulation)
+{
+    <div class="card-ps doc-tab-seccion mb-3">
+        <span class="doc-resumen-total-titulo">JSON enviado en modo simulado -- grupo "@Model.FileResult.SimulatedGroupingKey"</span>
+        <details>
+            <summary class="mb-2" style="cursor:pointer">Ver JSON (@simulation.RequestJson.Length.ToString("N0") caracteres)</summary>
+            <pre class="small mb-0" style="max-height:420px;overflow:auto;white-space:pre-wrap">@simulation.RequestJson</pre>
+        </details>
+    </div>
+}
+
+@if (Model.FileResult?.Preview is { HasValidConfig: true } preview)
+{
+    <div class="card-ps doc-tab-seccion mb-3">
+        <span class="doc-resumen-total-titulo">Vista previa del archivo de prueba</span>
+        <div class="document-list-table-wrapper">
+            <table class="table table-sm document-list-table import-preview-table">
+                <thead>
+                    <tr>
+                        <th>Grupo</th>
+                        <th class="text-end">Filas</th>
+                        <th>Estado</th>
+                        <th>Primeros errores</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var document in preview.Documents)
+                    {
+                        var filasConError = document.Rows.Where(r => !r.IsValid).ToList();
+                        <tr class="@(document.CanCreate ? "" : "table-danger")">
+                            <td>@document.GroupingKey</td>
+                            <td class="text-end">@document.Rows.Count</td>
+                            <td>@(document.CanCreate ? "Listo" : $"{filasConError.Count} fila(s) con error")</td>
+                            <td>
+                                @foreach (var fila in filasConError.Take(5))
+                                {
+                                    <div class="text-danger">Fila @fila.RowNumber: @string.Join("; ", fila.Errors)</div>
+                                }
+                                @if (filasConError.Count > 5)
+                                {
+                                    <div class="text-muted">… y @(filasConError.Count - 5) fila(s) más.</div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (Model.NeedsTestPartner)
+{
+    <script src="~/js/catalog-search.js"></script>
+    <script>
+        wireCatalogSearch({
+            inputSelector: '.probar-business-partner-code',
+            datalistId: 'probar-business-partners-datalist',
+            handlerName: 'SearchBusinessPartners',
+            minChars: 2,
+            extraParams: function () { return { module: '@config.Module', id: '@config.Id' }; },
+            getValue: function (item) { return item.cardCode; },
+            getLabel: function (item) { return item.cardCode + ' — ' + item.cardName; },
+        });
+    </script>
+}

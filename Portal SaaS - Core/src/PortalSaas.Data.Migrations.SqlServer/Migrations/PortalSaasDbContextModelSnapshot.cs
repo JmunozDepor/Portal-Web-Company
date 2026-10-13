@@ -446,9 +446,9 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.HasKey("Id")
                         .HasName("pk_generic_import_configs");
 
-                    b.HasIndex("CompanyId", "Module", "DocumentType", "LineType", "BusinessPartnerCardCode")
+                    b.HasIndex("CompanyId", "Module", "DocumentType", "LineType", "BusinessPartnerCardCode", "Alias")
                         .IsUnique()
-                        .HasDatabaseName("ix_generic_import_configs_company_id_module_document_type_line_type_business_partner_card_code")
+                        .HasDatabaseName("ix_generic_import_configs_company_id_module_document_type_line_type_business_partner_card_code_alias")
                         .HasFilter("[business_partner_card_code] IS NOT NULL");
 
                     b.ToTable("generic_import_configs", (string)null);

@@ -23,6 +23,12 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
     [BindProperty]
     public NotificationSettingsInput Settings { get; set; } = new();
 
+    /// <summary>Último día en que el recordatorio corrió para esta compañía (null = nunca).</summary>
+    public DateOnly? LastRun { get; private set; }
+
+    /// <summary>Informes Pending hoy: si es 0 el recordatorio no tiene nada que avisar y no manda correo.</summary>
+    public int PendingReports { get; private set; }
+
     public async Task OnGetAsync(CancellationToken ct)
     {
         var settings = await _db.RendicionesSettings.AsNoTracking().FirstOrDefaultAsync(x => x.CompanyId == _currentCompany.CompanyId, ct);
@@ -31,6 +37,15 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
             Settings.ReminderHour = settings.ReminderHour;
             Settings.ReminderEnabled = settings.ReminderEnabled;
         }
+
+        LastRun = await _db.ReminderLogs.AsNoTracking()
+            .Where(x => x.CompanyId == _currentCompany.CompanyId)
+            .OrderByDescending(x => x.SentDate)
+            .Select(x => (DateOnly?)x.SentDate)
+            .FirstOrDefaultAsync(ct);
+
+        PendingReports = await _db.ExpenseReports.AsNoTracking()
+            .CountAsync(r => r.CompanyId == _currentCompany.CompanyId && r.Status == "Pending", ct);
     }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)

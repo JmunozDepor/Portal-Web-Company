@@ -62,4 +62,14 @@ public interface IGenericImportService
     /// </summary>
     Task<byte[]> GenerateValidationReportAsync(GenericImportParametersDto parameters,
         IReadOnlyList<GenericImportDocumentDto> documents, CancellationToken ct = default);
+
+    /// <summary>
+    /// Arma el documento SAP de UN grupo de la vista previa exactamente como lo haría
+    /// CreateDocumentsAsync (todas sus líneas, sin lotes) y lo envía en modo SIMULADO
+    /// -- SAP lo valida y lo revierte, no queda registro. Ver
+    /// IGenericImportFormatValidator.TestWithFileAsync.
+    /// </summary>
+    Task<SapSimulationResult> SimulateDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
+        string portalUsername, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este servicio no soporta envío simulado.");
 }

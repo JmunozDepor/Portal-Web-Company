@@ -77,15 +77,15 @@ public sealed class IndexModel : PageModelBaseAdmin
 
     public List<SelectListItem> Modules { get; } =
     [
-        new(GenericImportModule.Sales.ToString(), GenericImportModule.Sales.ToString()),
-        new(GenericImportModule.Purchase.ToString(), GenericImportModule.Purchase.ToString()),
-        new(GenericImportModule.Inventory.ToString(), GenericImportModule.Inventory.ToString()),
+        new(ImportDisplayNames.Of(GenericImportModule.Sales), GenericImportModule.Sales.ToString()),
+        new(ImportDisplayNames.Of(GenericImportModule.Purchase), GenericImportModule.Purchase.ToString()),
+        new(ImportDisplayNames.Of(GenericImportModule.Inventory), GenericImportModule.Inventory.ToString()),
     ];
 
     public List<SelectListItem> LineTypes { get; } =
     [
-        new("Artículo", GenericImportLineType.Item.ToString()),
-        new("Servicio", GenericImportLineType.Service.ToString()),
+        new(ImportDisplayNames.Of(GenericImportLineType.Item), GenericImportLineType.Item.ToString()),
+        new(ImportDisplayNames.Of(GenericImportLineType.Service), GenericImportLineType.Service.ToString()),
     ];
 
     // Antes Input.DocumentType era texto libre ("ej. SalesOrder, PurchaseQuotation,
@@ -130,6 +130,7 @@ public sealed class IndexModel : PageModelBaseAdmin
             if (existing is not null)
             {
                 Input = MapToInput(existing);
+                BusinessPartnerName = await ResolveBusinessPartnerNameAsync(existing.Module, existing.BusinessPartnerCardCode, ct);
             }
         }
         else if (CopyId is { } copyId)
@@ -140,6 +141,34 @@ public sealed class IndexModel : PageModelBaseAdmin
                 Input = MapToInput(existing);
                 Input.Alias = existing.Alias + " (copia)";
             }
+        }
+    }
+
+    /// <summary>
+    /// Nombre del socio de la configuración en edición -- el código queda bloqueado al
+    /// editar (es parte de la identidad Módulo+Tipo+Línea+Socio; para otro socio se usa
+    /// "Copiar", que sí trae el buscador), así que al menos se muestra a quién
+    /// corresponde. Mismo catálogo que OnGetSearchBusinessPartnersAsync.
+    /// </summary>
+    public string? BusinessPartnerName { get; private set; }
+
+    private async Task<string?> ResolveBusinessPartnerNameAsync(GenericImportModule module, string? cardCode, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(cardCode))
+        {
+            return null;
+        }
+
+        try
+        {
+            return module == GenericImportModule.Purchase
+                ? (await _suppliers.GetAsync(cardCode, ct))?.CardName
+                : (await _customers.GetAsync(cardCode, ct))?.CardName;
+        }
+        catch (Exception)
+        {
+            // Solo informativo -- SAP inaccesible no debe impedir editar la configuración.
+            return null;
         }
     }
 
@@ -237,14 +266,19 @@ public sealed class IndexModel : PageModelBaseAdmin
             return new JsonResult(Array.Empty<object>());
         }
 
-        if (module == GenericImportModule.Sales)
+        // Compra -> Proveedor; Venta e Inventario -> Cliente. Mismo criterio que la
+        // validación del motor (GenericImportService.ProcessFileAsync, validBusinessPartners)
+        // y que el selector de socio de Modulo.Inventario (OnGetSearchCustomersAsync).
+        // Antes Inventario buscaba en Proveedores: un cliente (ej. "C76") nunca aparecía
+        // en la ayuda pese a ser el socio que el motor sí acepta.
+        if (module == GenericImportModule.Purchase)
         {
-            var customers = await _customers.ListAsync(new CustomerFilter(text, Limit: 30), ct);
-            return new JsonResult(customers.Select(c => new { c.CardCode, c.CardName }));
+            var suppliers = await _suppliers.ListAsync(new SupplierFilter(text, Limit: 30), ct);
+            return new JsonResult(suppliers.Select(s => new { s.CardCode, s.CardName }));
         }
 
-        var suppliers = await _suppliers.ListAsync(new SupplierFilter(text, Limit: 30), ct);
-        return new JsonResult(suppliers.Select(s => new { s.CardCode, s.CardName }));
+        var customers = await _customers.ListAsync(new CustomerFilter(text, Limit: 30), ct);
+        return new JsonResult(customers.Select(c => new { c.CardCode, c.CardName }));
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(int id, CancellationToken ct)
@@ -394,7 +428,7 @@ public sealed class IndexModel : PageModelBaseAdmin
     private async Task LoadUserFieldOptionsAsync(CancellationToken ct)
     {
         var fields = await _userFields.ListAsync(ct: ct);
-        UserFieldOptions = fields.Select(f => new SelectListItem($"[{f.Module}] {f.Label} ({f.SapFieldName})", f.Id.ToString())).ToList();
+        UserFieldOptions = fields.Select(f => new SelectListItem($"[{ImportDisplayNames.Of(f.Module)}] {f.Label} ({f.SapFieldName})", f.Id.ToString())).ToList();
 
         if (Input.Fields.Count == 0)
         {
@@ -426,7 +460,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         {
             if (await _sales.CanCreateAsync(type, ct))
             {
-                salesTypes.Add(new SelectListItem(type.ToString(), type.ToString()));
+                salesTypes.Add(new SelectListItem(ImportDisplayNames.Of(type), type.ToString()));
             }
         }
         SalesDocumentTypes = salesTypes;
@@ -436,7 +470,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         {
             if (await _purchase.CanCreateAsync(type, ct))
             {
-                purchaseTypes.Add(new SelectListItem(type.ToString(), type.ToString()));
+                purchaseTypes.Add(new SelectListItem(ImportDisplayNames.Of(type), type.ToString()));
             }
         }
         PurchaseDocumentTypes = purchaseTypes;
@@ -446,7 +480,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         {
             if (await _inventory.CanCreateAsync(type, ct))
             {
-                inventoryTypes.Add(new SelectListItem(type.ToString(), type.ToString()));
+                inventoryTypes.Add(new SelectListItem(ImportDisplayNames.Of(type), type.ToString()));
             }
         }
         InventoryDocumentTypes = inventoryTypes;

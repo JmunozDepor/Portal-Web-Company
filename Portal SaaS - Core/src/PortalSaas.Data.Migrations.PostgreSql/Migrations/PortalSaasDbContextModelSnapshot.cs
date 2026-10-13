@@ -446,7 +446,7 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.HasKey("Id")
                         .HasName("pk_generic_import_configs");
 
-                    b.HasIndex("CompanyId", "Module", "DocumentType", "LineType", "BusinessPartnerCardCode")
+                    b.HasIndex("CompanyId", "Module", "DocumentType", "LineType", "BusinessPartnerCardCode", "Alias")
                         .IsUnique()
                         .HasDatabaseName("ix_generic_import_configs_company_id_module_document_type_line");
 

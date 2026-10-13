@@ -36,6 +36,26 @@ public sealed class SalesDocumentService : ISalesDocumentService
 
     public async Task<int> CreateAsync(SalesDocumentType type, string portalUsername, SalesDocumentDto document, CancellationToken ct = default)
     {
+        var (resource, body) = await BuildCreateRequestAsync(type, portalUsername, document, ct);
+
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        var created = await session.PostAsync<SapSalesDocumentHeader>(resource, body, ct)
+            ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
+
+        return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
+    }
+
+    public async Task<SapSimulationResult> SimulateCreateAsync(SalesDocumentType type, string portalUsername, SalesDocumentDto document, CancellationToken ct = default)
+    {
+        var (resource, body) = await BuildCreateRequestAsync(type, portalUsername, document, ct);
+        var session = await _connectionProvider.GetConnectionAsync(ct);
+        return await session.SimulatePostAsync(resource, body, ct);
+    }
+
+    /// <summary>Recurso + cuerpo del POST de creación -- compartido por CreateAsync y SimulateCreateAsync, así la simulación envía exactamente lo mismo.</summary>
+    private async Task<(string Resource, object Body)> BuildCreateRequestAsync(SalesDocumentType type, string portalUsername,
+        SalesDocumentDto document, CancellationToken ct)
+    {
         var entry = SalesDocumentTypeCatalog.Resolve(type);
 
         var udfName = await _traceability.ResolveUserFieldNameAsync(ct);
@@ -55,6 +75,7 @@ public sealed class SalesDocumentService : ISalesDocumentService
             DocDueDate = document.DocDueDate.ToDateTime(TimeOnly.MinValue),
             TaxDate = document.TaxDate.ToDateTime(TimeOnly.MinValue),
             NumAtCard = document.CustomerReferenceNumber,
+            ShipToCode = string.IsNullOrWhiteSpace(document.ShipToCode) ? null : document.ShipToCode.Trim(),
             U_PortalUser = isDefaultUdf ? portalUsername : null,
             AdditionalFields = isDefaultUdf
                 ? document.AdditionalFields
@@ -62,11 +83,7 @@ public sealed class SalesDocumentService : ISalesDocumentService
             DocumentLines = document.Lines.Select(MapLine).ToList(),
         };
 
-        var session = await _connectionProvider.GetConnectionAsync(ct);
-        var created = await session.PostAsync<SapSalesDocumentHeader>(entry.Resource, BuildRequestBody(header, entry), ct)
-            ?? throw new InvalidOperationException("Service Layer no devolvió el documento creado.");
-
-        return created.DocEntry ?? throw new InvalidOperationException("El documento se creó sin DocEntry.");
+        return (entry.Resource, BuildRequestBody(header, entry));
     }
 
     public async Task AddLinesAsync(SalesDocumentType type, int docEntry, IReadOnlyList<SalesDocumentLineDto> newLines, CancellationToken ct = default)

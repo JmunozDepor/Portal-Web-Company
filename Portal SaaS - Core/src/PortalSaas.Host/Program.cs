@@ -255,6 +255,8 @@ builder.Services.AddScoped<IGenericImportUserFieldService, GenericImportUserFiel
 builder.Services.AddScoped<IGenericImportConfigService, GenericImportConfigService>();
 builder.Services.AddSingleton<IGenericImportProgressStore, GenericImportProgressStore>();
 builder.Services.AddScoped<IGenericImportService, GenericImportService>();
+// "Probar formato" (Configuración) -- esquema contra SAP + envío simulado sin crear documentos.
+builder.Services.AddScoped<IGenericImportFormatValidator, GenericImportFormatValidator>();
 builder.Services.AddScoped<IGenericImportValidationRule, PositiveQuantityRule>();
 builder.Services.AddScoped<IGenericImportValidationRule, ValidDiscountPercentRule>();
 builder.Services.AddScoped<IGenericImportValidationRule, CustomerActiveInSapRule>();

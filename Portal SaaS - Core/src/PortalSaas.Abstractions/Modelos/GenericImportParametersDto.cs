@@ -11,9 +11,16 @@ namespace PortalSaas.Abstractions.Modelos;
 /// ICurrentCompanyAccessor (mismo patrón que ISalesDocumentService y el resto de los
 /// motores genéricos: la Company nunca viaja como parámetro explícito, siempre es
 /// ambiente de la sesión). Portado de ParametrosImportacionGenericaDto.
+///
+/// ConfigId (2026-10-09): un mismo socio (o el estándar) puede tener VARIOS formatos
+/// para la misma combinación Módulo+Tipo de documento+Tipo de línea, distinguidos por
+/// Alias -- el wizard los lista (IGenericImportConfigService.ListAvailableAsync) y el
+/// usuario elige uno. Null = resolución automática de siempre (excepción del socio y,
+/// si no hay, el estándar).
 /// </summary>
 public sealed record GenericImportParametersDto(
     GenericImportModule Module,
     string DocumentType,
     GenericImportLineType LineType,
-    string? BusinessPartnerCardCode);
+    string? BusinessPartnerCardCode,
+    int? ConfigId = null);

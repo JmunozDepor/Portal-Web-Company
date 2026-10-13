@@ -20,7 +20,9 @@
 <p class="text-muted">
     Una configuración sin Socio de negocio es el formato ESTÁNDAR de la organización para ese
     Módulo+Tipo de documento+Tipo de línea. Una configuración con Socio de negocio es la
-    excepción de un cliente/proveedor puntual cuyo archivo no sigue el estándar.
+    excepción de un cliente/proveedor puntual cuyo archivo no sigue el estándar. Puede haber
+    varios formatos para la misma combinación (y el mismo socio), distinguidos por su Alias --
+    en Importar documentos se elige cuál usar.
 </p>
 
 @if (Model.SuccessMessage is not null)
@@ -123,6 +125,10 @@
                 @if (Model.EditId is not null)
                 {
                     <input asp-for="Input.BusinessPartnerCardCode" class="form-control" disabled />
+                    @if (Model.BusinessPartnerName is not null)
+                    {
+                        <div class="form-text">@Model.BusinessPartnerName</div>
+                    }
                 }
                 else
                 {
@@ -283,6 +289,11 @@
 
         <button type="submit" class="btn btn-primary">@(Model.EditId is null ? "Crear" : "Guardar")</button>
         <a asp-page="/Configuracion/Index" class="btn btn-outline-secondary">Cancelar</a>
+        @if (Model.EditId is not null)
+        {
+            @* Valida el formato GUARDADO -- guardá antes los cambios que quieras probar. *@
+            <a asp-page="/Configuracion/ProbarFormato" asp-route-id="@Model.EditId" class="btn btn-outline-primary">Probar formato contra SAP</a>
+        }
     </form>
     </div>
 
@@ -312,7 +323,7 @@
         <script src="~/js/catalog-search.js"></script>
         <script>
             // Ver el comentario completo en Pages/Importar/Index.cshtml, mismo criterio
-            // (Cliente si Módulo=Venta, Proveedor en cualquier otro caso).
+            // (Proveedor si Módulo=Compra, Cliente en cualquier otro caso).
             wireCatalogSearch({
                 inputSelector: '.import-config-business-partner-code',
                 datalistId: 'import-config-business-partners-datalist',
@@ -343,15 +354,17 @@
         {
             <tr>
                 <td>@config.Alias</td>
-                <td>@config.Module</td>
-                <td>@config.DocumentType</td>
-                <td>@config.LineType</td>
+                <td>@ImportDisplayNames.Of(config.Module)</td>
+                <td>@ImportDisplayNames.Of(config.DocumentType)</td>
+                <td>@ImportDisplayNames.Of(config.LineType)</td>
                 <td>@(config.BusinessPartnerCardCode ?? "Estándar")</td>
                 <td>@(config.IsActive ? "Sí" : "No")</td>
                 <td>
                     <a asp-page="/Configuracion/Index" asp-route-editId="@config.Id">Editar</a>
                     ·
                     <a asp-page="/Configuracion/Index" asp-route-copyId="@config.Id">Copiar</a>
+                    ·
+                    <a asp-page="/Configuracion/ProbarFormato" asp-route-id="@config.Id">Probar</a>
                     <form method="post" asp-page-handler="Delete" asp-antiforgery="true" style="display:inline" onsubmit="return confirm('¿Eliminar esta configuración?');">
                         <input type="hidden" name="id" value="@config.Id" />
                         <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2">Eliminar</button>

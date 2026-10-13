@@ -92,4 +92,18 @@ public sealed class ModuleDatabaseCredentialNormalizerTests
         await Crear(db).RunAsync(CancellationToken.None);
         Assert.Equal(0, await Crear(db).RunAsync(CancellationToken.None));
     }
+
+    [Fact]
+    public async Task ClaveDeInstanciaVacia_ConservaLaPropiaSinFallar()
+    {
+        await using var db = NuevoContexto();
+        var b = await SembrarAsync(db, "app", "b:clave");
+        var inst = await db.Instances.SingleAsync();
+        inst.TechnicalSecretKey = "";
+        await db.SaveChangesAsync();
+
+        Assert.Equal(0, await Crear(db).RunAsync(CancellationToken.None));
+        var recargado = await db.CompanyModuleConnections.AsNoTracking().SingleAsync(x => x.Id == b.Id);
+        Assert.Equal("b:clave", recargado.TechnicalSecretKey);
+    }
 }

@@ -297,4 +297,51 @@ public sealed class CompanyExternalConnectionServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => Crear(db).TestBindingAsync(e.OrgId, e.CompanyId, "Rendiciones"));
     }
+
+    [Fact]
+    public async Task SetBinding_BaseConInyeccionDeParametros_LanzaYNoGuarda()
+    {
+        await using var db = NuevoContexto();
+        var e = await SembrarAsync(db);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => Crear(db).SetBindingAsync(e.OrgId, e.CompanyId, "Rendiciones",
+                Input(e.InstanceId, "X;Server=evil:30015")));
+
+        Assert.Contains("base de datos", ex.Message);
+        Assert.Empty(await db.CompanyModuleConnections.ToListAsync());
+    }
+
+    [Fact]
+    public async Task SetBinding_UsuarioPropioConCaracteresInvalidos_LanzaYNoGuarda()
+    {
+        await using var db = NuevoContexto();
+        var e = await SembrarAsync(db);
+        var input = new ModuleDatabaseBindingInput
+        {
+            InstanceId = e.InstanceId, DatabaseName = "ps_rendiciones", UseOwnCredentials = true,
+            TechnicalUsername = "app;Server=evil", TechnicalSecretKey = "x",
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => Crear(db).SetBindingAsync(e.OrgId, e.CompanyId, "Rendiciones", input));
+        Assert.Empty(await db.CompanyModuleConnections.ToListAsync());
+    }
+
+    [Fact]
+    public async Task TestBinding_InstanciaInactiva_DevuelveErrorSinConectar()
+    {
+        await using var db = NuevoContexto();
+        var e = await SembrarAsync(db);
+        var svc = Crear(db);
+        await svc.SetBindingAsync(e.OrgId, e.CompanyId, "Rendiciones", Input(e.InstanceId));
+        (await db.Instances.SingleAsync(i => i.Id == e.InstanceId)).IsActive = false;
+        await db.SaveChangesAsync();
+
+        var r = await svc.TestBindingAsync(e.OrgId, e.CompanyId, "Rendiciones");
+
+        Assert.False(r.Ok);
+        Assert.Equal("La instancia 'pg' está inactiva.", r.Error);
+        Assert.Equal(0L, r.ElapsedMs);
+    }
 }

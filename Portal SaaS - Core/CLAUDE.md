@@ -2844,9 +2844,12 @@ la sección del 28 ago 2026.
   (grilla módulo -> instancia + base) y `Edit/{companyId}/{moduleCode}`; self-service
   `/organizacion/conexiones-externas` (+ `/editar/{moduleCode}`). El tenant elige entre
   instancias existentes pero no las crea.
-- **`ModuleDatabaseCredentialNormalizer`**: corre al arrancar el Host y deja las
-  credenciales de los bindings consistentes (todo-o-nada); loguea `ERR` si algo no
-  se puede normalizar.
+- **`ModuleDatabaseCredentialNormalizer`**: corre al arrancar el Host y borra solo las
+  credenciales propias cuyo usuario + clave descifrada son iguales a los de la
+  instancia (AES-GCM impide compararlas en SQL). Si no se puede descifrar, loguea un
+  `Warning` y conserva la credencial; omite las que tienen algún texto cifrado vacío.
+  Solo loguea una línea `Information` ("Normalizador: N credencial(es)...") cuando N>0;
+  nunca loguea `ERR` salvo que todo el paso lance una excepción.
 - **Migración `InstanceAsModuleDatabaseServer`** (Postgres + SQL Server): transforma
   datos -- agrupa las conexiones viejas en instancias (nombre `<engine host:port user> #n`),
   descarta bindings de conexiones inactivas, `http_api` o `Purpose` distinto de
@@ -2858,8 +2861,10 @@ la sección del 28 ago 2026.
   AuditoriaInventario (24) en verde. Verificación manual en el Host: pendiente (checklist
   entregado al usuario).
 - **Pendiente de despliegue (Task 9)**: pre-chequeos, backup, aplicar la migración a las
-  4 bases Postgres reales y desplegar Host + los 5 plugins **juntos** (el Host nuevo
-  no resuelve bases con plugins viejos ni viceversa).
+  4 bases Postgres reales y desplegar Host + los 5 plugins **juntos** (compatibilidad: las DLL
+  de plugins viejas siguen resolviendo su base; solo desaparecen de la grilla de
+  Conexiones externas y no se pueden editar hasta redesplegarlas con
+  `RequiresExternalDatabase`).
 
 ## Estilo de código
 

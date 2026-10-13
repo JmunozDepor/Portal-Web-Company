@@ -37,6 +37,11 @@ public sealed class ModuleDatabaseCredentialNormalizer(
                 continue;
             }
 
+            if (string.IsNullOrEmpty(b.TechnicalSecretKey) || string.IsNullOrEmpty(b.Instance.TechnicalSecretKey))
+            {
+                continue;
+            }
+
             string propia;
             string deInstancia;
             try

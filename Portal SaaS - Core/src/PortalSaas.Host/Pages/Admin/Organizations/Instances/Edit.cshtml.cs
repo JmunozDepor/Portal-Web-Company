@@ -75,6 +75,14 @@ public class EditModel : PageModel
             return Page();
         }
 
+        if (!InstanceEngineType.IsSap(Input.EngineType)
+            && await _db.Companies.AnyAsync(c => c.InstanceId == instance.Id))
+        {
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.EngineType)}",
+                $"No se puede cambiar el motor a {Input.EngineType}: hay compañías SAP sobre esta instancia.");
+            return Page();
+        }
+
         instance.Name = name;
         instance.Host = Input.Host.Trim();
         instance.Port = Input.Port;

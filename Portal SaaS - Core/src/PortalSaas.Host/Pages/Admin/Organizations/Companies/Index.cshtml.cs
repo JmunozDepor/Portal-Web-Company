@@ -45,7 +45,8 @@ public class IndexModel : PageModel
             .Where(c => c.OrganizationId == organizationId)
             .OrderBy(c => c.Code)
             .ToListAsync();
-        TieneInstancias = await _db.Instances.AnyAsync(i => i.OrganizationId == organizationId);
+        TieneInstancias = await _db.Instances.AnyAsync(i => i.OrganizationId == organizationId
+            && (i.EngineType == InstanceEngineType.Hana || i.EngineType == InstanceEngineType.SqlServer));
 
         return Page();
     }

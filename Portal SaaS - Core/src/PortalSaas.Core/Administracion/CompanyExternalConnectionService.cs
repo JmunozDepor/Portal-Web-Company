@@ -78,6 +78,9 @@ public sealed class CompanyExternalConnectionService : ICompanyExternalConnectio
         return Map(modulo, binding);
     }
 
+    private static readonly System.Text.RegularExpressions.Regex NombreTecnicoValido =
+        new(@"^[A-Za-z0-9_.\-]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     public async Task SetBindingAsync(Guid organizationId, Guid companyId, string moduleCode, ModuleDatabaseBindingInput input, CancellationToken ct = default)
     {
         await EnsureCompanyAsync(organizationId, companyId, ct);
@@ -91,6 +94,11 @@ public sealed class CompanyExternalConnectionService : ICompanyExternalConnectio
         if (string.IsNullOrWhiteSpace(databaseName))
         {
             throw new InvalidOperationException("La base de datos es obligatoria.");
+        }
+
+        if (!NombreTecnicoValido.IsMatch(databaseName))
+        {
+            throw new InvalidOperationException("La base de datos solo puede contener letras, números, '_', '-' y '.'.");
         }
 
         var instanciaValida = await _db.Instances.AsNoTracking()
@@ -111,6 +119,11 @@ public sealed class CompanyExternalConnectionService : ICompanyExternalConnectio
             if (string.IsNullOrWhiteSpace(usuario))
             {
                 throw new InvalidOperationException("Ingresa el usuario propio del módulo.");
+            }
+
+            if (!NombreTecnicoValido.IsMatch(usuario))
+            {
+                throw new InvalidOperationException("El usuario propio solo puede contener letras, números, '_', '-' y '.'.");
             }
 
             if (!string.IsNullOrWhiteSpace(input.TechnicalSecretKey))
@@ -165,6 +178,11 @@ public sealed class CompanyExternalConnectionService : ICompanyExternalConnectio
             .Include(b => b.Instance)
             .FirstOrDefaultAsync(b => b.CompanyId == companyId && b.ModuleCode == moduleCode, ct)
             ?? throw new InvalidOperationException("El módulo no tiene una base de datos asignada en esta compañía.");
+
+        if (!binding.Instance.IsActive)
+        {
+            return new ConnectionTestResultDto(false, $"La instancia '{binding.Instance.Name}' está inactiva.", 0);
+        }
 
         var (usuario, password) = ModuleDatabaseCredentials.Resolve(binding, _secretos);
 

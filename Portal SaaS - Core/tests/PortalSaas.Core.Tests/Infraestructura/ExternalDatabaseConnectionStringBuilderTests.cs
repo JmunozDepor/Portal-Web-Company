@@ -47,6 +47,30 @@ public sealed class ExternalDatabaseConnectionStringBuilderTests
     }
 
     [Fact]
+    public void Hana_RechazaSeparadoresEnLaBase()
+    {
+        Assert.Throws<InvalidOperationException>(() => ExternalDatabaseConnectionStringBuilder.Build(
+            InstanceEngineType.Hana, "hana.local", 30015, "X;Server=evil:30015", "app", "secreto"));
+    }
+
+    [Fact]
+    public void Hana_RechazaPuntoYComaEnLaClave()
+    {
+        Assert.Throws<InvalidOperationException>(() => ExternalDatabaseConnectionStringBuilder.Build(
+            InstanceEngineType.Hana, "hana.local", 30015, "SBO", "app", "a;Server=evil"));
+    }
+
+    [Fact]
+    public void Hana_SinBase_OmiteCurrentSchema()
+    {
+        var cs = ExternalDatabaseConnectionStringBuilder.Build(
+            InstanceEngineType.Hana, "hana.local", 30015, "", "app", "secreto");
+
+        Assert.DoesNotContain("Current Schema", cs);
+        Assert.Equal("Server=hana.local:30015;UserID=app;Password=secreto", cs);
+    }
+
+    [Fact]
     public void MotorDesconocido_Lanza()
     {
         var ex = Assert.Throws<InvalidOperationException>(() =>

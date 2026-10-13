@@ -206,7 +206,7 @@ Reglas duras que se derivan de esto:
   externas y nadie puede asignarle base.
 - La conexión se resuelve con `ResolveConnectionAsync(ModuleCode, companyId)`
   (`companyId` siempre obligatorio, sin fallback a nivel organización). Resuelve
-  contra `CompanyModuleConnection` (`company_module_connection`): una fila por
+  contra `CompanyModuleConnection` (`company_module_connections`): una fila por
   `(CompanyId, ModuleCode)` = `InstanceId` + `DatabaseName` + credencial propia
   opcional (si no la trae, usa la técnica de la `Instance`). La `Instance` es el
   servidor de BD (`postgres`, `sqlserver` o `hana`). Ya **no existen**

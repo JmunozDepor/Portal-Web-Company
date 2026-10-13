@@ -2918,6 +2918,32 @@ WHERE NOT EXISTS (SELECT 1 FROM company_module_connections b
 SELECT DISTINCT c.organization_id, x.tipo, x.host, x.port, x.technical_username
 FROM company_external_connections x JOIN companies c ON c.id = x.company_id
 WHERE x.tipo IN ('db_postgres', 'db_sqlserver', 'db_hana') AND x.is_active = TRUE;
+
+-- d) Largo de las claves cifradas existentes. Esperado: <= 200 (instances.technical_secret_key es varchar(200)).
+SELECT max(length(technical_secret_key)) FROM company_external_connections;
+
+-- e) Instancia reutilizada pero inactiva: algún servidor db_* activo coincide con una instancia ya
+--    existente con is_active = FALSE (la migración la reutilizaría y el binding quedaría sobre una
+--    instancia inactiva). Esperado: 0 filas.
+SELECT s.organization_id, s.engine_type, s.host, s.port, s.technical_username, i.id AS instance_id, i.name
+FROM (
+    SELECT DISTINCT c.organization_id,
+           CASE x.tipo WHEN 'db_postgres' THEN 'postgres' WHEN 'db_sqlserver' THEN 'sqlserver' ELSE 'hana' END AS engine_type,
+           COALESCE(x.host, '') AS host,
+           COALESCE(x.port, CASE x.tipo WHEN 'db_postgres' THEN 5432 WHEN 'db_sqlserver' THEN 1433 ELSE 30015 END) AS port,
+           COALESCE(x.technical_username, '') AS technical_username
+    FROM company_external_connections x JOIN companies c ON c.id = x.company_id
+    WHERE x.tipo IN ('db_postgres', 'db_sqlserver', 'db_hana') AND x.is_active = TRUE
+) s
+JOIN instances i ON i.organization_id = s.organization_id AND i.engine_type = s.engine_type
+                AND i.host = s.host AND i.port = s.port AND i.technical_username = s.technical_username
+WHERE i.is_active = FALSE;
+
+-- f) Bindings Default de un módulo que no declara base externa: quedarían invisibles en la grilla.
+--    Esperado: 0 filas (si hay, resolver con el usuario antes de migrar).
+SELECT b.company_id, b.module_code FROM company_module_connections b
+WHERE b.purpose = 'Default'
+  AND b.module_code NOT IN ('Rendiciones', 'GestionGastos', 'SellOut', 'AuditoriaInventario', 'Wms');
 ```
 
 Si b) devuelve filas: **detenerse**. Hay que resolverlas a mano con el usuario antes de migrar.

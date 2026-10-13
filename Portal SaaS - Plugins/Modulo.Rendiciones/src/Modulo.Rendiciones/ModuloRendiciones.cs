@@ -24,6 +24,9 @@ public sealed class ModuloRendiciones : IModuloPortal
 {
     public string ModuleCode => "Rendiciones";
     public string Name => "Rendición de Gastos";
+
+    /// <summary>Base externa propia (instancia + base) -- ver IModuloPortal.RequiresExternalDatabase.</summary>
+    public bool RequiresExternalDatabase => true;
     public string Version => "1.0.0";
 
     // Trae wwwroot/css/rendiciones.css propio (badges de estado, tarjetas de lista,

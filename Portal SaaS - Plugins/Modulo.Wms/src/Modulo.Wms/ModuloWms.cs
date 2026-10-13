@@ -20,6 +20,9 @@ public sealed class ModuloWms : IModuloPortal
 {
     public string ModuleCode => "Wms";
     public string Name => "Integración WMS";
+
+    /// <summary>Base externa propia (instancia + base) -- ver IModuloPortal.RequiresExternalDatabase.</summary>
+    public bool RequiresExternalDatabase => true;
     public string Version => "1.0.0";
 
     public bool ServesOwnWwwRoot => false;

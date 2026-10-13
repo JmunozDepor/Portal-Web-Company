@@ -27,6 +27,9 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
 {
     public string ModuleCode => "AuditoriaInventario";
     public string Name => "Auditoría de Inventario";
+
+    /// <summary>Base externa propia (instancia + base) -- ver IModuloPortal.RequiresExternalDatabase.</summary>
+    public bool RequiresExternalDatabase => true;
     public string Version => "1.0.0";
 
     public IEnumerable<MenuItemDefinition> GetMenu()

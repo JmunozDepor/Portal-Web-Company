@@ -25,6 +25,9 @@ public sealed class ModuloSellOut : IModuloPortal
 {
     public string ModuleCode => "SellOut";
     public string Name => "Sell Out";
+
+    /// <summary>Base externa propia (instancia + base) -- ver IModuloPortal.RequiresExternalDatabase.</summary>
+    public bool RequiresExternalDatabase => true;
     public string Version => "1.0.0";
 
     public IEnumerable<MenuItemDefinition> GetMenu()

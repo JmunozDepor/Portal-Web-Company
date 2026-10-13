@@ -2515,6 +2515,11 @@ que lo usa.
 
 ## Catálogo general de conexiones externas por compañía -- 28 ago 2026
 
+> **Reemplazado 2026-10-13** -- este modelo (catálogo `company_external_connections`,
+> `Purpose`, `http_api`, `LegacyExternalConnectionBackfill`, `ExternalConnectionRequirements`)
+> ya no existe. Ver la sección "Instancia como servidor de BD de módulos -- 13 oct 2026"
+> al final de este archivo. Lo de abajo queda solo como historial.
+
 Reemplaza el modelo `module_external_connections` de la entrega anterior (una fila
 `(companyId, moduleCode)` que repetía host/puerto/base/usuario/secreto por cada módulo)
 por un **catálogo por compañía + binding**. Spec:
@@ -2813,6 +2818,48 @@ que esa página).
   tests nuevos dedicados por el motivo ya explicado). Sin verificación E2E contra
   Postgres/correo real en esta entrega -- mismo estado que otras entregas de
   composición de servicios ya probados por separado.
+
+## Instancia como servidor de BD de módulos -- 13 oct 2026
+
+Rama `feat/instancia-bd-modulos`. Reemplaza el catálogo de conexiones por compañía de
+la sección del 28 ago 2026.
+
+- **Modelo**: `Instance` es el servidor de BD genérico, con motores `hana`, `sqlserver`
+  y `postgres`. Las `Company` solo se crean sobre instancias `hana`/`sqlserver` (SAP);
+  `postgres` es solo para bases de módulos. `CompanyModuleConnection` =
+  `InstanceId` + `DatabaseName` + credencial técnica propia opcional
+  (`TechnicalUsername`/`TechnicalSecretKey`, **ambas o ninguna**; si faltan se usa la de
+  la instancia). Relación 1 a 1: único `(CompanyId, ModuleCode)`.
+- **Eliminado**: tablas `company_external_connections` y `module_external_connections`,
+  `Purpose`, `ExternalConnectionRequirements`/`ExternalConnectionRequirement`/
+  `ExternalConnectionKind`, `ExternalConnectionType` (incluido `http_api`),
+  `LegacyExternalConnectionBackfill` y el overload de `ResolveConnectionAsync` con
+  `purpose`. Queda solo `ResolveConnectionAsync(moduleCode, companyId)`.
+- **Regla dura**: un plugin con base propia **debe** declarar
+  `RequiresExternalDatabase => true` en su `IModuloPortal` (propiedad nueva, default
+  `false`); si no, no aparece en Conexiones externas. Declaran hoy: Rendiciones,
+  GestionDistribucionGastos, SellOut, AuditoriaInventario y Wms. Compras, Ventas,
+  Inventario, Administración e Importación Genérica no.
+- **Pantallas**: `/Admin/Organizations/Companies/ExternalConnections/{companyId}`
+  (grilla módulo -> instancia + base) y `Edit/{companyId}/{moduleCode}`; self-service
+  `/organizacion/conexiones-externas` (+ `/editar/{moduleCode}`). El tenant elige entre
+  instancias existentes pero no las crea.
+- **`ModuleDatabaseCredentialNormalizer`**: corre al arrancar el Host y deja las
+  credenciales de los bindings consistentes (todo-o-nada); loguea `ERR` si algo no
+  se puede normalizar.
+- **Migración `InstanceAsModuleDatabaseServer`** (Postgres + SQL Server): transforma
+  datos -- agrupa las conexiones viejas en instancias (nombre `<engine host:port user> #n`),
+  descarta bindings de conexiones inactivas, `http_api` o `Purpose` distinto de
+  `Default`. **`Down()` no es reversible**: hacer backup antes. Verificada sobre
+  contenedores desechables Postgres 16 y SQL Server 2022 con
+  `scripts/verificacion-instance-as-module-db.sql` / `.sqlserver.sql`.
+- **Verificado**: build de la solución y de los 5 plugins 0 errores;
+  `PortalSaas.Core.Tests` 330/330; tests de Wms (120), Rendiciones (92) y
+  AuditoriaInventario (24) en verde. Verificación manual en el Host: pendiente (checklist
+  entregado al usuario).
+- **Pendiente de despliegue (Task 9)**: pre-chequeos, backup, aplicar la migración a las
+  4 bases Postgres reales y desplegar Host + los 5 plugins **juntos** (el Host nuevo
+  no resuelve bases con plugins viejos ni viceversa).
 
 ## Estilo de código
 

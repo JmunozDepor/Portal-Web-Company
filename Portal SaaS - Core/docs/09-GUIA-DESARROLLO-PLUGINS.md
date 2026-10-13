@@ -156,7 +156,7 @@ resuelve esto — primer consumidor real: `Modulo.Rendiciones`. Contrato:
 
 ```csharp
 Task<ExternalDatabaseConnection> ResolveConnectionAsync(
-    string moduleCode, Guid organizationId, Guid? companyId, CancellationToken ct = default);
+    string moduleCode, Guid companyId, CancellationToken ct = default);
 ```
 
 `ExternalDatabaseConnection` trae `EngineType` (`"postgres"` | `"sqlserver"`,
@@ -170,9 +170,8 @@ services.AddDbContext<MiPluginDbContext>((sp, options) =>
     var userContext = sp.GetRequiredService<ICurrentUserContext>();
     var companyAccessor = sp.GetRequiredService<ICurrentCompanyAccessor>();
     var externalDb = sp.GetRequiredService<IExternalDatabaseConnectionService>();
-    var companyId = companyAccessor.HasCompany ? companyAccessor.CompanyId : (Guid?)null;
     var connection = externalDb
-        .ResolveConnectionAsync(ModuleCode, userContext.OrganizationId, companyId)
+        .ResolveConnectionAsync(ModuleCode, companyAccessor.CompanyId)
         .GetAwaiter().GetResult();
 
     switch (connection.EngineType)
@@ -194,12 +193,21 @@ Reglas duras que se derivan de esto:
   (agnóstico, EF Core lo traduce a `decimal`/`numeric` según corresponda),
   mismo criterio que ya exige `PortalSaasDbContext` para la base compartida
   (nada de `gen_random_uuid()`/`HasDefaultValueSql`/tipos de un solo motor).
-- La conexión se resuelve contra `ModuleExternalConnection` (tabla
-  `module_external_connections`, base propia de la plataforma) — fila puntual
-  por `(organization_id, company_id, module_code)` o fila global de la
-  organización (`company_id IS NULL`) como fallback. Se administra hoy solo
-  por acceso directo a la base (sin pantalla de `/Admin/*` todavía — mismo
-  estado inicial que tuvieron `Plans`/`Subscriptions` antes de su UI).
+- **Declarar la base propia**: un plugin con base externa **debe** declarar
+  `public bool RequiresExternalDatabase => true;` en su `IModuloPortal`
+  (default `false`); si no lo hace, no aparece en la pantalla de Conexiones
+  externas y nadie puede asignarle base.
+- La conexión se resuelve con `ResolveConnectionAsync(ModuleCode, companyId)`
+  (`companyId` siempre obligatorio, sin fallback a nivel organización). Resuelve
+  contra `CompanyModuleConnection` (`company_module_connection`): una fila por
+  `(CompanyId, ModuleCode)` = `InstanceId` + `DatabaseName` + credencial propia
+  opcional (si no la trae, usa la técnica de la `Instance`). La `Instance` es el
+  servidor de BD (`postgres`, `sqlserver` o `hana`). Ya **no existen**
+  `Purpose`, `ExternalConnectionRequirements` ni `http_api`.
+- Se administra en `/Admin/Organizations/Companies/ExternalConnections/{companyId}`
+  (backoffice) y en `/organizacion/conexiones-externas` (tenant; elige entre las
+  instancias existentes, no las crea). Si no hay asignación, el resolver lanza
+  `InvalidOperationException` con un mensaje presentable.
 
 ## 7. Empaquetado y publicación — mismo target en interno y externo
 

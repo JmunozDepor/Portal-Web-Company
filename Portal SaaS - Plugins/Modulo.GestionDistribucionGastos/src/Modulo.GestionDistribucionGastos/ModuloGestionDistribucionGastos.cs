@@ -36,6 +36,9 @@ public sealed class ModuloGestionDistribucionGastos : IModuloPortal
 {
     public string ModuleCode => "GestionGastos";
     public string Name => "Distribución de Centros de Costo";
+
+    /// <summary>Base externa propia (instancia + base) -- ver IModuloPortal.RequiresExternalDatabase.</summary>
+    public bool RequiresExternalDatabase => true;
     public string Version => "1.0.0";
 
     // Trae su propio wwwroot/css/gestiongastos.css (clases .card/.badge/.metric-grid

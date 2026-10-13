@@ -24,6 +24,16 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
             migrationBuilder.AddColumn<string>(name: "technical_username", table: "company_module_connections", type: "character varying(100)", maxLength: 100, nullable: true);
             migrationBuilder.AddColumn<string>(name: "technical_secret_key", table: "company_module_connections", type: "character varying(500)", maxLength: 500, nullable: true);
 
+            // 2b) Alinear la secuencia de instances.id con el máximo existente: en ps_comdepor
+            //     (13 oct 2026) las instancias se habían cargado con id explícito y la secuencia
+            //     quedó atrás (last_value=1, max=2) -- el INSERT de abajo chocaba con pk_instances.
+            //     is_called=false cuando la tabla está vacía, para que el primer id siga siendo 1.
+            migrationBuilder.Sql(@"
+SELECT setval(pg_get_serial_sequence('instances', 'id'),
+              COALESCE((SELECT MAX(id) FROM instances), 1),
+              EXISTS (SELECT 1 FROM instances));
+");
+
             // 3) Una instancia por servidor distinto (org, motor, host, puerto, usuario) de
             //    las conexiones de BD ACTIVAS; si ya hay una instancia igual, se reutiliza.
             migrationBuilder.Sql(@"

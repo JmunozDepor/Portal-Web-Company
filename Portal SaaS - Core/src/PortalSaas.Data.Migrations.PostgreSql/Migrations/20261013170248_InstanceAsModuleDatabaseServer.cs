@@ -1,6 +1,5 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -30,18 +29,19 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
             migrationBuilder.Sql(@"
 INSERT INTO instances (organization_id, name, host, port, engine_type, technical_username, technical_secret_key, is_active)
 SELECT g.organization_id,
-       LEFT(CONCAT(g.engine_type, ' ', g.host, ':', g.port, ' ', g.technical_username), 50),
+       CONCAT(LEFT(CONCAT(g.engine_type, ' ', g.host, ':', g.port, ' ', g.technical_username), 42), ' #', g.rn),
        g.host, g.port, g.engine_type, g.technical_username, g.technical_secret_key, TRUE
 FROM (
     SELECT s.organization_id, s.engine_type, s.host, s.port, s.technical_username,
-           MIN(s.technical_secret_key) AS technical_secret_key
+           COALESCE(MIN(NULLIF(s.technical_secret_key, '')), '') AS technical_secret_key,
+           ROW_NUMBER() OVER (PARTITION BY s.organization_id ORDER BY s.engine_type, s.host, s.port, s.technical_username) AS rn
     FROM (
         SELECT c.organization_id,
                CASE x.tipo WHEN 'db_postgres' THEN 'postgres' WHEN 'db_sqlserver' THEN 'sqlserver' ELSE 'hana' END AS engine_type,
                COALESCE(x.host, '') AS host,
                COALESCE(x.port, CASE x.tipo WHEN 'db_postgres' THEN 5432 WHEN 'db_sqlserver' THEN 1433 ELSE 30015 END) AS port,
                COALESCE(x.technical_username, '') AS technical_username,
-               COALESCE(x.technical_secret_key, '') AS technical_secret_key
+               x.technical_secret_key AS technical_secret_key
         FROM company_external_connections x
         JOIN companies c ON c.id = x.company_id
         WHERE x.tipo IN ('db_postgres', 'db_sqlserver', 'db_hana') AND x.is_active = TRUE
@@ -61,8 +61,8 @@ WHERE NOT EXISTS (
 UPDATE company_module_connections b
 SET instance_id = i.id,
     database_name = COALESCE(x.database_name, ''),
-    technical_username = CASE WHEN COALESCE(x.technical_secret_key, '') = i.technical_secret_key THEN NULL ELSE COALESCE(x.technical_username, '') END,
-    technical_secret_key = CASE WHEN COALESCE(x.technical_secret_key, '') = i.technical_secret_key THEN NULL ELSE x.technical_secret_key END
+    technical_username = CASE WHEN NULLIF(x.technical_secret_key, '') IS NOT NULL AND x.technical_secret_key <> i.technical_secret_key THEN COALESCE(x.technical_username, '') ELSE NULL END,
+    technical_secret_key = CASE WHEN NULLIF(x.technical_secret_key, '') IS NOT NULL AND x.technical_secret_key <> i.technical_secret_key THEN x.technical_secret_key ELSE NULL END
 FROM company_external_connections x
 JOIN companies c ON c.id = x.company_id
 JOIN instances i

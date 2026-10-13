@@ -25,18 +25,19 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
             migrationBuilder.Sql(@"
 INSERT INTO instances (organization_id, name, host, port, engine_type, technical_username, technical_secret_key, is_active)
 SELECT g.organization_id,
-       LEFT(CONCAT(g.engine_type, ' ', g.host, ':', g.port, ' ', g.technical_username), 50),
+       CONCAT(LEFT(CONCAT(g.engine_type, ' ', g.host, ':', g.port, ' ', g.technical_username), 42), ' #', g.rn),
        g.host, g.port, g.engine_type, g.technical_username, g.technical_secret_key, 1
 FROM (
     SELECT s.organization_id, s.engine_type, s.host, s.port, s.technical_username,
-           MIN(s.technical_secret_key) AS technical_secret_key
+           COALESCE(MIN(NULLIF(s.technical_secret_key, '')), '') AS technical_secret_key,
+           ROW_NUMBER() OVER (PARTITION BY s.organization_id ORDER BY s.engine_type, s.host, s.port, s.technical_username) AS rn
     FROM (
         SELECT c.organization_id,
                CASE x.tipo WHEN 'db_postgres' THEN 'postgres' WHEN 'db_sqlserver' THEN 'sqlserver' ELSE 'hana' END AS engine_type,
                COALESCE(x.host, '') AS host,
                COALESCE(x.port, CASE x.tipo WHEN 'db_postgres' THEN 5432 WHEN 'db_sqlserver' THEN 1433 ELSE 30015 END) AS port,
                COALESCE(x.technical_username, '') AS technical_username,
-               COALESCE(x.technical_secret_key, '') AS technical_secret_key
+               x.technical_secret_key AS technical_secret_key
         FROM company_external_connections x
         JOIN companies c ON c.id = x.company_id
         WHERE x.tipo IN ('db_postgres', 'db_sqlserver', 'db_hana') AND x.is_active = 1
@@ -53,8 +54,8 @@ WHERE NOT EXISTS (
 UPDATE b
 SET b.instance_id = i.id,
     b.database_name = COALESCE(x.database_name, ''),
-    b.technical_username = CASE WHEN COALESCE(x.technical_secret_key, '') = i.technical_secret_key THEN NULL ELSE COALESCE(x.technical_username, '') END,
-    b.technical_secret_key = CASE WHEN COALESCE(x.technical_secret_key, '') = i.technical_secret_key THEN NULL ELSE x.technical_secret_key END
+    b.technical_username = CASE WHEN NULLIF(x.technical_secret_key, '') IS NOT NULL AND x.technical_secret_key <> i.technical_secret_key THEN COALESCE(x.technical_username, '') ELSE NULL END,
+    b.technical_secret_key = CASE WHEN NULLIF(x.technical_secret_key, '') IS NOT NULL AND x.technical_secret_key <> i.technical_secret_key THEN x.technical_secret_key ELSE NULL END
 FROM company_module_connections b
 JOIN company_external_connections x ON x.id = b.connection_id
 JOIN companies c ON c.id = x.company_id

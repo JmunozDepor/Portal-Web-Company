@@ -18,7 +18,7 @@ namespace Modulo.SellOut;
 /// docs/09-GUIA-DESARROLLO-PLUGINS.md §6.1). Aunque CLSELLOUT sigue siendo global a
 /// Comercial Depor (sin EMPRESA_CODIGO en sus tablas, ver SellOutDbContext), la
 /// RESOLUCIÓN de la connection string ahora exige una Company activa igual -- en la
-/// práctica se configura la misma fila de ModuleExternalConnection para cada Company
+/// práctica se asigna la misma Instance + base (Conexiones externas) a cada Company
 /// de Comercial Depor que use este módulo.
 /// </summary>
 public sealed class ModuloSellOut : IModuloPortal

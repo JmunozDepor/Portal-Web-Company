@@ -159,17 +159,24 @@ Task<ExternalDatabaseConnection> ResolveConnectionAsync(
     string moduleCode, Guid companyId, CancellationToken ct = default);
 ```
 
-`ExternalDatabaseConnection` trae `EngineType` (`"postgres"` | `"sqlserver"`,
-ver `ExternalDatabaseEngineType`) + `ConnectionString` ya armado — el plugin
-decide en **runtime**, no en tiempo de compilación, con cuál proveedor de EF
-Core registrar su `DbContext`:
+`ExternalDatabaseConnection` trae `EngineType` (el motor de la `Instance`:
+`"postgres"`, `"sqlserver"` o `"hana"`, ver `ExternalDatabaseEngineType`) +
+`ConnectionString` ya armado — el plugin decide en **runtime**, no en tiempo de
+compilación, con cuál proveedor de EF Core registrar su `DbContext` (`hana` solo
+si el plugin lo soporta; si no, rechazarlo en el `default`):
 
 ```csharp
 services.AddDbContext<MiPluginDbContext>((sp, options) =>
 {
-    var userContext = sp.GetRequiredService<ICurrentUserContext>();
     var companyAccessor = sp.GetRequiredService<ICurrentCompanyAccessor>();
     var externalDb = sp.GetRequiredService<IExternalDatabaseConnectionService>();
+
+    if (!companyAccessor.HasCompany)
+    {
+        throw new InvalidOperationException(
+            "El módulo requiere una compañía activa en la sesión -- seleccioná una compañía antes de continuar.");
+    }
+
     var connection = externalDb
         .ResolveConnectionAsync(ModuleCode, companyAccessor.CompanyId)
         .GetAwaiter().GetResult();
@@ -206,7 +213,8 @@ Reglas duras que se derivan de esto:
   `Purpose`, `ExternalConnectionRequirements` ni `http_api`.
 - Se administra en `/Admin/Organizations/Companies/ExternalConnections/{companyId}`
   (backoffice) y en `/organizacion/conexiones-externas` (tenant; elige entre las
-  instancias existentes, no las crea). Si no hay asignación, el resolver lanza
+  instancias existentes, no las crea). Si el módulo no tiene base asignada para
+  la compañía, o la instancia asignada está inactiva, el resolver lanza
   `InvalidOperationException` con un mensaje presentable.
 
 ## 7. Empaquetado y publicación — mismo target en interno y externo

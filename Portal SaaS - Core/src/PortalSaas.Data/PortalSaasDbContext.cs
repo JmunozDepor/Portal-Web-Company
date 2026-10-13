@@ -38,8 +38,6 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<OnPremiseLicense> OnPremiseLicenses => Set<OnPremiseLicense>();
     public DbSet<OnPremiseLicenseConflict> OnPremiseLicenseConflicts => Set<OnPremiseLicenseConflict>();
     public DbSet<Instance> Instances => Set<Instance>();
-    public DbSet<ModuleExternalConnection> ModuleExternalConnections => Set<ModuleExternalConnection>();
-    public DbSet<CompanyExternalConnection> CompanyExternalConnections => Set<CompanyExternalConnection>();
     public DbSet<CompanyModuleConnection> CompanyModuleConnections => Set<CompanyModuleConnection>();
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<User> Users => Set<User>();
@@ -231,7 +229,7 @@ public sealed class PortalSaasDbContext : DbContext
         modelBuilder.Entity<Instance>(entity =>
         {
             entity.ToTable("instances", t => t.HasCheckConstraint("ck_instances_engine_type",
-                $"engine_type in ('{InstanceEngineType.Hana}', '{InstanceEngineType.SqlServer}')"));
+                $"engine_type in ('{InstanceEngineType.Hana}', '{InstanceEngineType.SqlServer}', '{InstanceEngineType.Postgres}')"));
             entity.HasIndex(e => new { e.OrganizationId, e.Name }).IsUnique();
             entity.Property(e => e.Name).HasMaxLength(50);
             entity.Property(e => e.Host).HasMaxLength(200);
@@ -241,60 +239,24 @@ public sealed class PortalSaasDbContext : DbContext
             entity.HasOne(e => e.Organization).WithMany(o => o.Instances).HasForeignKey(e => e.OrganizationId);
         });
 
-        modelBuilder.Entity<ModuleExternalConnection>(entity =>
-        {
-            entity.ToTable("module_external_connections", t => t.HasCheckConstraint(
-                "ck_module_external_connections_engine_type",
-                $"engine_type in ('{ModuleExternalConnectionEngineType.Postgres}', '{ModuleExternalConnectionEngineType.SqlServer}')"));
-            // CompanyId siempre obligatorio, sin fila global de organización (regla
-            // dura, ver ModuleExternalConnection) -- único índice real: no puede haber
-            // dos filas para la misma (CompanyId, ModuleCode).
-            entity.HasIndex(e => new { e.CompanyId, e.ModuleCode })
-                .IsUnique()
-                .HasDatabaseName("uq_module_external_connections_company_module");
-            entity.Property(e => e.ModuleCode).HasMaxLength(50);
-            entity.Property(e => e.EngineType).HasMaxLength(20);
-            entity.Property(e => e.Host).HasMaxLength(200);
-            entity.Property(e => e.DatabaseName).HasMaxLength(100);
-            entity.Property(e => e.TechnicalUsername).HasMaxLength(100);
-            entity.Property(e => e.TechnicalSecretKey).HasMaxLength(200);
-            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId);
-        });
-
-        modelBuilder.Entity<CompanyExternalConnection>(entity =>
-        {
-            entity.ToTable("company_external_connections", t => t.HasCheckConstraint(
-                "ck_company_external_connections_tipo",
-                "tipo in ('db_postgres', 'db_sqlserver', 'db_hana', 'http_api')"));
-            entity.HasIndex(e => new { e.CompanyId, e.Nombre })
-                .IsUnique()
-                .HasDatabaseName("uq_company_external_connections_company_nombre");
-            entity.Property(e => e.Nombre).HasMaxLength(100);
-            entity.Property(e => e.Tipo).HasMaxLength(20);
-            entity.Property(e => e.Host).HasMaxLength(200);
-            entity.Property(e => e.BaseUrl).HasMaxLength(500);
-            entity.Property(e => e.DatabaseName).HasMaxLength(100);
-            entity.Property(e => e.TechnicalUsername).HasMaxLength(100);
-            entity.Property(e => e.TechnicalSecretKey).HasMaxLength(500);
-            // Restrict, no Cascade -- Company ya es alcanzable en cascada vía
-            // Instance; un segundo camino en cascada rompe SQL Server (1785). El
-            // borrado de una compañía con conexiones se bloquea con un chequeo
-            // explícito de dependientes (ver Companies/Index), no en cascada.
-            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
-        });
-
         modelBuilder.Entity<CompanyModuleConnection>(entity =>
         {
             entity.ToTable("company_module_connections");
-            entity.HasIndex(e => new { e.CompanyId, e.ModuleCode, e.Purpose })
+            // 1 a 1: un módulo tiene una sola base por compañía.
+            entity.HasIndex(e => new { e.CompanyId, e.ModuleCode })
                 .IsUnique()
-                .HasDatabaseName("uq_company_module_connections_company_module_purpose");
-            entity.HasIndex(e => e.ConnectionId)
-                .HasDatabaseName("ix_company_module_connections_connection_id");
+                .HasDatabaseName("uq_company_module_connections_company_module");
+            entity.HasIndex(e => e.InstanceId)
+                .HasDatabaseName("ix_company_module_connections_instance_id");
             entity.Property(e => e.ModuleCode).HasMaxLength(50);
-            entity.Property(e => e.Purpose).HasMaxLength(50);
+            entity.Property(e => e.DatabaseName).HasMaxLength(100);
+            entity.Property(e => e.TechnicalUsername).HasMaxLength(100);
+            entity.Property(e => e.TechnicalSecretKey).HasMaxLength(500);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Connection).WithMany(c => c.ModuleBindings).HasForeignKey(e => e.ConnectionId).OnDelete(DeleteBehavior.Restrict);
+            // Restrict, no Cascade: Company → Instance ya es un camino en cascada; un
+            // segundo camino rompe SQL Server (error 1785). Borrar una instancia en uso se
+            // bloquea con un chequeo explícito en Instances/Index.
+            entity.HasOne(e => e.Instance).WithMany(i => i.ModuleConnections).HasForeignKey(e => e.InstanceId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Company>(entity =>

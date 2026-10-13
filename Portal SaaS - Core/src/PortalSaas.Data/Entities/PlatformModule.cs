@@ -17,7 +17,7 @@ public sealed class PlatformModule
     /// IModuleAccessService.GetContractedModuleCodesAsync filtra por esto de una;
     /// Admin/Organizations/Modules oculta el módulo de la lista de add-ons de cualquier
     /// otra organización. Mismo patrón nullable-FK ya usado por
-    /// ModuleExternalConnection.CompanyId (null = caso general, no-null = acotado).
+    /// CompanyModuleConnection.CompanyId (null = caso general, no-null = acotado).
     /// </summary>
     public Guid? ExclusiveOrganizationId { get; set; }
     public Organization? ExclusiveOrganization { get; set; }

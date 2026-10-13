@@ -7,18 +7,19 @@ namespace PortalSaas.Core.Tests.Administracion;
 public sealed class ExternalConnectionContractsTests
 {
     [Fact]
-    public void EditModelTieneDefaultsRazonables()
+    public void BindingInput_PorDefectoUsaLasCredencialesDeLaInstancia()
     {
-        var m = new ExternalConnectionEditModel();
-        Assert.Equal(ExternalConnectionType.DbSqlServer, m.Tipo);
-        Assert.True(m.IsActive);
+        var m = new ModuleDatabaseBindingInput();
+        Assert.False(m.UseOwnCredentials);
+        Assert.Null(m.TechnicalUsername);
+        Assert.Null(m.TechnicalSecretKey);
     }
 
     [Fact]
-    public void ModuloSinRequisitosDevuelveListaVacia()
+    public void ModuloQueNoLoDeclara_NoUsaBaseExterna()
     {
         IModuloPortal modulo = new ModuloDummy();
-        Assert.Empty(modulo.ExternalConnectionRequirements);
+        Assert.False(modulo.RequiresExternalDatabase);
     }
 
     private sealed class ModuloDummy : IModuloPortal

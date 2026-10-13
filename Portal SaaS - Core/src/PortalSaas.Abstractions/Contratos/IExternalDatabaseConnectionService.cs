@@ -33,17 +33,10 @@ public interface IExternalDatabaseConnectionService
         Guid companyId,
         CancellationToken ct = default);
 
-    /// <summary>Resuelve la conexión del slot lógico indicado (Purpose). "Default" = conexión principal.</summary>
-    Task<ExternalDatabaseConnection> ResolveConnectionAsync(
-        string moduleCode,
-        Guid companyId,
-        string purpose,
-        CancellationToken ct = default);
-
     /// <summary>
-    /// Lista (CompanyId, OrganizationId) de toda compañía con una conexión ACTIVA
-    /// configurada para moduleCode -- para procesos sin sesión HTTP (background jobs)
-    /// que necesitan recorrer todas las compañías de un módulo, algo que
+    /// Lista (CompanyId, OrganizationId) de toda compañía con una base asignada a
+    /// moduleCode sobre una Instance ACTIVA -- para procesos sin sesión HTTP (background
+    /// jobs) que necesitan recorrer todas las compañías de un módulo, algo que
     /// ResolveConnectionAsync no puede hacer porque ya exige conocer el companyId.
     /// </summary>
     Task<IReadOnlyList<ModuleCompanyDto>> ListActiveCompanyIdsAsync(

@@ -1,139 +1,147 @@
-using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 using PortalSaas.Core.Infraestructura;
 using PortalSaas.Data;
 using PortalSaas.Data.Entities;
+using Xunit;
 
 namespace PortalSaas.Core.Tests.Infraestructura;
 
-public class ExternalDatabaseConnectionServiceTests
+public sealed class ExternalDatabaseConnectionServiceTests
 {
-    private static PortalSaasDbContext CreateDb(string dbName)
+    private sealed class SecretosIdentidad : ISecretoCifradoService
     {
-        var options = new DbContextOptionsBuilder<PortalSaasDbContext>()
-            .UseInMemoryDatabase(dbName)
-            .Options;
-        return new PortalSaasDbContext(options);
+        public string Encrypt(string plainText) => "enc:" + plainText;
+        public string Decrypt(string cipherText) => cipherText.StartsWith("enc:") ? cipherText[4..] : cipherText;
     }
 
-    private static PortalSaasDbContext NuevoContexto([CallerMemberName] string dbName = "")
-        => CreateDb(dbName);
+    private static PortalSaasDbContext NuevoContexto() => new(
+        new DbContextOptionsBuilder<PortalSaasDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+
+    private static ExternalDatabaseConnectionService Crear(PortalSaasDbContext db) => new(db, new SecretosIdentidad());
+
+    private static Company NuevaCompania(Guid orgId, long instanceId, string code) => new()
+    {
+        Id = Guid.NewGuid(), OrganizationId = orgId, InstanceId = instanceId, Code = code, Name = code,
+        DatabaseName = "SBO", ServiceLayerUrl = "https://x", IntegrationUsername = "x", IntegrationSecretKey = "x", Country = "CL",
+    };
+
+    private static Instance NuevaInstancia(Guid orgId, string name, bool activa = true) => new()
+    {
+        OrganizationId = orgId, Name = name, Host = "pg.local", Port = 5432,
+        EngineType = InstanceEngineType.Postgres, TechnicalUsername = "inst_user",
+        TechnicalSecretKey = "enc:inst_pass", IsActive = activa,
+    };
 
     [Fact]
-    public async Task ListActiveCompanyIdsAsync_devuelve_solo_filas_activas_del_modulo_pedido()
+    public async Task ResolveConnectionAsync_SinCredencialPropia_UsaLaDeLaInstancia()
     {
         await using var db = NuevoContexto();
-
-        var org = new Organization { Id = Guid.NewGuid(), LegalName = "Org Test", Slug = "org-test", Country = "CL" };
-        var instance = new Instance { OrganizationId = org.Id, Name = "srv1", Host = "localhost", EngineType = InstanceEngineType.Hana, TechnicalUsername = "x", TechnicalSecretKey = "x" };
-        var companyA = new Company { Id = Guid.NewGuid(), OrganizationId = org.Id, InstanceId = instance.Id, Code = "CMP1", Name = "Company A", DatabaseName = "db1", ServiceLayerUrl = "https://x", IntegrationUsername = "x", IntegrationSecretKey = "x", Country = "CL" };
-        var companyB = new Company { Id = Guid.NewGuid(), OrganizationId = org.Id, InstanceId = instance.Id, Code = "CMP2", Name = "Company B", DatabaseName = "db2", ServiceLayerUrl = "https://x", IntegrationUsername = "x", IntegrationSecretKey = "x", Country = "CL" };
-        db.Organizations.Add(org);
-        db.Instances.Add(instance);
-        db.Companies.AddRange(companyA, companyB);
+        var orgId = Guid.NewGuid();
+        var inst = NuevaInstancia(orgId, "pg");
+        db.Instances.Add(inst);
         await db.SaveChangesAsync();
-
-        var connActivaA = new CompanyExternalConnection
-        {
-            CompanyId = companyA.Id, Nombre = "BD-A",
-            Tipo = ExternalConnectionType.DbPostgres, Host = "h", Port = 5432,
-            DatabaseName = "db", TechnicalUsername = "u", TechnicalSecretKey = "enc:p", IsActive = true,
-        };
-        var connInactivaB = new CompanyExternalConnection
-        {
-            CompanyId = companyB.Id, Nombre = "BD-B",
-            Tipo = ExternalConnectionType.DbPostgres, Host = "h", Port = 5432,
-            DatabaseName = "db", TechnicalUsername = "u", TechnicalSecretKey = "enc:p", IsActive = false,
-        };
-        var connActivaOtroModulo = new CompanyExternalConnection
-        {
-            CompanyId = companyA.Id, Nombre = "BD-Otro",
-            Tipo = ExternalConnectionType.DbPostgres, Host = "h", Port = 5432,
-            DatabaseName = "db", TechnicalUsername = "u", TechnicalSecretKey = "enc:p", IsActive = true,
-        };
-        db.CompanyExternalConnections.AddRange(connActivaA, connInactivaB, connActivaOtroModulo);
-        await db.SaveChangesAsync();
-
-        db.CompanyModuleConnections.AddRange(
-            new CompanyModuleConnection { CompanyId = companyA.Id, ModuleCode = "Rendiciones", Purpose = "Default", ConnectionId = connActivaA.Id },
-            new CompanyModuleConnection { CompanyId = companyB.Id, ModuleCode = "Rendiciones", Purpose = "Default", ConnectionId = connInactivaB.Id },
-            new CompanyModuleConnection { CompanyId = companyA.Id, ModuleCode = "OtroModulo", Purpose = "Default", ConnectionId = connActivaOtroModulo.Id });
-        await db.SaveChangesAsync();
-
-        var sut = new ExternalDatabaseConnectionService(db, new FakeSecretos());
-
-        var result = await sut.ListActiveCompanyIdsAsync("Rendiciones");
-
-        var item = Assert.Single(result);
-        Assert.Equal(companyA.Id, item.CompanyId);
-        Assert.Equal(org.Id, item.OrganizationId);
-    }
-
-    [Fact]
-    public async Task ResolveConnectionAsync_UsaElBindingDefaultDelCatalogo()
-    {
-        await using var db = NuevoContexto();
-        var companyId = Guid.NewGuid();
-        var conn = new CompanyExternalConnection
-        {
-            CompanyId = companyId, Nombre = "BD",
-            Tipo = ExternalConnectionType.DbPostgres, Host = "h", Port = 5432,
-            DatabaseName = "d", TechnicalUsername = "u", TechnicalSecretKey = "enc:p", IsActive = true,
-        };
-        db.CompanyExternalConnections.Add(conn);
-        await db.SaveChangesAsync();
+        var company = NuevaCompania(orgId, inst.Id, "DEPOR");
+        db.Companies.Add(company);
         db.CompanyModuleConnections.Add(new CompanyModuleConnection
         {
-            CompanyId = companyId,
-            ModuleCode = "Wms", Purpose = "Default", ConnectionId = conn.Id,
+            CompanyId = company.Id, ModuleCode = "Rendiciones", InstanceId = inst.Id, DatabaseName = "ps_rendiciones",
         });
         await db.SaveChangesAsync();
 
-        var svc = new ExternalDatabaseConnectionService(db, new FakeSecretos());
-        var r = await svc.ResolveConnectionAsync("Wms", companyId);
+        var r = await Crear(db).ResolveConnectionAsync("Rendiciones", company.Id);
 
         Assert.Equal(ExternalDatabaseEngineType.Postgres, r.EngineType);
-        Assert.Contains("Host=h", r.ConnectionString);
+        var b = new NpgsqlConnectionStringBuilder(r.ConnectionString);
+        Assert.Equal("pg.local", b.Host);
+        Assert.Equal("ps_rendiciones", b.Database);
+        Assert.Equal("inst_user", b.Username);
+        Assert.Equal("inst_pass", b.Password);
     }
 
     [Fact]
-    public async Task ResolveConnectionAsync_SinBinding_Lanza()
+    public async Task ResolveConnectionAsync_ConCredencialPropia_LaUsaEnVezDeLaDeLaInstancia()
     {
         await using var db = NuevoContexto();
-        var svc = new ExternalDatabaseConnectionService(db, new FakeSecretos());
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => svc.ResolveConnectionAsync("Wms", Guid.NewGuid()));
-    }
-
-    [Fact]
-    public async Task ResolveConnectionAsync_ConPurpose_ResuelveElSlotIndicado()
-    {
-        await using var db = NuevoContexto();
-        var companyId = Guid.NewGuid();
-        var sap = new CompanyExternalConnection
-        {
-            CompanyId = companyId, Nombre = "SAP",
-            Tipo = ExternalConnectionType.DbSqlServer, Host = "sap", Port = 1433,
-            DatabaseName = "SBO", TechnicalUsername = "u", TechnicalSecretKey = "enc:p", IsActive = true,
-        };
-        db.CompanyExternalConnections.Add(sap);
+        var orgId = Guid.NewGuid();
+        var inst = NuevaInstancia(orgId, "pg");
+        db.Instances.Add(inst);
         await db.SaveChangesAsync();
+        var company = NuevaCompania(orgId, inst.Id, "DEPOR");
+        db.Companies.Add(company);
         db.CompanyModuleConnections.Add(new CompanyModuleConnection
         {
-            CompanyId = companyId,
-            ModuleCode = "Wms", Purpose = "SapSource", ConnectionId = sap.Id,
+            CompanyId = company.Id, ModuleCode = "Wms", InstanceId = inst.Id, DatabaseName = "ps_wms",
+            TechnicalUsername = "wms_user", TechnicalSecretKey = "enc:wms_pass",
         });
         await db.SaveChangesAsync();
 
-        var svc = new ExternalDatabaseConnectionService(db, new FakeSecretos());
-        var r = await svc.ResolveConnectionAsync("Wms", companyId, "SapSource");
-        Assert.Equal(ExternalDatabaseEngineType.SqlServer, r.EngineType);
+        var r = await Crear(db).ResolveConnectionAsync("Wms", company.Id);
+
+        var b = new NpgsqlConnectionStringBuilder(r.ConnectionString);
+        Assert.Equal("wms_user", b.Username);
+        Assert.Equal("wms_pass", b.Password);
     }
 
-    private sealed class FakeSecretos : PortalSaas.Abstractions.Contratos.ISecretoCifradoService
+    [Fact]
+    public async Task ResolveConnectionAsync_SinAsignacion_LanzaMensajePresentable()
     {
-        public string Encrypt(string plainText) => plainText;
-        public string Decrypt(string cipherText) => cipherText;
+        await using var db = NuevoContexto();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => Crear(db).ResolveConnectionAsync("Rendiciones", Guid.NewGuid()));
+
+        Assert.Contains("Rendiciones", ex.Message);
+        Assert.Contains("Administración", ex.Message);
+    }
+
+    [Fact]
+    public async Task ResolveConnectionAsync_InstanciaInactiva_LanzaNombrandoLaInstancia()
+    {
+        await using var db = NuevoContexto();
+        var orgId = Guid.NewGuid();
+        var inst = NuevaInstancia(orgId, "pg-apagado", activa: false);
+        db.Instances.Add(inst);
+        await db.SaveChangesAsync();
+        var company = NuevaCompania(orgId, inst.Id, "DEPOR");
+        db.Companies.Add(company);
+        db.CompanyModuleConnections.Add(new CompanyModuleConnection
+        {
+            CompanyId = company.Id, ModuleCode = "SellOut", InstanceId = inst.Id, DatabaseName = "sellout",
+        });
+        await db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => Crear(db).ResolveConnectionAsync("SellOut", company.Id));
+
+        Assert.Contains("pg-apagado", ex.Message);
+    }
+
+    [Fact]
+    public async Task ListActiveCompanyIdsAsync_SoloCompaniasDelModuloConInstanciaActiva()
+    {
+        await using var db = NuevoContexto();
+        var orgId = Guid.NewGuid();
+        var activa = NuevaInstancia(orgId, "pg");
+        var inactiva = NuevaInstancia(orgId, "pg-off", activa: false);
+        db.Instances.AddRange(activa, inactiva);
+        await db.SaveChangesAsync();
+        var a = NuevaCompania(orgId, activa.Id, "A");
+        var b = NuevaCompania(orgId, activa.Id, "B");
+        db.Companies.AddRange(a, b);
+        db.CompanyModuleConnections.AddRange(
+            new CompanyModuleConnection { CompanyId = a.Id, ModuleCode = "Rendiciones", InstanceId = activa.Id, DatabaseName = "r" },
+            new CompanyModuleConnection { CompanyId = b.Id, ModuleCode = "Rendiciones", InstanceId = inactiva.Id, DatabaseName = "r" },
+            new CompanyModuleConnection { CompanyId = b.Id, ModuleCode = "OtroModulo", InstanceId = activa.Id, DatabaseName = "o" });
+        await db.SaveChangesAsync();
+
+        var r = await Crear(db).ListActiveCompanyIdsAsync("Rendiciones");
+
+        var unica = Assert.Single(r);
+        Assert.Equal(a.Id, unica.CompanyId);
+        Assert.Equal(orgId, unica.OrganizationId);
     }
 }

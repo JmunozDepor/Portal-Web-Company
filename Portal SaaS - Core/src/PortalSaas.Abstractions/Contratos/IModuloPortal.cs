@@ -44,8 +44,10 @@ public interface IModuloPortal
     bool ServesOwnWwwRoot => false;
 
     /// <summary>
-    /// Conexiones externas que el módulo necesita configurar. Vacío = un único
-    /// requisito implícito Purpose="Default", Kind=Database, Required=true.
+    /// true = el módulo usa una base de datos EXTERNA propia (una sola por compañía),
+    /// resuelta con IExternalDatabaseConnectionService.ResolveConnectionAsync y configurada
+    /// en "Conexiones externas" como Instancia + Base de datos. Default false: los módulos
+    /// que solo hablan con SAP (Compras, Ventas, Inventario, ...) no aparecen en esa grilla.
     /// </summary>
-    IReadOnlyList<ExternalConnectionRequirement> ExternalConnectionRequirements => Array.Empty<ExternalConnectionRequirement>();
+    bool RequiresExternalDatabase => false;
 }

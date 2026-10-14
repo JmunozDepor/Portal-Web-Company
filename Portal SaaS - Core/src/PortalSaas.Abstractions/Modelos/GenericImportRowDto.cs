@@ -51,8 +51,25 @@ public sealed record GenericImportRowDto
     public string? DestinationWarehouse { get; init; }
     public string? DestinationWarehouseName { get; init; }
 
-    /// <summary>Precio de referencia de SAP (informativo) -- nunca se postea, solo se muestra si UnitPrice vino vacío.</summary>
+    /// <summary>
+    /// Precio SAP de la línea (informativo, nunca se postea): el de la lista de precios
+    /// del socio -- o la lista de sistema si el formato usa PriceSource = System. Se
+    /// calcula SIEMPRE para el análisis (comparación de precios, descuento total de la OC).
+    /// </summary>
     public decimal? SapReferencePrice { get; init; }
+
+    /// <summary>Stock disponible (en stock − comprometido) del artículo en el almacén de la línea, TOTAL del almacén -- null si la línea no tiene artículo/almacén.</summary>
+    public decimal? StockAvailable { get; init; }
+
+    /// <summary>
+    /// Unidades de ESTA línea que el stock alcanza a cubrir -- el disponible se reparte
+    /// entre las líneas del mismo artículo/almacén en el orden del archivo, así dos
+    /// líneas no cuentan dos veces el mismo stock.
+    /// </summary>
+    public decimal? FulfillableQuantity { get; init; }
+
+    /// <summary>Hallazgos con categoría -- Errors/Warnings siguen existiendo (texto plano) para no romper los consumidores previos.</summary>
+    public IReadOnlyList<GenericImportIssueDto> Issues { get; init; } = [];
 
     public IReadOnlyDictionary<string, object?> UserFieldsHeader { get; init; } = new Dictionary<string, object?>();
     public IReadOnlyDictionary<string, object?> UserFieldsLine { get; init; } = new Dictionary<string, object?>();
@@ -93,4 +110,7 @@ public sealed record GenericImportResultDto
     public string? ErrorMessage { get; init; }
 
     public IReadOnlyList<GenericImportDocumentDto> Documents { get; init; } = [];
+
+    /// <summary>Resumen por OC + paneles de análisis, ver GenericImportAnalysisDto. Null si HasValidConfig es false.</summary>
+    public GenericImportAnalysisDto? Analysis { get; init; }
 }

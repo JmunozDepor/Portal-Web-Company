@@ -1,7 +1,7 @@
 namespace PortalSaas.Abstractions.Contratos;
 
 /// <summary>
-/// Direcciones de despacho (CRD1, AddressType = 'S') de un cliente -- usado por
+/// Direcciones de despacho (CRD1, AdresType = 'S') de un cliente -- usado por
 /// Modulo.ImportacionGenerica (regla CustomerBranchValid) para validar que la
 /// sucursal informada en una fila importada corresponda a ese cliente.
 /// </summary>

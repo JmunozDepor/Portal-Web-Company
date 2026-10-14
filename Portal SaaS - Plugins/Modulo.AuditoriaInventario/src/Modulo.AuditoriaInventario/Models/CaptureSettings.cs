@@ -21,5 +21,13 @@ public class CaptureSettings
 
     public bool AllowEan13 { get; set; } = true;
 
+    /// <summary>
+    /// URL pública donde corre la PWA de captura -- la misma para todas las
+    /// sucursales/equipos de esta compañía. Se usa para generar el QR de
+    /// "Conectar equipo" (Pages/ConfiguracionCaptura) así un equipo nuevo entra
+    /// escaneándolo en vez de tipear la URL a mano en el teclado del lector.
+    /// </summary>
+    public string? PwaUrl { get; set; }
+
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

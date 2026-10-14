@@ -5,6 +5,7 @@ using Modulo.Rendiciones.Data;
 using Modulo.Rendiciones.Models;
 using Modulo.Rendiciones.Servicios;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.Rendiciones.Pages.Configuracion.Integracion;
 
@@ -13,15 +14,19 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
     private readonly RendicionesDbContext _db;
     private readonly ICatalogSyncProvider _sync;
     private readonly ICurrentCompanyAccessor _currentCompany;
+    private readonly ICurrentUserContext _currentUser;
+    private readonly INotificationService _notifications;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(RendicionesDbContext db, ICatalogSyncProvider sync, IRendicionesUserRoleService roles,
-        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany, ILogger<IndexModel> logger)
+        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany, INotificationService notifications, ILogger<IndexModel> logger)
         : base(roles, currentUser, currentCompany)
     {
         _db = db;
         _sync = sync;
         _currentCompany = currentCompany;
+        _currentUser = currentUser;
+        _notifications = notifications;
         _logger = logger;
     }
 
@@ -109,16 +114,24 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
                 WarningMessage = string.Join(" ", allWarnings);
             }
 
-            return $"Sincronizado. Centros de costo: {costCenterResult.Created} nuevos, {costCenterResult.Updated} actualizados, {costCenterResult.Deactivated} desactivados. " +
-                   $"Cuentas contables: {glAccountResult.Created} nuevas, {glAccountResult.Updated} actualizadas, {glAccountResult.Deactivated} desactivadas.";
+            var summary = $"Sincronizado. Centros de costo: {costCenterResult.Created} nuevos, {costCenterResult.Updated} actualizados, {costCenterResult.Deactivated} desactivados. " +
+                          $"Cuentas contables: {glAccountResult.Created} nuevas, {glAccountResult.Updated} actualizadas, {glAccountResult.Deactivated} desactivadas.";
+            await NotifyAsync(allWarnings.Count > 0 ? summary + " Con advertencias: " + string.Join(" ", allWarnings) : summary,
+                allWarnings.Count > 0 ? NotificationSeverity.Warning : NotificationSeverity.Success, ct);
+            return summary;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Falló la sincronización de catálogos SAP para la compañía {CompanyId}", _currentCompany.CompanyId);
             ErrorMessage = "No se pudo sincronizar con SAP. Intentá nuevamente más tarde o contactá a soporte.";
+            await NotifyAsync(ErrorMessage, NotificationSeverity.Danger, ct);
             return null;
         }
     }
+
+    private Task NotifyAsync(string message, string severity, CancellationToken ct) =>
+        _notifications.TryEnqueueAsync(_currentUser.UserId, "Rendiciones: sincronización de catálogos SAP", message,
+            severity, "/rendiciones/configuracion/integracion", ct);
 
     public async Task<IActionResult> OnPostAgregarCentroCostoAsync(CancellationToken ct)
     {

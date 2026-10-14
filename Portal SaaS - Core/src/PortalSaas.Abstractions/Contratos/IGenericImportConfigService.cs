@@ -39,13 +39,13 @@ public interface IGenericImportConfigService
 
     /// <summary>Reemplaza por completo el detalle de campos (borra y vuelve a crear) -- evita diffing, el volumen por configuración es chico.</summary>
     Task<int> CreateAsync(GenericImportModule module, string documentType, GenericImportLineType lineType,
-        string? businessPartnerCardCode, string? groupingColumn, bool skuIsCustomerOwn, string alias,
+        string? businessPartnerCardCode, string? groupingColumn, GenericImportItemIdentifier itemIdentifier, string alias,
         IReadOnlyList<GenericImportConfigFieldDto> fields,
         GenericImportPriceSource priceSource = GenericImportPriceSource.BusinessPartner, int? systemPriceListCode = null,
         bool businessPartnerFromFile = false,
         CancellationToken ct = default);
 
-    Task UpdateAsync(int id, string? groupingColumn, bool skuIsCustomerOwn, string alias, bool isActive,
+    Task UpdateAsync(int id, string? groupingColumn, GenericImportItemIdentifier itemIdentifier, string alias, bool isActive,
         IReadOnlyList<GenericImportConfigFieldDto> fields,
         GenericImportPriceSource priceSource = GenericImportPriceSource.BusinessPartner, int? systemPriceListCode = null,
         bool businessPartnerFromFile = false,

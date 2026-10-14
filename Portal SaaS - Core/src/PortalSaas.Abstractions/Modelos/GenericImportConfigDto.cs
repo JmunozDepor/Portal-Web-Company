@@ -14,8 +14,10 @@ public sealed record GenericImportConfigFieldDto(
 /// representa el formato ESTÁNDAR (fallback) de la Company+Module+DocumentType+
 /// LineType; una fila con CardCode puntual es la excepción de un cliente/proveedor cuyo
 /// archivo no sigue el estándar (ver IGenericImportConfigService.ResolveAsync).
-/// GroupingColumn null = todo el archivo genera un único documento; con valor, cada
-/// valor distinto de esa columna genera su propio documento. PriceSource/
+/// GroupingColumn null = todo el archivo genera un único documento; con valor (una o
+/// varias letras separadas por coma, ej. "A,B"), cada combinación distinta de esas
+/// columnas genera su propio documento. ItemIdentifier: qué trae la columna de artículo
+/// (ItemCode, código de barras o SKU del cliente). PriceSource/
 /// SystemPriceListCode solo aplican a líneas de Artículo en Venta/Compra (Servicio no
 /// tiene ItemCode, Inventario no tiene precio). Portado de
 /// ConfiguracionImportacionGenericaDto -- cuelga de CompanyId (no OrganizationId, ver
@@ -31,7 +33,7 @@ public sealed record GenericImportConfigDto(
     GenericImportLineType LineType,
     string? BusinessPartnerCardCode,
     string? GroupingColumn,
-    bool SkuIsCustomerOwn,
+    GenericImportItemIdentifier ItemIdentifier,
     string Alias,
     bool IsActive,
     IReadOnlyList<GenericImportConfigFieldDto> Fields,

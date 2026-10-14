@@ -18,4 +18,14 @@ public enum GenericImportValidationRuleType
     PriceVsCustomerList,
     StockAvailable,
     CustomerBranchValid,
+
+    /// <summary>
+    /// Descuento TOTAL de la OC (documento) vs. el precio SAP: (Σ SAP − Σ OC) / Σ SAP no
+    /// puede superar "maxDiscountPercent" -- se evalúa por documento, no por línea
+    /// (2026-10-14). El hallazgo se marca en todas las líneas de esa OC.
+    /// </summary>
+    OrderTotalDiscount,
+
+    /// <summary>La OC del archivo ya existe en SAP (documento no cancelado del mismo tipo y mismo socio) -- evita cargas duplicadas (2026-10-14).</summary>
+    DuplicateOrderInSap,
 }

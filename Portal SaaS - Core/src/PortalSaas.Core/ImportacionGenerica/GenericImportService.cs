@@ -64,6 +64,7 @@ public sealed class GenericImportService : IGenericImportService
     private readonly IInventoryDocumentService _inventory;
     private readonly IGenericImportProgressStore _progress;
     private readonly IGenericImportValidationRuleEngine _validationEngine;
+    private readonly IItemStockService _stock;
     private readonly ILogger<GenericImportService> _logger;
 
     public GenericImportService(IGenericImportConfigService config, IGenericImportUserFieldService userFieldsCatalog,
@@ -71,7 +72,8 @@ public sealed class GenericImportService : IGenericImportService
         IWarehouseCatalogService warehouses, IGeneralLedgerAccountCatalogService accounts, ICostCenterCatalogService costCenters,
         IPriceListService priceList, ICustomerCatalogService customers, ISupplierCatalogService suppliers,
         ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
-        IGenericImportProgressStore progress, IGenericImportValidationRuleEngine validationEngine, ILogger<GenericImportService> logger)
+        IGenericImportProgressStore progress, IGenericImportValidationRuleEngine validationEngine, IItemStockService stock,
+        ILogger<GenericImportService> logger)
     {
         _config = config;
         _userFieldsCatalog = userFieldsCatalog;
@@ -89,6 +91,7 @@ public sealed class GenericImportService : IGenericImportService
         _inventory = inventory;
         _progress = progress;
         _validationEngine = validationEngine;
+        _stock = stock;
         _logger = logger;
     }
 
@@ -153,12 +156,20 @@ public sealed class GenericImportService : IGenericImportService
             }
         }
 
-        // Paridad SKU-socio -> ItemCode, solo si la configuración lo pide -- una llamada
-        // POR CADA socio distinto de businessPartnersInFile (antes: una sola llamada con
-        // el socio del wizard). Con un único socio (modo normal) esto sigue siendo
-        // exactamente 1 llamada, igual que antes.
+        var excelItemCodes = CodesOf(GenericImportLogicalField.ItemCode);
+
+        // Traducción "código del archivo -> ItemCode" según config.ItemIdentifier:
+        // - CustomerSku: paridad SKU-socio, una llamada POR CADA socio distinto de
+        //   businessPartnersInFile (con un único socio, exactamente 1 llamada).
+        // - Barcode: OITM.CodeBars + OBCD, UNA consulta para todo el archivo (la barra no
+        //   depende del socio) -- se guarda bajo BarcodeTranslationKey.
+        // - ItemCode: sin traducción, el archivo ya trae el ItemCode.
         var crossReferenceBySocio = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-        if (config.SkuIsCustomerOwn)
+        if (config.ItemIdentifier == GenericImportItemIdentifier.Barcode && excelItemCodes.Count > 0)
+        {
+            crossReferenceBySocio[BarcodeTranslationKey] = await _items.GetItemCodesByBarcodesAsync(excelItemCodes, ct);
+        }
+        else if (config.ItemIdentifier == GenericImportItemIdentifier.CustomerSku)
         {
             foreach (var cardCode in businessPartnersInFile)
             {
@@ -169,10 +180,9 @@ public sealed class GenericImportService : IGenericImportService
             }
         }
 
-        var excelItemCodes = CodesOf(GenericImportLogicalField.ItemCode);
-        // Unión de todos los ItemCode de todas las paridades resueltas -- trae de más si
+        // Unión de todos los ItemCode de todas las traducciones resueltas -- trae de más si
         // hay SKUs sin paridad en algún socio, pero evita una segunda pasada.
-        var itemCodesToResolve = config.SkuIsCustomerOwn
+        var itemCodesToResolve = config.ItemIdentifier != GenericImportItemIdentifier.ItemCode
             ? crossReferenceBySocio.Values.SelectMany(d => excelItemCodes.Where(d.ContainsKey).Select(sku => d[sku]))
                 .Distinct(StringComparer.OrdinalIgnoreCase).ToList()
             : excelItemCodes;
@@ -228,14 +238,31 @@ public sealed class GenericImportService : IGenericImportService
             validBusinessPartners, crossReferenceBySocio, items, warehouses, accounts, costCenters, dimension2, dimension3,
             userFieldsCatalog, systemPrices)).ToList();
 
-        rows = (await _validationEngine.ApplyAsync(rows, parameters.Module, config.ValidationRules, ct)).ToList();
+        // Precio SAP + stock disponible SIEMPRE (no solo con la regla activa) -- los usan
+        // el análisis (comparación de precios, cumplimiento) y la regla de descuento
+        // total de la OC, que corre en el motor de abajo.
+        rows = await EnrichForAnalysisAsync(rows, config, parameters.Module, ct);
+
+        // DuplicateOrderInSap necesita el tipo de documento (para saber en qué tabla SAP
+        // buscar la OC) y la interfaz de reglas no lo recibe -- se agrega a sus parámetros.
+        var ruleAssignments = config.ValidationRules
+            .Select(a => a.RuleType == GenericImportValidationRuleType.DuplicateOrderInSap
+                ? a with { Parameters = new Dictionary<string, object?>(a.Parameters) { [DuplicateOrderInSapRule.DocumentTypeParameter] = parameters.DocumentType } }
+                : a)
+            .ToList();
+        rows = (await _validationEngine.ApplyAsync(rows, parameters.Module, ruleAssignments, ct)).ToList();
 
         var documents = rows
             .GroupBy(r => r.GroupingKey)
             .Select(g => new GenericImportDocumentDto { GroupingKey = g.Key, Rows = g.ToList() })
             .ToList();
 
-        return new GenericImportResultDto { HasValidConfig = true, Documents = documents };
+        return new GenericImportResultDto
+        {
+            HasValidConfig = true,
+            Documents = documents,
+            Analysis = GenericImportAnalysisBuilder.Build(documents, parameters.Module),
+        };
     }
 
     public async Task<byte[]> GenerateTemplateAsync(GenericImportParametersDto parameters, CancellationToken ct = default)
@@ -257,6 +284,9 @@ public sealed class GenericImportService : IGenericImportService
                     && field.UserFieldId is { } userFieldId
                     && userFieldsCatalog.TryGetValue(userFieldId, out var userField)
                         ? userField.Label
+                        // La columna de artículo se nombra según qué trae (ver ItemIdentifier).
+                        : field.LogicalField == GenericImportLogicalField.ItemCode && config.ItemIdentifier == GenericImportItemIdentifier.Barcode ? "Barcode"
+                        : field.LogicalField == GenericImportLogicalField.ItemCode && config.ItemIdentifier == GenericImportItemIdentifier.CustomerSku ? "SKU"
                         : field.LogicalField.ToString();
                 ws.Cell(1, index + 1).Value = field.IsRequired ? $"{label}*" : label;
             }
@@ -365,74 +395,198 @@ public sealed class GenericImportService : IGenericImportService
         return stream.ToArray();
     }
 
-    public async Task<byte[]> GenerateValidationReportAsync(GenericImportParametersDto parameters,
+    /// <summary>
+    /// Reporte de validación (2026-10-14): las mismas grillas que la vista previa --
+    /// Resumen por OC, Detalle de líneas y un panel por tipo de hallazgo (Sucursales,
+    /// Artículos, Precios, Cumplimiento, Otras observaciones) -- armadas desde
+    /// GenericImportAnalysisBuilder, la misma fuente que la pantalla.
+    /// </summary>
+    public Task<byte[]> GenerateValidationReportAsync(GenericImportParametersDto parameters,
         IReadOnlyList<GenericImportDocumentDto> documents, CancellationToken ct = default)
     {
-        var config = await _config.ResolveAsync(parameters.Module, parameters.DocumentType, parameters.LineType,
-            parameters.BusinessPartnerCardCode, parameters.ConfigId, ct);
-        var userFieldsCatalog = (await _userFieldsCatalog.ListAsync(parameters.Module, ct)).ToDictionary(f => f.Id);
+        var analysis = GenericImportAnalysisBuilder.Build(documents, parameters.Module);
+        var isInventory = parameters.Module == GenericImportModule.Inventory;
+        var rows = documents.SelectMany(d => d.Rows).OrderBy(r => r.RowNumber).ToList();
 
         using var workbook = new XLWorkbook();
 
-        var detalle = workbook.Worksheets.Add("Detalle");
-        var mappedFields = config?.Fields.Where(f => !string.IsNullOrEmpty(f.ExcelColumn)).ToList() ?? [];
-        foreach (var field in mappedFields)
+        // ---- Resumen por OC
+        var orderHeaders = new List<string> { "OC / Grupo", "N° referencia", "Socio", "Nombre socio", "Sucursal", "Líneas", "Con error", "Con advertencia", "Unidades" };
+        if (!isInventory)
         {
-            var index = ColumnLetterToIndex(field.ExcelColumn!);
-            detalle.Cell(1, index + 1).Value = FieldLabel(field, userFieldsCatalog);
+            orderHeaders.AddRange(["Total OC", "Total precio SAP", "Descuento total %"]);
         }
-        var errorsColumnIndex = (mappedFields.Count > 0 ? mappedFields.Max(f => ColumnLetterToIndex(f.ExcelColumn!)) : -1) + 1;
-        detalle.Cell(1, errorsColumnIndex + 1).Value = "Errores";
-        detalle.Cell(1, errorsColumnIndex + 2).Value = "Advertencias";
-
-        var allRows = documents.SelectMany(d => d.Rows).OrderBy(r => r.RowNumber).ToList();
-        var rowIndex = 1;
-        foreach (var row in allRows)
+        orderHeaders.AddRange(["Unid. cubiertas por stock", "Estado"]);
+        var orderRows = analysis.Orders.Select(o =>
         {
-            rowIndex++;
-            foreach (var field in mappedFields)
+            var values = new List<object?> { o.GroupingKey, o.CustomerReferenceNumber, o.BusinessPartnerCardCode, o.BusinessPartnerName, o.Branches,
+                o.Lines, o.LinesWithErrors, o.LinesWithWarnings, o.Units };
+            if (!isInventory)
             {
-                var index = ColumnLetterToIndex(field.ExcelColumn!);
-                detalle.Cell(rowIndex, index + 1).Value = FieldValue(row, field, userFieldsCatalog) ?? string.Empty;
+                values.AddRange([o.OrderAmount, o.SapAmount, o.DiscountPercent]);
             }
-            detalle.Cell(rowIndex, errorsColumnIndex + 1).Value = string.Join("; ", row.Errors);
-            detalle.Cell(rowIndex, errorsColumnIndex + 2).Value = string.Join("; ", row.Warnings);
-
-            if (!row.IsValid)
-            {
-                detalle.Range(rowIndex, 1, rowIndex, errorsColumnIndex + 2).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 214, 214);
-            }
-            else if (row.Warnings.Count > 0)
-            {
-                detalle.Range(rowIndex, 1, rowIndex, errorsColumnIndex + 2).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 243, 205);
-            }
-        }
-        detalle.Columns().AdjustToContents();
-
-        var stockSheet = workbook.Worksheets.Add("Stock por artículo-bodega");
-        stockSheet.Cell(1, 1).Value = "Artículo";
-        stockSheet.Cell(1, 2).Value = "Bodega";
-        stockSheet.Cell(1, 3).Value = "Advertencia";
-
-        var stockWarningRows = allRows
-            .SelectMany(r => r.Warnings
-                .Where(w => w.StartsWith("Demanda total de", StringComparison.Ordinal))
-                .Select(w => (ItemCode: r.ItemCode ?? string.Empty, Warehouse: r.Warehouse ?? r.SourceWarehouse ?? string.Empty, Warning: w)))
-            .Distinct()
-            .ToList();
-        var stockRowIndex = 1;
-        foreach (var (itemCode, warehouse, warning) in stockWarningRows)
+            values.AddRange([o.UnitsFulfillable, o.CanCreate ? "Listo para crear" : "Con errores"]);
+            return values;
+        }).ToList();
+        var orderTotals = new List<object?> { "TOTAL", null, null, null, null, analysis.Totals.Lines, analysis.Totals.LinesWithErrors,
+            analysis.Totals.LinesWithWarnings, analysis.Totals.Units };
+        if (!isInventory)
         {
-            stockRowIndex++;
-            stockSheet.Cell(stockRowIndex, 1).Value = itemCode;
-            stockSheet.Cell(stockRowIndex, 2).Value = warehouse;
-            stockSheet.Cell(stockRowIndex, 3).Value = warning;
+            orderTotals.AddRange([analysis.Totals.OrderAmount, analysis.Totals.SapAmount, null]);
         }
-        stockSheet.Columns().AdjustToContents();
+        orderTotals.AddRange([analysis.Totals.UnitsFulfillable, null]);
+        WriteSheet(workbook, "Resumen OC", orderHeaders, orderRows, orderTotals,
+            rowFill: i => analysis.Orders[i].CanCreate ? null : ErrorFill);
+
+        // ---- Detalle de líneas (misma grilla que la pantalla)
+        var detailHeaders = new List<string> { "Fila", "OC / Grupo", "N° referencia", "Sucursal", "Código archivo", "Código SAP", "Descripción" };
+        detailHeaders.AddRange(isInventory ? ["Almacén origen", "Almacén destino"] : ["Almacén"]);
+        detailHeaders.Add("Unidades");
+        if (!isInventory)
+        {
+            detailHeaders.AddRange(["Precio OC", "Precio SAP", "Total OC", "Total SAP"]);
+        }
+        detailHeaders.AddRange(["Stock disponible", "Unid. cubiertas", "Errores", "Advertencias"]);
+        var detailRows = rows.Select(r =>
+        {
+            var values = new List<object?> { r.RowNumber, r.GroupingKey, r.CustomerReferenceNumber, r.Branch,
+                r.RawValues.GetValueOrDefault(GenericImportLogicalField.ItemCode), r.ItemCode, r.ItemName ?? r.Description };
+            values.AddRange(isInventory ? [r.SourceWarehouse ?? r.RawValues.GetValueOrDefault(GenericImportLogicalField.SourceWarehouse),
+                    r.DestinationWarehouse ?? r.RawValues.GetValueOrDefault(GenericImportLogicalField.DestinationWarehouse)]
+                : [r.Warehouse ?? r.RawValues.GetValueOrDefault(GenericImportLogicalField.Warehouse)]);
+            values.Add(r.Quantity);
+            if (!isInventory)
+            {
+                values.AddRange([r.UnitPrice, r.SapReferencePrice,
+                    r.UnitPrice is null ? null : (r.Quantity ?? 0m) * r.UnitPrice.Value,
+                    r.SapReferencePrice is null ? null : (r.Quantity ?? 0m) * r.SapReferencePrice.Value]);
+            }
+            values.AddRange([r.StockAvailable, r.FulfillableQuantity, string.Join("; ", r.Errors), string.Join("; ", r.Warnings)]);
+            return values;
+        }).ToList();
+        var detailTotals = new List<object?> { "TOTAL", null, null, null, null, null, null };
+        detailTotals.AddRange(isInventory ? [null, null] : [null]);
+        detailTotals.Add(analysis.Totals.Units);
+        if (!isInventory)
+        {
+            detailTotals.AddRange([null, null, analysis.Totals.OrderAmount, analysis.Totals.SapAmount]);
+        }
+        detailTotals.AddRange([null, analysis.Totals.UnitsFulfillable, null, null]);
+        WriteSheet(workbook, "Detalle", detailHeaders, detailRows, detailTotals,
+            rowFill: i => !rows[i].IsValid ? ErrorFill : rows[i].Warnings.Count > 0 ? WarningFill : null);
+
+        // ---- Paneles de análisis
+        WriteSheet(workbook, "Sucursales con error", ["Sucursal", "OC / Grupo", "Líneas", "Observación"],
+            analysis.BranchIssues.Select(b => new List<object?> { b.Branch, b.Orders, b.Lines, b.Message }).ToList());
+
+        WriteSheet(workbook, "Artículos con error", ["Código archivo", "Descripción", "OC / Grupo", "Líneas", "Unidades", "Observación"],
+            analysis.ItemIssues.Select(i => new List<object?> { i.SourceCode, i.Description, i.Orders, i.Lines, i.Units, i.Message }).ToList());
+
+        if (!isInventory)
+        {
+            WriteSheet(workbook, "Precios", ["Fila", "OC / Grupo", "Código SAP", "Descripción", "Unidades", "Precio OC", "Precio SAP", "Diferencia", "Diferencia %", "Fuera de tolerancia"],
+                analysis.PriceComparisons.Select(p => new List<object?> { p.RowNumber, p.GroupingKey, p.ItemCode, p.Description, p.Quantity,
+                    p.OrderPrice, p.SapPrice, p.Difference, p.DifferencePercent, p.OutOfTolerance ? "Sí" : "No" }).ToList(),
+                rowFill: i => analysis.PriceComparisons[i].OutOfTolerance ? ErrorFill : null);
+        }
+
+        WriteSheet(workbook, "Cumplimiento", ["Código SAP", "Descripción", "Almacén", "Unid. OC", "Stock disponible", "Unid. cubiertas", "% cumplimiento"],
+            analysis.Fulfillment.Select(x => new List<object?> { x.ItemCode, x.Description, x.Warehouse, x.UnitsOrdered, x.StockAvailable,
+                x.UnitsFulfillable, x.FulfillmentPercent }).ToList(),
+            [ "TOTAL", null, null, analysis.Fulfillment.Sum(x => x.UnitsOrdered), null, analysis.Fulfillment.Sum(x => x.UnitsFulfillable),
+              analysis.Fulfillment.Sum(x => x.UnitsOrdered) == 0 ? null
+                  : Math.Round(analysis.Fulfillment.Sum(x => x.UnitsFulfillable) / analysis.Fulfillment.Sum(x => x.UnitsOrdered) * 100m, 1) ],
+            rowFill: i => analysis.Fulfillment[i].FulfillmentPercent < 100m ? (analysis.Fulfillment[i].FulfillmentPercent == 0m ? ErrorFill : WarningFill) : null);
+
+        WriteSheet(workbook, "OC ya cargadas", ["OC / Grupo", "N° referencia", "Líneas", "Gravedad", "Observación"],
+            analysis.DuplicateOrders.Select(d => new List<object?> { d.GroupingKey, d.CustomerReferenceNumber, d.Lines, d.IsError ? "Error" : "Advertencia", d.Message }).ToList(),
+            rowFill: i => analysis.DuplicateOrders[i].IsError ? ErrorFill : WarningFill);
+
+        WriteSheet(workbook, "Otras observaciones", ["Fila", "OC / Grupo", "Tipo", "Gravedad", "Observación"],
+            analysis.OtherIssues.Select(o => new List<object?> { o.RowNumber, o.GroupingKey, IssueCategoryLabel(o.Category), o.IsError ? "Error" : "Advertencia", o.Message }).ToList(),
+            rowFill: i => analysis.OtherIssues[i].IsError ? ErrorFill : WarningFill);
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
-        return stream.ToArray();
+        return Task.FromResult(stream.ToArray());
+    }
+
+    private static readonly XLColor ErrorFill = XLColor.FromArgb(255, 214, 214);
+    private static readonly XLColor WarningFill = XLColor.FromArgb(255, 243, 205);
+
+    internal static string IssueCategoryLabel(GenericImportIssueCategory category) => category switch
+    {
+        GenericImportIssueCategory.BusinessPartner => "Socio de negocio",
+        GenericImportIssueCategory.Branch => "Sucursal",
+        GenericImportIssueCategory.Item => "Artículo",
+        GenericImportIssueCategory.Warehouse => "Almacén",
+        GenericImportIssueCategory.Quantity => "Cantidad",
+        GenericImportIssueCategory.Price => "Precio",
+        GenericImportIssueCategory.Stock => "Stock",
+        GenericImportIssueCategory.OrderTotal => "Descuento total OC",
+        GenericImportIssueCategory.DuplicateOrder => "OC ya cargada",
+        GenericImportIssueCategory.Accounting => "Contabilidad",
+        _ => "Otro",
+    };
+
+    /// <summary>Hoja con encabezado en negrita y filtro, filas tal cual, fila de totales opcional en negrita y relleno por fila opcional.</summary>
+    private static void WriteSheet(XLWorkbook workbook, string name, IReadOnlyList<string> headers, IReadOnlyList<List<object?>> rows,
+        IReadOnlyList<object?>? totals = null, Func<int, XLColor?>? rowFill = null)
+    {
+        var sheet = workbook.Worksheets.Add(name);
+        for (var c = 0; c < headers.Count; c++)
+        {
+            sheet.Cell(1, c + 1).Value = headers[c];
+        }
+        sheet.Row(1).Style.Font.Bold = true;
+
+        for (var r = 0; r < rows.Count; r++)
+        {
+            for (var c = 0; c < rows[r].Count; c++)
+            {
+                SetCell(sheet.Cell(r + 2, c + 1), rows[r][c]);
+            }
+            if (rowFill?.Invoke(r) is { } fill)
+            {
+                sheet.Range(r + 2, 1, r + 2, headers.Count).Style.Fill.BackgroundColor = fill;
+            }
+        }
+
+        if (totals is not null && rows.Count > 0)
+        {
+            var totalRow = rows.Count + 2;
+            for (var c = 0; c < totals.Count; c++)
+            {
+                SetCell(sheet.Cell(totalRow, c + 1), totals[c]);
+            }
+            sheet.Row(totalRow).Style.Font.Bold = true;
+        }
+
+        if (rows.Count > 0)
+        {
+            sheet.Range(1, 1, rows.Count + 1, headers.Count).SetAutoFilter();
+        }
+        sheet.SheetView.FreezeRows(1);
+        sheet.Columns().AdjustToContents();
+    }
+
+    private static void SetCell(IXLCell cell, object? value)
+    {
+        switch (value)
+        {
+            case null:
+                break;
+            case decimal d:
+                cell.Value = d;
+                cell.Style.NumberFormat.Format = "#,##0.##";
+                break;
+            case int i:
+                cell.Value = i;
+                break;
+            default:
+                cell.Value = value.ToString();
+                break;
+        }
     }
 
     private static string FieldLabel(GenericImportConfigFieldDto field, IReadOnlyDictionary<int, GenericImportUserFieldDto> userFieldsCatalog) =>
@@ -527,6 +681,79 @@ public sealed class GenericImportService : IGenericImportService
     }
 
     private static int CountOfBatches(int rowCount) => Math.Max(1, (int)Math.Ceiling(rowCount / (double)DefaultBatchSize));
+
+    /// <summary>
+    /// Completa en cada fila el precio SAP (SapReferencePrice) y el stock disponible /
+    /// unidades cubiertas (StockAvailable / FulfillableQuantity). Consultas en bloque
+    /// para todo el archivo (nunca por fila). Precio: lista de sistema si el formato usa
+    /// PriceSource = System, si no la lista del socio de la fila (OCRD.ListNum).
+    /// </summary>
+    private async Task<List<GenericImportRowDto>> EnrichForAnalysisAsync(List<GenericImportRowDto> rows, GenericImportConfigDto config,
+        GenericImportModule module, CancellationToken ct)
+    {
+        // ---- Precio SAP (Venta/Compra, líneas de artículo)
+        var sapPriceByRow = new Dictionary<int, decimal>();
+        if (module != GenericImportModule.Inventory)
+        {
+            var pricedRows = rows.Where(r => r.ItemCode is not null).ToList();
+            var listByCardCode = new Dictionary<string, int?>(StringComparer.OrdinalIgnoreCase);
+            int? fixedList = config.PriceSource == GenericImportPriceSource.System ? config.SystemPriceListCode : null;
+            if (fixedList is null)
+            {
+                foreach (var cardCode in pricedRows.Select(r => r.BusinessPartnerCardCode).Where(c => c is not null).Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    listByCardCode[cardCode!] = (await _partnerDefaults.GetAsync(cardCode!, ct))?.PriceListCode;
+                }
+            }
+
+            var itemCodes = pricedRows.Select(r => r.ItemCode!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var pricesByList = new Dictionary<int, IReadOnlyDictionary<string, decimal>>();
+            foreach (var listNum in (fixedList is { } f ? [f] : listByCardCode.Values.Where(v => v is not null).Select(v => v!.Value)).Distinct())
+            {
+                pricesByList[listNum] = await _priceList.GetPricesAsync(itemCodes, listNum, ct);
+            }
+
+            foreach (var row in pricedRows)
+            {
+                var listNum = fixedList ?? (row.BusinessPartnerCardCode is { } c ? listByCardCode.GetValueOrDefault(c) : null);
+                if (listNum is { } l && pricesByList.TryGetValue(l, out var prices) && prices.TryGetValue(row.ItemCode!, out var price))
+                {
+                    sapPriceByRow[row.RowNumber] = price;
+                }
+            }
+        }
+
+        // ---- Stock disponible por artículo + almacén (origen en Inventario), repartido
+        // entre las líneas en el orden del archivo.
+        string? WarehouseOf(GenericImportRowDto r) => module == GenericImportModule.Inventory ? r.SourceWarehouse : r.Warehouse;
+        var stockRows = rows.Where(r => r.ItemCode is not null && WarehouseOf(r) is not null).ToList();
+        var available = stockRows.Count == 0
+            ? new Dictionary<(string ItemCode, string WhsCode), decimal>()
+            : await _stock.GetAvailableStockAsync(stockRows.Select(r => (r.ItemCode!, WarehouseOf(r)!)).Distinct().ToList(), ct);
+        var remaining = new Dictionary<(string, string), decimal>();
+
+        return rows.Select(row =>
+        {
+            decimal? stockAvailable = null;
+            decimal? fulfillable = null;
+            if (row.ItemCode is not null && WarehouseOf(row) is { } whs)
+            {
+                var key = (row.ItemCode, whs);
+                stockAvailable = Math.Max(available.GetValueOrDefault(key, 0m), 0m);
+                var left = remaining.TryGetValue(key, out var r) ? r : stockAvailable.Value;
+                var quantity = row.Quantity ?? 0m;
+                fulfillable = Math.Max(Math.Min(quantity, left), 0m);
+                remaining[key] = left - quantity;
+            }
+
+            return row with
+            {
+                SapReferencePrice = sapPriceByRow.TryGetValue(row.RowNumber, out var sapPrice) ? sapPrice : row.SapReferencePrice,
+                StockAvailable = stockAvailable,
+                FulfillableQuantity = fulfillable,
+            };
+        }).ToList();
+    }
 
     public async Task<SapSimulationResult> SimulateDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
         string portalUsername, CancellationToken ct = default)
@@ -774,6 +1001,9 @@ public sealed class GenericImportService : IGenericImportService
 
     private static readonly IReadOnlyDictionary<string, string> EmptyCrossReference = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Clave de crossReferenceBySocio para la traducción por código de barras (común a todos los socios) -- no puede chocar con un CardCode real.</summary>
+    private const string BarcodeTranslationKey = "\u0000barcode";
+
     private static GenericImportRowDto ProcessRow(RawRow raw, GenericImportConfigDto config, GenericImportModule module,
         GenericImportLineType lineType, string? parameterBusinessPartnerCardCode, IReadOnlyDictionary<string, string> validBusinessPartners,
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> crossReferenceBySocio, IReadOnlyDictionary<string, ItemDto> items,
@@ -782,6 +1012,15 @@ public sealed class GenericImportService : IGenericImportService
         IReadOnlyDictionary<int, GenericImportUserFieldDto> userFieldsCatalog, IReadOnlyDictionary<string, decimal> systemPrices)
     {
         var errors = new List<string>();
+        var issues = new List<GenericImportIssueDto>();
+
+        // Todo error estructural lleva categoría -- decide en qué panel del análisis
+        // aparece (ver GenericImportAnalysisBuilder). Errors (texto) se mantiene.
+        void AddError(GenericImportIssueCategory category, string message)
+        {
+            errors.Add(message);
+            issues.Add(new GenericImportIssueDto(category, true, message));
+        }
 
         string? Get(GenericImportLogicalField field) => raw.CoreFields.GetValueOrDefault(field);
 
@@ -796,11 +1035,11 @@ public sealed class GenericImportService : IGenericImportService
             var rowCardCode = Get(GenericImportLogicalField.BusinessPartnerCardCode)?.Trim();
             if (string.IsNullOrEmpty(rowCardCode))
             {
-                errors.Add("El socio de negocio es obligatorio.");
+                AddError(GenericImportIssueCategory.BusinessPartner, "El socio de negocio es obligatorio.");
             }
             else if (!validBusinessPartners.TryGetValue(rowCardCode, out businessPartnerName))
             {
-                errors.Add($"El socio de negocio \"{rowCardCode}\" no existe.");
+                AddError(GenericImportIssueCategory.BusinessPartner, $"El socio de negocio \"{rowCardCode}\" no existe.");
             }
             else
             {
@@ -809,12 +1048,13 @@ public sealed class GenericImportService : IGenericImportService
         }
 
         var effectiveCardCode = businessPartnerCardCode ?? parameterBusinessPartnerCardCode ?? string.Empty;
-        var crossReferenceBySku = crossReferenceBySocio.GetValueOrDefault(effectiveCardCode, EmptyCrossReference);
+        var itemTranslation = crossReferenceBySocio.GetValueOrDefault(
+            config.ItemIdentifier == GenericImportItemIdentifier.Barcode ? BarcodeTranslationKey : effectiveCardCode, EmptyCrossReference);
 
         var quantity = ParseDecimal(Get(GenericImportLogicalField.Quantity));
         if (quantity is null)
         {
-            errors.Add("Cantidad es obligatoria.");
+            AddError(GenericImportIssueCategory.Quantity, "Cantidad es obligatoria.");
         }
 
         var unitPrice = ParseDecimal(Get(GenericImportLogicalField.UnitPrice));
@@ -822,6 +1062,41 @@ public sealed class GenericImportService : IGenericImportService
 
         string? itemCode = null;
         string? itemName = null;
+
+        // Columna de artículo del Excel -> ItemCode de SAP, según config.ItemIdentifier
+        // (ItemCode directo, código de barras o SKU del socio). Común a Inventario y a
+        // líneas de Artículo de Venta/Compra.
+        void ResolveItem()
+        {
+            var excelCode = Get(GenericImportLogicalField.ItemCode)?.Trim();
+            if (string.IsNullOrEmpty(excelCode))
+            {
+                AddError(GenericImportIssueCategory.Item, "CodigoArticulo es obligatorio.");
+                return;
+            }
+
+            var resolvedCode = excelCode;
+            var sourceLabel = config.ItemIdentifier == GenericImportItemIdentifier.Barcode ? "código de barras" : "SKU";
+            if (config.ItemIdentifier != GenericImportItemIdentifier.ItemCode && !itemTranslation.TryGetValue(excelCode, out resolvedCode!))
+            {
+                AddError(GenericImportIssueCategory.Item, config.ItemIdentifier == GenericImportItemIdentifier.Barcode
+                    ? $"El código de barras \"{excelCode}\" no corresponde a ningún artículo en SAP (o corresponde a más de uno)."
+                    : $"El SKU \"{excelCode}\" no tiene paridad configurada para este socio de negocio.");
+                return;
+            }
+
+            if (!items.TryGetValue(resolvedCode, out var item))
+            {
+                AddError(GenericImportIssueCategory.Item, config.ItemIdentifier == GenericImportItemIdentifier.ItemCode
+                    ? $"El artículo \"{excelCode}\" no existe."
+                    : $"El artículo \"{resolvedCode}\" ({sourceLabel} \"{excelCode}\") no existe en SAP.");
+                return;
+            }
+
+            itemCode = item.ItemCode;
+            itemName = item.ItemName;
+        }
+
         string? warehouse = null;
         string? warehouseName = null;
         string? description = null;
@@ -840,45 +1115,16 @@ public sealed class GenericImportService : IGenericImportService
 
         if (module == GenericImportModule.Inventory)
         {
-            var excelItemCode = Get(GenericImportLogicalField.ItemCode)?.Trim();
-            if (string.IsNullOrEmpty(excelItemCode))
-            {
-                errors.Add("CodigoArticulo es obligatorio.");
-            }
-            else if (config.SkuIsCustomerOwn)
-            {
-                if (!crossReferenceBySku.TryGetValue(excelItemCode, out var resolvedItemCode))
-                {
-                    errors.Add($"El SKU \"{excelItemCode}\" no tiene paridad configurada para este socio de negocio.");
-                }
-                else if (!items.TryGetValue(resolvedItemCode, out var itemFromCrossReference))
-                {
-                    errors.Add($"El artículo \"{resolvedItemCode}\" (SKU \"{excelItemCode}\") no existe en SAP.");
-                }
-                else
-                {
-                    itemCode = itemFromCrossReference.ItemCode;
-                    itemName = itemFromCrossReference.ItemName;
-                }
-            }
-            else if (!items.TryGetValue(excelItemCode, out var directItem))
-            {
-                errors.Add($"El artículo \"{excelItemCode}\" no existe.");
-            }
-            else
-            {
-                itemCode = directItem.ItemCode;
-                itemName = directItem.ItemName;
-            }
+            ResolveItem();
 
             var sourceCode = Get(GenericImportLogicalField.SourceWarehouse)?.Trim();
             if (string.IsNullOrEmpty(sourceCode))
             {
-                errors.Add("AlmacenOrigen es obligatorio.");
+                AddError(GenericImportIssueCategory.Warehouse, "AlmacenOrigen es obligatorio.");
             }
             else if (!warehouses.TryGetValue(sourceCode, out var sourceWarehouseDto))
             {
-                errors.Add($"El almacén de origen \"{sourceCode}\" no existe.");
+                AddError(GenericImportIssueCategory.Warehouse, $"El almacén de origen \"{sourceCode}\" no existe.");
             }
             else
             {
@@ -889,11 +1135,11 @@ public sealed class GenericImportService : IGenericImportService
             var destinationCode = Get(GenericImportLogicalField.DestinationWarehouse)?.Trim();
             if (string.IsNullOrEmpty(destinationCode))
             {
-                errors.Add("AlmacenDestino es obligatorio.");
+                AddError(GenericImportIssueCategory.Warehouse, "AlmacenDestino es obligatorio.");
             }
             else if (!warehouses.TryGetValue(destinationCode, out var destinationWarehouseDto))
             {
-                errors.Add($"El almacén de destino \"{destinationCode}\" no existe.");
+                AddError(GenericImportIssueCategory.Warehouse, $"El almacén de destino \"{destinationCode}\" no existe.");
             }
             else
             {
@@ -903,45 +1149,16 @@ public sealed class GenericImportService : IGenericImportService
         }
         else if (lineType == GenericImportLineType.Item)
         {
-            var excelCode = Get(GenericImportLogicalField.ItemCode)?.Trim();
-            if (string.IsNullOrEmpty(excelCode))
-            {
-                errors.Add("CodigoArticulo es obligatorio.");
-            }
-            else if (config.SkuIsCustomerOwn)
-            {
-                if (!crossReferenceBySku.TryGetValue(excelCode, out var resolvedItemCode))
-                {
-                    errors.Add($"El SKU \"{excelCode}\" no tiene paridad configurada para este socio de negocio.");
-                }
-                else if (!items.TryGetValue(resolvedItemCode, out var item))
-                {
-                    errors.Add($"El artículo \"{resolvedItemCode}\" (SKU \"{excelCode}\") no existe en SAP.");
-                }
-                else
-                {
-                    itemCode = item.ItemCode;
-                    itemName = item.ItemName;
-                }
-            }
-            else if (!items.TryGetValue(excelCode, out var directItem))
-            {
-                errors.Add($"El artículo \"{excelCode}\" no existe.");
-            }
-            else
-            {
-                itemCode = directItem.ItemCode;
-                itemName = directItem.ItemName;
-            }
+            ResolveItem();
 
             var warehouseCode = Get(GenericImportLogicalField.Warehouse)?.Trim();
             if (string.IsNullOrEmpty(warehouseCode))
             {
-                errors.Add("Bodega es obligatoria.");
+                AddError(GenericImportIssueCategory.Warehouse, "Bodega es obligatoria.");
             }
             else if (!warehouses.TryGetValue(warehouseCode, out var warehouseDto))
             {
-                errors.Add($"La bodega \"{warehouseCode}\" no existe.");
+                AddError(GenericImportIssueCategory.Warehouse, $"La bodega \"{warehouseCode}\" no existe.");
             }
             else
             {
@@ -954,17 +1171,17 @@ public sealed class GenericImportService : IGenericImportService
             description = Get(GenericImportLogicalField.Description)?.Trim();
             if (string.IsNullOrEmpty(description))
             {
-                errors.Add("Descripcion es obligatoria.");
+                AddError(GenericImportIssueCategory.Accounting, "Descripcion es obligatoria.");
             }
 
             var accountCode = Get(GenericImportLogicalField.Account)?.Trim();
             if (string.IsNullOrEmpty(accountCode))
             {
-                errors.Add("CuentaMayor es obligatoria.");
+                AddError(GenericImportIssueCategory.Accounting, "CuentaMayor es obligatoria.");
             }
             else if (!accounts.TryGetValue(accountCode, out var accountDto))
             {
-                errors.Add($"La cuenta mayor \"{accountCode}\" no existe.");
+                AddError(GenericImportIssueCategory.Accounting, $"La cuenta mayor \"{accountCode}\" no existe.");
             }
             else
             {
@@ -975,11 +1192,11 @@ public sealed class GenericImportService : IGenericImportService
             var costCenterCode = Get(GenericImportLogicalField.CostCenter)?.Trim();
             if (string.IsNullOrEmpty(costCenterCode))
             {
-                errors.Add("CentroCostos es obligatorio.");
+                AddError(GenericImportIssueCategory.Accounting, "CentroCostos es obligatorio.");
             }
             else if (!costCenters.TryGetValue(costCenterCode, out var costCenterDto))
             {
-                errors.Add($"El centro de costos \"{costCenterCode}\" no existe.");
+                AddError(GenericImportIssueCategory.Accounting, $"El centro de costos \"{costCenterCode}\" no existe.");
             }
             else
             {
@@ -992,7 +1209,7 @@ public sealed class GenericImportService : IGenericImportService
             {
                 if (!dimension2.TryGetValue(dim2Code, out var d2))
                 {
-                    errors.Add($"Dimensión 2 \"{dim2Code}\" no existe.");
+                    AddError(GenericImportIssueCategory.Accounting, $"Dimensión 2 \"{dim2Code}\" no existe.");
                 }
                 else
                 {
@@ -1006,7 +1223,7 @@ public sealed class GenericImportService : IGenericImportService
             {
                 if (!dimension3.TryGetValue(dim3Code, out var d3))
                 {
-                    errors.Add($"Dimensión 3 \"{dim3Code}\" no existe.");
+                    AddError(GenericImportIssueCategory.Accounting, $"Dimensión 3 \"{dim3Code}\" no existe.");
                 }
                 else
                 {
@@ -1049,7 +1266,11 @@ public sealed class GenericImportService : IGenericImportService
         {
             RowNumber = raw.RowNumber,
             GroupingKey = groupingKey,
-            BusinessPartnerCardCode = businessPartnerCardCode,
+            // Socio EFECTIVO de la fila (el del archivo en multi-socio, si no el del
+            // asistente/formato) -- antes solo se llenaba en multi-socio y las reglas
+            // CustomerActiveInSap/CustomerBranchValid/PriceVsCustomerList, que filtran
+            // por este campo, nunca validaban nada en la carga normal de un solo socio.
+            BusinessPartnerCardCode = businessPartnerCardCode ?? (string.IsNullOrEmpty(effectiveCardCode) ? null : effectiveCardCode),
             BusinessPartnerName = businessPartnerName,
             CustomerReferenceNumber = Get(GenericImportLogicalField.CustomerReferenceNumber),
             Branch = Get(GenericImportLogicalField.Branch),
@@ -1081,7 +1302,7 @@ public sealed class GenericImportService : IGenericImportService
         // Las reglas estructurales (Cantidad > 0, Descuento 0-100) y las configurables
         // por Formato las corre GenericImportValidationRuleEngine sobre el set completo
         // de filas ya resueltas -- ver ProcessFileAsync.
-        return row with { IsValid = errors.Count == 0, Errors = errors };
+        return row with { IsValid = errors.Count == 0, Errors = errors, Issues = issues };
     }
 
     private static object? ParseUserFieldValue(string? rawValue, GenericImportFieldDataType dataType)
@@ -1136,7 +1357,7 @@ public sealed class GenericImportService : IGenericImportService
     // Lectura del archivo
     // -------------------------------------------------------------------------------
 
-    private sealed class RawRow
+    internal sealed class RawRow
     {
         public int RowNumber { get; init; }
         public Dictionary<GenericImportLogicalField, string?> CoreFields { get; } = new();
@@ -1167,12 +1388,14 @@ public sealed class GenericImportService : IGenericImportService
         return result.Tables[0];
     }
 
-    private static List<RawRow> ReadRawRows(DataTable table, GenericImportConfigDto config)
+    internal static List<RawRow> ReadRawRows(DataTable table, GenericImportConfigDto config)
     {
         var fieldsWithColumn = config.Fields.Where(f => f.LogicalField != GenericImportLogicalField.UserField).ToList();
         var userFields = config.Fields.Where(f => f.LogicalField == GenericImportLogicalField.UserField && f.UserFieldId is not null).ToList();
 
-        var groupingIndex = string.IsNullOrEmpty(config.GroupingColumn) ? -1 : ColumnLetterToIndex(config.GroupingColumn);
+        // Una o varias columnas de agrupación ("A,B") -- la clave del grupo es la
+        // combinación de sus valores, ver GroupingColumns.
+        var groupingIndexes = GroupingColumns.Parse(config.GroupingColumn).Select(ColumnLetterToIndex).ToList();
 
         var rows = new List<RawRow>();
         var rowNumber = 0;
@@ -1209,11 +1432,12 @@ public sealed class GenericImportService : IGenericImportService
                 rawRow.UserFields[field.UserFieldId!.Value] = field.FixedValue is { Length: > 0 } ? field.FixedValue : CellAt(field.ExcelColumn);
             }
 
-            if (groupingIndex >= 0)
+            if (groupingIndexes.Count > 0)
             {
-                rawRow.RawGroupingKey = groupingIndex < row.ItemArray.Length && row[groupingIndex] != DBNull.Value
-                    ? row[groupingIndex].ToString()!.Trim()
-                    : null;
+                var parts = groupingIndexes
+                    .Select(index => index >= 0 && index < row.ItemArray.Length && row[index] != DBNull.Value ? row[index].ToString()!.Trim() : string.Empty)
+                    .ToList();
+                rawRow.RawGroupingKey = parts.All(string.IsNullOrEmpty) ? null : string.Join(GroupingColumns.KeySeparator, parts);
             }
 
             rows.Add(rawRow);

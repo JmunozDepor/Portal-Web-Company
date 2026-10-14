@@ -31,7 +31,7 @@ public enum GenericImportLogicalField
     DiscountPercent,
 
     // Línea -- solo GenericImportLineType.Item
-    ItemCode,           // ItemCode directo o SKU de paridad, según GenericImportConfigDto.SkuIsCustomerOwn
+    ItemCode,           // ItemCode, código de barras o SKU del socio, según GenericImportConfigDto.ItemIdentifier
     Warehouse,          // WarehouseCode
 
     // Línea -- solo GenericImportLineType.Service

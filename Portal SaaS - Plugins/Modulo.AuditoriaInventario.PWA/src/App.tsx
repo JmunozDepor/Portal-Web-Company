@@ -76,7 +76,12 @@ export function App() {
   }
 
   return (
-    <BrowserRouter>
+    // basename = import.meta.env.BASE_URL (viene del "base" de vite.config.ts): en
+    // dev es "/", en el build de produccion es "/Depor_pwa/" -- sin esto
+    // react-router calcula navigate('/login') etc. como ruta absoluta desde la raiz
+    // del dominio y se sale de esta IIS Application (404 real en el servidor,
+    // 2026-10-14).
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route
           path="/login"

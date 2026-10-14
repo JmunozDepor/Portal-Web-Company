@@ -27,6 +27,10 @@ export async function getProductosCount(): Promise<number> {
   return db.productos.count();
 }
 
+export async function getSucursalesCount(): Promise<number> {
+  return db.sucursales.count();
+}
+
 export async function upsertSucursales(items: SucursalRow[]): Promise<void> {
   await db.sucursales.bulkPut(items);
 }

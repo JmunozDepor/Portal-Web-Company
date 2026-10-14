@@ -2106,3 +2106,117 @@ body {
 .import-preview-warning {
   color: color-mix(in srgb, var(--bs-warning) 75%, black);
 }
+
+/* Vista previa de Importación Genérica en pestañas (2026-10-14): grillas planas
+   copiables (Resumen por OC, Detalle, paneles de Análisis). El pie de totales queda
+   fijo abajo dentro del recuadro con scroll, igual que el encabezado arriba. */
+.import-kpis .form-group > div {
+  font-weight: 600;
+}
+
+.import-grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.import-grid-wrapper {
+  max-height: 55vh;
+}
+
+.import-grid td {
+  vertical-align: top;
+}
+
+.import-grid tfoot td {
+  position: sticky;
+  bottom: 0;
+  background: var(--bs-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.import-cell-error {
+  background: color-mix(in srgb, var(--bs-danger) 18%, transparent) !important;
+}
+
+.import-cell-warning {
+  background: color-mix(in srgb, var(--bs-warning) 22%, transparent) !important;
+}
+
+.import-issue {
+  display: block;
+  white-space: normal;
+}
+
+.import-analysis-panels {
+  /* Una columna: cada panel usa el ancho completo (Artículos debajo de Sucursales) --
+     en dos columnas las tablas quedaban angostas y las celdas se partían en varias
+     líneas (pedido del dueño del proyecto, 2026-10-14). */
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+/* La observación es la única columna que puede crecer y hacer salto de línea. */
+.import-grid .import-col-obs {
+  width: 50%;
+}
+
+.import-analysis-panel-ancho {
+  grid-column: 1 / -1;
+}
+
+.import-analysis-panel .import-grid-wrapper {
+  max-height: 40vh;
+}
+
+/* Reglas de validación de un formato (Importación Genérica > Configuración): todas las
+   celdas centradas verticalmente y parámetros en línea ("Tolerancia [ 1 ] %") para que
+   las filas con y sin parámetros tengan la misma altura. */
+.tabla-reglas-validacion td {
+  vertical-align: middle;
+}
+
+.tabla-reglas-validacion td:nth-child(2) {
+  width: 70px;
+}
+
+.tabla-reglas-validacion td:nth-child(3) {
+  width: 160px;
+}
+
+.tabla-reglas-validacion td:nth-child(4) {
+  width: 300px;
+}
+
+.regla-parametros {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.regla-parametro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.regla-parametro .form-control {
+  width: 80px;
+  text-align: right;
+}
+
+.regla-parametro-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

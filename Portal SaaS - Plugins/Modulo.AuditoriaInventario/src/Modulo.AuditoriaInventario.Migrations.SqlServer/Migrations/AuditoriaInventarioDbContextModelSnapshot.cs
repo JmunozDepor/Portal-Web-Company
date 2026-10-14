@@ -137,6 +137,11 @@ namespace Modulo.AuditoriaInventario.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("company_id");
 
+                    b.Property<string>("PwaUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("pwa_url");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("updated_at");

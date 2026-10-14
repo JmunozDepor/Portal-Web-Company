@@ -3,7 +3,7 @@ using PortalSaas.Abstractions.Modelos;
 
 namespace PortalSaas.Core.ImportacionGenerica.Reglas;
 
-/// <summary>La Sucursal (Branch) de la fila corresponde a una dirección de despacho (CRD1, AddressType='S') del CardCode de esa fila.</summary>
+/// <summary>La Sucursal (Branch) de la fila corresponde a una dirección de despacho (CRD1, AdresType='S') del CardCode de esa fila.</summary>
 public sealed class CustomerBranchValidRule : IGenericImportValidationRule
 {
     private readonly ICustomerShipToAddressService _shipToAddresses;

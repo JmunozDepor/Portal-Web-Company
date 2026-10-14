@@ -1,0 +1,56 @@
+@page "/notificaciones"
+@using PortalSaas.Host.Notificaciones
+@model PortalSaas.Host.Pages.Notificaciones.IndexModel
+@{
+    ViewData["Title"] = "Notificaciones";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Notificaciones</h1>
+    @if (Model.Items.Any(i => !i.IsRead))
+    {
+        <form method="post" asp-page-handler="MarkAllAsRead" asp-route-returnUrl="/notificaciones">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Marcar todas como leídas</button>
+        </form>
+    }
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    <p class="text-muted">No tenés notificaciones.</p>
+}
+else
+{
+    <div class="document-list-table-wrapper">
+        <table class="table document-list-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Título</th>
+                    <th>Mensaje</th>
+                    <th>Fecha</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr class="@(item.IsRead ? "" : "fw-semibold")">
+                        <td><span class="badge-status badge-status--@NotificationSeverityDisplay.BadgeModifier(item.Severity)">&nbsp;</span></td>
+                        <td>@item.Title</td>
+                        <td>@item.Message</td>
+                        <td>@item.CreatedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
+                        <td>
+                            @if (!item.IsRead)
+                            {
+                                <form method="post" asp-page-handler="MarkAsRead" asp-route-id="@item.Id" asp-route-returnUrl="/notificaciones">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Marcar leída</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

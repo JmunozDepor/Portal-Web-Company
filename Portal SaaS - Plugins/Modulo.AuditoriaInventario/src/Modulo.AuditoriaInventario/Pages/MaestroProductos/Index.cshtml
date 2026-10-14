@@ -11,18 +11,34 @@
         equipo para validar los escaneos contra el maestro.
     </p>
 
-    @if (Model.SuccessMessage is not null)
-    {
-        <div class="alert alert-success">@Model.SuccessMessage</div>
-    }
     @if (Model.ErrorMessage is not null)
     {
         <div class="alert alert-danger">@Model.ErrorMessage</div>
     }
 
+    @if (Model.SyncStatus is { EnCurso: true } enCurso)
+    {
+        <meta http-equiv="refresh" content="5" />
+        <div class="alert alert-info">
+            Sincronización con SAP en curso desde las @enCurso.IniciadoEn.ToLocalTime().ToString("HH:mm")
+            -- @enCurso.Procesados.ToString("N0") artículo(s) procesados hasta ahora.
+            Esta página se actualiza sola cada 5 segundos.
+        </div>
+    }
+    else if (Model.SyncStatus is { Error: true } fallo)
+    {
+        <div class="alert alert-danger">@fallo.Mensaje</div>
+    }
+    else if (Model.SyncStatus is { Mensaje: not null } ok)
+    {
+        <div class="alert alert-success">@ok.Mensaje</div>
+    }
+
     <div class="d-flex align-items-center gap-3 mb-4">
         <form method="post" asp-page-handler="SincronizarSap">
-            <button type="submit" class="btn-primary">Sincronizar desde SAP</button>
+            <button type="submit" class="btn-primary" disabled="@(Model.SyncStatus?.EnCurso == true)">
+                @(Model.SyncStatus?.EnCurso == true ? "Sincronizando…" : "Sincronizar desde SAP")
+            </button>
         </form>
         <a class="btn-secondary" asp-page-handler="DescargarJson">Descargar maestro (JSON)</a>
         <span class="text-muted">@Model.TotalProductos.ToString("N0") producto(s) cargados en total.</span>

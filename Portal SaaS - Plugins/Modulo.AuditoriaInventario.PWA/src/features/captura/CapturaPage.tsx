@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { TopBar } from '../../components/TopBar';
 import {
@@ -10,6 +10,12 @@ import { reproducirBeepError } from './beep';
 import { esFormatoValido } from './barcodeFormat';
 import { BarcodeInput } from './BarcodeInput';
 import type { SesionRow, SectorRow, CapturaRow, ConfiguracionCapturaRow } from '../../db/schema';
+
+// Carga diferida: arrastra la librería ZXing (~100 KB gzip) que la mayoría de
+// los equipos (lector físico Datalogic) nunca necesita -- separado en su
+// propio chunk para que no se precachee ni se baje hasta que alguien abra el
+// escaneo con cámara al menos una vez.
+const CameraScanner = lazy(() => import('./CameraScanner').then((m) => ({ default: m.CameraScanner })));
 
 const CONFIGURACION_CAPTURA_DEFAULT: ConfiguracionCapturaRow = {
   id: 'singleton', allowEan8: true, allowUpcA: true, allowEan13: true,
@@ -30,6 +36,7 @@ export function CapturaPage({ token, onMenuClick }: { token: string; onMenuClick
   const [ultimaCapturaId, setUltimaCapturaId] = useState<string | null>(null);
   const [validando, setValidando] = useState(true);
   const [configuracionCaptura, setConfiguracionCaptura] = useState<ConfiguracionCapturaRow>(CONFIGURACION_CAPTURA_DEFAULT);
+  const [camaraAbierta, setCamaraAbierta] = useState(false);
 
   useEffect(() => {
     if (!sesionId) return;
@@ -131,7 +138,19 @@ export function CapturaPage({ token, onMenuClick }: { token: string; onMenuClick
           <>
             <div className="scan-field">
               <BarcodeInput onCommit={handleCommit} />
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm btn--block camera-scan-trigger"
+                onClick={() => setCamaraAbierta(true)}
+              >
+                Escanear con cámara
+              </button>
             </div>
+            {camaraAbierta && (
+              <Suspense fallback={<div className="modal-overlay"><p className="status-note">Cargando cámara…</p></div>}>
+                <CameraScanner onDetected={handleCommit} onClose={() => setCamaraAbierta(false)} />
+              </Suspense>
+            )}
             <div className="capture-form">
               <label htmlFor="captura-cantidad">Cantidad</label>
               <input

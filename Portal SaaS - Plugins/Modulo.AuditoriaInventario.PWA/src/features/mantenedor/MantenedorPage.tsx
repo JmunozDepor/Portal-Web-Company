@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TopBar } from '../../components/TopBar';
 import { syncProductos, syncSucursales, syncAjustesCaptura } from '../../sync/maestroSync';
 import {
-  getProductosCount, getAjustes, setValidarProducto, importarMaestroDesdeJson,
+  getProductosCount, getSucursalesCount, getAjustes, setValidarProducto, importarMaestroDesdeJson,
   getPendingCounts, getSesionesLimpiables, limpiarSesionesSincronizadas, getAuthConfig,
   getProductoByBarcode,
 } from '../../db/repositories';
@@ -21,11 +21,15 @@ export function MantenedorPage({
 }) {
   const [productosCount, setProductosCount] = useState(0);
   const [productosTotalServidor, setProductosTotalServidor] = useState<number | null>(null);
+  const [sucursalesCount, setSucursalesCount] = useState(0);
   const [validando, setValidando] = useState(true);
   const [sincronizando, setSincronizando] = useState(false);
+  const [sincronizandoSucursales, setSincronizandoSucursales] = useState(false);
   const [progreso, setProgreso] = useState(0);
   const [mensajeMaestro, setMensajeMaestro] = useState<string | null>(null);
   const [errorMaestro, setErrorMaestro] = useState<string | null>(null);
+  const [mensajeSucursales, setMensajeSucursales] = useState<string | null>(null);
+  const [errorSucursales, setErrorSucursales] = useState<string | null>(null);
   const [pendientes, setPendientes] = useState({ sesiones: 0, capturas: 0, errores: 0 });
   const [sincronizandoAhora, setSincronizandoAhora] = useState(false);
   const [deviceLabel, setDeviceLabel] = useState('');
@@ -41,6 +45,7 @@ export function MantenedorPage({
 
   async function recargar() {
     setProductosCount(await getProductosCount());
+    setSucursalesCount(await getSucursalesCount());
     setValidando((await getAjustes()).validarProducto);
     setPendientes(await getPendingCounts());
     setLimpiablesCount((await getSesionesLimpiables()).length);
@@ -72,10 +77,8 @@ export function MantenedorPage({
     setMensajeMaestro(null);
     setProgreso(0);
     try {
-      const sucursales = await syncSucursales(token);
       const productos = await syncProductos(token, setProgreso);
-      await syncAjustesCaptura(token);
-      setMensajeMaestro(`Maestro sincronizado: ${productos} producto(s), ${sucursales} sucursal(es).`);
+      setMensajeMaestro(`Maestro de productos sincronizado: ${productos} producto(s).`);
     } catch (err) {
       setErrorMaestro(
         err instanceof ApiError ? 'No se pudo sincronizar: el servidor respondió con un error.' : 'No se pudo conectar con el servidor.',
@@ -84,6 +87,31 @@ export function MantenedorPage({
       setSincronizando(false);
       await recargar();
       await verificarTotalServidor();
+    }
+  }
+
+  /**
+   * Separado del sync de productos (pedido explícito del dueño del proyecto,
+   * 2026-10-14): sucursales es un sync liviano e independiente -- no tiene
+   * sentido esperar a que bajen ~230K productos solo para poder elegir
+   * sucursal al crear una sesión. También trae los ajustes de captura
+   * (formatos de código aceptados), que son igual de livianos.
+   */
+  async function handleSincronizarSucursales() {
+    setSincronizandoSucursales(true);
+    setErrorSucursales(null);
+    setMensajeSucursales(null);
+    try {
+      const sucursales = await syncSucursales(token);
+      await syncAjustesCaptura(token);
+      setMensajeSucursales(`Sucursales sincronizadas: ${sucursales}.`);
+    } catch (err) {
+      setErrorSucursales(
+        err instanceof ApiError ? 'No se pudo sincronizar: el servidor respondió con un error.' : 'No se pudo conectar con el servidor.',
+      );
+    } finally {
+      setSincronizandoSucursales(false);
+      await recargar();
     }
   }
 
@@ -160,6 +188,18 @@ export function MantenedorPage({
       <TopBar title="Mantenedor" onMenuClick={onMenuClick} />
       <div className="page">
         <div className="panel">
+          <p className="panel__title">Sucursales</p>
+          <p className="panel__hint">
+            {sucursalesCount.toLocaleString('es-CL')} sucursal{sucursalesCount === 1 ? '' : 'es'} cargada{sucursalesCount === 1 ? '' : 's'} en el equipo.
+          </p>
+          {mensajeSucursales && <p role="status" className="status-note">{mensajeSucursales}</p>}
+          {errorSucursales && <p role="alert" className="alert">{errorSucursales}</p>}
+          <button type="button" className="btn btn--sm btn--block" onClick={handleSincronizarSucursales} disabled={sincronizandoSucursales}>
+            {sincronizandoSucursales ? 'Sincronizando…' : 'Sincronizar sucursales'}
+          </button>
+        </div>
+
+        <div className="panel">
           <p className="panel__title">Maestro de productos</p>
           <p className="panel__hint">
             {productosCount.toLocaleString('es-CL')} producto{productosCount === 1 ? '' : 's'} cargado{productosCount === 1 ? '' : 's'} en el equipo
@@ -174,7 +214,7 @@ export function MantenedorPage({
           {mensajeMaestro && <p role="status" className="status-note">{mensajeMaestro}</p>}
           {errorMaestro && <p role="alert" className="alert">{errorMaestro}</p>}
           <button type="button" className="btn btn--sm btn--block" onClick={handleSincronizarServidor} disabled={sincronizando}>
-            Sincronizar desde servidor
+            Sincronizar productos
           </button>
           <label className="btn btn--sm btn--block cleanup-trigger" style={{ cursor: 'pointer' }}>
             Cargar desde archivo (JSON)

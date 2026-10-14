@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Modulo.SellOut.Data;
 using PortalSaas.Abstractions.Componentes;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.SellOut.Pages.SellOut.ClienteSku;
 
@@ -27,10 +28,14 @@ public class IndexModel : PageModelBaseSellOut
     private const string SentinelSinParidad = "__SIN_PARIDAD__";
 
     private readonly SellOutDbContext _db;
+    private readonly ICurrentUserContext _usuarioActual;
+    private readonly INotificationService _notificaciones;
 
-    public IndexModel(SellOutDbContext db, ICurrentUserContext usuarioActual) : base(usuarioActual)
+    public IndexModel(SellOutDbContext db, ICurrentUserContext usuarioActual, INotificationService notificaciones) : base(usuarioActual)
     {
         _db = db;
+        _usuarioActual = usuarioActual;
+        _notificaciones = notificaciones;
     }
 
     protected override string CodigoMenu => "clientesku";
@@ -308,6 +313,13 @@ public class IndexModel : PageModelBaseSellOut
         MensajeExito = errores.Count == 0
             ? $"{actualizados} SKU actualizados correctamente."
             : $"{actualizados} SKU actualizados. {errores.Count} fila(s) con error (detalle abajo).";
+
+        await _notificaciones.TryEnqueueAsync(_usuarioActual.UserId, "Sell Out: importación de paridad",
+            errores.Count == 0
+                ? $"{actualizados} SKU actualizados correctamente."
+                : $"{actualizados} SKU actualizados, {errores.Count} fila(s) con error.",
+            errores.Count == 0 ? NotificationSeverity.Success : NotificationSeverity.Warning,
+            "/sellout/clientesku");
 
         await CargarListasAsync();
         return Page();

@@ -13,10 +13,12 @@ namespace Modulo.GestionDistribucionGastos.Pages.GestionGastos;
 public class PanelModel : PageModelBaseGestionGastos
 {
     private readonly ApplicationDbContext _db;
+    private readonly INotificationService _notificaciones;
 
-    public PanelModel(ApplicationDbContext db, ICurrentUserContext usuarioActual) : base(usuarioActual)
+    public PanelModel(ApplicationDbContext db, ICurrentUserContext usuarioActual, INotificationService notificaciones) : base(usuarioActual)
     {
         _db = db;
+        _notificaciones = notificaciones;
     }
 
     public List<CierreMes> MesesDisponibles { get; set; } = new();
@@ -98,6 +100,7 @@ public class PanelModel : PageModelBaseGestionGastos
         }
 
         var conn = _db.Database.GetDbConnection();
+        var cargado = false;
 
         try
         {
@@ -135,6 +138,7 @@ public class PanelModel : PageModelBaseGestionGastos
             await _db.SaveChangesAsync();
 
             MensajeExito = $"Mes {anioMes} cargado y distribución automática ejecutada.";
+            cargado = true;
         }
         catch (Exception ex)
         {
@@ -144,6 +148,13 @@ public class PanelModel : PageModelBaseGestionGastos
         {
             await conn.CloseAsync();
         }
+
+        // Los dos SP pueden tardar minutos (CommandTimeout 300 c/u): el aviso en la campana
+        // deja constancia aunque el usuario ya haya cerrado o cambiado de pestaña.
+        await _notificaciones.TryEnqueueAsync(UsuarioIdActual, $"Gestión de gastos: carga del mes {anioMes}",
+            cargado ? MensajeExito! : MensajeError!,
+            cargado ? NotificationSeverity.Success : NotificationSeverity.Danger,
+            $"/gestiongastos/panel?anioMes={anioMes}");
 
         return RedirectToPage(new { anioMes });
     }

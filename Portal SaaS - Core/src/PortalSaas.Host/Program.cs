@@ -16,6 +16,7 @@ using PortalSaas.Core.ImportacionGenerica;
 using PortalSaas.Core.ImportacionGenerica.Reglas;
 using PortalSaas.Core.Infraestructura;
 using PortalSaas.Core.Inventario;
+using PortalSaas.Core.Notificaciones;
 using PortalSaas.Core.Sap;
 using PortalSaas.Core.Seguridad;
 using PortalSaas.Core.Usuarios;
@@ -120,6 +121,7 @@ builder.Services.AddScoped<IUserSessionService, UserSessionService>();
 builder.Services.AddHostedService<StaleUserSessionCleanupHostedService>();
 builder.Services.AddScoped<ICompanySessionActivator, CompanySessionActivator>();
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<IContractLimitService, ContractLimitService>();
 builder.Services.AddScoped<IOrganizationAccessGateService, OrganizationAccessGateService>();
@@ -265,6 +267,8 @@ builder.Services.AddScoped<IGenericImportValidationRule, PriceVsFixedListRule>()
 builder.Services.AddScoped<IGenericImportValidationRule, PriceVsCustomerListRule>();
 builder.Services.AddScoped<IGenericImportValidationRule, StockAvailableRule>();
 builder.Services.AddScoped<IGenericImportValidationRule, CustomerBranchValidRule>();
+builder.Services.AddScoped<IGenericImportValidationRule, OrderTotalDiscountRule>();
+builder.Services.AddScoped<IGenericImportValidationRule, DuplicateOrderInSapRule>();
 builder.Services.AddScoped<IGenericImportValidationRuleEngine, GenericImportValidationRuleEngine>();
 
 // Catálogos nuevos, sin consumidor propio todavía (ningún plugin los usa aún) --

@@ -1,0 +1,505 @@
+@model Modulo.ImportacionGenerica.Pages.Importar.IndexModel
+@using PortalSaas.Abstractions.Modelos
+@*
+    Vista previa de Importar (2026-10-14): dos pestañas sobre GenericImportAnalysisDto
+    (precalculado en Core, la misma fuente que el Excel de validación):
+    - Resumen: grilla por OC (agrupación máxima) + detalle de líneas con totales.
+    - Análisis: un panel por tipo de hallazgo (Sucursales, Artículos, Precios,
+      Cumplimiento, Otras observaciones).
+    Todo son <table> planas (sin componentes) para poder seleccionar/copiar y pegar en
+    Excel; el botón "Copiar" de cada grilla copia lo visible como texto tabulado.
+*@
+@{
+    var result = Model.PreviewResult!;
+    var analysis = result.Analysis!;
+    var totals = analysis.Totals;
+    var esInventario = Model.Input.Module == GenericImportModule.Inventory;
+    var etiquetaSocio = Model.Input.Module == GenericImportModule.Purchase ? "Proveedor" : "Cliente";
+    var rows = result.Documents.SelectMany(d => d.Rows).OrderBy(r => r.RowNumber).ToList();
+
+    string Num(decimal? value) => value is { } v ? v.ToString("#,##0.##") : "";
+    string Pct(decimal? value) => value is { } v ? v.ToString("0.##") + "%" : "—";
+    bool Has(GenericImportRowDto row, GenericImportIssueCategory category) => row.Issues.Any(i => i.Category == category);
+    string CellClass(GenericImportRowDto row, params GenericImportIssueCategory[] categories)
+    {
+        var related = row.Issues.Where(i => categories.Contains(i.Category)).ToList();
+        return related.Any(i => i.IsError) ? "import-cell-error" : related.Count > 0 ? "import-cell-warning" : "";
+    }
+    string OrdenDe(GenericImportRowDto row) => row.CustomerReferenceNumber ?? row.GroupingKey;
+
+    var diferenciaTotal = totals.SapAmount > 0 ? (totals.OrderAmount - totals.SapAmount) / totals.SapAmount * 100m : (decimal?)null;
+    var cumplimientoTotal = totals.Units > 0 ? totals.UnitsFulfillable / totals.Units * 100m : (decimal?)null;
+
+    // Contador de cada pestaña -- lo que requiere revisión en ese tema.
+    var unidOc = analysis.Fulfillment.Sum(f => f.UnitsOrdered);
+    var unidCub = analysis.Fulfillment.Sum(f => f.UnitsFulfillable);
+    var incompletos = analysis.Fulfillment.Count(f => f.FulfillmentPercent < 100m);
+    var fueraTolerancia = analysis.PriceComparisons.Count(p => p.OutOfTolerance);
+    var tabs = new List<(string Id, string Label, int Count)> { ("sucursales", "Sucursales", analysis.BranchIssues.Count), ("articulos", "Artículos / SKU", analysis.ItemIssues.Count) };
+    if (!esInventario)
+    {
+        tabs.Add(("precios", "Precios", fueraTolerancia));
+    }
+    tabs.Add(("cumplimiento", "Cumplimiento", incompletos));
+    tabs.Add(("duplicadas", "OC ya cargadas", analysis.DuplicateOrders.Count));
+    tabs.Add(("otras", "Otras observaciones", analysis.OtherIssues.Count));
+}
+
+<span class="doc-resumen-total-titulo">Vista previa</span>
+
+<div class="form-row mb-2 import-kpis">
+    <div class="form-group"><span class="form-label">OC / documentos</span><div>@totals.Orders</div></div>
+    <div class="form-group"><span class="form-label">Líneas</span><div>@totals.Lines</div></div>
+    <div class="form-group"><span class="form-label">Unidades</span><div>@Num(totals.Units)</div></div>
+    @if (!esInventario)
+    {
+        <div class="form-group"><span class="form-label">Total OC</span><div>@Num(totals.OrderAmount)</div></div>
+        <div class="form-group"><span class="form-label">Total a precio SAP</span><div>@Num(totals.SapAmount)</div></div>
+        <div class="form-group"><span class="form-label">Diferencia OC vs. SAP</span><div>@Pct(diferenciaTotal is { } d ? Math.Round(d, 2) : null)</div></div>
+    }
+    <div class="form-group"><span class="form-label">Cumplimiento (stock)</span><div>@Pct(cumplimientoTotal is { } c ? Math.Round(c, 1) : null)</div></div>
+    <div class="form-group"><span class="form-label">Líneas con error</span><div class="@(totals.LinesWithErrors > 0 ? "text-danger fw-bold" : "")">@totals.LinesWithErrors</div></div>
+    <div class="form-group"><span class="form-label">Líneas con advertencia</span><div class="@(totals.LinesWithWarnings > 0 ? "import-preview-warning fw-bold" : "")">@totals.LinesWithWarnings</div></div>
+</div>
+
+<ul class="nav nav-tabs doc-tabs mb-2" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link doc-tab-btn active" data-bs-toggle="tab" data-bs-target="#import-tab-resumen" type="button" role="tab">Resumen</button>
+    </li>
+    @foreach (var tab in tabs)
+    {
+        <li class="nav-item" role="presentation">
+            <button class="nav-link doc-tab-btn" data-bs-toggle="tab" data-bs-target="#import-tab-@tab.Id" type="button" role="tab">
+                @tab.Label <span class="badge @(tab.Count > 0 ? "bg-danger" : "bg-success") ms-1">@tab.Count</span>
+            </button>
+        </li>
+    }
+</ul>
+
+<div class="tab-content">
+    @* ============================ RESUMEN ============================ *@
+    <div class="tab-pane fade show active" id="import-tab-resumen" role="tabpanel">
+        <div class="import-grid-header">
+            <strong>Resumen por OC</strong>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-table="import-grid-oc">Copiar</button>
+        </div>
+        <div class="document-list-table-wrapper import-grid-wrapper mb-3">
+            <table class="table table-sm document-list-table import-grid" id="import-grid-oc">
+                <thead>
+                    <tr>
+                        <th>OC / grupo</th>
+                        <th>N° referencia</th>
+                        <th>@etiquetaSocio</th>
+                        <th>Sucursal</th>
+                        <th class="text-end">Líneas</th>
+                        <th class="text-end">Unidades</th>
+                        @if (!esInventario)
+                        {
+                            <th class="text-end">Total OC</th>
+                            <th class="text-end">Total SAP</th>
+                            <th class="text-end">Desc. total</th>
+                        }
+                        <th class="text-end">Unid. cubiertas</th>
+                        <th class="text-end">Errores</th>
+                        <th class="text-end">Advert.</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in analysis.Orders)
+                    {
+                        <tr class="@(order.CanCreate ? "" : "table-danger")">
+                            <td>@order.GroupingKey</td>
+                            <td>@order.CustomerReferenceNumber</td>
+                            <td>@order.BusinessPartnerCardCode @(order.BusinessPartnerName is { } n ? $"— {n}" : (Model.BusinessPartnerName is { } wn ? $"— {wn}" : ""))</td>
+                            <td>@order.Branches</td>
+                            <td class="text-end">@order.Lines</td>
+                            <td class="text-end">@Num(order.Units)</td>
+                            @if (!esInventario)
+                            {
+                                <td class="text-end">@Num(order.OrderAmount)</td>
+                                <td class="text-end">@Num(order.SapAmount)</td>
+                                <td class="text-end">@Pct(order.DiscountPercent)</td>
+                            }
+                            <td class="text-end">@Num(order.UnitsFulfillable)</td>
+                            <td class="text-end">@order.LinesWithErrors</td>
+                            <td class="text-end">@order.LinesWithWarnings</td>
+                            <td>@(order.CanCreate ? "Listo para crear" : "Con errores -- no se creará")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td>TOTAL</td><td></td><td></td><td></td>
+                        <td class="text-end">@totals.Lines</td>
+                        <td class="text-end">@Num(totals.Units)</td>
+                        @if (!esInventario)
+                        {
+                            <td class="text-end">@Num(totals.OrderAmount)</td>
+                            <td class="text-end">@Num(totals.SapAmount)</td>
+                            <td></td>
+                        }
+                        <td class="text-end">@Num(totals.UnitsFulfillable)</td>
+                        <td class="text-end">@totals.LinesWithErrors</td>
+                        <td class="text-end">@totals.LinesWithWarnings</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="import-grid-header">
+            <strong>Detalle de líneas</strong>
+            <div class="d-flex gap-2 align-items-center">
+                <select class="form-select form-select-sm" id="import-filtro-oc" style="width:auto">
+                    <option value="">Todas las OC</option>
+                    @foreach (var order in analysis.Orders)
+                    {
+                        <option value="@order.GroupingKey">@order.GroupingKey</option>
+                    }
+                </select>
+                <label class="form-check-label small text-nowrap">
+                    <input type="checkbox" class="form-check-input" id="import-filtro-obs" /> Solo con observaciones
+                </label>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-table="import-grid-detalle">Copiar</button>
+            </div>
+        </div>
+        <div class="document-list-table-wrapper import-grid-wrapper">
+            <table class="table table-sm document-list-table import-grid" id="import-grid-detalle">
+                <thead>
+                    <tr>
+                        <th>Fila</th>
+                        <th>OC</th>
+                        <th>Sucursal</th>
+                        <th>Código archivo</th>
+                        <th>Código SAP</th>
+                        <th>Descripción</th>
+                        @if (esInventario)
+                        {
+                            <th>Alm. origen</th>
+                            <th>Alm. destino</th>
+                        }
+                        else
+                        {
+                            <th>Almacén</th>
+                        }
+                        <th class="text-end">Unid.</th>
+                        @if (!esInventario)
+                        {
+                            <th class="text-end">$ P. OC</th>
+                            <th class="text-end">$ P. SAP</th>
+                        }
+                        <th class="text-end">Stock disp.</th>
+                        <th class="text-end">Unid. cub.</th>
+                        <th>Observaciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in rows)
+                    {
+                        var codigoArchivo = row.RawValues.GetValueOrDefault(GenericImportLogicalField.ItemCode);
+                        var descripcion = row.ItemName ?? row.Description ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.Description);
+                        var montoOc = row.UnitPrice is { } p ? (row.Quantity ?? 0m) * p : 0m;
+                        var montoSap = row.SapReferencePrice is { } sp ? (row.Quantity ?? 0m) * sp : 0m;
+                        var stockCorto = row.FulfillableQuantity is { } f && f < (row.Quantity ?? 0m);
+                        <tr class="@(row.IsValid ? "" : "table-danger")" data-oc="@row.GroupingKey" data-obs="@(row.Issues.Count > 0 || stockCorto ? "1" : "0")"
+                            data-units="@((row.Quantity ?? 0m).ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                            data-amount-oc="@montoOc.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                            data-amount-sap="@montoSap.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                            data-fulfillable="@((row.FulfillableQuantity ?? 0m).ToString(System.Globalization.CultureInfo.InvariantCulture))">
+                            <td>@row.RowNumber</td>
+                            <td>@OrdenDe(row)</td>
+                            <td class="@CellClass(row, GenericImportIssueCategory.Branch)">@row.Branch</td>
+                            <td class="text-nowrap @CellClass(row, GenericImportIssueCategory.Item)">@codigoArchivo</td>
+                            <td class="text-nowrap">@(row.ItemCode ?? "Sin coincidencia")</td>
+                            <td>@descripcion</td>
+                            @if (esInventario)
+                            {
+                                <td class="@CellClass(row, GenericImportIssueCategory.Warehouse)" title="@row.SourceWarehouseName">@(row.SourceWarehouse ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.SourceWarehouse))</td>
+                                <td class="@CellClass(row, GenericImportIssueCategory.Warehouse)" title="@row.DestinationWarehouseName">@(row.DestinationWarehouse ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.DestinationWarehouse))</td>
+                            }
+                            else
+                            {
+                                <td class="@CellClass(row, GenericImportIssueCategory.Warehouse)" title="@row.WarehouseName">@(row.Warehouse ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.Warehouse))</td>
+                            }
+                            <td class="text-end @CellClass(row, GenericImportIssueCategory.Quantity)">@Num(row.Quantity)</td>
+                            @if (!esInventario)
+                            {
+                                <td class="text-end @CellClass(row, GenericImportIssueCategory.Price, GenericImportIssueCategory.OrderTotal)">@Num(row.UnitPrice)</td>
+                                <td class="text-end">@Num(row.SapReferencePrice)</td>
+                            }
+                            <td class="text-end">@Num(row.StockAvailable)</td>
+                            <td class="text-end @(stockCorto ? (row.FulfillableQuantity == 0 ? "import-cell-error" : "import-cell-warning") : "")">@Num(row.FulfillableQuantity)</td>
+                            <td>
+                                @foreach (var issue in row.Issues)
+                                {
+                                    <span class="import-issue @(issue.IsError ? "text-danger" : "import-preview-warning")">@(issue.IsError ? "✖" : "⚠") @issue.Message</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td>TOTAL</td><td></td><td></td><td></td><td></td><td></td>
+                        @if (esInventario)
+                        {
+                            <td></td><td></td>
+                        }
+                        else
+                        {
+                            <td></td>
+                        }
+                        <td class="text-end" data-total="units">@Num(totals.Units)</td>
+                        @if (!esInventario)
+                        {
+                            <td class="text-end" data-total="amount-oc">@Num(totals.OrderAmount)</td>
+                            <td class="text-end" data-total="amount-sap">@Num(totals.SapAmount)</td>
+                        }
+                        <td></td>
+                        <td class="text-end" data-total="fulfillable">@Num(totals.UnitsFulfillable)</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        @if (!esInventario)
+        {
+            <p class="text-muted small mt-1 mb-0">En el detalle, los totales de "$ P. OC" y "$ P. SAP" son montos (unidades × precio).</p>
+        }
+    </div>
+
+    @* ===== ANÁLISIS: una pestaña por tema (hermanas de Resumen dentro de .tab-content,
+         requisito de Bootstrap para que al activar una se oculten las demás) ===== *@
+            <div class="tab-pane fade import-analysis-panel" id="import-tab-sucursales" role="tabpanel">
+                <div class="import-grid-header">
+                    <strong>Sucursales con error <span class="badge @(analysis.BranchIssues.Count > 0 ? "bg-danger" : "bg-success")">@analysis.BranchIssues.Count</span></strong>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-table="import-grid-sucursales">Copiar</button>
+                </div>
+                <div class="document-list-table-wrapper import-grid-wrapper">
+                    <table class="table table-sm document-list-table import-grid" id="import-grid-sucursales">
+                        <thead><tr><th>Sucursal</th><th>OC</th><th class="text-end">Líneas</th><th class="import-col-obs">Observación</th></tr></thead>
+                        <tbody>
+                            @foreach (var b in analysis.BranchIssues)
+                            {
+                                <tr><td class="import-cell-error text-nowrap">@b.Branch</td><td class="text-nowrap">@b.Orders</td><td class="text-end">@b.Lines</td><td>@b.Message</td></tr>
+                            }
+                            @if (analysis.BranchIssues.Count == 0)
+                            {
+                                <tr><td colspan="4" class="text-success">Sin sucursales con error.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade import-analysis-panel" id="import-tab-articulos" role="tabpanel">
+                <div class="import-grid-header">
+                    <strong>Artículos / SKU con error <span class="badge @(analysis.ItemIssues.Count > 0 ? "bg-danger" : "bg-success")">@analysis.ItemIssues.Count</span></strong>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-table="import-grid-articulos">Copiar</button>
+                </div>
+                <div class="document-list-table-wrapper import-grid-wrapper">
+                    <table class="table table-sm document-list-table import-grid" id="import-grid-articulos">
+                        <thead><tr><th>Código archivo</th><th>Descripción</th><th>OC</th><th class="text-end">Líneas</th><th class="text-end">Unid.</th><th class="import-col-obs">Observación</th></tr></thead>
+                        <tbody>
+                            @foreach (var i in analysis.ItemIssues)
+                            {
+                                <tr><td class="import-cell-error text-nowrap">@i.SourceCode</td><td>@(i.Description ?? "—")</td><td class="text-nowrap">@i.Orders</td><td class="text-end">@i.Lines</td><td class="text-end">@Num(i.Units)</td><td>@i.Message</td></tr>
+                            }
+                            @if (analysis.ItemIssues.Count == 0)
+                            {
+                                <tr><td colspan="6" class="text-success">Todos los artículos se encontraron en SAP.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @if (!esInventario)
+            {
+                <div class="tab-pane fade import-analysis-panel" id="import-tab-precios" role="tabpanel">
+                    <div class="import-grid-header">
+                        <strong>
+                            Comparación de precios OC vs. SAP
+                            <span class="badge @(fueraTolerancia > 0 ? "bg-danger" : "bg-success")" title="Fuera de tolerancia de la regla de precio">@fueraTolerancia</span>
+                            <span class="text-muted small fw-normal">de @analysis.PriceComparisons.Count línea(s) con diferencia</span>
+                        </strong>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-table="import-grid-precios">Copiar</button>
+                    </div>
+                    <div class="document-list-table-wrapper import-grid-wrapper">
+                        <table class="table table-sm document-list-table import-grid" id="import-grid-precios">
+                            <thead>
+                                <tr><th>Fila</th><th>OC</th><th>Código SAP</th><th>Descripción</th><th class="text-end">Unid.</th><th class="text-end">$ P. OC</th><th class="text-end">$ P. SAP</th><th class="text-end">Diferencia</th><th class="text-end">Dif. %</th><th>Estado</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in analysis.PriceComparisons)
+                                {
+                                    <tr class="@(p.OutOfTolerance ? "table-danger" : "")">
+                                        <td>@p.RowNumber</td><td class="text-nowrap">@p.GroupingKey</td><td class="text-nowrap">@p.ItemCode</td><td>@p.Description</td>
+                                        <td class="text-end">@Num(p.Quantity)</td><td class="text-end">@Num(p.OrderPrice)</td><td class="text-end">@Num(p.SapPrice)</td>
+                                        <td class="text-end">@Num(p.Difference)</td><td class="text-end">@Pct(p.DifferencePercent)</td>
+                                        <td>@(p.OutOfTolerance ? "Fuera de tolerancia" : "Dentro de tolerancia")</td>
+                                    </tr>
+                                }
+                                @if (analysis.PriceComparisons.Count == 0)
+                                {
+                                    <tr><td colspan="10" class="text-success">Todos los precios coinciden con SAP (o las líneas no traen precio).</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <div class="tab-pane fade import-analysis-panel" id="import-tab-cumplimiento" role="tabpanel">
+                <div class="import-grid-header">
+                    <strong>Cumplimiento de unidades (stock disponible) <span class="badge @(incompletos > 0 ? "bg-danger" : "bg-success")">@incompletos</span></strong>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-table="import-grid-cumplimiento">Copiar</button>
+                </div>
+                <div class="document-list-table-wrapper import-grid-wrapper">
+                    <table class="table table-sm document-list-table import-grid" id="import-grid-cumplimiento">
+                        <thead><tr><th>Código SAP</th><th>Descripción</th><th>Almacén</th><th class="text-end">Unid. OC</th><th class="text-end">Stock disp.</th><th class="text-end">Unid. cubiertas</th><th class="text-end">% cump.</th></tr></thead>
+                        <tbody>
+                            @foreach (var f in analysis.Fulfillment)
+                            {
+                                var clase = f.FulfillmentPercent >= 100m ? "" : f.FulfillmentPercent == 0m ? "import-cell-error" : "import-cell-warning";
+                                <tr>
+                                    <td class="text-nowrap">@f.ItemCode</td><td>@f.Description</td><td>@f.Warehouse</td>
+                                    <td class="text-end">@Num(f.UnitsOrdered)</td><td class="text-end">@Num(f.StockAvailable)</td><td class="text-end">@Num(f.UnitsFulfillable)</td>
+                                    <td class="text-end @clase">@Pct(f.FulfillmentPercent) @(f.FulfillmentPercent >= 100m ? "✔" : "✖")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>TOTAL</td><td></td><td></td>
+                                <td class="text-end">@Num(unidOc)</td><td></td><td class="text-end">@Num(unidCub)</td>
+                                <td class="text-end">@Pct(unidOc > 0 ? Math.Round(unidCub / unidOc * 100m, 1) : null)</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade import-analysis-panel" id="import-tab-duplicadas" role="tabpanel">
+                <div class="import-grid-header">
+                    <strong>OC ya cargadas en SAP <span class="badge @(analysis.DuplicateOrders.Count > 0 ? "bg-danger" : "bg-success")">@analysis.DuplicateOrders.Count</span></strong>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-table="import-grid-duplicadas">Copiar</button>
+                </div>
+                <p class="text-muted small mb-2">Requiere la regla "OC ya cargada en SAP" activa en el formato (Configuración).</p>
+                <div class="document-list-table-wrapper import-grid-wrapper">
+                    <table class="table table-sm document-list-table import-grid" id="import-grid-duplicadas">
+                        <thead><tr><th>OC / grupo</th><th>N° referencia</th><th class="text-end">Líneas</th><th>Gravedad</th><th class="import-col-obs">Observación</th></tr></thead>
+                        <tbody>
+                            @foreach (var d in analysis.DuplicateOrders)
+                            {
+                                <tr class="@(d.IsError ? "table-danger" : "table-warning")">
+                                    <td class="text-nowrap">@d.GroupingKey</td><td class="text-nowrap">@d.CustomerReferenceNumber</td><td class="text-end">@d.Lines</td>
+                                    <td>@(d.IsError ? "Error" : "Advertencia")</td><td>@d.Message</td>
+                                </tr>
+                            }
+                            @if (analysis.DuplicateOrders.Count == 0)
+                            {
+                                <tr><td colspan="5" class="text-success">Ninguna OC del archivo está cargada en SAP.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade import-analysis-panel" id="import-tab-otras" role="tabpanel">
+                <div class="import-grid-header">
+                    <strong>Otras observaciones <span class="badge @(analysis.OtherIssues.Count > 0 ? "bg-danger" : "bg-success")">@analysis.OtherIssues.Count</span></strong>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-copy-table="import-grid-otras">Copiar</button>
+                </div>
+                <div class="document-list-table-wrapper import-grid-wrapper">
+                    <table class="table table-sm document-list-table import-grid" id="import-grid-otras">
+                        <thead><tr><th>Fila</th><th>OC</th><th>Tipo</th><th>Gravedad</th><th>Observación</th></tr></thead>
+                        <tbody>
+                            @foreach (var o in analysis.OtherIssues)
+                            {
+                                <tr class="@(o.IsError ? "table-danger" : "table-warning")">
+                                    <td>@o.RowNumber</td><td class="text-nowrap">@o.GroupingKey</td><td>@Modulo.ImportacionGenerica.Pages.Importar.IndexModel.IssueCategoryLabel(o.Category)</td>
+                                    <td>@(o.IsError ? "Error" : "Advertencia")</td><td>@o.Message</td>
+                                </tr>
+                            }
+                            @if (analysis.OtherIssues.Count == 0)
+                            {
+                                <tr><td colspan="5" class="text-success">Sin otras observaciones.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+</div>
+
+<script>
+    (function () {
+        // Filtro del detalle por OC / "solo con observaciones" + recálculo de los totales
+        // del pie con las filas visibles.
+        var tabla = document.getElementById('import-grid-detalle');
+        var filtroOc = document.getElementById('import-filtro-oc');
+        var filtroObs = document.getElementById('import-filtro-obs');
+        if (tabla && filtroOc && filtroObs) {
+            var formato = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+            function aplicarFiltro() {
+                var oc = filtroOc.value;
+                var soloObs = filtroObs.checked;
+                var suma = { 'units': 0, 'amount-oc': 0, 'amount-sap': 0, 'fulfillable': 0 };
+                tabla.querySelectorAll('tbody tr').forEach(function (fila) {
+                    var visible = (!oc || fila.dataset.oc === oc) && (!soloObs || fila.dataset.obs === '1');
+                    fila.style.display = visible ? '' : 'none';
+                    if (visible) {
+                        suma['units'] += parseFloat(fila.dataset.units || '0');
+                        suma['amount-oc'] += parseFloat(fila.dataset.amountOc || '0');
+                        suma['amount-sap'] += parseFloat(fila.dataset.amountSap || '0');
+                        suma['fulfillable'] += parseFloat(fila.dataset.fulfillable || '0');
+                    }
+                });
+                tabla.querySelectorAll('tfoot [data-total]').forEach(function (celda) {
+                    celda.textContent = formato.format(suma[celda.dataset.total]);
+                });
+            }
+            filtroOc.addEventListener('change', aplicarFiltro);
+            filtroObs.addEventListener('change', aplicarFiltro);
+        }
+
+        // "Copiar": la grilla visible (encabezado + filas visibles + totales) como texto
+        // separado por tabuladores -- se pega directo en Excel con sus columnas.
+        document.querySelectorAll('[data-copy-table]').forEach(function (boton) {
+            boton.addEventListener('click', function () {
+                var origen = document.getElementById(boton.dataset.copyTable);
+                if (!origen) {
+                    return;
+                }
+                var lineas = [];
+                origen.querySelectorAll('tr').forEach(function (fila) {
+                    if (fila.style.display === 'none') {
+                        return;
+                    }
+                    var celdas = Array.prototype.map.call(fila.querySelectorAll('th,td'), function (celda) {
+                        return celda.innerText.replace(/\s+/g, ' ').trim();
+                    });
+                    lineas.push(celdas.join('\t'));
+                });
+                var texto = lineas.join('\n');
+                var listo = function () {
+                    var original = boton.textContent;
+                    boton.textContent = 'Copiado ✔';
+                    setTimeout(function () { boton.textContent = original; }, 1500);
+                };
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(texto).then(listo);
+                } else {
+                    var area = document.createElement('textarea');
+                    area.value = texto;
+                    document.body.appendChild(area);
+                    area.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(area);
+                    listo();
+                }
+            });
+        });
+    })();
+</script>

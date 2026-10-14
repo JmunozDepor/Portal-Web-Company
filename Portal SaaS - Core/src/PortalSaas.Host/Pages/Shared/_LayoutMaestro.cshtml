@@ -291,17 +291,18 @@
                     </button>
                     <span class="topbar-title">@ViewData["Title"]</span>
                     @* Buscador + iconos de nivel superior (2026-08-19, layout tipo
-                       "rindegastos") -- son PLACEHOLDERS visuales por ahora: no hay
-                       backend de búsqueda global ni de notificaciones/mensajes en esta
-                       plataforma todavía, así que quedan deshabilitados (disabled) con
-                       tooltip "Próximamente" en vez de simular una función que no existe
-                       de verdad -- ver CLAUDE.md, criterio de no fingir funcionalidad. *@
+                       "rindegastos"). Buscador y Mensajes/Crear siguen siendo
+                       PLACEHOLDERS deshabilitados a propósito -- sin backend de
+                       búsqueda global ni de mensajería todavía, ver CLAUDE.md,
+                       criterio de no fingir funcionalidad. Notificaciones SÍ es real
+                       desde 2026-10-14 -- ver INotificationService/
+                       NotificationBellViewComponent. *@
                     <div class="topbar-search">
                         <i class="bi bi-search"></i>
                         <input type="search" placeholder="Buscar" disabled title="Próximamente" />
                     </div>
                     <div class="topbar-right">
-                        <button type="button" class="topbar-icon-btn" disabled title="Notificaciones (próximamente)"><i class="bi bi-bell"></i></button>
+                        @await Component.InvokeAsync("NotificationBell")
                         <button type="button" class="topbar-icon-btn" disabled title="Mensajes (próximamente)"><i class="bi bi-chat-dots"></i></button>
                         <button type="button" class="topbar-icon-btn" disabled title="Crear (próximamente)"><i class="bi bi-plus-lg"></i></button>
                         @* Paleta de colores -- justo a la izquierda del menú de usuario. *@

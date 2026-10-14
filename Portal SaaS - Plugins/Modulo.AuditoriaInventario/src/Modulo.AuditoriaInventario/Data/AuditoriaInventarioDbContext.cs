@@ -264,6 +264,7 @@ public class AuditoriaInventarioDbContext : DbContext
             e.Property(x => x.AllowEan8).HasColumnName("allow_ean8").IsRequired();
             e.Property(x => x.AllowUpcA).HasColumnName("allow_upca").IsRequired();
             e.Property(x => x.AllowEan13).HasColumnName("allow_ean13").IsRequired();
+            e.Property(x => x.PwaUrl).HasColumnName("pwa_url").HasMaxLength(500);
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
             e.HasIndex(x => x.CompanyId).IsUnique().HasDatabaseName("uq_capture_settings_company_id");
         });

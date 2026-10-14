@@ -56,19 +56,20 @@
         // navegar -- con el panel abierto, tocar un grupo del sidebar lo dejaba
         // flotando encima del resto de la página indefinidamente. Cierre estándar:
         // click afuera del <details> (o Escape) lo cierra, sin tocar el toggle nativo
-        // de <summary> (que sigue abriendo/cerrando igual que siempre).
-        var userMenu = document.querySelector("details.user-menu");
-        if (userMenu) {
+        // de <summary> (que sigue abriendo/cerrando igual que siempre). Generalizado
+        // (2026-10-14) a cualquier <details> del topbar con este mismo problema --
+        // la campana de notificaciones (.notification-bell) es el segundo caso real.
+        document.querySelectorAll("details.user-menu, details.notification-bell").forEach(function (panel) {
             document.addEventListener("click", function (event) {
-                if (userMenu.open && !userMenu.contains(event.target)) {
-                    userMenu.open = false;
+                if (panel.open && !panel.contains(event.target)) {
+                    panel.open = false;
                 }
             });
             document.addEventListener("keydown", function (event) {
-                if (event.key === "Escape" && userMenu.open) {
-                    userMenu.open = false;
+                if (event.key === "Escape" && panel.open) {
+                    panel.open = false;
                 }
             });
-        }
+        });
     });
 })();

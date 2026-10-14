@@ -58,6 +58,7 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<UserMenuProfile> UserMenuProfiles => Set<UserMenuProfile>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<UserHomeShortcut> UserHomeShortcuts => Set<UserHomeShortcut>();
+    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<IntegrationDefinition> IntegrationDefinitions => Set<IntegrationDefinition>();
     public DbSet<IntegrationFieldMapping> IntegrationFieldMappings => Set<IntegrationFieldMapping>();
     public DbSet<IntegrationRunLog> IntegrationRunLogs => Set<IntegrationRunLog>();
@@ -167,7 +168,8 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.DocumentType).HasMaxLength(50);
             entity.Property(e => e.LineType).HasMaxLength(10);
             entity.Property(e => e.BusinessPartnerCardCode).HasMaxLength(15);
-            entity.Property(e => e.GroupingColumn).HasMaxLength(10);
+            entity.Property(e => e.GroupingColumn).HasMaxLength(50);
+            entity.Property(e => e.ItemIdentifier).HasMaxLength(20);
             entity.Property(e => e.Alias).HasMaxLength(100);
             entity.Property(e => e.PriceSource).HasMaxLength(20);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId);
@@ -509,6 +511,18 @@ public sealed class PortalSaasDbContext : DbContext
             entity.HasIndex(e => new { e.UserId, e.MenuId }).IsUnique();
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             entity.HasOne(e => e.Menu).WithMany().HasForeignKey(e => e.MenuId);
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("notifications", t => t.HasCheckConstraint("ck_notifications_severity",
+                "severity in ('info', 'success', 'warning', 'danger')"));
+            entity.Property(e => e.Title).HasMaxLength(200);
+            entity.Property(e => e.Message).HasMaxLength(2000);
+            entity.Property(e => e.Severity).HasMaxLength(20);
+            entity.Property(e => e.Url).HasMaxLength(500);
+            entity.HasIndex(e => new { e.UserId, e.IsRead, e.CreatedAt });
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
         });
 
         modelBuilder.Entity<AuditLog>(entity =>

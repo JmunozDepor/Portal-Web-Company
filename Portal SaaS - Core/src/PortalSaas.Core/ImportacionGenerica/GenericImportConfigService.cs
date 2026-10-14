@@ -129,7 +129,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
     }
 
     public async Task<int> CreateAsync(GenericImportModule module, string documentType, GenericImportLineType lineType,
-        string? businessPartnerCardCode, string? groupingColumn, bool skuIsCustomerOwn, string alias,
+        string? businessPartnerCardCode, string? groupingColumn, GenericImportItemIdentifier itemIdentifier, string alias,
         IReadOnlyList<GenericImportConfigFieldDto> fields,
         GenericImportPriceSource priceSource = GenericImportPriceSource.BusinessPartner, int? systemPriceListCode = null,
         bool businessPartnerFromFile = false,
@@ -146,8 +146,8 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
             DocumentType = documentType,
             LineType = lineType.ToString(),
             BusinessPartnerCardCode = string.IsNullOrWhiteSpace(businessPartnerCardCode) ? null : businessPartnerCardCode,
-            GroupingColumn = string.IsNullOrWhiteSpace(groupingColumn) ? null : groupingColumn,
-            SkuIsCustomerOwn = skuIsCustomerOwn,
+            GroupingColumn = GroupingColumns.Normalize(groupingColumn),
+            ItemIdentifier = itemIdentifier.ToString(),
             Alias = alias,
             IsActive = true,
             PriceSource = priceSource.ToString(),
@@ -161,7 +161,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         return entity.Id;
     }
 
-    public async Task UpdateAsync(int id, string? groupingColumn, bool skuIsCustomerOwn, string alias, bool isActive,
+    public async Task UpdateAsync(int id, string? groupingColumn, GenericImportItemIdentifier itemIdentifier, string alias, bool isActive,
         IReadOnlyList<GenericImportConfigFieldDto> fields,
         GenericImportPriceSource priceSource = GenericImportPriceSource.BusinessPartner, int? systemPriceListCode = null,
         bool businessPartnerFromFile = false,
@@ -174,8 +174,8 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         alias = (alias ?? string.Empty).Trim();
         await EnsureAliasIsUniqueAsync(entity.Module, entity.DocumentType, entity.LineType, entity.BusinessPartnerCardCode, alias, entity.Id, ct);
 
-        entity.GroupingColumn = string.IsNullOrWhiteSpace(groupingColumn) ? null : groupingColumn;
-        entity.SkuIsCustomerOwn = skuIsCustomerOwn;
+        entity.GroupingColumn = GroupingColumns.Normalize(groupingColumn);
+        entity.ItemIdentifier = itemIdentifier.ToString();
         entity.Alias = alias;
         entity.IsActive = isActive;
         entity.PriceSource = priceSource.ToString();
@@ -280,7 +280,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         Enum.Parse<GenericImportLineType>(row.LineType),
         row.BusinessPartnerCardCode,
         row.GroupingColumn,
-        row.SkuIsCustomerOwn,
+        Enum.TryParse<GenericImportItemIdentifier>(row.ItemIdentifier, out var itemIdentifier) ? itemIdentifier : GenericImportItemIdentifier.ItemCode,
         row.Alias,
         row.IsActive,
         row.Fields.Select(f => new GenericImportConfigFieldDto(

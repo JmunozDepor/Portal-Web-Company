@@ -137,6 +137,11 @@ namespace Modulo.AuditoriaInventario.Migrations.Postgres.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
+                    b.Property<string>("PwaUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pwa_url");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");

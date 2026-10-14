@@ -4,6 +4,7 @@ using Modulo.AuditoriaInventario.Data;
 using Modulo.AuditoriaInventario.Models;
 using Modulo.AuditoriaInventario.Servicios;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.AuditoriaInventario.Pages.Ajustes;
 
@@ -17,13 +18,16 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
     private readonly ICurrentCompanyAccessor _currentCompany;
     private readonly ICurrentUserContext _currentUser;
     private readonly IAjusteService _ajusteService;
+    private readonly INotificationService _notifications;
 
-    public IndexModel(AuditoriaInventarioDbContext db, ICurrentCompanyAccessor currentCompany, ICurrentUserContext currentUser, IAjusteService ajusteService)
+    public IndexModel(AuditoriaInventarioDbContext db, ICurrentCompanyAccessor currentCompany, ICurrentUserContext currentUser,
+        IAjusteService ajusteService, INotificationService notifications)
     {
         _db = db;
         _currentCompany = currentCompany;
         _currentUser = currentUser;
         _ajusteService = ajusteService;
+        _notifications = notifications;
     }
 
     public IReadOnlyList<InventoryAdjustment> Ajustes { get; private set; } = Array.Empty<InventoryAdjustment>();
@@ -53,6 +57,14 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
         }
 
         SuccessMessage = resultado.Mensaje;
+
+        // AprobarAsync ya validó compañía y estado -- acá solo hace falta saber a quién avisar.
+        var ajuste = await _db.InventoryAdjustments.FirstOrDefaultAsync(a => a.Id == id, ct);
+        if (ajuste is not null)
+        {
+            await NotificarProponenteAsync(ajuste, $"Tu ajuste #{ajuste.Id} fue aprobado y quedó en cola para SAP.", NotificationSeverity.Success, ct);
+        }
+
         return RedirectToPage();
     }
 
@@ -79,6 +91,19 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
         await _db.SaveChangesAsync(ct);
 
         SuccessMessage = "Ajuste rechazado.";
+        await NotificarProponenteAsync(ajuste, $"Tu ajuste #{ajuste.Id} fue rechazado.", NotificationSeverity.Danger, ct);
         return RedirectToPage();
+    }
+
+    /// <summary>Al que propuso el ajuste -- no a quien lo resolvió (si es la misma persona, ya lo ve en pantalla).</summary>
+    private async Task NotificarProponenteAsync(InventoryAdjustment ajuste, string mensaje, string severity, CancellationToken ct)
+    {
+        if (ajuste.ProposedByUserId == _currentUser.UserId)
+        {
+            return;
+        }
+
+        await _notifications.TryEnqueueAsync(ajuste.ProposedByUserId, "Auditoría de inventario: ajuste", mensaje,
+            severity, "/auditoria-inventario/ajustes", ct);
     }
 }

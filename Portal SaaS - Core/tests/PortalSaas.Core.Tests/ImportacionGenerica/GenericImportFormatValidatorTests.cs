@@ -9,7 +9,7 @@ public sealed class GenericImportFormatValidatorTests
 {
     private static GenericImportConfigDto Config(GenericImportModule module, string documentType, GenericImportLineType lineType,
         params GenericImportConfigFieldDto[] fields) =>
-        new(1, Guid.NewGuid(), module, documentType, lineType, null, null, false, "Prueba", true, fields);
+        new(1, Guid.NewGuid(), module, documentType, lineType, null, null, GenericImportItemIdentifier.ItemCode, "Prueba", true, fields);
 
     private static GenericImportConfigFieldDto Field(GenericImportLogicalField field, string? column, string? fixedValue = null) =>
         new(0, field, column, false, fixedValue, null);

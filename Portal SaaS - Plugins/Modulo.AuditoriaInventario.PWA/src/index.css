@@ -974,6 +974,48 @@ a {
   min-height: 2.5rem;
 }
 
+/* ---------- Escaneo con cámara ---------- */
+
+.camera-scan-trigger {
+  margin-top: var(--space-2);
+}
+
+.camera-scanner-modal {
+  max-width: 34rem;
+}
+
+.camera-scanner-viewport {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.camera-scanner-video {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  background: #000;
+  object-fit: cover;
+}
+
+/* Guía visual: no recorta el área que decodifica ZXing (lee el cuadro
+   completo), solo ayuda a la persona a encuadrar a la distancia donde la
+   cámara realmente enfoca -- demasiado cerca es la causa mas común de "se ve
+   borroso" en celulares sin lector dedicado. */
+.camera-scanner-guide {
+  position: absolute;
+  inset: 30% 10%;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.camera-scanner-hint {
+  text-align: center;
+  margin-top: var(--space-2);
+}
+
 /* ---------- Exportar ---------- */
 
 .export-section {

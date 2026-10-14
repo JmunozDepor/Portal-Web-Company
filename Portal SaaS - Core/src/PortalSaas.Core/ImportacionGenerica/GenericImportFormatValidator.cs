@@ -226,9 +226,9 @@ public sealed class GenericImportFormatValidator : IGenericImportFormatValidator
                 $"La columna {group.Key} está mapeada a varios campos: {string.Join(", ", group.Select(c => c.Name))}."));
         }
 
-        if (!string.IsNullOrWhiteSpace(config.GroupingColumn) && !ColumnPattern.IsMatch(config.GroupingColumn.Trim()))
+        foreach (var groupingColumn in GroupingColumns.Parse(config.GroupingColumn).Where(c => !ColumnPattern.IsMatch(c)))
         {
-            checks.Add(new(GenericImportFormatCheckSeverity.Error, AreaCore, $"Columna de agrupación \"{config.GroupingColumn}\" no es una letra de columna Excel válida."));
+            checks.Add(new(GenericImportFormatCheckSeverity.Error, AreaCore, $"Columna de agrupación \"{groupingColumn}\" no es una letra de columna Excel válida."));
         }
     }
 
@@ -257,7 +257,7 @@ public sealed class GenericImportFormatValidator : IGenericImportFormatValidator
             {
                 GenericImportLogicalField.Warehouse or GenericImportLogicalField.SourceWarehouse or GenericImportLogicalField.DestinationWarehouse =>
                     ("""SELECT "WhsCode" FROM "OWHS" WHERE "WhsCode" = :code""", "almacén", (object)new { code = value }),
-                GenericImportLogicalField.ItemCode when !config.SkuIsCustomerOwn =>
+                GenericImportLogicalField.ItemCode when config.ItemIdentifier == GenericImportItemIdentifier.ItemCode =>
                     ("""SELECT "ItemCode" FROM "OITM" WHERE "ItemCode" = :code""", "artículo", new { code = value }),
                 GenericImportLogicalField.Account =>
                     ("""SELECT "AcctCode" FROM "OACT" WHERE "AcctCode" = :code""", "cuenta mayor", new { code = value }),

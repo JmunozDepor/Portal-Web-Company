@@ -40,12 +40,13 @@ public sealed class IndexModel : PageModelBaseAdmin
     private readonly ICustomerCatalogService _customers;
     private readonly ISupplierCatalogService _suppliers;
     private readonly IGenericImportUserFieldService _userFields;
+    private readonly INotificationService _notifications;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(ICurrentUserContext currentUser, IGenericImportService importService, IGenericImportProgressStore progress,
         IGenericImportConfigService configs, ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
         ICustomerCatalogService customers, ISupplierCatalogService suppliers, IGenericImportUserFieldService userFields,
-        ILogger<IndexModel> logger) : base(currentUser)
+        INotificationService notifications, ILogger<IndexModel> logger) : base(currentUser)
     {
         _importService = importService;
         _progress = progress;
@@ -56,6 +57,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         _customers = customers;
         _suppliers = suppliers;
         _userFields = userFields;
+        _notifications = notifications;
         _logger = logger;
     }
 
@@ -193,6 +195,22 @@ public sealed class IndexModel : PageModelBaseAdmin
     /// </summary>
     public string? BusinessPartnerName { get; private set; }
 
+    /// <summary>Nombre de la categoría de un hallazgo (panel "Otras observaciones" de la vista previa).</summary>
+    public static string IssueCategoryLabel(GenericImportIssueCategory category) => category switch
+    {
+        GenericImportIssueCategory.BusinessPartner => "Socio de negocio",
+        GenericImportIssueCategory.Branch => "Sucursal",
+        GenericImportIssueCategory.Item => "Artículo",
+        GenericImportIssueCategory.Warehouse => "Almacén",
+        GenericImportIssueCategory.Quantity => "Cantidad",
+        GenericImportIssueCategory.Price => "Precio",
+        GenericImportIssueCategory.Stock => "Stock",
+        GenericImportIssueCategory.OrderTotal => "Descuento total OC",
+        GenericImportIssueCategory.DuplicateOrder => "OC ya cargada",
+        GenericImportIssueCategory.Accounting => "Contabilidad",
+        _ => "Otro",
+    };
+
     /// <summary>SapFieldName -> Etiqueta de los campos de usuario del módulo, para mostrar los de cabecera con su nombre legible en la vista previa.</summary>
     public IReadOnlyDictionary<string, string> UserFieldLabels { get; private set; } = new Dictionary<string, string>();
 
@@ -271,15 +289,28 @@ public sealed class IndexModel : PageModelBaseAdmin
             }
 
             var result = await _importService.CreateDocumentsAsync(jobId, CurrentUser.Username, parameters, preview.Documents, ct);
+            var anyCreated = result.Results?.Any(r => r.Success) ?? false;
+            await NotifyResultAsync(result.Message,
+                result.Success ? NotificationSeverity.Success : anyCreated ? NotificationSeverity.Warning : NotificationSeverity.Danger);
             return new JsonResult(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error no previsto al confirmar la importación (jobId {JobId}).", jobId);
             var failed = new GenericImportProgressDto(GetErrorMessage(ex), 0, 0, false, null, true);
+            await NotifyResultAsync(failed.Message, NotificationSeverity.Danger);
             return new JsonResult(failed) { StatusCode = StatusCodes.Status500InternalServerError };
         }
     }
+
+    /// <summary>
+    /// La creación en SAP puede tardar varios minutos -- el aviso en la campana queda
+    /// aunque el usuario haya cerrado la pestaña. Sin el ct del request a propósito: si
+    /// el cliente se desconectó, igual tiene que enterarse de cómo terminó.
+    /// </summary>
+    private Task NotifyResultAsync(string message, string severity) =>
+        _notifications.TryEnqueueAsync(CurrentUser.UserId, "Importación genérica", message, severity,
+            "/importacion-generica/importar", CancellationToken.None);
 
     /// <summary>Consultado por polling desde el cliente mientras OnPostConfirmAsync sigue corriendo -- ver IGenericImportProgressStore.</summary>
     public JsonResult OnGetProgressAsync(string jobId) => new(_progress.Get(jobId));

@@ -15,11 +15,12 @@ public sealed class ExpenseReportService : IExpenseReportService
     private readonly IAttachmentStorageService _attachments;
     private readonly IEmailSenderService _emailSender;
     private readonly IUserContactLookupService _contacts;
+    private readonly INotificationService _notifications;
     private readonly ILogger<ExpenseReportService> _logger;
 
     public ExpenseReportService(RendicionesDbContext db, IExpenseApprovalGroupService groups, IExpenseFundService funds,
         IAttachmentStorageService attachments, IEmailSenderService emailSender, IUserContactLookupService contacts,
-        ILogger<ExpenseReportService> logger)
+        INotificationService notifications, ILogger<ExpenseReportService> logger)
     {
         _db = db;
         _groups = groups;
@@ -27,6 +28,7 @@ public sealed class ExpenseReportService : IExpenseReportService
         _attachments = attachments;
         _emailSender = emailSender;
         _contacts = contacts;
+        _notifications = notifications;
         _logger = logger;
     }
 
@@ -237,7 +239,7 @@ public sealed class ExpenseReportService : IExpenseReportService
         if (report.Status == "Approved")
         {
             await RecalculateFundIfApplicableAsync(report, companyId, ct);
-            await NotifyReportOwnerAsync(report, "Tu informe fue aprobado.", ct);
+            await NotifyReportOwnerAsync(report, "Tu informe fue aprobado.", NotificationSeverity.Success, ct);
         }
         else
         {
@@ -263,8 +265,8 @@ public sealed class ExpenseReportService : IExpenseReportService
         report.ResolvedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(ct);
 
-        var motivo = string.IsNullOrWhiteSpace(comment) ? "sin motivo indicado" : System.Net.WebUtility.HtmlEncode(comment);
-        await NotifyReportOwnerAsync(report, $"Tu informe fue rechazado. Motivo: {motivo}", ct);
+        var motivo = string.IsNullOrWhiteSpace(comment) ? "sin motivo indicado" : comment;
+        await NotifyReportOwnerAsync(report, $"Tu informe fue rechazado. Motivo: {motivo}", NotificationSeverity.Danger, ct);
     }
 
     public async Task ReopenAsync(long reportId, Guid companyId, Guid userId, CancellationToken ct = default)
@@ -339,16 +341,30 @@ public sealed class ExpenseReportService : IExpenseReportService
         return report;
     }
 
-    /// <summary>Un correo caído nunca debe tumbar una transición de estado real -- loguear y seguir (ver el spec de esta feature).</summary>
-    private async Task NotifyApproverAsync(ExpenseReport report, Guid approverUserId, CancellationToken ct) =>
-        await NotifyAsync(approverUserId, $"Informe #{report.Id} pendiente de tu aprobación",
+    /// <summary>
+    /// Un correo caído nunca debe tumbar una transición de estado real -- loguear y seguir (ver el spec de esta feature).
+    /// La campana (INotificationService) va siempre, sin mirar EmailNotificationsEnabled: esa preferencia
+    /// es solo del canal correo.
+    /// </summary>
+    private async Task NotifyApproverAsync(ExpenseReport report, Guid approverUserId, CancellationToken ct)
+    {
+        const string message = "Tenés un informe de rendición de gastos esperando tu decisión.";
+        await _notifications.TryEnqueueAsync(approverUserId, $"Informe #{report.Id} pendiente de tu aprobación", message,
+            NotificationSeverity.Warning, "/rendiciones/aprobaciones", ct);
+        await SendEmailAsync(approverUserId, $"Informe #{report.Id} pendiente de tu aprobación",
             $"<p>Tenés un informe de rendición de gastos (#{report.Id}) esperando tu decisión.</p>", ct);
+    }
 
-    private async Task NotifyReportOwnerAsync(ExpenseReport report, string message, CancellationToken ct) =>
-        await NotifyAsync(report.UserId, $"Informe #{report.Id} — actualización",
-            $"<p>{message}</p>", ct);
+    /// <summary>message en texto plano -- se HTML-encodea recién para el cuerpo del correo.</summary>
+    private async Task NotifyReportOwnerAsync(ExpenseReport report, string message, string severity, CancellationToken ct)
+    {
+        await _notifications.TryEnqueueAsync(report.UserId, $"Informe #{report.Id}", message,
+            severity, $"/rendiciones/informes/{report.Id}", ct);
+        await SendEmailAsync(report.UserId, $"Informe #{report.Id} — actualización",
+            $"<p>{System.Net.WebUtility.HtmlEncode(message)}</p>", ct);
+    }
 
-    private async Task NotifyAsync(Guid userId, string subject, string htmlBody, CancellationToken ct)
+    private async Task SendEmailAsync(Guid userId, string subject, string htmlBody, CancellationToken ct)
     {
         try
         {

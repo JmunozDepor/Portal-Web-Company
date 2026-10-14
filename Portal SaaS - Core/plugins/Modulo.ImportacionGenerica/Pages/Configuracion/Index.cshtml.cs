@@ -98,6 +98,10 @@ public sealed class IndexModel : PageModelBaseAdmin
     public List<SelectListItem> PurchaseDocumentTypes { get; private set; } = [];
     public List<SelectListItem> InventoryDocumentTypes { get; private set; } = [];
 
+    public List<SelectListItem> ItemIdentifiers { get; } = Enum.GetValues<GenericImportItemIdentifier>()
+        .Select(i => new SelectListItem(ImportDisplayNames.Identifier(i), i.ToString()))
+        .ToList();
+
     public List<SelectListItem> PriceSources { get; } =
     [
         new("Socio de negocio (default)", GenericImportPriceSource.BusinessPartner.ToString()),
@@ -117,6 +121,8 @@ public sealed class IndexModel : PageModelBaseAdmin
         GenericImportValidationRuleType.PriceVsCustomerList,
         GenericImportValidationRuleType.StockAvailable,
         GenericImportValidationRuleType.CustomerBranchValid,
+        GenericImportValidationRuleType.OrderTotalDiscount,
+        GenericImportValidationRuleType.DuplicateOrderInSap,
     ];
 
     public async Task OnGetAsync(CancellationToken ct)
@@ -218,7 +224,7 @@ public sealed class IndexModel : PageModelBaseAdmin
             int configId;
             if (EditId is { } id)
             {
-                await _configs.UpdateAsync(id, Input.GroupingColumn, Input.SkuIsCustomerOwn, Input.Alias, Input.IsActive,
+                await _configs.UpdateAsync(id, Input.GroupingColumn, Input.ItemIdentifier, Input.Alias, Input.IsActive,
                     fields, Input.PriceSource, Input.SystemPriceListCode, Input.BusinessPartnerFromFile, ct);
                 configId = id;
                 SuccessMessage = "Configuración actualizada.";
@@ -226,7 +232,7 @@ public sealed class IndexModel : PageModelBaseAdmin
             else
             {
                 configId = await _configs.CreateAsync(Input.Module, Input.DocumentType, Input.LineType, Input.BusinessPartnerCardCode,
-                    Input.GroupingColumn, Input.SkuIsCustomerOwn, Input.Alias, fields, Input.PriceSource, Input.SystemPriceListCode,
+                    Input.GroupingColumn, Input.ItemIdentifier, Input.Alias, fields, Input.PriceSource, Input.SystemPriceListCode,
                     Input.BusinessPartnerFromFile, ct);
                 SuccessMessage = "Configuración creada.";
             }
@@ -254,6 +260,11 @@ public sealed class IndexModel : PageModelBaseAdmin
                 or GenericImportValidationRuleType.StockAvailable)
             {
                 parameters["tolerancePercent"] = r.TolerancePercent ?? 0m;
+            }
+            if (r.RuleType is GenericImportValidationRuleType.OrderTotalDiscount)
+            {
+                // Mismo input numérico que la tolerancia, guardado con su propio nombre.
+                parameters["maxDiscountPercent"] = r.TolerancePercent ?? 0m;
             }
             return new GenericImportValidationRuleAssignmentDto(0, r.RuleType, r.Severity, true, parameters);
         }).ToList();
@@ -349,7 +360,7 @@ public sealed class IndexModel : PageModelBaseAdmin
             LineType = config.LineType,
             BusinessPartnerCardCode = config.BusinessPartnerCardCode,
             GroupingColumn = config.GroupingColumn,
-            SkuIsCustomerOwn = config.SkuIsCustomerOwn,
+            ItemIdentifier = config.ItemIdentifier,
             Alias = config.Alias,
             IsActive = config.IsActive,
             PriceSource = config.PriceSource,
@@ -419,9 +430,11 @@ public sealed class IndexModel : PageModelBaseAdmin
                 PriceListNum = existing is not null && existing.Parameters.TryGetValue("priceListNum", out var pl) && pl is not null
                     ? Convert.ToInt32(pl)
                     : null,
-                TolerancePercent = existing is not null && existing.Parameters.TryGetValue("tolerancePercent", out var tp) && tp is not null
-                    ? Convert.ToDecimal(tp)
-                    : null,
+                TolerancePercent = existing is not null
+                    && (existing.Parameters.TryGetValue("tolerancePercent", out var tp) || existing.Parameters.TryGetValue("maxDiscountPercent", out tp))
+                    && tp is not null
+                        ? Convert.ToDecimal(tp)
+                        : null,
             };
         }).ToList();
 
@@ -524,8 +537,8 @@ public sealed class IndexModel : PageModelBaseAdmin
         [Display(Name = "Columna de agrupación (vacío = un único documento)")]
         public string? GroupingColumn { get; set; }
 
-        [Display(Name = "El código de artículo del archivo es el SKU del cliente/proveedor")]
-        public bool SkuIsCustomerOwn { get; set; }
+        [Display(Name = "Identificación del artículo en el archivo")]
+        public GenericImportItemIdentifier ItemIdentifier { get; set; }
 
         [Display(Name = "Carga multi-socio: cada fila trae su propio código de socio de negocio (columna BusinessPartnerCardCode mapeada en la grilla)")]
         public bool BusinessPartnerFromFile { get; set; }

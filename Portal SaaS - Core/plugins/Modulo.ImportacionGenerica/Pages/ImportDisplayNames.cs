@@ -60,4 +60,45 @@ public static class ImportDisplayNames
     }
 
     public static string Of<TEnum>(TEnum value) where TEnum : struct, Enum => Of(value.ToString());
+
+    // Campos núcleo -- diccionario aparte porque algunos nombres chocan con otros enums
+    // (ej. "ItemCode" es campo núcleo Y GenericImportItemIdentifier). Sap = nombre de la
+    // propiedad de Service Layer donde termina el valor, para saber "a qué corresponde"
+    // (pedido del dueño del proyecto, 2026-10-14).
+    private static readonly Dictionary<GenericImportLogicalField, (string Es, string En, string Sap)> FieldNames = new()
+    {
+        [GenericImportLogicalField.CustomerReferenceNumber] = ("N° de orden / referencia del cliente", "Customer reference / order number", "NumAtCard"),
+        [GenericImportLogicalField.Branch] = ("Sucursal (dirección de despacho del socio)", "Branch (partner ship-to address)", "ShipToCode"),
+        [GenericImportLogicalField.BusinessPartnerCardCode] = ("Código de socio de negocio (por fila, carga multi-socio)", "Business partner code (per row, multi-partner)", "CardCode"),
+        [GenericImportLogicalField.Quantity] = ("Cantidad", "Quantity", "Quantity"),
+        [GenericImportLogicalField.UnitPrice] = ("Precio unitario (vacío = lista de precios del socio)", "Unit price (empty = partner price list)", "UnitPrice"),
+        [GenericImportLogicalField.DiscountPercent] = ("% de descuento", "Discount %", "DiscountPercent"),
+        [GenericImportLogicalField.ItemCode] = ("Artículo (código, barra o SKU según \"Identificación del artículo\")", "Item (code, barcode or SKU per \"Item identification\")", "ItemCode"),
+        [GenericImportLogicalField.Warehouse] = ("Almacén (Venta/Compra)", "Warehouse (Sales/Purchasing)", "WarehouseCode"),
+        [GenericImportLogicalField.Description] = ("Descripción (líneas de servicio)", "Description (service lines)", "ItemDescription"),
+        [GenericImportLogicalField.Account] = ("Cuenta de mayor (líneas de servicio)", "G/L account (service lines)", "AccountCode"),
+        [GenericImportLogicalField.CostCenter] = ("Centro de costos / dimensión 1", "Cost center / dimension 1", "CostingCode"),
+        [GenericImportLogicalField.Dimension2] = ("Dimensión 2", "Dimension 2", "CostingCode2"),
+        [GenericImportLogicalField.Dimension3] = ("Dimensión 3", "Dimension 3", "CostingCode3"),
+        [GenericImportLogicalField.SourceWarehouse] = ("Almacén origen (Inventario)", "From warehouse (Inventory)", "FromWarehouseCode"),
+        [GenericImportLogicalField.DestinationWarehouse] = ("Almacén destino (Inventario)", "To warehouse (Inventory)", "WarehouseCode"),
+    };
+
+    /// <summary>Descripción del campo núcleo en el idioma del usuario.</summary>
+    public static string Field(GenericImportLogicalField field) =>
+        FieldNames.TryGetValue(field, out var names) ? (IsEnglish ? names.En : names.Es) : field.ToString();
+
+    /// <summary>Propiedad de Service Layer donde termina el campo (ej. Branch -> ShipToCode).</summary>
+    public static string FieldSapName(GenericImportLogicalField field) =>
+        FieldNames.TryGetValue(field, out var names) ? names.Sap : field.ToString();
+
+    private static readonly Dictionary<GenericImportItemIdentifier, (string Es, string En)> ItemIdentifierNames = new()
+    {
+        [GenericImportItemIdentifier.ItemCode] = ("Código de artículo SAP (ItemCode)", "SAP item code (ItemCode)"),
+        [GenericImportItemIdentifier.Barcode] = ("Código de barras (maestro de artículos: CodeBars / barras adicionales)", "Barcode (item master: CodeBars / additional barcodes)"),
+        [GenericImportItemIdentifier.CustomerSku] = ("SKU del cliente/proveedor (paridad del socio)", "Customer/vendor SKU (partner cross-reference)"),
+    };
+
+    public static string Identifier(GenericImportItemIdentifier identifier) =>
+        ItemIdentifierNames.TryGetValue(identifier, out var names) ? (IsEnglish ? names.En : names.Es) : identifier.ToString();
 }

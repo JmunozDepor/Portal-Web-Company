@@ -21,7 +21,8 @@ public sealed record SapProductSyncResult(int Creados, int Actualizados, int Sin
 
 public interface ISapProductSyncService
 {
-    Task<SapProductSyncResult> SincronizarAsync(Guid companyId, CancellationToken ct = default);
+    /// <summary>onProgress recibe el total acumulado de artículos de SAP leídos hasta el momento, tras cada lote.</summary>
+    Task<SapProductSyncResult> SincronizarAsync(Guid companyId, Action<int>? onProgress = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -47,7 +48,7 @@ public sealed class SapProductSyncService : ISapProductSyncService
         _db = db;
     }
 
-    public async Task<SapProductSyncResult> SincronizarAsync(Guid companyId, CancellationToken ct = default)
+    public async Task<SapProductSyncResult> SincronizarAsync(Guid companyId, Action<int>? onProgress = null, CancellationToken ct = default)
     {
         var creados = 0;
         var actualizados = 0;
@@ -75,6 +76,7 @@ public sealed class SapProductSyncService : ISapProductSyncService
 
             totalSap += lote.Count;
             offset += TamanoLote;
+            onProgress?.Invoke(totalSap);
 
             // Sin CodeBars el artículo no sirve para el escaneo de la PWA (Product.Barcode
             // es obligatorio) -- se cuenta pero no se carga.

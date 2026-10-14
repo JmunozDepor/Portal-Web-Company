@@ -40,10 +40,11 @@ public sealed class GenericImportConfig
     /// <summary>Null = configuración estándar de la organización; con valor = excepción de ese socio de negocio puntual.</summary>
     public string? BusinessPartnerCardCode { get; set; }
 
-    /// <summary>Null = todo el archivo genera un único documento; con valor, cada valor distinto de esa columna genera su propio documento.</summary>
+    /// <summary>Null = todo el archivo genera un único documento; con valor (una o varias letras separadas por coma, ej. "A,B"), cada combinación distinta genera su propio documento.</summary>
     public string? GroupingColumn { get; set; }
 
-    public bool SkuIsCustomerOwn { get; set; }
+    /// <summary>"ItemCode" | "Barcode" | "CustomerSku" -- qué trae la columna de artículo del Excel. Reemplaza a sku_is_customer_own (2026-10-14).</summary>
+    public string ItemIdentifier { get; set; } = "ItemCode";
 
     public string Alias { get; set; } = null!;
 

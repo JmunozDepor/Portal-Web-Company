@@ -1,0 +1,52 @@
+@using PortalSaas.Host.Notificaciones
+@model PortalSaas.Host.ViewComponents.NotificationBellViewModel
+@{
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+}
+<details class="notification-bell">
+    <summary class="notification-bell-toggle" title="Notificaciones">
+        <i class="bi bi-bell"></i>
+        @if (Model.UnreadCount > 0)
+        {
+            <span class="notification-badge">@(Model.UnreadCount > 9 ? "9+" : Model.UnreadCount.ToString())</span>
+        }
+    </summary>
+    <div class="notification-panel">
+        <div class="notification-panel-header">
+            <span>Notificaciones</span>
+            @if (Model.UnreadCount > 0)
+            {
+                <form method="post" asp-page="/Notificaciones/Index" asp-page-handler="MarkAllAsRead" asp-route-returnUrl="@returnUrl">
+                    <button type="submit" class="notification-mark-all">Marcar todas como leídas</button>
+                </form>
+            }
+        </div>
+        @if (Model.Items.Count == 0)
+        {
+            <p class="notification-empty">No tenés notificaciones.</p>
+        }
+        else
+        {
+            <ul class="notification-list">
+                @foreach (var item in Model.Items)
+                {
+                    <li class="notification-item @(item.IsRead ? "" : "notification-item--unread")">
+                        <form method="post" asp-page="/Notificaciones/Index" asp-page-handler="MarkAsRead"
+                              asp-route-id="@item.Id"
+                              asp-route-returnUrl="@(string.IsNullOrEmpty(item.Url) ? returnUrl : item.Url)">
+                            <button type="submit">
+                                <span class="badge-status badge-status--@NotificationSeverityDisplay.BadgeModifier(item.Severity) notification-item-dot">&nbsp;</span>
+                                <span class="notification-item-body">
+                                    <span class="notification-item-title">@item.Title</span>
+                                    <span class="notification-item-message">@item.Message</span>
+                                    <span class="notification-item-date">@item.CreatedAt.ToLocalTime().ToString("dd-MM HH:mm")</span>
+                                </span>
+                            </button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        }
+        <a asp-page="/Notificaciones/Index" class="notification-view-all">Ver todas</a>
+    </div>
+</details>

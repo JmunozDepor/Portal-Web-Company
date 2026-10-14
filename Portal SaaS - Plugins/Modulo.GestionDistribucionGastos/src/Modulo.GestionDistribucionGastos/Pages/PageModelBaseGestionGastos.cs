@@ -26,6 +26,7 @@ public abstract class PageModelBaseGestionGastos : PageModel
     }
 
     protected string NombreUsuarioActual => _usuarioActual.Username;
+    protected Guid UsuarioIdActual => _usuarioActual.UserId;
 
     // Este módulo cuelga de un único nodo de menú final ("eerr", ver
     // ModuloGestionDistribucionGastos.GetMenu()) -- HasActionAsync exige el código

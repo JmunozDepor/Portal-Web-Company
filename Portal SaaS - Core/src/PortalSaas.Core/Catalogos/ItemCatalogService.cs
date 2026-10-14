@@ -67,6 +67,52 @@ public sealed class ItemCatalogService : IItemCatalogService
         return await _hana.QueryAsync<ItemDto>(sql, parameters, ct);
     }
 
+    public async Task<IReadOnlyDictionary<string, string>> GetItemCodesByBarcodesAsync(IReadOnlyCollection<string> barcodes, CancellationToken ct = default)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (barcodes.Count == 0)
+        {
+            return result;
+        }
+
+        var parameters = new Dictionary<string, object?>();
+        var placeholders = new List<string>();
+        var i = 0;
+        foreach (var barcode in barcodes)
+        {
+            var name = $"barcode{i++}";
+            placeholders.Add($":{name}");
+            parameters[name] = barcode;
+        }
+
+        var inList = string.Join(",", placeholders);
+        // Barra principal del maestro (OITM.CodeBars) + barras adicionales por unidad de
+        // medida (OBCD) -- UNION descarta pares repetidos (misma barra en las dos tablas
+        // para el mismo artículo).
+        var sql = $"""
+            SELECT "CodeBars" AS "Barcode", "ItemCode" FROM "OITM" WHERE "CodeBars" IN ({inList})
+            UNION
+            SELECT "BcdCode" AS "Barcode", "ItemCode" FROM "OBCD" WHERE "BcdCode" IN ({inList})
+            """;
+
+        var rows = await _hana.QueryDynamicAsync(sql, parameters, ct);
+        foreach (var group in rows
+                     .Select(r => (Barcode: r["Barcode"]?.ToString()?.Trim(), ItemCode: r["ItemCode"]?.ToString()?.Trim()))
+                     .Where(r => !string.IsNullOrEmpty(r.Barcode) && !string.IsNullOrEmpty(r.ItemCode))
+                     .GroupBy(r => r.Barcode!, StringComparer.OrdinalIgnoreCase))
+        {
+            var itemCodes = group.Select(r => r.ItemCode!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            // Barra que apunta a más de un artículo: ambigua, se deja fuera (la fila queda
+            // con error) en vez de elegir uno al azar.
+            if (itemCodes.Count == 1)
+            {
+                result[group.Key] = itemCodes[0];
+            }
+        }
+
+        return result;
+    }
+
     public async Task<IReadOnlyList<ItemDto>> GetTopAsync(int limit = 30, CancellationToken ct = default)
     {
         // Clamp explícito, mismo criterio que CatalogSqlHelper.BuildSearchFilter -- un

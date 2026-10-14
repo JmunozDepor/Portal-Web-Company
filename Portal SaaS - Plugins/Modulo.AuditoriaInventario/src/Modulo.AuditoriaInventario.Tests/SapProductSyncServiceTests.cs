@@ -142,6 +142,24 @@ public class SapProductSyncServiceTests
         Assert.Equal(3, hana.Llamadas);
     }
 
+    [Fact]
+    public async Task SincronizarAsync_InformaElProgresoAcumuladoTrasCadaLote()
+    {
+        var db = CrearContexto();
+        var companyId = Guid.NewGuid();
+        var hana = new FakeHanaService(
+            [new SapProductMasterRow { ItemCode = "SKU-1", ItemName = "Pagina 1", CodeBars = "111" }],
+            [new SapProductMasterRow { ItemCode = "SKU-2", ItemName = "Pagina 2", CodeBars = "222" }],
+            []);
+        var servicio = new SapProductSyncService(hana, db);
+        var progresoReportado = new List<int>();
+
+        await servicio.SincronizarAsync(companyId, onProgress: p => progresoReportado.Add(p));
+
+        // Una pagina por cada lote con datos -- la pagina vacia que corta el loop no reporta (lote.Count == 0 => break antes del onProgress).
+        Assert.Equal([1, 2], progresoReportado);
+    }
+
     /// <summary>Doble de prueba manual (sin librería de mocking, mismo criterio que el resto del proyecto de tests).</summary>
     private sealed class FakeHanaService : IHanaService
     {

@@ -197,5 +197,11 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
         // en PortalSaas.Abstractions, no código de Modulo.Inventario, así que usarlo acá
         // no rompe la autocontención del módulo (confirmado con el dueño, 2026-09-28).
         services.AddScoped<ISapProductSyncService, SapProductSyncService>();
+
+        // Singleton a propósito: progreso de "Sincronizar desde SAP" en memoria,
+        // compartido entre el request que la dispara y el Task.Run en segundo
+        // plano que la ejecuta (ver MaestroProductos/Index.cshtml.cs). Se pierde
+        // si el Host reinicia -- aceptable, es solo estado visual.
+        services.AddSingleton<ISapSyncStatusTracker, SapSyncStatusTracker>();
     }
 }

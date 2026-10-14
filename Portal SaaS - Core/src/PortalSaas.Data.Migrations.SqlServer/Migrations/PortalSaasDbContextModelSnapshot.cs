@@ -336,13 +336,19 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnName("document_type");
 
                     b.Property<string>("GroupingColumn")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
                         .HasColumnName("grouping_column");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit")
                         .HasColumnName("is_active");
+
+                    b.Property<string>("ItemIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("item_identifier");
 
                     b.Property<string>("LineType")
                         .IsRequired()
@@ -361,10 +367,6 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("price_source");
-
-                    b.Property<bool>("SkuIsCustomerOwn")
-                        .HasColumnType("bit")
-                        .HasColumnName("sku_is_customer_own");
 
                     b.Property<int?>("SystemPriceListCode")
                         .HasColumnType("int")
@@ -915,6 +917,64 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasDatabaseName("ix_menu_group_items_menu_id");
 
                     b.ToTable("menu_group_items", (string)null);
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_read");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("message");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("read_at");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("severity");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("url");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notifications");
+
+                    b.HasIndex("UserId", "IsRead", "CreatedAt")
+                        .HasDatabaseName("ix_notifications_user_id_is_read_created_at");
+
+                    b.ToTable("notifications", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_notifications_severity", "severity in ('info', 'success', 'warning', 'danger')");
+                        });
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.OnPremiseLicense", b =>
@@ -2175,6 +2235,18 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.Navigation("Menu");
 
                     b.Navigation("MenuGroup");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.Notification", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.OnPremiseLicense", b =>

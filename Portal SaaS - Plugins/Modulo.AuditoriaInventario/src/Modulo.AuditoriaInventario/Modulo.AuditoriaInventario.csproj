@@ -64,6 +64,13 @@
     <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Genera el QR para "Conectar equipo" (Configuración de Captura), offline,
+         sin llamar a ningún servicio externo de terceros para armar la imagen (mismo
+         criterio offline-first del resto del módulo). -->
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+  </ItemGroup>
+
   <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo, mismo
        patrón que Modulo.Rendiciones/Modulo.Wms, ver docs/09-GUIA-DESARROLLO-PLUGINS.md
        §7 del portal para cómo llega de ahí a artifacts/plugins/ del Host. -->

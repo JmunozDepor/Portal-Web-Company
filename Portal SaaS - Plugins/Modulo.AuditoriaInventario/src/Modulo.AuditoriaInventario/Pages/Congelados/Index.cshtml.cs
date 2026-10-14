@@ -5,6 +5,7 @@ using Modulo.AuditoriaInventario.Data;
 using Modulo.AuditoriaInventario.Models;
 using Modulo.AuditoriaInventario.Servicios;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.AuditoriaInventario.Pages.Congelados;
 
@@ -18,12 +19,15 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
     private readonly AuditoriaInventarioDbContext _db;
     private readonly ICurrentCompanyAccessor _currentCompany;
     private readonly ICurrentUserContext _currentUser;
+    private readonly INotificationService _notifications;
 
-    public IndexModel(AuditoriaInventarioDbContext db, ICurrentCompanyAccessor currentCompany, ICurrentUserContext currentUser)
+    public IndexModel(AuditoriaInventarioDbContext db, ICurrentCompanyAccessor currentCompany, ICurrentUserContext currentUser,
+        INotificationService notifications)
     {
         _db = db;
         _currentCompany = currentCompany;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     [BindProperty]
@@ -103,6 +107,9 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
         await _db.SaveChangesAsync(ct);
 
         SuccessMessage = $"Congelado cargado: {resultado.Filas.Count} línea(s).";
+        await _notifications.TryEnqueueAsync(_currentUser.UserId, "Auditoría de inventario: congelado",
+            $"Congelado del inventario {Input.InventoryNumber} cargado: {resultado.Filas.Count} línea(s).",
+            NotificationSeverity.Success, "/auditoria-inventario/congelados", ct);
         return RedirectToPage();
     }
 

@@ -39,25 +39,40 @@ describe('MantenedorPage', () => {
     expect(await screen.findByText('1 producto cargado en el equipo.')).toBeTruthy();
   });
 
-  it('sincroniza el maestro desde el servidor y muestra el resultado', async () => {
+  it('sincroniza productos desde el servidor y muestra el resultado', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.includes('/maestro/sucursales')) return jsonResponse([{ id: 1, branchCode: 'S1', name: 'Casa Matriz' }]);
       if (url.includes('/maestro/productos')) {
         return jsonResponse({ items: [{ id: 1, barcode: '111', productCode: 'P1', description: null, brand: null, line: null }], hasMore: false });
       }
-      if (url.includes('/maestro/ajustes-captura')) return jsonResponse({ allowEan8: true, allowUpcA: false, allowEan13: true });
       if (url.includes('/maestro/productos/total')) return jsonResponse(1);
       return jsonResponse({});
     });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<MantenedorPage token="tok" onMenuClick={() => {}} onSyncNow={async () => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar desde servidor' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar productos' }));
 
-    expect(await screen.findByText('Maestro sincronizado: 1 producto(s), 1 sucursal(es).')).toBeTruthy();
+    expect(await screen.findByText('Maestro de productos sincronizado: 1 producto(s).')).toBeTruthy();
     expect(await db.productos.count()).toBe(1);
+  });
+
+  it('sincroniza sucursales y ajustes de captura desde el servidor, por separado de productos', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/maestro/sucursales')) return jsonResponse([{ id: 1, branchCode: 'S1', name: 'Casa Matriz' }]);
+      if (url.includes('/maestro/ajustes-captura')) return jsonResponse({ allowEan8: true, allowUpcA: false, allowEan13: true });
+      return jsonResponse({});
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<MantenedorPage token="tok" onMenuClick={() => {}} onSyncNow={async () => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar sucursales' }));
+
+    expect(await screen.findByText('Sucursales sincronizadas: 1.')).toBeTruthy();
+    expect(await db.sucursales.count()).toBe(1);
     expect(await db.configuracionCaptura.get('singleton')).toEqual({ id: 'singleton', allowEan8: true, allowUpcA: false, allowEan13: true });
+    expect(await db.productos.count()).toBe(0);
   });
 
   it('avisa si el maestro local quedo incompleto respecto del total real del servidor', async () => {
@@ -121,11 +136,20 @@ describe('MantenedorPage', () => {
     expect(alerta.textContent).toContain('No está en el maestro local: "000000000000" (12 dígitos)');
   });
 
-  it('muestra un error si la sincronizacion con el servidor falla', async () => {
+  it('muestra un error si la sincronizacion de productos con el servidor falla', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
 
     render(<MantenedorPage token="tok" onMenuClick={() => {}} onSyncNow={async () => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar desde servidor' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar productos' }));
+
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'No se pudo conectar con el servidor.');
+  });
+
+  it('muestra un error si la sincronizacion de sucursales con el servidor falla', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+
+    render(<MantenedorPage token="tok" onMenuClick={() => {}} onSyncNow={async () => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar sucursales' }));
 
     expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'No se pudo conectar con el servidor.');
   });

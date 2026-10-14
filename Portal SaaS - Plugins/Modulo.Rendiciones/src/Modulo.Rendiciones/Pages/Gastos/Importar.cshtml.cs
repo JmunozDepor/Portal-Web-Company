@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Modulo.Rendiciones.Models;
 using Modulo.Rendiciones.Servicios;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.Rendiciones.Pages.Gastos;
 
@@ -27,12 +28,13 @@ public sealed class ImportarModel : RendicionesRendidorPageModelBase
     private readonly IExpenseService _expenses;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
+    private readonly INotificationService _notifications;
     private readonly ILogger<ImportarModel> _logger;
 
     public ImportarModel(IReceiptExtractorService extractor, IReceiptSuggestionService suggestions,
         IExpenseTypeService expenseTypes, IAttachmentStorageService attachments, IExpenseService expenses,
         IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany,
-        ILogger<ImportarModel> logger)
+        INotificationService notifications, ILogger<ImportarModel> logger)
         : base(roles, currentUser, currentCompany)
     {
         _extractor = extractor;
@@ -42,6 +44,7 @@ public sealed class ImportarModel : RendicionesRendidorPageModelBase
         _expenses = expenses;
         _currentUser = currentUser;
         _currentCompany = currentCompany;
+        _notifications = notifications;
         _logger = logger;
     }
 
@@ -156,6 +159,14 @@ public sealed class ImportarModel : RendicionesRendidorPageModelBase
             ErrorMessage = fallidos == 1
                 ? "1 archivo no se pudo importar -- mirá el detalle en la lista de abajo."
                 : $"{fallidos} archivos no se pudieron importar -- mirá el detalle en la lista de abajo.";
+        }
+
+        if (Results.Count > 0)
+        {
+            await _notifications.TryEnqueueAsync(_currentUser.UserId, "Importación de comprobantes",
+                $"{ok} gasto(s) importado(s), {fallidos} archivo(s) con error.",
+                fallidos == 0 ? NotificationSeverity.Success : ok == 0 ? NotificationSeverity.Danger : NotificationSeverity.Warning,
+                "/rendiciones/gastos", ct);
         }
 
         return Page();

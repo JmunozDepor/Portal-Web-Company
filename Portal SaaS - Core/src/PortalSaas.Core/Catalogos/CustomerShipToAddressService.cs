@@ -16,7 +16,7 @@ public sealed class CustomerShipToAddressService : ICustomerShipToAddressService
     {
         const string sql = """
             SELECT "Address" AS "Code" FROM "CRD1"
-            WHERE "CardCode" = :cardCode AND "AddressType" = 'S'
+            WHERE "CardCode" = :cardCode AND "AdresType" = 'S'
             """;
 
         var rows = await _hana.QueryAsync<AddressCodeRow>(sql, new { cardCode }, ct);

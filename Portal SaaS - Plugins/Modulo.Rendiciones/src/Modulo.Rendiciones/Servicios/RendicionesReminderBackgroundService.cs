@@ -62,6 +62,7 @@ public sealed class RendicionesReminderBackgroundService : BackgroundService
         var externalDb = sp.GetRequiredService<IExternalDatabaseConnectionService>();
         var contacts = sp.GetRequiredService<IUserContactLookupService>();
         var emailSender = sp.GetRequiredService<IEmailSenderService>();
+        var notifications = sp.GetRequiredService<INotificationService>();
 
         var companies = await externalDb.ListActiveCompanyIdsAsync(ModuleCode, ct);
 
@@ -69,7 +70,7 @@ public sealed class RendicionesReminderBackgroundService : BackgroundService
         {
             try
             {
-                await ProcessCompanyAsync(company, externalDb, contacts, emailSender, ct);
+                await ProcessCompanyAsync(company, externalDb, contacts, emailSender, notifications, ct);
             }
             catch (Exception ex)
             {
@@ -83,6 +84,7 @@ public sealed class RendicionesReminderBackgroundService : BackgroundService
         IExternalDatabaseConnectionService externalDb,
         IUserContactLookupService contacts,
         IEmailSenderService emailSender,
+        INotificationService notifications,
         CancellationToken ct)
     {
         var connection = await externalDb.ResolveConnectionAsync(ModuleCode, company.CompanyId, ct);
@@ -139,6 +141,12 @@ public sealed class RendicionesReminderBackgroundService : BackgroundService
 
             foreach (var (approverUserId, reports) in byApprover)
             {
+                // La campana va siempre -- EmailNotificationsEnabled es solo del canal correo.
+                await notifications.TryEnqueueAsync(approverUserId, "Recordatorio: informes pendientes de aprobar",
+                    $"Tenés {reports.Count} informe(s) de rendición de gastos pendientes de tu aprobación: "
+                        + string.Join(", ", reports.Select(r => $"#{r.Id}")) + ".",
+                    NotificationSeverity.Warning, "/rendiciones/aprobaciones", ct);
+
                 var contact = await contacts.GetContactAsync(approverUserId, ct);
                 if (contact is null || !contact.EmailNotificationsEnabled)
                     continue;

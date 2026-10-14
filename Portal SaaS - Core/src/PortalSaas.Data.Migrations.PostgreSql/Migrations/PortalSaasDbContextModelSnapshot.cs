@@ -336,13 +336,19 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnName("document_type");
 
                     b.Property<string>("GroupingColumn")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("grouping_column");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
+
+                    b.Property<string>("ItemIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("item_identifier");
 
                     b.Property<string>("LineType")
                         .IsRequired()
@@ -361,10 +367,6 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("price_source");
-
-                    b.Property<bool>("SkuIsCustomerOwn")
-                        .HasColumnType("boolean")
-                        .HasColumnName("sku_is_customer_own");
 
                     b.Property<int?>("SystemPriceListCode")
                         .HasColumnType("integer")
@@ -914,6 +916,64 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasDatabaseName("ix_menu_group_items_menu_id");
 
                     b.ToTable("menu_group_items", (string)null);
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_read");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("message");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("severity");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("url");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notifications");
+
+                    b.HasIndex("UserId", "IsRead", "CreatedAt")
+                        .HasDatabaseName("ix_notifications_user_id_is_read_created_at");
+
+                    b.ToTable("notifications", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_notifications_severity", "severity in ('info', 'success', 'warning', 'danger')");
+                        });
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.OnPremiseLicense", b =>
@@ -2174,6 +2234,18 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Navigation("Menu");
 
                     b.Navigation("MenuGroup");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.Notification", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.OnPremiseLicense", b =>

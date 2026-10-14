@@ -75,7 +75,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(approver1Id, new UserContactDto(orgId, "aprobador1@test.cl", true));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, NullLogger<ExpenseReportService>.Instance);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, new FakeNotificationService(), NullLogger<ExpenseReportService>.Instance);
 
         await sut.SubmitAsync(report.Id, companyId);
 
@@ -106,7 +106,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(approver1Id, new UserContactDto(Guid.NewGuid(), "aprobador1@test.cl", false));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, NullLogger<ExpenseReportService>.Instance);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, new FakeNotificationService(), NullLogger<ExpenseReportService>.Instance);
 
         await sut.SubmitAsync(report.Id, companyId);
 
@@ -136,7 +136,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(approver2Id, new UserContactDto(orgId, "aprobador2@test.cl", true));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, NullLogger<ExpenseReportService>.Instance);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, new FakeNotificationService(), NullLogger<ExpenseReportService>.Instance);
 
         await sut.ApproveAsync(report.Id, companyId, approver1Id, comment: null);
 
@@ -167,7 +167,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(requesterId, new UserContactDto(orgId, "dueno@test.cl", true));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, NullLogger<ExpenseReportService>.Instance);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, new FakeNotificationService(), NullLogger<ExpenseReportService>.Instance);
 
         await sut.ApproveAsync(report.Id, companyId, approver1Id, comment: null);
 
@@ -197,7 +197,7 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(requesterId, new UserContactDto(orgId, "dueno@test.cl", true));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, NullLogger<ExpenseReportService>.Instance);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), emails, contacts, new FakeNotificationService(), NullLogger<ExpenseReportService>.Instance);
 
         await sut.RejectAsync(report.Id, companyId, approver1Id, comment: "Falta comprobante");
 
@@ -227,12 +227,102 @@ public class ExpenseReportServiceNotificationTests
         var contacts = new FakeUserContactLookupService()
             .With(approver1Id, new UserContactDto(Guid.NewGuid(), "aprobador1@test.cl", true));
 
-        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), new ThrowingEmailSenderService(), contacts, NullLogger<ExpenseReportService>.Instance);
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), new ThrowingEmailSenderService(), contacts, new FakeNotificationService(), NullLogger<ExpenseReportService>.Instance);
 
         await sut.SubmitAsync(report.Id, companyId);
 
         var reloaded = await db.ExpenseReports.FirstAsync(r => r.Id == report.Id);
         Assert.Equal("Pending", reloaded.Status);
+    }
+
+    [Fact]
+    public async Task SubmitAsync_deja_aviso_en_la_campana_del_aprobador_aunque_tenga_el_correo_desactivado()
+    {
+        var companyId = Guid.NewGuid();
+        var requesterId = Guid.NewGuid();
+        var approver1Id = Guid.NewGuid();
+
+        await using var db = CreateDb(nameof(SubmitAsync_deja_aviso_en_la_campana_del_aprobador_aunque_tenga_el_correo_desactivado));
+        var report = new ExpenseReport { CompanyId = companyId, UserId = requesterId, Status = "Draft" };
+        db.ExpenseReports.Add(report);
+        db.ExpenseReportLines.Add(new ExpenseReportLine
+        {
+            CompanyId = companyId, UserId = requesterId, Status = "InReport", ExpenseReportId = report.Id,
+            Amount = 1000, Currency = "CLP",
+        });
+        await db.SaveChangesAsync();
+
+        var groups = new StubApprovalGroupService { Level1Approver = approver1Id, Level2Approver = approver1Id };
+        var contacts = new FakeUserContactLookupService()
+            .With(approver1Id, new UserContactDto(Guid.NewGuid(), "aprobador1@test.cl", false));
+        var notifications = new FakeNotificationService();
+
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), new FakeEmailSenderService(), contacts, notifications, NullLogger<ExpenseReportService>.Instance);
+
+        await sut.SubmitAsync(report.Id, companyId);
+
+        var aviso = Assert.Single(notifications.Enqueued);
+        Assert.Equal(approver1Id, aviso.UserId);
+        Assert.Equal(NotificationSeverity.Warning, aviso.Severity);
+        Assert.Equal("/rendiciones/aprobaciones", aviso.Url);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_ultimo_nivel_deja_aviso_de_exito_en_la_campana_del_dueno()
+    {
+        var companyId = Guid.NewGuid();
+        var requesterId = Guid.NewGuid();
+        var approver1Id = Guid.NewGuid();
+
+        await using var db = CreateDb(nameof(ApproveAsync_ultimo_nivel_deja_aviso_de_exito_en_la_campana_del_dueno));
+        var report = new ExpenseReport
+        {
+            CompanyId = companyId, UserId = requesterId, Status = "Pending",
+            ExpenseApprovalGroupId = 1, CurrentLevel = 1,
+        };
+        db.ExpenseReports.Add(report);
+        await db.SaveChangesAsync();
+
+        var groups = new StubApprovalGroupService { Level1Approver = approver1Id, Level2Approver = requesterId };
+        var notifications = new FakeNotificationService();
+
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), new FakeEmailSenderService(), new FakeUserContactLookupService(), notifications, NullLogger<ExpenseReportService>.Instance);
+
+        await sut.ApproveAsync(report.Id, companyId, approver1Id, comment: null);
+
+        var aviso = Assert.Single(notifications.Enqueued);
+        Assert.Equal(requesterId, aviso.UserId);
+        Assert.Equal(NotificationSeverity.Success, aviso.Severity);
+        Assert.Equal($"/rendiciones/informes/{report.Id}", aviso.Url);
+    }
+
+    [Fact]
+    public async Task RejectAsync_deja_aviso_en_la_campana_del_dueno_con_el_motivo_en_texto_plano()
+    {
+        var companyId = Guid.NewGuid();
+        var requesterId = Guid.NewGuid();
+        var approver1Id = Guid.NewGuid();
+
+        await using var db = CreateDb(nameof(RejectAsync_deja_aviso_en_la_campana_del_dueno_con_el_motivo_en_texto_plano));
+        var report = new ExpenseReport
+        {
+            CompanyId = companyId, UserId = requesterId, Status = "Pending",
+            ExpenseApprovalGroupId = 1, CurrentLevel = 1,
+        };
+        db.ExpenseReports.Add(report);
+        await db.SaveChangesAsync();
+
+        var groups = new StubApprovalGroupService { Level1Approver = approver1Id, Level2Approver = approver1Id };
+        var notifications = new FakeNotificationService();
+
+        var sut = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(), new FakeEmailSenderService(), new FakeUserContactLookupService(), notifications, NullLogger<ExpenseReportService>.Instance);
+
+        await sut.RejectAsync(report.Id, companyId, approver1Id, comment: "Falta boleta & firma");
+
+        var aviso = Assert.Single(notifications.Enqueued);
+        Assert.Equal(requesterId, aviso.UserId);
+        Assert.Equal(NotificationSeverity.Danger, aviso.Severity);
+        Assert.Contains("Falta boleta & firma", aviso.Message);
     }
 
     private sealed class ThrowingEmailSenderService : PortalSaas.Abstractions.Contratos.IEmailSenderService

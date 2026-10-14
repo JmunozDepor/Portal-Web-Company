@@ -28,4 +28,14 @@ public interface IItemCatalogService
 
     /// <summary>ItemCode -> validFor == "Y" en OITM, para varios códigos en una sola consulta -- usado por la regla ItemActiveInSap.</summary>
     Task<IReadOnlyDictionary<string, bool>> GetActiveStatusAsync(IReadOnlyList<string> itemCodes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Código de barras -> ItemCode para varios códigos en una sola consulta: barra
+    /// principal (OITM.CodeBars) y barras adicionales (OBCD). Una barra que apunta a más de
+    /// un artículo queda fuera del resultado (ambigua) -- usado por Importación Genérica
+    /// (GenericImportItemIdentifier.Barcode). Implementación por defecto para no obligar a
+    /// los dobles de test existentes.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, string>> GetItemCodesByBarcodesAsync(IReadOnlyCollection<string> barcodes, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este catálogo no soporta búsqueda por código de barras.");
 }

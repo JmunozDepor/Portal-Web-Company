@@ -116,11 +116,11 @@ public sealed class GenericImportConfigServiceFormatsTests
         var service = Service(db);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateAsync(GenericImportModule.Inventory,
-            "InventoryTransferRequest", GenericImportLineType.Item, "C76", null, false, " Push tiendas ", []));
+            "InventoryTransferRequest", GenericImportLineType.Item, "C76", null, GenericImportItemIdentifier.ItemCode, " Push tiendas ", []));
 
         // Mismo alias para OTRO socio sí se permite.
         var otro = await service.CreateAsync(GenericImportModule.Inventory,
-            "InventoryTransferRequest", GenericImportLineType.Item, "C99", null, false, "Push tiendas", []);
+            "InventoryTransferRequest", GenericImportLineType.Item, "C99", null, GenericImportItemIdentifier.ItemCode, "Push tiendas", []);
         Assert.True(otro > 0);
     }
 

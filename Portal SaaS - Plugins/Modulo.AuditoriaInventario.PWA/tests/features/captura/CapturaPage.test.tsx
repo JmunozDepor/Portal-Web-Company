@@ -3,7 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { CapturaPage } from '../../../src/features/captura/CapturaPage';
 import { db } from '../../../src/db/schema';
-import { getCapturasBySesion, setValidarProducto, setConfiguracionCaptura } from '../../../src/db/repositories';
+import { getCapturasBySesion, setValidarProducto, setConfiguracionCaptura, setEscanearConCamara } from '../../../src/db/repositories';
 import type { SesionRow } from '../../../src/db/schema';
 
 function sesionRow(overrides: Partial<SesionRow> = {}): SesionRow {
@@ -117,6 +117,26 @@ describe('CapturaPage', () => {
     expect(alerta.textContent).toContain('Código no válido');
     expect(await getCapturasBySesion('ses-1')).toHaveLength(0);
     await asentar();
+  });
+
+  it('muestra "Escanear con cámara" si el equipo lo tiene habilitado (default)', async () => {
+    await db.sesiones.put(sesionRow());
+    await db.sectores.bulkPut([{ id: 3, branchId: 7, name: 'Bodega' }]);
+
+    renderCaptura('3');
+
+    expect(await screen.findByRole('button', { name: 'Escanear con cámara' })).toBeTruthy();
+  });
+
+  it('oculta "Escanear con cámara" si se deshabilitó en Mantenedor', async () => {
+    await db.sesiones.put(sesionRow());
+    await db.sectores.bulkPut([{ id: 3, branchId: 7, name: 'Bodega' }]);
+    await setEscanearConCamara(false);
+
+    renderCaptura('3');
+    await screen.findByPlaceholderText('Escanear código de barra');
+
+    expect(screen.queryByRole('button', { name: 'Escanear con cámara' })).toBeNull();
   });
 
   it('cada escaneo queda como linea propia y el total del sector suma todo (no solo lo visible)', async () => {

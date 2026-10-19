@@ -4,7 +4,7 @@
 }
 
 <div class="doc-tab-seccion">
-    <div class="form-row">
+    <div class="form-row" data-form-field="condicion-pago">
         <div class="form-group form-group-ancho-completo">
             <label asp-for="Input.PaymentTermsGroupCode" class="form-label"></label>
             <select asp-for="Input.PaymentTermsGroupCode" asp-items="Model.PaymentTerms" class="form-select" disabled="@readOnly">

@@ -1,4 +1,26 @@
 @model PortalSaas.Abstractions.Componentes.DocumentFormViewModel
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    var formDefinition = Model.FormKey is null ? null : PortalSaas.Abstractions.Componentes.DocumentFormFieldCatalog.Find(Model.FormKey);
+    var hiddenCount = Model.FormLayout.HiddenFields.Count;
+    // Token en un data-attribute (no en un <input name>) -- en un documento nuevo el panel
+    // vive dentro del <form> de creación y un segundo __RequestVerificationToken lo rompería.
+    var antiforgeryToken = formDefinition is null ? null : Antiforgery.GetAndStoreTokens(ViewContext.HttpContext).RequestToken;
+}
+
+@* Campos ocultos por el formulario personalizado -- claves ya filtradas contra
+   DocumentFormFieldCatalog ([a-z0-9-]), seguras dentro de un selector CSS. form-layout.js
+   reescribe este mismo <style> al marcar/desmarcar. *@
+@if (formDefinition is not null)
+{
+    <style id="doc-form-layout-style">
+        @foreach (var key in Model.FormLayout.HiddenFields)
+        {
+            @:.doc-form [data-form-field="@key"] { display: none !important; }
+        }
+    </style>
+    <script src="~/js/form-layout.js" asp-append-version="true"></script>
+}
 
 @* Tabs como anclas de scroll, NUNCA como toggles que ocultan secciones -- portado tal
    cual de referencia-original/PortalSAP_v2 (DocumentForm/Default.cshtml): el documento
@@ -29,6 +51,44 @@
             @if (Model.StatusText is not null)
             {
                 <span class="badge doc-status-badge @(Model.StatusClass ?? "bg-secondary")">@Model.StatusText</span>
+            }
+            @if (formDefinition is not null)
+            {
+                @* Formulario personalizado: cada casilla muestra/oculta los elementos con
+                   data-form-field="clave" y se guarda en la cuenta (por compañía), ver
+                   form-layout.js. Las casillas NO tienen name a propósito: en un documento
+                   nuevo este panel queda dentro del <form> de creación y no debe postearse. *@
+                <div class="dropdown doc-form-layout ms-auto">
+                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside" aria-expanded="false">
+                        <i class="bi bi-sliders"></i> Personalizar
+                        <span class="badge bg-secondary doc-form-layout-count" @(hiddenCount == 0 ? "hidden" : null)>@hiddenCount</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end doc-form-layout-panel"
+                         data-form-key="@Model.FormKey" data-token="@antiforgeryToken"
+                         data-base-hidden="@string.Join(",", Model.FormLayout.BaseHiddenFields)">
+                        <div class="doc-form-layout-title">Campos visibles</div>
+                        <p class="doc-form-layout-hint">Desmarcá lo que no usás. Se guarda en tu cuenta para esta compañía.</p>
+                        @foreach (var fieldGroup in formDefinition.Fields.GroupBy(f => f.Section))
+                        {
+                            <div class="doc-form-layout-section">@fieldGroup.Key</div>
+                            @foreach (var field in fieldGroup)
+                            {
+                                <label class="doc-form-layout-option">
+                                    <input type="checkbox" class="form-check-input" value="@field.Key"
+                                           checked="@(!Model.FormLayout.HiddenFields.Contains(field.Key))" />
+                                    <span>@field.Label</span>
+                                </label>
+                            }
+                        }
+                        <div class="doc-form-layout-footer">
+                            <button type="button" class="btn btn-sm btn-link doc-form-layout-reset" @(Model.FormLayout.HasUserOverride ? null : "hidden")>
+                                Restablecer al formulario de la empresa
+                            </button>
+                            <span class="doc-form-layout-status text-muted"></span>
+                        </div>
+                    </div>
+                </div>
             }
         </div>
 

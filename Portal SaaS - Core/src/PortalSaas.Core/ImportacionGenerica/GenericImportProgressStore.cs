@@ -12,4 +12,6 @@ public sealed class GenericImportProgressStore : IGenericImportProgressStore
     public void Update(string jobId, GenericImportProgressDto progress) => _progress[jobId] = progress;
 
     public GenericImportProgressDto? Get(string jobId) => _progress.TryGetValue(jobId, out var value) ? value : null;
+
+    public void Remove(string jobId) => _progress.TryRemove(jobId, out _);
 }

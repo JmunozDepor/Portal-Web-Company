@@ -17,10 +17,17 @@ export interface ProductoRow {
   productCode: string;
 }
 
-/** Ajustes del equipo, no de una sesion puntual -- una sola fila. */
+/**
+ * Ajustes del EQUIPO, no de una sesion puntual ni de la compañía -- una sola fila,
+ * se edita a mano en Mantenedor y nunca se sincroniza con el servidor (a
+ * diferencia de ConfiguracionCapturaRow, que sí baja del administrador).
+ * "escanearConCamara" default true -- un equipo recien aprovisionado no debe
+ * perder la opción por falta de configuración explícita.
+ */
 export interface AjusteRow {
   id: 'singleton';
   validarProducto: boolean;
+  escanearConCamara: boolean;
 }
 
 /**

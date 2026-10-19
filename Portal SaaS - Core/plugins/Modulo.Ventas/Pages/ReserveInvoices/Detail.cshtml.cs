@@ -16,9 +16,12 @@ public sealed class DetailModel : DetailGenericSalesDocumentModelBase
         IGeneralLedgerAccountCatalogService accounts,
         ICostCenterCatalogService costCenters,
         ISeriesCatalogService series,
-        IShippingMethodCatalogService shippingMethods,
-        IPaymentTermsCatalogService paymentTerms)
-        : base(documents, currentUser, customers, warehouses, salesEmployees, items, accounts, costCenters, series, shippingMethods, paymentTerms)
+        ICustomerShipToAddressService shipToAddresses,
+        IPaymentTermsCatalogService paymentTerms,
+        IPriceListService priceLists,
+        IBusinessPartnerDefaultsService partnerDefaults,
+        ICurrencyCatalogService currencies)
+        : base(documents, currentUser, customers, warehouses, salesEmployees, items, accounts, costCenters, series, shipToAddresses, paymentTerms, priceLists, partnerDefaults, currencies)
     {
     }
 

@@ -1,4 +1,5 @@
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 
 namespace PortalSaas.Core.Catalogos;
 
@@ -21,6 +22,18 @@ public sealed class CustomerShipToAddressService : ICustomerShipToAddressService
 
         var rows = await _hana.QueryAsync<AddressCodeRow>(sql, new { cardCode }, ct);
         return rows.Select(r => r.Code).ToList();
+    }
+
+    public async Task<IReadOnlyList<CustomerShipToAddressDto>> ListShipToAddressesAsync(string cardCode, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT "Address" AS "Code", "Street" AS "Street", "Block" AS "Block", "City" AS "City", "County" AS "County"
+            FROM "CRD1"
+            WHERE "CardCode" = :cardCode AND "AdresType" = 'S'
+            ORDER BY "Address"
+            """;
+
+        return await _hana.QueryAsync<CustomerShipToAddressDto>(sql, new { cardCode }, ct);
     }
 
     private sealed record AddressCodeRow

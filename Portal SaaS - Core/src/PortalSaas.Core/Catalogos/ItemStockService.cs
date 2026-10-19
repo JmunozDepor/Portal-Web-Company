@@ -35,24 +35,41 @@ public sealed class ItemStockService : IItemStockService
             return new Dictionary<(string, string), decimal>();
         }
 
-        var parameters = new Dictionary<string, object?>();
-        var clauses = new List<string>();
-        var i = 0;
-        foreach (var (itemCode, whsCode) in pairs)
+        // Por almacén: "WhsCode = :whs AND ItemCode IN (...)" en tramos de
+        // CatalogSqlHelper.MaxInListSize -- antes era un "(ItemCode = :x AND WhsCode = :y)
+        // OR ..." con DOS parámetros por par: con miles de líneas, miles de OR (lento en
+        // HANA, rechazado por SQL Server pasando 2.100 parámetros).
+        var result = new Dictionary<(string ItemCode, string WhsCode), decimal>();
+        foreach (var byWarehouse in pairs.GroupBy(p => p.WhsCode))
         {
-            var itemParam = $"itemCode{i}";
-            var whsParam = $"whsCode{i}";
-            clauses.Add($"(T0.\"ItemCode\" = :{itemParam} AND T0.\"WhsCode\" = :{whsParam})");
-            parameters[itemParam] = itemCode;
-            parameters[whsParam] = whsCode;
-            i++;
+            var itemCodes = byWarehouse.Select(p => p.ItemCode).Distinct().ToList();
+            foreach (var chunk in itemCodes.Chunk(CatalogSqlHelper.MaxInListSize))
+            {
+                foreach (var (key, available) in await GetAvailableStockChunkAsync(byWarehouse.Key, chunk, ct))
+                {
+                    result[key] = available;
+                }
+            }
+        }
+        return result;
+    }
+
+    private async Task<IReadOnlyDictionary<(string ItemCode, string WhsCode), decimal>> GetAvailableStockChunkAsync(
+        string whsCode, IReadOnlyList<string> itemCodes, CancellationToken ct)
+    {
+        var parameters = new Dictionary<string, object?> { ["whsCode"] = whsCode };
+        var placeholders = new List<string>();
+        for (var i = 0; i < itemCodes.Count; i++)
+        {
+            placeholders.Add($":itemCode{i}");
+            parameters[$"itemCode{i}"] = itemCodes[i];
         }
 
         var sql = $"""
             SELECT T0."ItemCode" AS "ItemCode", T0."WhsCode" AS "WhsCode",
                    T0."OnHand" AS "OnHand", T0."IsCommited" AS "IsCommited"
             FROM "OITW" T0
-            WHERE {string.Join(" OR ", clauses)}
+            WHERE T0."WhsCode" = :whsCode AND T0."ItemCode" IN ({string.Join(",", placeholders)})
             """;
 
         var rows = await _hana.QueryAsync<ItemWarehouseStockRow>(sql, parameters, ct);

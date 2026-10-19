@@ -4,7 +4,8 @@ using ExcelDataReader;
 
 namespace Modulo.AuditoriaInventario.Servicios;
 
-public sealed record CongeladoFilaParseada(string Barcode, string? ProductCode, int Quantity, decimal? UnitCost);
+/// <summary>Barcode y ProductCode son AMBOS nullable -- el archivo tiene que traer al menos uno de los dos (ver Parse), nunca los dos vacíos.</summary>
+public sealed record CongeladoFilaParseada(string? Barcode, string? ProductCode, int Quantity, decimal? UnitCost);
 
 public sealed record CongeladoFilaError(int NumeroFila, string Mensaje);
 
@@ -15,8 +16,14 @@ public sealed record CongeladoParseResult(IReadOnlyList<CongeladoFilaParseada> F
 /// POSICIÓN de columna (no por nombre de encabezado) -- mismo criterio que
 /// GenericImportService de PortalSaas.Core, porque el archivo lo genera un sistema
 /// externo con formato fijo: A = código de barra, B = cantidad, C = costo unitario
-/// (opcional). Fila 1 = encabezado, se ignora. Una fila inválida se acumula como
-/// error y NO aborta el resto del archivo (mismo criterio que ImportacionGenerica).
+/// (opcional), D = código de producto. A y D son alternativos -- el archivo tiene
+/// que traer al menos uno de los dos por fila (algunos orígenes externos solo
+/// conocen el código de producto, no el barcode), nunca ambos vacíos. Si falta el
+/// barcode, Pages/AvanceConteo lo resuelve contra el maestro de producto (Barcode
+/// es la clave real de FrozenInventoryLine, el parser no tiene acceso a la base
+/// para resolverlo acá). Fila 1 = encabezado, se ignora. Una fila inválida se
+/// acumula como error y NO aborta el resto del archivo (mismo criterio que
+/// ImportacionGenerica).
 /// </summary>
 public static class CongeladoExcelParser
 {
@@ -81,16 +88,18 @@ public static class CongeladoExcelParser
             var barcode = Celda(fila, 0);
             var cantidadTexto = Celda(fila, 1);
             var costoTexto = Celda(fila, 2);
+            var productCode = Celda(fila, 3); // columna D
 
-            var filaVacia = string.IsNullOrWhiteSpace(barcode) && string.IsNullOrWhiteSpace(cantidadTexto) && string.IsNullOrWhiteSpace(costoTexto);
+            var filaVacia = string.IsNullOrWhiteSpace(barcode) && string.IsNullOrWhiteSpace(cantidadTexto)
+                && string.IsNullOrWhiteSpace(costoTexto) && string.IsNullOrWhiteSpace(productCode);
             if (filaVacia)
             {
                 continue;
             }
 
-            if (string.IsNullOrWhiteSpace(barcode))
+            if (string.IsNullOrWhiteSpace(barcode) && string.IsNullOrWhiteSpace(productCode))
             {
-                errores.Add(new CongeladoFilaError(numeroFila, "Falta el código de barra (columna A)."));
+                errores.Add(new CongeladoFilaError(numeroFila, "Falta el código de barra (columna A) o el código de producto (columna D) -- al menos uno es obligatorio."));
                 continue;
             }
 
@@ -111,7 +120,11 @@ public static class CongeladoExcelParser
                 costoUnitario = costo;
             }
 
-            filas.Add(new CongeladoFilaParseada(barcode, null, cantidad, costoUnitario));
+            filas.Add(new CongeladoFilaParseada(
+                string.IsNullOrWhiteSpace(barcode) ? null : barcode,
+                string.IsNullOrWhiteSpace(productCode) ? null : productCode,
+                cantidad,
+                costoUnitario));
         }
 
         return new CongeladoParseResult(filas, errores);

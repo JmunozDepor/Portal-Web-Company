@@ -38,6 +38,14 @@ public interface IAuditoriaInventarioApiService
     /// <summary>Todos los formatos habilitados por defecto si la compañía nunca configuró esto (ver Pages/ConfiguracionCaptura, admin-only).</summary>
     Task<CaptureAjustesDto> GetAjustesCapturaAsync(Guid companyId, CancellationToken ct = default);
 
+    /// <summary>Tareas de conteo ACTIVAS creadas desde el portal -- la PWA ya no crea sesiones, se suma a una de estas (ver Pages/AvanceConteo, 2026-10-15).</summary>
+    Task<IReadOnlyList<CaptureSesionAbiertaDto>> GetSesionesAbiertasAsync(Guid companyId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Solo transiciona una sesión YA EXISTENTE (creada desde el portal) -- lanza
+    /// InvalidOperationException si el Id no existe (ya no hay create-on-sync) o si
+    /// la sesión ya está CLOSED (no se puede reabrir ni modificar).
+    /// </summary>
     Task UpsertSesionAsync(Guid companyId, long captureUserId, CaptureSesionUpsert request, CancellationToken ct = default);
 
     /// <summary>Devuelve la cantidad de filas procesadas (alta + actualización) -- idempotente por Id generado en el cliente.</summary>

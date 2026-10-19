@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TopBar } from '../../components/TopBar';
 import { syncProductos, syncSucursales, syncAjustesCaptura } from '../../sync/maestroSync';
 import {
-  getProductosCount, getSucursalesCount, getAjustes, setValidarProducto, importarMaestroDesdeJson,
+  getProductosCount, getSucursalesCount, getAjustes, setValidarProducto, setEscanearConCamara, importarMaestroDesdeJson,
   getPendingCounts, getSesionesLimpiables, limpiarSesionesSincronizadas, getAuthConfig,
   getProductoByBarcode,
 } from '../../db/repositories';
@@ -23,6 +23,7 @@ export function MantenedorPage({
   const [productosTotalServidor, setProductosTotalServidor] = useState<number | null>(null);
   const [sucursalesCount, setSucursalesCount] = useState(0);
   const [validando, setValidando] = useState(true);
+  const [escaneandoConCamara, setEscaneandoConCamara] = useState(true);
   const [sincronizando, setSincronizando] = useState(false);
   const [sincronizandoSucursales, setSincronizandoSucursales] = useState(false);
   const [progreso, setProgreso] = useState(0);
@@ -46,7 +47,9 @@ export function MantenedorPage({
   async function recargar() {
     setProductosCount(await getProductosCount());
     setSucursalesCount(await getSucursalesCount());
-    setValidando((await getAjustes()).validarProducto);
+    const ajustes = await getAjustes();
+    setValidando(ajustes.validarProducto);
+    setEscaneandoConCamara(ajustes.escanearConCamara);
     setPendientes(await getPendingCounts());
     setLimpiablesCount((await getSesionesLimpiables()).length);
   }
@@ -136,6 +139,11 @@ export function MantenedorPage({
   async function handleToggleValidar(checked: boolean) {
     setValidando(checked);
     await setValidarProducto(checked);
+  }
+
+  async function handleToggleEscanearConCamara(checked: boolean) {
+    setEscaneandoConCamara(checked);
+    await setEscanearConCamara(checked);
   }
 
   async function handleSyncNowClick() {
@@ -271,6 +279,23 @@ export function MantenedorPage({
                 checked={validando}
                 onChange={(e) => handleToggleValidar(e.target.checked)}
                 aria-label="Validar producto contra el maestro"
+              />
+              <span className="switch__track"><span className="switch__thumb" /></span>
+            </label>
+          </div>
+          <div className="switch-row" style={{ marginTop: 'var(--space-3)' }}>
+            <div>
+              <p className="panel__title" style={{ margin: 0 }}>Escanear con cámara</p>
+              <p className="panel__hint" style={{ margin: '.15rem 0 0' }}>
+                Muestra la opción de usar la cámara del equipo para escanear, además del lector físico.
+              </p>
+            </div>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={escaneandoConCamara}
+                onChange={(e) => handleToggleEscanearConCamara(e.target.checked)}
+                aria-label="Permitir escanear con la cámara del equipo"
               />
               <span className="switch__track"><span className="switch__thumb" /></span>
             </label>

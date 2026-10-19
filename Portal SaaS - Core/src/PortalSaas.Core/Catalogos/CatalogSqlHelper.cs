@@ -16,6 +16,52 @@ internal static class CatalogSqlHelper
     public const int DefaultSearchLimit = 30;
 
     /// <summary>
+    /// Máximo de valores por lista IN (...) -- archivos de importación de miles de líneas
+    /// (2026-10-15) generaban consultas con miles de parámetros: SQL Server las rechaza
+    /// pasando 2.100 y en HANA se vuelven muy lentas. Las consultas por lote se parten en
+    /// tramos de este tamaño y se combinan los resultados.
+    /// </summary>
+    public const int MaxInListSize = 500;
+
+    /// <summary>Corre <paramref name="query"/> por tramos de MaxInListSize claves y concatena los resultados.</summary>
+    public static async Task<IReadOnlyList<T>> InChunksAsync<TKey, T>(IReadOnlyCollection<TKey> keys,
+        Func<IReadOnlyCollection<TKey>, Task<IReadOnlyList<T>>> query)
+    {
+        if (keys.Count <= MaxInListSize)
+        {
+            return await query(keys);
+        }
+
+        var result = new List<T>();
+        foreach (var chunk in keys.Chunk(MaxInListSize))
+        {
+            result.AddRange(await query(chunk));
+        }
+        return result;
+    }
+
+    /// <summary>Igual que InChunksAsync pero combinando diccionarios (claves de tramos distintos no se repiten).</summary>
+    public static async Task<IReadOnlyDictionary<TResultKey, TValue>> InChunksAsync<TKey, TResultKey, TValue>(IReadOnlyCollection<TKey> keys,
+        Func<IReadOnlyCollection<TKey>, Task<IReadOnlyDictionary<TResultKey, TValue>>> query, IEqualityComparer<TResultKey>? comparer = null)
+        where TResultKey : notnull
+    {
+        if (keys.Count <= MaxInListSize)
+        {
+            return await query(keys);
+        }
+
+        var result = new Dictionary<TResultKey, TValue>(comparer);
+        foreach (var chunk in keys.Chunk(MaxInListSize))
+        {
+            foreach (var (key, value) in await query(chunk))
+            {
+                result[key] = value;
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
     /// searchColumns ya deben venir con comillas dobles (ej. "CardCode") -- este helper
     /// arma el SQL, no conoce el motor de destino. extraParameters -- parámetros de un
     /// :placeholder ya presente en fixedWhere (ej. ":dimCode" de CostCenterCatalogService),

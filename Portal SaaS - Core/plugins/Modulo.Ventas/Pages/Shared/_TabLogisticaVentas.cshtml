@@ -1,15 +1,46 @@
 @model Modulo.Ventas.Pages.DetailGenericSalesDocumentModelBase
 @{
     var readOnly = Model.Document.ReadOnly;
+    var selectedAddress = Model.ShipToAddresses
+        .FirstOrDefault(a => string.Equals(a.Code, Model.Input.ShipToCode, StringComparison.OrdinalIgnoreCase))?.FullAddress;
 }
 
+@* Sucursal de destino = dirección de despacho del cliente (CRD1, AdresType 'S'),
+   posteada como ShipToCode. Al crear, el combo se llena por AJAX al elegir cliente
+   (ver el script de _TabGeneralVentas.cshtml), con la sucursal por defecto del socio
+   preseleccionada. Reemplaza a "Método de envío" (pedido explícito, 2026-10-16). *@
 <div class="doc-tab-seccion">
-    <div class="form-row">
-        <div class="form-group form-group-ancho-completo">
-            <label asp-for="Input.ShippingMethodCode" class="form-label"></label>
-            <select asp-for="Input.ShippingMethodCode" asp-items="Model.ShippingMethods" class="form-select" disabled="@readOnly">
-                <option value="">Sin asignar</option>
-            </select>
+    <div class="form-row" data-form-field="sucursal-destino">
+        <div class="form-group">
+            <label asp-for="Input.ShipToCode" class="form-label">Sucursal de destino (código)</label>
+            @if (readOnly)
+            {
+                <input class="form-control" value="@(Model.Input.ShipToCode ?? "Por defecto del cliente")" disabled />
+            }
+            else
+            {
+                <select asp-for="Input.ShipToCode" class="form-select">
+                    @if (string.IsNullOrWhiteSpace(Model.Input.CustomerCardCode))
+                    {
+                        <option value="">Elegí un cliente primero</option>
+                    }
+                    else
+                    {
+                        <option value="">@(Model.ShipToAddresses.Count > 0 ? "Por defecto del cliente" : "El cliente no tiene sucursales de despacho")</option>
+                        @foreach (var address in Model.ShipToAddresses)
+                        {
+                            <option value="@address.Code" data-address="@address.FullAddress"
+                                    selected="@string.Equals(address.Code, Model.Input.ShipToCode, StringComparison.OrdinalIgnoreCase)">
+                                @(string.IsNullOrEmpty(address.FullAddress) ? address.Code : address.Code + " — " + address.FullAddress)
+                            </option>
+                        }
+                    }
+                </select>
+            }
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="sales-order-ship-to-address">Dirección</label>
+            <input id="sales-order-ship-to-address" class="form-control" value="@(readOnly ? Model.ShipToAddressText : selectedAddress)" disabled />
         </div>
     </div>
 </div>

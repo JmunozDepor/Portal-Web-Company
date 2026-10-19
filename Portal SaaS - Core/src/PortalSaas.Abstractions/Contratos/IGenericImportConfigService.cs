@@ -60,4 +60,11 @@ public interface IGenericImportConfigService
     /// PriceVsFixedList/PriceVsCustomerList activa a la vez -- son mutuamente excluyentes.
     /// </summary>
     Task SaveValidationRulesAsync(int configId, IReadOnlyList<GenericImportValidationRuleAssignmentDto> rules, CancellationToken ct = default);
+
+    /// <summary>
+    /// Guarda origen del almacén y modo del vendedor del formato. Rechaza con
+    /// InvalidOperationException un campo de usuario de almacén con formato inválido o un
+    /// modo Fijo sin vendedor.
+    /// </summary>
+    Task SaveDocumentOptionsAsync(int configId, GenericImportDocumentOptionsDto options, CancellationToken ct = default);
 }

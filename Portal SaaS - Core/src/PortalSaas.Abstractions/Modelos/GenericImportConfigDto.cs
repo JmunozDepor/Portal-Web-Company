@@ -51,4 +51,7 @@ public sealed record GenericImportConfigDto(
     IReadOnlyList<GenericImportValidationRuleAssignmentDto>? ValidationRules = null)
 {
     public IReadOnlyList<GenericImportValidationRuleAssignmentDto> ValidationRules { get; init; } = ValidationRules ?? [];
+
+    /// <summary>Origen del almacén y modo del vendedor -- ver GenericImportDocumentOptionsDto.</summary>
+    public GenericImportDocumentOptionsDto DocumentOptions { get; init; } = GenericImportDocumentOptionsDto.Default;
 }

@@ -23,4 +23,7 @@ public sealed record GenericImportParametersDto(
     string DocumentType,
     GenericImportLineType LineType,
     string? BusinessPartnerCardCode,
-    int? ConfigId = null);
+    int? ConfigId = null,
+    // Vendedor elegido en el asistente -- solo se usa si el formato está en modo
+    // Multivendedor (GenericImportSalesPersonMode.MultiSeller); en Fijo/Del socio manda el formato.
+    int? SalesPersonCode = null);

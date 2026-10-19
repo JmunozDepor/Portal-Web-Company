@@ -9,10 +9,20 @@
 
 <div asp-validation-summary="All" class="text-danger"></div>
 
+@if (Request.Query["formRetry"] == "1")
+{
+    @* Ver el middleware "formRetry" de Program.cs: el envío anterior fue rechazado antes
+       de procesarse (token del formulario vencido/inválido o límite de tamaño). *@
+    <div class="alert alert-warning">
+        No se pudo procesar el envío anterior: la página estaba desactualizada o el envío fue rechazado antes de llegar al
+        portal. Volvé a elegir el archivo y presioná <strong>Procesar</strong>. Si se repite, avisá a soporte (queda registrado).
+    </div>
+}
+
 <div class="card-ps doc-tab-seccion mb-4">
     <span class="doc-resumen-total-titulo">Parámetros</span>
     <form method="post" asp-page-handler="Process" enctype="multipart/form-data" asp-antiforgery="true">
-        <input type="hidden" asp-for="Input.Base64File" />
+        <input type="hidden" asp-for="Input.JobId" />
         <div class="form-row">
             <div class="form-group">
                 <label asp-for="Input.Module" class="form-label"></label>
@@ -64,6 +74,15 @@
                     }
                 </select>
             </div>
+            @* Vendedor (solo Ventas): siempre visible; editable solo si el formato es
+               Multivendedor -- en Fijo / Del socio muestra bloqueado el que se usará. *@
+            <div class="form-group" id="import-vendedor-group" style="@(Model.Input.Module == GenericImportModule.Sales ? "" : "display:none")">
+                <label asp-for="Input.SalesPersonCode" class="form-label"></label>
+                <select asp-for="Input.SalesPersonCode" asp-items="Model.SalesPersons" class="form-select" id="import-vendedor-select" disabled="@(!Model.SalesPersonEditable)">
+                    <option value="">Sin vendedor</option>
+                </select>
+                <div class="form-text" id="import-vendedor-modo">@Model.SalesPersonModeLabel</div>
+            </div>
         </div>
         <div class="form-row">
             <div class="form-group form-group-ancho-completo">
@@ -113,7 +132,8 @@
                     <input type="hidden" asp-for="Input.LineType" />
                     <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
                     <input type="hidden" asp-for="Input.ConfigId" />
-                    <input type="hidden" asp-for="Input.Base64File" />
+                    <input type="hidden" asp-for="Input.SalesPersonCode" />
+                    <input type="hidden" asp-for="Input.JobId" />
                 </form>
                 <button type="button" class="btn btn-success" id="btnConfirmar">Confirmar creación en SAP</button>
                 <div id="progresoConfirmar" class="mt-3" style="display:none">
@@ -134,7 +154,8 @@
                 <input type="hidden" asp-for="Input.LineType" />
                 <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
                 <input type="hidden" asp-for="Input.ConfigId" />
-                <input type="hidden" asp-for="Input.Base64File" />
+                <input type="hidden" asp-for="Input.SalesPersonCode" />
+                <input type="hidden" asp-for="Input.JobId" />
                 <button type="submit" class="btn btn-outline-secondary">Descargar reporte de validación</button>
             </form>
 
@@ -142,7 +163,7 @@
             {
                 @* Descarga de archivo = navegación normal, no fetch -- <form> aparte del
                    de Confirmar, con method="post" real (un <a> no puede mandar
-                   Base64File si el archivo es grande, por eso POST y no querystring). *@
+                   el Id del trabajo -- descarga por POST). *@
                 <form method="post" asp-page-handler="DownloadWithErrors" asp-antiforgery="true" class="mt-2 d-inline-block">
                     <input type="hidden" asp-for="Input.Module" />
                     <input type="hidden" asp-for="Input.SalesDocumentType" />
@@ -151,7 +172,8 @@
                     <input type="hidden" asp-for="Input.LineType" />
                     <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
                     <input type="hidden" asp-for="Input.ConfigId" />
-                    <input type="hidden" asp-for="Input.Base64File" />
+                    <input type="hidden" asp-for="Input.SalesPersonCode" />
+                    <input type="hidden" asp-for="Input.JobId" />
                     <button type="submit" class="btn btn-outline-secondary">Descargar archivo con errores</button>
                 </form>
             }
@@ -161,12 +183,13 @@
 
 <div id="resultadoConfirmar"></div>
 
+<script src="~/js/importacion-resultado.js"></script>
 <script>
-    // Confirmar es un fetch, no un submit de página completa -- con archivos de miles
-    // de filas, un postback tradicional deja la pestaña sin ningún indicio de avance
-    // durante todo el proceso (ver IndexModel.OnPostConfirmAsync). El jobId lo genera
-    // el cliente y viaja tanto al POST de Confirmar como al polling de Progreso, para
-    // que ambos apunten al mismo trabajo en IGenericImportProgressStore.
+    // "Confirmar creación en SAP" (2026-10-15): el POST solo deja el trabajo en la cola
+    // del servidor y responde al instante con su Id (IndexModel.OnPostConfirmAsync) -- la
+    // creación corre en segundo plano (GenericImportJobWorker), así que esta pantalla
+    // solo sigue el avance por polling. Cerrar la pestaña NO corta la carga: el resultado
+    // queda en "Mis importaciones" y la campana avisa al terminar.
     (function () {
         var btnConfirmar = document.getElementById('btnConfirmar');
         if (!btnConfirmar) {
@@ -178,104 +201,21 @@
         var progresoBarra = document.getElementById('progresoConfirmarBarra');
         var progresoMensaje = document.getElementById('progresoConfirmarMensaje');
         var resultadoDiv = document.getElementById('resultadoConfirmar');
-        var pollingActivo = false;
-
-        function generarJobId() {
-            return 'job-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
-        }
-
-        function actualizarBarra(progreso) {
-            var porcentaje = progreso.total > 0 ? Math.round((progreso.current / progreso.total) * 100) : 0;
-            progresoBarra.style.width = porcentaje + '%';
-            progresoBarra.textContent = porcentaje + '%';
-            progresoMensaje.textContent = progreso.message || '';
-        }
-
-        function escaparHtml(texto) {
-            var div = document.createElement('div');
-            div.textContent = texto == null ? '' : String(texto);
-            return div.innerHTML;
-        }
-
-        function mostrarResultado(progreso) {
-            var filas = (progreso.results || []).map(function (r) {
-                var claseFila = r.success ? '' : ' class="table-danger"';
-                return '<tr' + claseFila + '>' +
-                    '<td>' + escaparHtml(r.groupingKey) + '</td>' +
-                    '<td>' + (r.success ? 'OK' : 'Error') + '</td>' +
-                    '<td>' + (r.success ? escaparHtml(r.docNum) : '-') + '</td>' +
-                    '<td>' + escaparHtml(r.message) + '</td>' +
-                    '</tr>';
-            }).join('');
-
-            var tabla = filas
-                ? '<table class="table table-sm"><thead><tr><th>Grupo</th><th>Resultado</th><th>N° documento</th><th>Mensaje</th></tr></thead><tbody>' + filas + '</tbody></table>'
-                : '';
-
-            resultadoDiv.innerHTML =
-                '<div class="alert ' + (progreso.success ? 'alert-success' : 'alert-warning') + '">' + escaparHtml(progreso.message) + '</div>' + tabla;
-        }
-
-        function consultarProgreso(jobId) {
-            if (!pollingActivo) {
-                return;
-            }
-            fetch('?handler=Progress&jobId=' + encodeURIComponent(jobId))
-                .then(function (respuesta) { return respuesta.ok ? respuesta.json() : null; })
-                .then(function (progreso) {
-                    if (!progreso) {
-                        setTimeout(function () { consultarProgreso(jobId); }, 1500);
-                        return;
-                    }
-                    actualizarBarra(progreso);
-                    if (progreso.finished) {
-                        pollingActivo = false;
-                        return;
-                    }
-                    setTimeout(function () { consultarProgreso(jobId); }, 1500);
-                })
-                .catch(function () {
-                    setTimeout(function () { consultarProgreso(jobId); }, 3000);
-                });
-        }
+        var ir = window.importacionResultado;
 
         btnConfirmar.addEventListener('click', function () {
             btnConfirmar.disabled = true;
             resultadoDiv.innerHTML = '';
             progresoDiv.style.display = '';
-            actualizarBarra({ current: 0, total: 0, message: 'Iniciando…' });
+            ir.actualizarBarra(progresoBarra, progresoMensaje, { current: 0, total: 0, message: 'Enviando a la cola…' });
 
-            var jobId = generarJobId();
-            // new FormData(formConfirmar) ya incluye TODOS los campos con name del form,
-            // el oculto de @Html.AntiForgeryToken() incluido -- agregarlo de nuevo acá
-            // (como hacía antes esta línea) lo duplicaba: dos valores idénticos bajo el
-            // mismo nombre "__RequestVerificationToken" en el mismo POST, y
-            // Antiforgery.ValidateRequestAsync rechaza eso con un 400 vacío en vez de
-            // tomar el primero -- causa real confirmada viendo el payload real de la
-            // request en DevTools (bug encontrado 2026-09-04, ver CLAUDE.md). Solo se
-            // valida acá que el campo esté, sin volver a agregarlo.
+            // new FormData(formConfirmar) ya trae el token antiforgery del form -- no
+            // volver a agregarlo (duplicado = 400 vacío, bug real 2026-09-04).
             var formData = new FormData(formConfirmar);
-            formData.append('jobId', jobId);
-
-            if (!formConfirmar.querySelector('input[name="__RequestVerificationToken"]')) {
-                console.warn('formConfirmar no tiene __RequestVerificationToken -- la confirmación va a fallar con 400 (antiforgery).');
-            }
-
-            pollingActivo = true;
-            consultarProgreso(jobId);
 
             fetch('?handler=Confirm', { method: 'POST', body: formData })
-                // Se lee SIEMPRE como texto primero (nunca respuesta.json() directo) --
-                // un 400 de la validación automática de antiforgery de Razor Pages (que
-                // corre ANTES de que OnPostConfirmAsync llegue a ejecutarse, así que el
-                // try/catch de ese método no lo alcanza a atrapar) devuelve texto plano/
-                // HTML, no JSON -- respuesta.json() directo tira una excepción de parseo
-                // y el .catch() de abajo mostraba siempre el mismo mensaje genérico sin
-                // importar la causa real. Acá se intenta parsear como JSON (el caso
-                // normal, controlado por OnPostConfirmAsync) y, si falla, se muestra el
-                // status HTTP + el texto crudo -- así cualquier falla de infraestructura
-                // (antiforgery, tamaño de archivo, error 500 no capturado) se ve en
-                // pantalla en vez de quedar oculta.
+                // Siempre como texto primero: un 400 de antiforgery (antes del handler)
+                // no es JSON, y así se ve el error real en pantalla.
                 .then(function (respuesta) {
                     return respuesta.text().then(function (texto) {
                         var data;
@@ -284,22 +224,28 @@
                         } catch (parseErr) {
                             throw new Error('HTTP ' + respuesta.status + ' ' + respuesta.statusText + ' -- ' + texto.slice(0, 500));
                         }
-                        return { ok: respuesta.ok, data: data };
+                        if (!respuesta.ok) {
+                            throw new Error(data.message || ('HTTP ' + respuesta.status));
+                        }
+                        return data;
                     });
                 })
-                .then(function (resultado) {
-                    pollingActivo = false;
-                    actualizarBarra(resultado.data);
-                    mostrarResultado(resultado.data);
+                .then(function (encolado) {
+                    resultadoDiv.innerHTML = '<div class="alert alert-info mt-3">' + ir.escaparHtml(encolado.message) +
+                        ' <a href="' + encolado.reportUrl + '">Ver en Mis importaciones</a></div>';
+                    ir.seguir('?handler=Progress&jobId=' + encodeURIComponent(encolado.jobId),
+                        function (progreso) { ir.actualizarBarra(progresoBarra, progresoMensaje, progreso); },
+                        function (progreso) { ir.renderizar(resultadoDiv, progreso); });
                 })
                 .catch(function (err) {
-                    pollingActivo = false;
-                    console.error('Confirmar importación: fallo al confirmar', err);
-                    resultadoDiv.innerHTML = '<div class="alert alert-danger">No se pudo confirmar la importación -- ' + escaparHtml(err.message || 'revisá la conexión e intentá de nuevo.') + '</div>';
-                })
-                .finally(function () {
+                    console.error('Confirmar importación: fallo al encolar', err);
+                    progresoDiv.style.display = 'none';
                     btnConfirmar.disabled = false;
+                    resultadoDiv.innerHTML = '<div class="alert alert-danger mt-3">No se pudo enviar la importación -- ' +
+                        ir.escaparHtml(err.message || 'revisá la conexión e intentá de nuevo.') + '</div>';
                 });
+            // El botón queda deshabilitado tras encolar: el mismo archivo no se puede
+            // volver a enviar (el servidor también lo rechaza).
         });
     })();
 </script>
@@ -420,11 +366,45 @@
                     if (formatos.some(function (f) { return String(f.id) === seleccionPrevia; })) {
                         select.value = seleccionPrevia;
                     }
+                    cargarVendedor();
                 })
                 .catch(function (error) {
                     console.error('Importar: ', error);
                 });
         }
+
+        // Vendedor (solo Ventas): valor y bloqueo según el modo del formato elegido --
+        // Fijo / Del socio bloqueado con el valor que se usará, Multivendedor editable.
+        var vendedorGrupo = document.getElementById('import-vendedor-group');
+        var vendedorSelect = document.getElementById('import-vendedor-select');
+        var vendedorModo = document.getElementById('import-vendedor-modo');
+        function cargarVendedor() {
+            var esVenta = valor('Input.Module') === 'Sales';
+            if (vendedorGrupo) {
+                vendedorGrupo.style.display = esVenta ? '' : 'none';
+            }
+            if (!esVenta || !vendedorSelect) {
+                return;
+            }
+            var params = new URLSearchParams({
+                handler: 'SalesPerson',
+                configId: select.value || '',
+                businessPartnerCardCode: valor('Input.BusinessPartnerCardCode').trim(),
+                salesPersonCode: vendedorSelect.value || '',
+            });
+            fetch('?' + params.toString())
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (vendedor) {
+                    if (!vendedor) {
+                        return;
+                    }
+                    vendedorSelect.value = vendedor.code == null ? '' : String(vendedor.code);
+                    vendedorSelect.disabled = !vendedor.editable;
+                    vendedorModo.textContent = vendedor.label;
+                })
+                .catch(function (error) { console.error('Importar (vendedor): ', error); });
+        }
+        select.addEventListener('change', cargarVendedor);
 
         ['Input.Module', 'Input.SalesDocumentType', 'Input.PurchaseDocumentType', 'Input.InventoryDocumentType', 'Input.LineType']
             .forEach(function (nombre) {

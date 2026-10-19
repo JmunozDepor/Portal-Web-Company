@@ -161,15 +161,22 @@ export async function limpiarSesionesSincronizadas(): Promise<{ sesiones: number
   return { sesiones: limpiables.length, capturas: totalCapturas };
 }
 
-const AJUSTES_DEFAULT: AjusteRow = { id: 'singleton', validarProducto: true };
+const AJUSTES_DEFAULT: AjusteRow = { id: 'singleton', validarProducto: true, escanearConCamara: true };
 
-/** "Validar producto" -- default del equipo, ver Mantenedor. true si nunca se guardo. */
+/** "Validar producto"/"Escanear con cámara" -- defaults del equipo, ver Mantenedor. true si nunca se guardo. */
 export async function getAjustes(): Promise<AjusteRow> {
-  return (await db.ajustes.get('singleton')) ?? AJUSTES_DEFAULT;
+  const fila = await db.ajustes.get('singleton');
+  return fila ? { ...AJUSTES_DEFAULT, ...fila } : AJUSTES_DEFAULT;
 }
 
 export async function setValidarProducto(valor: boolean): Promise<void> {
-  await db.ajustes.put({ id: 'singleton', validarProducto: valor });
+  const actual = await getAjustes();
+  await db.ajustes.put({ ...actual, validarProducto: valor });
+}
+
+export async function setEscanearConCamara(valor: boolean): Promise<void> {
+  const actual = await getAjustes();
+  await db.ajustes.put({ ...actual, escanearConCamara: valor });
 }
 
 const CONFIGURACION_CAPTURA_DEFAULT: ConfiguracionCapturaRow = {

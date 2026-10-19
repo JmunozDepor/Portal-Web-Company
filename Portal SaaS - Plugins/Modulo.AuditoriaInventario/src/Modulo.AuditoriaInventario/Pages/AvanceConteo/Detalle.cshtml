@@ -1,0 +1,104 @@
+@page "/auditoria-inventario/avance-conteo/detalle/{sessionId:guid}"
+@model Modulo.AuditoriaInventario.Pages.AvanceConteo.DetalleModel
+@{
+    ViewData["Title"] = "Detalle del conteo";
+    var d = Model.Detalle!;
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1 flex-wrap">
+        <div>
+            <h2 class="mb-0">Detalle del conteo -- @d.Sesion.InventoryNumber</h2>
+            <p class="text-muted mb-0">@d.BranchName</p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (d.Sesion.Status == "CLOSED")
+            {
+                <form method="post" asp-page-handler="ProponerAjustes" asp-route-sessionId="@d.Sesion.Id" class="d-inline">
+                    <button type="submit" class="btn-primary" title="Crea un ajuste pendiente de aprobar por cada código con diferencia">
+                        <i class="bi bi-clipboard-check"></i> Proponer ajustes
+                    </button>
+                </form>
+            }
+            <a class="btn-secondary" asp-page="./Index" asp-page-handler="ExportarDetalle" asp-route-sessionId="@d.Sesion.Id">
+                <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+            </a>
+            <a class="btn-ghost" asp-page="./Index"><i class="bi bi-arrow-left"></i> Volver</a>
+        </div>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    @if (d.Sesion.Status == "CLOSED")
+    {
+        <p class="text-muted small mb-3">
+            "Proponer ajustes" crea un ajuste pendiente de aprobar en la pantalla
+            <a asp-page="/Ajustes/Index">Ajustes</a> por cada código con diferencia --
+            no hace nada con SAP todavía, solo lo deja listo para revisar y aprobar.
+        </p>
+    }
+
+    @if (d.Filas.Count == 0)
+    {
+        <p class="text-muted">Todavía no hay códigos contados ni congelado cargado para esta tarea.</p>
+    }
+    else
+    {
+        <div class="document-list-table-wrapper">
+            <table class="table document-list-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Código de barra</th>
+                        <th>Código producto</th>
+                        <th>Descripción</th>
+                        <th>Marca</th>
+                        <th class="text-end">Congelado</th>
+                        <th class="text-end">Contado</th>
+                        <th class="text-end">Diferencia</th>
+                        <th class="text-end">Monto congelado</th>
+                        <th class="text-end">Monto contado</th>
+                        <th class="text-end">Monto diferencia</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in d.Filas)
+                    {
+                        <tr class="@(f.DiferenciaCantidad is not null && f.DiferenciaCantidad != 0 ? "row-inactive" : "")">
+                            <td>@f.Barcode</td>
+                            <td>@f.ProductCode</td>
+                            <td>@f.Description</td>
+                            <td>@f.Brand</td>
+                            <td class="text-end">@(f.Congelado?.ToString("N0") ?? "Sin congelado")</td>
+                            <td class="text-end">@f.Contado.ToString("N0")</td>
+                            <td class="text-end @(f.DiferenciaCantidad is null ? "" : f.DiferenciaCantidad < 0 ? "text-danger" : f.DiferenciaCantidad > 0 ? "text-success" : "")">
+                                @(f.DiferenciaCantidad?.ToString("N0") ?? "—")
+                            </td>
+                            <td class="text-end">@(f.MontoCongelado?.ToString("N0") ?? "—")</td>
+                            <td class="text-end">@f.MontoContado.ToString("N0")</td>
+                            <td class="text-end @(f.MontoDiferencia is null ? "" : f.MontoDiferencia < 0 ? "text-danger" : f.MontoDiferencia > 0 ? "text-success" : "")">
+                                @(f.MontoDiferencia?.ToString("N0") ?? "—")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="4">TOTAL (@d.Filas.Count código@(d.Filas.Count == 1 ? "" : "s"))</td>
+                        <td class="text-end">@d.TotalCongelado.ToString("N0")</td>
+                        <td class="text-end">@d.TotalContado.ToString("N0")</td>
+                        <td class="text-end @(d.TotalDiferencia < 0 ? "text-danger" : d.TotalDiferencia > 0 ? "text-success" : "")">@d.TotalDiferencia.ToString("N0")</td>
+                        <td class="text-end">$@d.TotalMontoCongelado.ToString("N0")</td>
+                        <td class="text-end">$@d.TotalMontoContado.ToString("N0")</td>
+                        <td class="text-end @(d.TotalMontoDiferencia < 0 ? "text-danger" : d.TotalMontoDiferencia > 0 ? "text-success" : "")">$@d.TotalMontoDiferencia.ToString("N0")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</div>

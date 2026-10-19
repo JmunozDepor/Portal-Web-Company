@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.DependencyInjection;
 using PortalSaas.Abstractions.Componentes;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
@@ -308,8 +309,45 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         return new JsonResult(customers.Select(c => new { c.CardCode, c.CardName }));
     }
 
+    /// <summary>
+    /// Formulario personalizado (panel "Personalizar" de DocumentForm, ver form-layout.js):
+    /// guarda los campos ocultos del usuario en la compañía activa, o con reset=true borra
+    /// su versión y vuelve a la base del admin. Solo exige sesión -- es una preferencia
+    /// visual, no una acción sobre el documento. IFormLayoutService se resuelve por
+    /// RequestServices para no tocar el constructor de cada subtipo.
+    /// </summary>
+    public async Task<IActionResult> OnPostFormLayoutAsync([FromForm] string[]? hidden, [FromForm] bool reset, CancellationToken ct)
+    {
+        try
+        {
+            if (reset)
+            {
+                await FormLayouts.ResetForCurrentUserAsync(FormLayoutKey, ct);
+            }
+            else
+            {
+                await FormLayouts.SaveForCurrentUserAsync(FormLayoutKey, hidden ?? [], ct);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        var layout = await FormLayouts.GetForCurrentUserAsync(FormLayoutKey, ct);
+        return new JsonResult(new { layout.HiddenFields, layout.HasUserOverride });
+    }
+
+    private const string FormLayoutKey = DocumentFormFieldCatalog.Inventory;
+
+    private FormLayoutDto _formLayout = FormLayoutDto.Empty;
+
+    private IFormLayoutService FormLayouts => HttpContext.RequestServices.GetRequiredService<IFormLayoutService>();
+
     private async Task LoadCatalogsAsync(CancellationToken ct)
     {
+        _formLayout = await FormLayouts.GetForCurrentUserAsync(FormLayoutKey, ct);
+
         var series = await _series.ListAsync(_documents.GetSapObjectCode(Type).ToString(), ct: ct);
         Series = series.Select(s => new SelectListItem(s.SeriesName, s.SeriesCode.ToString())).ToList();
     }
@@ -329,6 +367,8 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
             DocEntry = DocEntry,
             CanClose = CanClose,
             CanCancel = CanCancel,
+            FormKey = FormLayoutKey,
+            FormLayout = _formLayout,
         };
 
         // Consumido por _ModuloBackLink.cshtml (breadcrumb del layout) -- ver el

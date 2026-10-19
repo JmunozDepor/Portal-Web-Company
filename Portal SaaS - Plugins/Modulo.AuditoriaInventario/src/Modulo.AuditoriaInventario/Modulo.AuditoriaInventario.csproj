@@ -71,11 +71,18 @@
     <PackageReference Include="QRCoder" Version="1.6.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Export a .xlsx de Avance de Conteo (resumen y detalle por producto/sector).
+         Misma librería y versión que ya usa Modulo.GestionDistribucionGastos para lo
+         mismo, no se introduce una segunda dependencia para la misma tarea. -->
+    <PackageReference Include="ClosedXML" Version="0.104.1" />
+  </ItemGroup>
+
   <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo, mismo
        patrón que Modulo.Rendiciones/Modulo.Wms, ver docs/09-GUIA-DESARROLLO-PLUGINS.md
        §7 del portal para cómo llega de ahí a artifacts/plugins/ del Host. -->
   <PropertyGroup>
-    <ModuloVersion>1.0.0</ModuloVersion>
+    <ModuloVersion>1.6.0</ModuloVersion>
   </PropertyGroup>
 
   <!-- SkipPluginPublish=true evita la copia a dist/ (falla si PortalSaas.Host está

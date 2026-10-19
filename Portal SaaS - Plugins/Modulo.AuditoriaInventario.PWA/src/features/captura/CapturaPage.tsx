@@ -35,6 +35,7 @@ export function CapturaPage({ token, onMenuClick }: { token: string; onMenuClick
   const [aviso, setAviso] = useState<string | null>(null);
   const [ultimaCapturaId, setUltimaCapturaId] = useState<string | null>(null);
   const [validando, setValidando] = useState(true);
+  const [escanearConCamara, setEscanearConCamara] = useState(true);
   const [configuracionCaptura, setConfiguracionCaptura] = useState<ConfiguracionCapturaRow>(CONFIGURACION_CAPTURA_DEFAULT);
   const [camaraAbierta, setCamaraAbierta] = useState(false);
 
@@ -45,7 +46,9 @@ export function CapturaPage({ token, onMenuClick }: { token: string; onMenuClick
       const s = await getSesion(sesionId);
       if (cancelado) return;
       setSesion(s ?? null);
-      setValidando((await getAjustes()).validarProducto);
+      const ajustes = await getAjustes();
+      setValidando(ajustes.validarProducto);
+      setEscanearConCamara(ajustes.escanearConCamara);
       setConfiguracionCaptura(await getConfiguracionCaptura());
       if (s) {
         try {
@@ -138,15 +141,17 @@ export function CapturaPage({ token, onMenuClick }: { token: string; onMenuClick
           <>
             <div className="scan-field">
               <BarcodeInput onCommit={handleCommit} />
-              <button
-                type="button"
-                className="btn btn--ghost btn--sm btn--block camera-scan-trigger"
-                onClick={() => setCamaraAbierta(true)}
-              >
-                Escanear con cámara
-              </button>
+              {escanearConCamara && (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm btn--block camera-scan-trigger"
+                  onClick={() => setCamaraAbierta(true)}
+                >
+                  Escanear con cámara
+                </button>
+              )}
             </div>
-            {camaraAbierta && (
+            {escanearConCamara && camaraAbierta && (
               <Suspense fallback={<div className="modal-overlay"><p className="status-note">Cargando cámara…</p></div>}>
                 <CameraScanner onDetected={handleCommit} onClose={() => setCamaraAbierta(false)} />
               </Suspense>

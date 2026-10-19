@@ -47,6 +47,7 @@ public static class AuditoriaInventarioInboundEndpoints
         group.MapGet("/maestro/sucursales", GetSucursalesAsync);
         group.MapGet("/maestro/sectores", GetSectoresAsync);
         group.MapGet("/maestro/ajustes-captura", GetAjustesCapturaAsync);
+        group.MapGet("/sesiones/abiertas", GetSesionesAbiertasAsync);
         group.MapPost("/sesiones", UpsertSesionAsync);
         group.MapPost("/capturas/batch", UploadCapturasBatchAsync);
     }
@@ -178,6 +179,17 @@ public static class AuditoriaInventarioInboundEndpoints
         return Results.Ok(await api.GetAjustesCapturaAsync(auth.CompanyId, ct));
     }
 
+    private static async Task<IResult> GetSesionesAbiertasAsync(HttpContext httpContext, IAuditoriaInventarioApiService api, CancellationToken ct)
+    {
+        var auth = await ResolveAuthAsync(httpContext, api, ct);
+        if (auth is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        return Results.Ok(await api.GetSesionesAbiertasAsync(auth.CompanyId, ct));
+    }
+
     private static async Task<IResult> UpsertSesionAsync(
         CaptureSesionUpsert request, HttpContext httpContext, IAuditoriaInventarioApiService api, CancellationToken ct)
     {
@@ -187,8 +199,19 @@ public static class AuditoriaInventarioInboundEndpoints
             return Results.Unauthorized();
         }
 
-        await api.UpsertSesionAsync(auth.CompanyId, auth.CaptureUserId, request, ct);
-        return Results.Ok();
+        try
+        {
+            await api.UpsertSesionAsync(auth.CompanyId, auth.CaptureUserId, request, ct);
+            return Results.Ok();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Sesión inexistente (ya no hay create-on-sync, ver GetSesionesAbiertasAsync)
+            // o ya cerrada -- rechazo explícito en vez de 500, para que
+            // syncSesionesPendientes (PWA) lo trate como error definitivo, no como
+            // glitch de red a reintentar.
+            return Results.BadRequest(ex.Message);
+        }
     }
 
     private static async Task<IResult> UploadCapturasBatchAsync(
@@ -200,7 +223,17 @@ public static class AuditoriaInventarioInboundEndpoints
             return Results.Unauthorized();
         }
 
-        var procesadas = await api.UploadCapturasAsync(auth.CompanyId, auth.CaptureUserId, capturas, ct);
-        return Results.Ok(new { processed = procesadas });
+        try
+        {
+            var procesadas = await api.UploadCapturasAsync(auth.CompanyId, auth.CaptureUserId, capturas, ct);
+            return Results.Ok(new { processed = procesadas });
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Lote con capturas de una sesión cerrada/inexistente -- se rechaza
+            // ENTERO (ver AuditoriaInventarioApiService.UploadCapturasAsync), nunca se
+            // descartan en silencio filas puntuales.
+            return Results.BadRequest(ex.Message);
+        }
     }
 }

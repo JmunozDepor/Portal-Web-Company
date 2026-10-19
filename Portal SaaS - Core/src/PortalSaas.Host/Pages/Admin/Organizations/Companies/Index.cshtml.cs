@@ -89,6 +89,9 @@ public class IndexModel : PageModel
         var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == organizationId);
         if (company is not null)
         {
+            // Formularios personalizados: preferencia visual de la compañía, no un dato de
+            // negocio -- se van con ella en vez de bloquear (FK Restrict, ver FormFieldLayout).
+            _db.FormFieldLayouts.RemoveRange(_db.FormFieldLayouts.Where(l => l.CompanyId == id));
             _db.Companies.Remove(company);
             await _db.SaveChangesAsync();
         }

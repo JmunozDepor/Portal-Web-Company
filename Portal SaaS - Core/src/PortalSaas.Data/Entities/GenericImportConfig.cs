@@ -55,6 +55,21 @@ public sealed class GenericImportConfig
 
     public int? SystemPriceListCode { get; set; }
 
+    /// <summary>"Mapping" | "BusinessPartnerField" -- ver GenericImportWarehouseSource.</summary>
+    public string WarehouseSource { get; set; } = "Mapping";
+
+    /// <summary>Campo de usuario de OCRD con el almacén del cliente (ej. "U_NX_WhsCode") -- solo con WarehouseSource = BusinessPartnerField.</summary>
+    public string? WarehouseUserField { get; set; }
+
+    /// <summary>"BusinessPartner" | "Fixed" | "MultiSeller" -- ver GenericImportSalesPersonMode.</summary>
+    public string SalesPersonMode { get; set; } = "BusinessPartner";
+
+    /// <summary>OSLP.SlpCode del vendedor fijo -- solo con SalesPersonMode = Fixed.</summary>
+    public int? SalesPersonCode { get; set; }
+
+    /// <summary>true = la vista previa analiza stock disponible y cumplimiento de unidades (ver GenericImportDocumentOptionsDto.AnalyzeStock).</summary>
+    public bool AnalyzeStock { get; set; }
+
     /// <summary>true = carga multi-socio, cada fila del Excel trae su propio CardCode -- ver GenericImportLogicalField.BusinessPartnerCardCode. Default false.</summary>
     public bool BusinessPartnerFromFile { get; set; }
 

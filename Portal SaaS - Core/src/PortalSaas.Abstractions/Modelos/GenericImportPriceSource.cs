@@ -20,4 +20,11 @@ public enum GenericImportPriceSource
     /// IPriceListService).
     /// </summary>
     System,
+
+    /// <summary>
+    /// Precio especial del socio (OSPP / descuentos por período SPP1, vigentes a la fecha)
+    /// y, si no tiene, el de su lista (OCRD.ListNum) -- lo mismo que aplicaría SAP al crear
+    /// el documento sin UnitPrice. Default de los formatos nuevos (2026-10-15).
+    /// </summary>
+    SpecialPrice,
 }

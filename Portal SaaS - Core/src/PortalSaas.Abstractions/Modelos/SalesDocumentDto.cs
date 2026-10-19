@@ -34,7 +34,12 @@ public sealed record SalesDocumentDto(
     // Dirección de despacho del cliente (CRD1.Address, AddressType 'S') -- "Sucursal" de
     // Importación Genérica (GenericImportLogicalField.Branch). Null = SAP usa la dirección
     // de despacho por defecto del cliente (comportamiento de siempre).
-    string? ShipToCode = null);
+    string? ShipToCode = null,
+    // SAP "Address2" -- dirección de despacho ya resuelta, solo lectura (GetAsync); nunca se postea.
+    string? ShipToAddress = null,
+    // OCRN.CurrCode -- moneda del documento (SAP DocCurrency). Null = SAP usa la moneda del
+    // socio / la moneda local (comportamiento de siempre).
+    string? DocCurrency = null);
 
 /// <summary>
 /// Línea de Artículo o Servicio -- SAP no permite mezclar los dos tipos en el mismo
@@ -65,7 +70,11 @@ public sealed record SalesDocumentLineDto(
     int? BaseEntry = null,
     int? BaseLine = null,
     // Campos de usuario de línea -- ver SalesDocumentDto.AdditionalFields.
-    IReadOnlyDictionary<string, object?>? AdditionalFields = null);
+    IReadOnlyDictionary<string, object?>? AdditionalFields = null,
+    // Moneda en que está expresado UnitPrice (SAP línea "Currency") -- ej. la de la lista de
+    // precio. Si difiere de DocCurrency, SAP convierte con el tipo de cambio de la fecha.
+    // Null = moneda del documento.
+    string? Currency = null);
 
 /// <summary>
 /// Paridad con FiltroGenericoVenta del original (referencia-original/PortalSAP_v2) --

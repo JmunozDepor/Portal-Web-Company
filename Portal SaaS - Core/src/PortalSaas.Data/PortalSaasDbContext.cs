@@ -32,6 +32,7 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<OrganizationDocumentPermission> OrganizationDocumentPermissions => Set<OrganizationDocumentPermission>();
     public DbSet<GenericImportUserField> GenericImportUserFields => Set<GenericImportUserField>();
     public DbSet<GenericImportConfig> GenericImportConfigs => Set<GenericImportConfig>();
+    public DbSet<GenericImportJob> GenericImportJobs => Set<GenericImportJob>();
     public DbSet<GenericImportConfigField> GenericImportConfigFields => Set<GenericImportConfigField>();
     public DbSet<GenericImportValidationRuleAssignment> GenericImportValidationRuleAssignments => Set<GenericImportValidationRuleAssignment>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
@@ -59,6 +60,7 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<UserHomeShortcut> UserHomeShortcuts => Set<UserHomeShortcut>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<FormFieldLayout> FormFieldLayouts => Set<FormFieldLayout>();
     public DbSet<IntegrationDefinition> IntegrationDefinitions => Set<IntegrationDefinition>();
     public DbSet<IntegrationFieldMapping> IntegrationFieldMappings => Set<IntegrationFieldMapping>();
     public DbSet<IntegrationRunLog> IntegrationRunLogs => Set<IntegrationRunLog>();
@@ -170,6 +172,9 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.BusinessPartnerCardCode).HasMaxLength(15);
             entity.Property(e => e.GroupingColumn).HasMaxLength(50);
             entity.Property(e => e.ItemIdentifier).HasMaxLength(20);
+            entity.Property(e => e.WarehouseSource).HasMaxLength(30);
+            entity.Property(e => e.WarehouseUserField).HasMaxLength(50);
+            entity.Property(e => e.SalesPersonMode).HasMaxLength(20);
             entity.Property(e => e.Alias).HasMaxLength(100);
             entity.Property(e => e.PriceSource).HasMaxLength(20);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId);
@@ -505,12 +510,50 @@ public sealed class PortalSaasDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<FormFieldLayout>(entity =>
+        {
+            entity.ToTable("form_field_layouts");
+            entity.Property(e => e.FormKey).HasMaxLength(100);
+            entity.Property(e => e.HiddenFields).HasMaxLength(2000);
+            // No único: UserId es nullable y Postgres/SQL Server tratan NULL distinto en un
+            // índice único -- el upsert lo garantiza el servicio (FormLayoutService).
+            entity.HasIndex(e => new { e.CompanyId, e.FormKey, e.UserId });
+            // Cascade EXPLÍCITO: con UserId nullable el default de EF sería SET NULL, y la
+            // versión de un usuario borrado pasaría a ser la base de la compañía.
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // Restrict -- mismo motivo que UserMenuGroup.Company (Organization ya alcanza
+            // esta tabla en cascada vía User; un segundo camino vía Company rompe SQL
+            // Server, error 1785). Al borrar una compañía se borran antes sus filas.
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<UserHomeShortcut>(entity =>
         {
             entity.ToTable("user_home_shortcuts");
             entity.HasIndex(e => new { e.UserId, e.MenuId }).IsUnique();
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             entity.HasOne(e => e.Menu).WithMany().HasForeignKey(e => e.MenuId);
+        });
+
+        modelBuilder.Entity<GenericImportJob>(entity =>
+        {
+            entity.ToTable("generic_import_jobs", t => t.HasCheckConstraint("ck_generic_import_jobs_status",
+                "status in ('Draft', 'Queued', 'Running', 'Completed', 'Failed')"));
+            entity.Property(e => e.Username).HasMaxLength(100);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.Module).HasMaxLength(20);
+            entity.Property(e => e.DocumentType).HasMaxLength(50);
+            entity.Property(e => e.LineType).HasMaxLength(10);
+            entity.Property(e => e.BusinessPartnerCardCode).HasMaxLength(15);
+            entity.Property(e => e.FileName).HasMaxLength(260);
+            entity.Property(e => e.FileHash).HasMaxLength(64);
+            entity.Property(e => e.ProgressMessage).HasMaxLength(500);
+            entity.Property(e => e.ResultMessage).HasMaxLength(2000);
+            entity.HasIndex(e => new { e.CompanyId, e.CreatedAt });
+            entity.HasIndex(e => new { e.Status, e.CreatedAt });
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId);
         });
 
         modelBuilder.Entity<Notification>(entity =>

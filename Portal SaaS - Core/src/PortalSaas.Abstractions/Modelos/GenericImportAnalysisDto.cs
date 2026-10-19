@@ -66,6 +66,10 @@ public sealed record GenericImportOrderSummaryDto
     public string? BusinessPartnerCardCode { get; init; }
     public string? BusinessPartnerName { get; init; }
     public string? Branches { get; init; }
+
+    /// <summary>Vendedor con que se creará la OC ("código - nombre"), solo Venta.</summary>
+    public string? SalesEmployee { get; init; }
+
     public int Lines { get; init; }
     public int LinesWithErrors { get; init; }
     public int LinesWithWarnings { get; init; }

@@ -878,6 +878,83 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* --- Grilla de líneas de documento (Venta/Compra/Inventario) -------------------
+   Una sola altura de fila: nada se apila debajo de un input (el nombre del artículo
+   va a la columna Descripción, la moneda al lado del precio). Anchos por columna vía
+   clases col-* en <th>/<td>; numéricos alineados a la derecha. */
+.line-items-table {
+  table-layout: auto;
+}
+
+.line-items-table th,
+.line-items-table td {
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+
+.line-items-table .col-item { min-width: 170px; }
+.line-items-table .col-desc { min-width: 220px; max-width: 340px; white-space: normal; }
+.line-items-table .col-qty { width: 90px; }
+.line-items-table .col-price { width: 140px; }
+.line-items-table .col-disc { width: 80px; }
+.line-items-table .col-wh { min-width: 110px; }
+.line-items-table .col-acct,
+.line-items-table .col-cc { min-width: 140px; }
+.line-items-table .col-actions { width: 1%; text-align: right; }
+
+.line-items-table .col-qty input,
+.line-items-table .col-price input,
+.line-items-table .col-disc input {
+  text-align: right;
+}
+
+.line-items-table th.col-qty,
+.line-items-table th.col-price,
+.line-items-table th.col-disc {
+  text-align: right;
+}
+
+/* Nombre del artículo (solo lectura) -- una línea, con elipsis; title muestra el completo. */
+.line-items-table .line-item-description:not(input) {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Precio + moneda en la misma línea. */
+.line-price-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.line-price-cell .line-currency-label {
+  flex: 0 0 auto;
+  min-width: 28px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.line-price-cell .line-currency-label:empty {
+  display: none;
+}
+
+/* Columnas que no aplican al tipo de línea del documento: ocultas (no solo
+   deshabilitadas) -- ver aplicarTipoLinea en document-lines-editor.js. */
+.line-items-table.line-type-item .line-service-only,
+.line-items-table.line-type-service .line-item-only {
+  display: none;
+}
+
+.line-remove-btn {
+  padding: 2px 6px;
+  line-height: 1;
+}
+
 @media (max-width: 900px) {
   /* Al scrollear horizontal en teléfono, la 1ª celda (código de artículo) queda
      fija como referencia de fila. */
@@ -2219,4 +2296,93 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* --- Formulario personalizado (panel "Personalizar" de DocumentForm) ------------
+   Ver form-layout.js / IFormLayoutService. */
+.doc-form-layout-panel {
+  min-width: 260px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  font-size: 12.5px;
+}
+
+.doc-form-layout-title {
+  font-weight: 600;
+}
+
+.doc-form-layout-hint {
+  margin: 2px 0 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.doc-form-layout-section {
+  margin-top: 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.doc-form-layout-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+
+.doc-form-layout-option .form-check-input {
+  margin: 0;
+}
+
+.doc-form-layout-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--card-border);
+}
+
+.doc-form-layout-footer .btn-link {
+  padding: 0;
+  font-size: 11.5px;
+}
+
+.doc-form-layout-status {
+  font-size: 11px;
+}
+
+/* "Descripción (Artículo)" oculta por el formulario personalizado: en un documento de
+   Servicio la descripción es OBLIGATORIA (identifica la línea), así que ahí se fuerza
+   visible -- le gana al display:none !important del <style> generado por especificidad. */
+.doc-form .line-items-table.line-type-service [data-form-field="linea-descripcion"] {
+  display: table-cell !important;
+}
+
+/* Pantalla de admin "Formularios" (Modulo.Administracion) -- una tarjeta por formulario. */
+.form-layout-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.form-layout-admin-card {
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  background: var(--card-bg);
+}
+
+.form-layout-admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
 }

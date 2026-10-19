@@ -1,20 +1,67 @@
 @page "/auditoria-inventario/avance-conteo"
 @model Modulo.AuditoriaInventario.Pages.AvanceConteo.IndexModel
 @{
-    ViewData["Title"] = "Avance de Conteo";
+    ViewData["Title"] = "Conteo";
 }
 
 <div class="card-surface">
-    <h2 class="mb-1">Avance de Conteo</h2>
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1 flex-wrap">
+        <h2 class="mb-0">Conteo</h2>
+        <div class="d-flex gap-2">
+            @if (Model.Filas.Count > 0)
+            {
+                <a class="btn-secondary" asp-page-handler="ExportarResumen"
+                   asp-route-TareaFiltro="@Model.TareaFiltro" asp-route-BranchIdFiltro="@Model.BranchIdFiltro" asp-route-FechaDesde="@Model.FechaDesde">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar resumen
+                </a>
+            }
+            <button type="button" class="btn-primary" data-drawer-open="drawer-nueva-tarea">+ Nueva tarea</button>
+        </div>
+    </div>
     <p class="text-muted mb-3">
-        Cantidad contada (ya sincronizada desde el equipo) contra el congelado cargado
-        para cada sesión -- se actualiza al momento, sin esperar a que la sesión se
-        cierre.
+        Creación de tareas de conteo, carga de congelado y avance en vivo (congelado
+        vs. contado, en unidad y monto). Una tarea cerrada ya no admite más
+        sincronizaciones desde el equipo de captura.
     </p>
+
+    <form method="get" class="mb-3 d-flex gap-2 align-items-end flex-wrap">
+        <div>
+            <label class="form-label">Tarea (Nro. inventario)</label>
+            <input type="text" name="TareaFiltro" value="@Model.TareaFiltro" class="form-control form-control-sm" placeholder="Buscar..." style="min-width:180px;" />
+        </div>
+        <div>
+            <label class="form-label">Sucursal</label>
+            <select name="BranchIdFiltro" class="form-select form-select-sm" style="min-width:180px;">
+                <option value="">Todas</option>
+                @foreach (var b in Model.SucursalesActivas)
+                {
+                    <option value="@b.Id" selected="@(Model.BranchIdFiltro == b.Id)">@b.Name</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="form-label">Fecha desde</label>
+            <input type="date" name="FechaDesde" value="@(Model.FechaDesde?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
+        </div>
+        <button type="submit" class="btn-secondary">Filtrar</button>
+        @if (!string.IsNullOrWhiteSpace(Model.TareaFiltro) || Model.BranchIdFiltro.HasValue || Model.FechaDesde.HasValue)
+        {
+            <a class="btn-ghost" asp-page="./Index">Limpiar filtros</a>
+        }
+    </form>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
 
     @if (Model.Filas.Count == 0)
     {
-        <p class="text-muted">Todavía no hay sesiones de conteo.</p>
+        <p class="text-muted">Todavía no hay tareas de conteo -- creá la primera con "+ Nueva tarea".</p>
     }
     else
     {
@@ -24,10 +71,14 @@
                     <tr>
                         <th>Sucursal</th>
                         <th>Nro. Inventario</th>
+                        <th>Responsable</th>
                         <th>Estado</th>
-                        <th class="text-end">Cant. congelada</th>
-                        <th class="text-end">Cant. contada</th>
+                        <th>Creada</th>
+                        <th>Última sync.</th>
+                        <th class="text-end">Congelado</th>
+                        <th class="text-end">Contado</th>
                         <th class="text-end">Diferencia</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -35,12 +86,51 @@
                     {
                         <tr>
                             <td>@f.BranchName</td>
-                            <td>@f.InventoryNumber</td>
-                            <td>@f.Status</td>
-                            <td class="text-end">@(f.Congelado?.ToString("N0") ?? "Sin congelado")</td>
-                            <td class="text-end">@f.Contado.ToString("N0")</td>
+                            <td>
+                                <a asp-page="./Detalle" asp-route-sessionId="@f.SessionId" title="Ver detalle por código">@f.InventoryNumber</a>
+                            </td>
+                            <td>@f.ResponsibleUserName</td>
+                            <td>
+                                <span class="@(f.Status == "CLOSED" ? "tag tag--closed" : "tag tag--active")">
+                                    @(f.Status == "CLOSED" ? "Cerrada" : f.Status == "ACTIVE" ? "Activa" : f.Status)
+                                </span>
+                            </td>
+                            <td>@f.StartedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
+                            <td>@(f.UltimaSincronizacion?.ToLocalTime().ToString("dd-MM-yyyy HH:mm") ?? "Sin sincronizar")</td>
+                            <td class="text-end">
+                                @(f.Congelado?.ToString("N0") ?? "Sin congelado")
+                                @if (f.CongeladoMonto.HasValue)
+                                {
+                                    <div class="text-muted small">$@f.CongeladoMonto.Value.ToString("N0")</div>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @f.Contado.ToString("N0")
+                                <div class="text-muted small">$@f.ContadoMonto.ToString("N0")</div>
+                            </td>
                             <td class="text-end @(f.Diferencia is null ? "" : f.Diferencia < 0 ? "text-danger" : f.Diferencia > 0 ? "text-success" : "")">
                                 @(f.Diferencia?.ToString("N0") ?? "—")
+                                @if (f.DiferenciaMonto.HasValue)
+                                {
+                                    <div class="small">$@f.DiferenciaMonto.Value.ToString("N0")</div>
+                                }
+                            </td>
+                            <td class="col-actions text-end">
+                                <a class="btn-ghost" asp-page-handler="ExportarDetalle" asp-route-sessionId="@f.SessionId" title="Detalle por sector/equipo y por producto (Excel)">
+                                    <i class="bi bi-file-earmark-excel"></i>
+                                </a>
+                                @if (f.Status != "CLOSED")
+                                {
+                                    <button type="button" class="btn-ghost" title="Cargar congelado"
+                                            data-drawer-open="drawer-congelado"
+                                            onclick="document.getElementById('congelado-sessionid').value='@f.SessionId'; document.getElementById('congelado-titulo').textContent='Cargar congelado -- @f.InventoryNumber';">
+                                        <i class="bi bi-snow"></i>
+                                    </button>
+                                    <form asp-page-handler="Cerrar" asp-route-sessionId="@f.SessionId" method="post" class="d-inline-block"
+                                          onsubmit="return confirm('¿Cerrar la tarea &quot;@f.InventoryNumber&quot;? Una vez cerrada no admite más sincronizaciones.');">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Cerrar tarea"><i class="bi bi-lock"></i></button>
+                                    </form>
+                                }
                             </td>
                         </tr>
                     }
@@ -48,4 +138,92 @@
             </table>
         </div>
     }
+</div>
+
+<div id="drawer-nueva-tarea" class="drawer-overlay" data-drawer>
+    <aside class="drawer-panel">
+        <div class="drawer-header">
+            <h3>Nueva tarea de conteo</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form asp-page-handler="CrearTarea" method="post">
+            <div class="drawer-body">
+                <div class="mb-3">
+                    <label asp-for="NuevaTarea.BranchId" class="form-label">Sucursal</label>
+                    <select asp-for="NuevaTarea.BranchId" class="form-select">
+                        <option value="">Elegir...</option>
+                        @foreach (var b in Model.SucursalesActivas)
+                        {
+                            <option value="@b.Id">@b.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="NuevaTarea.InventoryNumber" class="form-label">Nro. de Inventario</label>
+                    <input asp-for="NuevaTarea.InventoryNumber" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="NuevaTarea.ResponsibleUserId" class="form-label">Capturador asignado</label>
+                    <select asp-for="NuevaTarea.ResponsibleUserId" class="form-select">
+                        <option value="">Elegir...</option>
+                        @foreach (var c in Model.CapturadoresActivos)
+                        {
+                            <option value="@c.Id">@(c.FullName ?? c.Username)</option>
+                        }
+                    </select>
+                    @if (Model.CapturadoresActivos.Count == 0)
+                    {
+                        <div class="form-text text-danger">No hay capturadores activos -- creá uno primero en "Capturadores".</div>
+                    }
+                </div>
+                <div class="mb-3 form-check">
+                    <input asp-for="NuevaTarea.ValidateAgainstMaster" type="checkbox" class="form-check-input" />
+                    <label asp-for="NuevaTarea.ValidateAgainstMaster" class="form-check-label">Validar contra maestro</label>
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn-primary">Crear tarea</button>
+            </div>
+        </form>
+    </aside>
+</div>
+
+<div id="drawer-congelado" class="drawer-overlay" data-drawer>
+    <aside class="drawer-panel">
+        <div class="drawer-header">
+            <h3 id="congelado-titulo">Cargar congelado</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form asp-page-handler="CargarCongelado" method="post" enctype="multipart/form-data">
+            <div class="drawer-body">
+                <input type="hidden" id="congelado-sessionid" asp-for="Congelado.SessionId" />
+                <div class="mb-3">
+                    <a class="btn-secondary" asp-page-handler="DescargarPlantillaCongelado">
+                        <i class="bi bi-download"></i> Descargar plantilla (.xlsx)
+                    </a>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Congelado.Archivo" class="form-label">Archivo Excel (exportado del punto de venta, o la plantilla ya llena)</label>
+                    <input asp-for="Congelado.Archivo" type="file" accept=".xlsx,.xls" class="form-control" />
+                </div>
+                <div class="alert alert-light border small mb-3">
+                    <strong>Formato esperado</strong> -- la fila 1 es encabezado (se ignora, podés usar el de la plantilla), los datos arrancan en la fila 2:
+                    <table class="table table-sm mb-2 mt-2">
+                        <thead><tr><th>A</th><th>B</th><th>C</th><th>D</th></tr></thead>
+                        <tbody>
+                            <tr><td>Código de barra</td><td>Cantidad</td><td>Costo unitario (opcional)</td><td>Código de producto</td></tr>
+                            <tr class="text-muted"><td>7801234567890</td><td>12</td><td>1590.50</td><td>372860C-102-2X</td></tr>
+                        </tbody>
+                    </table>
+                    Código de barra (A) y código de producto (D) son <strong>alternativos</strong> -- alcanza con uno de los dos por fila (si solo ponés código de producto, tiene que existir en el Maestro de Productos). Cantidad tiene que ser un número entero. Si no cargás costo unitario, esa línea queda sin valorización en los reportes de monto ($0).
+                </div>
+                <p class="text-muted small">Carga manual -- la importación directa desde SAP queda para una próxima etapa.</p>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn-primary">Cargar</button>
+            </div>
+        </form>
+    </aside>
 </div>

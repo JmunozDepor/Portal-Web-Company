@@ -81,7 +81,9 @@
         (Value: PortalSaas.Data.Entities.UserThemePreference.Violeta, Label: "Violeta"),
     };
     var activeTheme = serverTheme ?? PortalSaas.Data.Entities.UserThemePreference.Claro;
-    var themeReturnUrl = Context.Request.Path + Context.Request.QueryString;
+    // Con PathBase: en IIS la app vive bajo /Depor y LocalRedirect no lo antepone solo;
+    // sin él, volver de SetTheme caía en la raíz del sitio (404 de IIS).
+    var themeReturnUrl = Context.Request.PathBase + Context.Request.Path + Context.Request.QueryString;
 }
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">

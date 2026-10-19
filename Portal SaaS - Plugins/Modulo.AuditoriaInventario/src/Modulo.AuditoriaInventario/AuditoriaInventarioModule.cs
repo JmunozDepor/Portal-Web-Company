@@ -30,7 +30,7 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
 
     /// <summary>Base externa propia (instancia + base) -- ver IModuloPortal.RequiresExternalDatabase.</summary>
     public bool RequiresExternalDatabase => true;
-    public string Version => "1.0.0";
+    public string Version => "1.6.0";
 
     public IEnumerable<MenuItemDefinition> GetMenu()
     {
@@ -46,42 +46,12 @@ public sealed class AuditoriaInventarioModule : IModuloPortal
 
         yield return new MenuItemDefinition
         {
-            Code = "sesiones",
-            ParentCode = "raiz",
-            Name = "Sesiones de Conteo",
-            Icon = "bi-upc-scan",
-            PageRoute = "/auditoria-inventario/sesiones",
-            Order = 1,
-        };
-
-        yield return new MenuItemDefinition
-        {
             Code = "avance-conteo",
             ParentCode = "raiz",
-            Name = "Avance de Conteo",
+            Name = "Conteo",
             Icon = "bi-graph-up",
             PageRoute = "/auditoria-inventario/avance-conteo",
-            Order = 2,
-        };
-
-        yield return new MenuItemDefinition
-        {
-            Code = "congelados",
-            ParentCode = "raiz",
-            Name = "Congelados",
-            Icon = "bi-snow",
-            PageRoute = "/auditoria-inventario/congelados",
-            Order = 3,
-        };
-
-        yield return new MenuItemDefinition
-        {
-            Code = "diferencias",
-            ParentCode = "raiz",
-            Name = "Diferencias",
-            Icon = "bi-bar-chart-line",
-            PageRoute = "/auditoria-inventario/diferencias",
-            Order = 4,
+            Order = 1,
         };
 
         yield return new MenuItemDefinition

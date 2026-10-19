@@ -65,6 +65,8 @@ public sealed class GenericImportService : IGenericImportService
     private readonly IGenericImportProgressStore _progress;
     private readonly IGenericImportValidationRuleEngine _validationEngine;
     private readonly IItemStockService _stock;
+    private readonly ISalesEmployeeCatalogService _salesEmployees;
+    private readonly IHanaService _hana;
     private readonly ILogger<GenericImportService> _logger;
 
     public GenericImportService(IGenericImportConfigService config, IGenericImportUserFieldService userFieldsCatalog,
@@ -73,7 +75,7 @@ public sealed class GenericImportService : IGenericImportService
         IPriceListService priceList, ICustomerCatalogService customers, ISupplierCatalogService suppliers,
         ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
         IGenericImportProgressStore progress, IGenericImportValidationRuleEngine validationEngine, IItemStockService stock,
-        ILogger<GenericImportService> logger)
+        ISalesEmployeeCatalogService salesEmployees, IHanaService hana, ILogger<GenericImportService> logger)
     {
         _config = config;
         _userFieldsCatalog = userFieldsCatalog;
@@ -92,6 +94,8 @@ public sealed class GenericImportService : IGenericImportService
         _progress = progress;
         _validationEngine = validationEngine;
         _stock = stock;
+        _salesEmployees = salesEmployees;
+        _hana = hana;
         _logger = logger;
     }
 
@@ -120,6 +124,15 @@ public sealed class GenericImportService : IGenericImportService
             .ToDictionary(f => f.Id);
 
         var rawRows = ReadRawRows(table, config);
+
+        // Almacén del cliente (campo de usuario de OCRD) -- pisa la columna/valor fijo de la
+        // grilla ANTES de cualquier resolución, así el resto del pipeline (catálogo de
+        // almacenes, stock, creación) lo trata igual que si viniera en el archivo.
+        if (parameters.Module != GenericImportModule.Inventory && parameters.LineType == GenericImportLineType.Item
+            && config.DocumentOptions.WarehouseSource == GenericImportWarehouseSource.BusinessPartnerField)
+        {
+            await ApplyBusinessPartnerWarehouseAsync(rawRows, config, parameters, ct);
+        }
 
         IReadOnlyList<string> CodesOf(GenericImportLogicalField field) => rawRows
             .Select(r => r.CoreFields.GetValueOrDefault(field))
@@ -241,7 +254,7 @@ public sealed class GenericImportService : IGenericImportService
         // Precio SAP + stock disponible SIEMPRE (no solo con la regla activa) -- los usan
         // el análisis (comparación de precios, cumplimiento) y la regla de descuento
         // total de la OC, que corre en el motor de abajo.
-        rows = await EnrichForAnalysisAsync(rows, config, parameters.Module, ct);
+        rows = await EnrichForAnalysisAsync(rows, config, parameters, ct);
 
         // DuplicateOrderInSap necesita el tipo de documento (para saber en qué tabla SAP
         // buscar la OC) y la interfaz de reglas no lo recibe -- se agrega a sus parámetros.
@@ -578,7 +591,10 @@ public sealed class GenericImportService : IGenericImportService
                 break;
             case decimal d:
                 cell.Value = d;
-                cell.Style.NumberFormat.Format = "#,##0.##";
+                // "#,##0.##" deja el separador decimal colgando en Excel cuando el número
+                // no tiene decimales ("12.996,") -- formato según el valor: entero sin
+                // decimales, el resto con 2.
+                cell.Style.NumberFormat.Format = d == decimal.Truncate(d) ? "#,##0" : "#,##0.00";
                 break;
             case int i:
                 cell.Value = i;
@@ -636,6 +652,27 @@ public sealed class GenericImportService : IGenericImportService
         var results = new List<GenericImportDocumentResultDto>();
         var processed = 0;
 
+        // Datos de cabecera de cada OC para el reporte final -- mismo análisis que la vista previa.
+        var summaries = GenericImportAnalysisBuilder.Build(documents, parameters.Module).Orders.ToDictionary(o => o.GroupingKey);
+        GenericImportDocumentResultDto WithSummary(GenericImportDocumentResultDto result)
+        {
+            if (!summaries.TryGetValue(result.GroupingKey, out var o))
+            {
+                return result;
+            }
+            return result with
+            {
+                CustomerReferenceNumber = o.CustomerReferenceNumber,
+                Branches = o.Branches,
+                BusinessPartnerCardCode = o.BusinessPartnerCardCode,
+                BusinessPartnerName = o.BusinessPartnerName,
+                SalesEmployee = o.SalesEmployee,
+                Lines = o.Lines,
+                Units = o.Units,
+                OrderAmount = o.OrderAmount,
+            };
+        }
+
         foreach (var document in creatable)
         {
             processed++;
@@ -655,7 +692,7 @@ public sealed class GenericImportService : IGenericImportService
 
             try
             {
-                var docNum = parameters.Module switch
+                var (docEntry, docNum, docTotal) = parameters.Module switch
                 {
                     GenericImportModule.Sales => await CreateSalesDocumentAsync(parameters, document, portalUsername, ReportBatch, ct),
                     GenericImportModule.Purchase => await CreatePurchaseDocumentAsync(parameters, document, portalUsername, ReportBatch, ct),
@@ -663,18 +700,30 @@ public sealed class GenericImportService : IGenericImportService
                     _ => throw new InvalidOperationException($"Módulo {parameters.Module} no soportado."),
                 };
 
-                results.Add(new GenericImportDocumentResultDto(document.GroupingKey, true, docNum, "Documento creado correctamente."));
+                results.Add(WithSummary(new GenericImportDocumentResultDto(document.GroupingKey, true, docNum, "Documento creado correctamente."))
+                    with { DocEntry = docEntry, SapDocTotal = docTotal });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al crear el documento del grupo {GroupingKey} en el trabajo de import {JobId}.", document.GroupingKey, jobId);
-                results.Add(new GenericImportDocumentResultDto(document.GroupingKey, false, 0, ex.Message));
+                results.Add(WithSummary(new GenericImportDocumentResultDto(document.GroupingKey, false, 0, ex.Message)));
             }
         }
 
+        // OC que no se enviaron por errores de validación -- también van al reporte, para
+        // que el resultado final cuente TODAS las OC del archivo.
+        foreach (var skipped in documents.Where(d => !d.CanCreate))
+        {
+            var errors = skipped.Rows.SelectMany(r => r.Errors).Distinct().Take(3).ToList();
+            results.Add(WithSummary(new GenericImportDocumentResultDto(skipped.GroupingKey, false, 0,
+                "No enviado: la OC tiene errores de validación. " + string.Join(" ", errors))) with { Status = "Skipped" });
+        }
+
         var successes = results.Count(r => r.Success);
+        var skippedCount = results.Count(r => r.Status == "Skipped");
         var final = new GenericImportProgressDto(
-            $"Proceso completado: {successes} exitoso(s), {creatable.Count - successes} fallido(s).",
+            $"Proceso completado: {successes} pedido(s) creado(s), {creatable.Count - successes} con error en SAP" +
+            (skippedCount > 0 ? $", {skippedCount} no enviado(s) por errores de validación." : "."),
             totalBatches, totalBatches, successes == creatable.Count, null, true, results);
         _progress.Update(jobId, final);
         return final;
@@ -683,30 +732,105 @@ public sealed class GenericImportService : IGenericImportService
     private static int CountOfBatches(int rowCount) => Math.Max(1, (int)Math.Ceiling(rowCount / (double)DefaultBatchSize));
 
     /// <summary>
+    /// Reemplaza el almacén de cada fila por el del socio (OCRD.&lt;WarehouseUserField&gt;,
+    /// ej. U_NX_WhsCode). Socio sin valor en ese campo: la fila conserva la columna/valor
+    /// fijo de la grilla (y si tampoco hay, ProcessRow marca "Bodega es obligatoria").
+    /// </summary>
+    private async Task ApplyBusinessPartnerWarehouseAsync(List<RawRow> rawRows, GenericImportConfigDto config,
+        GenericImportParametersDto parameters, CancellationToken ct)
+    {
+        var userField = config.DocumentOptions.WarehouseUserField ?? GenericImportDocumentOptionsDto.DefaultWarehouseUserField;
+        // Se interpola en SQL -- mismo control de formato que al guardarlo.
+        if (!GenericImportConfigService.IsValidUserFieldName(userField))
+        {
+            return;
+        }
+
+        string? CardCodeOf(RawRow raw) => config.BusinessPartnerFromFile
+            ? raw.CoreFields.GetValueOrDefault(GenericImportLogicalField.BusinessPartnerCardCode)?.Trim()
+            : parameters.BusinessPartnerCardCode?.Trim();
+
+        var cardCodes = rawRows.Select(CardCodeOf).Where(c => !string.IsNullOrEmpty(c)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (cardCodes.Count == 0)
+        {
+            return;
+        }
+
+        var sqlParameters = new Dictionary<string, object?>();
+        var placeholders = new List<string>();
+        for (var i = 0; i < cardCodes.Count; i++)
+        {
+            placeholders.Add($":cardCode{i}");
+            sqlParameters[$"cardCode{i}"] = cardCodes[i];
+        }
+
+        var sql = $"SELECT \"CardCode\", \"{userField}\" AS \"WhsCode\" FROM \"OCRD\" WHERE \"CardCode\" IN ({string.Join(",", placeholders)})";
+        var warehouseByCard = (await _hana.QueryDynamicAsync(sql, sqlParameters, ct))
+            .Select(r => (CardCode: r["CardCode"]?.ToString()?.Trim() ?? string.Empty, WhsCode: r["WhsCode"]?.ToString()?.Trim()))
+            .Where(r => !string.IsNullOrEmpty(r.WhsCode))
+            .GroupBy(r => r.CardCode, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().WhsCode!, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var raw in rawRows)
+        {
+            if (CardCodeOf(raw) is { Length: > 0 } cardCode && warehouseByCard.TryGetValue(cardCode, out var whsCode))
+            {
+                raw.CoreFields[GenericImportLogicalField.Warehouse] = whsCode;
+            }
+        }
+    }
+
+    /// <summary>Vendedor del documento según el modo del formato -- ver GenericImportSalesPersonMode.</summary>
+    internal static int? ResolveSalesPerson(GenericImportDocumentOptionsDto options, int? chosenInWizard, int? partnerDefault) =>
+        options.SalesPersonMode switch
+        {
+            GenericImportSalesPersonMode.Fixed => options.SalesPersonCode,
+            GenericImportSalesPersonMode.MultiSeller => chosenInWizard ?? partnerDefault,
+            _ => partnerDefault,
+        };
+
+    /// <summary>
     /// Completa en cada fila el precio SAP (SapReferencePrice) y el stock disponible /
     /// unidades cubiertas (StockAvailable / FulfillableQuantity). Consultas en bloque
     /// para todo el archivo (nunca por fila). Precio: lista de sistema si el formato usa
     /// PriceSource = System, si no la lista del socio de la fila (OCRD.ListNum).
     /// </summary>
     private async Task<List<GenericImportRowDto>> EnrichForAnalysisAsync(List<GenericImportRowDto> rows, GenericImportConfigDto config,
-        GenericImportModule module, CancellationToken ct)
+        GenericImportParametersDto parameters, CancellationToken ct)
     {
+        var module = parameters.Module;
+
+        // Datos del socio (lista de precio + vendedor por defecto), una consulta por socio distinto.
+        var defaultsByCardCode = new Dictionary<string, BusinessPartnerDefaultsDto?>(StringComparer.OrdinalIgnoreCase);
+        if (module != GenericImportModule.Inventory)
+        {
+            foreach (var cardCode in rows.Select(r => r.BusinessPartnerCardCode).Where(c => c is not null).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                defaultsByCardCode[cardCode!] = await _partnerDefaults.GetAsync(cardCode!, ct);
+            }
+        }
         // ---- Precio SAP (Venta/Compra, líneas de artículo)
         var sapPriceByRow = new Dictionary<int, decimal>();
         if (module != GenericImportModule.Inventory)
         {
             var pricedRows = rows.Where(r => r.ItemCode is not null).ToList();
-            var listByCardCode = new Dictionary<string, int?>(StringComparer.OrdinalIgnoreCase);
             int? fixedList = config.PriceSource == GenericImportPriceSource.System ? config.SystemPriceListCode : null;
-            if (fixedList is null)
-            {
-                foreach (var cardCode in pricedRows.Select(r => r.BusinessPartnerCardCode).Where(c => c is not null).Distinct(StringComparer.OrdinalIgnoreCase))
-                {
-                    listByCardCode[cardCode!] = (await _partnerDefaults.GetAsync(cardCode!, ct))?.PriceListCode;
-                }
-            }
+            var listByCardCode = fixedList is null
+                ? defaultsByCardCode.ToDictionary(kv => kv.Key, kv => kv.Value?.PriceListCode, StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, int?>(StringComparer.OrdinalIgnoreCase);
 
             var itemCodes = pricedRows.Select(r => r.ItemCode!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+            // Precio especial del socio (OSPP/SPP1) -- solo con PriceSource = SpecialPrice;
+            // tiene prioridad sobre la lista del socio, igual que en SAP.
+            var specialByCardCode = new Dictionary<string, IReadOnlyDictionary<string, decimal>>(StringComparer.OrdinalIgnoreCase);
+            if (config.PriceSource == GenericImportPriceSource.SpecialPrice && itemCodes.Count > 0)
+            {
+                foreach (var cardCode in defaultsByCardCode.Keys)
+                {
+                    specialByCardCode[cardCode] = await _priceList.GetSpecialPricesAsync(cardCode, itemCodes, DateTime.Today, ct);
+                }
+            }
             var pricesByList = new Dictionary<int, IReadOnlyDictionary<string, decimal>>();
             foreach (var listNum in (fixedList is { } f ? [f] : listByCardCode.Values.Where(v => v is not null).Select(v => v!.Value)).Distinct())
             {
@@ -715,6 +839,13 @@ public sealed class GenericImportService : IGenericImportService
 
             foreach (var row in pricedRows)
             {
+                if (row.BusinessPartnerCardCode is { } special && specialByCardCode.TryGetValue(special, out var specialPrices)
+                    && specialPrices.TryGetValue(row.ItemCode!, out var specialPrice))
+                {
+                    sapPriceByRow[row.RowNumber] = specialPrice;
+                    continue;
+                }
+
                 var listNum = fixedList ?? (row.BusinessPartnerCardCode is { } c ? listByCardCode.GetValueOrDefault(c) : null);
                 if (listNum is { } l && pricesByList.TryGetValue(l, out var prices) && prices.TryGetValue(row.ItemCode!, out var price))
                 {
@@ -726,11 +857,20 @@ public sealed class GenericImportService : IGenericImportService
         // ---- Stock disponible por artículo + almacén (origen en Inventario), repartido
         // entre las líneas en el orden del archivo.
         string? WarehouseOf(GenericImportRowDto r) => module == GenericImportModule.Inventory ? r.SourceWarehouse : r.Warehouse;
-        var stockRows = rows.Where(r => r.ItemCode is not null && WarehouseOf(r) is not null).ToList();
+        // Opcional por formato (AnalyzeStock) -- con miles de líneas es la consulta más pesada.
+        var stockRows = config.DocumentOptions.AnalyzeStock
+            ? rows.Where(r => r.ItemCode is not null && WarehouseOf(r) is not null).ToList()
+            : [];
         var available = stockRows.Count == 0
             ? new Dictionary<(string ItemCode, string WhsCode), decimal>()
             : await _stock.GetAvailableStockAsync(stockRows.Select(r => (r.ItemCode!, WarehouseOf(r)!)).Distinct().ToList(), ct);
         var remaining = new Dictionary<(string, string), decimal>();
+
+        // Nombres de vendedores (catálogo chico) -- solo si el formato no usa el del socio,
+        // que ya viene con nombre en BusinessPartnerDefaultsDto.
+        var salesEmployeeNames = module == GenericImportModule.Sales && config.DocumentOptions.SalesPersonMode != GenericImportSalesPersonMode.BusinessPartner
+            ? (await _salesEmployees.ListAsync(ct: ct)).GroupBy(s => s.SalesEmployeeCode).ToDictionary(g => g.Key, g => g.First().SalesEmployeeName)
+            : new Dictionary<int, string>();
 
         return rows.Select(row =>
         {
@@ -746,8 +886,21 @@ public sealed class GenericImportService : IGenericImportService
                 remaining[key] = left - quantity;
             }
 
+            int? salesEmployeeCode = null;
+            string? salesEmployeeName = null;
+            if (module == GenericImportModule.Sales)
+            {
+                var defaults = row.BusinessPartnerCardCode is { } bp ? defaultsByCardCode.GetValueOrDefault(bp) : null;
+                salesEmployeeCode = ResolveSalesPerson(config.DocumentOptions, parameters.SalesPersonCode, defaults?.SalesEmployeeCode);
+                salesEmployeeName = salesEmployeeCode is { } code
+                    ? (code == defaults?.SalesEmployeeCode ? defaults?.SalesEmployeeName : salesEmployeeNames.GetValueOrDefault(code))
+                    : null;
+            }
+
             return row with
             {
+                SalesEmployeeCode = salesEmployeeCode,
+                SalesEmployeeName = salesEmployeeName,
                 SapReferencePrice = sapPriceByRow.TryGetValue(row.RowNumber, out var sapPrice) ? sapPrice : row.SapReferencePrice,
                 StockAvailable = stockAvailable,
                 FulfillableQuantity = fulfillable,
@@ -770,7 +923,7 @@ public sealed class GenericImportService : IGenericImportService
         };
     }
 
-    private async Task<int> CreateSalesDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
+    private async Task<(int DocEntry, int DocNum, decimal? DocTotal)> CreateSalesDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
         string portalUsername, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<SalesDocumentType>(parameters.DocumentType);
@@ -797,7 +950,7 @@ public sealed class GenericImportService : IGenericImportService
         }
 
         var created = await _sales.GetAsync(type, docEntry, ct);
-        return created?.DocNum ?? 0;
+        return (docEntry, created?.DocNum ?? 0, created?.DocTotal);
     }
 
     /// <summary>Documento de Venta completo (TODAS las líneas) de un grupo -- compartido por la creación real (que lo parte en lotes) y SimulateDocumentAsync.</summary>
@@ -829,7 +982,9 @@ public sealed class GenericImportService : IGenericImportService
         return new SalesDocumentDto(
             CustomerCardCode: cardCode,
             CustomerName: null,
-            SalesEmployeeCode: partnerDefaults?.SalesEmployeeCode,
+            // Vendedor ya resuelto en el análisis según el modo del formato (fijo /
+            // multivendedor / del socio) -- el mismo que se mostró en la vista previa.
+            SalesEmployeeCode: first.SalesEmployeeCode ?? partnerDefaults?.SalesEmployeeCode,
             Comments: null,
             DocDate: DateOnly.FromDateTime(DateTime.Today),
             DocDueDate: DateOnly.FromDateTime(DateTime.Today),
@@ -840,7 +995,7 @@ public sealed class GenericImportService : IGenericImportService
             ShipToCode: first.Branch);
     }
 
-    private async Task<int> CreatePurchaseDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
+    private async Task<(int DocEntry, int DocNum, decimal? DocTotal)> CreatePurchaseDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
         string portalUsername, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<PurchaseDocumentType>(parameters.DocumentType);
@@ -867,7 +1022,7 @@ public sealed class GenericImportService : IGenericImportService
         }
 
         var created = await _purchase.GetAsync(type, docEntry, ct);
-        return created?.DocNum ?? 0;
+        return (docEntry, created?.DocNum ?? 0, created?.DocTotal);
     }
 
     /// <summary>Documento de Compra completo (TODAS las líneas) de un grupo -- ver BuildSalesDocumentAsync.</summary>
@@ -902,7 +1057,7 @@ public sealed class GenericImportService : IGenericImportService
             AdditionalFields: first.UserFieldsHeader.Count > 0 ? first.UserFieldsHeader : null);
     }
 
-    private async Task<int> CreateInventoryDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
+    private async Task<(int DocEntry, int DocNum, decimal? DocTotal)> CreateInventoryDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
         string portalUsername, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<InventoryDocumentType>(parameters.DocumentType);
@@ -932,7 +1087,7 @@ public sealed class GenericImportService : IGenericImportService
         }
 
         var created = await _inventory.GetAsync(type, docEntry, ct);
-        return created?.DocNum ?? 0;
+        return (docEntry, created?.DocNum ?? 0, null);
     }
 
     /// <summary>Documento de Inventario completo (TODAS las líneas) de un grupo -- ver BuildSalesDocumentAsync.</summary>

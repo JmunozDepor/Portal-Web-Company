@@ -62,4 +62,41 @@ public sealed class AjusteService : IAjusteService
         await db.SaveChangesAsync(ct);
         return new AprobarAjusteResultado(true, "Ajuste aprobado y encolado hacia SAP.");
     }
+
+    public async Task<int> ProponerTodosAsync(AuditoriaInventarioDbContext db, Guid sessionId, Guid companyId, Guid proposedByUserId, CancellationToken ct = default)
+    {
+        var sesion = await db.InventorySessions.FirstOrDefaultAsync(s => s.Id == sessionId && s.CompanyId == companyId, ct);
+        if (sesion is null)
+        {
+            return 0;
+        }
+
+        var diferencias = await db.InventoryDifferences
+            .Where(d => d.SessionId == sessionId && d.QuantityDiff != 0)
+            .ToListAsync(ct);
+        if (diferencias.Count == 0)
+        {
+            return 0;
+        }
+
+        var diferenciaIds = diferencias.Select(d => d.Id).ToList();
+        var yaPropuestas = await db.InventoryAdjustments
+            .Where(a => diferenciaIds.Contains(a.DifferenceId))
+            .Select(a => a.DifferenceId)
+            .ToListAsync(ct);
+        var yaPropuestasSet = yaPropuestas.ToHashSet();
+
+        var nuevas = diferencias
+            .Where(d => !yaPropuestasSet.Contains(d.Id))
+            .Select(d => new InventoryAdjustment { DifferenceId = d.Id, ProposedByUserId = proposedByUserId })
+            .ToList();
+        if (nuevas.Count == 0)
+        {
+            return 0;
+        }
+
+        db.InventoryAdjustments.AddRange(nuevas);
+        await db.SaveChangesAsync(ct);
+        return nuevas.Count;
+    }
 }

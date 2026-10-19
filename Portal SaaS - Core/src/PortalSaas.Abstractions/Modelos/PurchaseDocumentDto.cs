@@ -23,7 +23,12 @@ public sealed record PurchaseDocumentDto(
     int? Series = null,
     // Campos de usuario (UDF dinámicos) -- consumido por Modulo.ImportacionGenerica, ver
     // SapAdditionalFieldsHelper.
-    IReadOnlyDictionary<string, object?>? AdditionalFields = null);
+    IReadOnlyDictionary<string, object?>? AdditionalFields = null,
+    // OSLP.SlpCode -- Comprador (SAP SalesPersonCode, mismo campo que el Vendedor de Venta).
+    // Null = SAP usa el comprador por defecto del proveedor.
+    int? BuyerCode = null,
+    // Moneda del documento -- ver SalesDocumentDto.DocCurrency.
+    string? DocCurrency = null);
 
 /// <summary>
 /// Línea de Artículo o Servicio -- mismo criterio que SalesDocumentLineDto (ver ese
@@ -50,7 +55,9 @@ public sealed record PurchaseDocumentLineDto(
     int? BaseEntry = null,
     int? BaseLine = null,
     // Campos de usuario de línea -- ver PurchaseDocumentDto.AdditionalFields.
-    IReadOnlyDictionary<string, object?>? AdditionalFields = null);
+    IReadOnlyDictionary<string, object?>? AdditionalFields = null,
+    // Moneda de UnitPrice -- ver SalesDocumentLineDto.Currency.
+    string? Currency = null);
 
 /// <summary>
 /// Paridad con FiltroGenericoCompra del original (referencia-original/PortalSAP_v2) --

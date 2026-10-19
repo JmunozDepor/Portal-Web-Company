@@ -1,0 +1,50 @@
+@page "/importacion-generica/trabajos/{id:guid}"
+@using PortalSaas.Abstractions.Modelos
+@model Modulo.ImportacionGenerica.Pages.Trabajos.ImportacionTrabajoDetalleModel
+@{
+    ViewData["Title"] = "Detalle de importación";
+    var job = Model.Job!;
+    string Fecha(DateTimeOffset? value) => value?.ToLocalTime().ToString("dd-MM-yyyy HH:mm:ss") ?? "—";
+}
+
+<div class="mb-2">
+    <a asp-page="/Trabajos/ImportacionTrabajos" class="btn btn-outline-secondary btn-sm">← Volver a Mis importaciones</a>
+</div>
+<h1 class="h3 mb-3">Importación: @job.FileName</h1>
+
+<div class="card-ps doc-tab-seccion mb-3">
+    <div class="form-row">
+        <div class="form-group"><span class="form-label">Documento</span><div>@ImportDisplayNames.Of(job.Parameters.Module) · @ImportDisplayNames.Of(job.Parameters.DocumentType)</div></div>
+        <div class="form-group"><span class="form-label">Socio de negocio</span><div>@(job.Parameters.BusinessPartnerCardCode ?? "—")</div></div>
+        <div class="form-group"><span class="form-label">Usuario</span><div>@job.Username</div></div>
+        <div class="form-group"><span class="form-label">Enviado</span><div>@Fecha(job.QueuedAt)</div></div>
+        <div class="form-group"><span class="form-label">Inicio</span><div>@Fecha(job.StartedAt)</div></div>
+        <div class="form-group"><span class="form-label">Fin</span><div>@Fecha(job.FinishedAt)</div></div>
+    </div>
+</div>
+
+<div class="card-ps doc-tab-seccion mb-3">
+    <span class="doc-resumen-total-titulo">Avance</span>
+    <div class="progress" style="height: 1.5rem">
+        <div id="trabajo-progreso-barra" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+    </div>
+    <div id="trabajo-progreso-mensaje" class="text-muted mt-1 small">@job.ProgressMessage</div>
+</div>
+
+<div id="trabajo-resultado"></div>
+
+<script src="~/js/importacion-resultado.js"></script>
+<script>
+    (function () {
+        var ir = window.importacionResultado;
+        var barra = document.getElementById('trabajo-progreso-barra');
+        var mensaje = document.getElementById('trabajo-progreso-mensaje');
+        var resultado = document.getElementById('trabajo-resultado');
+        ir.seguir('?handler=Progress',
+            function (progreso) { ir.actualizarBarra(barra, mensaje, progreso); },
+            function (progreso) {
+                ir.actualizarBarra(barra, mensaje, progreso.total > 0 ? progreso : { current: 1, total: 1, message: progreso.message });
+                ir.renderizar(resultado, progreso);
+            });
+    })();
+</script>

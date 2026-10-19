@@ -54,6 +54,15 @@ export interface SesionUpsertBody {
   validateAgainstMaster: boolean;
 }
 
+/** Tarea de conteo creada desde el portal -- la PWA se suma a una de estas, ya no crea sesiones (2026-10-15). */
+export interface SesionAbiertaDto {
+  id: string;
+  branchId: number;
+  inventoryNumber: string;
+  startedAt: string;
+  validateAgainstMaster: boolean;
+}
+
 export interface CapturaBody {
   id: string;
   sessionId: string;

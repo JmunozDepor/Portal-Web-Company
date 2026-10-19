@@ -79,6 +79,16 @@
             var select = document.getElementById(options.lineType.selectId);
             var esArticulo = !select || select.value === options.lineType.itemValue;
 
+            // Además de deshabilitar, las columnas del otro tipo se OCULTAN (encabezado y
+            // celdas) vía la clase de la tabla -- antes quedaban visibles con "Buscar…"
+            // deshabilitado, ensanchando la grilla sin aportar nada. La vista ya la
+            // renderiza con la clase correcta (sin parpadeo, y sirve en solo-lectura).
+            var tabla = cuerpo.closest('table');
+            if (tabla) {
+                tabla.classList.toggle('line-type-item', esArticulo);
+                tabla.classList.toggle('line-type-service', !esArticulo);
+            }
+
             cuerpo.querySelectorAll('tr').forEach(function (fila) {
                 fila.querySelectorAll(options.lineType.itemOnlySelector + ' input, ' + options.lineType.itemOnlySelector + ' select').forEach(function (el) {
                     el.disabled = !esArticulo;
@@ -105,26 +115,36 @@
             aplicarTipoLinea();
         }
 
-        // Nombre resuelto del artículo, informativo -- se muestra debajo del buscador
-        // apenas el texto tipeado coincide EXACTO con un código ya sugerido por el
-        // datalist (no hace falta un evento propio del navegador para <input list>,
-        // alcanza con mirar las <option> ya cargadas por wireCatalogSearch).
+        // Nombre resuelto del artículo, informativo -- apenas el texto tipeado coincide
+        // EXACTO con un código ya sugerido por el datalist (alcanza con mirar las
+        // <option> ya cargadas por wireCatalogSearch). Va a la columna Descripción de la
+        // misma fila (.line-item-description: un <span> de solo lectura en Venta/Compra,
+        // o el <input> de Descripción en Inventario, solo si estaba vacío o lo había
+        // llenado esto mismo). Antes se insertaba un <small> DEBAJO del código, lo que
+        // agrandaba la fila y desalineaba el resto de las columnas.
         if (options.itemCodeSelector && options.datalistId) {
             document.addEventListener('input', function (evento) {
                 if (!evento.target.matches(options.itemCodeSelector)) {
                     return;
                 }
                 var input = evento.target;
-                var span = input.parentElement.querySelector('.line-item-resolved-name');
-                if (!span) {
-                    span = document.createElement('small');
-                    span.className = 'text-muted line-item-resolved-name d-block';
-                    input.insertAdjacentElement('afterend', span);
-                }
-
                 var datalist = document.getElementById(options.datalistId);
                 var opcion = datalist && Array.prototype.find.call(datalist.options, function (o) { return o.value === input.value; });
-                span.textContent = opcion ? opcion.label.split(' — ')[1] || '' : '';
+                var nombre = opcion ? opcion.label.split(' — ')[1] || '' : '';
+
+                var destino = input.closest('tr').querySelector('.line-item-description');
+                if (!destino) {
+                    return;
+                }
+                if (destino.tagName === 'INPUT') {
+                    if (!destino.value || destino.dataset.autoName === '1') {
+                        destino.value = nombre;
+                        destino.dataset.autoName = '1';
+                    }
+                } else {
+                    destino.textContent = nombre;
+                    destino.title = nombre;
+                }
             });
         }
 

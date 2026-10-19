@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.DependencyInjection;
 using PortalSaas.Abstractions.Componentes;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
@@ -38,8 +39,11 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
     private readonly IGeneralLedgerAccountCatalogService _accounts;
     private readonly ICostCenterCatalogService _costCenters;
     private readonly ISeriesCatalogService _series;
-    private readonly IShippingMethodCatalogService _shippingMethods;
+    private readonly ICustomerShipToAddressService _shipToAddresses;
     private readonly IPaymentTermsCatalogService _paymentTerms;
+    private readonly IPriceListService _priceLists;
+    private readonly IBusinessPartnerDefaultsService _partnerDefaults;
+    private readonly ICurrencyCatalogService _currencies;
 
     protected DetailGenericSalesDocumentModelBase(
         ISalesDocumentService documents,
@@ -51,8 +55,11 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
         IGeneralLedgerAccountCatalogService accounts,
         ICostCenterCatalogService costCenters,
         ISeriesCatalogService series,
-        IShippingMethodCatalogService shippingMethods,
-        IPaymentTermsCatalogService paymentTerms)
+        ICustomerShipToAddressService shipToAddresses,
+        IPaymentTermsCatalogService paymentTerms,
+        IPriceListService priceLists,
+        IBusinessPartnerDefaultsService partnerDefaults,
+        ICurrencyCatalogService currencies)
     {
         _documents = documents;
         _currentUser = currentUser;
@@ -63,8 +70,11 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
         _accounts = accounts;
         _costCenters = costCenters;
         _series = series;
-        _shippingMethods = shippingMethods;
+        _shipToAddresses = shipToAddresses;
         _paymentTerms = paymentTerms;
+        _priceLists = priceLists;
+        _partnerDefaults = partnerDefaults;
+        _currencies = currencies;
     }
 
     protected abstract SalesDocumentType Type { get; }
@@ -108,8 +118,23 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
 
     public List<SelectListItem> SalesEmployees { get; private set; } = [];
     public List<SelectListItem> Series { get; private set; } = [];
-    public List<SelectListItem> ShippingMethods { get; private set; } = [];
     public List<SelectListItem> PaymentTerms { get; private set; } = [];
+    public List<SelectListItem> PriceLists { get; private set; } = [];
+    public List<SelectListItem> Currencies { get; private set; } = [];
+
+    /// <summary>Moneda local de la compañía (OADM.MainCurncy) -- default de Moneda cuando el cliente no tiene una fija.</summary>
+    public string? LocalCurrency { get; private set; }
+
+    /// <summary>
+    /// "Sucursal de destino" del tab Logística -- direcciones de despacho (CRD1, 'S') del
+    /// cliente elegido. Al crear se repuebla por AJAX al cambiar de cliente
+    /// (OnGetPartnerDefaultsAsync); acá solo se carga server-side cuando el formulario
+    /// vuelve con errores (el cliente ya estaba elegido).
+    /// </summary>
+    public IReadOnlyList<CustomerShipToAddressDto> ShipToAddresses { get; private set; } = [];
+
+    /// <summary>Dirección legible de la sucursal de un documento ya creado (SAP Address2) -- solo lectura.</summary>
+    public string? ShipToAddressText { get; private set; }
 
     /// <summary>
     /// "Resumen total" del tab Contenido -- portado tal cual de
@@ -153,8 +178,8 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
                 TaxDate = DateOnly.FromDateTime(DateTime.Today),
                 LineType = DocumentLineType.Item,
                 Series = null,
-                ShippingMethodCode = null,
                 PaymentTermsGroupCode = null,
+                DocCurrency = await _currencies.GetLocalCurrencyAsync(ct),
             };
         }
         else
@@ -175,6 +200,7 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
             DocTotal = document.DocTotal;
             Status = document.Status;
             CustomerName = document.CustomerName;
+            ShipToAddressText = document.ShipToAddress;
             CanClose = Status != "Cerrado"
                 && await _documents.CanCreateAsync(Type, ct)
                 && await _currentUser.HasActionAsync(MenuCode, PortalActions.Delete, ct);
@@ -191,8 +217,9 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
                 CustomerReferenceNumber = document.CustomerReferenceNumber,
                 LineType = document.Lines.Count > 0 ? document.Lines[0].Type : DocumentLineType.Item,
                 Series = document.Series,
-                ShippingMethodCode = document.ShippingMethodCode,
+                ShipToCode = document.ShipToCode,
                 PaymentTermsGroupCode = document.PaymentTermsGroupCode,
+                DocCurrency = document.DocCurrency,
                 Lines = document.Lines.Select(line => new LineInput
                 {
                     ItemCode = line.ItemCode,
@@ -205,6 +232,7 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
                     CostCenterCode = line.CostCenterCode,
                     CostCenterCode2 = line.CostCenterCode2,
                     CostCenterCode3 = line.CostCenterCode3,
+                    Currency = line.Currency,
                 }).ToList(),
             };
         }
@@ -271,6 +299,15 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
             return Page();
         }
 
+        // Líneas de Artículo sin precio digitado: se resuelven acá con la misma regla que
+        // el autocompletado del formulario (precio especial del cliente, si no la lista
+        // elegida) -- sin esto, una línea vacía caería a la lista POR DEFECTO del socio en
+        // SAP aunque el usuario haya cambiado la lista en la cabecera.
+        if (!isService)
+        {
+            await FillMissingPricesAsync(ct);
+        }
+
         var document = new SalesDocumentDto(
             CustomerCardCode: Input.CustomerCardCode,
             CustomerName: null,
@@ -291,10 +328,12 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
                 AccountCode: isService ? line.AccountCode : null,
                 CostCenterCode: isService ? line.CostCenterCode : null,
                 CostCenterCode2: isService ? line.CostCenterCode2 : null,
-                CostCenterCode3: isService ? line.CostCenterCode3 : null)).ToList(),
+                CostCenterCode3: isService ? line.CostCenterCode3 : null,
+                Currency: line.UnitPrice is null ? null : line.Currency)).ToList(),
             Series: Input.Series,
-            ShippingMethodCode: Input.ShippingMethodCode,
-            PaymentTermsGroupCode: Input.PaymentTermsGroupCode);
+            PaymentTermsGroupCode: Input.PaymentTermsGroupCode,
+            ShipToCode: Input.ShipToCode,
+            DocCurrency: Input.DocCurrency);
 
         try
         {
@@ -450,16 +489,165 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
         return new JsonResult(costCenters.Select(c => new { c.Code, c.Name }));
     }
 
+    /// <summary>
+    /// Valores por defecto del socio de negocio (OCRD) al elegir cliente: Vendedor
+    /// (SlpCode), Lista de precio (ListNum) y sucursales de destino (CRD1 'S', con la de
+    /// despacho por defecto -- ShipToDef -- preseleccionada). El formulario los aplica
+    /// pero quedan modificables.
+    /// </summary>
+    public async Task<JsonResult> OnGetPartnerDefaultsAsync(string cardCode, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(cardCode))
+        {
+            return new JsonResult(null);
+        }
+
+        var defaults = await _partnerDefaults.GetAsync(cardCode.Trim(), ct);
+        if (defaults is null)
+        {
+            return new JsonResult(null);
+        }
+
+        var addresses = await _shipToAddresses.ListShipToAddressesAsync(defaults.CardCode, ct);
+        return new JsonResult(new
+        {
+            Currency = await ResolvePartnerCurrencyAsync(defaults.Currency, ct),
+            // SlpCode -1 = "sin vendedor" en SAP -- se trata como sin asignar.
+            SalesEmployeeCode = defaults.SalesEmployeeCode is > 0 ? defaults.SalesEmployeeCode : null,
+            defaults.PriceListCode,
+            defaults.ShipToDefault,
+            Addresses = addresses.Select(a => new { a.Code, Address = a.FullAddress }),
+        });
+    }
+
+    /// <summary>
+    /// Precio de varios artículos para el cliente: precio especial del socio (SPP1/OSPP,
+    /// vigente a la fecha del documento) y, si no tiene, el de la lista de precio elegida.
+    /// Artículos sin ninguno de los dos no vienen en el resultado.
+    /// </summary>
+    public async Task<JsonResult> OnGetLinePricesAsync(string? cardCode, int? priceList, DateOnly? date, string[] codes, CancellationToken ct)
+    {
+        var prices = await ResolvePricesAsync(cardCode, priceList, date ?? DateOnly.FromDateTime(DateTime.Today), codes ?? [], ct);
+        return new JsonResult(prices.Select(p => new { ItemCode = p.Key, p.Value.Price, p.Value.Currency, p.Value.Source }));
+    }
+
+    /// <summary>OCRD.Currency del socio; vacío o "##" (todas las monedas) cae a la moneda local.</summary>
+    private async Task<string?> ResolvePartnerCurrencyAsync(string? partnerCurrency, CancellationToken ct) =>
+        string.IsNullOrWhiteSpace(partnerCurrency) || partnerCurrency.Trim() == "##"
+            ? await _currencies.GetLocalCurrencyAsync(ct)
+            : partnerCurrency.Trim();
+
+    private async Task<Dictionary<string, (decimal Price, string? Currency, string Source)>> ResolvePricesAsync(string? cardCode, int? priceList, DateOnly date,
+        IReadOnlyCollection<string> codes, CancellationToken ct)
+    {
+        var result = new Dictionary<string, (decimal Price, string? Currency, string Source)>(StringComparer.OrdinalIgnoreCase);
+        var distinctCodes = codes
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (distinctCodes.Count == 0)
+        {
+            return result;
+        }
+
+        if (!string.IsNullOrWhiteSpace(cardCode))
+        {
+            var special = await _priceLists.GetSpecialPriceQuotesAsync(cardCode.Trim(), distinctCodes, date.ToDateTime(TimeOnly.MinValue), ct);
+            foreach (var (itemCode, quote) in special)
+            {
+                result[itemCode] = (quote.Price, quote.Currency, "special");
+            }
+        }
+
+        var pending = distinctCodes.Where(c => !result.ContainsKey(c)).ToList();
+        if (priceList is not null && pending.Count > 0)
+        {
+            var listPrices = await _priceLists.GetPriceQuotesAsync(pending, priceList.Value, ct);
+            foreach (var (itemCode, quote) in listPrices)
+            {
+                result[itemCode] = (quote.Price, quote.Currency, "list");
+            }
+        }
+
+        return result;
+    }
+
+    private async Task FillMissingPricesAsync(CancellationToken ct)
+    {
+        var missing = Input.Lines.Where(l => l.UnitPrice is null && !string.IsNullOrWhiteSpace(l.ItemCode)).ToList();
+        if (missing.Count == 0)
+        {
+            return;
+        }
+
+        var prices = await ResolvePricesAsync(Input.CustomerCardCode, Input.PriceListCode, Input.DocDate, missing.Select(l => l.ItemCode!).ToList(), ct);
+        foreach (var line in missing)
+        {
+            if (prices.TryGetValue(line.ItemCode!.Trim(), out var resolved))
+            {
+                line.UnitPrice = resolved.Price;
+                line.Currency = resolved.Currency;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Formulario personalizado (panel "Personalizar" de DocumentForm, ver form-layout.js):
+    /// guarda los campos ocultos del usuario en la compañía activa, o con reset=true borra
+    /// su versión y vuelve a la base del admin. Solo exige sesión -- es una preferencia
+    /// visual, no una acción sobre el documento. IFormLayoutService se resuelve por
+    /// RequestServices para no tocar el constructor de cada subtipo.
+    /// </summary>
+    public async Task<IActionResult> OnPostFormLayoutAsync([FromForm] string[]? hidden, [FromForm] bool reset, CancellationToken ct)
+    {
+        try
+        {
+            if (reset)
+            {
+                await FormLayouts.ResetForCurrentUserAsync(FormLayoutKey, ct);
+            }
+            else
+            {
+                await FormLayouts.SaveForCurrentUserAsync(FormLayoutKey, hidden ?? [], ct);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        var layout = await FormLayouts.GetForCurrentUserAsync(FormLayoutKey, ct);
+        return new JsonResult(new { layout.HiddenFields, layout.HasUserOverride });
+    }
+
+    private const string FormLayoutKey = DocumentFormFieldCatalog.Sales;
+
+    private FormLayoutDto _formLayout = FormLayoutDto.Empty;
+
+    private IFormLayoutService FormLayouts => HttpContext.RequestServices.GetRequiredService<IFormLayoutService>();
+
     private async Task LoadCatalogsAsync(CancellationToken ct)
     {
+        _formLayout = await FormLayouts.GetForCurrentUserAsync(FormLayoutKey, ct);
+
         var salesEmployees = await _salesEmployees.ListAsync(ct: ct);
         SalesEmployees = salesEmployees.Select(s => new SelectListItem(s.SalesEmployeeName, s.SalesEmployeeCode.ToString())).ToList();
 
         var series = await _series.ListAsync(_documents.GetSapObjectCode(Type).ToString(), ct: ct);
         Series = series.Select(s => new SelectListItem(s.SeriesName, s.SeriesCode.ToString())).ToList();
 
-        var shippingMethods = await _shippingMethods.ListAsync(ct: ct);
-        ShippingMethods = shippingMethods.Select(s => new SelectListItem(s.ShippingMethodName, s.ShippingMethodCode.ToString())).ToList();
+        var currencies = await _currencies.ListAsync(ct: ct);
+        Currencies = currencies.Select(c => new SelectListItem($"{c.CurrencyCode} — {c.CurrencyName}", c.CurrencyCode)).ToList();
+        LocalCurrency = await _currencies.GetLocalCurrencyAsync(ct);
+
+        var priceLists = await _priceLists.ListAllAsync(ct);
+        PriceLists = priceLists.Select(p => new SelectListItem(p.ListName, p.ListNum.ToString())).ToList();
+
+        if (IsNew && !string.IsNullOrWhiteSpace(Input.CustomerCardCode))
+        {
+            ShipToAddresses = await _shipToAddresses.ListShipToAddressesAsync(Input.CustomerCardCode.Trim(), ct);
+        }
 
         var paymentTerms = await _paymentTerms.ListAsync(ct: ct);
         PaymentTerms = paymentTerms.Select(p => new SelectListItem(p.PaymentTermsName, p.PaymentTermsCode.ToString())).ToList();
@@ -483,6 +671,8 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
             DocEntry = DocEntry,
             CanClose = CanClose,
             CanCancel = CanCancel,
+            FormKey = FormLayoutKey,
+            FormLayout = _formLayout,
         };
 
         // Consumido por _ModuloBackLink.cshtml (breadcrumb del layout) -- así el
@@ -522,8 +712,21 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
         [Display(Name = "Serie")]
         public int? Series { get; set; }
 
-        [Display(Name = "Método de envío")]
-        public int? ShippingMethodCode { get; set; }
+        /// <summary>
+        /// OPLN.ListNum -- solo para resolver el precio unitario de las líneas (SAP no
+        /// guarda una lista de precio en la cabecera del documento). Por defecto la del
+        /// cliente (OCRD.ListNum), modificable.
+        /// </summary>
+        [Display(Name = "Lista de precio")]
+        public int? PriceListCode { get; set; }
+
+        /// <summary>CRD1.Address (AdresType 'S') -- null deja que SAP use la dirección de despacho por defecto del cliente.</summary>
+        [Display(Name = "Sucursal de destino")]
+        public string? ShipToCode { get; set; }
+
+        /// <summary>OCRN.CurrCode -- moneda en que se digita el documento. Por defecto la del cliente (o la local si el cliente acepta todas), modificable.</summary>
+        [Display(Name = "Moneda")]
+        public string? DocCurrency { get; set; }
 
         [Display(Name = "Condición de pago")]
         public int? PaymentTermsGroupCode { get; set; }
@@ -546,5 +749,8 @@ public abstract class DetailGenericSalesDocumentModelBase : PageModel
         public string? CostCenterCode { get; set; }
         public string? CostCenterCode2 { get; set; }
         public string? CostCenterCode3 { get; set; }
+
+        /// <summary>Moneda de UnitPrice (la de la lista/precio especial que lo resolvió) -- SAP convierte a la moneda del documento si difiere.</summary>
+        public string? Currency { get; set; }
     }
 }

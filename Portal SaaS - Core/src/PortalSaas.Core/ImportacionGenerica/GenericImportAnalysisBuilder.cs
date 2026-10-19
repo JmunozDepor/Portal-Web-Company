@@ -41,6 +41,7 @@ internal static class GenericImportAnalysisBuilder
                 BusinessPartnerCardCode = first.BusinessPartnerCardCode,
                 BusinessPartnerName = first.BusinessPartnerName,
                 Branches = Distinct(document.Rows.Select(r => r.Branch)),
+                SalesEmployee = first.SalesEmployeeCode is { } slp ? $"{slp} - {first.SalesEmployeeName}".TrimEnd(' ', '-') : null,
                 Lines = document.Rows.Count,
                 LinesWithErrors = document.Rows.Count(r => !r.IsValid),
                 LinesWithWarnings = document.Rows.Count(r => r.Warnings.Count > 0),

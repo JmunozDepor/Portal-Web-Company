@@ -69,6 +69,8 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
             DocType = ResolveDocType(document.Lines),
             CardCode = document.SupplierCardCode,
             CardName = document.SupplierName,
+            SalesPersonCode = document.BuyerCode,
+            DocCurrency = string.IsNullOrWhiteSpace(document.DocCurrency) ? null : document.DocCurrency.Trim(),
             Series = document.Series,
             Comments = document.Comments,
             DocDate = document.DocDate.ToDateTime(TimeOnly.MinValue),
@@ -154,12 +156,16 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
                 AccountCode: line.AccountCode,
                 CostCenterCode: line.CostingCode,
                 CostCenterCode2: line.CostingCode2,
-                CostCenterCode3: line.CostingCode3)).ToList(),
+                CostCenterCode3: line.CostingCode3,
+                Currency: line.Currency)).ToList(),
             DocEntry: sap.DocEntry,
             DocNum: sap.DocNum,
-            DocTotal: sap.DocTotal,
+            // Documento en moneda extranjera: el total en SU moneda es DocTotalFc (DocTotal es moneda local).
+            DocTotal: sap.DocTotalFc is > 0 ? sap.DocTotalFc : sap.DocTotal,
             Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto",
-            Series: sap.Series);
+            Series: sap.Series,
+            BuyerCode: sap.SalesPersonCode,
+            DocCurrency: sap.DocCurrency);
     }
 
     public async Task<PurchaseDocumentListResult> ListAsync(PurchaseDocumentType type, PurchaseDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
@@ -258,6 +264,7 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
         ItemDescription = line.Description,
         Quantity = line.Quantity,
         UnitPrice = line.UnitPrice,
+        Currency = string.IsNullOrWhiteSpace(line.Currency) ? null : line.Currency.Trim(),
         DiscountPercent = line.DiscountPercent,
         WarehouseCode = line.Type == DocumentLineType.Item ? line.WarehouseCode : null,
         AccountCode = line.Type == DocumentLineType.Service ? line.AccountCode : null,

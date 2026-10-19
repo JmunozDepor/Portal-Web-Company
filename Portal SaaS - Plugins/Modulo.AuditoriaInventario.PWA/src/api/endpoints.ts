@@ -1,6 +1,6 @@
 import { request } from './client';
 import type {
-  LoginResponse, MaestroPage, SucursalDto, SectorDto, SesionUpsertBody, CapturaBody, EmpresaDto, UsuarioDto,
+  LoginResponse, MaestroPage, SucursalDto, SectorDto, SesionUpsertBody, SesionAbiertaDto, CapturaBody, EmpresaDto, UsuarioDto,
   AjustesCapturaDto,
 } from './types';
 
@@ -42,6 +42,11 @@ export function getSectores(token: string, branchId: number): Promise<SectorDto[
 
 export function getAjustesCaptura(token: string): Promise<AjustesCapturaDto> {
   return request<AjustesCapturaDto>(`${ROUTE_PREFIX}/maestro/ajustes-captura`, { token });
+}
+
+/** Tareas de conteo ACTIVAS creadas desde el portal -- ver sesionesService.sincronizarTareasAbiertas. */
+export function getSesionesAbiertas(token: string): Promise<SesionAbiertaDto[]> {
+  return request<SesionAbiertaDto[]>(`${ROUTE_PREFIX}/sesiones/abiertas`, { token });
 }
 
 export function upsertSesion(token: string, body: SesionUpsertBody): Promise<void> {

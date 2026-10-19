@@ -23,8 +23,10 @@ public sealed class ModuloImportacionGenerica : IModuloPortal
         // Modulo.Administracion (Icon = "bi bi-gear-fill"), ver ese comentario.
         yield return new MenuItemDefinition { Code = "raiz", ParentCode = null, Name = "Importación Genérica", Icon = "bi bi-file-earmark-arrow-up-fill", PageRoute = null, Order = 850 };
         yield return new MenuItemDefinition { Code = "importar", ParentCode = "raiz", Name = "Importar documentos", Icon = "bi bi-upload", PageRoute = "/importacion-generica/importar", Order = 1 };
-        yield return new MenuItemDefinition { Code = "configuracion", ParentCode = "raiz", Name = "Configuración", Icon = "bi bi-sliders", PageRoute = "/importacion-generica/configuracion", Order = 2 };
-        yield return new MenuItemDefinition { Code = "campos-usuario", ParentCode = "raiz", Name = "Campos de usuario", Icon = "bi bi-tags", PageRoute = "/importacion-generica/campos-usuario", Order = 3 };
+        // Trabajos en segundo plano (2026-10-15): avance y resultado de cada envío a SAP.
+        yield return new MenuItemDefinition { Code = "trabajos", ParentCode = "raiz", Name = "Mis importaciones", Icon = "bi bi-clock-history", PageRoute = "/importacion-generica/trabajos", Order = 2 };
+        yield return new MenuItemDefinition { Code = "configuracion", ParentCode = "raiz", Name = "Configuración", Icon = "bi bi-sliders", PageRoute = "/importacion-generica/configuracion", Order = 3 };
+        yield return new MenuItemDefinition { Code = "campos-usuario", ParentCode = "raiz", Name = "Campos de usuario", Icon = "bi bi-tags", PageRoute = "/importacion-generica/campos-usuario", Order = 4 };
     }
 
     public void RegisterServices(IServiceCollection services)

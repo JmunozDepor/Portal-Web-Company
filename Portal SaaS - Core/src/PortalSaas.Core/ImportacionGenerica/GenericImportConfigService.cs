@@ -204,6 +204,42 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
     private static readonly IReadOnlyList<GenericImportValidationRuleType> PriceRuleTypes =
         [GenericImportValidationRuleType.PriceVsFixedList, GenericImportValidationRuleType.PriceVsCustomerList];
 
+    // Nombre de UDF de OCRD: se interpola en SQL (no se puede parametrizar un nombre de
+    // columna), así que se exige el formato estricto de un campo de usuario de SAP.
+    private static readonly System.Text.RegularExpressions.Regex UserFieldNamePattern =
+        new("^U_[A-Za-z0-9_]{1,46}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    internal static bool IsValidUserFieldName(string? name) => name is not null && UserFieldNamePattern.IsMatch(name);
+
+    public async Task SaveDocumentOptionsAsync(int configId, GenericImportDocumentOptionsDto options, CancellationToken ct = default)
+    {
+        var entity = await _db.GenericImportConfigs
+            .FirstOrDefaultAsync(c => c.Id == configId && c.CompanyId == _currentCompany.CompanyId, ct)
+            ?? throw new InvalidOperationException("Configuración no encontrada.");
+
+        var userField = string.IsNullOrWhiteSpace(options.WarehouseUserField) ? null : options.WarehouseUserField.Trim();
+        if (options.WarehouseSource == GenericImportWarehouseSource.BusinessPartnerField)
+        {
+            userField ??= GenericImportDocumentOptionsDto.DefaultWarehouseUserField;
+            if (!IsValidUserFieldName(userField))
+            {
+                throw new InvalidOperationException($"\"{userField}\" no es un campo de usuario válido para el almacén del cliente -- debe empezar con U_ y tener solo letras, números y guion bajo (ej. U_NX_WhsCode).");
+            }
+        }
+
+        if (options.SalesPersonMode == GenericImportSalesPersonMode.Fixed && options.SalesPersonCode is null)
+        {
+            throw new InvalidOperationException("Elegí el vendedor fijo del formato.");
+        }
+
+        entity.WarehouseSource = options.WarehouseSource.ToString();
+        entity.WarehouseUserField = options.WarehouseSource == GenericImportWarehouseSource.BusinessPartnerField ? userField : null;
+        entity.SalesPersonMode = options.SalesPersonMode.ToString();
+        entity.SalesPersonCode = options.SalesPersonMode == GenericImportSalesPersonMode.Fixed ? options.SalesPersonCode : null;
+        entity.AnalyzeStock = options.AnalyzeStock;
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task SaveValidationRulesAsync(int configId, IReadOnlyList<GenericImportValidationRuleAssignmentDto> rules, CancellationToken ct = default)
     {
         var activePriceRules = rules.Where(r => r.IsActive && PriceRuleTypes.Contains(r.RuleType)).ToList();
@@ -293,5 +329,13 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         Enum.Parse<GenericImportPriceSource>(row.PriceSource),
         row.SystemPriceListCode,
         row.BusinessPartnerFromFile,
-        row.ValidationRules.Select(MapRuleAssignmentDto).ToList());
+        row.ValidationRules.Select(MapRuleAssignmentDto).ToList())
+    {
+        DocumentOptions = new GenericImportDocumentOptionsDto(
+            Enum.TryParse<GenericImportWarehouseSource>(row.WarehouseSource, out var warehouseSource) ? warehouseSource : GenericImportWarehouseSource.Mapping,
+            row.WarehouseUserField,
+            Enum.TryParse<GenericImportSalesPersonMode>(row.SalesPersonMode, out var salesPersonMode) ? salesPersonMode : GenericImportSalesPersonMode.BusinessPartner,
+            row.SalesPersonCode,
+            row.AnalyzeStock),
+    };
 }

@@ -48,6 +48,7 @@ public sealed class GenericImportFormatValidator : IGenericImportFormatValidator
         CheckCoreFields(config, checks);
         await CheckFixedValuesAsync(config, checks, ct);
         await CheckUserFieldsAsync(config, checks, ct);
+        await CheckDocumentOptionsAsync(config, checks, ct);
         return checks;
     }
 
@@ -118,7 +119,13 @@ public sealed class GenericImportFormatValidator : IGenericImportFormatValidator
         }
         else if (config.LineType == GenericImportLineType.Item)
         {
-            required.AddRange([GenericImportLogicalField.ItemCode, GenericImportLogicalField.Warehouse]);
+            required.Add(GenericImportLogicalField.ItemCode);
+            // Con almacén del cliente (campo de usuario del socio) la columna/valor fijo es
+            // solo respaldo -- no obligatoria.
+            if (config.DocumentOptions.WarehouseSource == GenericImportWarehouseSource.Mapping)
+            {
+                required.Add(GenericImportLogicalField.Warehouse);
+            }
         }
         else
         {
@@ -280,6 +287,30 @@ public sealed class GenericImportFormatValidator : IGenericImportFormatValidator
             checks.Add(exists
                 ? new(GenericImportFormatCheckSeverity.Ok, AreaFixedValues, $"{field.LogicalField} = \"{value}\": {label} existe en SAP.")
                 : new(GenericImportFormatCheckSeverity.Error, AreaFixedValues, $"{field.LogicalField} = \"{value}\": el {label} no existe en SAP."));
+        }
+    }
+
+    /// <summary>Almacén del cliente: el campo de usuario existe en OCRD. Vendedor fijo: existe en OSLP.</summary>
+    private async Task CheckDocumentOptionsAsync(GenericImportConfigDto config, List<GenericImportFormatCheckDto> checks, CancellationToken ct)
+    {
+        var options = config.DocumentOptions;
+        if (options.WarehouseSource == GenericImportWarehouseSource.BusinessPartnerField && config.Module != GenericImportModule.Inventory)
+        {
+            var userField = options.WarehouseUserField ?? GenericImportDocumentOptionsDto.DefaultWarehouseUserField;
+            var exists = userField.StartsWith("U_", StringComparison.OrdinalIgnoreCase)
+                && await ExistsAsync("""SELECT "AliasID" FROM "CUFD" WHERE "TableID" = 'OCRD' AND "AliasID" = :alias""", new { alias = userField[2..] }, ct);
+            checks.Add(exists
+                ? new(GenericImportFormatCheckSeverity.Ok, AreaFixedValues, $"Almacén del cliente: el campo {userField} existe en el maestro de socios (OCRD).")
+                : new(GenericImportFormatCheckSeverity.Error, AreaFixedValues, $"Almacén del cliente: el campo {userField} no existe en el maestro de socios (OCRD)."));
+        }
+
+        if (config.Module == GenericImportModule.Sales && options.SalesPersonMode == GenericImportSalesPersonMode.Fixed)
+        {
+            var exists = options.SalesPersonCode is { } slp
+                && await ExistsAsync("""SELECT "SlpCode" FROM "OSLP" WHERE "SlpCode" = :slp""", new { slp }, ct);
+            checks.Add(exists
+                ? new(GenericImportFormatCheckSeverity.Ok, AreaFixedValues, $"Vendedor fijo {options.SalesPersonCode}: existe en SAP.")
+                : new(GenericImportFormatCheckSeverity.Error, AreaFixedValues, $"Vendedor fijo {options.SalesPersonCode}: no existe en SAP."));
         }
     }
 

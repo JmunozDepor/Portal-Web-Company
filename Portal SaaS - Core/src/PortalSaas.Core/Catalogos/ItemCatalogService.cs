@@ -42,7 +42,10 @@ public sealed class ItemCatalogService : IItemCatalogService
         return await _hana.QueryAsync<ItemDto>(sql, parameters, ct);
     }
 
-    public async Task<IReadOnlyList<ItemDto>> GetByCodesAsync(IReadOnlyCollection<string> itemCodes, CancellationToken ct = default)
+    public Task<IReadOnlyList<ItemDto>> GetByCodesAsync(IReadOnlyCollection<string> itemCodes, CancellationToken ct = default) =>
+        CatalogSqlHelper.InChunksAsync(itemCodes, chunk => GetByCodesChunkAsync(chunk, ct));
+
+    private async Task<IReadOnlyList<ItemDto>> GetByCodesChunkAsync(IReadOnlyCollection<string> itemCodes, CancellationToken ct = default)
     {
         if (itemCodes.Count == 0)
         {
@@ -67,7 +70,10 @@ public sealed class ItemCatalogService : IItemCatalogService
         return await _hana.QueryAsync<ItemDto>(sql, parameters, ct);
     }
 
-    public async Task<IReadOnlyDictionary<string, string>> GetItemCodesByBarcodesAsync(IReadOnlyCollection<string> barcodes, CancellationToken ct = default)
+    public Task<IReadOnlyDictionary<string, string>> GetItemCodesByBarcodesAsync(IReadOnlyCollection<string> barcodes, CancellationToken ct = default) =>
+        CatalogSqlHelper.InChunksAsync(barcodes, chunk => GetItemCodesByBarcodesChunkAsync(chunk, ct), StringComparer.OrdinalIgnoreCase);
+
+    private async Task<IReadOnlyDictionary<string, string>> GetItemCodesByBarcodesChunkAsync(IReadOnlyCollection<string> barcodes, CancellationToken ct = default)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (barcodes.Count == 0)
@@ -127,7 +133,10 @@ public sealed class ItemCatalogService : IItemCatalogService
         return await _hana.QueryAsync<ItemDto>(sql, ct: ct);
     }
 
-    public async Task<IReadOnlyDictionary<string, bool>> GetActiveStatusAsync(IReadOnlyList<string> itemCodes, CancellationToken ct = default)
+    public Task<IReadOnlyDictionary<string, bool>> GetActiveStatusAsync(IReadOnlyList<string> itemCodes, CancellationToken ct = default) =>
+        CatalogSqlHelper.InChunksAsync(itemCodes, chunk => GetActiveStatusChunkAsync(chunk.ToList(), ct), StringComparer.OrdinalIgnoreCase);
+
+    private async Task<IReadOnlyDictionary<string, bool>> GetActiveStatusChunkAsync(IReadOnlyList<string> itemCodes, CancellationToken ct = default)
     {
         if (itemCodes.Count == 0)
         {

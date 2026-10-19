@@ -30,6 +30,12 @@ using PortalSaas.Host.Wms;
 using PortalSaas.Integrations;
 using PortalSaas.Core.Integraciones;
 
+// En IIS con un usuario de pool sin perfil cargado, %TEMP% apunta a una carpeta que no
+// existe (C:\Users\<usuario>\AppData\Local\Temp). ASP.NET bufferiza en disco los formularios
+// de más de 64 KB y revienta con DirectoryNotFoundException → HTTP 400 en blanco (visto en
+// producción 2026-10-19 al importar un Excel de 69 KB). Si falta, usamos una carpeta propia.
+EnsureWritableTempDirectory();
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages()
@@ -78,6 +84,17 @@ builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServe
     o.Limits.MaxRequestBodySize = MaxUploadRequestBodySize);
 builder.Services.Configure<Microsoft.AspNetCore.Builder.IISServerOptions>(o =>
     o.MaxRequestBodySize = MaxUploadRequestBodySize);
+// Límites de lectura del FORMULARIO (aparte del tamaño del body): por defecto un campo de
+// texto no puede pasar de 4 MB y el formulario de 1.024 campos. Superarlos hace que el
+// antiforgery/model binding fallen leyendo el form y el framework responda un 400 VACÍO
+// -- mismo síntoma que un token antiforgery inválido. Caso real (2026-10-19): Importación
+// Genérica en producción ("HTTP ERROR 400" al procesar). Alineado al mismo tope de 100 MB.
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.ValueLengthLimit = (int)MaxUploadRequestBodySize;
+    o.MultipartBodyLengthLimit = MaxUploadRequestBodySize;
+    o.ValueCountLimit = 10_000;
+});
 
 // Motor dual (Postgres/SQL Server) -- ver docs/02-ARQUITECTURA-BASE-DE-DATOS.md §1 y
 // §7. El Host NO aplica migraciones en el arranque a propósito -- eso es un paso
@@ -121,6 +138,7 @@ builder.Services.AddScoped<IUserSessionService, UserSessionService>();
 builder.Services.AddHostedService<StaleUserSessionCleanupHostedService>();
 builder.Services.AddScoped<ICompanySessionActivator, CompanySessionActivator>();
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
+builder.Services.AddScoped<IFormLayoutService, FormLayoutService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<IContractLimitService, ContractLimitService>();
@@ -256,6 +274,11 @@ builder.Services.AddScoped<IPurchaseDocumentService, PurchaseDocumentService>();
 builder.Services.AddScoped<IGenericImportUserFieldService, GenericImportUserFieldService>();
 builder.Services.AddScoped<IGenericImportConfigService, GenericImportConfigService>();
 builder.Services.AddSingleton<IGenericImportProgressStore, GenericImportProgressStore>();
+// Trabajos de importación en segundo plano (2026-10-15): cola en memoria + worker que
+// crea los pedidos en SAP fuera de la petición HTTP, ver GenericImportJobWorker.
+builder.Services.AddSingleton<IGenericImportJobQueue, GenericImportJobQueue>();
+builder.Services.AddScoped<IGenericImportJobService, GenericImportJobService>();
+builder.Services.AddHostedService<GenericImportJobWorker>();
 builder.Services.AddScoped<IGenericImportService, GenericImportService>();
 // "Probar formato" (Configuración) -- esquema contra SAP + envío simulado sin crear documentos.
 builder.Services.AddScoped<IGenericImportFormatValidator, GenericImportFormatValidator>();
@@ -571,6 +594,35 @@ app.Use(async (context, next) =>
 {
     await next();
 
+    // Resto de formularios (2026-10-19, caso real Importación Genérica en producción):
+    // un POST de navegación normal (no fetch) que termina en 400 SIN cuerpo es el
+    // framework rechazando el formulario antes de llegar al handler -- token antiforgery
+    // inválido o un límite de lectura del form. En vez del "HTTP ERROR 400" del navegador
+    // se rebota al GET de la misma página con ?formRetry=1 (aviso en pantalla) y queda un
+    // WARN con el detalle para diagnosticar en logs\stdout. Los fetch (ej. Confirmar de
+    // Importar) NO se tocan: esperan JSON y ya muestran el error real.
+    var esNavegacion = string.Equals(context.Request.Headers["Sec-Fetch-Mode"], "navigate", StringComparison.OrdinalIgnoreCase);
+    if (HttpMethods.IsPost(context.Request.Method)
+        && context.Response.StatusCode == StatusCodes.Status400BadRequest
+        && !context.Response.HasStarted
+        && esNavegacion
+        && context.User.Identity?.IsAuthenticated == true
+        && !rutasLoginPost.Any(r => context.Request.Path.Equals(r, StringComparison.OrdinalIgnoreCase)))
+    {
+        context.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Antiforgery")
+            .LogWarning(
+                "POST {Path}{Query} rechazado con 400 antes del handler (antiforgery o límite del formulario). " +
+                "Content-Length={ContentLength}, Content-Type={ContentType}, cookie antiforgery presente={HasCookie}, usuario={User}. " +
+                "Se rebota a GET con ?formRetry=1.",
+                context.Request.Path, context.Request.QueryString, context.Request.ContentLength, context.Request.ContentType,
+                context.Request.Cookies.Keys.Any(k => k.StartsWith(".AspNetCore.Antiforgery", StringComparison.Ordinal)),
+                context.User.Identity?.Name);
+
+        context.Response.Redirect(context.Request.PathBase + context.Request.Path + "?formRetry=1");
+        return;
+    }
+
     if (HttpMethods.IsPost(context.Request.Method)
         && context.Response.StatusCode == StatusCodes.Status400BadRequest
         && !context.Response.HasStarted
@@ -603,3 +655,18 @@ if (licensingRole == "Central")
 }
 
 app.Run();
+
+static void EnsureWritableTempDirectory()
+{
+    if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_TEMP")))
+        return;
+
+    if (Directory.Exists(Path.GetTempPath()))
+        return;
+
+    var fallback = Path.Combine(AppContext.BaseDirectory, "temp");
+    Directory.CreateDirectory(fallback);
+    Environment.SetEnvironmentVariable("ASPNETCORE_TEMP", fallback);
+    Environment.SetEnvironmentVariable("TEMP", fallback);
+    Environment.SetEnvironmentVariable("TMP", fallback);
+}

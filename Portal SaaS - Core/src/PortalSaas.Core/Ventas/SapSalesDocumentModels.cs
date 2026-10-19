@@ -43,7 +43,18 @@ internal sealed class SapSalesDocumentHeader
     /// <summary>Dirección de despacho (CRD1.Address) -- null omite el campo, SAP usa la del cliente por defecto.</summary>
     public string? ShipToCode { get; set; }
 
+    /// <summary>Dirección de despacho resuelta por SAP -- solo lectura, nunca se asigna al crear (null se omite del JSON).</summary>
+    public string? Address2 { get; set; }
+
+    /// <summary>OCRN.CurrCode -- null omite el campo, SAP usa la moneda del socio/local.</summary>
+    public string? DocCurrency { get; set; }
+
+    /// <summary>Total en moneda local -- en un documento en moneda extranjera el total en esa moneda viene en DocTotalFc.</summary>
     public decimal? DocTotal { get; set; }
+
+    /// <summary>Total en moneda extranjera (0 si el documento está en moneda local) -- solo lectura.</summary>
+    public decimal? DocTotalFc { get; set; }
+
     public string? DocumentStatus { get; set; }
     public List<SapSalesDocumentLine> DocumentLines { get; set; } = [];
     public string? U_PortalUser { get; set; }
@@ -65,6 +76,9 @@ internal sealed class SapSalesDocumentLine
 
     /// <summary>Null = omitido del JSON -- SAP asigna el precio de la lista propia del cliente.</summary>
     public decimal? UnitPrice { get; set; }
+
+    /// <summary>Moneda de UnitPrice -- null omite el campo (moneda del documento).</summary>
+    public string? Currency { get; set; }
 
     public decimal DiscountPercent { get; set; }
 

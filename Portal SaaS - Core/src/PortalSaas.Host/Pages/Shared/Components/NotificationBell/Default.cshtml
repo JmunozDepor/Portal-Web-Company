@@ -1,7 +1,7 @@
 @using PortalSaas.Host.Notificaciones
 @model PortalSaas.Host.ViewComponents.NotificationBellViewModel
 @{
-    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+    var returnUrl = Context.Request.PathBase + Context.Request.Path + Context.Request.QueryString;
 }
 <details class="notification-bell">
     <summary class="notification-bell-toggle" title="Notificaciones">

@@ -45,16 +45,28 @@
                 }
                 <span asp-validation-for="Input.CustomerCardCode" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-form-field="ref-socio">
                 <label asp-for="Input.CustomerReferenceNumber" class="form-label"></label>
                 <input asp-for="Input.CustomerReferenceNumber" class="form-control" disabled="@readOnly" />
             </div>
-            <div class="form-group">
+            <div class="form-group" data-form-field="vendedor">
                 <label asp-for="Input.SalesEmployeeCode" class="form-label"></label>
                 <select asp-for="Input.SalesEmployeeCode" asp-items="Model.SalesEmployees" class="form-select" disabled="@readOnly">
                     <option value="">Sin asignar</option>
                 </select>
             </div>
+            @* Lista de precio: por defecto la del cliente (OCRD.ListNum), modificable -- solo
+               sirve para resolver el precio de las líneas (SAP no la guarda en la cabecera),
+               por eso no se muestra en un documento ya creado. *@
+            @if (!readOnly)
+            {
+                <div class="form-group" data-form-field="lista-precio">
+                    <label asp-for="Input.PriceListCode" class="form-label"></label>
+                    <select asp-for="Input.PriceListCode" asp-items="Model.PriceLists" class="form-select">
+                        <option value="">Sin lista (precio manual)</option>
+                    </select>
+                </div>
+            }
             <div class="form-group">
                 <label asp-for="Input.LineType" class="form-label"></label>
                 <select asp-for="Input.LineType" class="form-select" disabled="@readOnly">
@@ -64,21 +76,37 @@
             </div>
         </div>
         <div class="doc-columna">
-            <div class="form-group">
+            <div class="form-group" data-form-field="serie">
                 <label asp-for="Input.Series" class="form-label"></label>
                 <select asp-for="Input.Series" asp-items="Model.Series" class="form-select" disabled="@readOnly">
                     <option value="">Serie por defecto de SAP</option>
                 </select>
             </div>
+            @* Moneda en que se digita el documento: por defecto la del cliente (o la local si
+               el cliente acepta todas las monedas), modificable. Una línea cuyo precio viene
+               de una lista en otra moneda la conserva y SAP la convierte. *@
+            <div class="form-group" data-form-field="moneda">
+                <label asp-for="Input.DocCurrency" class="form-label"></label>
+                @if (readOnly)
+                {
+                    <input class="form-control" value="@(Model.Input.DocCurrency ?? Model.LocalCurrency)" disabled />
+                }
+                else
+                {
+                    <select asp-for="Input.DocCurrency" asp-items="Model.Currencies" class="form-select">
+                        <option value="">Moneda por defecto del cliente</option>
+                    </select>
+                }
+            </div>
             <div class="form-group">
                 <label asp-for="Input.DocDate" class="form-label"></label>
                 <input asp-for="Input.DocDate" type="date" class="form-control" disabled="@readOnly" />
             </div>
-            <div class="form-group">
+            <div class="form-group" data-form-field="fecha-vencimiento">
                 <label asp-for="Input.DocDueDate" class="form-label"></label>
                 <input asp-for="Input.DocDueDate" type="date" class="form-control" disabled="@readOnly" />
             </div>
-            <div class="form-group">
+            <div class="form-group" data-form-field="fecha-contabilizacion">
                 <label asp-for="Input.TaxDate" class="form-label"></label>
                 <input asp-for="Input.TaxDate" type="date" class="form-control" disabled="@readOnly" />
             </div>
@@ -86,7 +114,7 @@
     </div>
 
     <div class="form-row">
-        <div class="form-group form-group-ancho-completo">
+        <div class="form-group form-group-ancho-completo" data-form-field="comentarios">
             <label asp-for="Input.Comments" class="form-label"></label>
             <textarea asp-for="Input.Comments" class="form-control" rows="3" disabled="@readOnly"></textarea>
         </div>
@@ -100,6 +128,7 @@
        (window.wireCatalogSearch queda redefinido a la misma función), y evita depender
        del orden de carga entre las dos tabs. *@
     <script src="~/js/catalog-search.js"></script>
+    <script src="~/js/document-partner-defaults.js"></script>
     <script>
         wireCatalogSearch({
             inputSelector: '.sales-order-customer-code',
@@ -107,6 +136,23 @@
             handlerName: 'SearchCustomers',
             getValue: function (item) { return item.cardCode; },
             getLabel: function (item) { return item.cardCode + ' — ' + item.cardName; },
+        });
+
+        // Vendedor, Lista de precio, Moneda y Sucursal de destino por defecto del cliente +
+        // precio de cada línea -- ver document-partner-defaults.js.
+        wirePartnerDefaults({
+            partnerInputSelector: '.sales-order-customer-code',
+            partnerDatalistId: 'sales-order-customers-datalist',
+            employeeSelectId: 'Input_SalesEmployeeCode',
+            priceListSelectId: 'Input_PriceListCode',
+            currencySelectId: 'Input_DocCurrency',
+            documentCurrencyLabelId: 'sales-order-document-currency',
+            docDateId: 'Input_DocDate',
+            lineTypeSelectId: 'Input_LineType',
+            itemLineTypeValue: '@PortalSaas.Abstractions.Modelos.DocumentLineType.Item',
+            linesBodyId: 'sales-order-lines-body',
+            itemCodeSelector: '.sales-order-item-code',
+            shipTo: { selectId: 'Input_ShipToCode', addressInputId: 'sales-order-ship-to-address' },
         });
     </script>
 }

@@ -118,4 +118,74 @@ public class AjusteServiceTests
         Assert.Equal("PROPOSED", recargado.Status);
         Assert.Empty(await db.SapAdjustmentQueueItems.ToListAsync());
     }
+
+    private static async Task<(AuditoriaInventarioDbContext Db, Guid SessionId, Guid CompanyId, InventoryDifference ConDiferencia, InventoryDifference SinDiferencia)> PrepararSesionConDiferenciasAsync()
+    {
+        var db = CrearContexto();
+        var companyId = Guid.NewGuid();
+
+        var branch = new Branch { CompanyId = companyId, BranchCode = "001", Name = "Centro" };
+        db.Branches.Add(branch);
+        var user = new CaptureUser { CompanyId = companyId, Username = "a1", PasswordHash = "x", PasswordSalt = "x" };
+        db.CaptureUsers.Add(user);
+        await db.SaveChangesAsync();
+
+        var sessionId = Guid.NewGuid();
+        db.InventorySessions.Add(new InventorySession { Id = sessionId, CompanyId = companyId, BranchId = branch.Id, InventoryNumber = "INV-1", ResponsibleUserId = user.Id, Status = "CLOSED" });
+
+        var snapshot = new FrozenInventorySnapshot { CompanyId = companyId, BranchId = branch.Id, InventoryNumber = "INV-1", LoadedByUserId = Guid.NewGuid(), FileName = "x.xlsx" };
+        db.FrozenInventorySnapshots.Add(snapshot);
+        await db.SaveChangesAsync();
+
+        var conDiferencia = new InventoryDifference { SessionId = sessionId, SnapshotId = snapshot.Id, Barcode = "AAA", CapturedQuantity = 12, FrozenQuantity = 10, QuantityDiff = 2, AmountDiff = 200m };
+        var sinDiferencia = new InventoryDifference { SessionId = sessionId, SnapshotId = snapshot.Id, Barcode = "BBB", CapturedQuantity = 5, FrozenQuantity = 5, QuantityDiff = 0, AmountDiff = 0m };
+        db.InventoryDifferences.AddRange(conDiferencia, sinDiferencia);
+        await db.SaveChangesAsync();
+
+        return (db, sessionId, companyId, conDiferencia, sinDiferencia);
+    }
+
+    [Fact]
+    public async Task ProponerTodosAsync_CreaUnAjustePorDiferenciaConCantidadDistintaDeCero()
+    {
+        var (db, sessionId, companyId, conDiferencia, sinDiferencia) = await PrepararSesionConDiferenciasAsync();
+        var service = new AjusteService();
+        var proponente = Guid.NewGuid();
+
+        var creados = await service.ProponerTodosAsync(db, sessionId, companyId, proponente, default);
+
+        Assert.Equal(1, creados);
+        var ajustes = await db.InventoryAdjustments.ToListAsync();
+        Assert.Single(ajustes);
+        Assert.Equal(conDiferencia.Id, ajustes[0].DifferenceId);
+        Assert.Equal("PROPOSED", ajustes[0].Status);
+        Assert.Equal(proponente, ajustes[0].ProposedByUserId);
+        // La diferencia con QuantityDiff == 0 (sinDiferencia) nunca genera ajuste.
+        Assert.DoesNotContain(ajustes, a => a.DifferenceId == sinDiferencia.Id);
+    }
+
+    [Fact]
+    public async Task ProponerTodosAsync_LlamadoDosVeces_NoDuplicaElAjusteYaPropuesto()
+    {
+        var (db, sessionId, companyId, _, _) = await PrepararSesionConDiferenciasAsync();
+        var service = new AjusteService();
+
+        await service.ProponerTodosAsync(db, sessionId, companyId, Guid.NewGuid(), default);
+        var segundaVez = await service.ProponerTodosAsync(db, sessionId, companyId, Guid.NewGuid(), default);
+
+        Assert.Equal(0, segundaVez);
+        Assert.Single(await db.InventoryAdjustments.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ProponerTodosAsync_SesionDeOtraCompania_NoCreaNada()
+    {
+        var (db, sessionId, _, _, _) = await PrepararSesionConDiferenciasAsync();
+        var service = new AjusteService();
+
+        var creados = await service.ProponerTodosAsync(db, sessionId, Guid.NewGuid(), Guid.NewGuid(), default);
+
+        Assert.Equal(0, creados);
+        Assert.Empty(await db.InventoryAdjustments.ToListAsync());
+    }
 }

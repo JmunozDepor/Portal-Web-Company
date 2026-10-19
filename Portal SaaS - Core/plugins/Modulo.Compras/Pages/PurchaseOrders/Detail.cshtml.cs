@@ -18,8 +18,12 @@ public sealed class DetailModel : DetailGenericPurchaseDocumentModelBase
         IItemCatalogService items,
         IGeneralLedgerAccountCatalogService accounts,
         ICostCenterCatalogService costCenters,
-        ISeriesCatalogService series)
-        : base(documents, currentUser, suppliers, warehouses, items, accounts, costCenters, series)
+        ISeriesCatalogService series,
+        ISalesEmployeeCatalogService buyers,
+        IPriceListService priceLists,
+        IBusinessPartnerDefaultsService partnerDefaults,
+        ICurrencyCatalogService currencies)
+        : base(documents, currentUser, suppliers, warehouses, items, accounts, costCenters, series, buyers, priceLists, partnerDefaults, currencies)
     {
     }
 

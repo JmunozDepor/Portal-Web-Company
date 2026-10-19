@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.DependencyInjection;
 using PortalSaas.Abstractions.Componentes;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
@@ -35,6 +36,10 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
     private readonly IGeneralLedgerAccountCatalogService _accounts;
     private readonly ICostCenterCatalogService _costCenters;
     private readonly ISeriesCatalogService _series;
+    private readonly ISalesEmployeeCatalogService _buyers;
+    private readonly IPriceListService _priceLists;
+    private readonly IBusinessPartnerDefaultsService _partnerDefaults;
+    private readonly ICurrencyCatalogService _currencies;
 
     protected DetailGenericPurchaseDocumentModelBase(
         IPurchaseDocumentService documents,
@@ -44,7 +49,11 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         IItemCatalogService items,
         IGeneralLedgerAccountCatalogService accounts,
         ICostCenterCatalogService costCenters,
-        ISeriesCatalogService series)
+        ISeriesCatalogService series,
+        ISalesEmployeeCatalogService buyers,
+        IPriceListService priceLists,
+        IBusinessPartnerDefaultsService partnerDefaults,
+        ICurrencyCatalogService currencies)
     {
         _documents = documents;
         _currentUser = currentUser;
@@ -54,6 +63,10 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         _accounts = accounts;
         _costCenters = costCenters;
         _series = series;
+        _buyers = buyers;
+        _priceLists = priceLists;
+        _partnerDefaults = partnerDefaults;
+        _currencies = currencies;
     }
 
     protected abstract PurchaseDocumentType Type { get; }
@@ -90,6 +103,14 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
     public string? SupplierName { get; private set; }
 
     public List<SelectListItem> Series { get; private set; } = [];
+
+    /// <summary>Comprador -- mismo catálogo que el Vendedor de Venta (OSLP), SAP SalesPersonCode.</summary>
+    public List<SelectListItem> Buyers { get; private set; } = [];
+    public List<SelectListItem> PriceLists { get; private set; } = [];
+    public List<SelectListItem> Currencies { get; private set; } = [];
+
+    /// <summary>Moneda local de la compañía (OADM.MainCurncy) -- default de Moneda cuando el proveedor no tiene una fija.</summary>
+    public string? LocalCurrency { get; private set; }
 
     /// <summary>
     /// "Resumen total" del tab Contenido -- mismo cálculo que
@@ -129,6 +150,7 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
                 TaxDate = DateOnly.FromDateTime(DateTime.Today),
                 LineType = DocumentLineType.Item,
                 Series = null,
+                DocCurrency = await _currencies.GetLocalCurrencyAsync(ct),
             };
         }
         else
@@ -164,6 +186,8 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
                 SupplierReferenceNumber = document.SupplierReferenceNumber,
                 LineType = document.Lines.Count > 0 ? document.Lines[0].Type : DocumentLineType.Item,
                 Series = document.Series,
+                BuyerCode = document.BuyerCode,
+                DocCurrency = document.DocCurrency,
                 Lines = document.Lines.Select(line => new LineInput
                 {
                     ItemCode = line.ItemCode,
@@ -176,6 +200,7 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
                     CostCenterCode = line.CostCenterCode,
                     CostCenterCode2 = line.CostCenterCode2,
                     CostCenterCode3 = line.CostCenterCode3,
+                    Currency = line.Currency,
                 }).ToList(),
             };
         }
@@ -239,6 +264,14 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             return Page();
         }
 
+        // Líneas de Artículo sin precio digitado: misma regla que el autocompletado del
+        // formulario (precio especial del proveedor, si no la lista elegida) -- ver el
+        // comentario equivalente en DetailGenericSalesDocumentModelBase (Modulo.Ventas).
+        if (!isService)
+        {
+            await FillMissingPricesAsync(ct);
+        }
+
         var document = new PurchaseDocumentDto(
             SupplierCardCode: Input.SupplierCardCode,
             SupplierName: null,
@@ -258,8 +291,11 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
                 AccountCode: isService ? line.AccountCode : null,
                 CostCenterCode: isService ? line.CostCenterCode : null,
                 CostCenterCode2: isService ? line.CostCenterCode2 : null,
-                CostCenterCode3: isService ? line.CostCenterCode3 : null)).ToList(),
-            Series: Input.Series);
+                CostCenterCode3: isService ? line.CostCenterCode3 : null,
+                Currency: line.UnitPrice is null ? null : line.Currency)).ToList(),
+            Series: Input.Series,
+            BuyerCode: Input.BuyerCode,
+            DocCurrency: Input.DocCurrency);
 
         try
         {
@@ -380,10 +416,151 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         return new JsonResult(costCenters.Select(c => new { c.Code, c.Name }));
     }
 
+    /// <summary>
+    /// Valores por defecto del proveedor (OCRD) al elegirlo: Comprador (SlpCode), Lista de
+    /// precio (ListNum) y Moneda (Currency; "##" = todas, cae a la local). Quedan
+    /// modificables -- mismo criterio que OnGetPartnerDefaultsAsync de Modulo.Ventas.
+    /// </summary>
+    public async Task<JsonResult> OnGetPartnerDefaultsAsync(string cardCode, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(cardCode))
+        {
+            return new JsonResult(null);
+        }
+
+        var defaults = await _partnerDefaults.GetAsync(cardCode.Trim(), ct);
+        if (defaults is null)
+        {
+            return new JsonResult(null);
+        }
+
+        return new JsonResult(new
+        {
+            Currency = await ResolvePartnerCurrencyAsync(defaults.Currency, ct),
+            // SlpCode -1 = "sin comprador" en SAP -- se trata como sin asignar.
+            SalesEmployeeCode = defaults.SalesEmployeeCode is > 0 ? defaults.SalesEmployeeCode : null,
+            defaults.PriceListCode,
+        });
+    }
+
+    /// <summary>Precio de varios artículos para el proveedor: precio especial (SPP1/OSPP) o, si no tiene, el de la lista elegida, con su moneda.</summary>
+    public async Task<JsonResult> OnGetLinePricesAsync(string? cardCode, int? priceList, DateOnly? date, string[] codes, CancellationToken ct)
+    {
+        var prices = await ResolvePricesAsync(cardCode, priceList, date ?? DateOnly.FromDateTime(DateTime.Today), codes ?? [], ct);
+        return new JsonResult(prices.Select(p => new { ItemCode = p.Key, p.Value.Price, p.Value.Currency, p.Value.Source }));
+    }
+
+    private async Task<string?> ResolvePartnerCurrencyAsync(string? partnerCurrency, CancellationToken ct) =>
+        string.IsNullOrWhiteSpace(partnerCurrency) || partnerCurrency.Trim() == "##"
+            ? await _currencies.GetLocalCurrencyAsync(ct)
+            : partnerCurrency.Trim();
+
+    private async Task<Dictionary<string, (decimal Price, string? Currency, string Source)>> ResolvePricesAsync(string? cardCode, int? priceList, DateOnly date,
+        IReadOnlyCollection<string> codes, CancellationToken ct)
+    {
+        var result = new Dictionary<string, (decimal Price, string? Currency, string Source)>(StringComparer.OrdinalIgnoreCase);
+        var distinctCodes = codes
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (distinctCodes.Count == 0)
+        {
+            return result;
+        }
+
+        if (!string.IsNullOrWhiteSpace(cardCode))
+        {
+            var special = await _priceLists.GetSpecialPriceQuotesAsync(cardCode.Trim(), distinctCodes, date.ToDateTime(TimeOnly.MinValue), ct);
+            foreach (var (itemCode, quote) in special)
+            {
+                result[itemCode] = (quote.Price, quote.Currency, "special");
+            }
+        }
+
+        var pending = distinctCodes.Where(c => !result.ContainsKey(c)).ToList();
+        if (priceList is not null && pending.Count > 0)
+        {
+            var listPrices = await _priceLists.GetPriceQuotesAsync(pending, priceList.Value, ct);
+            foreach (var (itemCode, quote) in listPrices)
+            {
+                result[itemCode] = (quote.Price, quote.Currency, "list");
+            }
+        }
+
+        return result;
+    }
+
+    private async Task FillMissingPricesAsync(CancellationToken ct)
+    {
+        var missing = Input.Lines.Where(l => l.UnitPrice is null && !string.IsNullOrWhiteSpace(l.ItemCode)).ToList();
+        if (missing.Count == 0)
+        {
+            return;
+        }
+
+        var prices = await ResolvePricesAsync(Input.SupplierCardCode, Input.PriceListCode, Input.DocDate, missing.Select(l => l.ItemCode!).ToList(), ct);
+        foreach (var line in missing)
+        {
+            if (prices.TryGetValue(line.ItemCode!.Trim(), out var resolved))
+            {
+                line.UnitPrice = resolved.Price;
+                line.Currency = resolved.Currency;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Formulario personalizado (panel "Personalizar" de DocumentForm, ver form-layout.js):
+    /// guarda los campos ocultos del usuario en la compañía activa, o con reset=true borra
+    /// su versión y vuelve a la base del admin. Solo exige sesión -- es una preferencia
+    /// visual, no una acción sobre el documento. IFormLayoutService se resuelve por
+    /// RequestServices para no tocar el constructor de cada subtipo.
+    /// </summary>
+    public async Task<IActionResult> OnPostFormLayoutAsync([FromForm] string[]? hidden, [FromForm] bool reset, CancellationToken ct)
+    {
+        try
+        {
+            if (reset)
+            {
+                await FormLayouts.ResetForCurrentUserAsync(FormLayoutKey, ct);
+            }
+            else
+            {
+                await FormLayouts.SaveForCurrentUserAsync(FormLayoutKey, hidden ?? [], ct);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        var layout = await FormLayouts.GetForCurrentUserAsync(FormLayoutKey, ct);
+        return new JsonResult(new { layout.HiddenFields, layout.HasUserOverride });
+    }
+
+    private const string FormLayoutKey = DocumentFormFieldCatalog.Purchase;
+
+    private FormLayoutDto _formLayout = FormLayoutDto.Empty;
+
+    private IFormLayoutService FormLayouts => HttpContext.RequestServices.GetRequiredService<IFormLayoutService>();
+
     private async Task LoadCatalogsAsync(CancellationToken ct)
     {
+        _formLayout = await FormLayouts.GetForCurrentUserAsync(FormLayoutKey, ct);
+
         var series = await _series.ListAsync(_documents.GetSapObjectCode(Type).ToString(), ct: ct);
         Series = series.Select(s => new SelectListItem(s.SeriesName, s.SeriesCode.ToString())).ToList();
+
+        var buyers = await _buyers.ListAsync(ct: ct);
+        Buyers = buyers.Select(b => new SelectListItem(b.SalesEmployeeName, b.SalesEmployeeCode.ToString())).ToList();
+
+        var priceLists = await _priceLists.ListAllAsync(ct);
+        PriceLists = priceLists.Select(p => new SelectListItem(p.ListName, p.ListNum.ToString())).ToList();
+
+        var currencies = await _currencies.ListAsync(ct: ct);
+        Currencies = currencies.Select(c => new SelectListItem($"{c.CurrencyCode} — {c.CurrencyName}", c.CurrencyCode)).ToList();
+        LocalCurrency = await _currencies.GetLocalCurrencyAsync(ct);
     }
 
     private void BuildDocumentViewModel()
@@ -401,6 +578,8 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             DocEntry = DocEntry,
             CanClose = CanClose,
             CanCancel = CanCancel,
+            FormKey = FormLayoutKey,
+            FormLayout = _formLayout,
         };
 
         // Consumido por _ModuloBackLink.cshtml (breadcrumb del layout) -- ver el
@@ -432,6 +611,18 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         [Display(Name = "Serie")]
         public int? Series { get; set; }
 
+        /// <summary>OSLP.SlpCode -- por defecto el del proveedor (OCRD.SlpCode), modificable.</summary>
+        [Display(Name = "Comprador")]
+        public int? BuyerCode { get; set; }
+
+        /// <summary>OPLN.ListNum -- solo para resolver el precio de las líneas; por defecto la del proveedor, modificable.</summary>
+        [Display(Name = "Lista de precio")]
+        public int? PriceListCode { get; set; }
+
+        /// <summary>OCRN.CurrCode -- moneda en que se digita el documento; por defecto la del proveedor (o la local), modificable.</summary>
+        [Display(Name = "Moneda")]
+        public string? DocCurrency { get; set; }
+
         [Display(Name = "Tipo de línea")]
         public DocumentLineType LineType { get; set; } = DocumentLineType.Item;
 
@@ -450,5 +641,8 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         public string? CostCenterCode { get; set; }
         public string? CostCenterCode2 { get; set; }
         public string? CostCenterCode3 { get; set; }
+
+        /// <summary>Moneda de UnitPrice -- ver LineInput.Currency en DetailGenericSalesDocumentModelBase (Modulo.Ventas).</summary>
+        public string? Currency { get; set; }
     }
 }

@@ -5,7 +5,7 @@ import {
   updateSesion, getSesionesPendientes, createCaptura, getCapturasPendientes,
   getPendingCounts, getProductosCount, reintentarErrores,
   getSesionesLimpiables, limpiarSesionesSincronizadas, getCapturasBySesion,
-  getAjustes, setValidarProducto, getCapturaTotalsBySesionYSectores,
+  getAjustes, setValidarProducto, setEscanearConCamara, getCapturaTotalsBySesionYSectores,
   importarMaestroDesdeJson, getConfiguracionCaptura, setConfiguracionCaptura,
 } from '../../src/db/repositories';
 
@@ -151,16 +151,26 @@ describe('repositories', () => {
     expect(await getCapturasBySesion('ses-con-pendiente')).toHaveLength(1);
   });
 
-  it('getAjustes devuelve validarProducto=true por defecto si nunca se guardo', async () => {
-    expect(await getAjustes()).toEqual({ id: 'singleton', validarProducto: true });
+  it('getAjustes devuelve validarProducto=true y escanearConCamara=true por defecto si nunca se guardo', async () => {
+    expect(await getAjustes()).toEqual({ id: 'singleton', validarProducto: true, escanearConCamara: true });
   });
 
-  it('setValidarProducto persiste el valor y getAjustes lo refleja', async () => {
+  it('setValidarProducto persiste el valor y getAjustes lo refleja, sin pisar escanearConCamara', async () => {
+    await setEscanearConCamara(false);
     await setValidarProducto(false);
-    expect(await getAjustes()).toEqual({ id: 'singleton', validarProducto: false });
+    expect(await getAjustes()).toEqual({ id: 'singleton', validarProducto: false, escanearConCamara: false });
 
     await setValidarProducto(true);
-    expect(await getAjustes()).toEqual({ id: 'singleton', validarProducto: true });
+    expect(await getAjustes()).toEqual({ id: 'singleton', validarProducto: true, escanearConCamara: false });
+  });
+
+  it('setEscanearConCamara persiste el valor y getAjustes lo refleja, sin pisar validarProducto', async () => {
+    await setValidarProducto(false);
+    await setEscanearConCamara(false);
+    expect(await getAjustes()).toEqual({ id: 'singleton', validarProducto: false, escanearConCamara: false });
+
+    await setEscanearConCamara(true);
+    expect(await getAjustes()).toEqual({ id: 'singleton', validarProducto: false, escanearConCamara: true });
   });
 
   it('getCapturaTotalsBySesionYSectores suma por sector, acotado a una sesion', async () => {

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Modulo.AuditoriaInventario.Data;
 using Modulo.AuditoriaInventario.Servicios;
+using PortalSaas.Abstractions.Componentes;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
@@ -38,8 +39,21 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
     }
 
     public int TotalProductos { get; private set; }
-    public IReadOnlyList<Models.Product> UltimosCargados { get; private set; } = Array.Empty<Models.Product>();
+    public int TotalFiltrado { get; private set; }
+    public IReadOnlyList<Models.Product> Productos { get; private set; } = Array.Empty<Models.Product>();
     public SapSyncEstado? SyncStatus { get; private set; }
+    public IReadOnlyList<int> TamanosDisponibles => DocumentListViewModel.AvailablePageSizes;
+
+    [BindProperty(SupportsGet = true)]
+    public string? Buscar { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public int Pagina { get; set; } = 1;
+
+    [BindProperty(SupportsGet = true)]
+    public int TamanoPagina { get; set; } = 50;
+
+    public int TotalPaginas => TotalFiltrado == 0 ? 1 : (int)Math.Ceiling(TotalFiltrado / (double)TamanoPagina);
 
     public async Task OnGetAsync(CancellationToken ct)
     {
@@ -133,11 +147,27 @@ public sealed class IndexModel : AuditoriaInventarioPageModelBase
 
     private async Task CargarResumenAsync(CancellationToken ct)
     {
-        var query = _db.Products.Where(p => p.CompanyId == _currentCompany.CompanyId);
-        TotalProductos = await query.CountAsync(ct);
-        UltimosCargados = await query
+        var baseQuery = _db.Products.Where(p => p.CompanyId == _currentCompany.CompanyId);
+        TotalProductos = await baseQuery.CountAsync(ct);
+
+        var query = baseQuery;
+        if (!string.IsNullOrWhiteSpace(Buscar))
+        {
+            var texto = Buscar.Trim();
+            query = query.Where(p => EF.Functions.Like(p.Barcode, $"%{texto}%")
+                || EF.Functions.Like(p.ProductCode, $"%{texto}%")
+                || (p.Description != null && EF.Functions.Like(p.Description, $"%{texto}%")));
+        }
+
+        TotalFiltrado = await query.CountAsync(ct);
+
+        var tamano = TamanosDisponibles.Contains(TamanoPagina) ? TamanoPagina : 50;
+        var pagina = Math.Max(1, Pagina);
+
+        Productos = await query
             .OrderByDescending(p => p.LoadedAt)
-            .Take(50)
+            .Skip((pagina - 1) * tamano)
+            .Take(tamano)
             .ToListAsync(ct);
     }
 }

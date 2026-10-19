@@ -19,9 +19,9 @@
     }
 
     @* Layout fijo en 2 columnas -- mismo criterio que _TabGeneralVentas.cshtml
-       (Modulo.Ventas), regla de paridad entre motores genéricos. Compras no tiene
-       equivalente de "Vendedor" (SalesEmployeeCode), así que la izquierda queda con
-       Proveedor/N° referencia/Tipo de línea. *@
+       (Modulo.Ventas), regla de paridad entre motores genéricos. Comprador/Lista de
+       precio/Moneda se completan con los valores por defecto del proveedor al elegirlo
+       (document-partner-defaults.js) y quedan modificables. *@
     <div class="doc-columnas-2">
         <div class="doc-columna">
             <div class="form-group">
@@ -41,10 +41,27 @@
                 }
                 <span asp-validation-for="Input.SupplierCardCode" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-form-field="ref-socio">
                 <label asp-for="Input.SupplierReferenceNumber" class="form-label"></label>
                 <input asp-for="Input.SupplierReferenceNumber" class="form-control" disabled="@readOnly" />
             </div>
+            <div class="form-group" data-form-field="comprador">
+                <label asp-for="Input.BuyerCode" class="form-label"></label>
+                <select asp-for="Input.BuyerCode" asp-items="Model.Buyers" class="form-select" disabled="@readOnly">
+                    <option value="">Sin asignar</option>
+                </select>
+            </div>
+            @* Lista de precio: solo resuelve el precio de las líneas (SAP no la guarda en la
+               cabecera), por eso no se muestra en un documento ya creado. *@
+            @if (!readOnly)
+            {
+                <div class="form-group" data-form-field="lista-precio">
+                    <label asp-for="Input.PriceListCode" class="form-label"></label>
+                    <select asp-for="Input.PriceListCode" asp-items="Model.PriceLists" class="form-select">
+                        <option value="">Sin lista (precio manual)</option>
+                    </select>
+                </div>
+            }
             <div class="form-group">
                 <label asp-for="Input.LineType" class="form-label"></label>
                 <select asp-for="Input.LineType" class="form-select" disabled="@readOnly">
@@ -54,21 +71,34 @@
             </div>
         </div>
         <div class="doc-columna">
-            <div class="form-group">
+            <div class="form-group" data-form-field="serie">
                 <label asp-for="Input.Series" class="form-label"></label>
                 <select asp-for="Input.Series" asp-items="Model.Series" class="form-select" disabled="@readOnly">
                     <option value="">Serie por defecto de SAP</option>
                 </select>
             </div>
+            <div class="form-group" data-form-field="moneda">
+                <label asp-for="Input.DocCurrency" class="form-label"></label>
+                @if (readOnly)
+                {
+                    <input class="form-control" value="@(Model.Input.DocCurrency ?? Model.LocalCurrency)" disabled />
+                }
+                else
+                {
+                    <select asp-for="Input.DocCurrency" asp-items="Model.Currencies" class="form-select">
+                        <option value="">Moneda por defecto del proveedor</option>
+                    </select>
+                }
+            </div>
             <div class="form-group">
                 <label asp-for="Input.DocDate" class="form-label"></label>
                 <input asp-for="Input.DocDate" type="date" class="form-control" disabled="@readOnly" />
             </div>
-            <div class="form-group">
+            <div class="form-group" data-form-field="fecha-vencimiento">
                 <label asp-for="Input.DocDueDate" class="form-label"></label>
                 <input asp-for="Input.DocDueDate" type="date" class="form-control" disabled="@readOnly" />
             </div>
-            <div class="form-group">
+            <div class="form-group" data-form-field="fecha-contabilizacion">
                 <label asp-for="Input.TaxDate" class="form-label"></label>
                 <input asp-for="Input.TaxDate" type="date" class="form-control" disabled="@readOnly" />
             </div>
@@ -76,7 +106,7 @@
     </div>
 
     <div class="form-row">
-        <div class="form-group form-group-ancho-completo">
+        <div class="form-group form-group-ancho-completo" data-form-field="comentarios">
             <label asp-for="Input.Comments" class="form-label"></label>
             <textarea asp-for="Input.Comments" class="form-control" rows="3" disabled="@readOnly"></textarea>
         </div>
@@ -88,6 +118,7 @@
     @* Ver el comentario equivalente en _TabGeneralVentas.cshtml (Modulo.Ventas) sobre
        por qué se vuelve a incluir el <script src> acá. *@
     <script src="~/js/catalog-search.js"></script>
+    <script src="~/js/document-partner-defaults.js"></script>
     <script>
         wireCatalogSearch({
             inputSelector: '.purchase-document-supplier-code',
@@ -95,6 +126,22 @@
             handlerName: 'SearchSuppliers',
             getValue: function (item) { return item.cardCode; },
             getLabel: function (item) { return item.cardCode + ' — ' + item.cardName; },
+        });
+
+        // Comprador, Lista de precio y Moneda por defecto del proveedor + precio de cada
+        // línea -- ver document-partner-defaults.js (Compras no tiene Sucursal de destino).
+        wirePartnerDefaults({
+            partnerInputSelector: '.purchase-document-supplier-code',
+            partnerDatalistId: 'purchase-document-suppliers-datalist',
+            employeeSelectId: 'Input_BuyerCode',
+            priceListSelectId: 'Input_PriceListCode',
+            currencySelectId: 'Input_DocCurrency',
+            documentCurrencyLabelId: 'purchase-document-document-currency',
+            docDateId: 'Input_DocDate',
+            lineTypeSelectId: 'Input_LineType',
+            itemLineTypeValue: '@PortalSaas.Abstractions.Modelos.DocumentLineType.Item',
+            linesBodyId: 'purchase-document-lines-body',
+            itemCodeSelector: '.purchase-document-item-code',
         });
     </script>
 }

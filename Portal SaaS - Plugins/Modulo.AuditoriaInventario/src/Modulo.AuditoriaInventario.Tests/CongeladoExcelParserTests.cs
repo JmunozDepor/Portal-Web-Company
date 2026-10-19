@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 using ClosedXML.Excel;
 using Modulo.AuditoriaInventario.Servicios;
 
@@ -6,20 +7,25 @@ namespace Modulo.AuditoriaInventario.Tests;
 
 public class CongeladoExcelParserTests
 {
-    private static MemoryStream CrearWorkbook(IEnumerable<(string? Barcode, string? Cantidad, string? Costo)> filas)
+    private static MemoryStream CrearWorkbook(IEnumerable<(string? Barcode, string? Cantidad, string? Costo)> filas) =>
+        CrearWorkbook(filas.Select(f => (f.Barcode, f.Cantidad, f.Costo, (string?)null)));
+
+    private static MemoryStream CrearWorkbook(IEnumerable<(string? Barcode, string? Cantidad, string? Costo, string? ProductCode)> filas)
     {
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Congelado");
         ws.Cell(1, 1).Value = "Codigo de Barra";
         ws.Cell(1, 2).Value = "Cantidad";
         ws.Cell(1, 3).Value = "Costo Unitario";
+        ws.Cell(1, 4).Value = "Codigo de Producto";
 
         var fila = 2;
-        foreach (var (barcode, cantidad, costo) in filas)
+        foreach (var (barcode, cantidad, costo, productCode) in filas)
         {
             ws.Cell(fila, 1).Value = barcode ?? string.Empty;
             ws.Cell(fila, 2).Value = cantidad ?? string.Empty;
             ws.Cell(fila, 3).Value = costo ?? string.Empty;
+            ws.Cell(fila, 4).Value = productCode ?? string.Empty;
             fila++;
         }
 
@@ -99,7 +105,7 @@ public class CongeladoExcelParserTests
     }
 
     [Fact]
-    public void Parse_FilaSinBarcode_AcumulaError()
+    public void Parse_FilaSinBarcodeNiProductCode_AcumulaError()
     {
         using var stream = CrearWorkbook(new[] { ((string?)null, "10", (string?)null) });
 
@@ -107,6 +113,41 @@ public class CongeladoExcelParserTests
 
         Assert.Single(resultado.Errores);
         Assert.Empty(resultado.Filas);
+    }
+
+    [Fact]
+    public void Parse_FilaSoloConCodigoDeProducto_DevuelveFilaSinErrores()
+    {
+        // Algunos orígenes externos solo traen el código de producto, no el
+        // barcode -- Pages/AvanceConteo lo resuelve contra el maestro antes de
+        // guardar (el parser no tiene acceso a la base).
+        using var stream = CrearWorkbook(new[]
+        {
+            ((string?)null, "10", (string?)null, (string?)"372860C-102-2X"),
+        });
+
+        var resultado = CongeladoExcelParser.Parse(stream);
+
+        Assert.Empty(resultado.Errores);
+        Assert.Single(resultado.Filas);
+        Assert.Null(resultado.Filas[0].Barcode);
+        Assert.Equal("372860C-102-2X", resultado.Filas[0].ProductCode);
+        Assert.Equal(10, resultado.Filas[0].Quantity);
+    }
+
+    [Fact]
+    public void Parse_FilaConBarcodeYProductCode_ConservaAmbos()
+    {
+        using var stream = CrearWorkbook(new[]
+        {
+            ("7801234567890", "10", (string?)null, (string?)"372860C-102-2X"),
+        });
+
+        var resultado = CongeladoExcelParser.Parse(stream);
+
+        Assert.Empty(resultado.Errores);
+        Assert.Equal("7801234567890", resultado.Filas[0].Barcode);
+        Assert.Equal("372860C-102-2X", resultado.Filas[0].ProductCode);
     }
 
     [Fact]

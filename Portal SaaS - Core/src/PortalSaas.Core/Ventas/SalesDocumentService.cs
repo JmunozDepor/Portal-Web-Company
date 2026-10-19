@@ -76,6 +76,7 @@ public sealed class SalesDocumentService : ISalesDocumentService
             TaxDate = document.TaxDate.ToDateTime(TimeOnly.MinValue),
             NumAtCard = document.CustomerReferenceNumber,
             ShipToCode = string.IsNullOrWhiteSpace(document.ShipToCode) ? null : document.ShipToCode.Trim(),
+            DocCurrency = string.IsNullOrWhiteSpace(document.DocCurrency) ? null : document.DocCurrency.Trim(),
             U_PortalUser = isDefaultUdf ? portalUsername : null,
             AdditionalFields = isDefaultUdf
                 ? document.AdditionalFields
@@ -152,14 +153,19 @@ public sealed class SalesDocumentService : ISalesDocumentService
                 AccountCode: line.AccountCode,
                 CostCenterCode: line.CostingCode,
                 CostCenterCode2: line.CostingCode2,
-                CostCenterCode3: line.CostingCode3)).ToList(),
+                CostCenterCode3: line.CostingCode3,
+                Currency: line.Currency)).ToList(),
             DocEntry: sap.DocEntry,
             DocNum: sap.DocNum,
-            DocTotal: sap.DocTotal,
+            // Documento en moneda extranjera: el total en SU moneda es DocTotalFc (DocTotal es moneda local).
+            DocTotal: sap.DocTotalFc is > 0 ? sap.DocTotalFc : sap.DocTotal,
             Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto",
             Series: sap.Series,
             ShippingMethodCode: sap.TransportationCode,
-            PaymentTermsGroupCode: sap.GroupNumber);
+            PaymentTermsGroupCode: sap.GroupNumber,
+            ShipToCode: sap.ShipToCode,
+            ShipToAddress: sap.Address2,
+            DocCurrency: sap.DocCurrency);
     }
 
     public async Task<SalesDocumentListResult> ListAsync(SalesDocumentType type, SalesDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
@@ -319,6 +325,7 @@ public sealed class SalesDocumentService : ISalesDocumentService
         ItemDescription = line.Description,
         Quantity = line.Quantity,
         UnitPrice = line.UnitPrice,
+        Currency = string.IsNullOrWhiteSpace(line.Currency) ? null : line.Currency.Trim(),
         DiscountPercent = line.DiscountPercent,
         WarehouseCode = line.Type == DocumentLineType.Item ? line.WarehouseCode : null,
         AccountCode = line.Type == DocumentLineType.Service ? line.AccountCode : null,

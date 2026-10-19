@@ -17,7 +17,7 @@ public sealed class BusinessPartnerDefaultsService : IBusinessPartnerDefaultsSer
     {
         const string sql = """
             SELECT c."CardCode" AS "CardCode", c."SlpCode" AS "SalesEmployeeCode", s."SlpName" AS "SalesEmployeeName",
-                   c."ListNum" AS "PriceListCode"
+                   c."ListNum" AS "PriceListCode", c."ShipToDef" AS "ShipToDefault", c."Currency" AS "Currency"
             FROM "OCRD" c
             LEFT JOIN "OSLP" s ON s."SlpCode" = c."SlpCode"
             WHERE c."CardCode" = :cardCode

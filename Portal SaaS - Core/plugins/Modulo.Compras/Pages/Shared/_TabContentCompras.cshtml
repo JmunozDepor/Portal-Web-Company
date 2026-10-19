@@ -6,25 +6,30 @@
     // ver document-lines-editor.js), mismo criterio aplicado primero en
     // Modulo.Ventas/_TabContentVentas.cshtml (regla de paridad entre motores).
     var rowCount = readOnly ? Model.Input.Lines.Count : Math.Max(Model.Input.Lines.Count, 1);
+    var lineTypeClass = Model.Input.LineType == PortalSaas.Abstractions.Modelos.DocumentLineType.Service ? "line-type-service" : "line-type-item";
 }
 
 <div class="line-items-wrapper">
-<table class="table table-sm line-items-table" id="purchase-document-lines">
+@* Una sola altura de fila: el nombre del artículo va en Descripción y la moneda al lado
+   del precio (antes se apilaban debajo del input y desalineaban la fila). Las columnas
+   del tipo de línea que no corresponde se ocultan vía line-type-item/line-type-service
+   (ver site.css y aplicarTipoLinea en document-lines-editor.js). *@
+<table class="table table-sm line-items-table @lineTypeClass" id="purchase-document-lines">
     <thead>
         <tr>
-            <th>Artículo</th>
-            <th>Descripción</th>
-            <th>Cantidad</th>
-            <th>Precio unitario</th>
-            <th>% Desc.</th>
-            <th>Almacén <small class="text-muted">(Artículo)</small></th>
-            <th>Cuenta mayor <small class="text-muted">(Servicio)</small></th>
-            <th>Centro de costos <small class="text-muted">(Servicio)</small></th>
-            <th>Marca <small class="text-muted">(Servicio, opcional)</small></th>
-            <th>Tipo de gasto <small class="text-muted">(Servicio, opcional)</small></th>
+            <th class="col-item line-item-only">Artículo</th>
+            <th class="col-desc" data-form-field="linea-descripcion">Descripción</th>
+            <th class="col-qty">Cantidad</th>
+            <th class="col-price" data-form-field="linea-precio">Precio unitario</th>
+            <th class="col-disc" data-form-field="linea-descuento">% Desc.</th>
+            <th class="col-wh line-item-only">Almacén</th>
+            <th class="col-acct line-service-only">Cuenta mayor</th>
+            <th class="col-cc line-service-only">Centro de costos</th>
+            <th class="col-cc line-service-only" data-form-field="linea-marca">Marca <small class="text-muted">(opcional)</small></th>
+            <th class="col-cc line-service-only" data-form-field="linea-tipo-gasto">Tipo de gasto <small class="text-muted">(opcional)</small></th>
             @if (!readOnly)
             {
-                <th></th>
+                <th class="col-actions"></th>
             }
         </tr>
     </thead>
@@ -33,39 +38,46 @@
         {
             var line = i < Model.Input.Lines.Count ? Model.Input.Lines[i] : new Modulo.Compras.Pages.DetailGenericPurchaseDocumentModelBase.LineInput();
             <tr>
-                <td class="line-item-only">
-                    <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm purchase-document-item-code" list="purchase-document-items-datalist" disabled="@readOnly" />
+                <td class="col-item line-item-only">
+                    <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm purchase-document-item-code" list="purchase-document-items-datalist" placeholder="Código o nombre" autocomplete="off" disabled="@readOnly" />
                 </td>
-                <td class="line-service-only">
-                    <input name="Input.Lines[@i].Description" value="@line.Description" class="form-control form-control-sm" disabled="@readOnly" />
+                <td class="col-desc" data-form-field="linea-descripcion">
+                    <div class="line-service-only">
+                        <input name="Input.Lines[@i].Description" value="@line.Description" class="form-control form-control-sm" disabled="@readOnly" />
+                    </div>
+                    <span class="line-item-only line-item-description" title="@line.Description">@line.Description</span>
                 </td>
-                <td style="max-width:100px">
+                <td class="col-qty">
                     <input name="Input.Lines[@i].Quantity" type="number" step="0.01" value="@(line.Quantity is null or 0 ? "" : line.Quantity.Value.ToString(CultureInfo.InvariantCulture))" class="form-control form-control-sm line-qty" disabled="@readOnly" />
                 </td>
-                <td style="max-width:120px">
-                    <input name="Input.Lines[@i].UnitPrice" type="number" step="0.01" value="@line.UnitPrice?.ToString(CultureInfo.InvariantCulture)" class="form-control form-control-sm line-price" placeholder="Lista de precio" disabled="@readOnly" />
+                <td class="col-price" data-form-field="linea-precio">
+                    <div class="line-price-cell">
+                        <input name="Input.Lines[@i].UnitPrice" type="number" step="0.01" value="@line.UnitPrice?.ToString(CultureInfo.InvariantCulture)" class="form-control form-control-sm line-price" placeholder="Lista" disabled="@readOnly" />
+                        <input type="hidden" name="Input.Lines[@i].Currency" value="@line.Currency" class="line-currency" disabled="@readOnly" />
+                        <span class="line-currency-label">@line.Currency</span>
+                    </div>
                 </td>
-                <td style="max-width:90px">
+                <td class="col-disc" data-form-field="linea-descuento">
                     <input name="Input.Lines[@i].DiscountPercent" type="number" step="0.01" value="@(line.DiscountPercent is null or 0 ? "" : line.DiscountPercent.Value.ToString(CultureInfo.InvariantCulture))" class="form-control form-control-sm line-discount" disabled="@readOnly" />
                 </td>
-                <td class="line-item-only">
+                <td class="col-wh line-item-only">
                     <input name="Input.Lines[@i].WarehouseCode" value="@line.WarehouseCode" class="form-control form-control-sm purchase-document-warehouse-code" list="purchase-document-warehouses-datalist" placeholder="Buscar…" disabled="@readOnly" />
                 </td>
-                <td class="line-service-only">
+                <td class="col-acct line-service-only">
                     <input name="Input.Lines[@i].AccountCode" value="@line.AccountCode" class="form-control form-control-sm purchase-document-account-code" list="purchase-document-accounts-datalist" placeholder="Buscar…" disabled="@readOnly" />
                 </td>
-                <td class="line-service-only">
+                <td class="col-cc line-service-only">
                     <input name="Input.Lines[@i].CostCenterCode" value="@line.CostCenterCode" class="form-control form-control-sm purchase-document-cost-center-code" list="purchase-document-cost-centers-datalist" placeholder="Buscar…" disabled="@readOnly" />
                 </td>
-                <td class="line-service-only">
+                <td class="col-cc line-service-only" data-form-field="linea-marca">
                     <input name="Input.Lines[@i].CostCenterCode2" value="@line.CostCenterCode2" class="form-control form-control-sm purchase-document-cost-center2-code" list="purchase-document-cost-centers2-datalist" placeholder="Buscar…" disabled="@readOnly" />
                 </td>
-                <td class="line-service-only">
+                <td class="col-cc line-service-only" data-form-field="linea-tipo-gasto">
                     <input name="Input.Lines[@i].CostCenterCode3" value="@line.CostCenterCode3" class="form-control form-control-sm purchase-document-cost-center3-code" list="purchase-document-cost-centers3-datalist" placeholder="Buscar…" disabled="@readOnly" />
                 </td>
                 @if (!readOnly)
                 {
-                    <td><button type="button" class="btn btn-sm btn-outline-danger purchase-document-remove-line">Quitar</button></td>
+                    <td class="col-actions"><button type="button" class="btn btn-sm btn-outline-danger line-remove-btn purchase-document-remove-line" title="Quitar línea" aria-label="Quitar línea"><i class="bi bi-x-lg"></i></button></td>
                 }
             </tr>
         }
@@ -94,7 +106,7 @@
         <span>@Model.Tax.ToString("N2")</span>
     </div>
     <div class="doc-resumen-total-fila doc-resumen-total-final">
-        <label>Total del documento</label>
+        <label>Total del documento <span id="purchase-document-document-currency">@(Model.Input.DocCurrency ?? Model.LocalCurrency)</span></label>
         <span id="purchase-document-document-total">@Model.DocumentTotal.ToString("N2")</span>
     </div>
 </div>
@@ -119,27 +131,26 @@
 
     <template id="purchase-document-line-template">
         <tr>
-            <td class="line-item-only"><input name="Input.Lines[__INDEX__].ItemCode" class="form-control form-control-sm purchase-document-item-code" list="purchase-document-items-datalist" /></td>
-            <td class="line-service-only"><input name="Input.Lines[__INDEX__].Description" class="form-control form-control-sm" /></td>
-            <td style="max-width:100px"><input name="Input.Lines[__INDEX__].Quantity" type="number" step="0.01" class="form-control form-control-sm line-qty" /></td>
-            <td style="max-width:120px"><input name="Input.Lines[__INDEX__].UnitPrice" type="number" step="0.01" class="form-control form-control-sm line-price" placeholder="Lista de precio" /></td>
-            <td style="max-width:90px"><input name="Input.Lines[__INDEX__].DiscountPercent" type="number" step="0.01" class="form-control form-control-sm line-discount" /></td>
-            <td class="line-item-only">
-                <input name="Input.Lines[__INDEX__].WarehouseCode" class="form-control form-control-sm purchase-document-warehouse-code" list="purchase-document-warehouses-datalist" placeholder="Buscar…" />
+            <td class="col-item line-item-only"><input name="Input.Lines[__INDEX__].ItemCode" class="form-control form-control-sm purchase-document-item-code" list="purchase-document-items-datalist" placeholder="Código o nombre" autocomplete="off" /></td>
+            <td class="col-desc" data-form-field="linea-descripcion">
+                <div class="line-service-only"><input name="Input.Lines[__INDEX__].Description" class="form-control form-control-sm" /></div>
+                <span class="line-item-only line-item-description"></span>
             </td>
-            <td class="line-service-only">
-                <input name="Input.Lines[__INDEX__].AccountCode" class="form-control form-control-sm purchase-document-account-code" list="purchase-document-accounts-datalist" placeholder="Buscar…" />
+            <td class="col-qty"><input name="Input.Lines[__INDEX__].Quantity" type="number" step="0.01" class="form-control form-control-sm line-qty" /></td>
+            <td class="col-price" data-form-field="linea-precio">
+                <div class="line-price-cell">
+                    <input name="Input.Lines[__INDEX__].UnitPrice" type="number" step="0.01" class="form-control form-control-sm line-price" placeholder="Lista" />
+                    <input type="hidden" name="Input.Lines[__INDEX__].Currency" class="line-currency" />
+                    <span class="line-currency-label"></span>
+                </div>
             </td>
-            <td class="line-service-only">
-                <input name="Input.Lines[__INDEX__].CostCenterCode" class="form-control form-control-sm purchase-document-cost-center-code" list="purchase-document-cost-centers-datalist" placeholder="Buscar…" />
-            </td>
-            <td class="line-service-only">
-                <input name="Input.Lines[__INDEX__].CostCenterCode2" class="form-control form-control-sm purchase-document-cost-center2-code" list="purchase-document-cost-centers2-datalist" placeholder="Buscar…" />
-            </td>
-            <td class="line-service-only">
-                <input name="Input.Lines[__INDEX__].CostCenterCode3" class="form-control form-control-sm purchase-document-cost-center3-code" list="purchase-document-cost-centers3-datalist" placeholder="Buscar…" />
-            </td>
-            <td><button type="button" class="btn btn-sm btn-outline-danger purchase-document-remove-line">Quitar</button></td>
+            <td class="col-disc" data-form-field="linea-descuento"><input name="Input.Lines[__INDEX__].DiscountPercent" type="number" step="0.01" class="form-control form-control-sm line-discount" /></td>
+            <td class="col-wh line-item-only"><input name="Input.Lines[__INDEX__].WarehouseCode" class="form-control form-control-sm purchase-document-warehouse-code" list="purchase-document-warehouses-datalist" placeholder="Buscar…" /></td>
+            <td class="col-acct line-service-only"><input name="Input.Lines[__INDEX__].AccountCode" class="form-control form-control-sm purchase-document-account-code" list="purchase-document-accounts-datalist" placeholder="Buscar…" /></td>
+            <td class="col-cc line-service-only"><input name="Input.Lines[__INDEX__].CostCenterCode" class="form-control form-control-sm purchase-document-cost-center-code" list="purchase-document-cost-centers-datalist" placeholder="Buscar…" /></td>
+            <td class="col-cc line-service-only" data-form-field="linea-marca"><input name="Input.Lines[__INDEX__].CostCenterCode2" class="form-control form-control-sm purchase-document-cost-center2-code" list="purchase-document-cost-centers2-datalist" placeholder="Buscar…" /></td>
+            <td class="col-cc line-service-only" data-form-field="linea-tipo-gasto"><input name="Input.Lines[__INDEX__].CostCenterCode3" class="form-control form-control-sm purchase-document-cost-center3-code" list="purchase-document-cost-centers3-datalist" placeholder="Buscar…" /></td>
+            <td class="col-actions"><button type="button" class="btn btn-sm btn-outline-danger line-remove-btn purchase-document-remove-line" title="Quitar línea" aria-label="Quitar línea"><i class="bi bi-x-lg"></i></button></td>
         </tr>
     </template>
 

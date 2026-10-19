@@ -30,12 +30,15 @@ public sealed class IndexModel : PageModelBaseAdmin
     private readonly ISalesDocumentService _sales;
     private readonly IPurchaseDocumentService _purchase;
     private readonly IInventoryDocumentService _inventory;
+    private readonly ISalesEmployeeCatalogService _salesEmployees;
 
     public IndexModel(ICurrentUserContext currentUser, IGenericImportConfigService configs, IGenericImportUserFieldService userFields,
         ICustomerCatalogService customers, ISupplierCatalogService suppliers,
-        ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory)
+        ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
+        ISalesEmployeeCatalogService salesEmployees)
         : base(currentUser)
     {
+        _salesEmployees = salesEmployees;
         _configs = configs;
         _userFields = userFields;
         _customers = customers;
@@ -73,6 +76,39 @@ public sealed class IndexModel : PageModelBaseAdmin
     public bool MostrarFormulario => EditId is not null || CopyId is not null || Nuevo;
 
     public IReadOnlyList<GenericImportConfigDto> Configs { get; private set; } = [];
+
+    // ---- Filtros del listado (GET) -- 2026-10-15: listado y edición separados, con búsqueda.
+
+    /// <summary>Texto libre: alias, socio de negocio o tipo de documento.</summary>
+    [BindProperty(SupportsGet = true, Name = "q")]
+    public string? FiltroTexto { get; set; }
+
+    [BindProperty(SupportsGet = true, Name = "modulo")]
+    public GenericImportModule? FiltroModulo { get; set; }
+
+    /// <summary>"activos" (default) | "inactivos" | "todos".</summary>
+    [BindProperty(SupportsGet = true, Name = "estado")]
+    public string? FiltroEstado { get; set; }
+
+    /// <summary>Total sin filtrar -- para "N de M formato(s)".</summary>
+    public int TotalConfigs { get; private set; }
+
+    private void ApplyListFilters()
+    {
+        TotalConfigs = Configs.Count;
+        var texto = FiltroTexto?.Trim();
+        var estado = string.IsNullOrWhiteSpace(FiltroEstado) ? "activos" : FiltroEstado;
+        Configs = Configs
+            .Where(c => FiltroModulo is null || c.Module == FiltroModulo)
+            .Where(c => estado == "todos" || (estado == "inactivos" ? !c.IsActive : c.IsActive))
+            .Where(c => string.IsNullOrEmpty(texto)
+                || c.Alias.Contains(texto, StringComparison.CurrentCultureIgnoreCase)
+                || (c.BusinessPartnerCardCode ?? "estándar").Contains(texto, StringComparison.CurrentCultureIgnoreCase)
+                || ImportDisplayNames.Of(c.DocumentType).Contains(texto, StringComparison.CurrentCultureIgnoreCase)
+                || c.DocumentType.Contains(texto, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c.Module).ThenBy(c => c.BusinessPartnerCardCode).ThenBy(c => c.Alias)
+            .ToList();
+    }
     public List<SelectListItem> UserFieldOptions { get; private set; } = [];
 
     public List<SelectListItem> Modules { get; } =
@@ -102,10 +138,27 @@ public sealed class IndexModel : PageModelBaseAdmin
         .Select(i => new SelectListItem(ImportDisplayNames.Identifier(i), i.ToString()))
         .ToList();
 
+    public List<SelectListItem> WarehouseSources { get; } =
+    [
+        new("Columna del archivo o valor fijo (grilla de campos)", GenericImportWarehouseSource.Mapping.ToString()),
+        new("Almacén del cliente (campo de usuario del socio)", GenericImportWarehouseSource.BusinessPartnerField.ToString()),
+    ];
+
+    public List<SelectListItem> SalesPersonModes { get; } =
+    [
+        new("Vendedor del socio de negocio", GenericImportSalesPersonMode.BusinessPartner.ToString()),
+        new("Vendedor fijo del formato", GenericImportSalesPersonMode.Fixed.ToString()),
+        new("Multivendedor (se elige al importar)", GenericImportSalesPersonMode.MultiSeller.ToString()),
+    ];
+
+    /// <summary>Vendedores de SAP (OSLP) para el modo Fijo -- vacío si SAP no responde (el resto de la pantalla sigue funcionando).</summary>
+    public List<SelectListItem> SalesPersons { get; private set; } = [];
+
     public List<SelectListItem> PriceSources { get; } =
     [
-        new("Socio de negocio (default)", GenericImportPriceSource.BusinessPartner.ToString()),
-        new("Lista de precio del sistema", GenericImportPriceSource.System.ToString()),
+        new("Precio especial del cliente (si no tiene, su lista)", GenericImportPriceSource.SpecialPrice.ToString()),
+        new("Lista de precios del cliente", GenericImportPriceSource.BusinessPartner.ToString()),
+        new("Lista de precios fija (N° de lista)", GenericImportPriceSource.System.ToString()),
     ];
 
     /// <summary>Campos núcleo editables en la grilla -- todos menos el marcador UserField.</summary>
@@ -128,6 +181,7 @@ public sealed class IndexModel : PageModelBaseAdmin
     public async Task OnGetAsync(CancellationToken ct)
     {
         Configs = await _configs.ListAsync(ct: ct);
+        ApplyListFilters();
         await LoadUserFieldOptionsAsync(ct);
 
         if (EditId is { } id)
@@ -238,6 +292,8 @@ public sealed class IndexModel : PageModelBaseAdmin
             }
 
             await _configs.SaveValidationRulesAsync(configId, BuildValidationRuleAssignments(), ct);
+            await _configs.SaveDocumentOptionsAsync(configId, new GenericImportDocumentOptionsDto(
+                Input.WarehouseSource, Input.WarehouseUserField, Input.SalesPersonMode, Input.SalesPersonCode, Input.AnalyzeStock), ct);
         }
         catch (Exception ex)
         {
@@ -365,6 +421,11 @@ public sealed class IndexModel : PageModelBaseAdmin
             IsActive = config.IsActive,
             PriceSource = config.PriceSource,
             SystemPriceListCode = config.SystemPriceListCode,
+            WarehouseSource = config.DocumentOptions.WarehouseSource,
+            WarehouseUserField = config.DocumentOptions.WarehouseUserField ?? GenericImportDocumentOptionsDto.DefaultWarehouseUserField,
+            SalesPersonMode = config.DocumentOptions.SalesPersonMode,
+            SalesPersonCode = config.DocumentOptions.SalesPersonCode,
+            AnalyzeStock = config.DocumentOptions.AnalyzeStock,
             BusinessPartnerFromFile = config.BusinessPartnerFromFile,
         };
 
@@ -442,6 +503,18 @@ public sealed class IndexModel : PageModelBaseAdmin
     {
         var fields = await _userFields.ListAsync(ct: ct);
         UserFieldOptions = fields.Select(f => new SelectListItem($"[{ImportDisplayNames.Of(f.Module)}] {f.Label} ({f.SapFieldName})", f.Id.ToString())).ToList();
+
+        try
+        {
+            SalesPersons = (await _salesEmployees.ListAsync(ct: ct))
+                .OrderBy(s => s.SalesEmployeeName)
+                .Select(s => new SelectListItem($"{s.SalesEmployeeCode} - {s.SalesEmployeeName}", s.SalesEmployeeCode.ToString()))
+                .ToList();
+        }
+        catch (Exception)
+        {
+            SalesPersons = [];
+        }
 
         if (Input.Fields.Count == 0)
         {
@@ -550,11 +623,28 @@ public sealed class IndexModel : PageModelBaseAdmin
         [Display(Name = "Activo")]
         public bool IsActive { get; set; } = true;
 
+        // Formatos nuevos: precio especial del cliente (lo mismo que aplica SAP). Los
+        // existentes conservan el suyo (MapToInput).
         [Display(Name = "Origen del precio")]
-        public GenericImportPriceSource PriceSource { get; set; } = GenericImportPriceSource.BusinessPartner;
+        public GenericImportPriceSource PriceSource { get; set; } = GenericImportPriceSource.SpecialPrice;
 
-        [Display(Name = "Lista de precio del sistema")]
+        [Display(Name = "N° de lista de precios fija")]
         public int? SystemPriceListCode { get; set; }
+
+        [Display(Name = "Origen del almacén")]
+        public GenericImportWarehouseSource WarehouseSource { get; set; }
+
+        [Display(Name = "Campo de usuario del socio con el almacén")]
+        public string? WarehouseUserField { get; set; } = GenericImportDocumentOptionsDto.DefaultWarehouseUserField;
+
+        [Display(Name = "Vendedor (Ventas)")]
+        public GenericImportSalesPersonMode SalesPersonMode { get; set; }
+
+        [Display(Name = "Vendedor fijo")]
+        public int? SalesPersonCode { get; set; }
+
+        [Display(Name = "Analizar stock disponible y cumplimiento de unidades en la vista previa")]
+        public bool AnalyzeStock { get; set; }
 
         public List<FieldInput> Fields { get; set; } = [];
         public List<UserFieldMappingInput> UserFieldMappings { get; set; } = [];

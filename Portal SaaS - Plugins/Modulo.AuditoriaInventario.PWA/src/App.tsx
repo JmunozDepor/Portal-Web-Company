@@ -51,7 +51,7 @@ function AuthenticatedApp({ token, onLogout }: { token: string; onLogout: () => 
     <div className="app-shell">
       <AppDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onLogout={handleLogout} />
       <Routes>
-        <Route path="/sesiones" element={<InicioPage onMenuClick={openMenu} />} />
+        <Route path="/sesiones" element={<InicioPage token={token} onMenuClick={openMenu} />} />
         <Route path="/sesiones/:sesionId" element={<SectorPickerPage token={token} onMenuClick={openMenu} />} />
         <Route path="/sesiones/:sesionId/sectores/:sectorId" element={<CapturaPage token={token} onMenuClick={openMenu} />} />
         <Route path="/sesiones/:sesionId/sectores/:sectorId/revision" element={<RevisionPage token={token} onMenuClick={openMenu} />} />

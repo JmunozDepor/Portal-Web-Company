@@ -27,4 +27,17 @@ public sealed class CurrencyCatalogService : ICurrencyCatalogService
 
         return await _hana.QueryAsync<CurrencyDto>(sql, parameters, ct);
     }
+
+    public async Task<string?> GetLocalCurrencyAsync(CancellationToken ct = default)
+    {
+        const string sql = """SELECT "MainCurncy" AS "Code" FROM "OADM" """;
+        var rows = await _hana.QueryAsync<CurrencyCodeRow>(sql, ct: ct);
+        var code = rows.FirstOrDefault()?.Code?.Trim();
+        return string.IsNullOrEmpty(code) ? null : code;
+    }
+
+    private sealed record CurrencyCodeRow
+    {
+        public string? Code { get; init; }
+    }
 }

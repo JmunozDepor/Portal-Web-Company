@@ -1,0 +1,84 @@
+@page "/importacion-generica/trabajos"
+@using PortalSaas.Abstractions.Modelos
+@model Modulo.ImportacionGenerica.Pages.Trabajos.ImportacionTrabajosModel
+@{
+    ViewData["Title"] = "Mis importaciones";
+
+    string Badge(string status) => status switch
+    {
+        GenericImportJobStatus.Completed => "bg-success",
+        GenericImportJobStatus.Failed => "bg-danger",
+        GenericImportJobStatus.Running => "bg-primary",
+        _ => "bg-secondary",
+    };
+    string Label(string status) => status switch
+    {
+        GenericImportJobStatus.Queued => "En cola",
+        GenericImportJobStatus.Running => "En proceso",
+        GenericImportJobStatus.Completed => "Terminado",
+        GenericImportJobStatus.Failed => "Falló",
+        _ => status,
+    };
+    string Fecha(DateTimeOffset? value) => value?.ToLocalTime().ToString("dd-MM-yyyy HH:mm") ?? "";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Mis importaciones</h1>
+    <a asp-page="/Importar/Index" class="btn btn-primary">Nueva importación</a>
+</div>
+<p class="text-muted">
+    Las importaciones se envían a SAP en segundo plano: podés cerrar la pantalla de Importar y volver acá a ver el
+    avance y el resultado. La campana avisa cuando cada una termina.
+    @if (Model.AnyRunning)
+    {
+        <span>Esta página se actualiza sola mientras haya importaciones en curso.</span>
+    }
+</p>
+
+<div class="document-list-table-wrapper">
+    <table class="table document-list-table">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Usuario</th>
+                <th>Archivo</th>
+                <th>Documento</th>
+                <th>Socio</th>
+                <th>Estado</th>
+                <th class="text-end">Avance</th>
+                <th class="text-end">Creados</th>
+                <th class="text-end">Rechazados</th>
+                <th class="text-end">No enviados</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var job in Model.Jobs)
+            {
+                var porcentaje = job.ProgressTotal > 0 ? job.ProgressCurrent * 100 / job.ProgressTotal : 0;
+                <tr>
+                    <td class="text-nowrap">@Fecha(job.QueuedAt ?? job.CreatedAt)</td>
+                    <td>@job.Username</td>
+                    <td>@job.FileName</td>
+                    <td>@ImportDisplayNames.Of(job.Parameters.Module) · @ImportDisplayNames.Of(job.Parameters.DocumentType)</td>
+                    <td class="text-nowrap">@(job.Parameters.BusinessPartnerCardCode ?? "—")</td>
+                    <td><span class="badge @Badge(job.Status)">@Label(job.Status)</span></td>
+                    <td class="text-end">@(job.IsFinished ? "" : $"{porcentaje}%")</td>
+                    <td class="text-end">@(job.IsFinished ? job.DocumentsCreated.ToString() : "")</td>
+                    <td class="text-end @(job.DocumentsFailed > 0 ? "text-danger fw-bold" : "")">@(job.IsFinished ? job.DocumentsFailed.ToString() : "")</td>
+                    <td class="text-end @(job.DocumentsSkipped > 0 ? "import-preview-warning fw-bold" : "")">@(job.IsFinished ? job.DocumentsSkipped.ToString() : "")</td>
+                    <td><a asp-page="/Trabajos/ImportacionTrabajoDetalle" asp-route-id="@job.Id">Ver</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (Model.Jobs.Count == 0)
+{
+    <p class="text-muted mt-2">Todavía no hay importaciones enviadas a SAP.</p>
+}
+
+@if (Model.AnyRunning)
+{
+    <script>setTimeout(function () { window.location.reload(); }, 10000);</script>
+}

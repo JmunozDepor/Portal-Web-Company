@@ -60,4 +60,15 @@ public sealed class DocumentFormViewModel
     /// confirmado 2026-09-04 cancelando una Solicitud de Traslado.
     /// </summary>
     public bool CanCancel { get; init; }
+
+    /// <summary>
+    /// Formulario personalizado -- clave del DocumentFormFieldCatalog (ej.
+    /// DocumentFormFieldCatalog.Sales). Null = el documento no ofrece "Personalizar".
+    /// Cada campo ocultable del partial lleva data-form-field="clave"; el componente
+    /// los oculta con un &lt;style&gt; generado (sin parpadeo, también en solo-lectura).
+    /// </summary>
+    public string? FormKey { get; init; }
+
+    /// <summary>Campos ocultos efectivos + base de la compañía (ver IFormLayoutService).</summary>
+    public Contratos.FormLayoutDto FormLayout { get; init; } = Contratos.FormLayoutDto.Empty;
 }

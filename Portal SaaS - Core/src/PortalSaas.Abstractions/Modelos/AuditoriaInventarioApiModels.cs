@@ -28,4 +28,12 @@ public sealed record CaptureAjustesDto(bool AllowEan8, bool AllowUpcA, bool Allo
 
 public sealed record CaptureSesionUpsert(Guid Id, long BranchId, string InventoryNumber, DateTimeOffset StartedAt, string Status, bool ValidateAgainstMaster);
 
+/// <summary>
+/// Tarea de conteo creada desde el portal (ver Pages/AvanceConteo), lista para que
+/// la PWA se "sume" a ella -- no incluye BranchName/InventoryNumber enriquecido
+/// porque la PWA ya tiene ese catálogo cacheado localmente (CaptureSucursalDto), lo
+/// resuelve por BranchId sin pedirlo de nuevo acá.
+/// </summary>
+public sealed record CaptureSesionAbiertaDto(Guid Id, long BranchId, string InventoryNumber, DateTimeOffset StartedAt, bool ValidateAgainstMaster);
+
 public sealed record CaptureItemDto(Guid Id, Guid SessionId, long SectorId, string Barcode, string? ProductCode, int Quantity, bool? InMaster, DateTimeOffset CapturedAt);

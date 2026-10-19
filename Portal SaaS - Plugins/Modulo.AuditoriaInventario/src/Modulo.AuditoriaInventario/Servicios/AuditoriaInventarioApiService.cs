@@ -174,6 +174,26 @@ public sealed class AuditoriaInventarioApiService : IAuditoriaInventarioApiServi
             .ToListAsync(ct);
     }
 
+    /// <summary>La PWA ya no crea sesiones (ver UpsertSesionAsync) -- se suma a una de estas, creadas desde Pages/AvanceConteo.</summary>
+    public async Task<IReadOnlyList<CaptureSesionAbiertaDto>> GetSesionesAbiertasAsync(Guid companyId, CancellationToken ct = default)
+    {
+        await using var db = await CreateDbContextAsync(companyId, ct);
+
+        return await db.InventorySessions
+            .Where(s => s.CompanyId == companyId && s.Status == "ACTIVE")
+            .OrderByDescending(s => s.StartedAt)
+            .Select(s => new CaptureSesionAbiertaDto(s.Id, s.BranchId, s.InventoryNumber, s.StartedAt, s.ValidateAgainstMaster))
+            .ToListAsync(ct);
+    }
+
+    /// <summary>
+    /// Solo transiciona una sesión creada desde el portal -- 2026-10-15: la PWA dejó
+    /// de poder crear sesiones (antes hacía create-on-sync acá mismo), así que un Id
+    /// inexistente ahora es un error, no un alta implícita. Una sesión ya CLOSED
+    /// tampoco admite más cambios ("una vez cerrada queda bloqueada", pedido
+    /// explícito del dueño del proyecto) -- salvo el reenvío idempotente del mismo
+    /// cierre (reintento de red tras un 200 que no llegó a confirmarse en el cliente).
+    /// </summary>
     public async Task UpsertSesionAsync(Guid companyId, long captureUserId, CaptureSesionUpsert request, CancellationToken ct = default)
     {
         await using var db = await CreateDbContextAsync(companyId, ct);
@@ -182,32 +202,32 @@ public sealed class AuditoriaInventarioApiService : IAuditoriaInventarioApiServi
 
         if (existing is null)
         {
-            db.InventorySessions.Add(new InventorySession
-            {
-                Id = request.Id,
-                CompanyId = companyId,
-                BranchId = request.BranchId,
-                InventoryNumber = request.InventoryNumber,
-                ResponsibleUserId = captureUserId,
-                StartedAt = request.StartedAt,
-                Status = request.Status,
-                ValidateAgainstMaster = request.ValidateAgainstMaster,
-            });
+            throw new InvalidOperationException(
+                "La tarea de conteo no existe en el servidor. Las tareas se crean desde el portal, sincronizá la lista de tareas abiertas e intentá de nuevo.");
         }
-        else if (existing.CompanyId != companyId)
+
+        if (existing.CompanyId != companyId)
         {
             throw new InvalidOperationException("La sesión no pertenece a esta compañía.");
         }
-        else
-        {
-            var estabaCerrada = existing.Status == "CLOSED";
-            existing.Status = request.Status;
-            existing.ClosedAt = request.Status == "CLOSED" ? DateTimeOffset.UtcNow : existing.ClosedAt;
 
-            if (request.Status == "CLOSED" && !estabaCerrada)
+        if (existing.Status == "CLOSED")
+        {
+            if (request.Status == "CLOSED")
             {
-                await _diferenciaEngine.CalcularDiferenciasAsync(db, existing.Id, ct);
+                return; // reintento idempotente del mismo cierre -- nada que hacer.
             }
+            throw new InvalidOperationException("La sesión ya está cerrada, no se puede modificar.");
+        }
+
+        // existing.Status ya se validó distinto de CLOSED arriba, así que cualquier
+        // transición a CLOSED acá es un cierre genuino (primera vez), no un reenvío.
+        existing.Status = request.Status;
+        existing.ClosedAt = request.Status == "CLOSED" ? DateTimeOffset.UtcNow : existing.ClosedAt;
+
+        if (request.Status == "CLOSED")
+        {
+            await _diferenciaEngine.CalcularDiferenciasAsync(db, existing.Id, ct);
         }
 
         await db.SaveChangesAsync(ct);
@@ -221,6 +241,27 @@ public sealed class AuditoriaInventarioApiService : IAuditoriaInventarioApiServi
         }
 
         await using var db = await CreateDbContextAsync(companyId, ct);
+
+        // Todo el lote se rechaza junto si CUALQUIER captura apunta a una sesión que
+        // no existe o ya no está ACTIVE -- nunca se descartan filas puntuales en
+        // silencio (eso dejaría a la PWA creyendo que sincronizó algo que el
+        // servidor en realidad tiró, ver UploadCapturasBatchAsync en el Host).
+        var sessionIdsReferenciados = capturas.Select(c => c.SessionId).Distinct().ToList();
+        var estadosPorSesion = await db.InventorySessions
+            .Where(s => sessionIdsReferenciados.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Status, ct);
+
+        foreach (var sessionId in sessionIdsReferenciados)
+        {
+            if (!estadosPorSesion.TryGetValue(sessionId, out var status))
+            {
+                throw new InvalidOperationException($"La sesión '{sessionId}' no existe en el servidor.");
+            }
+            if (status != "ACTIVE")
+            {
+                throw new InvalidOperationException($"La sesión '{sessionId}' ya está cerrada, no admite más capturas.");
+            }
+        }
 
         var ids = capturas.Select(c => c.Id).ToList();
         var existentes = await db.InventoryCaptures.Where(c => ids.Contains(c.Id)).ToDictionaryAsync(c => c.Id, ct);

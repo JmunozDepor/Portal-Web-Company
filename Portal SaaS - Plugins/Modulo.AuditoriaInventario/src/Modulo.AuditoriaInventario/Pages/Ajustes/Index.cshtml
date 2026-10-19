@@ -5,11 +5,21 @@
 }
 
 <div class="card-surface">
-    <h2 class="mb-1">Ajustes de Inventario</h2>
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1 flex-wrap">
+        <h2 class="mb-0">Ajustes de Inventario</h2>
+        @if (Model.Ajustes.Any(a => a.SapQueueStatus is not null))
+        {
+            <a class="btn-secondary" asp-page-handler="Exportar">
+                <i class="bi bi-file-earmark-excel"></i> Exportar a SAP
+            </a>
+        }
+    </div>
     <p class="text-muted mb-3">
-        Ajustes propuestos a partir de una diferencia detectada. Requieren
-        aprobación manual antes de encolarse hacia SAP -- nunca se envían
-        automáticamente.
+        Ajustes propuestos a partir de una diferencia detectada. Requieren aprobación
+        manual antes de encolarse hacia SAP -- este módulo nunca llama a SAP
+        directamente; "Exportar a SAP" baja un Excel con los campos que SAP necesita
+        (compañía/almacén/material/cantidad, separado en ingreso/salida) para tipear
+        en la transacción estándar (MIGO/MI07).
     </p>
 
     @if (Model.SuccessMessage is not null)
@@ -31,7 +41,13 @@
             <table class="table document-list-table mb-0">
                 <thead>
                     <tr>
+                        <th>Sucursal</th>
+                        <th>Nro. Inventario</th>
+                        <th>Código de barra</th>
+                        <th>Movimiento</th>
+                        <th class="text-end">Cantidad</th>
                         <th>Estado</th>
+                        <th>Estado SAP</th>
                         <th>Propuesto</th>
                         <th>Aprobado</th>
                         <th>Acciones</th>
@@ -41,7 +57,17 @@
                     @foreach (var a in Model.Ajustes)
                     {
                         <tr>
+                            <td>@a.BranchName</td>
+                            <td>@a.InventoryNumber</td>
+                            <td>@a.Barcode</td>
+                            <td>
+                                <span class="tag @(a.EsIngreso ? "tag--active" : "tag--closed")" title="@a.TipoMovimientoSugerido">
+                                    @(a.EsIngreso ? "Ingreso" : "Salida")
+                                </span>
+                            </td>
+                            <td class="text-end">@a.CantidadAbsoluta.ToString("N0")</td>
                             <td>@a.Status</td>
+                            <td>@(a.SapQueueStatus ?? "-")</td>
                             <td>@a.ProposedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
                             <td>@(a.ApprovedAt?.ToLocalTime().ToString("dd-MM-yyyy HH:mm") ?? "-")</td>
                             <td>

@@ -43,11 +43,19 @@ public sealed class IndexModel : PageModelBaseAdmin
     private readonly INotificationService _notifications;
     private readonly ILogger<IndexModel> _logger;
 
+    private readonly ISalesEmployeeCatalogService _salesEmployees;
+    private readonly IBusinessPartnerDefaultsService _partnerDefaults;
+    private readonly IGenericImportJobService _jobs;
+
     public IndexModel(ICurrentUserContext currentUser, IGenericImportService importService, IGenericImportProgressStore progress,
         IGenericImportConfigService configs, ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
         ICustomerCatalogService customers, ISupplierCatalogService suppliers, IGenericImportUserFieldService userFields,
-        INotificationService notifications, ILogger<IndexModel> logger) : base(currentUser)
+        INotificationService notifications, ISalesEmployeeCatalogService salesEmployees, IBusinessPartnerDefaultsService partnerDefaults,
+        IGenericImportJobService jobs, ILogger<IndexModel> logger) : base(currentUser)
     {
+        _jobs = jobs;
+        _salesEmployees = salesEmployees;
+        _partnerDefaults = partnerDefaults;
         _importService = importService;
         _progress = progress;
         _configs = configs;
@@ -98,6 +106,7 @@ public sealed class IndexModel : PageModelBaseAdmin
     {
         await LoadCreatableDocumentTypesAsync(ct);
         await LoadFormatsAsync(ct);
+        await LoadSalesPersonAsync(ct);
         await ResolveBusinessPartnerFromFileAsync(ct);
     }
 
@@ -144,6 +153,84 @@ public sealed class IndexModel : PageModelBaseAdmin
         }
     }
 
+    // ------------------------------------------------------------------ vendedor (Ventas)
+
+    /// <summary>Vendedores de SAP (OSLP) -- vacío si SAP no responde.</summary>
+    public List<SelectListItem> SalesPersons { get; private set; } = [];
+
+    /// <summary>true solo en modo Multivendedor -- en Fijo / Del socio el selector se muestra bloqueado con el valor que se usará.</summary>
+    public bool SalesPersonEditable { get; private set; }
+
+    public string? SalesPersonModeLabel { get; private set; }
+
+    private static string ModeLabel(GenericImportSalesPersonMode mode) => mode switch
+    {
+        GenericImportSalesPersonMode.Fixed => "Vendedor fijo del formato",
+        GenericImportSalesPersonMode.MultiSeller => "Multivendedor: elegí el vendedor de esta carga",
+        _ => "Vendedor del socio de negocio",
+    };
+
+    /// <summary>Modo + vendedor que se usará, según el formato elegido y el socio (mismo criterio que GenericImportService.ResolveSalesPerson).</summary>
+    private async Task<(GenericImportSalesPersonMode Mode, int? Code)> ResolveSalesPersonAsync(int? configId, string? cardCode, int? chosen, CancellationToken ct)
+    {
+        var config = configId is { } id ? await _configs.GetAsync(id, ct) : null;
+        var mode = config?.DocumentOptions.SalesPersonMode ?? GenericImportSalesPersonMode.BusinessPartner;
+        int? partnerDefault = null;
+        if (mode != GenericImportSalesPersonMode.Fixed && !string.IsNullOrWhiteSpace(cardCode))
+        {
+            try
+            {
+                partnerDefault = (await _partnerDefaults.GetAsync(cardCode.Trim(), ct))?.SalesEmployeeCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo leer el vendedor por defecto del socio {CardCode}.", cardCode);
+            }
+        }
+
+        var code = mode switch
+        {
+            GenericImportSalesPersonMode.Fixed => config?.DocumentOptions.SalesPersonCode,
+            GenericImportSalesPersonMode.MultiSeller => chosen ?? partnerDefault,
+            _ => partnerDefault,
+        };
+        return (mode, code);
+    }
+
+    private async Task LoadSalesPersonAsync(CancellationToken ct)
+    {
+        if (Input.Module != GenericImportModule.Sales)
+        {
+            return;
+        }
+
+        var (mode, code) = await ResolveSalesPersonAsync(Input.ConfigId, Input.BusinessPartnerCardCode, Input.SalesPersonCode, ct);
+        SalesPersonEditable = mode == GenericImportSalesPersonMode.MultiSeller;
+        SalesPersonModeLabel = ModeLabel(mode);
+        Input.SalesPersonCode = code;
+        ModelState.Remove($"{nameof(Input)}.{nameof(Input.SalesPersonCode)}");
+
+        try
+        {
+            SalesPersons = (await _salesEmployees.ListAsync(ct: ct))
+                .OrderBy(s => s.SalesEmployeeName)
+                .Select(s => new SelectListItem($"{s.SalesEmployeeCode} - {s.SalesEmployeeName}", s.SalesEmployeeCode.ToString()))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo cargar la lista de vendedores.");
+            SalesPersons = [];
+        }
+    }
+
+    /// <summary>Llamado por fetch al cambiar Formato o Socio (Index.cshtml, cargarVendedor).</summary>
+    public async Task<JsonResult> OnGetSalesPersonAsync(int? configId, string? businessPartnerCardCode, int? salesPersonCode, CancellationToken ct)
+    {
+        var (mode, code) = await ResolveSalesPersonAsync(configId, businessPartnerCardCode, salesPersonCode, ct);
+        return new JsonResult(new { Code = code, Editable = mode == GenericImportSalesPersonMode.MultiSeller, Label = ModeLabel(mode) });
+    }
+
     private string? SelectedDocumentType() => Input.Module switch
     {
         GenericImportModule.Sales => Input.SalesDocumentType,
@@ -152,32 +239,43 @@ public sealed class IndexModel : PageModelBaseAdmin
         _ => null,
     };
 
-    public async Task<IActionResult> OnPostProcessAsync(IFormFile file, CancellationToken ct)
+    public async Task<IActionResult> OnPostProcessAsync(IFormFile? file, CancellationToken ct)
     {
         await LoadCreatableDocumentTypesAsync(ct);
         await LoadFormatsAsync(ct);
+        await LoadSalesPersonAsync(ct);
         await ResolveBusinessPartnerFromFileAsync(ct);
 
-        if (file is null || file.Length == 0)
+        // El archivo se guarda UNA vez en el servidor como borrador de trabajo
+        // (IGenericImportJobService, 2026-10-15) y los pasos siguientes (Confirmar,
+        // descargas) lo referencian por Input.JobId -- antes viajaba en base64 dentro de 4
+        // formularios ocultos (límite de 4 MB por campo, varios MB de ida y vuelta).
+        // Sin archivo nuevo pero con un borrador vigente: se reprocesa el mismo archivo
+        // con los parámetros nuevos (ej. cambió el formato o el vendedor).
+        byte[] bytes;
+        if (file is { Length: > 0 })
+        {
+            using var stream = file.OpenReadStream();
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, ct);
+            bytes = buffer.ToArray();
+            Input.JobId = await _jobs.CreateDraftAsync(BuildParameters(), file.FileName, bytes, ct);
+        }
+        else if (Input.JobId is { } existingJob && await _jobs.GetFileAsync(existingJob, ct) is { Length: > 0 } existingBytes)
+        {
+            bytes = existingBytes;
+            await _jobs.UpdateDraftParametersAsync(existingJob, BuildParameters(), ct);
+        }
+        else
         {
             ModelState.AddModelError(string.Empty, "Elegí un archivo antes de procesar.");
             return Page();
         }
 
-        using var stream = file.OpenReadStream();
-        using var buffer = new MemoryStream();
-        await stream.CopyToAsync(buffer, ct);
-        var bytes = buffer.ToArray();
-        Input.Base64File = Convert.ToBase64String(bytes);
-
-        // El <form> de "Procesar" ya trae su propio <input hidden asp-for="Input.Base64File">
-        // (vacío en el primer ingreso), así que el binder dejó una entrada vacía en
-        // ModelState para esa clave. Los tag helpers (asp-for) priorizan el valor de
-        // ModelState sobre el del modelo al re-renderizar -- sin sacar la entrada acá, el
-        // <input hidden> de "Confirmar"/"Descargar con errores" se pinta VACÍO pese a que
-        // Input.Base64File ya tiene el archivo, y "Confirmar" falla siempre con "Volvé a
-        // procesar el archivo antes de confirmar". Mismo patrón que Account/Login.cshtml.cs.
-        ModelState.Remove($"{nameof(Input)}.{nameof(Input.Base64File)}");
+        // Los tag helpers (asp-for) priorizan el valor de ModelState sobre el del modelo al
+        // re-renderizar -- sin sacar la entrada, los <input hidden> de JobId quedarían con
+        // el valor viejo del POST. Mismo patrón que Account/Login.cshtml.cs.
+        ModelState.Remove($"{nameof(Input)}.{nameof(Input.JobId)}");
 
         var parameters = BuildParameters();
         using var processStream = new MemoryStream(bytes);
@@ -244,76 +342,45 @@ public sealed class IndexModel : PageModelBaseAdmin
     }
 
     /// <summary>
-    /// Devuelve JSON (no Page()) -- este handler se llama por fetch, nunca por un
-    /// submit de formulario tradicional (ver Index.cshtml, btnConfirmar). Reprocesa el
-    /// archivo (mismo criterio que antes: el archivo no queda en sesión de servidor)
-    /// para obtener GenericImportDocumentDto con los DocumentLineType/valores ya
-    /// resueltos, y recién ahí llama CreateDocumentsAsync con el jobId que generó el
-    /// cliente -- ese mismo jobId es la clave que OnGetProgressAsync consulta por
-    /// polling mientras este método sigue corriendo.
+    /// "Confirmar creación en SAP" (2026-10-15): ya NO crea los pedidos dentro de esta
+    /// petición -- deja el trabajo en la cola (IGenericImportJobService.EnqueueAsync) y
+    /// responde al instante con su Id. La creación la hace GenericImportJobWorker en
+    /// segundo plano: cerrar la pestaña, perder la conexión o un timeout del proxy ya no la
+    /// cortan a mitad. La pantalla sigue el avance por polling (OnGetProgressAsync) y el
+    /// resultado queda en "Mis importaciones"; la campana avisa al terminar. Siempre JSON,
+    /// también en error (el cliente lo muestra tal cual).
     /// </summary>
-    public async Task<JsonResult> OnPostConfirmAsync(string jobId, CancellationToken ct)
+    public async Task<JsonResult> OnPostConfirmAsync(CancellationToken ct)
     {
-        // Try/catch envolvente -- sin esto, cualquier excepción no prevista acá (ej. el
-        // reprocesado del archivo, no la creación en SAP en sí, que ya se captura por
-        // documento en CreateDocumentsAsync) caía en UseExceptionHandler("/Error")
-        // (Program.cs), que devuelve una página HTML, no JSON. El cliente (Index.cshtml,
-        // btnConfirmar) espera JSON siempre -- al recibir HTML, respuesta.json() tira una
-        // excepción de parseo que el fetch().catch() atrapa junto con los errores de red
-        // reales, mostrando siempre el mismo mensaje genérico "revisá la conexión" sin
-        // importar cuál haya sido el error real (ej. SAP inaccesible, archivo corrupto,
-        // token antiforgery vencido). Se devuelve acá el mensaje real en JSON para que
-        // mostrarResultado() lo despliegue de verdad.
         try
         {
-            var parameters = BuildParameters();
-
-            if (string.IsNullOrEmpty(Input.Base64File))
+            if (Input.JobId is not { } jobId)
             {
-                return new JsonResult(new GenericImportProgressDto("Volvé a procesar el archivo antes de confirmar.", 0, 0, false, null, true))
-                {
-                    StatusCode = StatusCodes.Status400BadRequest,
-                };
+                return new JsonResult(new { Message = "Volvé a procesar el archivo antes de confirmar." }) { StatusCode = StatusCodes.Status400BadRequest };
             }
 
-            var bytes = Convert.FromBase64String(Input.Base64File);
-            using var stream = new MemoryStream(bytes);
-            var preview = await _importService.ProcessFileAsync(parameters, stream, ct);
-
-            if (!preview.HasValidConfig || !preview.Documents.Any(d => d.CanCreate))
+            await _jobs.EnqueueAsync(jobId, BuildParameters(), ct);
+            return new JsonResult(new
             {
-                var blocked = new GenericImportProgressDto(
-                    preview.HasValidConfig ? "No hay documentos válidos para crear -- volvé a la vista previa." : preview.ErrorMessage ?? "Configuración inválida.",
-                    0, 0, false, null, true);
-                return new JsonResult(blocked) { StatusCode = StatusCodes.Status400BadRequest };
-            }
-
-            var result = await _importService.CreateDocumentsAsync(jobId, CurrentUser.Username, parameters, preview.Documents, ct);
-            var anyCreated = result.Results?.Any(r => r.Success) ?? false;
-            await NotifyResultAsync(result.Message,
-                result.Success ? NotificationSeverity.Success : anyCreated ? NotificationSeverity.Warning : NotificationSeverity.Danger);
-            return new JsonResult(result);
+                JobId = jobId,
+                Message = "Importación enviada: se procesa en segundo plano. Podés cerrar esta página -- el resultado queda en Mis importaciones y te avisamos en la campana.",
+                ReportUrl = $"/importacion-generica/trabajos/{jobId}",
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return new JsonResult(new { Message = ex.Message }) { StatusCode = StatusCodes.Status400BadRequest };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error no previsto al confirmar la importación (jobId {JobId}).", jobId);
-            var failed = new GenericImportProgressDto(GetErrorMessage(ex), 0, 0, false, null, true);
-            await NotifyResultAsync(failed.Message, NotificationSeverity.Danger);
-            return new JsonResult(failed) { StatusCode = StatusCodes.Status500InternalServerError };
+            _logger.LogError(ex, "Error no previsto al encolar la importación {JobId}.", Input.JobId);
+            return new JsonResult(new { Message = GetErrorMessage(ex) }) { StatusCode = StatusCodes.Status500InternalServerError };
         }
     }
 
-    /// <summary>
-    /// La creación en SAP puede tardar varios minutos -- el aviso en la campana queda
-    /// aunque el usuario haya cerrado la pestaña. Sin el ct del request a propósito: si
-    /// el cliente se desconectó, igual tiene que enterarse de cómo terminó.
-    /// </summary>
-    private Task NotifyResultAsync(string message, string severity) =>
-        _notifications.TryEnqueueAsync(CurrentUser.UserId, "Importación genérica", message, severity,
-            "/importacion-generica/importar", CancellationToken.None);
-
-    /// <summary>Consultado por polling desde el cliente mientras OnPostConfirmAsync sigue corriendo -- ver IGenericImportProgressStore.</summary>
-    public JsonResult OnGetProgressAsync(string jobId) => new(_progress.Get(jobId));
+    /// <summary>Polling de la pantalla: en vivo mientras corre y desde la base al terminar (también tras un reinicio).</summary>
+    public async Task<JsonResult> OnGetProgressAsync(Guid jobId, CancellationToken ct) =>
+        new(await _jobs.GetProgressAsync(jobId, ct));
 
     /// <summary>
     /// Búsqueda en vivo del Socio de negocio -- mismo modelo que Cliente/Proveedor en
@@ -345,23 +412,25 @@ public sealed class IndexModel : PageModelBaseAdmin
         return new JsonResult(customers.Select(c => new { c.CardCode, c.CardName }));
     }
 
-    // POST porque el archivo (Input.Base64File) puede superar el límite práctico de una
+    // POST porque el archivo (se descarga por POST, no GET) -- el Id del trabajo viaja en el body; mismo
     // URL en GET -- mismo motivo que OnPostConfirmAsync. Reprocesa el archivo (mismo
     // criterio: no queda en sesión de servidor) para tener la bitácora de errores de
     // cada fila antes de generar el .xlsx.
     public async Task<IActionResult> OnPostDownloadWithErrorsAsync(CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(Input.Base64File))
+        var jobFile = Input.JobId is { } downloadJobId ? await _jobs.GetFileAsync(downloadJobId, ct) : null;
+        if (jobFile is null)
         {
             ModelState.AddModelError(string.Empty, "Volvé a procesar el archivo antes de descargar.");
             await LoadCreatableDocumentTypesAsync(ct);
             await LoadFormatsAsync(ct);
+            await LoadSalesPersonAsync(ct);
             await ResolveBusinessPartnerFromFileAsync(ct);
             return Page();
         }
 
         var parameters = BuildParameters();
-        var bytes = Convert.FromBase64String(Input.Base64File);
+        var bytes = jobFile;
         using var stream = new MemoryStream(bytes);
         var preview = await _importService.ProcessFileAsync(parameters, stream, ct);
 
@@ -375,17 +444,19 @@ public sealed class IndexModel : PageModelBaseAdmin
     // el archivo, mismo criterio que OnPostDownloadWithErrorsAsync.
     public async Task<IActionResult> OnPostDownloadValidationReportAsync(CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(Input.Base64File))
+        var jobFile = Input.JobId is { } downloadJobId ? await _jobs.GetFileAsync(downloadJobId, ct) : null;
+        if (jobFile is null)
         {
             ModelState.AddModelError(string.Empty, "Volvé a procesar el archivo antes de descargar el reporte.");
             await LoadCreatableDocumentTypesAsync(ct);
             await LoadFormatsAsync(ct);
+            await LoadSalesPersonAsync(ct);
             await ResolveBusinessPartnerFromFileAsync(ct);
             return Page();
         }
 
         var parameters = BuildParameters();
-        var bytes = Convert.FromBase64String(Input.Base64File);
+        var bytes = jobFile;
         using var stream = new MemoryStream(bytes);
         var preview = await _importService.ProcessFileAsync(parameters, stream, ct);
 
@@ -434,7 +505,8 @@ public sealed class IndexModel : PageModelBaseAdmin
         };
 
         return new GenericImportParametersDto(Input.Module, documentType ?? string.Empty,
-            Input.LineType, Input.BusinessPartnerCardCode, Input.ConfigId);
+            Input.LineType, Input.BusinessPartnerCardCode, Input.ConfigId,
+            Input.Module == GenericImportModule.Sales ? Input.SalesPersonCode : null);
     }
 
     private async Task LoadCreatableDocumentTypesAsync(CancellationToken ct)
@@ -495,6 +567,10 @@ public sealed class IndexModel : PageModelBaseAdmin
         [Display(Name = "Formato")]
         public int? ConfigId { get; set; }
 
-        public string? Base64File { get; set; }
+        [Display(Name = "Vendedor")]
+        public int? SalesPersonCode { get; set; }
+
+        /// <summary>Trabajo (borrador) con el archivo ya guardado en el servidor -- ver IGenericImportJobService.</summary>
+        public Guid? JobId { get; set; }
     }
 }

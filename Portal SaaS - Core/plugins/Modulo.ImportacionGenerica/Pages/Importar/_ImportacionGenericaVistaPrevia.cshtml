@@ -17,6 +17,16 @@
     var etiquetaSocio = Model.Input.Module == GenericImportModule.Purchase ? "Proveedor" : "Cliente";
     var rows = result.Documents.SelectMany(d => d.Rows).OrderBy(r => r.RowNumber).ToList();
 
+    // Vista liviana para archivos grandes (2026-10-15): con miles de líneas la página
+    // pesaba varios MB y el navegador quedaba lento. Sobre LimiteVista líneas el detalle
+    // dibuja solo las que tienen observaciones (o stock incompleto) y cada grilla corta
+    // en LimiteVista filas -- el Excel de validación sigue trayendo el 100%.
+    const int LimiteVista = 1000;
+    bool ConObservaciones(GenericImportRowDto r) => r.Issues.Count > 0 || (r.FulfillableQuantity is { } fq && fq < (r.Quantity ?? 0m));
+    var vistaReducida = rows.Count > LimiteVista;
+    var filasDetalleTodas = vistaReducida ? rows.Where(ConObservaciones).ToList() : rows;
+    var filasDetalle = filasDetalleTodas.Take(LimiteVista).ToList();
+
     string Num(decimal? value) => value is { } v ? v.ToString("#,##0.##") : "";
     string Pct(decimal? value) => value is { } v ? v.ToString("0.##") + "%" : "—";
     bool Has(GenericImportRowDto row, GenericImportIssueCategory category) => row.Issues.Any(i => i.Category == category);
@@ -91,6 +101,10 @@
                         <th>N° referencia</th>
                         <th>@etiquetaSocio</th>
                         <th>Sucursal</th>
+                        @if (Model.Input.Module == GenericImportModule.Sales)
+                        {
+                            <th>Vendedor</th>
+                        }
                         <th class="text-end">Líneas</th>
                         <th class="text-end">Unidades</th>
                         @if (!esInventario)
@@ -113,6 +127,10 @@
                             <td>@order.CustomerReferenceNumber</td>
                             <td>@order.BusinessPartnerCardCode @(order.BusinessPartnerName is { } n ? $"— {n}" : (Model.BusinessPartnerName is { } wn ? $"— {wn}" : ""))</td>
                             <td>@order.Branches</td>
+                            @if (Model.Input.Module == GenericImportModule.Sales)
+                            {
+                                <td class="text-nowrap @(order.SalesEmployee is null ? "import-cell-warning" : "")">@(order.SalesEmployee ?? "Sin vendedor")</td>
+                            }
                             <td class="text-end">@order.Lines</td>
                             <td class="text-end">@Num(order.Units)</td>
                             @if (!esInventario)
@@ -131,6 +149,10 @@
                 <tfoot>
                     <tr>
                         <td>TOTAL</td><td></td><td></td><td></td>
+                        @if (Model.Input.Module == GenericImportModule.Sales)
+                        {
+                            <td></td>
+                        }
                         <td class="text-end">@totals.Lines</td>
                         <td class="text-end">@Num(totals.Units)</td>
                         @if (!esInventario)
@@ -150,6 +172,13 @@
 
         <div class="import-grid-header">
             <strong>Detalle de líneas</strong>
+            @if (vistaReducida)
+            {
+                <span class="text-muted small">
+                    Archivo grande (@rows.Count líneas): se muestran @filasDetalle.Count de las @filasDetalleTodas.Count líneas con observaciones.
+                    El detalle completo está en "Descargar reporte de validación"; los totales del pie son del archivo completo.
+                </span>
+            }
             <div class="d-flex gap-2 align-items-center">
                 <select class="form-select form-select-sm" id="import-filtro-oc" style="width:auto">
                     <option value="">Todas las OC</option>
@@ -195,7 +224,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var row in rows)
+                    @foreach (var row in filasDetalle)
                     {
                         var codigoArchivo = row.RawValues.GetValueOrDefault(GenericImportLogicalField.ItemCode);
                         var descripcion = row.ItemName ?? row.Description ?? row.RawValues.GetValueOrDefault(GenericImportLogicalField.Description);
@@ -332,7 +361,7 @@
                                 <tr><th>Fila</th><th>OC</th><th>Código SAP</th><th>Descripción</th><th class="text-end">Unid.</th><th class="text-end">$ P. OC</th><th class="text-end">$ P. SAP</th><th class="text-end">Diferencia</th><th class="text-end">Dif. %</th><th>Estado</th></tr>
                             </thead>
                             <tbody>
-                                @foreach (var p in analysis.PriceComparisons)
+                                @foreach (var p in analysis.PriceComparisons.Take(LimiteVista))
                                 {
                                     <tr class="@(p.OutOfTolerance ? "table-danger" : "")">
                                         <td>@p.RowNumber</td><td class="text-nowrap">@p.GroupingKey</td><td class="text-nowrap">@p.ItemCode</td><td>@p.Description</td>
@@ -360,7 +389,7 @@
                     <table class="table table-sm document-list-table import-grid" id="import-grid-cumplimiento">
                         <thead><tr><th>Código SAP</th><th>Descripción</th><th>Almacén</th><th class="text-end">Unid. OC</th><th class="text-end">Stock disp.</th><th class="text-end">Unid. cubiertas</th><th class="text-end">% cump.</th></tr></thead>
                         <tbody>
-                            @foreach (var f in analysis.Fulfillment)
+                            @foreach (var f in analysis.Fulfillment.Take(LimiteVista))
                             {
                                 var clase = f.FulfillmentPercent >= 100m ? "" : f.FulfillmentPercent == 0m ? "import-cell-error" : "import-cell-warning";
                                 <tr>
@@ -464,42 +493,72 @@
             filtroObs.addEventListener('change', aplicarFiltro);
         }
 
-        // "Copiar": la grilla visible (encabezado + filas visibles + totales) como texto
-        // separado por tabuladores -- se pega directo en Excel con sus columnas.
-        document.querySelectorAll('[data-copy-table]').forEach(function (boton) {
-            boton.addEventListener('click', function () {
-                var origen = document.getElementById(boton.dataset.copyTable);
-                if (!origen) {
-                    return;
-                }
+        // "Copiar" / "Descargar CSV": la grilla visible (encabezado + filas visibles +
+        // totales). Delegado en document (una sola vez) para que también funcione en las
+        // grillas que se arman después por JS (reporte final de la confirmación).
+        if (!window.importGridActionsWired) {
+            window.importGridActionsWired = true;
+
+            var textoDeGrilla = function (tabla, separador) {
                 var lineas = [];
-                origen.querySelectorAll('tr').forEach(function (fila) {
+                tabla.querySelectorAll('tr').forEach(function (fila) {
                     if (fila.style.display === 'none') {
                         return;
                     }
                     var celdas = Array.prototype.map.call(fila.querySelectorAll('th,td'), function (celda) {
-                        return celda.innerText.replace(/\s+/g, ' ').trim();
+                        var texto = celda.innerText.replace(/\s+/g, ' ').trim();
+                        return separador === ';' && /[;"]/.test(texto) ? '"' + texto.replace(/"/g, '""') + '"' : texto;
                     });
-                    lineas.push(celdas.join('\t'));
+                    lineas.push(celdas.join(separador));
                 });
-                var texto = lineas.join('\n');
-                var listo = function () {
-                    var original = boton.textContent;
-                    boton.textContent = 'Copiado ✔';
-                    setTimeout(function () { boton.textContent = original; }, 1500);
-                };
-                if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(texto).then(listo);
-                } else {
-                    var area = document.createElement('textarea');
-                    area.value = texto;
-                    document.body.appendChild(area);
-                    area.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(area);
-                    listo();
+                return lineas.join(separador === ';' ? '\r\n' : '\n');
+            };
+
+            var avisar = function (boton, texto) {
+                var original = boton.textContent;
+                boton.textContent = texto;
+                setTimeout(function () { boton.textContent = original; }, 1500);
+            };
+
+            document.addEventListener('click', function (evento) {
+                var copiar = evento.target.closest('[data-copy-table]');
+                if (copiar) {
+                    var tabla = document.getElementById(copiar.dataset.copyTable);
+                    if (!tabla) {
+                        return;
+                    }
+                    var texto = textoDeGrilla(tabla, '\t');
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(texto).then(function () { avisar(copiar, 'Copiado ✔'); });
+                    } else {
+                        var area = document.createElement('textarea');
+                        area.value = texto;
+                        document.body.appendChild(area);
+                        area.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(area);
+                        avisar(copiar, 'Copiado ✔');
+                    }
+                    return;
+                }
+
+                // CSV con ";" y BOM UTF-8 -- Excel en español lo abre con columnas y tildes bien.
+                var csv = evento.target.closest('[data-csv-table]');
+                if (csv) {
+                    var tablaCsv = document.getElementById(csv.dataset.csvTable);
+                    if (!tablaCsv) {
+                        return;
+                    }
+                    var blob = new Blob(['\ufeff' + textoDeGrilla(tablaCsv, ';')], { type: 'text/csv;charset=utf-8' });
+                    var enlace = document.createElement('a');
+                    enlace.href = URL.createObjectURL(blob);
+                    enlace.download = (csv.dataset.csvName || 'reporte') + '.csv';
+                    document.body.appendChild(enlace);
+                    enlace.click();
+                    document.body.removeChild(enlace);
+                    URL.revokeObjectURL(enlace.href);
                 }
             });
-        });
+        }
     })();
 </script>

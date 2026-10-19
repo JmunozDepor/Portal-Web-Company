@@ -29,6 +29,12 @@ internal sealed class SapPurchaseDocumentHeader
     public string CardCode { get; set; } = null!;
     public string? CardName { get; set; }
 
+    /// <summary>OSLP.SlpCode -- Comprador. Null omite el campo, SAP usa el del proveedor.</summary>
+    public int? SalesPersonCode { get; set; }
+
+    /// <summary>OCRN.CurrCode -- null omite el campo, SAP usa la moneda del proveedor/local.</summary>
+    public string? DocCurrency { get; set; }
+
     /// <summary>NNM1.Series -- null omite el campo del JSON, SAP asigna la serie por defecto del tipo de documento.</summary>
     public int? Series { get; set; }
 
@@ -39,6 +45,10 @@ internal sealed class SapPurchaseDocumentHeader
     public DateTime? TaxDate { get; set; }
     public string? NumAtCard { get; set; }
     public decimal? DocTotal { get; set; }
+
+    /// <summary>Total en moneda extranjera (0 si el documento está en moneda local) -- solo lectura.</summary>
+    public decimal? DocTotalFc { get; set; }
+
     public string? DocumentStatus { get; set; }
     public List<SapPurchaseDocumentLine> DocumentLines { get; set; } = [];
     public string? U_PortalUser { get; set; }
@@ -60,6 +70,9 @@ internal sealed class SapPurchaseDocumentLine
 
     /// <summary>Null = omitido del JSON -- SAP asigna el precio de la lista propia del proveedor.</summary>
     public decimal? UnitPrice { get; set; }
+
+    /// <summary>Moneda de UnitPrice -- null omite el campo (moneda del documento).</summary>
+    public string? Currency { get; set; }
 
     public decimal DiscountPercent { get; set; }
 

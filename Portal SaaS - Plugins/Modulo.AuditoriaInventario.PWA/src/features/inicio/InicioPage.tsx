@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TopBar } from '../../components/TopBar';
 import { getSesiones, getCapturaTotalsBySesionIds } from '../../db/repositories';
-import { NuevaSesionForm } from '../sesiones/NuevaSesionForm';
+import { TareasDisponiblesPanel } from '../sesiones/TareasDisponiblesPanel';
 import type { SesionRow } from '../../db/schema';
 
-export function InicioPage({ onMenuClick }: { onMenuClick: () => void }) {
+export function InicioPage({ token, onMenuClick }: { token: string; onMenuClick: () => void }) {
   const [sesiones, setSesiones] = useState<SesionRow[]>([]);
   const [totales, setTotales] = useState<Record<string, number>>({});
   const [showForm, setShowForm] = useState(false);
@@ -28,13 +28,14 @@ export function InicioPage({ onMenuClick }: { onMenuClick: () => void }) {
           <h1>Conteos disponibles</h1>
           {!showForm && (
             <button className="btn btn--ghost" onClick={() => setShowForm(true)}>
-              Nueva sesión
+              Sumarme a una tarea
             </button>
           )}
         </div>
         {showForm && (
-          <NuevaSesionForm
-            onCreated={() => {
+          <TareasDisponiblesPanel
+            token={token}
+            onUnido={() => {
               setShowForm(false);
               reload();
             }}

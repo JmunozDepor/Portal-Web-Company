@@ -40,7 +40,10 @@ public sealed class SupplierCatalogService : ISupplierCatalogService
         return results.FirstOrDefault();
     }
 
-    public async Task<IReadOnlyDictionary<string, bool>> GetActiveStatusAsync(IReadOnlyList<string> cardCodes, CancellationToken ct = default)
+    public Task<IReadOnlyDictionary<string, bool>> GetActiveStatusAsync(IReadOnlyList<string> cardCodes, CancellationToken ct = default) =>
+        CatalogSqlHelper.InChunksAsync(cardCodes, chunk => GetActiveStatusChunkAsync(chunk.ToList(), ct), StringComparer.OrdinalIgnoreCase);
+
+    private async Task<IReadOnlyDictionary<string, bool>> GetActiveStatusChunkAsync(IReadOnlyList<string> cardCodes, CancellationToken ct = default)
     {
         if (cardCodes.Count == 0)
         {

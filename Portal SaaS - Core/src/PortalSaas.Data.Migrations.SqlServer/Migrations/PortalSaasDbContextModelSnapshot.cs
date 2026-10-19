@@ -301,6 +301,49 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.FormFieldLayout", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("FormKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("form_key");
+
+                    b.Property<string>("HiddenFields")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("hidden_fields");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_form_field_layouts");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_form_field_layouts_user_id");
+
+                    b.HasIndex("CompanyId", "FormKey", "UserId")
+                        .HasDatabaseName("ix_form_field_layouts_company_id_form_key_user_id");
+
+                    b.ToTable("form_field_layouts", (string)null);
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportConfig", b =>
                 {
                     b.Property<int>("Id")
@@ -315,6 +358,10 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("alias");
+
+                    b.Property<bool>("AnalyzeStock")
+                        .HasColumnType("bit")
+                        .HasColumnName("analyze_stock");
 
                     b.Property<string>("BusinessPartnerCardCode")
                         .HasMaxLength(15)
@@ -368,9 +415,30 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("price_source");
 
+                    b.Property<int?>("SalesPersonCode")
+                        .HasColumnType("int")
+                        .HasColumnName("sales_person_code");
+
+                    b.Property<string>("SalesPersonMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("sales_person_mode");
+
                     b.Property<int?>("SystemPriceListCode")
                         .HasColumnType("int")
                         .HasColumnName("system_price_list_code");
+
+                    b.Property<string>("WarehouseSource")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("warehouse_source");
+
+                    b.Property<string>("WarehouseUserField")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("warehouse_user_field");
 
                     b.HasKey("Id")
                         .HasName("pk_generic_import_configs");
@@ -430,6 +498,145 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasDatabaseName("ix_generic_import_config_fields_user_field_id");
 
                     b.ToTable("generic_import_config_fields", (string)null);
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BusinessPartnerCardCode")
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)")
+                        .HasColumnName("business_partner_card_code");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<int?>("ConfigId")
+                        .HasColumnType("int")
+                        .HasColumnName("config_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("document_type");
+
+                    b.Property<int>("DocumentsCreated")
+                        .HasColumnType("int")
+                        .HasColumnName("documents_created");
+
+                    b.Property<int>("DocumentsFailed")
+                        .HasColumnType("int")
+                        .HasColumnName("documents_failed");
+
+                    b.Property<int>("DocumentsSkipped")
+                        .HasColumnType("int")
+                        .HasColumnName("documents_skipped");
+
+                    b.Property<byte[]>("FileContent")
+                        .HasColumnType("varbinary(max)")
+                        .HasColumnName("file_content");
+
+                    b.Property<string>("FileHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("file_hash");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)")
+                        .HasColumnName("file_name");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("LineType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("line_type");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("module");
+
+                    b.Property<int>("ProgressCurrent")
+                        .HasColumnType("int")
+                        .HasColumnName("progress_current");
+
+                    b.Property<string>("ProgressMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("progress_message");
+
+                    b.Property<int>("ProgressTotal")
+                        .HasColumnType("int")
+                        .HasColumnName("progress_total");
+
+                    b.Property<DateTimeOffset?>("QueuedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("queued_at");
+
+                    b.Property<string>("ResultJson")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("result_json");
+
+                    b.Property<string>("ResultMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("result_message");
+
+                    b.Property<int?>("SalesPersonCode")
+                        .HasColumnType("int")
+                        .HasColumnName("sales_person_code");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id")
+                        .HasName("pk_generic_import_jobs");
+
+                    b.HasIndex("CompanyId", "CreatedAt")
+                        .HasDatabaseName("ix_generic_import_jobs_company_id_created_at");
+
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_generic_import_jobs_status_created_at");
+
+                    b.ToTable("generic_import_jobs", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_generic_import_jobs_status", "status in ('Draft', 'Queued', 'Running', 'Completed', 'Failed')");
+                        });
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportUserField", b =>
@@ -2099,6 +2306,26 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.Navigation("Organization");
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.FormFieldLayout", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_form_field_layouts_companies_company_id");
+
+                    b.HasOne("PortalSaas.Data.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_form_field_layouts_users_user_id");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportConfig", b =>
                 {
                     b.HasOne("PortalSaas.Data.Entities.Company", "Company")
@@ -2129,6 +2356,18 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.Navigation("Config");
 
                     b.Navigation("UserField");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportJob", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_generic_import_jobs_companies_company_id");
+
+                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.GenericImportUserField", b =>

@@ -1,0 +1,75 @@
+@page "/organizacion/formularios"
+@using PortalSaas.Abstractions.Componentes
+@model Modulo.Administracion.Pages.Formularios.IndexModel
+@{
+    ViewData["Title"] = "Formularios";
+}
+@* Patrón ListadoOrganizacion: selector de compañía de solo lectura (GET ?companyId=) +
+   una tarjeta por formulario genérico, con los campos ocultables agrupados por sección. *@
+
+<div class="card-surface">
+    <h2 class="mb-1">Formularios</h2>
+    <p class="text-muted mb-3">
+        Campos que ven por defecto todos los usuarios en los documentos de venta, compra e
+        inventario de cada compañía. Desmarcá los que tu empresa no usa. Cada usuario puede
+        después ajustar su propia vista desde <strong>Personalizar</strong> en el documento,
+        o volver a esta versión. Los campos obligatorios no aparecen acá: siempre se muestran.
+    </p>
+
+@if (Model.MensajeExito is not null)
+{
+    <div class="alert alert-success">@Model.MensajeExito</div>
+}
+@if (Model.MensajeError is not null)
+{
+    <div class="alert alert-danger">@Model.MensajeError</div>
+}
+
+@if (Model.Companies.Count == 0)
+{
+    <p class="text-muted">Tu organización todavía no tiene ninguna compañía configurada.</p>
+}
+else
+{
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label">Compañía</label>
+            <select name="companyId" class="form-select" onchange="this.form.submit()">
+                @foreach (var company in Model.Companies)
+                {
+                    <option value="@company.Id" selected="@(company.Id == Model.CompanyId)">@company.Code — @company.Name</option>
+                }
+            </select>
+        </div>
+    </form>
+
+    <div class="form-layout-admin-grid">
+        @foreach (var form in DocumentFormFieldCatalog.Forms)
+        {
+            var hidden = Model.BaseHidden.TryGetValue(form.Key, out var h) ? h : [];
+            <form method="post" class="form-layout-admin-card" asp-antiforgery="true">
+                <input type="hidden" name="companyId" value="@Model.CompanyId" />
+                <input type="hidden" name="formKey" value="@form.Key" />
+                <div class="form-layout-admin-header">
+                    <strong>@form.Name</strong>
+                    <span class="text-muted">@(form.Fields.Count - hidden.Count) de @form.Fields.Count visibles</span>
+                </div>
+                @foreach (var fieldGroup in form.Fields.GroupBy(f => f.Section))
+                {
+                    <div class="doc-form-layout-section">@fieldGroup.Key</div>
+                    @foreach (var field in fieldGroup)
+                    {
+                        <label class="doc-form-layout-option">
+                            <input type="checkbox" class="form-check-input" name="visible" value="@field.Key" checked="@(!hidden.Contains(field.Key))" />
+                            <span>@field.Label</span>
+                        </label>
+                    }
+                }
+                <div class="mt-2">
+                    <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+                </div>
+            </form>
+        }
+    </div>
+}
+</div>

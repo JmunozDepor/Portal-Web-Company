@@ -68,6 +68,14 @@ public sealed record GenericImportRowDto
     /// </summary>
     public decimal? FulfillableQuantity { get; init; }
 
+    /// <summary>
+    /// Vendedor (OSLP.SlpCode) con que se va a crear el documento -- solo Venta. Resuelto en
+    /// el análisis según el modo del formato (GenericImportSalesPersonMode): fijo, el elegido
+    /// al importar (multivendedor) o el del socio. La creación usa este mismo valor.
+    /// </summary>
+    public int? SalesEmployeeCode { get; init; }
+    public string? SalesEmployeeName { get; init; }
+
     /// <summary>Hallazgos con categoría -- Errors/Warnings siguen existiendo (texto plano) para no romper los consumidores previos.</summary>
     public IReadOnlyList<GenericImportIssueDto> Issues { get; init; } = [];
 

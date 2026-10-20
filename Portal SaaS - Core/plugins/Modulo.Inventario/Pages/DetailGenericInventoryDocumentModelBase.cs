@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -87,7 +88,7 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
 
     public DocumentFormViewModel Document { get; private set; } = null!;
 
-    public async Task<IActionResult> OnGetAsync(string id, CancellationToken ct)
+    public async Task<IActionResult> OnGetAsync(string id, [FromQuery(Name = "draft")] Guid? draft, CancellationToken ct)
     {
         IsNew = id == NewId;
 
@@ -109,6 +110,25 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
                 DocDate = DateOnly.FromDateTime(DateTime.Today),
                 Series = null,
             };
+
+            if (draft is { } draftId)
+            {
+                var loaded = await Drafts.GetAsync(draftId, ct);
+                if (loaded is null || loaded.Engine != DraftEngine || loaded.DocumentType != Type.ToString())
+                {
+                    return NotFound();
+                }
+
+                // Ya enviado: se abre el documento real de SAP, no un formulario editable.
+                if (loaded.Status == DocumentDraftStatus.Sent && loaded.SapDocEntry is { } sentEntry)
+                {
+                    return RedirectToPage(new { id = sentEntry.ToString() });
+                }
+
+                Input = JsonSerializer.Deserialize<InputModel>(loaded.PayloadJson) ?? Input;
+                DraftId = loaded.Id;
+                DraftReason = loaded.Reason;
+            }
         }
         else
         {
@@ -162,6 +182,20 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         if (!await _currentUser.HasActionAsync(MenuCode, PortalActions.Create, ct) || !await _documents.CanCreateAsync(Type, ct))
         {
             return Forbid();
+        }
+
+        // Enviar un borrador: primero se guarda lo editado, así no se pierde aunque después
+        // falle la validación o SAP lo rechace.
+        if (DraftId is not null && !_validateOnly)
+        {
+            try
+            {
+                await SaveDraftAsync(ct);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return await PageWithErrorAsync(ex.Message, ct);
+            }
         }
 
         Input.Lines = Input.Lines.Where(line => !string.IsNullOrWhiteSpace(line.ItemCode)).ToList();
@@ -222,13 +256,47 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
             BusinessPartnerCardCode: string.IsNullOrWhiteSpace(Input.CustomerCardCode) ? null : Input.CustomerCardCode,
             CustomerReferenceNumber: Input.CustomerReferenceNumber);
 
+        if (_validateOnly)
+        {
+            return await SimulateAsync(document, ct);
+        }
+
+        var sendingDraft = false;
         try
         {
+            if (DraftId is { } draftToSend)
+            {
+                if (!await Drafts.TryBeginSendAsync(draftToSend, ct))
+                {
+                    return await PageWithErrorAsync("Este borrador ya fue enviado o lo está enviando otro usuario.", ct);
+                }
+
+                sendingDraft = true;
+            }
+
             var docEntry = await _documents.CreateAsync(Type, _currentUser.Username, document, ct);
+            if (sendingDraft)
+            {
+                try
+                {
+                    await Drafts.MarkSentAsync(DraftId!.Value, docEntry, $"{Request.PathBase}{RouteBase}/{docEntry}", ct);
+                }
+                catch (Exception)
+                {
+                    // El documento YA existe en SAP: nunca convertir esto en error ni dejar
+                    // reintentar como si no se hubiera creado. El borrador queda "Enviando".
+                }
+            }
+
             return RedirectToPage(new { id = docEntry.ToString() });
         }
         catch (Exception ex)
         {
+            if (sendingDraft)
+            {
+                await Drafts.MarkErrorAsync(DraftId!.Value, ex.Message, CancellationToken.None);
+            }
+
             ModelState.AddModelError(string.Empty, $"No se pudo crear el documento: {ex.Message}");
             await LoadCatalogsAsync(ct);
             BuildDocumentViewModel();
@@ -406,6 +474,132 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
         public string? Currency { get; set; }
     }
 
+    // ---- Borradores (2026-10-20) -- ver IDocumentDraftService y
+    // docs/superpowers/plans/2026-10-20-borradores-documentos.md. Guardar no valida nada
+    // (un borrador puede estar incompleto); "Validar" corre las mismas reglas que crear +
+    // una simulación contra SAP sin crear; "Enviar a SAP" es el mismo OnPostAsync con
+    // DraftId (guarda, valida, crea y marca el borrador como enviado).
+    private const string DraftEngine = DocumentDraftEngine.Inventory;
+
+    private bool _validateOnly;
+
+    [BindProperty]
+    public Guid? DraftId { get; set; }
+
+    [BindProperty]
+    public string? DraftReason { get; set; }
+
+    /// <summary>Borrador abierto (para el panel: creador, fechas, último error).</summary>
+    public DocumentDraftDto? OpenDraft { get; private set; }
+
+    private IDocumentDraftService Drafts => HttpContext.RequestServices.GetRequiredService<IDocumentDraftService>();
+
+    public async Task<IActionResult> OnPostSaveDraftAsync(CancellationToken ct)
+    {
+        IsNew = true;
+        if (!await CanCreateDocumentAsync(ct))
+        {
+            return Forbid();
+        }
+
+        ModelState.Clear();
+        try
+        {
+            DraftId = await SaveDraftAsync(ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return await PageWithErrorAsync(ex.Message, ct);
+        }
+
+        TempData["DocumentActionMessage"] = "Borrador guardado. Lo encontrás en el listado, pestaña Borradores.";
+        TempData["DocumentActionMessageType"] = "alert-success";
+        return RedirectToPage(new { id = NewId, draft = DraftId });
+    }
+
+    public Task<IActionResult> OnPostValidateDraftAsync(CancellationToken ct)
+    {
+        _validateOnly = true;
+        return OnPostAsync(ct);
+    }
+
+    public async Task<IActionResult> OnPostDeleteDraftAsync(CancellationToken ct)
+    {
+        if (!await CanCreateDocumentAsync(ct))
+        {
+            return Forbid();
+        }
+
+        var listUrl = $"{Request.PathBase}{RouteBase}?view=borradores";
+        if (DraftId is { } id)
+        {
+            try
+            {
+                await Drafts.DeleteAsync(id, listUrl, ct);
+            }
+            catch (InvalidOperationException ex)
+            {
+                IsNew = true;
+                return await PageWithErrorAsync(ex.Message, ct);
+            }
+        }
+
+        return Redirect(listUrl);
+    }
+
+    private async Task<bool> CanCreateDocumentAsync(CancellationToken ct) =>
+        await _currentUser.HasActionAsync(MenuCode, PortalActions.Create, ct) && await _documents.CanCreateAsync(Type, ct);
+
+    private async Task<Guid> SaveDraftAsync(CancellationToken ct)
+    {
+        var reason = DraftReason;
+        if (string.IsNullOrWhiteSpace(reason) && DraftId is { } existing)
+        {
+            reason = (await Drafts.GetAsync(existing, ct))?.Reason;
+        }
+
+        // Filas totalmente vacías no se guardan (las "+ Agregar línea" sin tocar).
+        Input.Lines = Input.Lines.Where(l => !string.IsNullOrWhiteSpace(l.ItemCode) || !string.IsNullOrWhiteSpace(l.Description)).ToList();
+        return await Drafts.SaveAsync(new DocumentDraftSaveRequest(
+            DraftId, DraftEngine, Type.ToString(), reason ?? string.Empty, JsonSerializer.Serialize(Input),
+            Input.CustomerCardCode, Input.CustomerReferenceNumber, Input.DocDate, Input.Lines.Count, (decimal?)null), ct);
+    }
+
+    private async Task<IActionResult> SimulateAsync(InventoryDocumentDto document, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _documents.SimulateCreateAsync(Type, _currentUser.Username, document, ct);
+            if (result.Outcome == SapSimulationOutcome.Valid)
+            {
+                TempData["DocumentActionMessage"] = "Validación OK: stock y precio correctos y SAP aceptaría el documento (no se creó nada).";
+                TempData["DocumentActionMessageType"] = "alert-success";
+            }
+            else
+            {
+                ModelState.AddModelError(string.Empty, result.Outcome == SapSimulationOutcome.Rejected
+                    ? $"SAP rechazaría el documento: {result.Message}"
+                    : $"No se pudo confirmar con SAP: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError(string.Empty, $"No se pudo confirmar con SAP: {ex.Message}");
+        }
+
+        await LoadCatalogsAsync(ct);
+        BuildDocumentViewModel();
+        return Page();
+    }
+
+    private async Task<IActionResult> PageWithErrorAsync(string message, CancellationToken ct)
+    {
+        ModelState.AddModelError(string.Empty, message);
+        await LoadCatalogsAsync(ct);
+        BuildDocumentViewModel();
+        return Page();
+    }
+
     private const string FormLayoutKey = DocumentFormFieldCatalog.Inventory;
 
     private FormLayoutDto _formLayout = FormLayoutDto.Empty;
@@ -415,6 +609,7 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
     private async Task LoadCatalogsAsync(CancellationToken ct)
     {
         _formLayout = await FormLayouts.GetForCurrentUserAsync(FormLayoutKey, ct);
+        OpenDraft = IsNew && DraftId is { } openDraftId ? await Drafts.GetAsync(openDraftId, ct) : null;
 
         var series = await _series.ListAsync(_documents.GetSapObjectCode(Type).ToString(), ct: ct);
         Series = series.Select(s => new SelectListItem(s.SeriesName, s.SeriesCode.ToString())).ToList();
@@ -437,6 +632,10 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
             CanCancel = CanCancel,
             FormKey = FormLayoutKey,
             FormLayout = _formLayout,
+            Draft = IsNew
+                ? new DocumentDraftPanel(DraftId, DraftReason ?? OpenDraft?.Reason, OpenDraft?.Status, OpenDraft?.CreatedByUsername,
+                    OpenDraft?.CreatedAt, OpenDraft?.UpdatedByUsername, OpenDraft?.UpdatedAt, OpenDraft?.ErrorMessage)
+                : null,
         };
 
         // Consumido por _ModuloBackLink.cshtml (breadcrumb del layout) -- ver el

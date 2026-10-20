@@ -147,6 +147,58 @@
         </section>
     }
 
+    @if (Model.Draft is { } draft)
+    {
+        @* Borrador (2026-10-20, ver IDocumentDraftService): vive DENTRO del <form> de
+           creación -- "Guardar borrador"/"Validar"/"Eliminar" postean el mismo formulario
+           a otro handler (formaction). formnovalidate + .cancel: guardar un borrador NO
+           exige un documento completo (jquery-validation respeta los dos). *@
+        <section class="doc-tab-seccion doc-draft-panel">
+            <span class="doc-resumen-total-titulo">Borrador</span>
+            @if (draft.DraftId is not null)
+            {
+                <div class="doc-draft-meta">
+                    <span class="badge doc-status-badge @(draft.Status == PortalSaas.Abstractions.Contratos.DocumentDraftStatus.Error ? "bg-danger" : "bg-secondary")">
+                        @PortalSaas.Abstractions.Contratos.DocumentDraftStatus.Label(draft.Status ?? "draft")
+                    </span>
+                    <span>Creado por <strong>@draft.CreatedBy</strong> el @draft.CreatedAt?.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</span>
+                    @if (draft.UpdatedAt is not null && draft.UpdatedAt != draft.CreatedAt)
+                    {
+                        <span>· modificado por <strong>@draft.UpdatedBy</strong> el @draft.UpdatedAt?.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</span>
+                    }
+                </div>
+                @if (!string.IsNullOrWhiteSpace(draft.ErrorMessage))
+                {
+                    <div class="alert alert-danger py-1 px-2 mb-2">Último envío rechazado: @draft.ErrorMessage</div>
+                }
+                <input type="hidden" name="DraftId" value="@draft.DraftId" />
+            }
+            <div class="form-row">
+                <div class="form-group form-group-ancho-completo">
+                    <label class="form-label" for="doc-draft-reason">Motivo del borrador</label>
+                    <textarea id="doc-draft-reason" name="DraftReason" class="form-control" rows="2" maxlength="500"
+                              placeholder="Ej. esperando confirmación del cliente, corregir precios en SAP, falta stock…">@draft.Reason</textarea>
+                </div>
+            </div>
+            <div class="admin-row-actions mt-2">
+                <button type="submit" class="btn btn-outline-primary cancel" formnovalidate formaction="?handler=SaveDraft">
+                    <i class="bi bi-floppy"></i> Guardar borrador
+                </button>
+                <button type="submit" class="btn btn-outline-secondary cancel" formnovalidate formaction="?handler=ValidateDraft"
+                        title="Revisa stock, precio y lo que diría SAP, sin crear el documento">
+                    <i class="bi bi-check2-circle"></i> Validar
+                </button>
+                @if (draft.DraftId is not null)
+                {
+                    <button type="submit" class="btn btn-outline-danger cancel" formnovalidate formaction="?handler=DeleteDraft"
+                            onclick="return confirm('¿Eliminar este borrador? No se puede deshacer.');">
+                        <i class="bi bi-trash"></i> Eliminar borrador
+                    </button>
+                }
+            </div>
+        </section>
+    }
+
     @if (Model.CanClose || Model.CanCancel)
     {
         <div class="doc-tab-seccion admin-row-actions">

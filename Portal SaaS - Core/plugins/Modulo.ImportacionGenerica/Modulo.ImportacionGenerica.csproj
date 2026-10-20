@@ -24,7 +24,8 @@
     <ModuloVersion>1.0.0</ModuloVersion>
   </PropertyGroup>
 
-  <Target Name="PublicarComoPlugin" AfterTargets="Build">
+  <!-- SkipPluginPublish=true omite la copia a artifacts/ (ej. compilar tests con el Host corriendo, que bloquea los DLL). -->
+  <Target Name="PublicarComoPlugin" AfterTargets="Build" Condition="'$(SkipPluginPublish)' != 'true'">
     <ItemGroup>
       <ArchivosDelModulo Include="$(OutputPath)**\*.*" />
     </ItemGroup>

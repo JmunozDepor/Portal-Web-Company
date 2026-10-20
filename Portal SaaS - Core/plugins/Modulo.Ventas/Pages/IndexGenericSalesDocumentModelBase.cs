@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.DependencyInjection;
 using PortalSaas.Abstractions.Componentes;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
@@ -67,6 +68,11 @@ public abstract class IndexGenericSalesDocumentModelBase : PageModel
             return Forbid();
         }
 
+        if (string.Equals(View, DraftsView, StringComparison.OrdinalIgnoreCase))
+        {
+            return await OnGetDraftsAsync(ct);
+        }
+
         // Por defecto, de ayer a hoy -- portado tal cual de IndexGenericoVentaModelBase
         // (referencia-original/PortalSAP_v2): sin esto, el primer ingreso trae todo el
         // histórico de una sola vez. Rige para los 3 motores genéricos (Venta/Compra/
@@ -114,6 +120,7 @@ public abstract class IndexGenericSalesDocumentModelBase : PageModel
         Listado = new DocumentListViewModel
         {
             Title = DocumentNamePlural,
+            Tabs = await BuildTabsAsync(draftsActive: false, ct),
             Columns =
             [
                 new DocumentListColumn("Id"),
@@ -160,6 +167,99 @@ public abstract class IndexGenericSalesDocumentModelBase : PageModel
             PageSize = PageSize,
             TotalRecords = result.TotalRecords,
             HasSearched = hasSearched,
+        };
+
+        return Page();
+    }
+
+    // ---- Pestaña Borradores (2026-10-20) -- ver IDocumentDraftService. Todos los
+    // usuarios de la compañía ven todos los borradores; por defecto se muestran los
+    // propios ("creador=mios") y pendientes ("estado=pendientes").
+    private const string DraftsView = "borradores";
+
+    [BindProperty(SupportsGet = true, Name = "view")]
+    public string? View { get; set; }
+
+    [BindProperty(SupportsGet = true, Name = "creador")]
+    public string? DraftCreator { get; set; }
+
+    [BindProperty(SupportsGet = true, Name = "estado")]
+    public string? DraftStatusGroup { get; set; }
+
+    private IDocumentDraftService Drafts => HttpContext.RequestServices.GetRequiredService<IDocumentDraftService>();
+
+    private async Task<IReadOnlyList<DocumentListTab>> BuildTabsAsync(bool draftsActive, CancellationToken ct)
+    {
+        var mine = await Drafts.ListAsync(new DocumentDraftQuery(DocumentDraftEngine.Sales, Type.ToString(), OnlyMine: true, PageSize: 25), ct);
+        return
+        [
+            new DocumentListTab("Documentos SAP", $"{Request.PathBase}{RouteBase}", !draftsActive),
+            new DocumentListTab("Borradores", $"{Request.PathBase}{RouteBase}?view={DraftsView}", draftsActive, mine.TotalRecords),
+        ];
+    }
+
+    private async Task<IActionResult> OnGetDraftsAsync(CancellationToken ct)
+    {
+        var onlyMine = !string.Equals(DraftCreator, "todos", StringComparison.OrdinalIgnoreCase);
+        var statusGroup = DraftStatusGroup is "enviados" or "todos" ? DraftStatusGroup : "pendientes";
+        var result = await Drafts.ListAsync(new DocumentDraftQuery(DocumentDraftEngine.Sales, Type.ToString(), onlyMine, statusGroup,
+            PageNumber, PageSize), ct);
+
+        var canCreate = await _documents.CanCreateAsync(Type, ct) && await _currentUser.HasActionAsync(MenuCode, PortalActions.Create, ct);
+
+        Listado = new DocumentListViewModel
+        {
+            Title = $"{DocumentNamePlural} -- borradores",
+            Tabs = await BuildTabsAsync(draftsActive: true, ct),
+            Columns =
+            [
+                new DocumentListColumn("Modificado"),
+                new DocumentListColumn("Creado por"),
+                new DocumentListColumn("Socio"),
+                new DocumentListColumn("Referencia"),
+                new DocumentListColumn("Fecha doc."),
+                new DocumentListColumn("Líneas", AlignRight: true),
+                new DocumentListColumn("Total", AlignRight: true),
+                new DocumentListColumn("Motivo"),
+                new DocumentListColumn("Estado"),
+            ],
+            Rows = result.Items.Select(d => new DocumentListRow(
+                Cells:
+                [
+                    d.UpdatedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm"),
+                    d.CreatedByUsername,
+                    d.PartnerCode ?? "-",
+                    d.Reference ?? "-",
+                    d.DocDate?.ToString("yyyy-MM-dd") ?? "-",
+                    d.LineCount.ToString(),
+                    d.Total?.ToString("N0") ?? "-",
+                    d.Reason,
+                    d.Status == DocumentDraftStatus.Sent && d.SapDocEntry is not null
+                        ? $"{DocumentDraftStatus.Label(d.Status)} (DocEntry {d.SapDocEntry})"
+                        : DocumentDraftStatus.Label(d.Status),
+                ],
+                DetailUrl: d.Status == DocumentDraftStatus.Sent && d.SapDocEntry is not null
+                    ? $"{Request.PathBase}{RouteBase}/{d.SapDocEntry}"
+                    : $"{Request.PathBase}{RouteBase}/nuevo?draft={d.Id}")).ToList(),
+            Filters =
+            [
+                new DocumentListFilter("creador", "Creados por", FilterFieldType.Select, onlyMine ? "mios" : "todos",
+                    [new DocumentListFilterOption("mios", "Mis borradores"), new DocumentListFilterOption("todos", "Todos los usuarios")],
+                    AllowEmpty: false),
+                new DocumentListFilter("estado", "Estado", FilterFieldType.Select, statusGroup,
+                    [new DocumentListFilterOption("pendientes", "Pendientes"), new DocumentListFilterOption("enviados", "Enviados"),
+                        new DocumentListFilterOption("todos", "Todos")],
+                    AllowEmpty: false),
+            ],
+            HiddenFilterFields = new Dictionary<string, string> { ["view"] = DraftsView },
+            ShowFreeTextSearch = false,
+            CreateUrl = canCreate ? $"{Request.PathBase}{RouteBase}/nuevo" : null,
+            CreateDisabledTitle = canCreate ? null : $"No tenés permiso para crear {DocumentNamePlural.ToLowerInvariant()}",
+            ShowPaging = true,
+            CurrentPage = PageNumber,
+            PageSize = PageSize,
+            TotalRecords = result.TotalRecords,
+            HasSearched = true,
         };
 
         return Page();

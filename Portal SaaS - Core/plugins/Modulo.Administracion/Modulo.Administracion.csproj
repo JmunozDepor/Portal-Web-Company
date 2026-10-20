@@ -29,7 +29,8 @@
   <!-- La carpeta+nombre de DLL (Modulo.Administracion.dll bajo esta ruta) ES el
        manifiesto que PluginManager espera: no hay archivo de manifiesto aparte
        (ver PortalSaas.Core/Infraestructura/PluginManager.cs). -->
-  <Target Name="PublicarComoPlugin" AfterTargets="Build">
+  <!-- SkipPluginPublish=true omite la copia a artifacts/ (ej. compilar tests con el Host corriendo, que bloquea los DLL). -->
+  <Target Name="PublicarComoPlugin" AfterTargets="Build" Condition="'$(SkipPluginPublish)' != 'true'">
     <ItemGroup>
       <ArchivosDelModulo Include="$(OutputPath)**\*.*" />
     </ItemGroup>

@@ -45,18 +45,29 @@ public sealed class DocumentListViewModel
     public int TotalPages => PageSize <= 0 ? 1 : Math.Max(1, (int)Math.Ceiling(TotalRecords / (double)PageSize));
 
     public static readonly IReadOnlyList<int> AvailablePageSizes = [25, 50, 100];
+
+    /// <summary>Pestañas sobre la grilla (vacío = sin pestañas).</summary>
+    public IReadOnlyList<DocumentListTab> Tabs { get; init; } = [];
+
+    /// <summary>Campos ocultos del form de filtros (ej. view=borradores, para no perder la pestaña al filtrar).</summary>
+    public IReadOnlyDictionary<string, string> HiddenFilterFields { get; init; } = new Dictionary<string, string>();
 }
+
+/// <summary>Pestaña sobre la grilla (ej. "Documentos SAP | Borradores") -- navega por URL.</summary>
+public sealed record DocumentListTab(string Label, string Url, bool IsActive, int? Count = null);
 
 public sealed record DocumentListColumn(string Title, bool AlignRight = false);
 
 public sealed record DocumentListRow(IReadOnlyList<string> Cells, string DetailUrl);
 
+/// <param name="AllowEmpty">Select: false = sin la opción vacía "Todos" (el filtro siempre tiene un valor, ej. "Mis borradores").</param>
 public sealed record DocumentListFilter(
     string Name,
     string Label,
     FilterFieldType FieldType,
     string? Value = null,
-    IReadOnlyList<DocumentListFilterOption>? Options = null);
+    IReadOnlyList<DocumentListFilterOption>? Options = null,
+    bool AllowEmpty = true);
 
 public sealed record DocumentListFilterOption(string Value, string Label);
 

@@ -16,12 +16,41 @@ public sealed class IndexModel : AdminPageModelBase
 {
     private readonly IFormLayoutService _layouts;
     private readonly ITenantUserAdminService _tenant;
+    private readonly ICompanyDocumentSettingsService _documentSettings;
 
-    public IndexModel(IFormLayoutService layouts, ITenantUserAdminService tenant, ICurrentUserContext currentUser)
+    public IndexModel(IFormLayoutService layouts, ITenantUserAdminService tenant, ICompanyDocumentSettingsService documentSettings,
+        ICurrentUserContext currentUser)
         : base(currentUser)
     {
         _layouts = layouts;
         _tenant = tenant;
+        _documentSettings = documentSettings;
+    }
+
+    /// <summary>Días de retención de borradores de la compañía elegida (null = no vencen).</summary>
+    public int? DraftRetentionDays { get; private set; }
+
+    /// <summary>Parámetro de documentos por compañía -- vencimiento/limpieza de borradores (ver DocumentDraftCleanupWorker).</summary>
+    public async Task<IActionResult> OnPostRetentionAsync(Guid companyId, int? draftRetentionDays, CancellationToken ct)
+    {
+        if (!(await _tenant.ListCompaniesAsync()).Any(c => c.Id == companyId))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            await _documentSettings.SaveDraftRetentionDaysAsync(companyId, draftRetentionDays, ct);
+            MensajeExito = draftRetentionDays is > 0
+                ? $"Los borradores sin modificar por más de {draftRetentionDays} día(s) se eliminarán automáticamente."
+                : "Los borradores no vencen: quedan hasta que alguien los envíe o elimine.";
+        }
+        catch (Exception ex)
+        {
+            MensajeError = ObtenerMensajeError(ex);
+        }
+
+        return RedirectToPage(new { companyId });
     }
 
     public IReadOnlyList<CompanyOptionDto> Companies { get; private set; } = [];
@@ -49,6 +78,8 @@ public sealed class IndexModel : AdminPageModelBase
         {
             BaseHidden[form.Key] = await _layouts.GetCompanyBaseAsync(CompanyId.Value, form.Key, ct);
         }
+
+        DraftRetentionDays = await _documentSettings.GetDraftRetentionDaysAsync(CompanyId.Value, ct);
 
         return Page();
     }

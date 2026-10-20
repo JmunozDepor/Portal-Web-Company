@@ -61,6 +61,8 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<UserHomeShortcut> UserHomeShortcuts => Set<UserHomeShortcut>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<FormFieldLayout> FormFieldLayouts => Set<FormFieldLayout>();
+    public DbSet<DocumentDraft> DocumentDrafts => Set<DocumentDraft>();
+    public DbSet<CompanyDocumentSettings> CompanyDocumentSettings => Set<CompanyDocumentSettings>();
     public DbSet<IntegrationDefinition> IntegrationDefinitions => Set<IntegrationDefinition>();
     public DbSet<IntegrationFieldMapping> IntegrationFieldMappings => Set<IntegrationFieldMapping>();
     public DbSet<IntegrationRunLog> IntegrationRunLogs => Set<IntegrationRunLog>();
@@ -507,6 +509,37 @@ public sealed class PortalSaasDbContext : DbContext
             entity.HasOne(e => e.Profile).WithMany(p => p.UserMenuProfiles).HasForeignKey(e => e.ProfileId);
             // Restrict -- mismo motivo que UserMenuGroup.Company.
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DocumentDraft>(entity =>
+        {
+            entity.ToTable("document_drafts", t => t.HasCheckConstraint("ck_document_drafts_status",
+                "status in ('draft', 'sending', 'sent', 'error')"));
+            entity.Property(e => e.Engine).HasMaxLength(20);
+            entity.Property(e => e.DocumentType).HasMaxLength(60);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.Property(e => e.PartnerCode).HasMaxLength(50);
+            entity.Property(e => e.Reference).HasMaxLength(100);
+            entity.Property(e => e.Total).HasPrecision(19, 6);
+            entity.Property(e => e.CreatedByUsername).HasMaxLength(100);
+            entity.Property(e => e.UpdatedByUsername).HasMaxLength(100);
+            entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
+            entity.Property(e => e.Version).IsConcurrencyToken();
+            entity.HasIndex(e => new { e.CompanyId, e.Engine, e.DocumentType, e.Status, e.UpdatedAt });
+            entity.HasIndex(e => new { e.CompanyId, e.CreatedByUserId });
+            // Restrict -- mismo motivo que FormFieldLayout.Company; al borrar una compañía
+            // se borran antes sus borradores (Companies/Index).
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CompanyDocumentSettings>(entity =>
+        {
+            entity.ToTable("company_document_settings");
+            entity.HasKey(e => e.CompanyId);
+            entity.HasOne(e => e.Company).WithOne().HasForeignKey<CompanyDocumentSettings>(e => e.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

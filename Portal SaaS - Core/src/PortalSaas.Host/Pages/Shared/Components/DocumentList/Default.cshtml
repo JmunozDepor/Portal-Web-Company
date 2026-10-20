@@ -41,11 +41,31 @@
         }
     </div>
 
+    @if (Model.Tabs.Count > 0)
+    {
+        <nav class="doc-list-tabs" aria-label="Vistas del listado">
+            @foreach (var tab in Model.Tabs)
+            {
+                <a href="@tab.Url" class="doc-list-tab @(tab.IsActive ? "active" : "")" aria-current="@(tab.IsActive ? "page" : null)">
+                    @tab.Label
+                    @if (tab.Count is > 0)
+                    {
+                        <span class="badge bg-secondary">@tab.Count</span>
+                    }
+                </a>
+            }
+        </nav>
+    }
+
     @if (Model.ShowFreeTextSearch || Model.Filters.Count > 0 || Model.ShowPaging)
     {
     <details class="doc-list-filtros">
         <summary><i class="bi bi-funnel"></i> Filtros</summary>
         <form method="get" class="filter-card">
+            @foreach (var hidden in Model.HiddenFilterFields)
+            {
+                <input type="hidden" name="@hidden.Key" value="@hidden.Value" />
+            }
             @if (Model.ShowFreeTextSearch)
             {
                 <div class="col-auto">
@@ -67,7 +87,10 @@
                             break;
                         case FilterFieldType.Select:
                             <select name="@filter.Name" class="form-select">
-                                <option value="">Todos</option>
+                                @if (filter.AllowEmpty)
+                                {
+                                    <option value="">Todos</option>
+                                }
                                 @foreach (var option in filter.Options ?? [])
                                 {
                                     <option value="@option.Value" selected="@(option.Value == filter.Value)">@option.Label</option>

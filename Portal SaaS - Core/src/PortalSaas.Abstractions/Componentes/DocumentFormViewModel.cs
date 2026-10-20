@@ -71,4 +71,22 @@ public sealed class DocumentFormViewModel
 
     /// <summary>Campos ocultos efectivos + base de la compañía (ver IFormLayoutService).</summary>
     public Contratos.FormLayoutDto FormLayout { get; init; } = Contratos.FormLayoutDto.Empty;
+
+    /// <summary>
+    /// Panel de borrador (motivo + Guardar borrador / Validar / Eliminar) -- solo en un
+    /// documento nuevo, dentro del form de creación. Null = sin borradores. Ver
+    /// IDocumentDraftService.
+    /// </summary>
+    public DocumentDraftPanel? Draft { get; init; }
 }
+
+/// <summary>Estado del borrador abierto (DraftId null = documento nuevo todavía sin guardar como borrador).</summary>
+public sealed record DocumentDraftPanel(
+    Guid? DraftId,
+    string? Reason,
+    string? Status = null,
+    string? CreatedBy = null,
+    DateTimeOffset? CreatedAt = null,
+    string? UpdatedBy = null,
+    DateTimeOffset? UpdatedAt = null,
+    string? ErrorMessage = null);

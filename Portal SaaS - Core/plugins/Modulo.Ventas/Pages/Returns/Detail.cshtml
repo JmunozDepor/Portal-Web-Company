@@ -9,7 +9,7 @@
     <form method="post">
         <div asp-validation-summary="All" class="text-danger mb-3"></div>
         @await Component.InvokeAsync("DocumentForm", Model.Document)
-        <button type="submit" class="btn btn-primary mt-3">Crear @Model.DocumentName</button>
+        <button type="submit" class="btn btn-primary mt-3">@(Model.DraftId is null ? $"Crear {Model.DocumentName}" : "Enviar a SAP")</button>
     </form>
 }
 else

@@ -43,6 +43,26 @@ else
         </div>
     </form>
 
+    @* Parámetros de documentos de la compañía -- hoy: vencimiento de borradores (digitados
+       y, más adelante, importaciones masivas guardadas sin enviar). *@
+    <form method="post" asp-page-handler="Retention" class="form-layout-admin-card mb-3">
+        <input type="hidden" name="companyId" value="@Model.CompanyId" />
+        <div class="form-layout-admin-header">
+            <strong>Borradores de documentos</strong>
+            <span class="text-muted">@(Model.DraftRetentionDays is > 0 ? $"Vencen a los {Model.DraftRetentionDays} día(s)" : "No vencen")</span>
+        </div>
+        <p class="doc-form-layout-hint mb-2">
+            Días sin modificar tras los cuales un borrador (pendiente o ya enviado) se elimina automáticamente.
+            Dejalo vacío para que no venzan nunca.
+        </p>
+        <div class="d-flex align-items-center gap-2">
+            <input type="number" name="draftRetentionDays" min="1" max="3650" value="@Model.DraftRetentionDays"
+                   class="form-control form-control-sm" style="max-width:120px" placeholder="Sin vencimiento" aria-label="Días de retención" />
+            <span class="text-muted">días</span>
+            <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+        </div>
+    </form>
+
     <div class="form-layout-admin-grid">
         @foreach (var form in DocumentFormFieldCatalog.Forms)
         {

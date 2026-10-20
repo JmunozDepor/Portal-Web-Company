@@ -204,6 +204,26 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.ToTable("companies", (string)null);
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.CompanyDocumentSettings", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<int?>("DraftRetentionDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("draft_retention_days");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("CompanyId")
+                        .HasName("pk_company_document_settings");
+
+                    b.ToTable("company_document_settings", (string)null);
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.CompanyModuleConnection", b =>
                 {
                     b.Property<long>("Id")
@@ -258,6 +278,126 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasDatabaseName("uq_company_module_connections_company_module");
 
                     b.ToTable("company_module_connections", (string)null);
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.DocumentDraft", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("CreatedByUsername")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("created_by_username");
+
+                    b.Property<DateOnly?>("DocDate")
+                        .HasColumnType("date")
+                        .HasColumnName("doc_date");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("document_type");
+
+                    b.Property<string>("Engine")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("engine");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error_message");
+
+                    b.Property<int>("LineCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_count");
+
+                    b.Property<string>("PartnerCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("partner_code");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload_json");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reference");
+
+                    b.Property<int?>("SapDocEntry")
+                        .HasColumnType("integer")
+                        .HasColumnName("sap_doc_entry");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<decimal?>("Total")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("numeric(19,6)")
+                        .HasColumnName("total");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedByUsername")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("updated_by_username");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_document_drafts");
+
+                    b.HasIndex("CompanyId", "CreatedByUserId")
+                        .HasDatabaseName("ix_document_drafts_company_id_created_by_user_id");
+
+                    b.HasIndex("CompanyId", "Engine", "DocumentType", "Status", "UpdatedAt")
+                        .HasDatabaseName("ix_document_drafts_company_id_engine_document_type_status_upda");
+
+                    b.ToTable("document_drafts", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_document_drafts_status", "status in ('draft', 'sending', 'sent', 'error')");
+                        });
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.EmailSettings", b =>
@@ -2272,6 +2412,18 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Navigation("Organization");
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.CompanyDocumentSettings", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithOne()
+                        .HasForeignKey("PortalSaas.Data.Entities.CompanyDocumentSettings", "CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_company_document_settings_companies_company_id");
+
+                    b.Navigation("Company");
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.CompanyModuleConnection", b =>
                 {
                     b.HasOne("PortalSaas.Data.Entities.Company", "Company")
@@ -2291,6 +2443,18 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Navigation("Company");
 
                     b.Navigation("Instance");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.DocumentDraft", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_document_drafts_companies_company_id");
+
+                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("PortalSaas.Data.Entities.EmailSettings", b =>

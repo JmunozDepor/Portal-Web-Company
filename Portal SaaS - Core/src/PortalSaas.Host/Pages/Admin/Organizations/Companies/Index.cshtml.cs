@@ -92,6 +92,10 @@ public class IndexModel : PageModel
             // Formularios personalizados: preferencia visual de la compañía, no un dato de
             // negocio -- se van con ella en vez de bloquear (FK Restrict, ver FormFieldLayout).
             _db.FormFieldLayouts.RemoveRange(_db.FormFieldLayouts.Where(l => l.CompanyId == id));
+            // Borradores de documentos y sus parámetros: trabajo sin enviar a SAP de esa
+            // compañía, sin sentido sin ella -- mismo criterio que los formularios.
+            _db.DocumentDrafts.RemoveRange(_db.DocumentDrafts.Where(d => d.CompanyId == id));
+            _db.CompanyDocumentSettings.RemoveRange(_db.CompanyDocumentSettings.Where(s => s.CompanyId == id));
             _db.Companies.Remove(company);
             await _db.SaveChangesAsync();
         }

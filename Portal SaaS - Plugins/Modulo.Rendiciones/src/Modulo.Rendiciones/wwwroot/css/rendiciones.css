@@ -655,6 +655,22 @@
     overflow: hidden;
 }
 
+/* Chrome/Edge 131+ cambiaron cómo colapsa un <details>: el contenido ya no es un
+   simple display:none, vive en un pseudo-elemento ::details-content con su PROPIO
+   content-visibility ligado a [open] -- mismo bug ya encontrado en site.css
+   (.doc-list-filtros). Sin esto, abrir/cerrar la fila puede quedar pegado en el
+   estado anterior ("al hacer clic no muestra el detalle", reportado). Se fuerza a
+   mano según el atributo [open] en vez de confiar en el toggle interno del browser.
+   Navegadores viejos no conocen el pseudo-elemento -- la regla se ignora sin efecto,
+   gobierna el comportamiento nativo de toda la vida. */
+.rnd-review-line[open]::details-content {
+    content-visibility: visible;
+}
+
+.rnd-review-line:not([open])::details-content {
+    content-visibility: hidden;
+}
+
 .rnd-review-line > summary {
     display: flex;
     align-items: center;
@@ -675,6 +691,11 @@
     gap: 6px;
     align-items: baseline;
     min-width: 0;
+}
+
+.rnd-review-sum-notes {
+    font-style: italic;
+    color: var(--text-muted);
 }
 
 .rnd-review-sum-amount {
@@ -771,12 +792,18 @@
 .rnd-gasto-visor {
     flex: 1 1 auto;
     min-width: 320px;
+    max-width: 100%;
     position: sticky;
     top: 16px;
     background: var(--bs-body-bg);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-md);
-    overflow: hidden;
+    /* overflow:auto (no hidden) + resize:horizontal -- deja agarrar la esquina inferior
+       derecha y angostar/ensanchar el visor; sigue recortando las esquinas redondeadas
+       igual que antes mientras no haya nada que desborde. Pedido explícito: poder
+       ajustar el ancho donde se ve el comprobante. */
+    overflow: auto;
+    resize: horizontal;
 }
 
 .rnd-gasto-visor-header {
@@ -828,6 +855,25 @@
     font-size: 13px;
     cursor: pointer;
     transition: background-color .14s ease, color .14s ease;
+}
+
+/* Botón "Ver documento"/"Cerrar documento" -- a diferencia de los otros íconos del
+   header (cuadrados, sin texto), este lleva texto: tiene que ser el control más visible
+   del visor (pedido explícito: "debe estar a la vista"), no otro ícono más adivinable. */
+.rnd-visor-action-btn--texto {
+    width: auto;
+    height: auto;
+    padding: 5px 10px;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--bs-primary);
+    background: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+}
+
+.rnd-visor-action-btn--texto:hover {
+    background: color-mix(in srgb, var(--bs-primary) 18%, transparent);
+    color: var(--bs-primary);
 }
 
 .rnd-visor-actions a:hover,
@@ -947,6 +993,13 @@
     display: block;
 }
 
+/* Mientras el documento no se pidió todavía (antes de apretar "Ver documento", ver
+   rnd-comprobante-visor.js) el visor queda con esta altura mínima en vez de colapsar
+   a 0 -- el botón del header no "salta" de lugar cuando el iframe aparece. */
+.rnd-gasto-visor:has(iframe[hidden]) {
+    min-height: 120px;
+}
+
 /* Solo colapsa a columna en mobile real -- formulario + visor lado a lado, fijo a la
    derecha, en cualquier ventana de escritorio. */
 @media (max-width: 640px) {
@@ -957,6 +1010,7 @@
     .rnd-gasto-visor {
         position: static;
         width: 100%;
+        resize: none;
     }
 }
 

@@ -1,18 +1,26 @@
 @page "/rendiciones/informes/{id:long}"
 @using Modulo.Rendiciones.Models
+@using Modulo.Rendiciones.Servicios
 @model Modulo.Rendiciones.Pages.Informes.DetalleModel
+@inject IAmountFormatService AmountFormat
 @{
     ViewData["Title"] = $"Informe #{Model.Report.Id}";
 
     // Cada gasto del informe se muestra con el MISMO formulario de "Nuevo/Editar gasto"
     // pero bloqueado (fieldset disabled), para identificar de un vistazo los valores
     // cargados -- pedido explícito. Función local para no depender de un partial (las
-    // vistas del plugin se cargan por AssemblyLoadContext).
-    void RenderLineReview(ExpenseReportLine d)
+    // vistas del plugin se cargan por AssemblyLoadContext). async: los montos van como
+    // "value" de un <input> -- adentro de un atributo no se puede usar <rnd-amount>
+    // (es un elemento), así que se formatean antes con el mismo servicio.
+    async Task RenderLineReview(ExpenseReportLine d)
     {
         var esKm = d.ExpenseType?.IsMileage == true;
         var hasReceipt = d.ExpenseReceiptId is not null;
         var receiptUrl = hasReceipt ? Url.Page("/Gastos/Comprobante", new { id = d.Id }) : null;
+        var montoTotal = await AmountFormat.FormatAsync(d.Amount);
+        var montoNeto = d.NetAmount is { } net ? await AmountFormat.FormatAsync(net) : "";
+        var montoExento = d.ExemptAmount is { } exento ? await AmountFormat.FormatAsync(exento) : "";
+        var montoIva = d.TaxAmount is { } iva ? await AmountFormat.FormatAsync(iva) : "";
         <div class="@(hasReceipt ? "rnd-gasto-split" : "")">
             <div class="rnd-gasto-form rnd-review">
                 <fieldset disabled>
@@ -27,12 +35,12 @@
                         <div class="form-group"><label>Distancia (km)</label><input class="form-control" value="@(d.DistanceKm?.ToString("N2") ?? "")" /></div>
                         <div class="form-group"><label>Tarifa por km</label><input class="form-control" value="@(d.AppliedRatePerKm?.ToString("N2") ?? "")" /></div>
                     }
-                    <div class="form-group"><label>Monto total</label><input class="form-control" value="@d.Amount.ToString("N2")" /></div>
+                    <div class="form-group"><label>Monto total</label><input class="form-control" value="@montoTotal" /></div>
                     @if (!esKm)
                     {
-                        <div class="form-group"><label>Monto neto / afecto</label><input class="form-control" value="@(d.NetAmount?.ToString("N2") ?? "")" /></div>
-                        <div class="form-group"><label>Monto exento</label><input class="form-control" value="@(d.ExemptAmount?.ToString("N2") ?? "")" /></div>
-                        <div class="form-group"><label>Monto IVA</label><input class="form-control" value="@(d.TaxAmount?.ToString("N2") ?? "")" /></div>
+                        <div class="form-group"><label>Monto neto / afecto</label><input class="form-control" value="@montoNeto" /></div>
+                        <div class="form-group"><label>Monto exento</label><input class="form-control" value="@montoExento" /></div>
+                        <div class="form-group"><label>Monto IVA</label><input class="form-control" value="@montoIva" /></div>
                     }
                     <div class="form-group"><label>Moneda</label><input class="form-control" value="@d.Currency" /></div>
                     <div class="form-group"><label>Folio</label><input class="form-control" value="@d.DocumentNumber" /></div>
@@ -43,15 +51,18 @@
             </div>
             @if (hasReceipt)
             {
-                <div class="rnd-gasto-visor">
+                <div class="rnd-gasto-visor" data-src="@receiptUrl">
                     <div class="rnd-gasto-visor-header">
                         <span><i class="bi bi-paperclip"></i> Comprobante</span>
                         <div class="rnd-visor-actions">
+                            <button type="button" class="rnd-visor-action-btn rnd-visor-action-btn--texto rnd-btn-ver-documento">
+                                <i class="bi bi-eye"></i> <span class="rnd-btn-ver-documento-label">Ver documento</span>
+                            </button>
                             <a href="@receiptUrl" target="_blank" title="Expandir / abrir visor completo"><i class="bi bi-arrows-fullscreen"></i></a>
                             <a href="@Url.Page("/Gastos/ComprobanteArchivo", new { id = d.Id })" download title="Descargar"><i class="bi bi-download"></i></a>
                         </div>
                     </div>
-                    <iframe src="@receiptUrl" title="Comprobante" loading="lazy"></iframe>
+                    <iframe title="Comprobante" hidden></iframe>
                 </div>
             }
         </div>
@@ -59,6 +70,9 @@
 }
 @section Styles {
     <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+@section Scripts {
+    <script src="~/js/rnd-comprobante-visor.js" asp-append-version="true"></script>
 }
 
 <div class="card-ps admin-card">
@@ -75,7 +89,7 @@
     </div>
     @if (!string.IsNullOrWhiteSpace(Model.Report.Purpose))
     {
-        <p class="admin-muted" style="margin-top:-4px;"><i class="bi bi-tag"></i> @Model.Report.Purpose</p>
+        <p class="admin-muted" style="margin-top:-4px;"><i class="bi bi-tag"></i> <strong>Comentario:</strong> @Model.Report.Purpose</p>
     }
 
 @if (Model.SuccessMessage is not null)
@@ -118,7 +132,7 @@
                 <option value="">-- Sin fondo (reembolso directo) --</option>
                 @foreach (var f in Model.OpenFunds)
                 {
-                    <option value="@f.Id">@f.Currency @f.Amount.ToString("N2") - @f.DeliveredAt.ToString("dd-MM-yyyy")</option>
+                    <option value="@f.Id">@f.Currency <rnd-amount value="@f.Amount" /> - @f.DeliveredAt.ToString("dd-MM-yyyy")</option>
                 }
             </select>
         </div>
@@ -141,17 +155,21 @@
         <div class="rnd-review-list">
             @foreach (var d in Model.Report.Lines.OrderBy(x => x.Date))
             {
-                <details class="rnd-review-line" open>
+                <details class="rnd-review-line">
                     <summary>
                         <span class="rnd-review-sum-main">
                             <strong>@d.Date.ToString("dd-MM-yyyy")</strong>
                             <span>· @(d.ExpenseType?.Name ?? "Sin categoría")</span>
                             <span class="admin-muted">· @(d.SupplierName ?? "sin proveedor")</span>
+                            @if (!string.IsNullOrWhiteSpace(d.Notes))
+                            {
+                                <span class="rnd-review-sum-notes">· @d.Notes</span>
+                            }
                         </span>
-                        <span class="rnd-review-sum-amount">@d.Currency @d.Amount.ToString("N2")</span>
+                        <span class="rnd-review-sum-amount"><rnd-amount value="@d.Amount" currency="@d.Currency" /></span>
                     </summary>
                     <div class="rnd-review-body">
-                        @{ RenderLineReview(d); }
+                        @{ await RenderLineReview(d); }
                         <div class="rnd-review-actions">
                             @if (d.ExpenseReceiptId is not null)
                             {
@@ -181,7 +199,7 @@
         </div>
         <div class="rnd-review-total">
             <span>Total</span>
-            <strong>@Model.Report.Lines.Sum(d => d.Amount).ToString("N2")</strong>
+            <strong><rnd-amount value="@Model.Report.Lines.Sum(d => d.Amount)" /></strong>
         </div>
     }
 
@@ -202,7 +220,7 @@
                                     <td>@g.Date.ToString("dd-MM-yyyy")</td>
                                     <td>@(g.ExpenseType?.Name ?? "—")</td>
                                     <td>@g.SupplierName</td>
-                                    <td>@g.Currency @g.Amount.ToString("N2")</td>
+                                    <td><rnd-amount value="@g.Amount" currency="@g.Currency" /></td>
                                 </tr>
                             }
                         </tbody>

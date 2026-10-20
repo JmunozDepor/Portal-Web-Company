@@ -15,5 +15,13 @@ public class RendicionesSettings
 
     public bool SapCatalogSyncEnabled { get; set; } = true;
 
+    /// <summary>
+    /// Si es false (default), los montos se muestran redondeados sin decimales (ej.
+    /// "297.024") -- la mayoría de las empresas chilenas no factura con centavos de CLP.
+    /// Configurable por compañía en Configuración &gt; Formato de Montos
+    /// (ver IAmountFormatService, que es quien realmente aplica esto en pantalla).
+    /// </summary>
+    public bool ShowAmountDecimals { get; set; }
+
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

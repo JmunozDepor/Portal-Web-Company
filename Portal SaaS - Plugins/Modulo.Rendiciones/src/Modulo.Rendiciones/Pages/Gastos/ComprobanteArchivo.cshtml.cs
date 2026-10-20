@@ -23,6 +23,13 @@ public sealed class ComprobanteArchivoModel : ComprobanteAccesoBase
         if (receipt is null)
             return NotFound();
 
-        return File(receipt.Content, receipt.MimeType, receipt.FileName);
+        // OJO: File(bytes, mime, fileDownloadName) manda Content-Disposition: attachment.
+        // Eso rompe el <iframe>/<img> del visor -- un PDF con ese header no se renderiza
+        // adentro del iframe, Chrome dispara la descarga del archivo solo y el visor queda
+        // con la pantalla en negro (bug real reportado). "inline" deja que el navegador lo
+        // muestre en el lugar donde se lo pida; el botón Descargar ya fuerza la bajada del
+        // lado del cliente con el atributo HTML5 download=, así que no se pierde esa opción.
+        Response.Headers.ContentDisposition = $"inline; filename=\"{Uri.EscapeDataString(receipt.FileName)}\"";
+        return File(receipt.Content, receipt.MimeType);
     }
 }

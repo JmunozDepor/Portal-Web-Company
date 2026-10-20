@@ -53,7 +53,7 @@
                 <td>@(l.CostCenterName ?? l.CostCenterCode ?? "—")</td>
                 <td>@l.ExpenseTypeName</td>
                 <td>@l.Date.ToString("dd-MM-yyyy")</td>
-                <td>@l.Currency @l.Amount.ToString("N2")</td>
+                <td><rnd-amount value="@l.Amount" currency="@l.Currency" /></td>
                 <td>@l.Notes</td>
             </tr>
         }
@@ -67,7 +67,7 @@
         <tfoot>
             <tr>
                 <td colspan="5"><strong>Total</strong></td>
-                <td colspan="2"><strong>@Model.Lines.Sum(l => l.Amount).ToString("N2")</strong></td>
+                <td colspan="2"><strong><rnd-amount value="@Model.Lines.Sum(l => l.Amount)" /></strong></td>
             </tr>
         </tfoot>
     }

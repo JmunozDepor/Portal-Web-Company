@@ -58,6 +58,9 @@
          wwwroot\**. ServesOwnWwwRoot=true en ModuloRendiciones.cs hace que el host lo
          sirva embebido. -->
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.8" />
+    <!-- Import/plantilla de gastos en Excel (Pages/Gastos/ImportarExcel). Misma versión
+         que el resto de la solución (ver Core/AuditoriaInventario/GestionDistribucionGastos). -->
+    <PackageReference Include="ClosedXML" Version="0.104.1" />
   </ItemGroup>
 
   <ItemGroup>

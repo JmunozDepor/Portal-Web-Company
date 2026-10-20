@@ -98,6 +98,13 @@ public sealed class ExpenseReportService : IExpenseReportService
         if (expenses.Any(g => g.ExpenseTypeId is null))
             throw new InvalidOperationException("Hay gastos sin categoría -- completala antes de agregarlos a un informe (por ejemplo, los importados por OCR que todavía no se revisaron).");
 
+        // Requisito: todo gasto necesita su boleta/comprobante adjunto antes de poder
+        // agregarse a un informe -- sea cual sea su origen (manual, OCR o importado por
+        // Excel). El monto se digita siempre por el valor real del documento; esto
+        // asegura que haya respaldo visual de ese documento antes de que el aprobador lo vea.
+        if (expenses.Any(g => g.ExpenseReceiptId is null))
+            throw new InvalidOperationException("Hay gastos sin boleta/comprobante adjunto -- subí la foto o PDF de cada uno antes de agregarlos a un informe.");
+
         foreach (var expense in expenses)
         {
             expense.ExpenseReportId = reportId;

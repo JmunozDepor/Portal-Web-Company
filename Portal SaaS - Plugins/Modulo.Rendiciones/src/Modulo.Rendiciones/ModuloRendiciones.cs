@@ -238,6 +238,16 @@ public sealed class ModuloRendiciones : IModuloPortal
             PageRoute = "/rendiciones/configuracion/integracion",
             Order = 9,
         };
+
+        yield return new MenuItemDefinition
+        {
+            Code = "config-formato-montos",
+            ParentCode = "grupo-administrador",
+            Name = "Formato de Montos",
+            Icon = "bi-cash-coin",
+            PageRoute = "/rendiciones/configuracion/formato",
+            Order = 10,
+        };
     }
 
     public void RegisterServices(IServiceCollection services)
@@ -287,6 +297,9 @@ public sealed class ModuloRendiciones : IModuloPortal
         services.AddScoped<IExpenseFundService, ExpenseFundService>();
         services.AddScoped<IExpenseTypeService, ExpenseTypeService>();
         services.AddScoped<IDocumentTypeService, DocumentTypeService>();
+        // Formato de montos (con/sin decimales) -- Scoped: memoiza la preferencia de la
+        // compañía por request, la consume <rnd-amount> en las vistas (ver TagHelpers/).
+        services.AddScoped<IAmountFormatService, AmountFormatService>();
         services.AddScoped<IUserCostCenterService, UserCostCenterService>();
         services.AddScoped<IRendicionesUserRoleService, RendicionesUserRoleService>();
         services.AddScoped<IAttachmentStorageService, AttachmentStorageService>();

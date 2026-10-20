@@ -55,7 +55,7 @@ else
                 </div>
                 <div class="rnd-card-meta">
                     <span class="rnd-badge @RendicionesUi.BadgeClass(f.Status)">@f.Status</span>
-                    <span class="rnd-card-amount">@f.Currency @f.Amount.ToString("N2")</span>
+                    <span class="rnd-card-amount"><rnd-amount value="@f.Amount" currency="@f.Currency" /></span>
                 </div>
             </div>
         }

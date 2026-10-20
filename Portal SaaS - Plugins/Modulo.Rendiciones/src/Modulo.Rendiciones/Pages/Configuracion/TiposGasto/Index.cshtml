@@ -32,7 +32,9 @@
                 <td><input type="text" name="nombre" value="@t.Name" class="form-control" form="@formId" /></td>
                 <td><input type="text" name="cuentaContableSap" value="@t.SapGlAccount" class="form-control tipo-gasto-cuenta-sap" list="tipos-gasto-cuentas-datalist" placeholder="Buscar…" form="@formId" /></td>
                 <td><input type="checkbox" name="esKilometraje" value="true" checked="@t.IsMileage" form="@formId" /></td>
-                <td><input type="number" step="0.01" name="tarifaPorKm" value="@t.RatePerKm" class="form-control" placeholder="CLP/km" form="@formId" /></td>
+                @* Mismo bug que Políticas de Gasto: es-CL (coma decimal) + interpolación
+                   directa en un <input type="number"> (que exige punto) lo deja vacío. *@
+                <td><input type="number" step="0.01" name="tarifaPorKm" value="@(t.RatePerKm?.ToString(System.Globalization.CultureInfo.InvariantCulture))" class="form-control" placeholder="CLP/km" form="@formId" /></td>
                 <td>
                     <input type="hidden" name="activo" value="@t.IsActive" form="@formId" />
                     @if (t.IsActive)

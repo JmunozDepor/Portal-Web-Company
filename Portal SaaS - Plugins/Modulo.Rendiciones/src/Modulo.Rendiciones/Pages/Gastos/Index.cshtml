@@ -12,6 +12,7 @@
     <h2><i class="bi bi-receipt"></i> Mis Gastos</h2>
     <div class="admin-row-actions">
         <a asp-page="./Importar" class="btn-module-action"><i class="bi bi-camera"></i> Importar con OCR</a>
+        <a asp-page="./ImportarExcel" class="btn-module-action"><i class="bi bi-file-earmark-excel"></i> Importar desde Excel</a>
         <a asp-page="./Detalle" class="btn-erp-primary">+ Crear gasto</a>
     </div>
 </div>
@@ -32,7 +33,7 @@
     </div>
     <div class="rnd-stat-tile rnd-stat-success">
         <span class="rnd-stat-label">Total registrado</span>
-        <span class="rnd-stat-value">@Model.Expenses.Sum(g => g.Amount).ToString("N0")</span>
+        <span class="rnd-stat-value"><rnd-amount value="@Model.Expenses.Sum(g => g.Amount)" /></span>
     </div>
 </div>
 
@@ -79,6 +80,7 @@ else
                     <th>Estado</th>
                     <th>Política</th>
                     <th>Categoría</th>
+                    <th>Informe</th>
                     <th class="rnd-col-total">Total</th>
                     <th class="rnd-col-menu"></th>
                 </tr>
@@ -87,7 +89,11 @@ else
                 @foreach (var g in Model.Expenses)
                 {
                     var status = Modulo.Rendiciones.Pages.Gastos.IndexModel.StatusToShow(g);
-                    var detailUrl = g.Status == "Loose" ? Url.Page("./Detalle", new { id = g.Id }) : Url.Page("/Informes/Detalle", new { id = g.ExpenseReportId });
+                    // El documento (fila) siempre lleva a SU propio detalle -- si ya está en un
+                    // informe, Gastos/Detalle lo muestra de solo lectura con el mismo visor. El
+                    // informe tiene su propio link en la columna de al lado.
+                    var detailUrl = Url.Page("./Detalle", new { id = g.Id });
+                    var reportUrl = g.ExpenseReportId is { } reportId ? Url.Page("/Informes/Detalle", new { id = reportId }) : null;
                     var nombre = g.SupplierName ?? g.ExpenseType?.Name ?? "Gasto";
                     <tr data-status="@g.Status" data-nombre="@nombre.ToLowerInvariant()">
                         <td class="rnd-col-check"><input type="checkbox" class="rndFilaCheck" /></td>
@@ -109,7 +115,17 @@ else
                         <td><span class="rnd-badge @RendicionesUi.BadgeClass(status)">@status</span></td>
                         <td class="rnd-col-muted">@Model.PolicyLabel(g)</td>
                         <td class="rnd-col-muted">@(g.ExpenseType?.Name ?? "—")</td>
-                        <td class="rnd-col-total rnd-card-amount">@g.Currency @g.Amount.ToString("N2")</td>
+                        <td class="rnd-col-muted">
+                            @if (reportUrl is not null)
+                            {
+                                <a href="@reportUrl">Informe #@g.ExpenseReportId</a>
+                            }
+                            else
+                            {
+                                <span>—</span>
+                            }
+                        </td>
+                        <td class="rnd-col-total rnd-card-amount"><rnd-amount value="@g.Amount" currency="@g.Currency" /></td>
                         <td class="rnd-col-menu">
                             <div class="rnd-row-menu">
                                 <button type="button" class="rnd-row-menu-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Más acciones">

@@ -344,6 +344,7 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.ReminderHour).HasColumnName("reminder_hour").IsRequired();
             e.Property(x => x.ReminderEnabled).HasColumnName("reminder_enabled");
             e.Property(x => x.SapCatalogSyncEnabled).HasColumnName("sap_catalog_sync_enabled").IsRequired();
+            e.Property(x => x.ShowAmountDecimals).HasColumnName("show_amount_decimals").IsRequired().HasDefaultValue(false);
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         });
 

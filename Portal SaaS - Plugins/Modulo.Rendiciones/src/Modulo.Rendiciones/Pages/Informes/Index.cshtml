@@ -47,7 +47,7 @@ else
                 </div>
                 <div class="rnd-card-meta">
                     <span class="rnd-badge @RendicionesUi.BadgeClass(r.Status)">@r.Status</span>
-                    <span class="rnd-card-amount">@r.Lines.Sum(d => d.Amount).ToString("N2")</span>
+                    <span class="rnd-card-amount"><rnd-amount value="@r.Lines.Sum(d => d.Amount)" /></span>
                 </div>
             </a>
         }
@@ -68,15 +68,28 @@ else
             <div class="rnd-card-list mb-3">
                 @foreach (var g in Model.LooseExpenses)
                 {
+                    // El nombre/fecha es un <a> de verdad (no solo texto dentro del <label>) --
+                    // pedido explícito: poder entrar al detalle del gasto (para editar/completar
+                    // la categoría, ej. uno importado por OCR) sin que el clic también marque el
+                    // checkbox. Un elemento interactivo (un link) adentro de un <label> no dispara
+                    // la activación del control asociado -- es comportamiento nativo del navegador,
+                    // no hace falta JS para evitar el doble efecto.
+                    var detalleUrl = Url.Page("/Gastos/Detalle", new { id = g.Id });
                     <label class="rnd-card-row" style="cursor:pointer;">
                         <input type="checkbox" name="SelectedExpenseIds" value="@g.Id" style="flex:0 0 auto;" />
-                        <div class="rnd-card-icon"><i class="bi @RendicionesUi.CategoryIcon(g.ExpenseType?.Name)"></i></div>
-                        <div class="rnd-card-main">
+                        <a href="@detalleUrl" class="rnd-card-icon" title="Ver / editar este gasto"><i class="bi @RendicionesUi.CategoryIcon(g.ExpenseType?.Name)"></i></a>
+                        <a href="@detalleUrl" class="rnd-card-main" style="text-decoration:none;color:inherit;" title="Ver / editar este gasto">
                             <div class="rnd-card-title">@(g.SupplierName ?? g.ExpenseType?.Name ?? "Gasto")</div>
-                            <div class="rnd-card-sub">@g.Date.ToString("dd-MM-yyyy") · @(g.ExpenseType?.Name ?? "—")</div>
-                        </div>
+                            <div class="rnd-card-sub">
+                                @g.Date.ToString("dd-MM-yyyy") · @(g.ExpenseType?.Name ?? "—")
+                                @if (g.ExpenseTypeId is null)
+                                {
+                                    <span class="text-danger"> · Falta categoría</span>
+                                }
+                            </div>
+                        </a>
                         <div class="rnd-card-meta">
-                            <span class="rnd-card-amount">@g.Currency @g.Amount.ToString("N2")</span>
+                            <span class="rnd-card-amount"><rnd-amount value="@g.Amount" currency="@g.Currency" /></span>
                         </div>
                     </label>
                 }
@@ -98,7 +111,7 @@ else
                     <option value="">-- Sin fondo (reembolso directo) --</option>
                     @foreach (var f in Model.OpenFunds)
                     {
-                        <option value="@f.Id">@f.Currency @f.Amount.ToString("N2") - @f.DeliveredAt.ToString("dd-MM-yyyy")</option>
+                        <option value="@f.Id">@f.Currency <rnd-amount value="@f.Amount" /> - @f.DeliveredAt.ToString("dd-MM-yyyy")</option>
                     }
                 </select>
             </div>

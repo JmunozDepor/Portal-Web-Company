@@ -18,7 +18,7 @@
     </div>
     <div class="rnd-stat-tile">
         <span class="rnd-stat-label">Monto total</span>
-        <span class="rnd-stat-value">@Model.Pending.Sum(r => r.Lines.Sum(d => d.Amount)).ToString("N0")</span>
+        <span class="rnd-stat-value"><rnd-amount value="@Model.Pending.Sum(r => r.Lines.Sum(d => d.Amount))" /></span>
     </div>
 </div>
 
@@ -47,7 +47,7 @@ else
                     </div>
                 </div>
                 <div class="rnd-card-meta">
-                    <span class="rnd-card-amount">@r.Lines.Sum(d => d.Amount).ToString("N2")</span>
+                    <span class="rnd-card-amount"><rnd-amount value="@r.Lines.Sum(d => d.Amount)" /></span>
                 </div>
             </a>
         }

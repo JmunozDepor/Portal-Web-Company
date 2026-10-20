@@ -78,10 +78,8 @@
                             {
                                 <span>
                                     @(r.Extracted.SupplierName ?? "Proveedor no detectado")
-                                    @if (r.Extracted.TransactionTime is { } hora)
-                                    {
-                                        <text> · @hora.ToString("HH:mm")</text>
-                                    }
+                                    @* La hora se guarda (queda en TransactionTime) pero no se le muestra
+                                       al rendidor acá -- es un dato para el aprobador. *@
                                     @if (r.CategoryPreselected && r.SuggestedCategoryName is not null)
                                     {
                                         <text> · Categoría: @r.SuggestedCategoryName</text>
@@ -104,7 +102,7 @@
                             <span class="rnd-badge rnd-badge--warning" title="@string.Join(" ", r.Warnings)">Posible duplicado</span>
                         }
                         <span class="rnd-badge rnd-badge--neutral">Revisar</span>
-                        <span class="rnd-card-amount">@(r.Extracted.Amount?.ToString("N2") ?? "—")</span>
+                        <span class="rnd-card-amount"><rnd-amount value="@r.Extracted.Amount" /></span>
                     </div>
                 </a>
             }

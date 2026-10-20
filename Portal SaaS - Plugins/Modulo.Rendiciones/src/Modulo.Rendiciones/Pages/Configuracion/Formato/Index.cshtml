@@ -1,0 +1,29 @@
+@page "/rendiciones/configuracion/formato"
+@model Modulo.Rendiciones.Pages.Configuracion.Formato.IndexModel
+@{
+    ViewData["Title"] = "Formato de Montos";
+}
+@* Migrado al Design System unificado -- mismo patrón minimalista que Notificaciones
+   (1 form corto, sin drawer). *@
+
+<div class="card-surface" style="max-width:520px;">
+    <h2 class="mb-3">Formato de Montos</h2>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+
+<p class="text-muted mb-3">
+    Afecta cómo se muestran los montos en todo el módulo (Mis Gastos, Informes, Aprobaciones,
+    Cierre, etc.). Por defecto se muestran redondeados, sin decimales (ej. <code>297.024</code>) --
+    activá esta opción si tu empresa necesita ver los centavos.
+</p>
+
+<form method="post">
+    <div class="mb-3 d-flex align-items-center gap-2">
+        <label class="d-flex align-items-center gap-2"><input asp-for="Settings.ShowAmountDecimals" type="checkbox" /> Mostrar decimales en los montos</label>
+    </div>
+    <button type="submit" class="btn-primary">Guardar</button>
+</form>
+</div>

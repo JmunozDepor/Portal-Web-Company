@@ -1,0 +1,109 @@
+@page "/rendiciones/gastos/importar-excel"
+@model Modulo.Rendiciones.Pages.Gastos.ImportarExcelModel
+@{
+    ViewData["Title"] = "Importar gastos (Excel)";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
+}
+
+<div class="rnd-header">
+    <h2><i class="bi bi-file-earmark-excel"></i> Importar desde Excel</h2>
+    <a asp-page="./Index" class="btn-module-action">Volver a Mis Gastos</a>
+</div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="admin-alert admin-alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="admin-subcard">
+    <p class="admin-muted">
+        La plantilla trae una fila de ejemplo ya llena (resaltada) mostrando el formato correcto --
+        borrala y completá una fila por gasto debajo (fecha, tipo de gasto, monto, etc.), después subí
+        el archivo acá. Esto <strong>no reemplaza la boleta</strong>: cada gasto se crea sin
+        comprobante, y después tenés que entrar a cada uno y adjuntarle la foto o PDF de su boleta a
+        mano -- es un requisito obligatorio, no vas a poder agregarlo a un informe hasta que tenga el
+        comprobante adjunto.
+    </p>
+    <p>
+        <a asp-page-handler="Plantilla" class="btn-module-action"><i class="bi bi-download"></i> Descargar plantilla Excel</a>
+    </p>
+    <form method="post" enctype="multipart/form-data" id="rnd-form-importar-excel" asp-antiforgery="true">
+        <div class="form-group">
+            <label for="archivo-input">Archivo (.xlsx)</label>
+            <input id="archivo-input" type="file" name="Archivo" class="form-control" accept=".xlsx" />
+        </div>
+        <button type="submit" class="btn-erp-primary" id="rnd-btn-procesar-excel">Importar</button>
+        <span id="rnd-procesando-excel" class="admin-muted" style="display:none;">Procesando el archivo...</span>
+    </form>
+</div>
+
+<script>
+    (function () {
+        var form = document.getElementById('rnd-form-importar-excel');
+        var boton = document.getElementById('rnd-btn-procesar-excel');
+        var aviso = document.getElementById('rnd-procesando-excel');
+        var enviando = false;
+
+        form.addEventListener('submit', function (e) {
+            if (enviando) {
+                e.preventDefault();
+                return;
+            }
+            enviando = true;
+            boton.disabled = true;
+            boton.textContent = 'Procesando...';
+            aviso.style.display = '';
+        });
+    })();
+</script>
+
+@if (Model.Results.Count > 0)
+{
+    <div class="rnd-card-list" style="margin-top:20px;">
+        @foreach (var r in Model.Results)
+        {
+            if (r.ExpenseId > 0)
+            {
+                <a asp-page="./Detalle" asp-route-id="@r.ExpenseId" class="rnd-card-row">
+                    <div class="rnd-card-icon"><i class="bi bi-receipt"></i></div>
+                    <div class="rnd-card-main">
+                        <div class="rnd-card-title">Fila @r.Fila -- @(r.Descripcion ?? "Gasto")</div>
+                        <div class="rnd-card-sub">
+                            @if (r.Warnings.Count > 0)
+                            {
+                                <span>@string.Join(" ", r.Warnings)</span>
+                            }
+                            else
+                            {
+                                <span>Importado -- falta adjuntar la boleta</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="rnd-card-meta">
+                        <span class="rnd-badge rnd-badge--warning">Falta boleta</span>
+                        <span class="rnd-badge rnd-badge--neutral">Revisar</span>
+                    </div>
+                </a>
+            }
+            else
+            {
+                <div class="rnd-card-row rnd-card-row--error">
+                    <div class="rnd-card-icon"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="rnd-card-main">
+                        <div class="rnd-card-title">Fila @r.Fila -- @(r.Descripcion ?? "")</div>
+                        <div class="rnd-card-sub"><span>@r.Error</span></div>
+                    </div>
+                    <div class="rnd-card-meta">
+                        <span class="rnd-badge rnd-badge--danger">No importada</span>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+}

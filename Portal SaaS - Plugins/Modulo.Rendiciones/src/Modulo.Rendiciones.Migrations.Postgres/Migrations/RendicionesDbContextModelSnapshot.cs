@@ -844,6 +844,12 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("sap_catalog_sync_enabled");
 
+                    b.Property<bool>("ShowAmountDecimals")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("show_amount_decimals");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");

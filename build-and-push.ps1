@@ -130,9 +130,20 @@ if ($NoCommit) {
 Step "git add + commit + push"
 git add -A
 
-$pending    = (git status --porcelain)
-$aheadCount = (git rev-list --count "@{upstream}..HEAD" 2>$null)
-if (-not $aheadCount) { $aheadCount = "0" }
+$pending = (git status --porcelain)
+
+# git escribe en stderr cuando la rama no tiene upstream ("fatal: no upstream
+# configured..."); con $ErrorActionPreference = "Stop" (seteado arriba), PowerShell
+# convierte esa línea de stderr en un error terminante aunque esté redirigida a
+# $null, y el script muere ACA en vez de caer al fallback de más abajo -- por eso
+# el try/catch, no alcanza con el "2>$null".
+try { $upstream = (git rev-parse --abbrev-ref --symbolic-full-name "@{upstream}" 2>$null) } catch { $upstream = $null }
+
+$aheadCount = "0"
+if ($upstream) {
+    try { $aheadCount = (git rev-list --count "$upstream..HEAD" 2>$null) } catch { $aheadCount = "0" }
+    if (-not $aheadCount) { $aheadCount = "0" }
+}
 
 if (-not $pending -and $aheadCount -eq "0") {
     Write-Host "Nada que commitear ni pushear. Todo sincronizado." -ForegroundColor Green
@@ -155,7 +166,6 @@ if ($NoPush) {
     exit 0
 }
 
-$upstream = (git rev-parse --abbrev-ref --symbolic-full-name "@{upstream}" 2>$null)
 if ($upstream) {
     git push
 } else {

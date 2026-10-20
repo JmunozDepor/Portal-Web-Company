@@ -7,6 +7,9 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/rendiciones.css" asp-append-version="true" />
 }
+@section Scripts {
+    <script src="~/js/rnd-comprobante-visor.js" asp-append-version="true"></script>
+}
 
 <div class="card-ps admin-card rnd-detalle-card">
     <div class="admin-card-header">
@@ -43,7 +46,7 @@
             </div>
             <div class="rnd-view-header">
                 <h3>@(e.SupplierName ?? e.ExpenseType?.Name ?? "Gasto")</h3>
-                <span class="rnd-view-amount">@e.Currency @e.Amount.ToString("N0")</span>
+                <span class="rnd-view-amount"><rnd-amount value="@e.Amount" currency="@e.Currency" /></span>
             </div>
 
             @if (Model.PolicyLabel is not null)
@@ -54,11 +57,11 @@
             <div class="rnd-view-grid">
                 <div class="rnd-view-field">
                     <span class="rnd-view-label">Neto</span>
-                    <span class="rnd-view-value">@((e.Amount - (e.TaxAmount ?? 0)).ToString("N0")) @e.Currency</span>
+                    <span class="rnd-view-value"><rnd-amount value="@(e.Amount - (e.TaxAmount ?? 0))" currency="@e.Currency" /></span>
                 </div>
                 <div class="rnd-view-field">
                     <span class="rnd-view-label">Impuesto</span>
-                    <span class="rnd-view-value">@((e.TaxAmount ?? 0).ToString("N0")) @e.Currency</span>
+                    <span class="rnd-view-value"><rnd-amount value="@(e.TaxAmount ?? 0)" currency="@e.Currency" /></span>
                 </div>
                 <div class="rnd-view-field">
                     <span class="rnd-view-label">Categoría</span>
@@ -101,15 +104,18 @@
         </div>
         @if (hasReceiptView)
         {
-            <div class="rnd-gasto-visor">
+            <div class="rnd-gasto-visor" data-src="@receiptViewUrl">
                 <div class="rnd-gasto-visor-header">
                     <span><i class="bi bi-paperclip"></i> Comprobante</span>
                     <div class="rnd-visor-actions">
+                        <button type="button" class="rnd-visor-action-btn rnd-visor-action-btn--texto rnd-btn-ver-documento">
+                            <i class="bi bi-eye"></i> <span class="rnd-btn-ver-documento-label">Ver documento</span>
+                        </button>
                         <a href="@receiptViewUrl" target="_blank" title="Expandir / abrir visor completo"><i class="bi bi-arrows-fullscreen"></i></a>
                         <a href="@Url.Page("./ComprobanteArchivo", new { id = e.Id })" download title="Descargar"><i class="bi bi-download"></i></a>
                     </div>
                 </div>
-                <iframe src="@receiptViewUrl" title="Comprobante"></iframe>
+                <iframe title="Comprobante" hidden></iframe>
             </div>
         }
     </div>
@@ -171,11 +177,12 @@ else
                     <label asp-for="Input.Date">Fecha</label>
                     <input asp-for="Input.Date" class="form-control" />
                 </div>
-                <div class="form-group">
-                    <label asp-for="Input.TransactionTime">Hora</label>
-                    <input asp-for="Input.TransactionTime" type="time" class="form-control" />
-                    <small class="text-muted">Hora de la transacción (opcional). Se lee del comprobante si figura.</small>
-                </div>
+                @* La hora se captura (del comprobante por OCR) pero no se le muestra al
+                   rendidor -- es un dato para el aprobador (ver RenderLineReview en
+                   Informes/Detalle.cshtml), no algo que el rendidor deba tipear o revisar.
+                   Hidden en vez de sacarlo del todo: así una edición manual del gasto no
+                   pisa con null la hora que ya se leyó del comprobante. *@
+                <input asp-for="Input.TransactionTime" type="hidden" />
 
                 <div id="rnd-campos-km" style="display:none;">
                     <div class="form-group">
@@ -235,6 +242,10 @@ else
                         {
                             <div class="form-text">Ya tiene un comprobante cargado -- subí uno nuevo solo si querés reemplazarlo.</div>
                         }
+                        else
+                        {
+                            <div class="form-text">Obligatorio antes de poder agregar este gasto a un informe.</div>
+                        }
                     </div>
                 </div>
 
@@ -255,10 +266,13 @@ else
         </div>
         @if (hasReceipt)
         {
-            <div class="rnd-gasto-visor">
+            <div class="rnd-gasto-visor" data-src="@receiptUrl">
                 <div class="rnd-gasto-visor-header">
                     <span><i class="bi bi-paperclip"></i> Comprobante</span>
                     <div class="rnd-visor-actions">
+                        <button type="button" class="rnd-visor-action-btn rnd-visor-action-btn--texto rnd-btn-ver-documento">
+                            <i class="bi bi-eye"></i> <span class="rnd-btn-ver-documento-label">Ver documento</span>
+                        </button>
                         <button type="button" class="rnd-visor-action-btn" id="rnd-btn-reemplazar-comprobante" title="Cargar nueva imagen">
                             <i class="bi bi-upload"></i>
                         </button>
@@ -270,7 +284,7 @@ else
                         </button>
                     </div>
                 </div>
-                <iframe src="@receiptUrl" title="Comprobante"></iframe>
+                <iframe title="Comprobante" hidden></iframe>
             </div>
             <form method="post" asp-page-handler="EliminarComprobante" asp-route-id="@Model.Expense!.Id" id="rnd-form-eliminar-comprobante"></form>
         }

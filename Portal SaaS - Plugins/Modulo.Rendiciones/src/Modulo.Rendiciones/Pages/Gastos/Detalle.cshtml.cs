@@ -24,13 +24,15 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
     private readonly IAttachmentStorageService _attachments;
     private readonly IRoutingService _routing;
     private readonly ISupplierHintService _supplierHints;
+    private readonly IAmountFormatService _amountFormat;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
     public DetalleModel(IExpenseService expenses, IExpenseTypeService expenseTypes, IDocumentTypeService documentTypes,
         IExpensePolicyService policies, IExpenseApprovalGroupService approvalGroups, IUserCostCenterService userCostCenters,
         IAttachmentStorageService attachments, IRoutingService routing, ISupplierHintService supplierHints,
-        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        IAmountFormatService amountFormat, IRendicionesUserRoleService roles, ICurrentUserContext currentUser,
+        ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
         _expenses = expenses;
@@ -42,6 +44,7 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
         _attachments = attachments;
         _routing = routing;
         _supplierHints = supplierHints;
+        _amountFormat = amountFormat;
         _currentUser = currentUser;
         _currentCompany = currentCompany;
     }
@@ -96,16 +99,26 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
         Expense = expense;
         await ResolvePolicyLabelAsync(expense, ct);
         await ResolveSuggestedCategoryAsync(expense, ct);
+
+        // La preferencia "sin decimales" es por compañía (RendicionesSettings.ShowAmountDecimals,
+        // ver IAmountFormatService) -- si está apagada, los montos se precargan redondeados al
+        // peso en el formulario de edición, no solo en las vistas de solo lectura. El CLP no
+        // tiene centavos reales de por sí, así que no se pierde precisión de negocio.
+        var showDecimals = await _amountFormat.ShowDecimalsAsync(ct);
+        decimal Redondear(decimal monto) =>
+            showDecimals ? monto : Math.Round(monto, 0, MidpointRounding.AwayFromZero);
+        decimal? RedondearNullable(decimal? monto) => monto is { } m ? Redondear(m) : null;
+
         Input = new ExpenseInput
         {
             ExpenseTypeId = expense.ExpenseTypeId ?? 0,
             DocumentTypeId = expense.DocumentTypeId,
             Date = expense.Date.DateTime,
             TransactionTime = expense.TransactionTime,
-            Amount = expense.Amount,
-            TaxAmount = expense.TaxAmount,
-            NetAmount = expense.NetAmount,
-            ExemptAmount = expense.ExemptAmount,
+            Amount = Redondear(expense.Amount),
+            TaxAmount = RedondearNullable(expense.TaxAmount),
+            NetAmount = RedondearNullable(expense.NetAmount),
+            ExemptAmount = RedondearNullable(expense.ExemptAmount),
             Currency = expense.Currency,
             DocumentNumber = expense.DocumentNumber,
             SupplierTaxId = expense.SupplierTaxId,

@@ -29,7 +29,9 @@
             <tr class="@(t.IsActive ? "" : "row-inactive")">
                 <td><input type="text" name="nombre" value="@t.Name" class="form-control" form="@formId" /></td>
                 <td><input type="checkbox" name="aplicaIva" value="true" checked="@t.AppliesTax" form="@formId" /></td>
-                <td><input type="number" step="0.01" name="porcentajeIva" value="@t.TaxPercentage" class="form-control" form="@formId" /></td>
+                @* Mismo bug que Políticas de Gasto: es-CL (coma decimal) + interpolación
+                   directa en un <input type="number"> (que exige punto) lo deja vacío. *@
+                <td><input type="number" step="0.01" name="porcentajeIva" value="@t.TaxPercentage.ToString(System.Globalization.CultureInfo.InvariantCulture)" class="form-control" form="@formId" /></td>
                 <td>
                     <input type="hidden" name="activo" value="@t.IsActive" form="@formId" />
                     @if (t.IsActive)

@@ -272,6 +272,26 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
                 }
 
                 sendingDraft = true;
+
+                // Marca de origen + verificación (ver IDocumentSapMarkerService): si un envío
+                // anterior de este borrador llegó a SAP pero no alcanzó a registrarse (servidor
+                // caído, timeout), el documento ya existe -- se concilia en vez de duplicarlo.
+                var draftKey = draftToSend.ToString("N");
+                var existing = await Markers.FindDocEntryAsync(DraftEngine, Type.ToString(), draftKey, ct);
+                if (existing is { } existingEntry)
+                {
+                    await Drafts.MarkSentAsync(draftToSend, existingEntry, $"{Request.PathBase}{RouteBase}/{existingEntry}", ct);
+                    TempData["DocumentActionMessage"] = $"Este borrador ya estaba creado en SAP (DocEntry {existingEntry}) -- no se volvió a crear.";
+                    TempData["DocumentActionMessageType"] = "alert-info";
+                    return RedirectToPage(new { id = existingEntry.ToString() });
+                }
+
+                var marker = await Markers.GetMarkerAsync(draftKey, ct);
+                document = document with
+                {
+                    Comments = marker.ApplyToComments(document.Comments),
+                    AdditionalFields = marker.ApplyToAdditionalFields(document.AdditionalFields),
+                };
             }
 
             var docEntry = await _documents.CreateAsync(Type, _currentUser.Username, document, ct);
@@ -493,6 +513,8 @@ public abstract class DetailGenericInventoryDocumentModelBase : PageModel
     public DocumentDraftDto? OpenDraft { get; private set; }
 
     private IDocumentDraftService Drafts => HttpContext.RequestServices.GetRequiredService<IDocumentDraftService>();
+
+    private IDocumentSapMarkerService Markers => HttpContext.RequestServices.GetRequiredService<IDocumentSapMarkerService>();
 
     public async Task<IActionResult> OnPostSaveDraftAsync(CancellationToken ct)
     {

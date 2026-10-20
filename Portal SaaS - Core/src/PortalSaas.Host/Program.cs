@@ -141,6 +141,7 @@ builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
 builder.Services.AddScoped<IFormLayoutService, FormLayoutService>();
 builder.Services.AddScoped<IDocumentDraftService, PortalSaas.Core.Documentos.DocumentDraftService>();
 builder.Services.AddScoped<ICompanyDocumentSettingsService, PortalSaas.Core.Documentos.CompanyDocumentSettingsService>();
+builder.Services.AddScoped<IDocumentSapMarkerService, PortalSaas.Core.Documentos.DocumentSapMarkerService>();
 builder.Services.AddHostedService<PortalSaas.Core.Documentos.DocumentDraftCleanupWorker>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();

@@ -40,6 +40,12 @@ public interface ICompanyDocumentSettingsService
 
     /// <summary>Solo admin, compañía de la organización actual. Null o &lt;= 0 = no vencen.</summary>
     Task SaveDraftRetentionDaysAsync(Guid companyId, int? days, CancellationToken ct = default);
+
+    /// <summary>UDF de cabecera para la marca de origen (ver IDocumentSapMarkerService). Null = Comentarios.</summary>
+    Task<string?> GetDraftMarkerUdfNameAsync(Guid companyId, CancellationToken ct = default);
+
+    /// <summary>Solo admin. Formato "U_" + letras/números/guion bajo (se valida: se usa en SQL). Vacío = Comentarios.</summary>
+    Task SaveDraftMarkerUdfNameAsync(Guid companyId, string? udfName, CancellationToken ct = default);
 }
 
 public static class DocumentDraftEngine

@@ -66,5 +66,12 @@ public sealed class CompanyDocumentSettings
     /// <summary>Días sin modificar tras los cuales se elimina un borrador (pendiente o enviado). Null = no vencen.</summary>
     public int? DraftRetentionDays { get; set; }
 
+    /// <summary>
+    /// UDF de cabecera (ej. "U_PortalDraftId") donde el portal escribe la marca de origen de
+    /// cada documento que crea -- ver IDocumentSapMarkerService. Null = la marca va en
+    /// Comentarios. Debe existir en las cabeceras de todos los tipos de documento.
+    /// </summary>
+    public string? DraftMarkerUdfName { get; set; }
+
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

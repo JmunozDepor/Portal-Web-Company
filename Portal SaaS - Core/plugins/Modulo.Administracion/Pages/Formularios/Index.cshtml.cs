@@ -30,8 +30,15 @@ public sealed class IndexModel : AdminPageModelBase
     /// <summary>Días de retención de borradores de la compañía elegida (null = no vencen).</summary>
     public int? DraftRetentionDays { get; private set; }
 
-    /// <summary>Parámetro de documentos por compañía -- vencimiento/limpieza de borradores (ver DocumentDraftCleanupWorker).</summary>
-    public async Task<IActionResult> OnPostRetentionAsync(Guid companyId, int? draftRetentionDays, CancellationToken ct)
+    /// <summary>UDF de cabecera para la marca de origen de los documentos (null = Comentarios).</summary>
+    public string? DraftMarkerUdfName { get; private set; }
+
+    /// <summary>
+    /// Parámetros de documentos por compañía: vencimiento/limpieza de borradores (ver
+    /// DocumentDraftCleanupWorker) y UDF de la marca de origen anti-duplicados (ver
+    /// IDocumentSapMarkerService) -- comunes a documentos digitados e Importación Genérica.
+    /// </summary>
+    public async Task<IActionResult> OnPostRetentionAsync(Guid companyId, int? draftRetentionDays, string? draftMarkerUdfName, CancellationToken ct)
     {
         if (!(await _tenant.ListCompaniesAsync()).Any(c => c.Id == companyId))
         {
@@ -40,10 +47,15 @@ public sealed class IndexModel : AdminPageModelBase
 
         try
         {
+            await _documentSettings.SaveDraftMarkerUdfNameAsync(companyId, draftMarkerUdfName, ct);
             await _documentSettings.SaveDraftRetentionDaysAsync(companyId, draftRetentionDays, ct);
-            MensajeExito = draftRetentionDays is > 0
-                ? $"Los borradores sin modificar por más de {draftRetentionDays} día(s) se eliminarán automáticamente."
-                : "Los borradores no vencen: quedan hasta que alguien los envíe o elimine.";
+            MensajeExito = "Parámetros de documentos guardados. "
+                + (draftRetentionDays is > 0
+                    ? $"Los borradores sin modificar por más de {draftRetentionDays} día(s) se eliminarán automáticamente. "
+                    : "Los borradores no vencen. ")
+                + (string.IsNullOrWhiteSpace(draftMarkerUdfName)
+                    ? "La marca de origen se escribe en Comentarios."
+                    : $"La marca de origen se escribe en {draftMarkerUdfName.Trim()} (debe existir en SAP).");
         }
         catch (Exception ex)
         {
@@ -80,6 +92,7 @@ public sealed class IndexModel : AdminPageModelBase
         }
 
         DraftRetentionDays = await _documentSettings.GetDraftRetentionDaysAsync(CompanyId.Value, ct);
+        DraftMarkerUdfName = await _documentSettings.GetDraftMarkerUdfNameAsync(CompanyId.Value, ct);
 
         return Page();
     }

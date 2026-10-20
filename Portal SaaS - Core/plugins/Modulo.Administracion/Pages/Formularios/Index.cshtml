@@ -48,17 +48,29 @@ else
     <form method="post" asp-page-handler="Retention" class="form-layout-admin-card mb-3">
         <input type="hidden" name="companyId" value="@Model.CompanyId" />
         <div class="form-layout-admin-header">
-            <strong>Borradores de documentos</strong>
-            <span class="text-muted">@(Model.DraftRetentionDays is > 0 ? $"Vencen a los {Model.DraftRetentionDays} día(s)" : "No vencen")</span>
+            <strong>Parámetros de documentos</strong>
+            <span class="text-muted">@(Model.DraftRetentionDays is > 0 ? $"Borradores vencen a los {Model.DraftRetentionDays} día(s)" : "Borradores no vencen")</span>
         </div>
-        <p class="doc-form-layout-hint mb-2">
+        <label class="form-label mt-2 mb-0" for="draft-retention-days">Vencimiento de borradores</label>
+        <p class="doc-form-layout-hint mb-1">
             Días sin modificar tras los cuales un borrador (pendiente o ya enviado) se elimina automáticamente.
-            Dejalo vacío para que no venzan nunca.
+            Vacío = no vencen nunca.
         </p>
         <div class="d-flex align-items-center gap-2">
-            <input type="number" name="draftRetentionDays" min="1" max="3650" value="@Model.DraftRetentionDays"
-                   class="form-control form-control-sm" style="max-width:120px" placeholder="Sin vencimiento" aria-label="Días de retención" />
+            <input id="draft-retention-days" type="number" name="draftRetentionDays" min="1" max="3650" value="@Model.DraftRetentionDays"
+                   class="form-control form-control-sm" style="max-width:120px" placeholder="Sin vencimiento" />
             <span class="text-muted">días</span>
+        </div>
+        <label class="form-label mt-3 mb-0" for="draft-marker-udf">UDF de marca de origen (anti-duplicados)</label>
+        <p class="doc-form-layout-hint mb-1">
+            Campo de usuario de CABECERA donde el portal escribe una marca en cada documento que crea en SAP, para
+            reconocerlo y no duplicarlo si un envío se interrumpe. Debe existir en todos los tipos de documento
+            (ORDR, OINV, ORIN, ORRR, ORDN, OPQT, OPOR, OWTQ, OWTR), alfanumérico de 50. Vacío = la marca se agrega
+            al final de Comentarios, ej. "(BR-8f3a2c1d9e0b)".
+        </p>
+        <div class="d-flex align-items-center gap-2">
+            <input id="draft-marker-udf" type="text" name="draftMarkerUdfName" maxlength="50" value="@Model.DraftMarkerUdfName"
+                   class="form-control form-control-sm" style="max-width:220px" placeholder="U_PortalDraftId" pattern="U_[A-Za-z0-9_]{1,48}" />
             <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
         </div>
     </form>

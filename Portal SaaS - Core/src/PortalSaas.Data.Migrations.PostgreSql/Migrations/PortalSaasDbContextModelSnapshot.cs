@@ -210,6 +210,11 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
+                    b.Property<string>("DraftMarkerUdfName")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("draft_marker_udf_name");
+
                     b.Property<int?>("DraftRetentionDays")
                         .HasColumnType("integer")
                         .HasColumnName("draft_retention_days");

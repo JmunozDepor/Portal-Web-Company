@@ -538,6 +538,7 @@ public sealed class PortalSaasDbContext : DbContext
         modelBuilder.Entity<CompanyDocumentSettings>(entity =>
         {
             entity.ToTable("company_document_settings");
+            entity.Property(e => e.DraftMarkerUdfName).HasMaxLength(50);
             entity.HasKey(e => e.CompanyId);
             entity.HasOne(e => e.Company).WithOne().HasForeignKey<CompanyDocumentSettings>(e => e.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);

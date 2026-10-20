@@ -210,6 +210,11 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("company_id");
 
+                    b.Property<string>("DraftMarkerUdfName")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("draft_marker_udf_name");
+
                     b.Property<int?>("DraftRetentionDays")
                         .HasColumnType("int")
                         .HasColumnName("draft_retention_days");

@@ -1,4 +1,4 @@
-using Modulo.Inventario.Pages.ProductMaster;
+﻿using Modulo.Inventario.Pages.ProductMaster;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 using Xunit;
@@ -29,15 +29,21 @@ file sealed class CurrentUserContextFalso : ICurrentUserContext
 file sealed class ItemMasterDetailServiceFalso : IItemMasterDetailService
 {
     private readonly ItemMasterDetailDto? _detalle;
+    private readonly string? _soloParaCodigo;
 
-    public ItemMasterDetailServiceFalso(ItemMasterDetailDto? detalle) => _detalle = detalle;
+    /// <param name="soloParaCodigo">Si viene, el detalle solo se devuelve para ese ItemCode (resto = no existe).</param>
+    public ItemMasterDetailServiceFalso(ItemMasterDetailDto? detalle, string? soloParaCodigo = null)
+    {
+        _detalle = detalle;
+        _soloParaCodigo = soloParaCodigo;
+    }
 
     public bool Llamado { get; private set; }
 
     public Task<ItemMasterDetailDto?> GetDetailAsync(string itemCode, CancellationToken ct = default)
     {
         Llamado = true;
-        return Task.FromResult(_detalle);
+        return Task.FromResult(_soloParaCodigo is null || _soloParaCodigo == itemCode ? _detalle : null);
     }
 }
 
@@ -101,8 +107,14 @@ file sealed class ItemCatalogServiceFalso : IItemCatalogService
         return Task.FromResult<IReadOnlyList<ItemDto>>([new ItemDto { ItemCode = "A001", ItemName = "Artículo de prueba" }]);
     }
 
+    /// <summary>Barra -> ItemCode que "existe" en este doble.</summary>
+    public Dictionary<string, string> Barras { get; } = [];
+
     public Task<IReadOnlyList<ItemDto>> GetByCodesAsync(IReadOnlyCollection<string> itemCodes, CancellationToken ct = default) =>
-        throw new NotSupportedException("No usado por el visor Maestro de Producto.");
+        Task.FromResult<IReadOnlyList<ItemDto>>(itemCodes.Select(c => new ItemDto { ItemCode = c, ItemName = "Por barra " + c }).ToList());
+
+    public Task<IReadOnlyDictionary<string, string>> GetItemCodesByBarcodesAsync(IReadOnlyCollection<string> barcodes, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyDictionary<string, string>>(barcodes.Where(Barras.ContainsKey).ToDictionary(b => b, b => Barras[b]));
 
     public Task<IReadOnlyList<ItemDto>> GetTopAsync(int limit = 30, CancellationToken ct = default)
     {
@@ -116,6 +128,37 @@ file sealed class ItemCatalogServiceFalso : IItemCatalogService
 
 public class ProductMasterIndexModelTests
 {
+    [Fact]
+    public async Task OnGetAsync_CodigoDeBarras_ResuelveElArticuloYMuestraSuFicha()
+    {
+        var detalle = new ItemMasterDetailDto { ItemCode = "A12831C-103-4X", ItemName = "Zapatilla" };
+        var catalogo = new ItemCatalogServiceFalso();
+        catalogo.Barras["194435294728"] = "A12831C-103-4X";
+        var model = new IndexModel(catalogo, new ItemMasterDetailServiceFalso(detalle, soloParaCodigo: "A12831C-103-4X"),
+            new ItemStockServiceFalso([]), new PriceListServiceFalso([], null), new CurrentUserContextFalso());
+        model.ItemCode = "194435294728";
+
+        await model.OnGetAsync(CancellationToken.None);
+
+        Assert.False(model.ItemNotFound);
+        Assert.Same(detalle, model.Detail);
+        Assert.Equal("A12831C-103-4X", model.ItemCode);
+    }
+
+    [Fact]
+    public async Task OnGetSearchItemsAsync_CodigoDeBarras_VienePrimeroSinRepetir()
+    {
+        var catalogo = new ItemCatalogServiceFalso();
+        catalogo.Barras["194435294728"] = "A001";
+        var model = new IndexModel(catalogo, new ItemMasterDetailServiceFalso(null), new ItemStockServiceFalso([]),
+            new PriceListServiceFalso([], null), new CurrentUserContextFalso());
+
+        var resultado = await model.OnGetSearchItemsAsync("194435294728", CancellationToken.None);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(resultado.Value);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "\"A001\""));
+    }
+
     [Fact]
     public async Task OnGetAsync_ItemCodeVacio_DevuelvePageSinConsultarNada()
     {
@@ -208,4 +251,27 @@ public class ProductMasterIndexModelTests
         Assert.False(items.GetTopLlamado);
         Assert.Equal("chuck taylor", items.SearchTextRecibido);
     }
+}
+
+/// <summary>Código pegado desde Excel/SAP (bug real 2026-10-20: "no permite pegar" en Maestro de Producto).</summary>
+public class ProductMasterItemCodeNormalizationTests
+{
+    [Theory]
+    [InlineData("M9160C-001-10", "M9160C-001-10")]
+    [InlineData("  M9160C-001-10  ", "M9160C-001-10")]
+    [InlineData("M9160C-001-10\t", "M9160C-001-10")]
+    [InlineData("M9160C-001-10\r\n", "M9160C-001-10")]
+    [InlineData("M9160C-001-10\tZAPATILLA\t1", "M9160C-001-10")]
+    [InlineData(" M9160C-001-10 ", "M9160C-001-10")]
+    [InlineData("\r\n\tM9160C-001-10", "M9160C-001-10")]
+    public void NormalizeItemCode_DejaSoloElPrimerValorLimpio(string pegado, string esperado) =>
+        Assert.Equal(esperado, IndexModel.NormalizeItemCode(pegado));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t\r\n")]
+    public void NormalizeItemCode_SinValor_DevuelveNull(string? pegado) =>
+        Assert.Null(IndexModel.NormalizeItemCode(pegado));
 }

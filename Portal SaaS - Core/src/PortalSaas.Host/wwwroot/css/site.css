@@ -2386,3 +2386,40 @@ body {
   align-items: baseline;
   gap: 8px;
 }
+
+/* --- table-tools.js: ordenar / exportar / copiar ---------------------------------- */
+.table-tools-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+th.table-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+th.table-sortable::after {
+  content: "\2195"; /* ↕ */
+  margin-left: 4px;
+  font-size: 0.85em;
+  opacity: 0.35;
+}
+
+th.table-sortable[aria-sort="ascending"]::after {
+  content: "\2191"; /* ↑ */
+  opacity: 1;
+}
+
+th.table-sortable[aria-sort="descending"]::after {
+  content: "\2193"; /* ↓ */
+  opacity: 1;
+}
+
+th.table-sortable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

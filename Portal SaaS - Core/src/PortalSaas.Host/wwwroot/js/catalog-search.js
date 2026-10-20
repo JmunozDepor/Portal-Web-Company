@@ -77,6 +77,36 @@
             timer = setTimeout(function () { ejecutarBusqueda(text); }, 300);
         });
 
+        // Pegar (bug real 2026-10-20, Maestro de Producto: "no permite pegar"): lo copiado
+        // desde Excel/SAP trae tabulación o salto de línea al final (o varias celdas), y
+        // ese texto sucio no coincidía con ninguna sugerencia ni con la ficha. Se pega
+        // solo el PRIMER valor no vacío, sin espacios raros (NBSP incluido), en la
+        // posición del cursor, y se dispara "input" para que la búsqueda corra igual
+        // que al tipear.
+        document.addEventListener('paste', function (evento) {
+            var input = evento.target;
+            if (!input.matches || !input.matches(options.inputSelector)) {
+                return;
+            }
+            var portapapeles = evento.clipboardData || window.clipboardData;
+            var texto = portapapeles ? portapapeles.getData('text') : '';
+            if (!texto) {
+                return;
+            }
+            var limpio = texto.replace(/ /g, ' ')
+                .split(/[\t\r\n]+/)
+                .map(function (parte) { return parte.trim(); })
+                .filter(function (parte) { return parte.length > 0; })[0] || '';
+            if (limpio === texto) {
+                return; // nada que limpiar: pegado nativo del navegador
+            }
+            evento.preventDefault();
+            var inicio = input.selectionStart !== null ? input.selectionStart : input.value.length;
+            var fin = input.selectionEnd !== null ? input.selectionEnd : input.value.length;
+            input.setRangeText(limpio, inicio, fin, 'end');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+
         // Catálogos chicos (minChars: 0, ej. Almacén/Cuenta Mayor/Centro de Costos --
         // tamaño acotado, ver CLAUDE.md) precargan el <datalist> UNA vez al cablear el
         // campo, con texto vacío -- el servidor sirve el listado COMPLETO cuando

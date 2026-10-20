@@ -13,14 +13,14 @@
         <div class="input-group">
             <input id="product-master-search-input" name="ItemCode" list="product-master-datalist"
                    class="form-control product-master-search-input" autocomplete="off"
-                   placeholder="Código o nombre del artículo" value="@Model.ItemCode" />
+                   placeholder="Código, nombre o código de barra" value="@Model.ItemCode" />
             <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
                     data-bs-target="#product-master-search-modal" title="Buscar artículo">
                 <i class="bi bi-search"></i>
             </button>
         </div>
         <datalist id="product-master-datalist"></datalist>
-        <small class="form-text text-muted">Tip: escribí <strong>*</strong> para ver los primeros 30 artículos.</small>
+        <small class="form-text text-muted">Busca por código, nombre o código de barra (también con lector). Escribí <strong>*</strong> para ver los primeros 30 artículos.</small>
     </div>
     <div class="form-group">
         @* Label vacío -- mismo alto que "Artículo" de arriba, así el botón queda alineado
@@ -44,7 +44,7 @@
             </div>
             <div class="modal-body">
                 <input type="text" class="form-control mb-3" id="product-master-search-modal-input"
-                       autocomplete="off" placeholder="Código o nombre del artículo -- o escribí * para ver los primeros 30" />
+                       autocomplete="off" placeholder="Código, nombre o código de barra -- o escribí * para ver los primeros 30" />
                 <div class="document-list-table-wrapper" style="max-height: 50vh;">
                     <table class="table document-list-table">
                         <thead>
@@ -106,41 +106,59 @@
         <div class="form-group">
             <label class="form-label">Precio</label>
             <input id="product-master-price-output" class="form-control"
-                   value="@(Model.Detail is null ? "" : (Model.SelectedPrice?.ToString("N2") ?? "Sin precio"))" disabled />
+                   value="@(Model.Detail is null ? "" : (Model.SelectedPrice?.ToString("N0") ?? "Sin precio"))" disabled />
         </div>
     </div>
 </section>
 
 <section class="doc-tab-seccion">
-    <h2>Stock por almacén</h2>
+    @* Ordenar (click en el encabezado), exportar a Excel y copiar (pegable en Excel) --
+       ver table-tools.js. data-value = número invariante: se ordena/exporta el valor
+       real, no el texto con formato local. *@
+    <div class="table-tools-header">
+        <h2>Stock por almacén</h2>
+        @if (Model.Detail is not null && Model.Stocks.Count > 0)
+        {
+            <div class="admin-row-actions">
+                <button type="button" id="product-master-stock-copy" class="btn btn-sm btn-outline-secondary" title="Copiar la grilla para pegar en Excel">
+                    <i class="bi bi-clipboard"></i> Copiar
+                </button>
+                <button type="button" id="product-master-stock-export" class="btn btn-sm btn-outline-secondary" title="Descargar la grilla en Excel">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar
+                </button>
+            </div>
+        }
+    </div>
     <div class="document-list-table-wrapper">
-        <table class="table document-list-table">
+        <table class="table document-list-table" id="product-master-stock-table">
             <thead>
                 <tr>
-                    <th>Almacén</th>
-                    <th>En stock</th>
-                    <th>Comprometido</th>
-                    <th>Disponible</th>
+                    <th data-sort="text">Código</th>
+                    <th data-sort="text">Almacén</th>
+                    <th data-sort="number" class="text-end">En stock</th>
+                    <th data-sort="number" class="text-end">Comprometido</th>
+                    <th data-sort="number" class="text-end">Disponible</th>
                 </tr>
             </thead>
             <tbody>
                 @if (Model.Detail is null)
                 {
-                    <tr><td colspan="4" class="text-muted">Buscá un artículo para ver su stock.</td></tr>
+                    <tr data-table-empty><td colspan="5" class="text-muted">Buscá un artículo para ver su stock.</td></tr>
                 }
                 else if (Model.Stocks.Count == 0)
                 {
-                    <tr><td colspan="4" class="text-muted">Sin stock registrado.</td></tr>
+                    <tr data-table-empty><td colspan="5" class="text-muted">Sin stock registrado.</td></tr>
                 }
                 else
                 {
                     @foreach (var fila in Model.Stocks)
                     {
                         <tr>
-                            <td>@fila.WhsCode — @fila.WhsName</td>
-                            <td>@fila.OnHand.ToString("N2")</td>
-                            <td>@fila.IsCommited.ToString("N2")</td>
-                            <td>@fila.Available.ToString("N2")</td>
+                            <td>@fila.WhsCode</td>
+                            <td>@fila.WhsName</td>
+                            <td class="text-end" data-value="@fila.OnHand.ToString(System.Globalization.CultureInfo.InvariantCulture)">@fila.OnHand.ToString("N0")</td>
+                            <td class="text-end" data-value="@fila.IsCommited.ToString(System.Globalization.CultureInfo.InvariantCulture)">@fila.IsCommited.ToString("N0")</td>
+                            <td class="text-end" data-value="@fila.Available.ToString(System.Globalization.CultureInfo.InvariantCulture)">@fila.Available.ToString("N0")</td>
                         </tr>
                     }
                 }
@@ -150,7 +168,17 @@
 </section>
 
 <script src="~/js/catalog-search.js"></script>
+<script src="~/lib/sheetjs/xlsx.full.min.js"></script>
+<script src="~/js/table-tools.js" asp-append-version="true"></script>
 <script>
+    wireTableTools({
+        tableId: 'product-master-stock-table',
+        exportButtonId: 'product-master-stock-export',
+        copyButtonId: 'product-master-stock-copy',
+        fileName: 'stock-@(Model.Detail?.ItemCode ?? "articulo")',
+        sheetName: 'Stock',
+    });
+
     wireCatalogSearch({
         inputSelector: '.product-master-search-input',
         datalistId: 'product-master-datalist',
@@ -225,7 +253,7 @@
             fetch('?handler=Price&itemCode=' + encodeURIComponent(itemCode) + '&priceList=' + encodeURIComponent(select.value))
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    output.value = data.price === null ? 'Sin precio' : Number(data.price).toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    output.value = data.price === null ? 'Sin precio' : Number(data.price).toLocaleString('es-CL', { maximumFractionDigits: 0 });
                 })
                 .catch(function (error) { console.error('product-master price fetch: ', error); });
         });

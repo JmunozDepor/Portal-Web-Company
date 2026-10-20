@@ -48,6 +48,12 @@ public sealed class IndexModel : PageModel
     public decimal? SelectedPrice { get; private set; }
     public IReadOnlyList<WarehouseStockDto> Stocks { get; private set; } = [];
 
+    /// <summary>Primer valor no vacío (corta en tabulación/salto de línea), sin espacios ni NBSP en los bordes.</summary>
+    public static string? NormalizeItemCode(string? value) =>
+        value?.Replace(' ', ' ')
+            .Split(['\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault();
+
     public async Task<IActionResult> OnGetAsync(CancellationToken ct)
     {
         if (!await _currentUser.HasActionAsync(MenuCode, PortalActions.View, ct))
@@ -55,12 +61,29 @@ public sealed class IndexModel : PageModel
             return Forbid();
         }
 
-        if (string.IsNullOrWhiteSpace(ItemCode))
+        // Código pegado desde Excel/SAP puede traer tabulación, salto de línea o espacios
+        // (NBSP incluido) -- la búsqueda en SAP es por igualdad exacta, así que sin esto
+        // respondía "Artículo no encontrado" con un código válido (bug real 2026-10-20).
+        ItemCode = NormalizeItemCode(ItemCode);
+        if (string.IsNullOrEmpty(ItemCode))
         {
             return Page();
         }
 
         Detail = await _itemMaster.GetDetailAsync(ItemCode, ct);
+        if (Detail is null)
+        {
+            // No es un código de artículo: se prueba como código de barras (OITM.CodeBars u
+            // OBCD) -- así también funciona escanear con lector + Enter. Una barra ambigua
+            // (más de un artículo) no viene en el resultado y cae a "no encontrado".
+            var byBarcode = await _items.GetItemCodesByBarcodesAsync([ItemCode], ct);
+            if (byBarcode.TryGetValue(ItemCode, out var itemCode))
+            {
+                ItemCode = itemCode;
+                Detail = await _itemMaster.GetDetailAsync(ItemCode, ct);
+            }
+        }
+
         if (Detail is null)
         {
             ItemNotFound = true;
@@ -95,9 +118,26 @@ public sealed class IndexModel : PageModel
         // Atajo "*" -- top 30 artículos por nombre (IItemCatalogService.GetTopAsync),
         // exclusivo de este visor: no cambia el buscador compartido de Ventas/Compras
         // (su propio OnGetSearchItemsAsync sigue llamando solo a SearchAsync).
-        var items = trimmed == "*"
-            ? await _items.GetTopAsync(ct: ct)
-            : await _items.SearchAsync(trimmed, ct: ct);
+        if (trimmed == "*")
+        {
+            var top = await _items.GetTopAsync(ct: ct);
+            return new JsonResult(top.Select(i => new { i.ItemCode, i.ItemName }));
+        }
+
+        // Código de barras exacto primero (OITM.CodeBars + OBCD), después la búsqueda
+        // normal por código/nombre -- sin repetir el artículo si aparece en las dos.
+        var items = new List<ItemDto>();
+        if (trimmed.Length > 0)
+        {
+            var byBarcode = await _items.GetItemCodesByBarcodesAsync([trimmed], ct);
+            if (byBarcode.TryGetValue(trimmed, out var itemCode))
+            {
+                items.AddRange(await _items.GetByCodesAsync([itemCode], ct));
+            }
+        }
+
+        items.AddRange((await _items.SearchAsync(trimmed, ct: ct))
+            .Where(i => !items.Any(b => string.Equals(b.ItemCode, i.ItemCode, StringComparison.OrdinalIgnoreCase))));
         return new JsonResult(items.Select(i => new { i.ItemCode, i.ItemName }));
     }
 

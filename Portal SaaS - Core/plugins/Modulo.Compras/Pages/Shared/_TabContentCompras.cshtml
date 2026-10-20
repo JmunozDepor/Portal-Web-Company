@@ -227,6 +227,20 @@
             importCsvButtonId: 'purchase-document-import-csv',
             csvFileInputId: 'purchase-document-csv-file',
             csvResultId: 'purchase-document-csv-result',
+            // Cambio masivo de almacén (oculto en documentos de Servicio) -- ver document-lines-editor.js.
+            bulkWarehouses: [
+                { label: 'Almacén', selector: '[name$=".WarehouseCode"]', datalistId: 'purchase-document-warehouses-datalist', itemOnly: true },
+            ],
+            // Precio vs. lista/precio especial del proveedor -- siempre bloqueante (Compra
+            // no valida stock: suma mercadería). Ver OnPostValidateLinesAsync.
+            lineRestrictions: {
+                getHeader: function () {
+                    var proveedor = document.querySelector('.purchase-document-supplier-code');
+                    var lista = document.getElementById('Input_PriceListCode');
+                    var fecha = document.getElementById('Input_DocDate');
+                    return { cardCode: proveedor ? proveedor.value.trim() : null, priceList: lista ? lista.value : null, date: fecha ? fecha.value : null };
+                },
+            },
             lineType: {
                 selectId: 'Input_LineType',
                 itemValue: '@PortalSaas.Abstractions.Modelos.DocumentLineType.Item',

@@ -56,13 +56,133 @@
             });
         }
 
+        // Valor elegido en "Cambio masivo" por campo (selector -> código) -- las filas
+        // nuevas (+ Agregar línea / Importar Excel sin esa columna) nacen con él.
+        var valoresMasivos = {};
+
         function crearFilaDesdePlantilla() {
             var indice = siguienteIndice;
             var html = plantilla.innerHTML.split('__INDEX__').join(indice);
             var contenedor = document.createElement('tbody');
             contenedor.innerHTML = html;
             siguienteIndice++;
-            return contenedor.firstElementChild;
+            var fila = contenedor.firstElementChild;
+            Object.keys(valoresMasivos).forEach(function (selector) {
+                var campo = fila.querySelector(selector);
+                if (campo && !campo.value) {
+                    campo.value = valoresMasivos[selector];
+                }
+            });
+            return fila;
+        }
+
+        // ---- Cambio masivo de bodega (2026-10-20) -- una barra arriba de la grilla con
+        // un buscador por campo de bodega (Venta/Compra: Almacén; Inventario: Almacén
+        // origen + Almacén destino) y "Aplicar a todas": reemplaza ese campo en TODAS las
+        // líneas y queda como valor por defecto de las líneas nuevas. Reusa el <datalist>
+        // del catálogo ya precargado (catálogo chico, minChars: 0) para sugerir y validar
+        // el código. Si el documento valida stock, se revalida enseguida (la bodega cambia
+        // el disponible). La barra la arma este script: la vista solo pasa los campos.
+        //   bulkWarehouses: [{ label, selector, datalistId, itemOnly }]
+        //   itemOnly: true = se oculta en documentos de Servicio (no llevan almacén).
+        var barraMasiva = null;
+        if (options.bulkWarehouses && options.bulkWarehouses.length) {
+            barraMasiva = document.createElement('div');
+            barraMasiva.className = 'line-bulk-bar';
+            var titulo = document.createElement('span');
+            titulo.className = 'line-bulk-title';
+            titulo.innerHTML = '<i class="bi bi-arrow-repeat"></i> Cambio masivo';
+            barraMasiva.appendChild(titulo);
+
+            var estadoMasivo = document.createElement('span');
+            estadoMasivo.className = 'line-bulk-status';
+
+            options.bulkWarehouses.forEach(function (campoMasivo) {
+                var grupo = document.createElement('div');
+                grupo.className = 'line-bulk-group';
+                if (campoMasivo.itemOnly) {
+                    grupo.setAttribute('data-item-only', '');
+                }
+
+                var etiqueta = document.createElement('label');
+                etiqueta.textContent = campoMasivo.label;
+                var entrada = document.createElement('input');
+                entrada.className = 'form-control form-control-sm';
+                entrada.setAttribute('list', campoMasivo.datalistId);
+                entrada.setAttribute('placeholder', 'Buscar…');
+                entrada.setAttribute('autocomplete', 'off');
+                entrada.setAttribute('aria-label', campoMasivo.label + ' para todas las líneas');
+                var boton = document.createElement('button');
+                boton.type = 'button';
+                boton.className = 'btn btn-sm btn-outline-secondary';
+                boton.textContent = 'Aplicar a todas';
+
+                function aplicar() {
+                    var codigo = entrada.value.trim();
+                    limpiarInvalido(entrada);
+                    if (!codigo) {
+                        marcarInvalido(entrada, 'Elegí una bodega.');
+                        return;
+                    }
+                    var datalist = document.getElementById(campoMasivo.datalistId);
+                    var opcion = datalist && Array.prototype.find.call(datalist.options, function (o) {
+                        return o.value.trim().toUpperCase() === codigo.toUpperCase();
+                    });
+                    if (datalist && datalist.options.length > 0 && !opcion) {
+                        marcarInvalido(entrada, 'Bodega no encontrada en el catálogo.');
+                        estadoMasivo.textContent = 'La bodega "' + codigo + '" no existe.';
+                        return;
+                    }
+                    if (opcion) {
+                        codigo = opcion.value;
+                        entrada.value = codigo;
+                    }
+
+                    var cambiadas = 0;
+                    cuerpo.querySelectorAll(campoMasivo.selector).forEach(function (campo) {
+                        if (campo.disabled) {
+                            return;
+                        }
+                        campo.value = codigo;
+                        limpiarInvalido(campo);
+                        campo.dispatchEvent(new Event('input', { bubbles: true }));
+                        campo.dispatchEvent(new Event('change', { bubbles: true }));
+                        cambiadas++;
+                    });
+                    valoresMasivos[campoMasivo.selector] = codigo;
+                    estadoMasivo.textContent = campoMasivo.label + ' "' + codigo + '" aplicado a ' + cambiadas + ' línea(s).';
+
+                    if (options.lineRestrictions && cambiadas > 0) {
+                        validarRestricciones([]).then(function (errores) {
+                            var divResultadoMasivo = document.getElementById(options.csvResultId);
+                            if (!divResultadoMasivo) {
+                                return;
+                            }
+                            divResultadoMasivo.innerHTML = errores.length === 0
+                                ? '<p class="alert alert-success py-1 px-2">Stock y precio validados con la nueva bodega -- sin problemas.</p>'
+                                : '<p class="alert alert-warning py-1 px-2 mb-1">' + errores.length + ' línea(s) con problema(s) con la nueva bodega:</p>'
+                                    + '<ul class="alert alert-warning py-1 px-2 mb-0">' + errores.map(function (e) { return '<li>' + e + '</li>'; }).join('') + '</ul>';
+                        });
+                    }
+                }
+
+                boton.addEventListener('click', aplicar);
+                entrada.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); // dentro del <form> de creación: no enviar el documento
+                        aplicar();
+                    }
+                });
+
+                grupo.appendChild(etiqueta);
+                grupo.appendChild(entrada);
+                grupo.appendChild(boton);
+                barraMasiva.appendChild(grupo);
+            });
+
+            barraMasiva.appendChild(estadoMasivo);
+            var anclaGrilla = cuerpo.closest('.line-items-wrapper') || cuerpo.closest('table');
+            anclaGrilla.parentNode.insertBefore(barraMasiva, anclaGrilla);
         }
 
         // El Tipo (Artículo/Servicio) es del documento entero, no por línea -- SAP no
@@ -87,6 +207,10 @@
             if (tabla) {
                 tabla.classList.toggle('line-type-item', esArticulo);
                 tabla.classList.toggle('line-type-service', !esArticulo);
+            }
+            if (barraMasiva) {
+                barraMasiva.querySelectorAll('[data-item-only]').forEach(function (g) { g.hidden = !esArticulo; });
+                barraMasiva.hidden = !Array.prototype.some.call(barraMasiva.querySelectorAll('.line-bulk-group'), function (g) { return !g.hidden; });
             }
 
             cuerpo.querySelectorAll('tr').forEach(function (fila) {
@@ -242,7 +366,7 @@
                     if (divResultado) {
                         divResultado.innerHTML = '<p class="alert alert-info py-1 px-2">Validando ' + filas.length + ' línea(s) importada(s)…</p>';
                     }
-                    validarFilasImportadas(filasCreadas).then(function (errores) {
+                    validarFilasImportadas(filasCreadas).then(validarRestricciones).then(function (errores) {
                         if (!divResultado) {
                             return;
                         }
@@ -383,14 +507,19 @@
                     camposArticulo.forEach(function (input) {
                         var codigo = input.value.trim();
                         var nombre = nombresPorCodigo[codigo.toUpperCase()];
-                        var span = input.parentElement.querySelector('.line-item-resolved-name');
-                        if (!span) {
-                            span = document.createElement('small');
-                            span.className = 'text-muted line-item-resolved-name d-block';
-                            input.insertAdjacentElement('afterend', span);
-                        }
                         if (nombre) {
-                            span.textContent = nombre;
+                            // Nombre a la columna Descripción de la fila (nunca debajo del
+                            // código: agrandaba la fila y desalineaba la grilla).
+                            var destino = input.closest('tr').querySelector('.line-item-description');
+                            if (destino && destino.tagName === 'INPUT') {
+                                if (!destino.value || destino.dataset.autoName === '1') {
+                                    destino.value = nombre;
+                                    destino.dataset.autoName = '1';
+                                }
+                            } else if (destino) {
+                                destino.textContent = nombre;
+                                destino.title = nombre;
+                            }
                         } else {
                             marcarInvalido(input, 'Artículo no encontrado en el catálogo.');
                             errores.push('Artículo "' + escaparHtml(codigo) + '": no existe en el catálogo.');
@@ -402,6 +531,89 @@
                 .catch(function (error) {
                     console.error('document-lines-editor: validación de artículos falló', error);
                     errores.push('No se pudo validar la existencia de los artículos contra el catálogo (revisá la consola) -- se validarán igual al enviar el formulario.');
+                    return errores;
+                });
+        }
+
+        // ---- Restricciones de stock / precio (2026-10-20) -- mismo criterio que las
+        // reglas de Importación Genérica, siempre bloqueantes (ver
+        // IDocumentLineValidationService). Se valida la grilla COMPLETA, no solo lo
+        // importado: el stock es por demanda agregada de todas las líneas del mismo
+        // artículo y bodega. Qué se valida (stock/precio) lo decide el servidor según el
+        // motor y el tipo de documento; al crear se vuelve a validar allá igual.
+        function validarRestricciones(errores) {
+            var cfg = options.lineRestrictions;
+            if (!cfg) {
+                return Promise.resolve(errores);
+            }
+
+            var filas = Array.prototype.slice.call(cuerpo.querySelectorAll('tr'));
+            var lineas = [];
+            filas.forEach(function (fila, indice) {
+                var articulo = fila.querySelector(options.itemCodeSelector);
+                if (!articulo || articulo.disabled || !articulo.value.trim()) {
+                    return;
+                }
+                var cantidad = fila.querySelector('[name$=".Quantity"]');
+                var precio = fila.querySelector('[name$=".UnitPrice"]');
+                var bodega = cfg.warehouseSelector ? fila.querySelector(cfg.warehouseSelector) : null;
+                var moneda = fila.querySelector('.line-currency');
+                [cantidad, precio].forEach(function (campo) {
+                    if (campo && campo.dataset.restriction === '1') {
+                        limpiarInvalido(campo);
+                        delete campo.dataset.restriction;
+                    }
+                });
+                lineas.push({
+                    key: indice,
+                    itemCode: articulo.value.trim(),
+                    warehouse: bodega ? bodega.value.trim() : null,
+                    quantity: cantidad && cantidad.value ? parseFloat(cantidad.value) : null,
+                    unitPrice: precio && precio.value ? parseFloat(precio.value) : null,
+                    currency: moneda && moneda.value ? moneda.value : null,
+                });
+            });
+            if (lineas.length === 0) {
+                return Promise.resolve(errores);
+            }
+
+            var cabecera = cfg.getHeader ? cfg.getHeader() || {} : {};
+            var formulario = cuerpo.closest('form');
+            var campoToken = formulario ? formulario.querySelector('input[name="__RequestVerificationToken"]') : null;
+            var panelLayout = document.querySelector('.doc-form-layout-panel');
+            var token = campoToken ? campoToken.value : (panelLayout ? panelLayout.dataset.token : '');
+
+            return fetch('?handler=' + (cfg.handlerName || 'ValidateLines'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                body: JSON.stringify({
+                    cardCode: cabecera.cardCode || null,
+                    priceList: cabecera.priceList ? parseInt(cabecera.priceList, 10) : null,
+                    date: cabecera.date || null,
+                    lines: lineas,
+                }),
+            })
+                .then(function (r) {
+                    if (!r.ok) {
+                        throw new Error('HTTP ' + r.status + ' validando stock/precio');
+                    }
+                    return r.json();
+                })
+                .then(function (problemas) {
+                    problemas.forEach(function (p) {
+                        var fila = filas[p.key];
+                        var campo = fila ? fila.querySelector(p.field === 'UnitPrice' ? '[name$=".UnitPrice"]' : '[name$=".Quantity"]') : null;
+                        if (campo) {
+                            marcarInvalido(campo, p.message);
+                            campo.dataset.restriction = '1';
+                        }
+                        errores.push(escaparHtml(p.message));
+                    });
+                    return errores;
+                })
+                .catch(function (error) {
+                    console.error('document-lines-editor: validación de stock/precio falló', error);
+                    errores.push('No se pudo validar stock/precio (revisá la consola) -- se validará igual al crear el documento.');
                     return errores;
                 });
         }

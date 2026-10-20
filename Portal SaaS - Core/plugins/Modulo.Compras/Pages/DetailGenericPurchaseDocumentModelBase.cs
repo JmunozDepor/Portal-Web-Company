@@ -272,6 +272,14 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             await FillMissingPricesAsync(ct);
         }
 
+        await AddLineRestrictionErrorsAsync(ct);
+        if (!ModelState.IsValid)
+        {
+            await LoadCatalogsAsync(ct);
+            BuildDocumentViewModel();
+            return Page();
+        }
+
         var document = new PurchaseDocumentDto(
             SupplierCardCode: Input.SupplierCardCode,
             SupplierName: null,
@@ -537,6 +545,66 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
 
         var layout = await FormLayouts.GetForCurrentUserAsync(FormLayoutKey, ct);
         return new JsonResult(new { layout.HiddenFields, layout.HasUserOverride });
+    }
+
+    // ---- Restricciones de líneas (stock / precio) -- ver IDocumentLineValidationService.
+    // Siempre bloqueantes: al importar el Excel el editor de líneas llama a
+    // OnPostValidateLinesAsync y marca cada línea; al crear, OnPostAsync vuelve a validar
+    // en el servidor (no se salta editando a mano después de importar). Qué se valida lo
+    // decide SIEMPRE el servidor según el motor/tipo, nunca el navegador.
+    /// <summary>Compra SUMA stock -- no se valida disponible (mismo criterio que Importación Genérica). Solo precio.</summary>
+    private const bool ValidatesStock = false;
+
+    private const bool ValidatesPrice = true;
+
+    private IDocumentLineValidationService LineValidator => HttpContext.RequestServices.GetRequiredService<IDocumentLineValidationService>();
+
+    public async Task<IActionResult> OnPostValidateLinesAsync([FromBody] LineValidationInput input, CancellationToken ct)
+    {
+        if (!await _currentUser.HasActionAsync(MenuCode, PortalActions.Create, ct))
+        {
+            return Forbid();
+        }
+
+        var checks = (input.Lines ?? [])
+            .Where(l => !string.IsNullOrWhiteSpace(l.ItemCode))
+            .Select(l => new DocumentLineCheck(l.Key, l.ItemCode!, l.Warehouse, l.Quantity ?? 0, ValidatesPrice ? l.UnitPrice : null, l.Currency))
+            .ToList();
+        var issues = await LineValidator.ValidateAsync(
+            new DocumentLineValidationRequest(checks, ValidatesStock, ValidatesPrice, input.CardCode, input.PriceList, input.Date), ct);
+        return new JsonResult(issues);
+    }
+
+    /// <summary>Valida las líneas ya filtradas de Input.Lines; agrega un error por problema (clave = campo de la línea).</summary>
+    private async Task AddLineRestrictionErrorsAsync(CancellationToken ct)
+    {
+        var checks = Input.Lines
+            .Select((l, i) => new DocumentLineCheck(i, l.ItemCode ?? string.Empty, l.WarehouseCode, l.Quantity ?? 0, l.UnitPrice, l.Currency))
+            .ToList();
+        var issues = await LineValidator.ValidateAsync(
+            new DocumentLineValidationRequest(checks, ValidatesStock, ValidatesPrice, Input.SupplierCardCode, Input.PriceListCode, Input.DocDate), ct);
+        foreach (var issue in issues)
+        {
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Lines)}[{issue.Key}].{issue.Field}", $"Línea {issue.Key + 1}: {issue.Message}");
+        }
+    }
+
+    public sealed class LineValidationInput
+    {
+        public string? CardCode { get; set; }
+        public int? PriceList { get; set; }
+        public DateOnly? Date { get; set; }
+        public List<LineValidationRow>? Lines { get; set; }
+    }
+
+    public sealed class LineValidationRow
+    {
+        public int Key { get; set; }
+        public string? ItemCode { get; set; }
+        public string? Warehouse { get; set; }
+        public decimal? Quantity { get; set; }
+        public decimal? UnitPrice { get; set; }
+        public string? Currency { get; set; }
     }
 
     private const string FormLayoutKey = DocumentFormFieldCatalog.Purchase;

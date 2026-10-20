@@ -234,6 +234,21 @@
             importCsvButtonId: 'sales-order-import-csv',
             csvFileInputId: 'sales-order-csv-file',
             csvResultId: 'sales-order-csv-result',
+            // Cambio masivo de almacén (oculto en documentos de Servicio) -- ver document-lines-editor.js.
+            bulkWarehouses: [
+                { label: 'Almacén', selector: '[name$=".WarehouseCode"]', datalistId: 'sales-order-warehouses-datalist', itemOnly: true },
+            ],
+            // Stock (bodega de la línea) y precio vs. lista/precio especial -- siempre
+            // bloqueante, ver OnPostValidateLinesAsync / IDocumentLineValidationService.
+            lineRestrictions: {
+                warehouseSelector: '[name$=".WarehouseCode"]',
+                getHeader: function () {
+                    var cliente = document.querySelector('.sales-order-customer-code');
+                    var lista = document.getElementById('Input_PriceListCode');
+                    var fecha = document.getElementById('Input_DocDate');
+                    return { cardCode: cliente ? cliente.value.trim() : null, priceList: lista ? lista.value : null, date: fecha ? fecha.value : null };
+                },
+            },
             lineType: {
                 selectId: 'Input_LineType',
                 itemValue: '@PortalSaas.Abstractions.Modelos.DocumentLineType.Item',

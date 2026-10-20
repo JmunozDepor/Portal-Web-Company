@@ -131,6 +131,20 @@
             importCsvButtonId: 'inventory-document-import-csv',
             csvFileInputId: 'inventory-document-csv-file',
             csvResultId: 'inventory-document-csv-result',
+            // Cambio masivo de almacén origen/destino -- ver document-lines-editor.js.
+            bulkWarehouses: [
+                { label: 'Almacén origen', selector: '[name$=".FromWarehouseCode"]', datalistId: 'inventory-document-from-warehouses-datalist' },
+                { label: 'Almacén destino', selector: '[name$=".ToWarehouseCode"]', datalistId: 'inventory-document-to-warehouses-datalist' },
+            ],
+            // Stock contra el almacén ORIGEN -- siempre bloqueante, ver
+            // OnPostValidateLinesAsync / IDocumentLineValidationService.
+            lineRestrictions: {
+                warehouseSelector: '[name$=".FromWarehouseCode"]',
+                getHeader: function () {
+                    var fecha = document.getElementById('Input_DocDate');
+                    return { date: fecha ? fecha.value : null };
+                },
+            },
         });
     </script>
 }

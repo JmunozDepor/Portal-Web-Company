@@ -2423,3 +2423,46 @@ th.table-sortable:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+
+/* --- Cambio masivo de bodega (document-lines-editor.js, bulkWarehouses) ----------- */
+.line-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border: 1px dashed var(--card-border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.line-bulk-bar[hidden],
+.line-bulk-group[hidden] {
+  display: none;
+}
+
+.line-bulk-title {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.line-bulk-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.line-bulk-group label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.line-bulk-group .form-control {
+  width: 160px;
+}
+
+.line-bulk-status {
+  color: var(--text-muted);
+  font-size: 11.5px;
+}

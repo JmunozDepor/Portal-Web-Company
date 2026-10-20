@@ -244,6 +244,7 @@ builder.Services.AddScoped<ICostCenterCatalogService, CostCenterCatalogService>(
 // (ningún plugin los usa aún), pero ya listos para cuando se porte el importador.
 builder.Services.AddScoped<IItemCrossReferenceService, ItemCrossReferenceService>();
 builder.Services.AddScoped<IPriceListService, PriceListService>();
+builder.Services.AddScoped<IDocumentLineValidationService, DocumentLineValidationService>();
 builder.Services.AddScoped<IBusinessPartnerDefaultsService, BusinessPartnerDefaultsService>();
 
 // Consumido por los 3 motores genéricos de documento (CanCreateAsync) -- override por

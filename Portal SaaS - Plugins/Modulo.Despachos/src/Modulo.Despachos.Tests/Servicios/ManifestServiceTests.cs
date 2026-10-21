@@ -12,6 +12,16 @@ public class ManifestServiceTests
     // ------------------------------------------------------------ Numeración
 
     [Fact]
+    public async Task GetByNumber_EncuentraPorCorrelativo_YNullSiNoExiste()
+    {
+        var env = ManifestTestEnv.Build();
+        var id = await env.Svc.CreateDraftAsync(env.Header());
+        var number = (await env.Svc.GetAsync(id))!.Number;
+        Assert.Equal(id, (await env.Svc.GetByNumberAsync(number))!.Id);
+        Assert.Null(await env.Svc.GetByNumberAsync(number + 99));
+    }
+
+    [Fact]
     public async Task CreateDraft_NumeraCorrelativoPorCompania()
     {
         var name = "despachos-" + Guid.NewGuid();

@@ -574,6 +574,11 @@ public class ManifestService : IManifestService
             .Include(x => x.Documents).Include(x => x.CostLines).Include(x => x.Events)
             .FirstOrDefaultAsync(x => x.Id == manifestId && x.CompanyId == CompanyId);
 
+    public async Task<Manifest?> GetByNumberAsync(int number) =>
+        await _db.Manifests
+            .Include(x => x.Documents).Include(x => x.CostLines).Include(x => x.Events)
+            .FirstOrDefaultAsync(x => x.Number == number && x.CompanyId == CompanyId);
+
     public async Task<IReadOnlyList<ManifestListItem>> ListAsync(ManifestFilter filter)
     {
         var q = _db.Manifests.Where(m => m.CompanyId == CompanyId);

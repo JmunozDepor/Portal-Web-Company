@@ -6,6 +6,25 @@ namespace Modulo.Despachos.Pages;
 /// </summary>
 public static class DespachosUi
 {
+    /// <summary>
+    /// Traduce el valor guardado en la base (manifests.status / delivery_status, snake_case) a la clave
+    /// que usan StatusBadgeClass y StatusLabel.
+    /// </summary>
+    public static string StatusKey(string status) => status switch
+    {
+        "draft" => "Draft",
+        "dispatched" => "Dispatched",
+        "returned" => "Returned",
+        "closed" => "Closed",
+        "annulled" => "Cancelled",
+        "pending" => "Pending",
+        "delivered" => "Delivered",
+        "partially_delivered" => "PartiallyReturned",
+        "rejected" => "Rejected",
+        "not_delivered" => "NotDelivered",
+        _ => status,
+    };
+
     public static string StatusBadgeClass(string status) => status switch
     {
         "Dispatched" or "Pending" => "dsp-badge--warning",
@@ -27,6 +46,14 @@ public static class DespachosUi
         "Delivered" => "Entregado",
         "Rejected" => "Rechazado",
         "NotDelivered" => "No entregado",
+        _ => status,
+    };
+
+    public static string CostStatusLabel(string status) => status switch
+    {
+        "ok" => "Calculado",
+        "no_rate" => "Sin tarifa",
+        "ambiguous" => "Tarifa ambigua",
         _ => status,
     };
 

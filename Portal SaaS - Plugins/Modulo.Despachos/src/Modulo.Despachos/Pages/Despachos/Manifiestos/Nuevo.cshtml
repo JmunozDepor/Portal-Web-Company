@@ -1,0 +1,29 @@
+@page "/despachos/manifiestos/nuevo"
+@model Modulo.Despachos.Pages.Despachos.Manifiestos.NuevoModel
+@using Modulo.Despachos.Pages.Despachos.Manifiestos
+@{
+    ViewData["Title"] = "Nuevo manifiesto";
+}
+@* Paso 1: cabecera. Al guardar se crea el borrador y se sigue en el detalle (pestaña Documentos) para escanear. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Nuevo manifiesto</h2>
+        <a class="btn-secondary" href="/despachos/manifiestos">Volver al listado</a>
+    </div>
+
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="post" asp-antiforgery="true">
+        <partial name="_CabeceraCamposDespachos" model='new ManifestFormView(Model.Input, Model.Lookups, "Input")' />
+        <p class="text-muted">Después de guardar el borrador podrá escanear las facturas y guías (lector de mano o cámara).</p>
+        <button type="submit" class="btn-primary">Crear borrador y escanear</button>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/js/despachos-manifiesto.js" asp-append-version="true"></script>
+}

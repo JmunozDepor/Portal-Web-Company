@@ -79,5 +79,8 @@ public interface IManifestService
     /// <summary>Manifiesto con documentos, líneas de costo y eventos, o null si no existe.</summary>
     Task<Manifest?> GetAsync(Guid manifestId);
 
+    /// <summary>Manifiesto por su correlativo visible (el que lleva el Code128 del PDF), o null si no existe.</summary>
+    Task<Manifest?> GetByNumberAsync(int number);
+
     Task<IReadOnlyList<ManifestListItem>> ListAsync(ManifestFilter filter);
 }

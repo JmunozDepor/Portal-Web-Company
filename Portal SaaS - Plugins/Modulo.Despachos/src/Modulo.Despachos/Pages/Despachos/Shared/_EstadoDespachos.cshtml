@@ -1,0 +1,6 @@
+@model string
+@* Badge de estado de manifiesto o de documento. Recibe el valor guardado en la base (snake_case). *@
+@{
+    var key = DespachosUi.StatusKey(Model);
+}
+<span class="dsp-badge @DespachosUi.StatusBadgeClass(key)">@DespachosUi.StatusLabel(key)</span>

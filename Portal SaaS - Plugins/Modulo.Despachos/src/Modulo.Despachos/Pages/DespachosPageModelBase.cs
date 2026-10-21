@@ -31,6 +31,10 @@ public abstract class DespachosPageModelBase : PageModel
     protected Task<bool> HasActionAsync(string action) =>
         _currentUser.HasActionAsync("Despachos." + MenuCode, action);
 
+    /// <summary>Permiso sobre OTRO menú del módulo (ej. el ajuste de costo exige EDIT en "cierre-mensual").</summary>
+    protected Task<bool> HasActionOnAsync(string menuCode, string action) =>
+        _currentUser.HasActionAsync("Despachos." + menuCode, action);
+
     [TempData]
     public string? SuccessMessage { get; set; }
 

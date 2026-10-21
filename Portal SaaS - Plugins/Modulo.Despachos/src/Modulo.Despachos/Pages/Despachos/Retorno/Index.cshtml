@@ -1,0 +1,119 @@
+@page "/despachos/retorno"
+@model Modulo.Despachos.Pages.Despachos.Retorno.IndexModel
+@using System.Globalization
+@using Modulo.Despachos.Models
+@using Modulo.Despachos.Pages.Despachos.Retorno
+@{
+    ViewData["Title"] = "Retorno";
+    var es = new CultureInfo("es-CL");
+}
+@* Retorno: se escanea el código de barras (Code128) del PDF del manifiesto; el lector en modo teclado
+   escribe el número y envía Enter. Todos los documentos parten "Entregado"; al cambiar el estado se exige motivo. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Retorno de manifiesto</h2>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.WarningMessage is not null)
+    {
+        <div class="alert alert-warning">@Model.WarningMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto flex-grow-1" style="max-width:360px;">
+            <label for="ret-number" class="form-label">N° de manifiesto (escanee el código de barras del PDF)</label>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" id="ret-number" name="number" class="form-control"
+                   value="@Model.Number" autocomplete="off" autofocus />
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn-primary">Buscar</button>
+        </div>
+    </form>
+
+    @if (Model.M is { } m)
+    {
+        <div class="mb-3">
+            <strong>Manifiesto N° @m.Number</strong>
+            <partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="m.Status" />
+            <span class="text-muted">
+                @m.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture) — @(m.Plate ?? "—") — @(m.DriverName ?? "—")
+            </span>
+            <a class="btn-ghost" href="/despachos/manifiestos/@m.Id" title="Ver detalle"><i class="bi bi-box-arrow-up-right"></i></a>
+        </div>
+
+        @if (!Model.CanEdit)
+        {
+            <div class="alert alert-info">Solo lectura: su perfil no puede registrar retornos.</div>
+        }
+
+        <form method="post" asp-page-handler="Registrar" asp-route-id="@m.Id" asp-antiforgery="true" id="ret-form">
+            <table class="table-ps">
+                <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Comuna</th><th>Resultado</th><th>Motivo</th><th>Comentarios</th></tr></thead>
+                <tbody>
+                    @{ var i = 0; }
+                    @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
+                    {
+                        var row = Model.Rows[i];
+                        <tr data-ret-row>
+                            <td>
+                                @DocumentKinds.Label(d.DocumentKind)
+                                <input type="hidden" name="rows[@i].DocumentId" value="@d.Id" />
+                            </td>
+                            <td>@d.Folio</td>
+                            <td>@d.CustomerName</td>
+                            <td>@(d.DestinationCommuneName ?? "—")</td>
+                            <td>
+                                <select name="rows[@i].Status" class="form-select" data-ret-status disabled="@(!Model.CanEdit)">
+                                    @foreach (var (value, label) in IndexModel.StatusChoices)
+                                    {
+                                        <option value="@value" selected="@(row.Status == value)">@label</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <select name="rows[@i].ReasonId" class="form-select" data-ret-reason disabled="@(!Model.CanEdit)">
+                                    <option value="">— Motivo —</option>
+                                    @foreach (var r in Model.Reasons)
+                                    {
+                                        <option value="@r.Id" data-applies="@r.AppliesTo" selected="@(row.ReasonId == r.Id)">@r.Name</option>
+                                    }
+                                </select>
+                            </td>
+                            <td><input type="text" name="rows[@i].Comments" value="@row.Comments" class="form-control" maxlength="300" autocomplete="off" disabled="@(!Model.CanEdit)" /></td>
+                        </tr>
+                        i++;
+                    }
+                </tbody>
+            </table>
+
+            <div class="d-flex align-items-end gap-3 mt-3 flex-wrap">
+                <div>
+                    <label class="form-label" for="ret-odo">Odómetro final (km, opcional)</label>
+                    <input type="number" min="0" step="1" id="ret-odo" name="odometerEnd" class="form-control"
+                           value="@Model.OdometerEndText" disabled="@(!Model.CanEdit)" />
+                    @if (m.OdometerStart is not null)
+                    {
+                        <div class="text-muted">Inicial: @m.OdometerStart.Value.ToString(CultureInfo.InvariantCulture) km</div>
+                    }
+                </div>
+                @if (Model.CanEdit)
+                {
+                    <button type="submit" class="btn-primary"><i class="bi bi-check2-square"></i> Registrar retorno</button>
+                }
+            </div>
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/despachos-retorno.js" asp-append-version="true"></script>
+}

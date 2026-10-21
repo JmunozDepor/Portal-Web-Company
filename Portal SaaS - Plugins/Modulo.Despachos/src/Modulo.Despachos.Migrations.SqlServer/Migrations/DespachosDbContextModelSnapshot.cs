@@ -806,6 +806,89 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                     b.ToTable("manifest_events", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.MonthlyClosure", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("closed_at");
+
+                    b.Property<Guid?>("ClosedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("closed_by");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("ManifestCount")
+                        .HasColumnType("int")
+                        .HasColumnName("manifest_count");
+
+                    b.Property<string>("Period")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)")
+                        .HasColumnName("period");
+
+                    b.Property<string>("ReopenReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("reopen_reason");
+
+                    b.Property<DateTime?>("ReopenedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("reopened_at");
+
+                    b.Property<Guid?>("ReopenedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("reopened_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("TotalCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_cost");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_monthly_closures_company_id");
+
+                    b.HasIndex("CompanyId", "Period")
+                        .IsUnique()
+                        .HasDatabaseName("uq_monthly_closures_company_id_period");
+
+                    b.ToTable("monthly_closures", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.NotificationRecipient", b =>
                 {
                     b.Property<long>("Id")

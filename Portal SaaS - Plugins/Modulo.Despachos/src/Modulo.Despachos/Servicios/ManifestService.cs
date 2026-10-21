@@ -26,11 +26,12 @@ public class ManifestService : IManifestService
     private readonly IManifestCostService _cost;
     private readonly TimeProvider _time;
     private readonly INotificationService _notifications;
+    private readonly IMonthlyClosureService _closure;
 
     public ManifestService(
         DespachosDbContext db, ICurrentCompanyAccessor company, ICurrentUserContext user,
         ISapDocumentLookupService sap, IMasterDataService master, IManifestCostService cost, TimeProvider time,
-        INotificationService notifications)
+        INotificationService notifications, IMonthlyClosureService closure)
     {
         _db = db;
         _company = company;
@@ -40,6 +41,7 @@ public class ManifestService : IManifestService
         _cost = cost;
         _time = time;
         _notifications = notifications;
+        _closure = closure;
     }
 
     private Guid CompanyId => _company.CompanyId;
@@ -53,6 +55,7 @@ public class ManifestService : IManifestService
     public async Task<Guid> CreateDraftAsync(ManifestHeaderInput input)
     {
         await ValidateHeaderAsync(input);
+        await RequireOpenPeriodAsync(input.DispatchDate);
         for (var attempt = 1; ; attempt++)
         {
             var now = UtcNow;
@@ -87,6 +90,7 @@ public class ManifestService : IManifestService
         var m = await LoadAsync(manifestId);
         RequireStatus(m, ManifestStatuses.Draft, "Solo se puede editar la cabecera de un manifiesto en borrador.");
         await ValidateHeaderAsync(input);
+        await RequireOpenPeriodAsync(input.DispatchDate);
         ApplyHeader(m, input);
         m.UpdatedAt = UtcNow;
         m.UpdatedBy = _user.UserId;
@@ -607,10 +611,21 @@ public class ManifestService : IManifestService
 
     // ---------------------------------------------------------------- Helpers
 
-    private async Task<Manifest> LoadAsync(Guid id) =>
-        await _db.Manifests.Include(x => x.Documents)
-            .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == CompanyId)
-        ?? throw new InvalidOperationException("El manifiesto no existe.");
+    /// <summary>Carga el manifiesto para mutarlo: si su dispatch_date cae en un período cerrado, no se toca.</summary>
+    private async Task<Manifest> LoadAsync(Guid id)
+    {
+        var m = await _db.Manifests.Include(x => x.Documents)
+                    .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == CompanyId)
+                ?? throw new InvalidOperationException("El manifiesto no existe.");
+        await RequireOpenPeriodAsync(m.DispatchDate);
+        return m;
+    }
+
+    private async Task RequireOpenPeriodAsync(DateOnly date)
+    {
+        if (await _closure.IsClosedAsync(date))
+            throw new InvalidOperationException(MonthlyClosureService.ClosedPeriodMessage(date));
+    }
 
     private static void RequireStatus(Manifest m, string status, string message)
     {

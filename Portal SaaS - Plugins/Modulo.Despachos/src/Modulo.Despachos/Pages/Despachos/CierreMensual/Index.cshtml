@@ -1,0 +1,103 @@
+@page "/despachos/cierre-mensual"
+@model Modulo.Despachos.Pages.Despachos.CierreMensual.IndexModel
+@using System.Globalization
+@using Modulo.Despachos.Pages.Despachos.CierreMensual
+@{
+    ViewData["Title"] = "Cierre mensual";
+    var es = new CultureInfo("es-CL");
+}
+@* Cierre mensual: congela el costo final de los manifiestos del período (por fecha de despacho). *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Cierre mensual</h2>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.WarningMessage is not null)
+    {
+        <div class="alert alert-warning">@Model.WarningMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label" for="cm-period">Período</label>
+            <input type="month" id="cm-period" name="period" value="@Model.PeriodText" class="form-control" />
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn-primary">Ver</button>
+        </div>
+    </form>
+
+    @if (Model.Status is { } st)
+    {
+        <div class="mb-3">
+            <strong>Período @Model.PeriodText</strong>
+            <span class="dsp-badge @IndexModel.StatusBadge(st.Status)">@IndexModel.StatusLabel(st.Status)</span>
+        </div>
+        <table class="table-ps mb-3" style="max-width:520px;">
+            <tbody>
+                <tr><th>Manifiestos (sin anulados)</th><td>@st.ManifestCount</td></tr>
+                <tr><th>Costo total</th><td>$@st.TotalCost.ToString("N0", es)</td></tr>
+                @if (st.Status == "closed")
+                {
+                    <tr><th>Cerrado el</th><td>@IndexModel.Local(st.ClosedAt)</td></tr>
+                }
+                @if (st.ReopenedAt is not null)
+                {
+                    <tr><th>Última reapertura</th><td>@IndexModel.Local(st.ReopenedAt) — @st.ReopenReason</td></tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.IsClosed)
+        {
+            <div class="alert alert-info">El período está cerrado: sus manifiestos son de solo lectura y el costo está congelado.</div>
+            @if (Model.CanReopen)
+            {
+                <form method="post" asp-page-handler="Reabrir" asp-route-period="@Model.PeriodText" asp-antiforgery="true" class="filter-card">
+                    <div class="col-auto flex-grow-1">
+                        <label class="form-label" for="cm-reason">Motivo de la reapertura</label>
+                        <input type="text" id="cm-reason" name="reason" class="form-control" maxlength="500" required />
+                    </div>
+                    <div class="col-auto align-self-end">
+                        <button type="submit" class="btn-secondary">Reabrir período</button>
+                    </div>
+                </form>
+            }
+        }
+        else
+        {
+            @if (st.Blockers.Count > 0)
+            {
+                <div class="alert alert-warning">
+                    <strong>Pendientes que impiden cerrar el período:</strong>
+                    <ul class="mb-0">
+                        @foreach (var b in st.Blockers)
+                        {
+                            <li>@b</li>
+                        }
+                    </ul>
+                </div>
+            }
+            @if (Model.CanClose)
+            {
+                <form method="post" asp-page-handler="Cerrar" asp-route-period="@Model.PeriodText" asp-antiforgery="true"
+                      onsubmit="return confirm('¿Cerrar el período @Model.PeriodText? El costo de sus manifiestos quedará congelado.');">
+                    <button type="submit" class="btn-primary" disabled="@(st.Blockers.Count > 0)">Cerrar período</button>
+                </form>
+            }
+            else
+            {
+                <div class="text-muted">Su perfil no puede cerrar períodos.</div>
+            }
+        }
+    }
+</div>

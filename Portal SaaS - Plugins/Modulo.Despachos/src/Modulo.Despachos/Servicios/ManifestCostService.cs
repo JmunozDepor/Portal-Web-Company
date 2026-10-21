@@ -14,15 +14,18 @@ public sealed class ManifestCostService : IManifestCostService
     private readonly ITariffService _tariff;
     private readonly CostEngine _engine;
     private readonly TimeProvider _time;
+    private readonly IMonthlyClosureService _closure;
 
     public ManifestCostService(
-        DespachosDbContext db, ICurrentCompanyAccessor company, ITariffService tariff, CostEngine engine, TimeProvider time)
+        DespachosDbContext db, ICurrentCompanyAccessor company, ITariffService tariff, CostEngine engine, TimeProvider time,
+        IMonthlyClosureService closure)
     {
         _db = db;
         _company = company;
         _tariff = tariff;
         _engine = engine;
         _time = time;
+        _closure = closure;
     }
 
     private Guid CompanyId => _company.CompanyId;
@@ -30,6 +33,8 @@ public sealed class ManifestCostService : IManifestCostService
     public async Task<CostResult> RecalculateAsync(Manifest m)
     {
         if (m.CompanyId != CompanyId) throw new InvalidOperationException("El manifiesto no existe.");
+        if (await _closure.IsClosedAsync(m.DispatchDate))
+            throw new InvalidOperationException(MonthlyClosureService.ClosedPeriodMessage(m.DispatchDate));
 
         var docs = await _db.ManifestDocuments
             .Where(d => d.CompanyId == CompanyId && d.ManifestId == m.Id).ToListAsync();

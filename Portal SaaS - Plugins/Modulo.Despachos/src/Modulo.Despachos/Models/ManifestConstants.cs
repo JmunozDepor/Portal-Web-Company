@@ -44,6 +44,8 @@ public static class ManifestEventTypes
     public const string CostOverridden = "cost_overridden";
     public const string Printed = "printed";
     public const string Reprinted = "reprinted";
+    public const string PeriodClosed = "period_closed";
+    public const string PeriodReopened = "period_reopened";
 }
 
 /// <summary>Estado del cálculo de costo del manifiesto (manifests.cost_status).</summary>
@@ -52,4 +54,12 @@ public static class CostStatuses
     public const string Ok = "ok";
     public const string NoRate = "no_rate";
     public const string Ambiguous = "ambiguous";
+}
+
+/// <summary>Estados del cierre mensual (monthly_closures.status).</summary>
+public static class ClosureStatuses
+{
+    public const string Open = "open";
+    public const string Closed = "closed";
+    public const string Reopened = "reopened";
 }

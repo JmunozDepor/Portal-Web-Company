@@ -42,6 +42,7 @@ public class DespachosDbContext : DbContext
     public DbSet<ManifestDocument> ManifestDocuments => Set<ManifestDocument>();
     public DbSet<ManifestCostLine> ManifestCostLines => Set<ManifestCostLine>();
     public DbSet<ManifestEvent> ManifestEvents => Set<ManifestEvent>();
+    public DbSet<MonthlyClosure> MonthlyClosures => Set<MonthlyClosure>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -387,6 +388,21 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.OccurredAt).HasColumnName("occurred_at");
             e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_manifest_events_company_id");
             e.HasIndex(x => x.ManifestId).HasDatabaseName("ix_manifest_events_manifest_id");
+        });
+
+        modelBuilder.Entity<MonthlyClosure>(e =>
+        {
+            Base(e, "monthly_closures");
+            e.Property(x => x.Period).HasColumnName("period").HasMaxLength(7).IsRequired();
+            e.Property(x => x.Status).HasColumnName("status").HasMaxLength(15).IsRequired();
+            e.Property(x => x.ClosedAt).HasColumnName("closed_at");
+            e.Property(x => x.ClosedBy).HasColumnName("closed_by");
+            e.Property(x => x.ReopenedAt).HasColumnName("reopened_at");
+            e.Property(x => x.ReopenedBy).HasColumnName("reopened_by");
+            e.Property(x => x.ReopenReason).HasColumnName("reopen_reason").HasMaxLength(500);
+            e.Property(x => x.ManifestCount).HasColumnName("manifest_count");
+            e.Property(x => x.TotalCost).HasColumnName("total_cost").HasPrecision(18, 2);
+            e.HasIndex(x => new { x.CompanyId, x.Period }).IsUnique().HasDatabaseName("uq_monthly_closures_company_id_period");
         });
     }
 

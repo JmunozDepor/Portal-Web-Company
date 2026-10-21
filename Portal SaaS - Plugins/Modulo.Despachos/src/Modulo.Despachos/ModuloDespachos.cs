@@ -70,6 +70,8 @@ public sealed class ModuloDespachos : IModuloPortal
         services.AddScoped<Servicios.IMasterDataService, Servicios.MasterDataService>();
         services.AddScoped<Servicios.ITariffService, Servicios.TariffService>();
         services.AddScoped<Servicios.ISapDocumentLookupService, Servicios.SapDocumentLookupService>();
+        services.AddScoped<Servicios.IMonthlyClosureService, Servicios.MonthlyClosureService>();
+        services.AddScoped<Servicios.IDispatchReportService, Servicios.DispatchReportService>();
         services.AddScoped<Servicios.IManifestCostService, Servicios.ManifestCostService>();
         services.AddScoped<Servicios.IManifestService, Servicios.ManifestService>();
         services.AddScoped<Servicios.IManifestPdfService, Servicios.ManifestPdfService>();

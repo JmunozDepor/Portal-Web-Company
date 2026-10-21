@@ -45,8 +45,8 @@ public class ManifestServiceTests
 
         public RacingManifestService(DespachosDbContext db, ICurrentCompanyAccessor c, ICurrentUserContext u,
             ISapDocumentLookupService s, IMasterDataService m, IManifestCostService cost, TimeProvider t,
-            INotificationService n)
-            : base(db, c, u, s, m, cost, t, n) { }
+            INotificationService n, IMonthlyClosureService closure)
+            : base(db, c, u, s, m, cost, t, n, closure) { }
 
         protected override async Task SaveNewManifestAsync()
         {
@@ -66,8 +66,8 @@ public class ManifestServiceTests
     {
         var name = "despachos-" + Guid.NewGuid();
         RacingManifestService? racing = null;
-        var env = ManifestTestEnv.Build(db: TestDb.Create(name), factory: (db, c, u, s, m, cost, t, n) =>
-            racing = new RacingManifestService(db, c, u, s, m, cost, t, n));
+        var env = ManifestTestEnv.Build(db: TestDb.Create(name), factory: (db, c, u, s, m, cost, t, n, cl) =>
+            racing = new RacingManifestService(db, c, u, s, m, cost, t, n, cl));
         await env.Svc.CreateDraftAsync(env.Header());
         await env.Svc.CreateDraftAsync(env.Header());
         racing!.SaveCalls = 0;
@@ -96,8 +96,8 @@ public class ManifestServiceTests
         public int SaveCalls;
         public AlwaysConflictService(DespachosDbContext db, ICurrentCompanyAccessor c, ICurrentUserContext u,
             ISapDocumentLookupService s, IMasterDataService m, IManifestCostService cost, TimeProvider t,
-            INotificationService n)
-            : base(db, c, u, s, m, cost, t, n) { }
+            INotificationService n, IMonthlyClosureService closure)
+            : base(db, c, u, s, m, cost, t, n, closure) { }
         protected override Task SaveNewManifestAsync()
         {
             SaveCalls++;
@@ -108,7 +108,7 @@ public class ManifestServiceTests
     [Fact]
     public async Task CreateDraft_ConflictoPersistente_FallaTrasTresIntentos()
     {
-        var env = ManifestTestEnv.Build(factory: (db, c, u, s, m, cost, t, n) => new AlwaysConflictService(db, c, u, s, m, cost, t, n));
+        var env = ManifestTestEnv.Build(factory: (db, c, u, s, m, cost, t, n, cl) => new AlwaysConflictService(db, c, u, s, m, cost, t, n, cl));
         await Assert.ThrowsAsync<DbUpdateException>(() => env.Svc.CreateDraftAsync(env.Header()));
         Assert.Equal(3, ((AlwaysConflictService)env.Svc).SaveCalls);
     }

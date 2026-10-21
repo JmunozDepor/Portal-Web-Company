@@ -11,6 +11,9 @@ public sealed record ManifestHeaderInput(
 /// <summary>Captura de un documento: el texto del escáner (TED) o, a mano, tipo + folio (y opcionalmente el tipo SII).</summary>
 public sealed record DocumentCapture(string? RawScan, string? DocumentKind, long? Folio, int? SiiDocumentType = null);
 
+/// <summary>Resultado de entrega de un documento al registrar el retorno.</summary>
+public sealed record DocumentReturnInput(Guid ManifestDocumentId, string DeliveryStatus, long? RejectionReasonId, string? Comments);
+
 /// <summary>Valores de AddDocumentResult.Outcome.</summary>
 public static class AddDocumentOutcomes
 {
@@ -56,6 +59,22 @@ public interface IManifestService
     /// del manifiesto nunca cambia; devuelve advertencias (vehículo/chofer de otro transportista).
     /// </summary>
     Task<IReadOnlyList<string>> ChangeVehicleOrDriverAsync(Guid manifestId, long vehicleId, long? trailerId, long driverId, string reason);
+
+    /// <summary>
+    /// Registra el resultado de entrega por documento (manifiesto despachado, o retornado para corregirlo antes de
+    /// cerrar). Cuando todos los documentos tienen resultado el manifiesto pasa a retornado. Con odómetro final
+    /// guarda el km y recalcula el costo. Avisa por la campana los rechazos y entregas parciales.
+    /// </summary>
+    Task RegisterReturnAsync(Guid manifestId, IReadOnlyList<DocumentReturnInput> documents, int? odometerEnd);
+
+    /// <summary>Anula un manifiesto en borrador o despachado, con motivo; sus documentos quedan libres.</summary>
+    Task AnnulAsync(Guid manifestId, string reason);
+
+    /// <summary>Costo manual con motivo (manifiesto despachado o retornado); cost_final pasa a ser el override.</summary>
+    Task OverrideCostAsync(Guid manifestId, decimal amount, string reason);
+
+    /// <summary>Cierra un manifiesto retornado.</summary>
+    Task CloseAsync(Guid manifestId);
 
     /// <summary>Manifiesto con documentos, líneas de costo y eventos, o null si no existe.</summary>
     Task<Manifest?> GetAsync(Guid manifestId);

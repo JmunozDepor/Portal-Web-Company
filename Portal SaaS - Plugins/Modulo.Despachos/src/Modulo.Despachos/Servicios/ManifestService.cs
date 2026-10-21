@@ -4,6 +4,7 @@ using Modulo.Despachos.Data;
 using Modulo.Despachos.Dominio;
 using Modulo.Despachos.Models;
 using PortalSaas.Abstractions.Contratos;
+using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.Despachos.Servicios;
 
@@ -24,10 +25,12 @@ public class ManifestService : IManifestService
     private readonly IMasterDataService _master;
     private readonly IManifestCostService _cost;
     private readonly TimeProvider _time;
+    private readonly INotificationService _notifications;
 
     public ManifestService(
         DespachosDbContext db, ICurrentCompanyAccessor company, ICurrentUserContext user,
-        ISapDocumentLookupService sap, IMasterDataService master, IManifestCostService cost, TimeProvider time)
+        ISapDocumentLookupService sap, IMasterDataService master, IManifestCostService cost, TimeProvider time,
+        INotificationService notifications)
     {
         _db = db;
         _company = company;
@@ -36,6 +39,7 @@ public class ManifestService : IManifestService
         _master = master;
         _cost = cost;
         _time = time;
+        _notifications = notifications;
     }
 
     private Guid CompanyId => _company.CompanyId;
@@ -400,6 +404,167 @@ public class ManifestService : IManifestService
         if (vehicle != null && driver != null && driver.CarrierId != vehicle.CarrierId)
             list.Add($"El chofer {driver.FullName} no pertenece al transportista del vehículo.");
         return list;
+    }
+
+    // ---------------------------------------------------------------- Retorno, anulación, costo, cierre
+
+    private static readonly string[] ReturnStatuses =
+    {
+        DeliveryStatuses.Delivered, DeliveryStatuses.PartiallyDelivered, DeliveryStatuses.Rejected, DeliveryStatuses.NotDelivered,
+    };
+
+    private sealed record PendingNotice(ManifestDocument Doc, string Status, string? ReasonName, string? Comments);
+
+    public async Task RegisterReturnAsync(Guid manifestId, IReadOnlyList<DocumentReturnInput> documents, int? odometerEnd)
+    {
+        var m = await LoadAsync(manifestId);
+        if (m.Status != ManifestStatuses.Dispatched && m.Status != ManifestStatuses.Returned)
+            throw new InvalidOperationException("Solo se puede registrar el retorno de un manifiesto despachado (o retornado, para corregirlo antes de cerrar).");
+        if (documents.Count == 0 && odometerEnd == null)
+            throw new InvalidOperationException("Indique el resultado de al menos un documento.");
+
+        // Validación completa antes de tocar nada.
+        var reasons = await _db.RejectionReasons.Where(r => r.CompanyId == CompanyId).ToDictionaryAsync(r => r.Id);
+        var items = new List<(ManifestDocument Doc, DocumentReturnInput Input, RejectionReason? Reason)>();
+        foreach (var input in documents)
+        {
+            var doc = m.Documents.FirstOrDefault(d => d.Id == input.ManifestDocumentId)
+                ?? throw new InvalidOperationException("El documento no pertenece a este manifiesto.");
+            if (!ReturnStatuses.Contains(input.DeliveryStatus))
+                throw new InvalidOperationException($"Estado de entrega no válido para el folio {doc.Folio}.");
+            RejectionReason? reason = null;
+            if (input.DeliveryStatus != DeliveryStatuses.Delivered)
+            {
+                if (input.RejectionReasonId is not { } rid)
+                    throw new InvalidOperationException($"Indique el motivo para el folio {doc.Folio}.");
+                if (!reasons.TryGetValue(rid, out reason) || !reason.IsActive)
+                    throw new InvalidOperationException($"El motivo seleccionado para el folio {doc.Folio} no existe o está inactivo.");
+                var notDelivered = input.DeliveryStatus == DeliveryStatuses.NotDelivered;
+                var expected = notDelivered ? RejectionAppliesTo.NotDelivered : RejectionAppliesTo.Rejection;
+                if (reason.AppliesTo != expected)
+                    throw new InvalidOperationException(
+                        $"El motivo '{reason.Name}' no aplica a {(notDelivered ? "no entregado" : "rechazo / entrega parcial")} (folio {doc.Folio}).");
+            }
+            items.Add((doc, input, reason));
+        }
+        if (odometerEnd != null)
+        {
+            if (m.OdometerStart == null)
+                throw new InvalidOperationException("El manifiesto no tiene odómetro de inicio; no se puede registrar el odómetro final.");
+            if (odometerEnd < m.OdometerStart)
+                throw new InvalidOperationException("El odómetro final no puede ser menor que el de inicio.");
+        }
+
+        var now = UtcNow;
+        var notices = new List<PendingNotice>();
+        foreach (var (doc, input, reason) in items)
+        {
+            var before = doc.DeliveryStatus;
+            doc.DeliveryStatus = input.DeliveryStatus;
+            doc.RejectionReasonId = input.DeliveryStatus == DeliveryStatuses.Delivered ? null : input.RejectionReasonId;
+            doc.Comments = string.IsNullOrWhiteSpace(input.Comments) ? null : input.Comments.Trim();
+            doc.ReturnedBy = _user.UserId;
+            doc.ReturnedAt = now;
+            AddEvent(m.Id, ManifestEventTypes.ReturnRegistered, doc.Id, before, doc.DeliveryStatus,
+                new { reason = reason?.Name, comments = doc.Comments });
+            if (before != doc.DeliveryStatus
+                && (doc.DeliveryStatus == DeliveryStatuses.Rejected || doc.DeliveryStatus == DeliveryStatuses.PartiallyDelivered))
+                notices.Add(new PendingNotice(doc, doc.DeliveryStatus, reason?.Name, doc.Comments));
+        }
+
+        if (m.Status == ManifestStatuses.Dispatched
+            && m.Documents.All(d => ReturnStatuses.Contains(d.DeliveryStatus)))
+        {
+            m.Status = ManifestStatuses.Returned;
+            m.ReturnedAt = now;
+            AddEvent(m.Id, ManifestEventTypes.ReturnRegistered, null, ManifestStatuses.Dispatched, ManifestStatuses.Returned, null);
+        }
+        m.UpdatedAt = now;
+        m.UpdatedBy = _user.UserId;
+
+        if (odometerEnd != null)
+        {
+            m.OdometerEnd = odometerEnd;
+            await _cost.RecalculateAsync(m); // guarda todo en una sola escritura
+        }
+        else
+        {
+            await _db.SaveChangesAsync();
+        }
+
+        await NotifyAsync(m, notices);
+    }
+
+    /// <summary>Un aviso por destinatario y documento; se envía con todo ya guardado y nunca deshace el retorno.</summary>
+    private async Task NotifyAsync(Manifest m, List<PendingNotice> notices)
+    {
+        if (notices.Count == 0) return;
+        try
+        {
+            var recipients = await _master.ListNotificationRecipientsAsync();
+            var url = $"/despachos/manifiestos/{m.Id:D}";
+            foreach (var n in notices)
+            {
+                var rejected = n.Status == DeliveryStatuses.Rejected;
+                var title = rejected ? $"Rechazo en manifiesto N° {m.Number}" : $"Entrega parcial en manifiesto N° {m.Number}";
+                var message = $"Manifiesto N° {m.Number}: {(rejected ? "rechazo" : "entrega parcial")} del folio {n.Doc.Folio} "
+                    + $"({n.Doc.CustomerName}). Motivo: {n.ReasonName ?? "—"}."
+                    + (string.IsNullOrWhiteSpace(n.Comments) ? "" : $" Comentario: {n.Comments}");
+                foreach (var r in recipients)
+                    await _notifications.TryEnqueueAsync(r.UserId, title, message, NotificationSeverity.Warning, url);
+            }
+        }
+        catch (Exception)
+        {
+            // El aviso es accesorio: el retorno ya quedó guardado.
+        }
+    }
+
+    public async Task AnnulAsync(Guid manifestId, string reason)
+    {
+        var m = await LoadAsync(manifestId);
+        if (m.Status != ManifestStatuses.Draft && m.Status != ManifestStatuses.Dispatched)
+            throw new InvalidOperationException("Solo se puede anular un manifiesto en borrador o despachado.");
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new InvalidOperationException("Indique el motivo de la anulación.");
+        var from = m.Status;
+        m.Status = ManifestStatuses.Annulled;
+        m.UpdatedAt = UtcNow;
+        m.UpdatedBy = _user.UserId;
+        // Los documentos se conservan como historial; quedan libres porque el manifiesto está anulado.
+        AddEvent(m.Id, ManifestEventTypes.Annulled, null, from, ManifestStatuses.Annulled, new { reason = reason.Trim() });
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task OverrideCostAsync(Guid manifestId, decimal amount, string reason)
+    {
+        var m = await LoadAsync(manifestId);
+        if (m.Status != ManifestStatuses.Dispatched && m.Status != ManifestStatuses.Returned)
+            throw new InvalidOperationException("Solo se puede ajustar el costo de un manifiesto despachado o retornado.");
+        if (amount < 0)
+            throw new InvalidOperationException("El costo no puede ser negativo.");
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new InvalidOperationException("Indique el motivo del ajuste de costo.");
+        var before = new { calculated = m.CostCalculated, @override = m.CostOverride, final = m.CostFinal };
+        m.CostOverride = amount;
+        m.CostOverrideReason = reason.Trim();
+        m.CostFinal = amount;
+        m.UpdatedAt = UtcNow;
+        m.UpdatedBy = _user.UserId;
+        AddEvent(m.Id, ManifestEventTypes.CostOverridden, null, m.Status, m.Status,
+            new { reason = m.CostOverrideReason, before, after = new { calculated = m.CostCalculated, @override = m.CostOverride, final = m.CostFinal } });
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task CloseAsync(Guid manifestId)
+    {
+        var m = await LoadAsync(manifestId);
+        RequireStatus(m, ManifestStatuses.Returned, "Solo se puede cerrar un manifiesto con el retorno registrado.");
+        m.Status = ManifestStatuses.Closed;
+        m.UpdatedAt = UtcNow;
+        m.UpdatedBy = _user.UserId;
+        AddEvent(m.Id, ManifestEventTypes.Closed, null, ManifestStatuses.Returned, ManifestStatuses.Closed, null);
+        await _db.SaveChangesAsync();
     }
 
     // ---------------------------------------------------------------- Consulta

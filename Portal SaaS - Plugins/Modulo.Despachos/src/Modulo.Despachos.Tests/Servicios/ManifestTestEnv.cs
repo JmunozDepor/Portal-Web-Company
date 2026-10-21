@@ -23,13 +23,15 @@ internal sealed class ManifestTestEnv
     public required FixedTimeProvider Clock { get; init; }
     public required ManifestCostService Cost { get; init; }
     public required ManifestService Svc { get; init; }
+    public required FakeNotificationService Notifications { get; init; }
 
     public long CarrierId, VehicleId, TrailerId, DriverId, OriginId, ShiftId, SmallTypeId;
     public long RancaguaId, CuricoId;
 
     public delegate ManifestService ServiceFactory(
         DespachosDbContext db, ICurrentCompanyAccessor company, ICurrentUserContext user,
-        ISapDocumentLookupService sap, IMasterDataService master, IManifestCostService cost, TimeProvider time);
+        ISapDocumentLookupService sap, IMasterDataService master, IManifestCostService cost, TimeProvider time,
+        INotificationService notifications);
 
     public static ManifestTestEnv Build(
         bool seedRates = true, DespachosDbContext? db = null, Guid? companyId = null, ServiceFactory? factory = null)
@@ -54,13 +56,14 @@ internal sealed class ManifestTestEnv
         var sap = new FakeSapDocumentLookupService();
         var clock = new FixedTimeProvider(new DateTimeOffset(2026, 11, 10, 15, 0, 0, TimeSpan.Zero)); // 12:00 Chile
         var cost = new ManifestCostService(db, company, tariff, TarifasTestData.Engine(), clock);
+        var notifications = new FakeNotificationService();
         var svc = factory != null
-            ? factory(db, company, user, sap, master, cost, clock)
-            : new ManifestService(db, company, user, sap, master, cost, clock);
+            ? factory(db, company, user, sap, master, cost, clock, notifications)
+            : new ManifestService(db, company, user, sap, master, cost, clock, notifications);
         var env = new ManifestTestEnv
         {
             Db = db, Company = company, User = user, Master = master, Tariff = tariff, Sap = sap,
-            Clock = clock, Cost = cost, Svc = svc,
+            Clock = clock, Cost = cost, Svc = svc, Notifications = notifications,
         };
         env.SeedAsync(seedRates).GetAwaiter().GetResult();
         return env;

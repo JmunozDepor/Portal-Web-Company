@@ -68,6 +68,24 @@ public sealed class ModuloDespachos : IModuloPortal
         // todavía no eligió Company en la sesión, se rechaza acá con un mensaje claro.
         services.AddScoped<Servicios.IMasterDataService, Servicios.MasterDataService>();
 
+        // Motor de costo (puro): estrategias de cálculo, condiciones de recargo y el motor.
+        services.AddSingleton<Dominio.Tarifas.IRateCalculator, Dominio.Tarifas.FixedPerTripCalculator>();
+        services.AddSingleton<Dominio.Tarifas.IRateCalculator, Dominio.Tarifas.PerM3Calculator>();
+        services.AddSingleton<Dominio.Tarifas.IRateCalculator, Dominio.Tarifas.PerKmCalculator>();
+        services.AddSingleton<Dominio.Tarifas.IRateCalculator, Dominio.Tarifas.PerPackageCalculator>();
+        services.AddSingleton<Dominio.Tarifas.IRateCalculator, Dominio.Tarifas.PerDocumentCalculator>();
+        services.AddSingleton<Dominio.Tarifas.IRateCalculator, Dominio.Tarifas.NoChargeCalculator>();
+        services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.DistinctZonesOverCondition>();
+        services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.DistinctCommunesOverCondition>();
+        services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.DepartureTimeFromCondition>();
+        services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.ShiftIsCondition>();
+        services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.WeekdayInCondition>();
+        services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.IsHolidayCondition>();
+        services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.DocumentsOverCondition>();
+        services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.PackagesOverCondition>();
+        services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.VehicleTypeIsCondition>();
+        services.AddSingleton<Dominio.Tarifas.CostEngine>();
+
         services.AddDbContext<DespachosDbContext>((sp, options) =>
         {
             var companyAccessor = sp.GetRequiredService<ICurrentCompanyAccessor>();

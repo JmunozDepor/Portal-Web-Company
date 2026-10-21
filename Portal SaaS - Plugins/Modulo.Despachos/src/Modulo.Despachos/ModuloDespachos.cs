@@ -72,6 +72,7 @@ public sealed class ModuloDespachos : IModuloPortal
         services.AddScoped<Servicios.ISapDocumentLookupService, Servicios.SapDocumentLookupService>();
         services.AddScoped<Servicios.IManifestCostService, Servicios.ManifestCostService>();
         services.AddScoped<Servicios.IManifestService, Servicios.ManifestService>();
+        services.AddScoped<Servicios.IManifestPdfService, Servicios.ManifestPdfService>();
 
         // Reloj inyectable (hora de salida del despacho); los tests lo reemplazan por uno fijo.
         services.TryAddSingleton(TimeProvider.System);

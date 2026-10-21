@@ -266,11 +266,12 @@ public class ManifestReturnTests
         await env.Svc.RegisterReturnAsync(id, new[] { new DocumentReturnInput(docs[0], DeliveryStatuses.Delivered, null, null) }, 1100);
         Assert.Equal(99000m, (await env.Svc.GetAsync(id))!.CostFinal);
 
-        // Permitido también en returned; no en cerrado.
+        // Permitido también en returned y, con el período abierto, en cerrado.
         await env.Svc.OverrideCostAsync(id, 0, "sin cobro");
         Assert.Equal(0m, (await env.Svc.GetAsync(id))!.CostFinal);
         await env.Svc.CloseAsync(id);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => env.Svc.OverrideCostAsync(id, 5, "x"));
+        await env.Svc.OverrideCostAsync(id, 5, "x");
+        Assert.Equal(5m, (await env.Svc.GetAsync(id))!.CostFinal);
     }
 
     [Fact]

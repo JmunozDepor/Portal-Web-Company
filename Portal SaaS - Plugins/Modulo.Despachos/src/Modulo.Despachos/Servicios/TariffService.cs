@@ -77,7 +77,11 @@ public sealed class TariffService : ITariffService
         return await SaveAsync(c, _db.RateCards);
     }
 
-    public Task<DeleteResult> DeleteRateCardAsync(long id) => DeleteAsync(_db.RateCards, id);
+    public Task<DeleteResult> DeleteRateCardAsync(long id) => DeleteAsync(_db.RateCards, id, async () =>
+        await _db.Manifests.AnyAsync(m => m.CompanyId == CompanyId && m.RateCardId == id)
+        || await _db.ManifestCostLines.AnyAsync(l => l.CompanyId == CompanyId && l.RateCardId == id)
+            ? "La tarifa está usada en manifiestos; desactívela en vez de eliminarla."
+            : null);
 
     // ---------------------------------------------------------------- Recargos
 
@@ -137,7 +141,10 @@ public sealed class TariffService : ITariffService
         await EnsureExistsAsync<VehicleType>(vehicleTypeId, "El tipo de vehículo");
     }
 
-    public Task<DeleteResult> DeleteSurchargeAsync(long id) => DeleteAsync(_db.RateSurcharges, id);
+    public Task<DeleteResult> DeleteSurchargeAsync(long id) => DeleteAsync(_db.RateSurcharges, id, async () =>
+        await _db.ManifestCostLines.AnyAsync(l => l.CompanyId == CompanyId && l.RateSurchargeId == id)
+            ? "El recargo está usado en manifiestos; desactívelo en vez de eliminarlo."
+            : null);
 
     // ---------------------------------------------------------------- Evaluación
 
@@ -225,10 +232,12 @@ public sealed class TariffService : ITariffService
         return existing.Id;
     }
 
-    private async Task<DeleteResult> DeleteAsync<T>(DbSet<T> set, long id) where T : AuditedEntity
+    private async Task<DeleteResult> DeleteAsync<T>(DbSet<T> set, long id, Func<Task<string?>> blockReason) where T : AuditedEntity
     {
         var entity = await set.FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == CompanyId);
         if (entity is null) return new DeleteResult(false, "El registro no existe.");
+        var reason = await blockReason();
+        if (reason is not null) return new DeleteResult(false, reason);
         set.Remove(entity);
         await _db.SaveChangesAsync();
         return new DeleteResult(true, null);

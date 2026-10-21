@@ -36,6 +36,7 @@ public sealed class DetalleModel : DespachosPageModelBase
     public ManifestLookups Lookups { get; private set; } = null!;
     public IReadOnlyList<RejectionReason> Reasons { get; private set; } = Array.Empty<RejectionReason>();
     public IReadOnlyDictionary<Guid, string> UserLabels { get; private set; } = new Dictionary<Guid, string>();
+    public IReadOnlyList<Commune> Communes { get; private set; } = Array.Empty<Commune>();
 
     public bool CanEdit { get; private set; }
     public bool CanApprove { get; private set; }
@@ -95,6 +96,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         CanReturn = await HasActionOnAsync("retorno", PortalActions.Edit);
         Lookups = await ManifestLookups.LoadAsync(_data);
         Reasons = await _data.ListRejectionReasonsAsync(includeInactive: true);
+        Communes = await _data.ListCommunesAsync();
         UserLabels = await ResolveUsersAsync(m);
         if (Header.DispatchDate is null) Header = ManifestForm.From(m);
         if (Change.VehicleId == 0)
@@ -141,6 +143,10 @@ public sealed class DetalleModel : DespachosPageModelBase
         ManifestEventTypes.CostOverridden => "Costo ajustado",
         ManifestEventTypes.Printed => "PDF impreso",
         ManifestEventTypes.Reprinted => "PDF reimpreso (copia)",
+        ManifestEventTypes.PeriodClosed => "Período cerrado",
+        ManifestEventTypes.PeriodReopened => "Período reabierto",
+        ManifestEventTypes.CostRecalculated => "Costo recalculado",
+        ManifestEventTypes.DocumentCommuneChanged => "Comuna de destino corregida",
         _ => type,
     };
 
@@ -291,6 +297,33 @@ public sealed class DetalleModel : DespachosPageModelBase
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
         return RedirectToPage(new { id, tab = "costo" });
+    }
+
+    public async Task<IActionResult> OnPostRecalcularCostoAsync(Guid id)
+    {
+        if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
+        try
+        {
+            var result = await _manifests.RecalculateCostAsync(id);
+            if (result.Status == CostStatuses.Ok) SuccessMessage = "Costo recalculado.";
+            else WarningMessage = result.Status == CostStatuses.Ambiguous
+                ? "Costo recalculado: sigue habiendo una tarifa ambigua."
+                : "Costo recalculado: sigue sin tarifa para este viaje.";
+        }
+        catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
+        return RedirectToPage(new { id, tab = "costo" });
+    }
+
+    public async Task<IActionResult> OnPostCorregirComunaAsync(Guid id, Guid documentId, long communeId)
+    {
+        if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
+        try
+        {
+            await _manifests.SetDocumentCommuneAsync(id, documentId, communeId);
+            SuccessMessage = "Comuna corregida.";
+        }
+        catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
+        return RedirectToPage(new { id, tab = "documentos" });
     }
 
     public async Task<IActionResult> OnPostCerrarAsync(Guid id)

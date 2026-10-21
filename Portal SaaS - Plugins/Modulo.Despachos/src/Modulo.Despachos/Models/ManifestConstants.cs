@@ -46,6 +46,8 @@ public static class ManifestEventTypes
     public const string Reprinted = "reprinted";
     public const string PeriodClosed = "period_closed";
     public const string PeriodReopened = "period_reopened";
+    public const string CostRecalculated = "cost_recalculated";
+    public const string DocumentCommuneChanged = "document_commune_changed";
 }
 
 /// <summary>Estado del cálculo de costo del manifiesto (manifests.cost_status).</summary>

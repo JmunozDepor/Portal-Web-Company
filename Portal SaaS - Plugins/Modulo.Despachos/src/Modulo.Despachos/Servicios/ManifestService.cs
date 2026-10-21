@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Modulo.Despachos.Data;
 using Modulo.Despachos.Dominio;
+using Modulo.Despachos.Dominio.Tarifas;
 using Modulo.Despachos.Models;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
@@ -27,12 +29,14 @@ public class ManifestService : IManifestService
     private readonly TimeProvider _time;
     private readonly INotificationService _notifications;
     private readonly IMonthlyClosureService _closure;
+    private readonly ILogger<ManifestService>? _logger;
 
     public ManifestService(
         DespachosDbContext db, ICurrentCompanyAccessor company, ICurrentUserContext user,
         ISapDocumentLookupService sap, IMasterDataService master, IManifestCostService cost, TimeProvider time,
-        INotificationService notifications, IMonthlyClosureService closure)
+        INotificationService notifications, IMonthlyClosureService closure, ILogger<ManifestService>? logger = null)
     {
+        _logger = logger;
         _db = db;
         _company = company;
         _user = user;
@@ -120,8 +124,8 @@ public class ManifestService : IManifestService
             throw new InvalidOperationException("El origen seleccionado no existe.");
         if (!await _db.Carriers.AnyAsync(x => x.CompanyId == CompanyId && x.Id == i.CarrierId))
             throw new InvalidOperationException("El transportista seleccionado no existe.");
-        if (!await _db.Vehicles.AnyAsync(x => x.CompanyId == CompanyId && x.Id == i.VehicleId))
-            throw new InvalidOperationException("El vehículo seleccionado no existe.");
+        if (!await _db.Vehicles.AnyAsync(x => x.CompanyId == CompanyId && x.Id == i.VehicleId && !x.IsTrailer))
+            throw new InvalidOperationException("El vehículo seleccionado no existe o es un carro.");
         if (!await _db.Drivers.AnyAsync(x => x.CompanyId == CompanyId && x.Id == i.DriverId))
             throw new InvalidOperationException("El chofer seleccionado no existe.");
         if (i.TrailerId != null
@@ -362,8 +366,8 @@ public class ManifestService : IManifestService
         if (string.IsNullOrWhiteSpace(reason))
             throw new InvalidOperationException("Indique el motivo del cambio.");
 
-        var vehicle = await _db.Vehicles.FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Id == vehicleId && x.IsActive)
-            ?? throw new InvalidOperationException("El vehículo seleccionado no existe o está inactivo.");
+        var vehicle = await _db.Vehicles.FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Id == vehicleId && !x.IsTrailer && x.IsActive)
+            ?? throw new InvalidOperationException("El vehículo seleccionado no existe, es un carro o está inactivo.");
         Vehicle? trailer = null;
         if (trailerId != null)
             trailer = await _db.Vehicles.FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Id == trailerId && x.IsTrailer && x.IsActive)
@@ -515,12 +519,20 @@ public class ManifestService : IManifestService
                     + $"({n.Doc.CustomerName}). Motivo: {n.ReasonName ?? "—"}."
                     + (string.IsNullOrWhiteSpace(n.Comments) ? "" : $" Comentario: {n.Comments}");
                 foreach (var r in recipients)
-                    await _notifications.TryEnqueueAsync(r.UserId, title, message, NotificationSeverity.Warning, url);
+                {
+                    try { await _notifications.TryEnqueueAsync(r.UserId, title, message, NotificationSeverity.Warning, url); }
+                    catch (Exception ex)
+                    {
+                        // Un destinatario con problemas no debe impedir el aviso a los demás.
+                        _logger?.LogWarning(ex, "No se pudo avisar al usuario {UserId} del manifiesto N° {Number}.", r.UserId, m.Number);
+                    }
+                }
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // El aviso es accesorio: el retorno ya quedó guardado.
+            _logger?.LogWarning(ex, "No se pudieron enviar los avisos del manifiesto N° {Number}.", m.Number);
         }
     }
 
@@ -543,8 +555,8 @@ public class ManifestService : IManifestService
     public async Task OverrideCostAsync(Guid manifestId, decimal amount, string reason)
     {
         var m = await LoadAsync(manifestId);
-        if (m.Status != ManifestStatuses.Dispatched && m.Status != ManifestStatuses.Returned)
-            throw new InvalidOperationException("Solo se puede ajustar el costo de un manifiesto despachado o retornado.");
+        if (m.Status != ManifestStatuses.Dispatched && m.Status != ManifestStatuses.Returned && m.Status != ManifestStatuses.Closed)
+            throw new InvalidOperationException("Solo se puede ajustar el costo de un manifiesto despachado, retornado o cerrado.");
         if (amount < 0)
             throw new InvalidOperationException("El costo no puede ser negativo.");
         if (string.IsNullOrWhiteSpace(reason))
@@ -564,11 +576,54 @@ public class ManifestService : IManifestService
     {
         var m = await LoadAsync(manifestId);
         RequireStatus(m, ManifestStatuses.Returned, "Solo se puede cerrar un manifiesto con el retorno registrado.");
+        if (m.CostStatus != CostStatuses.Ok && m.CostOverride == null)
+            throw new InvalidOperationException(
+                "No se puede cerrar: el manifiesto no tiene costo. Corrija la tarifa/comuna o ingrese un costo manual.");
         m.Status = ManifestStatuses.Closed;
         m.UpdatedAt = UtcNow;
         m.UpdatedBy = _user.UserId;
         AddEvent(m.Id, ManifestEventTypes.Closed, null, ManifestStatuses.Returned, ManifestStatuses.Closed, null);
         await _db.SaveChangesAsync();
+    }
+
+    public async Task<CostResult> RecalculateCostAsync(Guid manifestId)
+    {
+        var m = await LoadAsync(manifestId);
+        if (m.Status != ManifestStatuses.Dispatched && m.Status != ManifestStatuses.Returned && m.Status != ManifestStatuses.Closed)
+            throw new InvalidOperationException(
+                "Solo se puede recalcular el costo de un manifiesto despachado, retornado o cerrado (el borrador se calcula al despachar).");
+        return await RecalculateWithEventAsync(m);
+    }
+
+    public async Task SetDocumentCommuneAsync(Guid manifestId, Guid manifestDocumentId, long communeId)
+    {
+        var m = await LoadAsync(manifestId);
+        if (m.Status != ManifestStatuses.Draft && m.Status != ManifestStatuses.Dispatched && m.Status != ManifestStatuses.Returned)
+            throw new InvalidOperationException("Solo se puede corregir la comuna de un manifiesto en borrador, despachado o retornado.");
+        var doc = m.Documents.FirstOrDefault(d => d.Id == manifestDocumentId)
+            ?? throw new InvalidOperationException("El documento no está en este manifiesto.");
+        var commune = await _db.Communes.FirstOrDefaultAsync(c => c.CompanyId == CompanyId && c.Id == communeId)
+            ?? throw new InvalidOperationException("La comuna seleccionada no existe.");
+
+        var before = doc.DestinationCommuneId;
+        doc.DestinationCommuneId = commune.Id;
+        m.UpdatedAt = UtcNow;
+        m.UpdatedBy = _user.UserId;
+        AddEvent(m.Id, ManifestEventTypes.DocumentCommuneChanged, doc.Id, null, null,
+            new { folio = doc.Folio, sapCommune = doc.DestinationCommuneName, beforeCommuneId = before, afterCommuneId = commune.Id, commune = commune.Name });
+        if (m.Status == ManifestStatuses.Draft) await _db.SaveChangesAsync();
+        else await RecalculateWithEventAsync(m);
+    }
+
+    /// <summary>Recalcula y deja el evento cost_recalculated (antes/después); todo se guarda junto.</summary>
+    private async Task<CostResult> RecalculateWithEventAsync(Manifest m)
+    {
+        var before = new { status = m.CostStatus, calculated = m.CostCalculated, final = m.CostFinal };
+        var result = await _cost.RecalculateAsync(m); // guarda también los eventos pendientes
+        AddEvent(m.Id, ManifestEventTypes.CostRecalculated, null, m.Status, m.Status,
+            new { before, after = new { status = m.CostStatus, calculated = m.CostCalculated, final = m.CostFinal } });
+        await _db.SaveChangesAsync();
+        return result;
     }
 
     // ---------------------------------------------------------------- Consulta

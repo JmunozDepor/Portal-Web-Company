@@ -10,6 +10,8 @@
     var es = new CultureInfo("es-CL");
     var canScan = Model.IsDraft && Model.CanEdit;
     var canPrint = Model.CanExport && m.Status != ManifestStatuses.Draft && m.Status != ManifestStatuses.Annulled;
+    var canFixCommune = Model.CanEdit && (m.Status == ManifestStatuses.Draft || m.Status == ManifestStatuses.Dispatched || m.Status == ManifestStatuses.Returned);
+    var canRecalc = Model.CanEdit && (m.Status == ManifestStatuses.Dispatched || m.Status == ManifestStatuses.Returned || m.Status == ManifestStatuses.Closed);
     var wasPrinted = m.Events.Any(e => e.EventType is ManifestEventTypes.Printed or ManifestEventTypes.Reprinted);
 }
 @* Detalle del manifiesto: Cabecera / Documentos / Retorno / Costo / Historial.
@@ -116,7 +118,7 @@
                             <label class="form-label" for="Change_TrailerId">Carro / remolque</label>
                             <select id="Change_TrailerId" name="Change.TrailerId" class="form-select">
                                 <option value="">— Sin carro —</option>
-                                @foreach (var v in Model.Lookups.Trailers)
+                                @foreach (var v in Model.Lookups.Trailers.Concat(Model.Lookups.Vehicles.Where(x => x.Id == m.TrailerId && !x.IsActive)))
                                 {
                                     <option value="@v.Id" selected="@(Model.Change.TrailerId == v.Id)">@v.Plate (@Model.Lookups.CarrierName(v.CarrierId))</option>
                                 }
@@ -202,7 +204,26 @@
                         <td>@DocumentKinds.Label(d.DocumentKind)</td>
                         <td>@d.Folio</td>
                         <td>@d.CustomerName</td>
-                        <td>@(d.DestinationCommuneName ?? "—")</td>
+                        <td>
+                            @(d.DestinationCommuneName ?? "—")
+                            @if (d.DestinationCommuneId is null && canFixCommune)
+                            {
+                                <form method="post" asp-page-handler="CorregirComuna" asp-route-id="@m.Id" asp-route-documentId="@d.Id" asp-antiforgery="true" class="d-flex gap-1 mt-1">
+                                    <select name="communeId" class="form-select" required aria-label="Comuna del catálogo" style="min-width:160px;">
+                                        <option value="">Comuna no resuelta: elegir...</option>
+                                        @foreach (var c in Model.Communes)
+                                        {
+                                            <option value="@c.Id">@c.Name</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn-secondary">Corregir</button>
+                                </form>
+                            }
+                            else if (d.DestinationCommuneId is null)
+                            {
+                                <span class="badge text-bg-warning">sin resolver</span>
+                            }
+                        </td>
                         <td>@d.Units.ToString("N0", es)</td>
                         <td>@d.Packages</td>
                         @if (!Model.IsDraft)
@@ -303,7 +324,15 @@
             </tbody>
         </table>
 
-        @if (Model.CanAdjustCost && (m.Status == ManifestStatuses.Dispatched || m.Status == ManifestStatuses.Returned))
+        @if (canRecalc)
+        {
+            <form method="post" asp-page-handler="RecalcularCosto" asp-route-id="@m.Id" asp-antiforgery="true" class="mt-2"
+                  data-confirm="Se vuelve a calcular el costo con las tarifas y comunas vigentes. Un ajuste manual no se pierde.">
+                <button type="submit" class="btn-secondary"><i class="bi bi-arrow-repeat"></i> Recalcular costo</button>
+            </form>
+        }
+
+        @if (Model.CanAdjustCost && (m.Status == ManifestStatuses.Dispatched || m.Status == ManifestStatuses.Returned || m.Status == ManifestStatuses.Closed))
         {
             <h4 class="mt-3">Ajustar costo</h4>
             <form method="post" asp-page-handler="AjustarCosto" asp-route-id="@m.Id" asp-antiforgery="true">

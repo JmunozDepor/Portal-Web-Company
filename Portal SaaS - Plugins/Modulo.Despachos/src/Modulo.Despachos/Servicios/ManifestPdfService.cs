@@ -52,6 +52,10 @@ public class ManifestPdfService : IManifestPdfService
     {
         var m = await _manifests.GetAsync(manifestId)
             ?? throw new InvalidOperationException("El manifiesto no existe.");
+        // El borrador aún no es un documento oficial y el anulado no se imprime: así la primera impresión oficial
+        // (tras despachar) nunca sale marcada como copia.
+        if (m.Status == ManifestStatuses.Draft || m.Status == ManifestStatuses.Annulled)
+            throw new InvalidOperationException("Solo se puede imprimir un manifiesto despachado (no un borrador ni uno anulado).");
 
         var communeIds = m.Documents.Where(d => d.DestinationCommuneId != null).Select(d => d.DestinationCommuneId!.Value).Distinct().ToList();
         var communes = await _db.Communes.Where(c => communeIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Name);

@@ -1,3 +1,4 @@
+using Modulo.Despachos.Dominio.Tarifas;
 using Modulo.Despachos.Models;
 
 namespace Modulo.Despachos.Servicios;
@@ -70,11 +71,26 @@ public interface IManifestService
     /// <summary>Anula un manifiesto en borrador o despachado, con motivo; sus documentos quedan libres.</summary>
     Task AnnulAsync(Guid manifestId, string reason);
 
-    /// <summary>Costo manual con motivo (manifiesto despachado o retornado); cost_final pasa a ser el override.</summary>
+    /// <summary>Costo manual con motivo (manifiesto despachado, retornado o cerrado con el período abierto); cost_final pasa a ser el override.</summary>
     Task OverrideCostAsync(Guid manifestId, decimal amount, string reason);
 
-    /// <summary>Cierra un manifiesto retornado.</summary>
+    /// <summary>
+    /// Cierra un manifiesto retornado. Exige costo: calculado (cost_status ok) o ajustado a mano; si no, el cierre
+    /// mensual quedaría bloqueado para siempre.
+    /// </summary>
     Task CloseAsync(Guid manifestId);
+
+    /// <summary>
+    /// Vuelve a calcular el costo con las tarifas y comunas vigentes (manifiesto despachado, retornado o cerrado, con el
+    /// período abierto). Deja el evento cost_recalculated con el antes y el después.
+    /// </summary>
+    Task<CostResult> RecalculateCostAsync(Guid manifestId);
+
+    /// <summary>
+    /// Corrige la comuna de destino de un documento (manifiesto en borrador, despachado o retornado, período abierto).
+    /// Si el manifiesto ya no es borrador, recalcula el costo.
+    /// </summary>
+    Task SetDocumentCommuneAsync(Guid manifestId, Guid manifestDocumentId, long communeId);
 
     /// <summary>Manifiesto con documentos, líneas de costo y eventos, o null si no existe.</summary>
     Task<Manifest?> GetAsync(Guid manifestId);

@@ -269,7 +269,10 @@ public sealed class MasterDataService : IMasterDataService
         return await SaveAsync(e, x => x.Code == e.Code, $"Ya existe un motivo con el código '{e.Code}'.");
     }
 
-    public Task<DeleteResult> DeleteRejectionReasonAsync(long id) => DeleteAsync(_db.RejectionReasons, id, null);
+    public Task<DeleteResult> DeleteRejectionReasonAsync(long id) => DeleteAsync(_db.RejectionReasons, id, async () =>
+        await _db.ManifestDocuments.AnyAsync(d => d.CompanyId == CompanyId && d.RejectionReasonId == id)
+            ? "El motivo está usado en manifiestos; desactívelo en vez de eliminarlo."
+            : null);
 
     // ---------------------------------------------------------------- Feriados
 

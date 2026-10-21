@@ -80,6 +80,20 @@ public sealed class MonthlyClosureService : IMonthlyClosureService
 
         foreach (var m in manifests)
         {
+            // Un retornado ya no admite más cambios: pasa a cerrado junto con el período.
+            if (m.Status == ManifestStatuses.Returned)
+            {
+                m.Status = ManifestStatuses.Closed;
+                m.UpdatedAt = now;
+                m.UpdatedBy = _user.UserId;
+                _db.ManifestEvents.Add(new ManifestEvent
+                {
+                    CompanyId = CompanyId, ManifestId = m.Id, EventType = ManifestEventTypes.Closed,
+                    FromStatus = ManifestStatuses.Returned, ToStatus = ManifestStatuses.Closed, UserId = _user.UserId,
+                    OccurredAt = now,
+                    PayloadJson = JsonSerializer.Serialize(new { reason = "por cierre de período", period = row.Period }, PayloadJson),
+                });
+            }
             m.CostFrozenAt = now;
             AddEvent(m, ManifestEventTypes.PeriodClosed, new { period = row.Period, costFinal = m.CostFinal });
         }

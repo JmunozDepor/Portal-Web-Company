@@ -30,7 +30,8 @@ public sealed class DispatchReportService : IDispatchReportService
         var to = from.AddMonths(1);
         var rows = await _db.Manifests
             .Where(m => m.CompanyId == CompanyId && m.DispatchDate >= from && m.DispatchDate < to
-                        && m.Status != ManifestStatuses.Annulled)
+                        && (m.Status == ManifestStatuses.Dispatched || m.Status == ManifestStatuses.Returned
+                            || m.Status == ManifestStatuses.Closed))
             .Select(m => new { m.DispatchDate, m.ShiftId, m.CarrierId, m.CostFinal, m.TotalUnits, m.TotalDocuments, m.TotalPackages })
             .ToListAsync();
         var shifts = await _db.Shifts.Where(s => s.CompanyId == CompanyId).ToDictionaryAsync(s => s.Id, s => s.Name);

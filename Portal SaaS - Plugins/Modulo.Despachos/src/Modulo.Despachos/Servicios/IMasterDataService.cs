@@ -1,0 +1,62 @@
+using Modulo.Despachos.Models;
+
+namespace Modulo.Despachos.Servicios;
+
+/// <summary>Resultado de eliminar un maestro: si hay dependientes no se borra y se explica por qué.</summary>
+public sealed record DeleteResult(bool Deleted, string? BlockedReason);
+
+/// <summary>
+/// Mantenedores del módulo (transportistas, vehículos, choferes, zonas...). Todo se acota a la
+/// compañía activa (ICurrentCompanyAccessor). Save* inserta si Id == 0, si no actualiza; las
+/// violaciones de reglas lanzan InvalidOperationException con un mensaje apto para el usuario.
+/// </summary>
+public interface IMasterDataService
+{
+    Task<IReadOnlyList<Carrier>> ListCarriersAsync(bool includeInactive = false);
+    Task<long> SaveCarrierAsync(Carrier entity);
+    Task<DeleteResult> DeleteCarrierAsync(long id);
+
+    Task<IReadOnlyList<VehicleType>> ListVehicleTypesAsync(bool includeInactive = false);
+    Task<long> SaveVehicleTypeAsync(VehicleType entity);
+    Task<DeleteResult> DeleteVehicleTypeAsync(long id);
+
+    Task<IReadOnlyList<Vehicle>> ListVehiclesAsync(bool includeInactive = false);
+    Task<long> SaveVehicleAsync(Vehicle entity);
+    Task<DeleteResult> DeleteVehicleAsync(long id);
+
+    Task<IReadOnlyList<Driver>> ListDriversAsync(bool includeInactive = false);
+    Task<long> SaveDriverAsync(Driver entity);
+    Task<DeleteResult> DeleteDriverAsync(long id);
+
+    Task<IReadOnlyList<Shift>> ListShiftsAsync(bool includeInactive = false);
+    Task<long> SaveShiftAsync(Shift entity);
+    Task<DeleteResult> DeleteShiftAsync(long id);
+
+    /// <summary>Zonas con sus comunas (Zone.Communes). Save sincroniza las comunas con la lista recibida.</summary>
+    Task<IReadOnlyList<Zone>> ListZonesAsync(bool includeInactive = false);
+    Task<long> SaveZoneAsync(Zone entity);
+    Task<DeleteResult> DeleteZoneAsync(long id);
+
+    Task<IReadOnlyList<Origin>> ListOriginsAsync(bool includeInactive = false);
+    Task<long> SaveOriginAsync(Origin entity);
+    Task<DeleteResult> DeleteOriginAsync(long id);
+
+    Task<IReadOnlyList<RejectionReason>> ListRejectionReasonsAsync(bool includeInactive = false);
+    Task<long> SaveRejectionReasonAsync(RejectionReason entity);
+    Task<DeleteResult> DeleteRejectionReasonAsync(long id);
+
+    /// <summary>Los feriados no tienen estado activo: includeInactive se ignora.</summary>
+    Task<IReadOnlyList<Holiday>> ListHolidaysAsync(bool includeInactive = false);
+    Task<long> SaveHolidayAsync(Holiday entity);
+    Task<DeleteResult> DeleteHolidayAsync(long id);
+
+    Task<IReadOnlyList<NotificationRecipient>> ListNotificationRecipientsAsync(bool includeInactive = false);
+    Task<long> SaveNotificationRecipientAsync(NotificationRecipient entity);
+    Task<DeleteResult> DeleteNotificationRecipientAsync(long id);
+
+    /// <summary>Catálogo de comunas de la compañía (sembrado por CommuneSeeder), ordenado por región y nombre.</summary>
+    Task<IReadOnlyList<Commune>> ListCommunesAsync();
+
+    /// <summary>Busca una comuna por nombre ignorando tildes, mayúsculas y espacios en los bordes.</summary>
+    Task<Commune?> FindCommuneByNameAsync(string name);
+}

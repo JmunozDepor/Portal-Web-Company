@@ -66,6 +66,8 @@ public sealed class ModuloDespachos : IModuloPortal
         // motor dual, se decide EN RUNTIME según ModuleExternalConnection.EngineType.
         // CompanyId SIEMPRE obligatorio (sin fallback a nivel Organization): si el usuario
         // todavía no eligió Company en la sesión, se rechaza acá con un mensaje claro.
+        services.AddScoped<Servicios.IMasterDataService, Servicios.MasterDataService>();
+
         services.AddDbContext<DespachosDbContext>((sp, options) =>
         {
             var companyAccessor = sp.GetRequiredService<ICurrentCompanyAccessor>();

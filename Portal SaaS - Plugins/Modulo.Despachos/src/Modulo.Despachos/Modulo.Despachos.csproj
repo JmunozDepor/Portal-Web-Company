@@ -62,6 +62,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="wwwroot\**" />
+    <EmbeddedResource Include="Sql\Seeds\comunas.csv" />
   </ItemGroup>
 
   <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo. El

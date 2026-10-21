@@ -1,5 +1,6 @@
 @page "/rendiciones/informes/{id:long}"
 @using Modulo.Rendiciones.Models
+@using Modulo.Rendiciones.Pages
 @using Modulo.Rendiciones.Servicios
 @model Modulo.Rendiciones.Pages.Informes.DetalleModel
 @inject IAmountFormatService AmountFormat
@@ -158,13 +159,18 @@
                 <details class="rnd-review-line">
                     <summary>
                         <span class="rnd-review-sum-main">
-                            <strong>@d.Date.ToString("dd-MM-yyyy")</strong>
-                            <span>· @(d.ExpenseType?.Name ?? "Sin categoría")</span>
-                            <span class="admin-muted">· @(d.SupplierName ?? "sin proveedor")</span>
-                            @if (!string.IsNullOrWhiteSpace(d.Notes))
-                            {
-                                <span class="rnd-review-sum-notes">· @d.Notes</span>
-                            }
+                            <span class="rnd-card-icon"><i class="bi @RendicionesUi.CategoryIcon(d.ExpenseType?.Name)"></i></span>
+                            <span class="rnd-card-main">
+                                <span class="rnd-card-title">@(d.ExpenseType?.Name ?? "Sin categoría") @(d.SupplierName is not null ? $"· {d.SupplierName}" : "")</span>
+                                <span class="rnd-card-sub">
+                                    @d.Date.ToString("dd-MM-yyyy")
+                                    @if (d.ExpenseReceiptId is not null)
+                                    {
+                                        <i class="bi bi-paperclip" title="Tiene comprobante"></i>
+                                    }
+                                </span>
+                                <span class="rnd-card-sub rnd-review-sum-notes">Glosa: @(string.IsNullOrWhiteSpace(d.Notes) ? "—" : d.Notes)</span>
+                            </span>
                         </span>
                         <span class="rnd-review-sum-amount"><rnd-amount value="@d.Amount" currency="@d.Currency" /></span>
                     </summary>

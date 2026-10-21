@@ -685,16 +685,18 @@
     border-bottom: 1px solid var(--card-border);
 }
 
+/* Mismo lenguaje visual que .rnd-card-row de "Mis Gastos" (ícono + título + sub)
+   -- pedido explícito 2026-10-20 para que el resumen de un gasto en un informe se
+   vea igual que en Mis Gastos, en vez del texto plano que tenía antes. */
 .rnd-review-sum-main {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: baseline;
+    align-items: center;
+    gap: 14px;
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .rnd-review-sum-notes {
-    font-style: italic;
     color: var(--text-muted);
 }
 

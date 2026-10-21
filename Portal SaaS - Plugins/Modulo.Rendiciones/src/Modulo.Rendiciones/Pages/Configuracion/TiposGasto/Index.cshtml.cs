@@ -39,12 +39,25 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
 
     public IReadOnlyList<ExpenseType> Types { get; private set; } = Array.Empty<ExpenseType>();
 
+    /// <summary>Código de cuenta -&gt; nombre, para mostrar la descripción junto al código guardado
+    /// (la búsqueda en vivo solo filtra cuentas ACTIVAS, pero un tipo de gasto puede tener guardada
+    /// una cuenta que ya se dio de baja -- igual hay que poder mostrar su nombre).</summary>
+    public IReadOnlyDictionary<string, string> AccountNames { get; private set; } = new Dictionary<string, string>();
+
     [BindProperty]
     public NewExpenseTypeInput New { get; set; } = new();
 
     public async Task OnGetAsync(CancellationToken ct)
     {
         Types = await _expenseTypes.ListAllAsync(_currentCompany.CompanyId, ct);
+
+        var codigos = Types.Where(t => !string.IsNullOrWhiteSpace(t.SapGlAccount)).Select(t => t.SapGlAccount!).Distinct().ToList();
+        if (codigos.Count > 0)
+        {
+            AccountNames = await _db.GlAccounts
+                .Where(a => a.CompanyId == _currentCompany.CompanyId && codigos.Contains(a.Code))
+                .ToDictionaryAsync(a => a.Code, a => a.Name, ct);
+        }
     }
 
     public async Task<IActionResult> OnPostCrearAsync(CancellationToken ct)

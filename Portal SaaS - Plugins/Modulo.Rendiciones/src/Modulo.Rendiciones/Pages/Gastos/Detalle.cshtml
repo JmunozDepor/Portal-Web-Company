@@ -94,13 +94,10 @@
                 }
             </div>
 
-            @if (!string.IsNullOrWhiteSpace(e.Notes))
-            {
-                <div class="rnd-view-notes">
-                    <span class="rnd-view-label">Nota</span>
-                    <p>@e.Notes</p>
-                </div>
-            }
+            <div class="rnd-view-notes">
+                <span class="rnd-view-label">Glosa</span>
+                <p>@(string.IsNullOrWhiteSpace(e.Notes) ? "Sin glosa" : e.Notes)</p>
+            </div>
         </div>
         @if (hasReceiptView)
         {

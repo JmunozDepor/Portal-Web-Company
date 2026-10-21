@@ -71,15 +71,7 @@ public sealed class IndexModel : RendicionesRendidorPageModelBase
         return RedirectToPage();
     }
 
-    public string PolicyLabel(ExpenseReportLine expense)
-    {
-        if (expense.ExpenseTypeId is not { } typeId || !PolicyByExpenseType.TryGetValue(typeId, out var policy))
-        {
-            return "Sin política";
-        }
-
-        return policy.MaxAmount is { } max ? $"Tope {max:N0}" : "Sin tope";
-    }
+    public string PolicyLabel(ExpenseReportLine expense) => RendicionesUi.PolicyLabel(expense, PolicyByExpenseType);
 
     public static string StatusToShow(ExpenseReportLine expense) =>
         expense.Status == "Loose" ? "Loose" : expense.ExpenseReport?.Status ?? "En informe";

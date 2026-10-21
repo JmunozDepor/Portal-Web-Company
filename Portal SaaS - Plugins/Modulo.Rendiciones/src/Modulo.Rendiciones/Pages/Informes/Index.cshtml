@@ -65,34 +65,54 @@ else
         }
         else
         {
-            <div class="rnd-card-list mb-3">
-                @foreach (var g in Model.LooseExpenses)
-                {
-                    // El nombre/fecha es un <a> de verdad (no solo texto dentro del <label>) --
-                    // pedido explícito: poder entrar al detalle del gasto (para editar/completar
-                    // la categoría, ej. uno importado por OCR) sin que el clic también marque el
-                    // checkbox. Un elemento interactivo (un link) adentro de un <label> no dispara
-                    // la activación del control asociado -- es comportamiento nativo del navegador,
-                    // no hace falta JS para evitar el doble efecto.
-                    var detalleUrl = Url.Page("/Gastos/Detalle", new { id = g.Id });
-                    <label class="rnd-card-row" style="cursor:pointer;">
-                        <input type="checkbox" name="SelectedExpenseIds" value="@g.Id" style="flex:0 0 auto;" />
-                        <a href="@detalleUrl" class="rnd-card-icon" title="Ver / editar este gasto"><i class="bi @RendicionesUi.CategoryIcon(g.ExpenseType?.Name)"></i></a>
-                        <a href="@detalleUrl" class="rnd-card-main" style="text-decoration:none;color:inherit;" title="Ver / editar este gasto">
-                            <div class="rnd-card-title">@(g.SupplierName ?? g.ExpenseType?.Name ?? "Gasto")</div>
-                            <div class="rnd-card-sub">
-                                @g.Date.ToString("dd-MM-yyyy") · @(g.ExpenseType?.Name ?? "—")
-                                @if (g.ExpenseTypeId is null)
-                                {
-                                    <span class="text-danger"> · Falta categoría</span>
-                                }
-                            </div>
-                        </a>
-                        <div class="rnd-card-meta">
-                            <span class="rnd-card-amount"><rnd-amount value="@g.Amount" currency="@g.Currency" /></span>
-                        </div>
-                    </label>
-                }
+            @* Mismas columnas que Pages/Gastos/Index ("Mis Gastos") -- pedido explícito de que un
+               gasto se vea con la misma información en los dos lugares, en vez del resumen resumido
+               que tenía antes (solo fecha + categoría). *@
+            <div class="rnd-table-wrapper mb-3">
+                <table class="table-ps">
+                    <thead>
+                        <tr>
+                            <th class="rnd-col-check"></th>
+                            <th>Proveedor / Fecha</th>
+                            <th>Política</th>
+                            <th>Categoría</th>
+                            <th>Glosa</th>
+                            <th class="rnd-col-total">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var g in Model.LooseExpenses)
+                        {
+                            var detalleUrl = Url.Page("/Gastos/Detalle", new { id = g.Id });
+                            <tr>
+                                <td class="rnd-col-check"><input type="checkbox" name="SelectedExpenseIds" value="@g.Id" /></td>
+                                <td>
+                                    <a href="@detalleUrl" class="rnd-row-link" title="Ver / editar este gasto">
+                                        <span class="rnd-card-icon"><i class="bi @RendicionesUi.CategoryIcon(g.ExpenseType?.Name)"></i></span>
+                                        <span class="rnd-row-text">
+                                            <span class="rnd-card-title">@(g.SupplierName ?? g.ExpenseType?.Name ?? "Gasto")</span>
+                                            <span class="rnd-card-sub">
+                                                @g.Date.ToString("dd-MM-yyyy")
+                                                @if (g.ExpenseReceiptId is not null)
+                                                {
+                                                    <i class="bi bi-paperclip" title="Tiene comprobante"></i>
+                                                }
+                                                @if (g.ExpenseTypeId is null)
+                                                {
+                                                    <span class="text-danger"> · Falta categoría</span>
+                                                }
+                                            </span>
+                                        </span>
+                                    </a>
+                                </td>
+                                <td class="rnd-col-muted">@Model.PolicyLabel(g)</td>
+                                <td class="rnd-col-muted">@(g.ExpenseType?.Name ?? "—")</td>
+                                <td class="rnd-col-muted">@(string.IsNullOrWhiteSpace(g.Notes) ? "—" : g.Notes)</td>
+                                <td class="rnd-col-total rnd-card-amount"><rnd-amount value="@g.Amount" currency="@g.Currency" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
 
             <div class="form-group">

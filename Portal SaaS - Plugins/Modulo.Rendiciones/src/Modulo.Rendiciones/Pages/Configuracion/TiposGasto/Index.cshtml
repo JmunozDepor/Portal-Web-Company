@@ -6,6 +6,16 @@
 @* Migrado al Design System unificado (2026-08-19) -- ya no carga rendiciones.css.
    "Nuevo tipo de gasto" pasó de formulario inline gigante a slide-over drawer
    (drawer.js/components.css, patrón único de creación en todo el portal). *@
+@* Grilla compacta + búsqueda + orden por columna + acciones en una sola línea
+   (pedido explícito, 2026-10-20) -- ver .rnd-admin-compact y el script al final. *@
+<style>
+    .rnd-admin-compact .form-control { padding: 4px 8px; font-size: 13px; min-height: auto; }
+    .rnd-admin-compact td, .rnd-admin-compact th { padding: 4px 8px; }
+    .rnd-admin-compact .admin-row-actions { flex-wrap: nowrap; }
+    .rnd-admin-compact th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; }
+    .rnd-admin-compact th[data-sort] .bi { opacity: .45; font-size: 11px; }
+    .rnd-cuenta-nombre { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+</style>
 
 <div class="card-surface">
     <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
@@ -22,15 +32,38 @@
     <div class="alert alert-danger">@Model.ErrorMessage</div>
 }
 
-<table class="table-ps">
-    <thead><tr><th>Nombre</th><th>Cuenta contable SAP</th><th>Kilometraje</th><th>Tarifa/km</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+<div class="d-flex align-items-center gap-2 mb-2">
+    <input type="search" id="rndBuscarTipoGasto" class="form-control" style="max-width:280px;" placeholder="Buscar por nombre o cuenta…" autocomplete="off" />
+</div>
+
+<table class="table-ps rnd-admin-compact" id="rndTablaTiposGasto">
+    <thead>
+        <tr>
+            <th data-sort="nombre">Nombre <i class="bi bi-arrow-down-up"></i></th>
+            <th data-sort="cuenta">Cuenta contable SAP <i class="bi bi-arrow-down-up"></i></th>
+            <th>Kilometraje</th>
+            <th data-sort="tarifa">Tarifa/km <i class="bi bi-arrow-down-up"></i></th>
+            <th data-sort="estado">Estado <i class="bi bi-arrow-down-up"></i></th>
+            <th class="col-actions"></th>
+        </tr>
+    </thead>
     <tbody>
         @foreach (var t in Model.Types)
         {
             var formId = $"tipo-{t.Id}";
-            <tr class="@(t.IsActive ? "" : "row-inactive")">
+            var cuentaNombre = t.SapGlAccount is not null ? Model.AccountNames.GetValueOrDefault(t.SapGlAccount) : null;
+            <tr class="@(t.IsActive ? "" : "row-inactive")"
+                data-nombre="@t.Name.ToLowerInvariant()" data-cuenta="@(t.SapGlAccount ?? "").ToLowerInvariant()"
+                data-key-nombre="@t.Name.ToLowerInvariant()" data-key-cuenta="@(t.SapGlAccount ?? "").ToLowerInvariant()"
+                data-key-tarifa="@(t.RatePerKm ?? 0)" data-key-estado="@(t.IsActive ? 0 : 1)">
                 <td><input type="text" name="nombre" value="@t.Name" class="form-control" form="@formId" /></td>
-                <td><input type="text" name="cuentaContableSap" value="@t.SapGlAccount" class="form-control tipo-gasto-cuenta-sap" list="tipos-gasto-cuentas-datalist" placeholder="Buscar…" form="@formId" /></td>
+                <td>
+                    <input type="text" name="cuentaContableSap" value="@t.SapGlAccount" class="form-control tipo-gasto-cuenta-sap" list="tipos-gasto-cuentas-datalist" placeholder="Buscar…" form="@formId" />
+                    @if (!string.IsNullOrWhiteSpace(cuentaNombre))
+                    {
+                        <div class="rnd-cuenta-nombre">@cuentaNombre</div>
+                    }
+                </td>
                 <td><input type="checkbox" name="esKilometraje" value="true" checked="@t.IsMileage" form="@formId" /></td>
                 @* Mismo bug que Políticas de Gasto: es-CL (coma decimal) + interpolación
                    directa en un <input type="number"> (que exige punto) lo deja vacío. *@
@@ -71,6 +104,7 @@
         }
     </tbody>
 </table>
+<p class="text-muted" id="rndSinResultadosTipoGasto" hidden>Ningún tipo de gasto coincide con la búsqueda.</p>
 
 @* Un <form> no puede abrirse en una <td> y cerrarse en otra (el parser lo corta en
    el primer </td>), y tampoco puede ser hijo directo de <tr> -- por eso viven acá
@@ -134,5 +168,45 @@
             getValue: function (item) { return item.accountCode; },
             getLabel: function (item) { return item.accountCode + ' — ' + item.accountName; },
         });
+    </script>
+    <script>
+        (function () {
+            var tabla = document.getElementById('rndTablaTiposGasto');
+            if (!tabla) return;
+            var tbody = tabla.querySelector('tbody');
+            var buscador = document.getElementById('rndBuscarTipoGasto');
+            var sinResultados = document.getElementById('rndSinResultadosTipoGasto');
+            var filas = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-nombre]'));
+
+            buscador?.addEventListener('input', function () {
+                var texto = buscador.value.trim().toLowerCase();
+                var visibles = 0;
+                filas.forEach(function (fila) {
+                    var coincide = !texto || fila.dataset.nombre.includes(texto) || fila.dataset.cuenta.includes(texto);
+                    fila.hidden = !coincide;
+                    if (coincide) visibles++;
+                });
+                if (sinResultados) sinResultados.hidden = visibles !== 0;
+            });
+
+            tabla.querySelectorAll('th[data-sort]').forEach(function (th) {
+                th.addEventListener('click', function () {
+                    var key = th.dataset.sort;
+                    var dirActual = th.dataset.dir === 'asc' ? 1 : -1;
+                    tabla.querySelectorAll('th[data-sort]').forEach(function (otro) { if (otro !== th) delete otro.dataset.dir; });
+                    th.dataset.dir = dirActual === 1 ? 'desc' : 'asc';
+                    var dir = dirActual === 1 ? 1 : -1;
+                    var esNumerico = key === 'tarifa' || key === 'estado';
+                    var campo = 'key' + key.charAt(0).toUpperCase() + key.slice(1);
+                    filas.sort(function (a, b) {
+                        var va = a.dataset[campo] || '';
+                        var vb = b.dataset[campo] || '';
+                        if (esNumerico) return ((parseFloat(va) || 0) - (parseFloat(vb) || 0)) * dir;
+                        return va.localeCompare(vb) * dir;
+                    });
+                    filas.forEach(function (fila) { tbody.appendChild(fila); });
+                });
+            });
+        })();
     </script>
 }

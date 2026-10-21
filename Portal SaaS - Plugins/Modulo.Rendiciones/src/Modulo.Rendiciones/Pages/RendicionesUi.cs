@@ -1,3 +1,5 @@
+using Modulo.Rendiciones.Models;
+
 namespace Modulo.Rendiciones.Pages;
 
 /// <summary>
@@ -38,4 +40,14 @@ public static class RendicionesUi
         "InReport" => "rnd-badge--accent",
         _ => "rnd-badge--neutral", // Draft, Loose
     };
+
+    /// <summary>"Sin política" / "Tope N" / "Sin tope" -- misma lógica compartida por Pages/Gastos/Index
+    /// y Pages/Informes/Index (selección de gastos sueltos para armar un informe), antes duplicada.</summary>
+    public static string PolicyLabel(ExpenseReportLine expense, IReadOnlyDictionary<long, ExpensePolicy> policyByExpenseType)
+    {
+        if (expense.ExpenseTypeId is not { } typeId || !policyByExpenseType.TryGetValue(typeId, out var policy))
+            return "Sin política";
+
+        return policy.MaxAmount is { } max ? $"Tope {max:N0}" : "Sin tope";
+    }
 }

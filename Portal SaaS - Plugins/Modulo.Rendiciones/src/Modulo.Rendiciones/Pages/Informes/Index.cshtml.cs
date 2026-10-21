@@ -15,17 +15,19 @@ public sealed class IndexModel : RendicionesRendidorPageModelBase
 {
     private readonly IExpenseReportService _reports;
     private readonly IExpenseService _expenses;
+    private readonly IExpensePolicyService _policies;
     private readonly IUserCostCenterService _costCenters;
     private readonly IExpenseFundService _funds;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IExpenseReportService reports, IExpenseService expenses, IUserCostCenterService costCenters,
+    public IndexModel(IExpenseReportService reports, IExpenseService expenses, IExpensePolicyService policies, IUserCostCenterService costCenters,
         IExpenseFundService funds, IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
         _reports = reports;
         _expenses = expenses;
+        _policies = policies;
         _costCenters = costCenters;
         _funds = funds;
         _currentUser = currentUser;
@@ -36,6 +38,12 @@ public sealed class IndexModel : RendicionesRendidorPageModelBase
     public IReadOnlyList<ExpenseReportLine> LooseExpenses { get; private set; } = Array.Empty<ExpenseReportLine>();
     public IReadOnlyList<CostCenterDto> CostCenters { get; private set; } = Array.Empty<CostCenterDto>();
     public IReadOnlyList<ExpenseFund> OpenFunds { get; private set; } = Array.Empty<ExpenseFund>();
+
+    /// <summary>Misma idea que Pages/Gastos/IndexModel -- se carga una vez para no consultar
+    /// la política por fila al mostrar la columna "Política" en "Nuevo informe".</summary>
+    private Dictionary<long, ExpensePolicy> PolicyByExpenseType { get; set; } = new();
+
+    public string PolicyLabel(ExpenseReportLine expense) => RendicionesUi.PolicyLabel(expense, PolicyByExpenseType);
 
     [BindProperty]
     public List<long> SelectedExpenseIds { get; set; } = new();
@@ -89,5 +97,11 @@ public sealed class IndexModel : RendicionesRendidorPageModelBase
         OpenFunds = (await _funds.ListByUserAsync(_currentCompany.CompanyId, _currentUser.UserId, ct))
             .Where(f => f.Status == "Open")
             .ToList();
+
+        var policies = await _policies.ListAsync(_currentCompany.CompanyId, ct);
+        PolicyByExpenseType = policies
+            .Where(p => p.IsActive)
+            .GroupBy(p => p.ExpenseTypeId)
+            .ToDictionary(g => g.Key, g => g.Last());
     }
 }

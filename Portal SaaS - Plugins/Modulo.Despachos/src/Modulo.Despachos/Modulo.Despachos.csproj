@@ -63,6 +63,8 @@
   <ItemGroup>
     <EmbeddedResource Include="wwwroot\**" />
     <EmbeddedResource Include="Sql\Seeds\comunas.csv" />
+    <EmbeddedResource Include="Sql\Seeds\hana_invoice.sql" />
+    <EmbeddedResource Include="Sql\Seeds\hana_transfer_guide.sql" />
   </ItemGroup>
 
   <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo. El

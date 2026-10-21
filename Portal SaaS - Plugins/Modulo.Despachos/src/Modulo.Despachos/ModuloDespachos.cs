@@ -68,6 +68,7 @@ public sealed class ModuloDespachos : IModuloPortal
         // todavía no eligió Company en la sesión, se rechaza acá con un mensaje claro.
         services.AddScoped<Servicios.IMasterDataService, Servicios.MasterDataService>();
         services.AddScoped<Servicios.ITariffService, Servicios.TariffService>();
+        services.AddScoped<Servicios.ISapDocumentLookupService, Servicios.SapDocumentLookupService>();
 
         // Motor de costo (puro): estrategias de cálculo, condiciones de recargo y el motor.
         services.AddSingleton<Dominio.Tarifas.IRateCalculator, Dominio.Tarifas.FixedPerTripCalculator>();

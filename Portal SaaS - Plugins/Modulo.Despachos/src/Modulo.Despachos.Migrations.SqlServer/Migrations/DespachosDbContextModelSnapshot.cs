@@ -675,6 +675,66 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                     b.ToTable("rejection_reasons", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.SapDocumentQuery", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DocumentKind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("document_kind");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("SqlText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("sql_text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTime?>("ValidatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("validated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_sap_document_queries_company_id");
+
+                    b.HasIndex("CompanyId", "DocumentKind")
+                        .IsUnique()
+                        .HasDatabaseName("uq_sap_document_queries_company_id_document_kind");
+
+                    b.ToTable("sap_document_queries", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.Shift", b =>
                 {
                     b.Property<long>("Id")

@@ -1,0 +1,150 @@
+@page "/despachos/configuracion/consultas-sap"
+@model Modulo.Despachos.Pages.Despachos.Configuracion.ConsultasSap.IndexModel
+@using Modulo.Despachos.Models
+@{
+    ViewData["Title"] = "Consultas SAP";
+    var probed = Model.Probe is not null;
+}
+@* Mantenedor: una fila por tipo de documento; el SQL se edita en un drawer (textarea monoespaciado).
+   "Probar" ejecuta la consulta con un folio y muestra el documento mapeado o los errores;
+   "Guardar" solo guarda si la prueba pasa. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Consultas SAP</h2>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <p class="text-muted">
+        SQL de solo lectura que busca un documento por folio (parámetro <code>:folio</code>) y devuelve las columnas
+        del contrato: <code>doc_entry, doc_num, folio, sii_document_type, document_date, customer_code, customer_name,
+        customer_tax_id, destination_address, destination_commune, customer_po, base_order_entry, units, packages,
+        total_amount, is_canceled</code> (opcionales: <code>weight_kg, volume_m3</code>). Los nombres de tablas van sin
+        esquema: se usa el esquema de la conexión SAP de la compañía.
+    </p>
+
+    <table class="table-ps" id="tabla-consultas-sap">
+        <thead><tr><th>Documento</th><th>Estado</th><th>Última validación</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var (kind, q) in Model.Rows)
+            {
+                <tr class="@(q is { IsActive: false } ? "row-inactive" : "")">
+                    <td>@DocumentKinds.Label(kind)</td>
+                    <td>
+                        @if (q is null) { <span class="badge-status badge-status--warning">Sin configurar</span> }
+                        else if (!q.IsActive) { <span class="badge-status badge-status--neutral">Inactiva</span> }
+                        else { <span class="badge-status badge-status--success">Activa</span> }
+                    </td>
+                    <td>@(q?.ValidatedAt is { } v ? v.ToString("yyyy-MM-dd HH:mm") + " UTC" : "Nunca (consulta de ejemplo sin probar)")</td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            @if (q is null ? Model.CanCreate : Model.CanEdit)
+                            {
+                                <button type="button" class="btn-ghost" title="Editar SQL" data-drawer-open="drawer-consultas" data-maestro-edit
+                                        data-row="@Model.RowJson(new { Id = q?.Id ?? 0L, DocumentKind = kind, DocumentKindLabel = DocumentKinds.Label(kind), SqlText = q?.SqlText ?? "", IsActive = q?.IsActive ?? true })"><i class="bi bi-pencil"></i></button>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (probed)
+{
+    var v = Model.Probe!.Validation;
+    <div class="card-surface mt-3" id="resultado-prueba">
+        <h3>Resultado de la prueba</h3>
+        @if (v.IsValid && Model.Probe.Document is { } d)
+        {
+            <div class="alert alert-success">La consulta cumple el contrato.</div>
+            <table class="table-ps">
+                <tbody>
+                    <tr><th>Tipo</th><td>@DocumentKinds.Label(d.DocumentKind) (SII @d.SiiDocumentType)</td><th>Folio</th><td>@d.Folio</td></tr>
+                    <tr><th>DocEntry / DocNum</th><td>@d.DocEntry / @d.DocNum</td><th>Fecha</th><td>@d.DocumentDate.ToString("yyyy-MM-dd")</td></tr>
+                    <tr><th>Cliente / destino</th><td>@d.CustomerCode - @d.CustomerName</td><th>RUT</th><td>@d.CustomerTaxId</td></tr>
+                    <tr><th>Dirección</th><td>@d.DestinationAddress</td><th>Comuna</th><td>@d.DestinationCommune</td></tr>
+                    <tr><th>Orden de compra</th><td>@d.CustomerPo</td><th>Pedido base</th><td>@(d.BaseOrderEntry?.ToString() ?? "-")</td></tr>
+                    <tr><th>Unidades</th><td>@d.Units.ToString("0.##")</td><th>Bultos</th><td>@d.Packages</td></tr>
+                    <tr><th>Monto</th><td>@d.TotalAmount.ToString("N0")</td><th>Anulado</th><td>@(d.IsCanceled ? "Sí" : "No")</td></tr>
+                    <tr><th>Peso (kg)</th><td>@(d.WeightKg?.ToString("0.##") ?? "-")</td><th>Volumen (m3)</th><td>@(d.VolumeM3?.ToString("0.##") ?? "-")</td></tr>
+                </tbody>
+            </table>
+            <p class="text-muted mt-2 mb-0">Compare cliente, unidades y bultos con el documento en SAP antes de guardar.</p>
+        }
+        else
+        {
+            <div class="alert alert-danger">@v.Error</div>
+            @if (v.MissingColumns.Count > 0)
+            {
+                <p class="mb-0">Columnas faltantes: <code>@string.Join(", ", v.MissingColumns)</code></p>
+            }
+        }
+    </div>
+}
+
+@if (Model.CanCreate || Model.CanEdit)
+{
+    <button type="button" id="reabrir-drawer" hidden data-drawer-open="drawer-consultas"></button>
+    <div id="drawer-consultas" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3 data-drawer-title data-title-new="Consulta SAP" data-title-edit="Editar consulta SAP">Editar consulta SAP</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="Save" asp-antiforgery="true" id="form-consultas">
+                <div class="drawer-body">
+                    <input type="hidden" name="Input.Id" value="@(probed ? Model.Input.Id : 0)" />
+                    <input type="hidden" name="Input.DocumentKind" value="@(probed ? Model.Input.DocumentKind : "")" />
+                    <div class="mb-3">
+                        <label class="form-label" for="f-DocumentKindLabel">Documento</label>
+                        <input type="text" id="f-DocumentKindLabel" name="Input.DocumentKindLabel" class="form-control" readonly
+                               value="@(probed ? DocumentKinds.Label(Model.Input.DocumentKind ?? "") : "")" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-SqlText">SQL (solo SELECT/WITH, parámetro :folio)</label>
+                        <textarea id="f-SqlText" name="Input.SqlText" class="form-control" rows="22" spellcheck="false" required
+                                  style="font-family:ui-monospace,Consolas,monospace;font-size:.8rem;white-space:pre;">@(probed ? Model.Input.SqlText : "")</textarea>
+                    </div>
+                    <div class="mb-3 d-flex align-items-end ">
+                        <label class="d-flex align-items-center gap-2"><input type="checkbox" name="Input.IsActive" value="true" checked="@(!probed || Model.Input.IsActive)" /> Activa</label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-SampleFolio">Folio de prueba</label>
+                        <input type="number" min="1" step="1" id="f-SampleFolio" name="Input.SampleFolio" class="form-control" placeholder="Folio de un documento real en SAP" autocomplete="off" required
+                               value="@(Model.Input.SampleFolio?.ToString(System.Globalization.CultureInfo.InvariantCulture))" />
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-secondary" asp-page-handler="Probe" formmethod="post">Probar</button>
+                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Guardar" data-label-edit="Guardar">Guardar</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/table-tools.js"></script>
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+    @if (probed)
+    {
+        <script>
+            // Tras "Probar" la página se recarga: se reabre el drawer con lo digitado.
+            document.addEventListener('DOMContentLoaded', function () {
+                var b = document.getElementById('reabrir-drawer');
+                if (b) { b.click(); }
+            });
+        </script>
+    }
+}

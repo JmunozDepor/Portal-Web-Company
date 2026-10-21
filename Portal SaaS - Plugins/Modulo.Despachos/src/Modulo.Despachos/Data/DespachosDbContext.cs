@@ -36,6 +36,7 @@ public class DespachosDbContext : DbContext
     public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
     public DbSet<RateCard> RateCards => Set<RateCard>();
     public DbSet<RateSurcharge> RateSurcharges => Set<RateSurcharge>();
+    public DbSet<SapDocumentQuery> SapDocumentQueries => Set<SapDocumentQuery>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -232,6 +233,17 @@ public class DespachosDbContext : DbContext
             e.HasIndex(x => x.CarrierId).HasDatabaseName("ix_rate_surcharges_carrier_id");
             e.HasOne<Carrier>().WithMany().HasForeignKey(x => x.CarrierId)
                 .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_rate_surcharges_carriers");
+        });
+
+        modelBuilder.Entity<SapDocumentQuery>(e =>
+        {
+            Base(e, "sap_document_queries");
+            e.Property(x => x.DocumentKind).HasColumnName("document_kind").HasMaxLength(30).IsRequired();
+            e.Property(x => x.SqlText).HasColumnName("sql_text").IsRequired();
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.ValidatedAt).HasColumnName("validated_at");
+            e.HasIndex(x => new { x.CompanyId, x.DocumentKind }).IsUnique()
+                .HasDatabaseName("uq_sap_document_queries_company_id_document_kind");
         });
     }
 

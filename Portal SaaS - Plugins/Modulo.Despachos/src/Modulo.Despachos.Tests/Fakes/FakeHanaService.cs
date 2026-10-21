@@ -13,11 +13,18 @@ public sealed class FakeHanaService : IHanaService
     public object? LastParameters { get; private set; }
     public List<string> ExecutedSql { get; } = new();
 
+    /// <summary>Si se asigna, QueryDynamicAsync lanza esta excepción (simula un error de SAP).</summary>
+    public Exception? ThrowOnQuery { get; set; }
+
+    /// <summary>Motor que informa GetPlatformEngineTypeAsync ("hana" para SAP HANA).</summary>
+    public string EngineType { get; set; } = "PostgreSQL";
+
     public Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> QueryDynamicAsync(
         string sqlParametrizado, object? parametros = null, CancellationToken ct = default)
     {
         ExecutedSql.Add(sqlParametrizado);
         LastParameters = parametros;
+        if (ThrowOnQuery is not null) throw ThrowOnQuery;
         IReadOnlyList<IReadOnlyDictionary<string, object?>> rows =
             Results.TryGetValue(sqlParametrizado, out var r) ? r : Array.Empty<IReadOnlyDictionary<string, object?>>();
         return Task.FromResult(rows);
@@ -37,5 +44,5 @@ public sealed class FakeHanaService : IHanaService
         return Task.FromResult(0);
     }
 
-    public Task<string> GetPlatformEngineTypeAsync(CancellationToken ct = default) => Task.FromResult("PostgreSQL");
+    public Task<string> GetPlatformEngineTypeAsync(CancellationToken ct = default) => Task.FromResult(EngineType);
 }

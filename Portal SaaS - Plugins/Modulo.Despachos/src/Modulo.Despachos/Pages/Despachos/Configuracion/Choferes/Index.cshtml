@@ -1,0 +1,125 @@
+@page "/despachos/configuracion/choferes"
+@model Modulo.Despachos.Pages.Despachos.Configuracion.Choferes.IndexModel
+@{
+    ViewData["Title"] = "Choferes";
+}
+@* Mantenedor: grilla compacta con búsqueda y orden por columna; alta/edición en drawer
+   (data-drawer-open + despachos-maestros.js); eliminar con confirmación. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Choferes</h2>
+        @if (Model.CanCreate)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-choferes" data-maestro-new="form-choferes">+ Nuevo chofer</button>
+        }
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="filter-card mb-3">
+        <div class="col-auto flex-grow-1" style="max-width:360px;">
+            <label for="buscar-choferes" class="form-label">Buscar</label>
+            <input type="search" id="buscar-choferes" class="form-control" placeholder="Escriba para filtrar..." autocomplete="off" data-maestro-search="tabla-choferes" />
+        </div>
+    </div>
+
+    <table class="table-ps" id="tabla-choferes" data-maestro-table>
+        <thead><tr><th data-sort="text">RUT</th><th data-sort="text">Nombre</th><th data-sort="text">Transportista</th><th data-sort="text">Licencia</th><th data-sort="number">Vence</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var x in Model.Items)
+            {
+                <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{x.TaxId} {x.FullName} {Model.CarrierName(x.CarrierId)}").ToLowerInvariant())">
+                    <td>@x.TaxId</td>
+                    <td>@x.FullName</td>
+                    <td>@Model.CarrierName(x.CarrierId)</td>
+                    <td>@(x.LicenseClass ?? "—")</td>
+                    <td data-value="@(x.LicenseExpiresAt?.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture) ?? "0")">@(x.LicenseExpiresAt?.ToString("dd-MM-yyyy", System.Globalization.CultureInfo.InvariantCulture) ?? "—")</td>
+                    <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            @if (Model.CanEdit)
+                            {
+                                <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-choferes" data-maestro-edit data-row="@Model.RowJson(new { x.Id, x.TaxId, x.FullName, x.CarrierId, x.LicenseClass, LicenseExpiresAt = x.LicenseExpiresAt?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), x.IsActive })"><i class="bi bi-pencil"></i></button>
+                            }
+                            @if (Model.CanDelete)
+                            {
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar {x.FullName}?")">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Items.Count == 0)
+            {
+                <tr data-table-empty><td colspan="7" class="text-muted">Sin choferes todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.CanCreate || Model.CanEdit)
+{
+    <div id="drawer-choferes" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3 data-drawer-title data-title-new="Nuevo chofer" data-title-edit="Editar chofer">Nuevo chofer</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="Save" asp-antiforgery="true" id="form-choferes">
+                <div class="drawer-body">
+                    <input type="hidden" name="Input.Id" value="0" />
+                    <div class="drawer-grid">
+                    <div class="mb-3">
+                        <label class="form-label" for="f-TaxId">RUT</label>
+                        <input type="text" id="f-TaxId" name="Input.TaxId" class="form-control" placeholder="12.345.678-5" autocomplete="off" required  />
+                    </div>
+                    <div class="mb-3 span-2">
+                        <label class="form-label" for="f-FullName">Nombre completo</label>
+                        <input type="text" id="f-FullName" name="Input.FullName" class="form-control" placeholder="" autocomplete="off" required  />
+                    </div>
+                    <div class="mb-3 span-2">
+                        <label class="form-label" for="f-CarrierId">Transportista</label>
+                        <select id="f-CarrierId" name="Input.CarrierId" class="form-select" >
+                            <option value="">— Sin asignar —</option>
+                            @foreach (var c in Model.Carriers)
+                            {
+                                <option value="@c.Id">@c.Name@(c.IsActive ? "" : " (inactivo)")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-LicenseClass">Clase de licencia</label>
+                        <input type="text" id="f-LicenseClass" name="Input.LicenseClass" class="form-control" placeholder="Ej. A2" autocomplete="off"   />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-LicenseExpiresAt">Vence la licencia</label>
+                        <input type="date" id="f-LicenseExpiresAt" name="Input.LicenseExpiresAt" class="form-control" />
+                    </div>
+                    <div class="mb-3 d-flex align-items-end ">
+                        <label class="d-flex align-items-center gap-2"><input type="checkbox" name="Input.IsActive" value="true" checked /> Activo</label>
+                    </div>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/table-tools.js"></script>
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+}

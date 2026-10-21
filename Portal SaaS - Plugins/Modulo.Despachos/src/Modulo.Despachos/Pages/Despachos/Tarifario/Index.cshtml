@@ -1,0 +1,522 @@
+@page "/despachos/tarifario"
+@using Modulo.Despachos.Pages.Despachos.Tarifario
+@model Modulo.Despachos.Pages.Despachos.Tarifario.IndexModel
+@{
+    ViewData["Title"] = "Tarifario";
+    var active = Model.ActiveTab;
+}
+@* Tarifario: tres pestañas (valores base / recargos / simulador). Alta y edición en drawers
+   (data-drawer-open + despachos-maestros.js con data-input-prefix); los parámetros de las
+   condiciones de recargo se piden con campos tipados según el tipo elegido
+   (despachos-tarifario.js muestra solo los que corresponden). *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Tarifario</h2>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;">
+        <button type="button" class="doc-tab-btn @(active == "valores" ? "active" : "")" data-tab-btn="valores">Valores base</button>
+        <button type="button" class="doc-tab-btn @(active == "recargos" ? "active" : "")" data-tab-btn="recargos">Recargos</button>
+        <button type="button" class="doc-tab-btn @(active == "simulador" ? "active" : "")" data-tab-btn="simulador">Simulador</button>
+    </div>
+
+    @* ------------------------------------------------------------ Valores base *@
+    <div data-tab-panel="valores" style="@(active == "valores" ? "" : "display:none;")">
+        <div class="d-flex align-items-end justify-content-between gap-3 mb-3">
+            <div class="filter-card">
+                <div class="col-auto flex-grow-1" style="min-width:280px;">
+                    <label for="buscar-valores" class="form-label">Buscar</label>
+                    <input type="search" id="buscar-valores" class="form-control" placeholder="Escriba para filtrar..." autocomplete="off" data-maestro-search="tabla-valores" />
+                </div>
+            </div>
+            @if (Model.CanCreate)
+            {
+                <button type="button" class="btn-primary" data-drawer-open="drawer-valores" data-maestro-new="form-valores">+ Nuevo valor base</button>
+            }
+        </div>
+
+        <p class="text-muted">Gana la tarifa más específica (comuna sobre zona sobre región); a igual especificidad, la de mayor prioridad. Una condición vacía significa "cualquiera".</p>
+
+        <table class="table-ps" id="tabla-valores" data-maestro-table>
+            <thead><tr><th data-sort="text">Transportista</th><th data-sort="text">Destino</th><th data-sort="text">Turno</th><th data-sort="text">Tipo vehículo</th><th data-sort="text">m³</th><th data-sort="text">Modalidad</th><th data-sort="number">Monto</th><th data-sort="number">Mínimo</th><th data-sort="text">Vigencia</th><th data-sort="number">Prior.</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var x in Model.Cards)
+                {
+                    <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{Model.CarrierName(x.CarrierId)} {Model.Geography(x)} {Model.ShiftName(x.ShiftId)} {Model.VehicleTypeName(x.VehicleTypeId)} {IndexModel.MethodLabel(x.CalculationMethod)}").ToLowerInvariant())">
+                        <td>@Model.CarrierName(x.CarrierId)</td>
+                        <td>@Model.Geography(x)</td>
+                        <td>@Model.ShiftName(x.ShiftId)</td>
+                        <td>@Model.VehicleTypeName(x.VehicleTypeId)</td>
+                        <td>@Model.M3Range(x)</td>
+                        <td>@IndexModel.MethodLabel(x.CalculationMethod)</td>
+                        <td data-value="@IndexModel.Inv(x.Amount)">@(x.CalculationMethod == "no_charge" ? "—" : "$" + IndexModel.Money(x.Amount))</td>
+                        <td data-value="@IndexModel.Inv(x.MinAmount ?? 0m)">@(x.MinAmount is null ? "—" : "$" + IndexModel.Money(x.MinAmount.Value))</td>
+                        <td>@Model.Validity(x.ValidFrom, x.ValidTo)</td>
+                        <td data-value="@x.Priority">@x.Priority</td>
+                        <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
+                        <td class="col-actions">
+                            <div class="admin-row-actions">
+                                @if (Model.CanEdit)
+                                {
+                                    <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-valores" data-maestro-edit data-row="@Model.RowJson(Model.CardRow(x))"><i class="bi bi-pencil"></i></button>
+                                }
+                                @if (Model.CanDelete)
+                                {
+                                    <form method="post" asp-page-handler="DeleteCard" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="¿Eliminar este valor base?">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Cards.Count == 0)
+                {
+                    <tr data-table-empty><td colspan="12" class="text-muted">Sin valores base todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* ------------------------------------------------------------ Recargos *@
+    <div data-tab-panel="recargos" style="@(active == "recargos" ? "" : "display:none;")">
+        <div class="d-flex align-items-end justify-content-between gap-3 mb-3">
+            <div class="filter-card">
+                <div class="col-auto flex-grow-1" style="min-width:280px;">
+                    <label for="buscar-recargos" class="form-label">Buscar</label>
+                    <input type="search" id="buscar-recargos" class="form-control" placeholder="Escriba para filtrar..." autocomplete="off" data-maestro-search="tabla-recargos" />
+                </div>
+            </div>
+            @if (Model.CanCreate)
+            {
+                <button type="button" class="btn-primary" data-drawer-open="drawer-recargos" data-maestro-new="form-recargos">+ Nuevo recargo</button>
+            }
+        </div>
+
+        <p class="text-muted">Todos los recargos cuya condición se cumple se aplican y se suman; los porcentajes se calculan siempre sobre el valor base.</p>
+
+        <table class="table-ps" id="tabla-recargos" data-maestro-table>
+            <thead><tr><th data-sort="text">Nombre</th><th data-sort="text">Transportista</th><th data-sort="text">Condición</th><th data-sort="text">Efecto</th><th data-sort="text">Vigencia</th><th data-sort="number">Prior.</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var x in Model.Surcharges)
+                {
+                    <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{x.Name} {Model.CarrierName(x.CarrierId)} {Model.ConditionText(x)}").ToLowerInvariant())">
+                        <td>@x.Name</td>
+                        <td>@Model.CarrierName(x.CarrierId)</td>
+                        <td>@Model.ConditionText(x)</td>
+                        <td>@Model.EffectText(x)</td>
+                        <td>@Model.Validity(x.ValidFrom, x.ValidTo)</td>
+                        <td data-value="@x.Priority">@x.Priority</td>
+                        <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
+                        <td class="col-actions">
+                            <div class="admin-row-actions">
+                                @if (Model.CanEdit)
+                                {
+                                    <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-recargos" data-maestro-edit data-row="@Model.RowJson(Model.SurchargeRow(x))"><i class="bi bi-pencil"></i></button>
+                                }
+                                @if (Model.CanDelete)
+                                {
+                                    <form method="post" asp-page-handler="DeleteSurcharge" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar el recargo {x.Name}?")">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Surcharges.Count == 0)
+                {
+                    <tr data-table-empty><td colspan="8" class="text-muted">Sin recargos todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* ------------------------------------------------------------ Simulador *@
+    <div data-tab-panel="simulador" style="@(active == "simulador" ? "" : "display:none;")">
+        <p class="text-muted">Calcula el costo de un viaje hipotético con las tarifas y recargos vigentes a la fecha indicada. No guarda nada.</p>
+
+        @if (Model.SimError is not null)
+        {
+            <div class="alert alert-danger">@Model.SimError</div>
+        }
+
+        <form method="post" asp-page-handler="Simulate" asp-antiforgery="true">
+            <div class="drawer-grid" style="max-width:900px;">
+                <div class="mb-3">
+                    <label class="form-label" for="s-CarrierId">Transportista</label>
+                    <select id="s-CarrierId" name="Sim.CarrierId" class="form-select" required>
+                        <option value="">— Seleccione —</option>
+                        @foreach (var c in Model.Carriers)
+                        {
+                            <option value="@c.Id" selected="@(Model.Sim.CarrierId == c.Id)">@c.Name@(c.IsActive ? "" : " (inactivo)")</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="s-VehicleId">Vehículo</label>
+                    <select id="s-VehicleId" name="Sim.VehicleId" class="form-select" required>
+                        <option value="">— Seleccione —</option>
+                        @foreach (var v in Model.Vehicles)
+                        {
+                            <option value="@v.Id" selected="@(Model.Sim.VehicleId == v.Id)">@v.Plate</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="s-ShiftId">Turno</label>
+                    <select id="s-ShiftId" name="Sim.ShiftId" class="form-select">
+                        <option value="">— Sin turno —</option>
+                        @foreach (var sh in Model.Shifts)
+                        {
+                            <option value="@sh.Id" selected="@(Model.Sim.ShiftId == sh.Id)">@sh.Name@(sh.IsActive ? "" : " (inactivo)")</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="s-DispatchDate">Fecha de despacho</label>
+                    <input type="date" id="s-DispatchDate" name="Sim.DispatchDate" class="form-control" value="@Model.Sim.DispatchDate" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="s-Time">Hora de salida (hora Chile)</label>
+                    <input type="time" id="s-Time" name="Sim.Time" class="form-control" value="@Model.Sim.Time" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="s-Km">Kilómetros (opcional)</label>
+                    <input type="number" step="0.1" min="0" id="s-Km" name="Sim.Km" class="form-control" value="@Model.Sim.Km" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="s-Documents">Documentos</label>
+                    <input type="number" step="1" min="0" id="s-Documents" name="Sim.Documents" class="form-control" value="@Model.Sim.Documents" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="s-Units">Unidades</label>
+                    <input type="number" step="1" min="0" id="s-Units" name="Sim.Units" class="form-control" value="@Model.Sim.Units" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="s-Packages">Bultos</label>
+                    <input type="number" step="1" min="0" id="s-Packages" name="Sim.Packages" class="form-control" value="@Model.Sim.Packages" />
+                </div>
+                <div class="mb-3 span-2">
+                    <label class="form-label" for="s-CommuneFilter">Comunas destino</label>
+                    <input type="search" id="s-CommuneFilter" class="form-control mb-2" placeholder="Filtrar comunas..." data-option-filter="s-CommuneIds" autocomplete="off" />
+                    <select id="s-CommuneIds" name="Sim.CommuneIds" class="form-select" multiple size="8">
+                        @foreach (var g in Model.Communes.GroupBy(c => c.RegionName))
+                        {
+                            <optgroup label="@g.Key">
+                                @foreach (var c in g)
+                                {
+                                    <option value="@c.Id" selected="@Model.Sim.CommuneIds.Contains(c.Id)">@c.Name</option>
+                                }
+                            </optgroup>
+                        }
+                    </select>
+                    <div class="text-muted">Ctrl/Cmd + clic para marcar varias.</div>
+                </div>
+            </div>
+            <button type="submit" class="btn-primary">Simular</button>
+        </form>
+
+        @if (Model.Result is { } r)
+        {
+            <div class="mt-4">
+                <h3 class="h6">
+                    Resultado
+                    @switch (r.Status)
+                    {
+                        case "ok": <span class="badge-status badge-status--success">Tarifa encontrada</span> break;
+                        case "ambiguous": <span class="badge-status badge-status--warning">Tarifa ambigua</span> break;
+                        default: <span class="badge-status badge-status--neutral">Sin tarifa</span> break;
+                    }
+                </h3>
+                @if (r.Status == "ambiguous")
+                {
+                    <p class="text-muted">Dos o más valores base empatan en especificidad y prioridad para alguna comuna: ajuste la prioridad en la pestaña Valores base.</p>
+                }
+                else if (r.Status == "no_rate")
+                {
+                    <p class="text-muted">No hay valor base vigente para alguna comuna del viaje: el manifiesto quedaría "sin tarifa".</p>
+                }
+                <table class="table-ps" style="max-width:900px;">
+                    <thead><tr><th>Concepto</th><th>Detalle</th><th class="text-end">Monto</th></tr></thead>
+                    <tbody>
+                        @foreach (var line in r.Lines)
+                        {
+                            <tr>
+                                <td>@(line.Kind == "base" ? "Valor base" : "Recargo")</td>
+                                <td>@line.Explanation</td>
+                                <td class="text-end">$@IndexModel.Money(line.Amount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                    @if (r.Total is not null)
+                    {
+                        <tfoot>
+                            <tr><th colspan="2">Total del viaje</th><th class="text-end">$@IndexModel.Money(r.Total.Value)</th></tr>
+                        </tfoot>
+                    }
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.CanCreate || Model.CanEdit)
+{
+    @* ---------------------------------------------------------- Drawer valor base *@
+    <div id="drawer-valores" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3 data-drawer-title data-title-new="Nuevo valor base" data-title-edit="Editar valor base">Nuevo valor base</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="SaveCard" asp-antiforgery="true" id="form-valores" data-input-prefix="Card">
+                <div class="drawer-body">
+                    <input type="hidden" name="Card.Id" value="0" />
+                    <div class="drawer-grid">
+                        <div class="mb-3">
+                            <label class="form-label" for="c-CarrierId">Transportista</label>
+                            <select id="c-CarrierId" name="Card.CarrierId" class="form-select">
+                                <option value="">— Todos —</option>
+                                @foreach (var c in Model.Carriers)
+                                {
+                                    <option value="@c.Id">@c.Name@(c.IsActive ? "" : " (inactivo)")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-ShiftId">Turno</label>
+                            <select id="c-ShiftId" name="Card.ShiftId" class="form-select">
+                                <option value="">— Todos —</option>
+                                @foreach (var sh in Model.Shifts)
+                                {
+                                    <option value="@sh.Id">@sh.Name@(sh.IsActive ? "" : " (inactivo)")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-RegionCode">Región</label>
+                            <select id="c-RegionCode" name="Card.RegionCode" class="form-select">
+                                <option value="">— Todas —</option>
+                                @foreach (var rg in Model.Regions)
+                                {
+                                    <option value="@rg.Code">@rg.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-ZoneId">Zona</label>
+                            <select id="c-ZoneId" name="Card.ZoneId" class="form-select">
+                                <option value="">— Todas —</option>
+                                @foreach (var z in Model.Zones)
+                                {
+                                    <option value="@z.Id">@z.Name@(z.IsActive ? "" : " (inactiva)")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-CommuneId">Comuna</label>
+                            <select id="c-CommuneId" name="Card.CommuneId" class="form-select">
+                                <option value="">— Todas —</option>
+                                @foreach (var g in Model.Communes.GroupBy(c => c.RegionName))
+                                {
+                                    <optgroup label="@g.Key">
+                                        @foreach (var c in g)
+                                        {
+                                            <option value="@c.Id">@c.Name</option>
+                                        }
+                                    </optgroup>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-VehicleTypeId">Tipo de vehículo</label>
+                            <select id="c-VehicleTypeId" name="Card.VehicleTypeId" class="form-select">
+                                <option value="">— Todos —</option>
+                                @foreach (var t in Model.VehicleTypes)
+                                {
+                                    <option value="@t.Id">@t.Name@(t.IsActive ? "" : " (inactivo)")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-M3From">Capacidad desde (m³)</label>
+                            <input type="number" step="0.01" min="0" id="c-M3From" name="Card.M3From" class="form-control" placeholder="Vacío = sin mínimo" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-M3To">Capacidad hasta (m³)</label>
+                            <input type="number" step="0.01" min="0" id="c-M3To" name="Card.M3To" class="form-control" placeholder="Vacío = sin tope" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-ValidFrom">Vigente desde</label>
+                            <input type="date" id="c-ValidFrom" name="Card.ValidFrom" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-ValidTo">Vigente hasta</label>
+                            <input type="date" id="c-ValidTo" name="Card.ValidTo" class="form-control" />
+                        </div>
+                        <div class="mb-3 span-2">
+                            <label class="form-label" for="c-CalculationMethod">Modalidad de cálculo</label>
+                            <select id="c-CalculationMethod" name="Card.CalculationMethod" class="form-select" required>
+                                @foreach (var m in IndexModel.Methods)
+                                {
+                                    <option value="@m.Code">@m.Label</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-Amount">Monto ($)</label>
+                            <input type="number" step="0.01" min="0" id="c-Amount" name="Card.Amount" class="form-control" value="0" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-MinAmount">Monto mínimo ($)</label>
+                            <input type="number" step="0.01" min="0" id="c-MinAmount" name="Card.MinAmount" class="form-control" placeholder="Opcional" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="c-Priority">Prioridad</label>
+                            <input type="number" step="1" id="c-Priority" name="Card.Priority" class="form-control" value="0" />
+                        </div>
+                        <div class="mb-3 d-flex align-items-end">
+                            <label class="d-flex align-items-center gap-2"><input type="checkbox" name="Card.IsActive" value="true" checked /> Activo</label>
+                        </div>
+                    </div>
+                    <p class="text-muted">Una condición vacía significa "cualquiera". La región se elige del catálogo de comunas. La modalidad "por m³" cobra sobre la capacidad del camión, no sobre lo cargado.</p>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+
+    @* ---------------------------------------------------------- Drawer recargo *@
+    <div id="drawer-recargos" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3 data-drawer-title data-title-new="Nuevo recargo" data-title-edit="Editar recargo">Nuevo recargo</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="SaveSurcharge" asp-antiforgery="true" id="form-recargos" data-input-prefix="Surcharge">
+                <div class="drawer-body">
+                    <input type="hidden" name="Surcharge.Id" value="0" />
+                    <div class="drawer-grid">
+                        <div class="mb-3 span-2">
+                            <label class="form-label" for="r-Name">Nombre</label>
+                            <input type="text" id="r-Name" name="Surcharge.Name" class="form-control" placeholder="Ej. Salida después de las 17:00" autocomplete="off" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="r-CarrierId">Transportista</label>
+                            <select id="r-CarrierId" name="Surcharge.CarrierId" class="form-select">
+                                <option value="">— Todos —</option>
+                                @foreach (var c in Model.Carriers)
+                                {
+                                    <option value="@c.Id">@c.Name@(c.IsActive ? "" : " (inactivo)")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="r-Priority">Orden de aplicación</label>
+                            <input type="number" step="1" id="r-Priority" name="Surcharge.Priority" class="form-control" value="0" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="r-ValidFrom">Vigente desde</label>
+                            <input type="date" id="r-ValidFrom" name="Surcharge.ValidFrom" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="r-ValidTo">Vigente hasta</label>
+                            <input type="date" id="r-ValidTo" name="Surcharge.ValidTo" class="form-control" />
+                        </div>
+                        <div class="mb-3 span-2">
+                            <label class="form-label" for="r-ConditionType">Condición</label>
+                            <select id="r-ConditionType" name="Surcharge.ConditionType" class="form-select" data-cond-select required>
+                                @foreach (var ct in IndexModel.ConditionTypes)
+                                {
+                                    <option value="@ct.Code">@ct.Label</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3 span-2" data-cond-fields="distinct_zones_over distinct_communes_over documents_over packages_over">
+                            <label class="form-label" for="r-CondThreshold">Umbral N (se cumple si el valor es mayor que N)</label>
+                            <input type="number" step="1" min="0" id="r-CondThreshold" name="Surcharge.CondThreshold" class="form-control" placeholder="Ej. 1" />
+                        </div>
+                        <div class="mb-3 span-2" data-cond-fields="departure_time_from">
+                            <label class="form-label" for="r-CondTime">Hora de salida desde (hora Chile)</label>
+                            <input type="time" id="r-CondTime" name="Surcharge.CondTime" class="form-control" />
+                        </div>
+                        <div class="mb-3 span-2" data-cond-fields="shift_is">
+                            <label class="form-label" for="r-CondShiftId">Turno</label>
+                            <select id="r-CondShiftId" name="Surcharge.CondShiftId" class="form-select">
+                                <option value="">— Seleccione —</option>
+                                @foreach (var sh in Model.Shifts)
+                                {
+                                    <option value="@sh.Id">@sh.Name@(sh.IsActive ? "" : " (inactivo)")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3 span-2" data-cond-fields="vehicle_type_is">
+                            <label class="form-label" for="r-CondVehicleTypeId">Tipo de vehículo</label>
+                            <select id="r-CondVehicleTypeId" name="Surcharge.CondVehicleTypeId" class="form-select">
+                                <option value="">— Seleccione —</option>
+                                @foreach (var t in Model.VehicleTypes)
+                                {
+                                    <option value="@t.Id">@t.Name@(t.IsActive ? "" : " (inactivo)")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3 span-2" data-cond-fields="weekday_in">
+                            <label class="form-label" for="r-CondDays">Días de la semana</label>
+                            <select id="r-CondDays" name="Surcharge.CondDays" class="form-select" multiple size="7">
+                                @foreach (var d in IndexModel.Weekdays)
+                                {
+                                    <option value="@d.Day">@d.Label</option>
+                                }
+                            </select>
+                            <div class="text-muted">Ctrl/Cmd + clic para marcar varios.</div>
+                        </div>
+                        <div class="mb-3 span-2" data-cond-fields="is_holiday">
+                            <div class="text-muted">Se cumple cuando la fecha de despacho está en el mantenedor de feriados. No requiere parámetros.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="r-EffectType">Efecto</label>
+                            <select id="r-EffectType" name="Surcharge.EffectType" class="form-select" required>
+                                @foreach (var ef in IndexModel.Effects)
+                                {
+                                    <option value="@ef.Code">@ef.Label</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="r-Value">Valor ($ o %)</label>
+                            <input type="number" step="0.01" min="0.01" id="r-Value" name="Surcharge.Value" class="form-control" required />
+                        </div>
+                        <div class="mb-3 d-flex align-items-end">
+                            <label class="d-flex align-items-center gap-2"><input type="checkbox" name="Surcharge.IsActive" value="true" checked /> Activo</label>
+                        </div>
+                    </div>
+                    <p class="text-muted">El porcentaje (máx. 1000) se calcula sobre el valor base del viaje, nunca en cascada. "$ por unidad extra" multiplica el valor por lo que exceda el umbral.</p>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/table-tools.js"></script>
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+    <script src="~/js/despachos-tarifario.js" asp-append-version="true"></script>
+}

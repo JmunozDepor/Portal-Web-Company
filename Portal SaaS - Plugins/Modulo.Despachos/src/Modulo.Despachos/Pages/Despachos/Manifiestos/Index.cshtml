@@ -1,0 +1,93 @@
+@page "/despachos/manifiestos"
+@model Modulo.Despachos.Pages.Despachos.Manifiestos.IndexModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Manifiestos";
+}
+@* Listado de manifiestos: filtros por fecha, estado, transportista y folio de documento. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Manifiestos</h2>
+        @if (Model.CanCreate)
+        {
+            <a class="btn-primary" href="/despachos/manifiestos/nuevo">+ Nuevo manifiesto</a>
+        }
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.WarningMessage is not null)
+    {
+        <div class="alert alert-warning">@Model.WarningMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label" for="f-from">Desde</label>
+            <input type="date" id="f-from" name="From" value="@Model.From" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-to">Hasta</label>
+            <input type="date" id="f-to" name="To" value="@Model.To" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-status">Estado</label>
+            <select id="f-status" name="Status" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var s in ManifestStatuses.All)
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@DespachosUi.StatusLabel(DespachosUi.StatusKey(s))</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-carrier">Transportista</label>
+            <select id="f-carrier" name="CarrierId" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var c in Model.Carriers)
+                {
+                    <option value="@c.Id" selected="@(Model.CarrierId == c.Id)">@c.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-folio">Folio de documento</label>
+            <input type="search" id="f-folio" name="Folio" value="@Model.Folio" class="form-control" autocomplete="off" />
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn-primary">Filtrar</button>
+            <a class="btn-secondary" href="/despachos/manifiestos">Limpiar</a>
+        </div>
+    </form>
+
+    <table class="table-ps">
+        <thead><tr><th>N°</th><th>Fecha</th><th>Estado</th><th>Transportista</th><th>Patente</th><th>Docs</th><th>Costo</th><th>Costo estado</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var x in Model.Items)
+            {
+                <tr>
+                    <td><a href="/despachos/manifiestos/@x.Id">@x.Number</a></td>
+                    <td>@x.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
+                    <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="x.Status" /></td>
+                    <td>@x.CarrierName</td>
+                    <td>@(x.Plate ?? "—")</td>
+                    <td>@x.TotalDocuments</td>
+                    <td>@(x.CostFinal is null ? "—" : x.CostFinal.Value.ToString("N0", new CultureInfo("es-CL")))</td>
+                    <td>@DespachosUi.CostStatusLabel(x.CostStatus)</td>
+                    <td class="col-actions"><a class="btn-ghost" title="Abrir" href="/despachos/manifiestos/@x.Id"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                </tr>
+            }
+            @if (Model.Items.Count == 0)
+            {
+                <tr><td colspan="9" class="text-muted">Sin manifiestos para el filtro indicado.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>

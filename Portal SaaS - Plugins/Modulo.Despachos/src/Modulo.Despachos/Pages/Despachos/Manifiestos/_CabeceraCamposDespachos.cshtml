@@ -1,0 +1,98 @@
+@using System.Globalization
+@model Modulo.Despachos.Pages.Despachos.Manifiestos.ManifestFormView
+@* Campos de cabecera de manifiesto (compartidos por Nuevo y la pestaña Cabecera del detalle). *@
+@{
+    var f = Model.Form;
+    var l = Model.Lookups;
+    var p = Model.Prefix;
+}
+<div class="drawer-grid" data-cabecera>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)DispatchDate">Fecha de despacho</label>
+        <input type="date" id="@(p)DispatchDate" name="@(p).DispatchDate" value="@f.DispatchDate" class="form-control" required />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)ShiftId">Turno</label>
+        <select id="@(p)ShiftId" name="@(p).ShiftId" class="form-select">
+            <option value="">— Sin turno —</option>
+            @foreach (var s in l.Shifts.Where(x => x.IsActive || x.Id == f.ShiftId))
+            {
+                <option value="@s.Id" selected="@(f.ShiftId == s.Id)">@s.Name</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)OriginId">Origen</label>
+        <select id="@(p)OriginId" name="@(p).OriginId" class="form-select" required>
+            <option value="">— Seleccione —</option>
+            @foreach (var o in l.Origins.Where(x => x.IsActive || x.Id == f.OriginId))
+            {
+                <option value="@o.Id" selected="@(f.OriginId == o.Id)">@o.Name</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)CarrierId">Transportista</label>
+        <select id="@(p)CarrierId" name="@(p).CarrierId" class="form-select" data-carrier-select required>
+            <option value="">— Seleccione —</option>
+            @foreach (var c in l.Carriers.Where(x => x.IsActive || x.Id == f.CarrierId))
+            {
+                <option value="@c.Id" selected="@(f.CarrierId == c.Id)">@c.Name</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)VehicleId">Vehículo</label>
+        <select id="@(p)VehicleId" name="@(p).VehicleId" class="form-select" data-by-carrier required>
+            <option value="">— Seleccione —</option>
+            @foreach (var v in l.Tractors.Concat(l.Vehicles.Where(x => x.Id == f.VehicleId && !x.IsActive)))
+            {
+                <option value="@v.Id" data-carrier="@v.CarrierId" selected="@(f.VehicleId == v.Id)">@v.Plate</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)TrailerId">Carro / remolque</label>
+        <select id="@(p)TrailerId" name="@(p).TrailerId" class="form-select" data-by-carrier>
+            <option value="">— Sin carro —</option>
+            @foreach (var v in l.Trailers.Concat(l.Vehicles.Where(x => x.Id == f.TrailerId && !x.IsActive)))
+            {
+                <option value="@v.Id" data-carrier="@v.CarrierId" selected="@(f.TrailerId == v.Id)">@v.Plate</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)DriverId">Chofer</label>
+        <select id="@(p)DriverId" name="@(p).DriverId" class="form-select" data-by-carrier required>
+            <option value="">— Seleccione —</option>
+            @foreach (var d in l.Drivers.Where(x => x.IsActive || x.Id == f.DriverId))
+            {
+                <option value="@d.Id" data-carrier="@d.CarrierId" selected="@(f.DriverId == d.Id)">@d.FullName</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)PlannedDepartureTime">Salida planificada</label>
+        <input type="time" id="@(p)PlannedDepartureTime" name="@(p).PlannedDepartureTime" value="@f.PlannedDepartureTime" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)EstimatedArrivalDate">Llegada estimada (fecha)</label>
+        <input type="date" id="@(p)EstimatedArrivalDate" name="@(p).EstimatedArrivalDate" value="@f.EstimatedArrivalDate" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)EstimatedArrivalTime">Llegada estimada (hora)</label>
+        <input type="time" id="@(p)EstimatedArrivalTime" name="@(p).EstimatedArrivalTime" value="@f.EstimatedArrivalTime" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)OdometerStart">Odómetro inicial (km)</label>
+        <input type="number" min="0" step="1" id="@(p)OdometerStart" name="@(p).OdometerStart" value="@f.OdometerStart?.ToString(CultureInfo.InvariantCulture)" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="@(p)ServiceOrder">Orden de servicio</label>
+        <input type="text" id="@(p)ServiceOrder" name="@(p).ServiceOrder" value="@f.ServiceOrder" class="form-control" maxlength="60" autocomplete="off" />
+    </div>
+    <div class="mb-3" style="grid-column:1/-1;">
+        <label class="form-label" for="@(p)Remarks">Observaciones</label>
+        <textarea id="@(p)Remarks" name="@(p).Remarks" class="form-control" rows="2">@f.Remarks</textarea>
+    </div>
+</div>

@@ -1,0 +1,131 @@
+@page "/despachos/configuracion/vehiculos"
+@model Modulo.Despachos.Pages.Despachos.Configuracion.Vehiculos.IndexModel
+@{
+    ViewData["Title"] = "Vehículos";
+}
+@* Mantenedor: grilla compacta con búsqueda y orden por columna; alta/edición en drawer
+   (data-drawer-open + despachos-maestros.js); eliminar con confirmación. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Vehículos</h2>
+        @if (Model.CanCreate)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-vehiculos" data-maestro-new="form-vehiculos">+ Nuevo vehículo</button>
+        }
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="filter-card mb-3">
+        <div class="col-auto flex-grow-1" style="max-width:360px;">
+            <label for="buscar-vehiculos" class="form-label">Buscar</label>
+            <input type="search" id="buscar-vehiculos" class="form-control" placeholder="Escriba para filtrar..." autocomplete="off" data-maestro-search="tabla-vehiculos" />
+        </div>
+    </div>
+
+    <table class="table-ps" id="tabla-vehiculos" data-maestro-table>
+        <thead><tr><th data-sort="text">Patente</th><th data-sort="text">Tipo</th><th data-sort="text">Transportista</th><th data-sort="number">Capacidad m³</th><th data-sort="text">Carro</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var x in Model.Items)
+            {
+                <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{x.Plate} {Model.TypeName(x.VehicleTypeId)} {Model.CarrierName(x.CarrierId)}").ToLowerInvariant())">
+                    <td>@x.Plate</td>
+                    <td>@Model.TypeName(x.VehicleTypeId)</td>
+                    <td>@Model.CarrierName(x.CarrierId)</td>
+                    <td data-value="@(x.CapacityM3?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0")">@(x.CapacityM3?.ToString("0.##") ?? "—")</td>
+                    <td>@(x.IsTrailer ? "Sí" : "No")</td>
+                    <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            @if (Model.CanEdit)
+                            {
+                                <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-vehiculos" data-maestro-edit data-row="@Model.RowJson(new { x.Id, x.Plate, x.VehicleTypeId, x.CarrierId, x.CapacityM3, x.IsTrailer, x.IsActive })"><i class="bi bi-pencil"></i></button>
+                            }
+                            @if (Model.CanDelete)
+                            {
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar {x.Plate}?")">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Items.Count == 0)
+            {
+                <tr data-table-empty><td colspan="7" class="text-muted">Sin vehículos todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.CanCreate || Model.CanEdit)
+{
+    <div id="drawer-vehiculos" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3 data-drawer-title data-title-new="Nuevo vehículo" data-title-edit="Editar vehículo">Nuevo vehículo</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="Save" asp-antiforgery="true" id="form-vehiculos">
+                <div class="drawer-body">
+                    <input type="hidden" name="Input.Id" value="0" />
+                    <div class="drawer-grid">
+                    <div class="mb-3">
+                        <label class="form-label" for="f-Plate">Patente</label>
+                        <input type="text" id="f-Plate" name="Input.Plate" class="form-control" placeholder="Ej. AB1234 o ABCD12" autocomplete="off" required  />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-VehicleTypeId">Tipo de vehículo</label>
+                        <select id="f-VehicleTypeId" name="Input.VehicleTypeId" class="form-select" >
+                            <option value="">— Sin asignar —</option>
+                            @foreach (var t in Model.Types)
+                            {
+                                <option value="@t.Id">@t.Name@(t.IsActive ? "" : " (inactivo)")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-CarrierId">Transportista</label>
+                        <select id="f-CarrierId" name="Input.CarrierId" class="form-select" >
+                            <option value="">— Sin asignar —</option>
+                            @foreach (var c in Model.Carriers)
+                            {
+                                <option value="@c.Id">@c.Name@(c.IsActive ? "" : " (inactivo)")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-CapacityM3">Capacidad propia (m³)</label>
+                        <input type="number" step="0.01" min="0" id="f-CapacityM3" name="Input.CapacityM3" class="form-control" placeholder="Vacío = la del tipo" />
+                    </div>
+                    <div class="mb-3 d-flex align-items-end ">
+                        <label class="d-flex align-items-center gap-2"><input type="checkbox" name="Input.IsTrailer" value="true"  /> Es carro / remolque</label>
+                    </div>
+                    <div class="mb-3 d-flex align-items-end ">
+                        <label class="d-flex align-items-center gap-2"><input type="checkbox" name="Input.IsActive" value="true" checked /> Activo</label>
+                    </div>
+                    </div>
+                <p class="text-muted">La patente se guarda normalizada (mayúsculas, sin guiones ni espacios). Un carro o remolque es un vehículo marcado como "Es carro".</p>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/table-tools.js"></script>
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+}

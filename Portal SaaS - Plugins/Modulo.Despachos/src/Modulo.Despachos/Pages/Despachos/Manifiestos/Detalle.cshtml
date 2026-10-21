@@ -1,0 +1,408 @@
+@page "/despachos/manifiestos/{id:guid}"
+@model Modulo.Despachos.Pages.Despachos.Manifiestos.DetalleModel
+@using System.Globalization
+@using Modulo.Despachos.Models
+@using Modulo.Despachos.Pages.Despachos.Manifiestos
+@{
+    var m = Model.M;
+    ViewData["Title"] = $"Manifiesto N° {m.Number}";
+    var active = Model.ActiveTab;
+    var es = new CultureInfo("es-CL");
+    var canScan = Model.IsDraft && Model.CanEdit;
+    var canPrint = Model.CanExport && m.Status != ManifestStatuses.Draft && m.Status != ManifestStatuses.Annulled;
+    var canFixCommune = Model.CanEdit && (m.Status == ManifestStatuses.Draft || m.Status == ManifestStatuses.Dispatched || m.Status == ManifestStatuses.Returned);
+    var canRecalc = Model.CanEdit && (m.Status == ManifestStatuses.Dispatched || m.Status == ManifestStatuses.Returned || m.Status == ManifestStatuses.Closed);
+    var wasPrinted = m.Events.Any(e => e.EventType is ManifestEventTypes.Printed or ManifestEventTypes.Reprinted);
+}
+@* Detalle del manifiesto: Cabecera / Documentos / Retorno / Costo / Historial.
+   Los borradores escanean en la pestaña Documentos (despachos-scan.js: lector de mano en modo teclado + cámara). *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <div class="d-flex align-items-center gap-3">
+            <h2 class="mb-0">Manifiesto N° @m.Number</h2>
+            <partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="m.Status" />
+            <span class="text-muted">@m.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a class="btn-secondary" href="/despachos/manifiestos">Volver al listado</a>
+            @if (canPrint)
+            {
+                <a class="btn-secondary" target="_blank" rel="noopener" asp-page-handler="Pdf" asp-route-id="@m.Id">
+                    <i class="bi bi-printer"></i> @(wasPrinted ? "Reimprimir (copia)" : "Imprimir PDF")
+                </a>
+            }
+            @if (Model.IsDraft && Model.CanApprove)
+            {
+                <form method="post" asp-page-handler="Despachar" asp-route-id="@m.Id" asp-antiforgery="true" class="d-inline-block"
+                      data-confirm="@($"¿Despachar el manifiesto N° {m.Number} con {Model.DocCount} documentos? Se toma la foto del vehículo y el chofer y se calcula el costo.")">
+                    <button type="submit" class="btn-primary" disabled="@(Model.DocCount == 0)"><i class="bi bi-truck"></i> Despachar</button>
+                </form>
+            }
+            @if (m.Status == ManifestStatuses.Returned && Model.CanApprove)
+            {
+                <form method="post" asp-page-handler="Cerrar" asp-route-id="@m.Id" asp-antiforgery="true" class="d-inline-block"
+                      data-confirm="@($"¿Cerrar el manifiesto N° {m.Number}? Ya no podrá modificarse el retorno.")">
+                    <button type="submit" class="btn-primary"><i class="bi bi-lock"></i> Cerrar</button>
+                </form>
+            }
+            @if (Model.CanDelete && (m.Status == ManifestStatuses.Draft || m.Status == ManifestStatuses.Dispatched))
+            {
+                <button type="button" class="btn-ghost btn-ghost--danger" data-drawer-open="drawer-anular"><i class="bi bi-x-octagon"></i> Anular</button>
+            }
+        </div>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.WarningMessage is not null)
+    {
+        <div class="alert alert-warning">@Model.WarningMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;">
+        <button type="button" class="doc-tab-btn @(active == "cabecera" ? "active" : "")" data-tab-btn="cabecera">Cabecera</button>
+        <button type="button" class="doc-tab-btn @(active == "documentos" ? "active" : "")" data-tab-btn="documentos">Documentos (<span data-doc-count>@Model.DocCount</span>)</button>
+        <button type="button" class="doc-tab-btn @(active == "retorno" ? "active" : "")" data-tab-btn="retorno">Retorno</button>
+        <button type="button" class="doc-tab-btn @(active == "costo" ? "active" : "")" data-tab-btn="costo">Costo</button>
+        <button type="button" class="doc-tab-btn @(active == "historial" ? "active" : "")" data-tab-btn="historial">Historial</button>
+    </div>
+
+    @* ------------------------------------------------------------ Cabecera *@
+    <div data-tab-panel="cabecera" style="@(active == "cabecera" ? "" : "display:none;")">
+        @if (Model.IsDraft && Model.CanEdit)
+        {
+            <form method="post" asp-page-handler="GuardarCabecera" asp-route-id="@m.Id" asp-antiforgery="true">
+                <partial name="_CabeceraCamposDespachos" model='new ManifestFormView(Model.Header, Model.Lookups, "Header")' />
+                <button type="submit" class="btn-primary">Guardar cabecera</button>
+            </form>
+        }
+        else
+        {
+            <dl class="row">
+                <dt class="col-sm-3">Transportista</dt><dd class="col-sm-9">@Model.Lookups.CarrierName(m.CarrierId) @(m.CarrierTaxId is null ? "" : $"({m.CarrierTaxId})")</dd>
+                <dt class="col-sm-3">Vehículo</dt><dd class="col-sm-9">@(m.Plate ?? Model.Lookups.VehiclePlate(m.VehicleId))</dd>
+                <dt class="col-sm-3">Carro / remolque</dt><dd class="col-sm-9">@(m.TrailerPlate ?? (m.TrailerId is null ? "—" : Model.Lookups.VehiclePlate(m.TrailerId)))</dd>
+                <dt class="col-sm-3">Chofer</dt><dd class="col-sm-9">@(m.DriverName ?? Model.Lookups.DriverName(m.DriverId)) @(m.DriverTaxId is null ? "" : $"({m.DriverTaxId})")</dd>
+                <dt class="col-sm-3">Origen</dt><dd class="col-sm-9">@Model.Lookups.OriginName(m.OriginId) @(m.OriginAddress is null ? "" : $"— {m.OriginAddress}, {m.OriginCommune}")</dd>
+                <dt class="col-sm-3">Turno</dt><dd class="col-sm-9">@Model.Lookups.ShiftName(m.ShiftId)</dd>
+                <dt class="col-sm-3">Salida</dt><dd class="col-sm-9">@(m.DepartedAt is null ? "—" : DetalleModel.ChileTime(m.DepartedAt.Value))</dd>
+                <dt class="col-sm-3">Llegada estimada</dt><dd class="col-sm-9">@(m.EstimatedArrivalDate?.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture) ?? "—") @(m.EstimatedArrivalTime?.ToString("HH:mm", CultureInfo.InvariantCulture))</dd>
+                <dt class="col-sm-3">Odómetro (inicio / fin)</dt><dd class="col-sm-9">@(m.OdometerStart?.ToString(CultureInfo.InvariantCulture) ?? "—") / @(m.OdometerEnd?.ToString(CultureInfo.InvariantCulture) ?? "—")</dd>
+                <dt class="col-sm-3">Orden de servicio</dt><dd class="col-sm-9">@(m.ServiceOrder ?? "—")</dd>
+                <dt class="col-sm-3">Observaciones</dt><dd class="col-sm-9">@(m.Remarks ?? "—")</dd>
+            </dl>
+
+            @if (Model.CanEdit && m.Status == ManifestStatuses.Dispatched)
+            {
+                <h4 class="mt-3">Cambiar vehículo / chofer</h4>
+                <p class="text-muted">Solo con el manifiesto despachado y con motivo. El transportista del manifiesto no cambia; si el vehículo o el chofer son de otro transportista se mostrará una advertencia.</p>
+                <form method="post" asp-page-handler="CambiarVehiculo" asp-route-id="@m.Id" asp-antiforgery="true">
+                    <div class="drawer-grid">
+                        <div class="mb-3">
+                            <label class="form-label" for="Change_VehicleId">Vehículo</label>
+                            <select id="Change_VehicleId" name="Change.VehicleId" class="form-select" required>
+                                @foreach (var v in Model.Lookups.Tractors.Concat(Model.Lookups.Vehicles.Where(x => x.Id == m.VehicleId && !x.IsActive)))
+                                {
+                                    <option value="@v.Id" selected="@(Model.Change.VehicleId == v.Id)">@v.Plate (@Model.Lookups.CarrierName(v.CarrierId))</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="Change_TrailerId">Carro / remolque</label>
+                            <select id="Change_TrailerId" name="Change.TrailerId" class="form-select">
+                                <option value="">— Sin carro —</option>
+                                @foreach (var v in Model.Lookups.Trailers.Concat(Model.Lookups.Vehicles.Where(x => x.Id == m.TrailerId && !x.IsActive)))
+                                {
+                                    <option value="@v.Id" selected="@(Model.Change.TrailerId == v.Id)">@v.Plate (@Model.Lookups.CarrierName(v.CarrierId))</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="Change_DriverId">Chofer</label>
+                            <select id="Change_DriverId" name="Change.DriverId" class="form-select" required>
+                                @foreach (var d in Model.Lookups.Drivers.Where(x => x.IsActive || x.Id == m.DriverId))
+                                {
+                                    <option value="@d.Id" selected="@(Model.Change.DriverId == d.Id)">@d.FullName (@Model.Lookups.CarrierName(d.CarrierId))</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="Change_Reason">Motivo</label>
+                            <input type="text" id="Change_Reason" name="Change.Reason" class="form-control" maxlength="300" required autocomplete="off" />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">Cambiar</button>
+                </form>
+            }
+        }
+    </div>
+
+    @* ------------------------------------------------------------ Documentos *@
+    <div data-tab-panel="documentos" style="@(active == "documentos" ? "" : "display:none;")">
+        @if (canScan)
+        {
+            <div class="scan-box" id="scan-box" data-scan
+                 data-url="@Url.Page("/Despachos/Manifiestos/Detalle", "AgregarDocumento", new { id = m.Id })">
+                @Html.AntiForgeryToken()
+                <div class="d-flex gap-2 align-items-end flex-wrap mb-2">
+                    <div class="flex-grow-1" style="min-width:260px;">
+                        <label class="form-label" for="scan-input">Escanear documento (lector PDF417)</label>
+                        <input type="text" id="scan-input" class="form-control" autocomplete="off" autocapitalize="off" spellcheck="false"
+                               placeholder="Apunte el lector al timbre y dispare..." autofocus />
+                    </div>
+                    <button type="button" class="btn-secondary" id="scan-camera" hidden><i class="bi bi-camera"></i> Cámara</button>
+                </div>
+                <div id="scan-feedback" class="scan-feedback" role="status" aria-live="polite">Listo para escanear.</div>
+                <div id="scan-ambiguous" class="d-flex gap-2 align-items-center mb-2" hidden>
+                    <span>El folio existe con más de un tipo de documento:</span>
+                    <button type="button" class="btn-secondary" data-sii="33">Factura (33)</button>
+                    <button type="button" class="btn-secondary" data-sii="34">Factura exenta (34)</button>
+                </div>
+                <details class="mb-2">
+                    <summary>Ingreso manual (tipo + folio)</summary>
+                    <div class="d-flex gap-2 align-items-end flex-wrap mt-2">
+                        <div>
+                            <label class="form-label" for="manual-kind">Tipo</label>
+                            <select id="manual-kind" class="form-select">
+                                <option value="@DocumentKinds.Invoice">Factura</option>
+                                <option value="@DocumentKinds.TransferGuide">Guía de traslado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label" for="manual-folio">Folio</label>
+                            <input type="text" inputmode="numeric" id="manual-folio" class="form-control" autocomplete="off" />
+                        </div>
+                        <button type="button" class="btn-primary" id="manual-add">Agregar</button>
+                    </div>
+                </details>
+                <div id="scan-camera-panel" hidden class="mb-2">
+                    <video id="scan-video" playsinline muted style="width:100%;max-width:420px;border-radius:8px;"></video>
+                    <div><button type="button" class="btn-secondary mt-1" id="scan-camera-close">Cerrar cámara</button></div>
+                </div>
+            </div>
+        }
+
+        <div class="d-flex gap-4 mb-2 text-muted">
+            <span>Documentos: <strong data-doc-count>@Model.DocCount</strong></span>
+            <span>Unidades: <strong data-doc-units>@Model.DocUnits.ToString("N0", es)</strong></span>
+            <span>Bultos: <strong data-doc-packages>@Model.DocPackages</strong></span>
+        </div>
+
+        <table class="table-ps" id="docs-table">
+            <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Comuna</th><th>Unidades</th><th>Bultos</th>@if (!Model.IsDraft) { <th>Estado</th> }<th class="col-actions"></th></tr></thead>
+            <tbody id="docs-body">
+                @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
+                {
+                    <tr>
+                        <td>@DocumentKinds.Label(d.DocumentKind)</td>
+                        <td>@d.Folio</td>
+                        <td>@d.CustomerName</td>
+                        <td>
+                            @(d.DestinationCommuneName ?? "—")
+                            @if (d.DestinationCommuneId is null && canFixCommune)
+                            {
+                                <form method="post" asp-page-handler="CorregirComuna" asp-route-id="@m.Id" asp-route-documentId="@d.Id" asp-antiforgery="true" class="d-flex gap-1 mt-1">
+                                    <select name="communeId" class="form-select" required aria-label="Comuna del catálogo" style="min-width:160px;">
+                                        <option value="">Comuna no resuelta: elegir...</option>
+                                        @foreach (var c in Model.Communes)
+                                        {
+                                            <option value="@c.Id">@c.Name</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn-secondary">Corregir</button>
+                                </form>
+                            }
+                            else if (d.DestinationCommuneId is null)
+                            {
+                                <span class="badge text-bg-warning">sin resolver</span>
+                            }
+                        </td>
+                        <td>@d.Units.ToString("N0", es)</td>
+                        <td>@d.Packages</td>
+                        @if (!Model.IsDraft)
+                        {
+                            <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="d.DeliveryStatus" /></td>
+                        }
+                        <td class="col-actions">
+                            @if (canScan)
+                            {
+                                <form method="post" asp-page-handler="QuitarDocumento" asp-route-id="@m.Id" asp-route-documentId="@d.Id" asp-antiforgery="true" class="d-inline-block"
+                                      data-confirm="@($"¿Quitar {DocumentKinds.Label(d.DocumentKind)} {d.Folio}?")">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (m.Documents.Count == 0)
+                {
+                    <tr data-table-empty><td colspan="8" class="text-muted">Sin documentos todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+
+        @if (canScan)
+        {
+            @* Plantilla de fila para los documentos agregados por escaneo (JS reemplaza el GUID nulo). *@
+            <template id="doc-row-template">
+                <tr>
+                    <td data-f="kind"></td><td data-f="folio"></td><td data-f="customer"></td><td data-f="commune"></td>
+                    <td data-f="units"></td><td data-f="packages"></td>
+                    <td class="col-actions">
+                        <form method="post" asp-page-handler="QuitarDocumento" asp-route-id="@m.Id" asp-route-documentId="00000000-0000-0000-0000-000000000000" asp-antiforgery="true" class="d-inline-block" data-confirm="¿Quitar este documento?">
+                            <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            </template>
+        }
+    </div>
+
+    @* ------------------------------------------------------------ Retorno *@
+    <div data-tab-panel="retorno" style="@(active == "retorno" ? "" : "display:none;")">
+        @if (m.Status == ManifestStatuses.Draft)
+        {
+            <p class="text-muted">El retorno se registra una vez despachado el manifiesto.</p>
+        }
+        else
+        {
+            <table class="table-ps">
+                <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Resultado</th><th>Motivo</th><th>Comentarios</th><th>Registrado</th></tr></thead>
+                <tbody>
+                    @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
+                    {
+                        <tr>
+                            <td>@DocumentKinds.Label(d.DocumentKind)</td>
+                            <td>@d.Folio</td>
+                            <td>@d.CustomerName</td>
+                            <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="d.DeliveryStatus" /></td>
+                            <td>@Model.ReasonName(d.RejectionReasonId)</td>
+                            <td>@(d.Comments ?? "")</td>
+                            <td>@(d.ReturnedAt is null ? "—" : DetalleModel.ChileTime(d.ReturnedAt.Value))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (Model.CanReturn && (m.Status == ManifestStatuses.Dispatched || m.Status == ManifestStatuses.Returned))
+            {
+                <a class="btn-primary mt-2" href="/despachos/retorno?number=@m.Number"><i class="bi bi-arrow-return-left"></i> Registrar / corregir retorno</a>
+            }
+        }
+    </div>
+
+    @* ------------------------------------------------------------ Costo *@
+    <div data-tab-panel="costo" style="@(active == "costo" ? "" : "display:none;")">
+        <dl class="row">
+            <dt class="col-sm-3">Estado del cálculo</dt><dd class="col-sm-9">@DespachosUi.CostStatusLabel(m.CostStatus)</dd>
+            <dt class="col-sm-3">Costo calculado</dt><dd class="col-sm-9">@(m.CostCalculated is null ? "—" : m.CostCalculated.Value.ToString("N0", es))</dd>
+            <dt class="col-sm-3">Ajuste manual</dt><dd class="col-sm-9">@(m.CostOverride is null ? "—" : $"{m.CostOverride.Value.ToString("N0", es)} ({m.CostOverrideReason})")</dd>
+            <dt class="col-sm-3">Costo final</dt><dd class="col-sm-9"><strong>@(m.CostFinal is null ? "—" : m.CostFinal.Value.ToString("N0", es))</strong></dd>
+        </dl>
+
+        <table class="table-ps">
+            <thead><tr><th>Concepto</th><th>Detalle</th><th class="text-end">Monto</th></tr></thead>
+            <tbody>
+                @foreach (var l in m.CostLines.OrderBy(x => x.Kind == "base" ? 0 : 1).ThenBy(x => x.Id))
+                {
+                    <tr>
+                        <td>@(l.Kind == "base" ? "Valor base" : "Recargo")</td>
+                        <td>@l.Explanation</td>
+                        <td class="text-end">@l.Amount.ToString("N0", es)</td>
+                    </tr>
+                }
+                @if (m.CostLines.Count == 0)
+                {
+                    <tr><td colspan="3" class="text-muted">Sin líneas de costo (el costo se calcula al despachar).</td></tr>
+                }
+            </tbody>
+        </table>
+
+        @if (canRecalc)
+        {
+            <form method="post" asp-page-handler="RecalcularCosto" asp-route-id="@m.Id" asp-antiforgery="true" class="mt-2"
+                  data-confirm="Se vuelve a calcular el costo con las tarifas y comunas vigentes. Un ajuste manual no se pierde.">
+                <button type="submit" class="btn-secondary"><i class="bi bi-arrow-repeat"></i> Recalcular costo</button>
+            </form>
+        }
+
+        @if (Model.CanAdjustCost && (m.Status == ManifestStatuses.Dispatched || m.Status == ManifestStatuses.Returned || m.Status == ManifestStatuses.Closed))
+        {
+            <h4 class="mt-3">Ajustar costo</h4>
+            <form method="post" asp-page-handler="AjustarCosto" asp-route-id="@m.Id" asp-antiforgery="true">
+                <div class="drawer-grid">
+                    <div class="mb-3">
+                        <label class="form-label" for="cost-amount">Monto (CLP)</label>
+                        <input type="text" inputmode="decimal" id="cost-amount" name="amount" class="form-control" required autocomplete="off"
+                               value="@(m.CostFinal?.ToString("0.##", CultureInfo.InvariantCulture))" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="cost-reason">Motivo</label>
+                        <input type="text" id="cost-reason" name="reason" class="form-control" required maxlength="300" autocomplete="off" />
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Ajustar costo</button>
+            </form>
+        }
+    </div>
+
+    @* ------------------------------------------------------------ Historial *@
+    <div data-tab-panel="historial" style="@(active == "historial" ? "" : "display:none;")">
+        <table class="table-ps">
+            <thead><tr><th>Fecha (Chile)</th><th>Evento</th><th>Estado</th><th>Usuario</th><th>Detalle</th></tr></thead>
+            <tbody>
+                @foreach (var e in m.Events.OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id))
+                {
+                    <tr>
+                        <td>@DetalleModel.ChileTime(e.OccurredAt)</td>
+                        <td>@DetalleModel.EventLabel(e.EventType)</td>
+                        <td>@(e.FromStatus is null && e.ToStatus is null ? "" : $"{e.FromStatus} → {e.ToStatus}")</td>
+                        <td>@Model.UserLabel(e.UserId)</td>
+                        <td class="text-muted" style="max-width:380px;word-break:break-word;">@e.PayloadJson</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.CanDelete && (m.Status == ManifestStatuses.Draft || m.Status == ManifestStatuses.Dispatched))
+{
+    <div id="drawer-anular" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3>Anular manifiesto N° @m.Number</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="Anular" asp-route-id="@m.Id" asp-antiforgery="true">
+                <div class="drawer-body">
+                    <p class="text-muted">Los documentos quedan libres para otro manifiesto. Esta acción no se puede deshacer.</p>
+                    <div class="mb-3">
+                        <label class="form-label" for="anular-reason">Motivo</label>
+                        <input type="text" id="anular-reason" name="reason" class="form-control" required maxlength="300" autocomplete="off" />
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary">Anular manifiesto</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+    <script src="~/js/despachos-manifiesto.js" asp-append-version="true"></script>
+    @if (canScan)
+    {
+        <script src="~/lib/zxing/zxing.min.js"></script>
+        <script src="~/js/despachos-scan.js" asp-append-version="true"></script>
+    }
+}

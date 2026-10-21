@@ -22,6 +22,12 @@ public sealed class IndexModel : MaestroPageModelBase
 
     public string CommuneName(long? id) => Communes.FirstOrDefault(c => c.Id == id)?.Name ?? "—";
 
+    /// <summary>RUT de la compañía como emisor de DTE (valida el timbre al escanear documentos).</summary>
+    public string? IssuerTaxId { get; private set; }
+
+    [BindProperty]
+    public string? IssuerInput { get; set; }
+
     [BindProperty]
     public OrigenInput Input { get; set; } = new();
 
@@ -29,7 +35,12 @@ public sealed class IndexModel : MaestroPageModelBase
     {
         Items = await _data.ListOriginsAsync(includeInactive: true);
         Communes = await _data.ListCommunesAsync();
+        IssuerTaxId = await _data.GetIssuerTaxIdAsync();
     });
+
+    /// <summary>Guarda el RUT emisor de la compañía. Exige EDIT sobre "origenes".</summary>
+    public Task<IActionResult> OnPostSaveIssuerAsync() => SaveCoreAsync(1, () => _data.SaveIssuerTaxIdAsync(IssuerInput),
+        "RUT emisor actualizado.");
 
     public Task<IActionResult> OnPostSaveAsync() => SaveCoreAsync(Input.Id, async () =>
         await _data.SaveOriginAsync(new Origin

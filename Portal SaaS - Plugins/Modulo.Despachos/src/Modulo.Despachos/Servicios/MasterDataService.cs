@@ -12,8 +12,8 @@ namespace Modulo.Despachos.Servicios;
 /// <summary>
 /// Implementación de los mantenedores. Cada consulta filtra por la compañía activa y cada
 /// inserción la fija; editar un registro de otra compañía falla como "no existe".
-/// El bloqueo por "usado en manifiestos" de transportistas/vehículos/choferes lo agrega
-/// la tarea de manifiestos; acá solo se bloquea por dependientes de los propios maestros.
+/// Transportistas, vehículos, choferes, orígenes y turnos usados en manifiestos no se eliminan
+/// (son historial): se desactivan.
 /// </summary>
 public sealed class MasterDataService : IMasterDataService
 {
@@ -29,6 +29,32 @@ public sealed class MasterDataService : IMasterDataService
     }
 
     private Guid CompanyId => _company.CompanyId;
+
+    // ---------------------------------------------------------------- Ajustes de la compañía
+
+    public async Task<string?> GetIssuerTaxIdAsync() =>
+        (await _db.Settings.FirstOrDefaultAsync(x => x.CompanyId == CompanyId))?.IssuerTaxId;
+
+    public async Task SaveIssuerTaxIdAsync(string? rut)
+    {
+        var normalized = string.IsNullOrWhiteSpace(rut) ? null : NormalizeRut(rut);
+        var row = await _db.Settings.FirstOrDefaultAsync(x => x.CompanyId == CompanyId);
+        var now = DateTime.UtcNow;
+        if (row is null)
+        {
+            _db.Settings.Add(new DespachosSetting
+            {
+                CompanyId = CompanyId, IssuerTaxId = normalized, CreatedAt = now, CreatedBy = _user.UserId,
+            });
+        }
+        else
+        {
+            row.IssuerTaxId = normalized;
+            row.UpdatedAt = now;
+            row.UpdatedBy = _user.UserId;
+        }
+        await _db.SaveChangesAsync();
+    }
 
     // ---------------------------------------------------------------- Transportistas
 
@@ -59,6 +85,8 @@ public sealed class MasterDataService : IMasterDataService
 
     public Task<DeleteResult> DeleteCarrierAsync(long id) => DeleteAsync(_db.Carriers, id, async () =>
     {
+        if (await _db.Manifests.AnyAsync(m => m.CompanyId == CompanyId && m.CarrierId == id))
+            return "El transportista se usó en manifiestos; desactívelo en vez de eliminarlo.";
         if (await _db.Vehicles.AnyAsync(v => v.CompanyId == CompanyId && v.CarrierId == id))
             return "El transportista tiene vehículos asociados; desactívelo en vez de eliminarlo.";
         if (await _db.Drivers.AnyAsync(d => d.CompanyId == CompanyId && d.CarrierId == id))
@@ -104,7 +132,10 @@ public sealed class MasterDataService : IMasterDataService
         return await SaveAsync(e, x => x.Plate == e.Plate, $"La patente '{e.Plate}' ya existe.");
     }
 
-    public Task<DeleteResult> DeleteVehicleAsync(long id) => DeleteAsync(_db.Vehicles, id, null);
+    public Task<DeleteResult> DeleteVehicleAsync(long id) => DeleteAsync(_db.Vehicles, id, async () =>
+        await _db.Manifests.AnyAsync(m => m.CompanyId == CompanyId && (m.VehicleId == id || m.TrailerId == id))
+            ? "El vehículo se usó en manifiestos; desactívelo en vez de eliminarlo."
+            : null);
 
     // ---------------------------------------------------------------- Choferes
 
@@ -120,7 +151,10 @@ public sealed class MasterDataService : IMasterDataService
         return await SaveAsync(e, x => x.TaxId == e.TaxId, $"Ya existe un chofer con el RUT '{e.TaxId}'.");
     }
 
-    public Task<DeleteResult> DeleteDriverAsync(long id) => DeleteAsync(_db.Drivers, id, null);
+    public Task<DeleteResult> DeleteDriverAsync(long id) => DeleteAsync(_db.Drivers, id, async () =>
+        await _db.Manifests.AnyAsync(m => m.CompanyId == CompanyId && m.DriverId == id)
+            ? "El chofer se usó en manifiestos; desactívelo en vez de eliminarlo."
+            : null);
 
     // ---------------------------------------------------------------- Turnos
 
@@ -135,9 +169,13 @@ public sealed class MasterDataService : IMasterDataService
     }
 
     public Task<DeleteResult> DeleteShiftAsync(long id) => DeleteAsync(_db.Shifts, id, async () =>
-        await _db.RateCards.AnyAsync(r => r.CompanyId == CompanyId && r.ShiftId == id)
-            ? "Hay tarifas del tarifario para este turno; desactívelo en vez de eliminarlo."
-            : null);
+    {
+        if (await _db.RateCards.AnyAsync(r => r.CompanyId == CompanyId && r.ShiftId == id))
+            return "Hay tarifas del tarifario para este turno; desactívelo en vez de eliminarlo.";
+        if (await _db.Manifests.AnyAsync(m => m.CompanyId == CompanyId && m.ShiftId == id))
+            return "El turno se usó en manifiestos; desactívelo en vez de eliminarlo.";
+        return null;
+    });
 
     // ---------------------------------------------------------------- Zonas
 
@@ -212,7 +250,10 @@ public sealed class MasterDataService : IMasterDataService
         return await SaveAsync(e, x => x.Code == e.Code, $"Ya existe un origen con el código '{e.Code}'.");
     }
 
-    public Task<DeleteResult> DeleteOriginAsync(long id) => DeleteAsync(_db.Origins, id, null);
+    public Task<DeleteResult> DeleteOriginAsync(long id) => DeleteAsync(_db.Origins, id, async () =>
+        await _db.Manifests.AnyAsync(m => m.CompanyId == CompanyId && m.OriginId == id)
+            ? "El origen se usó en manifiestos; desactívelo en vez de eliminarlo."
+            : null);
 
     // ---------------------------------------------------------------- Motivos de rechazo
 

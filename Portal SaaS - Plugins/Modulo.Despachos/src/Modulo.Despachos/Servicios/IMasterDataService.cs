@@ -12,6 +12,12 @@ public sealed record DeleteResult(bool Deleted, string? BlockedReason);
 /// </summary>
 public interface IMasterDataService
 {
+    /// <summary>RUT de la compañía como emisor de DTE (normalizado), o null si no está configurado.</summary>
+    Task<string?> GetIssuerTaxIdAsync();
+
+    /// <summary>Guarda el RUT emisor (validado, dígito verificador); vacío lo borra.</summary>
+    Task SaveIssuerTaxIdAsync(string? rut);
+
     Task<IReadOnlyList<Carrier>> ListCarriersAsync(bool includeInactive = false);
     Task<long> SaveCarrierAsync(Carrier entity);
     Task<DeleteResult> DeleteCarrierAsync(long id);

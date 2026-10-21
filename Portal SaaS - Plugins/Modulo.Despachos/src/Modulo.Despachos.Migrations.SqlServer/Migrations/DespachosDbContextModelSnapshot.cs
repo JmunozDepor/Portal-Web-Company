@@ -155,6 +155,49 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                     b.ToTable("communes", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.DespachosSetting", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("IssuerTaxId")
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)")
+                        .HasColumnName("issuer_tax_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_despachos_settings_company_id");
+
+                    b.ToTable("despachos_settings", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.Driver", b =>
                 {
                     b.Property<long>("Id")
@@ -277,6 +320,490 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasDatabaseName("uq_holidays_company_id_date");
 
                     b.ToTable("holidays", (string)null);
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.Manifest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<long>("CarrierId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("carrier_id");
+
+                    b.Property<string>("CarrierTaxId")
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)")
+                        .HasColumnName("carrier_tax_id");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<decimal?>("CostCalculated")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("cost_calculated");
+
+                    b.Property<decimal?>("CostFinal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("cost_final");
+
+                    b.Property<DateTime?>("CostFrozenAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("cost_frozen_at");
+
+                    b.Property<decimal?>("CostOverride")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("cost_override");
+
+                    b.Property<string>("CostOverrideReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("cost_override_reason");
+
+                    b.Property<string>("CostStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("cost_status");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DepartedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("departed_at");
+
+                    b.Property<DateOnly>("DispatchDate")
+                        .HasColumnType("date")
+                        .HasColumnName("dispatch_date");
+
+                    b.Property<long>("DriverId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("driver_id");
+
+                    b.Property<string>("DriverName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("driver_name");
+
+                    b.Property<string>("DriverTaxId")
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)")
+                        .HasColumnName("driver_tax_id");
+
+                    b.Property<DateOnly?>("EstimatedArrivalDate")
+                        .HasColumnType("date")
+                        .HasColumnName("estimated_arrival_date");
+
+                    b.Property<TimeOnly?>("EstimatedArrivalTime")
+                        .HasColumnType("time")
+                        .HasColumnName("estimated_arrival_time");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("int")
+                        .HasColumnName("number");
+
+                    b.Property<int?>("OdometerEnd")
+                        .HasColumnType("int")
+                        .HasColumnName("odometer_end");
+
+                    b.Property<int?>("OdometerStart")
+                        .HasColumnType("int")
+                        .HasColumnName("odometer_start");
+
+                    b.Property<string>("OriginAddress")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("origin_address");
+
+                    b.Property<string>("OriginCommune")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)")
+                        .HasColumnName("origin_commune");
+
+                    b.Property<long>("OriginId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("origin_id");
+
+                    b.Property<TimeOnly?>("PlannedDepartureTime")
+                        .HasColumnType("time")
+                        .HasColumnName("planned_departure_time");
+
+                    b.Property<string>("Plate")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("plate");
+
+                    b.Property<long?>("RateCardId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("rate_card_id");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("remarks");
+
+                    b.Property<DateTime?>("ReturnedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("returned_at");
+
+                    b.Property<string>("ServiceOrder")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)")
+                        .HasColumnName("service_order");
+
+                    b.Property<long?>("ShiftId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("shift_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TotalDocuments")
+                        .HasColumnType("int")
+                        .HasColumnName("total_documents");
+
+                    b.Property<int>("TotalPackages")
+                        .HasColumnType("int")
+                        .HasColumnName("total_packages");
+
+                    b.Property<decimal>("TotalUnits")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_units");
+
+                    b.Property<long?>("TrailerId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("trailer_id");
+
+                    b.Property<string>("TrailerPlate")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("trailer_plate");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.Property<long>("VehicleId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("vehicle_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_manifests_company_id");
+
+                    b.HasIndex("CompanyId", "DispatchDate")
+                        .HasDatabaseName("ix_manifests_company_id_dispatch_date");
+
+                    b.HasIndex("CompanyId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("uq_manifests_company_id_number");
+
+                    b.ToTable("manifests", (string)null);
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.ManifestCostLine", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<long?>("CommuneId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("commune_id");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<int>("Documents")
+                        .HasColumnType("int")
+                        .HasColumnName("documents");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("explanation");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("ManifestId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("manifest_id");
+
+                    b.Property<int>("Packages")
+                        .HasColumnType("int")
+                        .HasColumnName("packages");
+
+                    b.Property<long?>("RateCardId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("rate_card_id");
+
+                    b.Property<long?>("RateSurchargeId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("rate_surcharge_id");
+
+                    b.Property<decimal>("Units")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("units");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_manifest_cost_lines_company_id");
+
+                    b.HasIndex("ManifestId")
+                        .HasDatabaseName("ix_manifest_cost_lines_manifest_id");
+
+                    b.ToTable("manifest_cost_lines", (string)null);
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.ManifestDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("added_at");
+
+                    b.Property<Guid?>("AddedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("added_by");
+
+                    b.Property<string>("CaptureMethod")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("capture_method");
+
+                    b.Property<string>("Comments")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("comments");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("CustomerCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("customer_code");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("customer_name");
+
+                    b.Property<string>("CustomerPo")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)")
+                        .HasColumnName("customer_po");
+
+                    b.Property<string>("CustomerTaxId")
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)")
+                        .HasColumnName("customer_tax_id");
+
+                    b.Property<string>("DeliveryStatus")
+                        .IsRequired()
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)")
+                        .HasColumnName("delivery_status");
+
+                    b.Property<string>("DestinationAddress")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)")
+                        .HasColumnName("destination_address");
+
+                    b.Property<long?>("DestinationCommuneId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("destination_commune_id");
+
+                    b.Property<string>("DestinationCommuneName")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)")
+                        .HasColumnName("destination_commune_name");
+
+                    b.Property<DateOnly>("DocumentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("document_date");
+
+                    b.Property<string>("DocumentKind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("document_kind");
+
+                    b.Property<long>("Folio")
+                        .HasColumnType("bigint")
+                        .HasColumnName("folio");
+
+                    b.Property<Guid>("ManifestId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("manifest_id");
+
+                    b.Property<int>("Packages")
+                        .HasColumnType("int")
+                        .HasColumnName("packages");
+
+                    b.Property<long?>("RejectionReasonId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("rejection_reason_id");
+
+                    b.Property<DateTime?>("ReturnedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("returned_at");
+
+                    b.Property<Guid?>("ReturnedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("returned_by");
+
+                    b.Property<int?>("SapBaseOrderEntry")
+                        .HasColumnType("int")
+                        .HasColumnName("sap_base_order_entry");
+
+                    b.Property<int>("SapDocEntry")
+                        .HasColumnType("int")
+                        .HasColumnName("sap_doc_entry");
+
+                    b.Property<int>("SapDocNum")
+                        .HasColumnType("int")
+                        .HasColumnName("sap_doc_num");
+
+                    b.Property<int>("SiiDocumentType")
+                        .HasColumnType("int")
+                        .HasColumnName("sii_document_type");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("total_amount");
+
+                    b.Property<decimal>("Units")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("units");
+
+                    b.Property<decimal?>("VolumeM3")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("decimal(9,2)")
+                        .HasColumnName("volume_m3");
+
+                    b.Property<decimal?>("WeightKg")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("weight_kg");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_manifest_documents_company_id");
+
+                    b.HasIndex("ManifestId")
+                        .HasDatabaseName("ix_manifest_documents_manifest_id");
+
+                    b.HasIndex("CompanyId", "DocumentKind", "SiiDocumentType", "Folio")
+                        .HasDatabaseName("ix_manifest_documents_company_id_kind_sii_folio");
+
+                    b.ToTable("manifest_documents", (string)null);
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.ManifestEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("FromStatus")
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)")
+                        .HasColumnName("from_status");
+
+                    b.Property<Guid?>("ManifestDocumentId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("manifest_document_id");
+
+                    b.Property<Guid>("ManifestId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("manifest_id");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("payload_json");
+
+                    b.Property<string>("ToStatus")
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)")
+                        .HasColumnName("to_status");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_manifest_events_company_id");
+
+                    b.HasIndex("ManifestId")
+                        .HasDatabaseName("ix_manifest_events_manifest_id");
+
+                    b.ToTable("manifest_events", (string)null);
                 });
 
             modelBuilder.Entity("Modulo.Despachos.Models.NotificationRecipient", b =>
@@ -1035,6 +1562,33 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasConstraintName("fk_drivers_carriers");
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.ManifestCostLine", b =>
+                {
+                    b.HasOne("Modulo.Despachos.Models.Manifest", null)
+                        .WithMany("CostLines")
+                        .HasForeignKey("ManifestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.ManifestDocument", b =>
+                {
+                    b.HasOne("Modulo.Despachos.Models.Manifest", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("ManifestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.ManifestEvent", b =>
+                {
+                    b.HasOne("Modulo.Despachos.Models.Manifest", null)
+                        .WithMany("Events")
+                        .HasForeignKey("ManifestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.Origin", b =>
                 {
                     b.HasOne("Modulo.Despachos.Models.Commune", null)
@@ -1116,6 +1670,15 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_zone_communes_zones");
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.Manifest", b =>
+                {
+                    b.Navigation("CostLines");
+
+                    b.Navigation("Documents");
+
+                    b.Navigation("Events");
                 });
 
             modelBuilder.Entity("Modulo.Despachos.Models.Zone", b =>

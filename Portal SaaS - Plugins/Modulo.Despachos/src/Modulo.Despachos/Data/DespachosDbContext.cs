@@ -37,6 +37,11 @@ public class DespachosDbContext : DbContext
     public DbSet<RateCard> RateCards => Set<RateCard>();
     public DbSet<RateSurcharge> RateSurcharges => Set<RateSurcharge>();
     public DbSet<SapDocumentQuery> SapDocumentQueries => Set<SapDocumentQuery>();
+    public DbSet<DespachosSetting> Settings => Set<DespachosSetting>();
+    public DbSet<Manifest> Manifests => Set<Manifest>();
+    public DbSet<ManifestDocument> ManifestDocuments => Set<ManifestDocument>();
+    public DbSet<ManifestCostLine> ManifestCostLines => Set<ManifestCostLine>();
+    public DbSet<ManifestEvent> ManifestEvents => Set<ManifestEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -244,6 +249,144 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.ValidatedAt).HasColumnName("validated_at");
             e.HasIndex(x => new { x.CompanyId, x.DocumentKind }).IsUnique()
                 .HasDatabaseName("uq_sap_document_queries_company_id_document_kind");
+        });
+
+        modelBuilder.Entity<DespachosSetting>(e =>
+        {
+            Base(e, "despachos_settings");
+            e.Property(x => x.IssuerTaxId).HasColumnName("issuer_tax_id").HasMaxLength(12);
+            e.HasIndex(x => x.CompanyId).IsUnique().HasDatabaseName("uq_despachos_settings_company_id");
+        });
+
+        modelBuilder.Entity<Manifest>(e =>
+        {
+            e.ToTable("manifests");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.Number).HasColumnName("number");
+            e.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+            e.Property(x => x.DispatchDate).HasColumnName("dispatch_date");
+            e.Property(x => x.ShiftId).HasColumnName("shift_id");
+            e.Property(x => x.OriginId).HasColumnName("origin_id");
+            e.Property(x => x.CarrierId).HasColumnName("carrier_id");
+            e.Property(x => x.VehicleId).HasColumnName("vehicle_id");
+            e.Property(x => x.TrailerId).HasColumnName("trailer_id");
+            e.Property(x => x.DriverId).HasColumnName("driver_id");
+            e.Property(x => x.CarrierTaxId).HasColumnName("carrier_tax_id").HasMaxLength(12);
+            e.Property(x => x.DriverTaxId).HasColumnName("driver_tax_id").HasMaxLength(12);
+            e.Property(x => x.DriverName).HasColumnName("driver_name").HasMaxLength(150);
+            e.Property(x => x.Plate).HasColumnName("plate").HasMaxLength(10);
+            e.Property(x => x.TrailerPlate).HasColumnName("trailer_plate").HasMaxLength(10);
+            e.Property(x => x.OriginAddress).HasColumnName("origin_address").HasMaxLength(250);
+            e.Property(x => x.OriginCommune).HasColumnName("origin_commune").HasMaxLength(60);
+            e.Property(x => x.DepartedAt).HasColumnName("departed_at");
+            e.Property(x => x.PlannedDepartureTime).HasColumnName("planned_departure_time");
+            e.Property(x => x.EstimatedArrivalDate).HasColumnName("estimated_arrival_date");
+            e.Property(x => x.EstimatedArrivalTime).HasColumnName("estimated_arrival_time");
+            e.Property(x => x.ReturnedAt).HasColumnName("returned_at");
+            e.Property(x => x.OdometerStart).HasColumnName("odometer_start");
+            e.Property(x => x.OdometerEnd).HasColumnName("odometer_end");
+            e.Property(x => x.ServiceOrder).HasColumnName("service_order").HasMaxLength(60);
+            e.Property(x => x.Remarks).HasColumnName("remarks").HasMaxLength(500);
+            e.Property(x => x.CostCalculated).HasColumnName("cost_calculated").HasPrecision(18, 2);
+            e.Property(x => x.RateCardId).HasColumnName("rate_card_id");
+            e.Property(x => x.CostOverride).HasColumnName("cost_override").HasPrecision(18, 2);
+            e.Property(x => x.CostOverrideReason).HasColumnName("cost_override_reason").HasMaxLength(500);
+            e.Property(x => x.CostFinal).HasColumnName("cost_final").HasPrecision(18, 2);
+            e.Property(x => x.CostFrozenAt).HasColumnName("cost_frozen_at");
+            e.Property(x => x.CostStatus).HasColumnName("cost_status").HasMaxLength(20).IsRequired();
+            e.Property(x => x.TotalDocuments).HasColumnName("total_documents");
+            e.Property(x => x.TotalUnits).HasColumnName("total_units").HasPrecision(18, 2);
+            e.Property(x => x.TotalPackages).HasColumnName("total_packages");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
+            e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_manifests_company_id");
+            e.HasIndex(x => new { x.CompanyId, x.Number }).IsUnique().HasDatabaseName("uq_manifests_company_id_number");
+            e.HasIndex(x => new { x.CompanyId, x.DispatchDate }).HasDatabaseName("ix_manifests_company_id_dispatch_date");
+            e.HasMany(x => x.Documents).WithOne().HasForeignKey(d => d.ManifestId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.CostLines).WithOne().HasForeignKey(l => l.ManifestId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Events).WithOne().HasForeignKey(l => l.ManifestId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ManifestDocument>(e =>
+        {
+            e.ToTable("manifest_documents");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.ManifestId).HasColumnName("manifest_id");
+            e.Property(x => x.DocumentKind).HasColumnName("document_kind").HasMaxLength(30).IsRequired();
+            e.Property(x => x.SiiDocumentType).HasColumnName("sii_document_type");
+            e.Property(x => x.Folio).HasColumnName("folio");
+            e.Property(x => x.SapDocEntry).HasColumnName("sap_doc_entry");
+            e.Property(x => x.SapDocNum).HasColumnName("sap_doc_num");
+            e.Property(x => x.DocumentDate).HasColumnName("document_date");
+            e.Property(x => x.TotalAmount).HasColumnName("total_amount").HasPrecision(18, 2);
+            e.Property(x => x.CustomerCode).HasColumnName("customer_code").HasMaxLength(50).IsRequired();
+            e.Property(x => x.CustomerName).HasColumnName("customer_name").HasMaxLength(200).IsRequired();
+            e.Property(x => x.CustomerTaxId).HasColumnName("customer_tax_id").HasMaxLength(12);
+            e.Property(x => x.DestinationAddress).HasColumnName("destination_address").HasMaxLength(250);
+            e.Property(x => x.DestinationCommuneName).HasColumnName("destination_commune_name").HasMaxLength(60);
+            e.Property(x => x.DestinationCommuneId).HasColumnName("destination_commune_id");
+            e.Property(x => x.SapBaseOrderEntry).HasColumnName("sap_base_order_entry");
+            e.Property(x => x.CustomerPo).HasColumnName("customer_po").HasMaxLength(60);
+            e.Property(x => x.Units).HasColumnName("units").HasPrecision(18, 2);
+            e.Property(x => x.Packages).HasColumnName("packages");
+            e.Property(x => x.WeightKg).HasColumnName("weight_kg").HasPrecision(18, 2);
+            e.Property(x => x.VolumeM3).HasColumnName("volume_m3").HasPrecision(9, 2);
+            e.Property(x => x.DeliveryStatus).HasColumnName("delivery_status").HasMaxLength(25).IsRequired();
+            e.Property(x => x.RejectionReasonId).HasColumnName("rejection_reason_id");
+            e.Property(x => x.Comments).HasColumnName("comments").HasMaxLength(500);
+            e.Property(x => x.ReturnedBy).HasColumnName("returned_by");
+            e.Property(x => x.ReturnedAt).HasColumnName("returned_at");
+            e.Property(x => x.CaptureMethod).HasColumnName("capture_method").HasMaxLength(10).IsRequired();
+            e.Property(x => x.AddedAt).HasColumnName("added_at");
+            e.Property(x => x.AddedBy).HasColumnName("added_by");
+            e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_manifest_documents_company_id");
+            e.HasIndex(x => x.ManifestId).HasDatabaseName("ix_manifest_documents_manifest_id");
+            e.HasIndex(x => new { x.CompanyId, x.DocumentKind, x.SiiDocumentType, x.Folio })
+                .HasDatabaseName("ix_manifest_documents_company_id_kind_sii_folio");
+        });
+
+        modelBuilder.Entity<ManifestCostLine>(e =>
+        {
+            e.ToTable("manifest_cost_lines");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.ManifestId).HasColumnName("manifest_id");
+            e.Property(x => x.Kind).HasColumnName("kind").HasMaxLength(20).IsRequired();
+            e.Property(x => x.CommuneId).HasColumnName("commune_id");
+            e.Property(x => x.RateCardId).HasColumnName("rate_card_id");
+            e.Property(x => x.RateSurchargeId).HasColumnName("rate_surcharge_id");
+            e.Property(x => x.Amount).HasColumnName("amount").HasPrecision(18, 2);
+            e.Property(x => x.Explanation).HasColumnName("explanation").HasMaxLength(500).IsRequired();
+            e.Property(x => x.Documents).HasColumnName("documents");
+            e.Property(x => x.Units).HasColumnName("units").HasPrecision(18, 2);
+            e.Property(x => x.Packages).HasColumnName("packages");
+            e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_manifest_cost_lines_company_id");
+            e.HasIndex(x => x.ManifestId).HasDatabaseName("ix_manifest_cost_lines_manifest_id");
+        });
+
+        modelBuilder.Entity<ManifestEvent>(e =>
+        {
+            e.ToTable("manifest_events");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.ManifestId).HasColumnName("manifest_id");
+            e.Property(x => x.ManifestDocumentId).HasColumnName("manifest_document_id");
+            e.Property(x => x.EventType).HasColumnName("event_type").HasMaxLength(30).IsRequired();
+            e.Property(x => x.FromStatus).HasColumnName("from_status").HasMaxLength(25);
+            e.Property(x => x.ToStatus).HasColumnName("to_status").HasMaxLength(25);
+            e.Property(x => x.PayloadJson).HasColumnName("payload_json");
+            e.Property(x => x.UserId).HasColumnName("user_id");
+            e.Property(x => x.OccurredAt).HasColumnName("occurred_at");
+            e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_manifest_events_company_id");
+            e.HasIndex(x => x.ManifestId).HasDatabaseName("ix_manifest_events_manifest_id");
         });
     }
 

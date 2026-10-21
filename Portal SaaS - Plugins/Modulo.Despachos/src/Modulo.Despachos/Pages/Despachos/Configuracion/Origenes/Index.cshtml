@@ -25,6 +25,20 @@
     }
 
     <div class="filter-card mb-3">
+        <form method="post" asp-page-handler="SaveIssuer" asp-antiforgery="true" class="d-flex flex-wrap align-items-end gap-3">
+            <div class="col-auto flex-grow-1" style="max-width:360px;">
+                <label for="issuer-tax-id" class="form-label">RUT emisor de la compañía</label>
+                <input type="text" id="issuer-tax-id" name="IssuerInput" class="form-control" value="@Model.IssuerTaxId" placeholder="Ej. 76123456-0" autocomplete="off" @(Model.CanEdit ? "" : "readonly") />
+                <div class="form-text">Se compara con el RUT del timbre (PDF417) al agregar documentos a un manifiesto.</div>
+            </div>
+            @if (Model.CanEdit)
+            {
+                <button type="submit" class="btn-primary">Guardar RUT</button>
+            }
+        </form>
+    </div>
+
+    <div class="filter-card mb-3">
         <div class="col-auto flex-grow-1" style="max-width:360px;">
             <label for="buscar-origenes" class="form-label">Buscar</label>
             <input type="search" id="buscar-origenes" class="form-control" placeholder="Escriba para filtrar..." autocomplete="off" data-maestro-search="tabla-origenes" />

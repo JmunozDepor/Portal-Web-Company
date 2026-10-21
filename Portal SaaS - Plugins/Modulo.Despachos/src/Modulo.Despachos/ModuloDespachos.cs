@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Modulo.Despachos.Data;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
@@ -69,6 +70,11 @@ public sealed class ModuloDespachos : IModuloPortal
         services.AddScoped<Servicios.IMasterDataService, Servicios.MasterDataService>();
         services.AddScoped<Servicios.ITariffService, Servicios.TariffService>();
         services.AddScoped<Servicios.ISapDocumentLookupService, Servicios.SapDocumentLookupService>();
+        services.AddScoped<Servicios.IManifestCostService, Servicios.ManifestCostService>();
+        services.AddScoped<Servicios.IManifestService, Servicios.ManifestService>();
+
+        // Reloj inyectable (hora de salida del despacho); los tests lo reemplazan por uno fijo.
+        services.TryAddSingleton(TimeProvider.System);
 
         // Motor de costo (puro): estrategias de cálculo, condiciones de recargo y el motor.
         services.AddSingleton<Dominio.Tarifas.IRateCalculator, Dominio.Tarifas.FixedPerTripCalculator>();

@@ -34,6 +34,8 @@ public class DespachosDbContext : DbContext
     public DbSet<RejectionReason> RejectionReasons => Set<RejectionReason>();
     public DbSet<Holiday> Holidays => Set<Holiday>();
     public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
+    public DbSet<RateCard> RateCards => Set<RateCard>();
+    public DbSet<RateSurcharge> RateSurcharges => Set<RateSurcharge>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -176,6 +178,60 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.HasIndex(x => new { x.CompanyId, x.UserId }).IsUnique().HasDatabaseName("uq_notification_recipients_company_id_user_id");
+        });
+
+        modelBuilder.Entity<RateCard>(e =>
+        {
+            Base(e, "rate_cards");
+            e.Property(x => x.CarrierId).HasColumnName("carrier_id");
+            e.Property(x => x.ShiftId).HasColumnName("shift_id");
+            e.Property(x => x.RegionCode).HasColumnName("region_code").HasMaxLength(2);
+            e.Property(x => x.ZoneId).HasColumnName("zone_id");
+            e.Property(x => x.CommuneId).HasColumnName("commune_id");
+            e.Property(x => x.VehicleTypeId).HasColumnName("vehicle_type_id");
+            e.Property(x => x.M3From).HasColumnName("m3_from").HasPrecision(9, 2);
+            e.Property(x => x.M3To).HasColumnName("m3_to").HasPrecision(9, 2);
+            e.Property(x => x.ValidFrom).HasColumnName("valid_from");
+            e.Property(x => x.ValidTo).HasColumnName("valid_to");
+            e.Property(x => x.CalculationMethod).HasColumnName("calculation_method").HasMaxLength(30).IsRequired();
+            e.Property(x => x.Amount).HasColumnName("amount").HasPrecision(18, 2);
+            e.Property(x => x.MinAmount).HasColumnName("min_amount").HasPrecision(18, 2);
+            e.Property(x => x.ParametersJson).HasColumnName("parameters_json");
+            e.Property(x => x.Priority).HasColumnName("priority");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.HasIndex(x => x.CarrierId).HasDatabaseName("ix_rate_cards_carrier_id");
+            e.HasIndex(x => x.ShiftId).HasDatabaseName("ix_rate_cards_shift_id");
+            e.HasIndex(x => x.ZoneId).HasDatabaseName("ix_rate_cards_zone_id");
+            e.HasIndex(x => x.CommuneId).HasDatabaseName("ix_rate_cards_commune_id");
+            e.HasIndex(x => x.VehicleTypeId).HasDatabaseName("ix_rate_cards_vehicle_type_id");
+            e.HasOne<Carrier>().WithMany().HasForeignKey(x => x.CarrierId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_rate_cards_carriers");
+            e.HasOne<Shift>().WithMany().HasForeignKey(x => x.ShiftId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_rate_cards_shifts");
+            e.HasOne<Zone>().WithMany().HasForeignKey(x => x.ZoneId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_rate_cards_zones");
+            e.HasOne<Commune>().WithMany().HasForeignKey(x => x.CommuneId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_rate_cards_communes");
+            e.HasOne<VehicleType>().WithMany().HasForeignKey(x => x.VehicleTypeId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_rate_cards_vehicle_types");
+        });
+
+        modelBuilder.Entity<RateSurcharge>(e =>
+        {
+            Base(e, "rate_surcharges");
+            e.Property(x => x.CarrierId).HasColumnName("carrier_id");
+            e.Property(x => x.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
+            e.Property(x => x.ValidFrom).HasColumnName("valid_from");
+            e.Property(x => x.ValidTo).HasColumnName("valid_to");
+            e.Property(x => x.Priority).HasColumnName("priority");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.ConditionType).HasColumnName("condition_type").HasMaxLength(40).IsRequired();
+            e.Property(x => x.ConditionParametersJson).HasColumnName("condition_parameters_json");
+            e.Property(x => x.EffectType).HasColumnName("effect_type").HasMaxLength(30).IsRequired();
+            e.Property(x => x.Value).HasColumnName("value").HasPrecision(18, 2);
+            e.HasIndex(x => x.CarrierId).HasDatabaseName("ix_rate_surcharges_carrier_id");
+            e.HasOne<Carrier>().WithMany().HasForeignKey(x => x.CarrierId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_rate_surcharges_carriers");
         });
     }
 

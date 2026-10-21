@@ -122,6 +122,28 @@ public class MasterDataServiceTests
     }
 
     [Fact]
+    public async Task SaveZone_ComunaYaEnOtraZona_Rechaza()
+    {
+        var (svc, db, company) = Build();
+        await CommuneSeeder.EnsureSeededAsync(db, company.CompanyId);
+        var communes = await svc.ListCommunesAsync();
+        await svc.SaveZoneAsync(new Zone
+        {
+            Code = "NORTE", Name = "Zona norte",
+            Communes = { new ZoneCommune { CommuneId = communes[0].Id } },
+        });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.SaveZoneAsync(new Zone
+        {
+            Code = "SUR", Name = "Zona sur",
+            Communes = { new ZoneCommune { CommuneId = communes[0].Id }, new ZoneCommune { CommuneId = communes[1].Id } },
+        }));
+
+        Assert.Equal($"La comuna {communes[0].Name} ya pertenece a la zona Zona norte.", ex.Message);
+        Assert.Single(await db.Zones.ToListAsync());
+    }
+
+    [Fact]
     public async Task SaveZone_Editar_SincronizaComunas()
     {
         var (svc, db, company) = Build();

@@ -30,15 +30,21 @@ public abstract class MaestroPageModelBase : DespachosPageModelBase
     protected async Task<IActionResult> LoadAsync(Func<Task> load)
     {
         if (!await HasActionAsync(PortalActions.View)) return Forbid();
-        CanCreate = await HasActionAsync(PortalActions.Create);
-        CanEdit = await HasActionAsync(PortalActions.Edit);
-        CanDelete = await HasActionAsync(PortalActions.Delete);
+        await LoadPermissionsAsync();
         await load();
         return Page();
     }
 
+    /// <summary>Calcula los permisos que gobiernan los botones de la vista (para handlers que no usan LoadAsync).</summary>
+    protected async Task LoadPermissionsAsync()
+    {
+        CanCreate = await HasActionAsync(PortalActions.Create);
+        CanEdit = await HasActionAsync(PortalActions.Edit);
+        CanDelete = await HasActionAsync(PortalActions.Delete);
+    }
+
     /// <summary>Guardar: CREATE si id == 0, si no EDIT. Errores de negocio vuelven como ErrorMessage.</summary>
-    protected async Task<IActionResult> SaveCoreAsync(long id, Func<Task> save, string okMessage)
+    protected async Task<IActionResult> SaveCoreAsync(long id, Func<Task> save, string okMessage, string? tab = null)
     {
         if (!await HasActionAsync(id == 0 ? PortalActions.Create : PortalActions.Edit)) return Forbid();
         try
@@ -50,11 +56,11 @@ public abstract class MaestroPageModelBase : DespachosPageModelBase
         {
             ErrorMessage = GetErrorMessage(ex);
         }
-        return RedirectToPage();
+        return RedirectToPage(new { tab });
     }
 
     /// <summary>Eliminar: exige DELETE; si hay dependientes el servicio explica por qué no se pudo.</summary>
-    protected async Task<IActionResult> DeleteCoreAsync(Func<Task<DeleteResult>> delete, string okMessage)
+    protected async Task<IActionResult> DeleteCoreAsync(Func<Task<DeleteResult>> delete, string okMessage, string? tab = null)
     {
         if (!await HasActionAsync(PortalActions.Delete)) return Forbid();
         try
@@ -67,7 +73,7 @@ public abstract class MaestroPageModelBase : DespachosPageModelBase
         {
             ErrorMessage = GetErrorMessage(ex);
         }
-        return RedirectToPage();
+        return RedirectToPage(new { tab });
     }
 
     /// <summary>

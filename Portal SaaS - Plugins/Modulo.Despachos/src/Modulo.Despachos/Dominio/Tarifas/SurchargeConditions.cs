@@ -13,6 +13,7 @@ public abstract class OverThresholdCondition : ISurchargeCondition
     public SurchargeEvaluation Evaluate(JsonElement parameters, TripCostInput trip)
     {
         var threshold = parameters.GetProperty("threshold").GetInt32();
+        if (threshold < 0) throw new InvalidOperationException("El umbral no puede ser negativo.");
         var value = Value(trip);
         var met = value > threshold;
         return new SurchargeEvaluation(met, met ? value - threshold : 0, $"{Label}: {value} (umbral {threshold})");
@@ -87,6 +88,8 @@ public sealed class WeekdayInCondition : ISurchargeCondition
     public SurchargeEvaluation Evaluate(JsonElement parameters, TripCostInput trip)
     {
         var days = parameters.GetProperty("days").EnumerateArray().Select(d => d.GetInt32()).ToList();
+        if (days.Count == 0 || days.Any(d => d < 0 || d > 6))
+            throw new InvalidOperationException("Los días deben ser números entre 0 (domingo) y 6 (sábado).");
         var dow = (int)trip.DispatchDate.DayOfWeek;
         return new SurchargeEvaluation(days.Contains(dow), 1, $"Día de la semana {dow} (recargo en {string.Join(",", days)})");
     }

@@ -63,6 +63,9 @@ public sealed class MasterDataService : IMasterDataService
             return "El transportista tiene vehículos asociados; desactívelo en vez de eliminarlo.";
         if (await _db.Drivers.AnyAsync(d => d.CompanyId == CompanyId && d.CarrierId == id))
             return "El transportista tiene choferes asociados; desactívelo en vez de eliminarlo.";
+        if (await _db.RateCards.AnyAsync(r => r.CompanyId == CompanyId && r.CarrierId == id)
+            || await _db.RateSurcharges.AnyAsync(r => r.CompanyId == CompanyId && r.CarrierId == id))
+            return "El transportista tiene tarifas o recargos en el tarifario; desactívelo en vez de eliminarlo.";
         return null;
     });
 
@@ -79,9 +82,13 @@ public sealed class MasterDataService : IMasterDataService
     }
 
     public Task<DeleteResult> DeleteVehicleTypeAsync(long id) => DeleteAsync(_db.VehicleTypes, id, async () =>
-        await _db.Vehicles.AnyAsync(v => v.CompanyId == CompanyId && v.VehicleTypeId == id)
-            ? "Hay vehículos de este tipo; desactívelo en vez de eliminarlo."
-            : null);
+    {
+        if (await _db.Vehicles.AnyAsync(v => v.CompanyId == CompanyId && v.VehicleTypeId == id))
+            return "Hay vehículos de este tipo; desactívelo en vez de eliminarlo.";
+        if (await _db.RateCards.AnyAsync(r => r.CompanyId == CompanyId && r.VehicleTypeId == id))
+            return "Hay tarifas del tarifario para este tipo; desactívelo en vez de eliminarlo.";
+        return null;
+    });
 
     // ---------------------------------------------------------------- Vehículos
 
@@ -127,7 +134,10 @@ public sealed class MasterDataService : IMasterDataService
         return await SaveAsync(e, x => x.Code == e.Code, $"Ya existe un turno con el código '{e.Code}'.");
     }
 
-    public Task<DeleteResult> DeleteShiftAsync(long id) => DeleteAsync(_db.Shifts, id, null);
+    public Task<DeleteResult> DeleteShiftAsync(long id) => DeleteAsync(_db.Shifts, id, async () =>
+        await _db.RateCards.AnyAsync(r => r.CompanyId == CompanyId && r.ShiftId == id)
+            ? "Hay tarifas del tarifario para este turno; desactívelo en vez de eliminarlo."
+            : null);
 
     // ---------------------------------------------------------------- Zonas
 
@@ -144,6 +154,18 @@ public sealed class MasterDataService : IMasterDataService
         var valid = await _db.Communes.CountAsync(c => c.CompanyId == CompanyId && communeIds.Contains(c.Id));
         if (valid != communeIds.Count)
             throw new InvalidOperationException("Alguna comuna de la zona no existe en el catálogo.");
+
+        // Una comuna pertenece como máximo a UNA zona por compañía (la zona de un viaje se deriva de ella).
+        var taken = await _db.ZoneCommunes
+            .Where(zc => zc.CompanyId == CompanyId && zc.ZoneId != e.Id && communeIds.Contains(zc.CommuneId))
+            .ToListAsync();
+        if (taken.Count > 0)
+        {
+            var first = taken[0];
+            var communeName = (await _db.Communes.FirstAsync(c => c.Id == first.CommuneId)).Name;
+            var zoneName = (await _db.Zones.FirstAsync(z => z.Id == first.ZoneId)).Name;
+            throw new InvalidOperationException($"La comuna {communeName} ya pertenece a la zona {zoneName}.");
+        }
         e.Communes = communeIds.Select(id => new ZoneCommune { CompanyId = CompanyId, CommuneId = id }).ToList();
 
         return await SaveAsync(e, x => x.Code == e.Code, $"Ya existe una zona con el código '{e.Code}'.",
@@ -167,6 +189,8 @@ public sealed class MasterDataService : IMasterDataService
         var zone = await _db.Zones.Include(z => z.Communes)
             .FirstOrDefaultAsync(z => z.Id == id && z.CompanyId == CompanyId);
         if (zone is null) return new DeleteResult(false, "El registro no existe.");
+        if (await _db.RateCards.AnyAsync(r => r.CompanyId == CompanyId && r.ZoneId == id))
+            return new DeleteResult(false, "Hay tarifas del tarifario para esta zona; desactívela en vez de eliminarla.");
 
         // Las comunas de la zona son parte de la zona: se borran con ella.
         _db.ZoneCommunes.RemoveRange(zone.Communes);

@@ -2,7 +2,7 @@
 //   <input data-maestro-search="tabla-id">      filtra las filas <tr data-buscable="texto">
 //   <table data-maestro-table id="tabla-id">    activa el orden por columna (table-tools.js del Host)
 //   <button data-maestro-new="form-id">         deja el formulario del drawer vacío (alta)
-//   <button data-maestro-edit data-row='{...}'> rellena el formulario con la fila (claves = Input.<Clave>)
+//   <button data-maestro-edit data-row='{...}'> rellena el formulario con la fila (claves = <prefijo>.<Clave>; prefijo = data-input-prefix del form, por defecto Input)
 //   <form data-confirm="texto">                 pide confirmación antes de enviar (eliminar)
 //   <input data-option-filter="select-id">      filtra las opciones de un select múltiple
 // El drawer se abre con data-drawer-open (drawer.js global del Host).
@@ -33,9 +33,14 @@
         if (submit) { submit.textContent = submit.getAttribute(edit ? 'data-label-edit' : 'data-label-new'); }
     }
 
+    // Prefijo de los campos del formulario: "Input" por defecto; data-input-prefix="Card" en pantallas con varios formularios.
+    function prefixOf(form) {
+        return form.getAttribute('data-input-prefix') || 'Input';
+    }
+
     function resetForm(form) {
         form.reset();
-        var id = form.elements['Input.Id'];
+        var id = form.elements[prefixOf(form) + '.Id'];
         if (id) { id.value = '0'; }
         Array.prototype.forEach.call(form.querySelectorAll('[data-option-filter]'), function (f) {
             f.value = '';
@@ -46,7 +51,7 @@
     function fillForm(form, row) {
         resetForm(form);
         Object.keys(row).forEach(function (key) {
-            var el = form.elements['Input.' + key];
+            var el = form.elements[prefixOf(form) + '.' + key];
             if (!el) { return; }
             var value = row[key];
             if (el.type === 'checkbox') {

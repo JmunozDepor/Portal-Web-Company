@@ -402,6 +402,216 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                     b.ToTable("origins", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.RateCard", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("CalculationMethod")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("calculation_method");
+
+                    b.Property<long?>("CarrierId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("carrier_id");
+
+                    b.Property<long?>("CommuneId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("commune_id");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<decimal?>("M3From")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("decimal(9,2)")
+                        .HasColumnName("m3_from");
+
+                    b.Property<decimal?>("M3To")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("decimal(9,2)")
+                        .HasColumnName("m3_to");
+
+                    b.Property<decimal?>("MinAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("min_amount");
+
+                    b.Property<string>("ParametersJson")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("parameters_json");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int")
+                        .HasColumnName("priority");
+
+                    b.Property<string>("RegionCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)")
+                        .HasColumnName("region_code");
+
+                    b.Property<long?>("ShiftId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("shift_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateOnly>("ValidFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("valid_from");
+
+                    b.Property<DateOnly?>("ValidTo")
+                        .HasColumnType("date")
+                        .HasColumnName("valid_to");
+
+                    b.Property<long?>("VehicleTypeId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("vehicle_type_id");
+
+                    b.Property<long?>("ZoneId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("zone_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CarrierId")
+                        .HasDatabaseName("ix_rate_cards_carrier_id");
+
+                    b.HasIndex("CommuneId")
+                        .HasDatabaseName("ix_rate_cards_commune_id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_rate_cards_company_id");
+
+                    b.HasIndex("ShiftId")
+                        .HasDatabaseName("ix_rate_cards_shift_id");
+
+                    b.HasIndex("VehicleTypeId")
+                        .HasDatabaseName("ix_rate_cards_vehicle_type_id");
+
+                    b.HasIndex("ZoneId")
+                        .HasDatabaseName("ix_rate_cards_zone_id");
+
+                    b.ToTable("rate_cards", (string)null);
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.RateSurcharge", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("CarrierId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("carrier_id");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("ConditionParametersJson")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("condition_parameters_json");
+
+                    b.Property<string>("ConditionType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("condition_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("EffectType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("effect_type");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int")
+                        .HasColumnName("priority");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateOnly>("ValidFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("valid_from");
+
+                    b.Property<DateOnly?>("ValidTo")
+                        .HasColumnType("date")
+                        .HasColumnName("valid_to");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CarrierId")
+                        .HasDatabaseName("ix_rate_surcharges_carrier_id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_rate_surcharges_company_id");
+
+                    b.ToTable("rate_surcharges", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.RejectionReason", b =>
                 {
                     b.Property<long>("Id")
@@ -772,6 +982,48 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasForeignKey("CommuneId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_origins_communes");
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.RateCard", b =>
+                {
+                    b.HasOne("Modulo.Despachos.Models.Carrier", null)
+                        .WithMany()
+                        .HasForeignKey("CarrierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_rate_cards_carriers");
+
+                    b.HasOne("Modulo.Despachos.Models.Commune", null)
+                        .WithMany()
+                        .HasForeignKey("CommuneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_rate_cards_communes");
+
+                    b.HasOne("Modulo.Despachos.Models.Shift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_rate_cards_shifts");
+
+                    b.HasOne("Modulo.Despachos.Models.VehicleType", null)
+                        .WithMany()
+                        .HasForeignKey("VehicleTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_rate_cards_vehicle_types");
+
+                    b.HasOne("Modulo.Despachos.Models.Zone", null)
+                        .WithMany()
+                        .HasForeignKey("ZoneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_rate_cards_zones");
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.RateSurcharge", b =>
+                {
+                    b.HasOne("Modulo.Despachos.Models.Carrier", null)
+                        .WithMany()
+                        .HasForeignKey("CarrierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_rate_surcharges_carriers");
                 });
 
             modelBuilder.Entity("Modulo.Despachos.Models.Vehicle", b =>

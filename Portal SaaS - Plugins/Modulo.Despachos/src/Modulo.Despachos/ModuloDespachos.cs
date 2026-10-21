@@ -67,6 +67,7 @@ public sealed class ModuloDespachos : IModuloPortal
         // CompanyId SIEMPRE obligatorio (sin fallback a nivel Organization): si el usuario
         // todavía no eligió Company en la sesión, se rechaza acá con un mensaje claro.
         services.AddScoped<Servicios.IMasterDataService, Servicios.MasterDataService>();
+        services.AddScoped<Servicios.ITariffService, Servicios.TariffService>();
 
         // Motor de costo (puro): estrategias de cálculo, condiciones de recargo y el motor.
         services.AddSingleton<Dominio.Tarifas.IRateCalculator, Dominio.Tarifas.FixedPerTripCalculator>();

@@ -40,13 +40,14 @@ public sealed class IndexModel : MaestroPageModelBase
         ("vehicle_type_is", "Tipo de vehículo igual a"),
         ("weekday_in", "Día de la semana"),
         ("is_holiday", "Despacho en feriado"),
+        ("manual_quantity", "Cantidad ingresada en el manifiesto (adicional)"),
     };
 
     public static readonly (string Code, string Label)[] Effects =
     {
         ("fixed_amount", "Suma un monto fijo ($)"),
         ("percent_of_base", "Suma un % del valor base"),
-        ("fixed_per_extra_unit", "$ por cada unidad sobre el umbral"),
+        ("fixed_per_extra_unit", "$ por cada unidad (sobre el umbral, o cantidad ingresada)"),
     };
 
     public static readonly (int Day, string Label)[] Weekdays =
@@ -149,6 +150,7 @@ public sealed class IndexModel : MaestroPageModelBase
             "vehicle_type_is" => "Tipo " + VehicleTypeName(f.VehicleTypeId),
             "weekday_in" => "Días: " + string.Join(", ", Weekdays.Where(w => f.Days.Contains(w.Day.ToString())).Select(w => w.Label)),
             "is_holiday" => "Despacho en feriado",
+            "manual_quantity" => "Cantidad ingresada en el manifiesto",
             _ => s.ConditionType,
         };
     }
@@ -327,7 +329,7 @@ public sealed class IndexModel : MaestroPageModelBase
                 if (i.CondDays.Count == 0) throw new InvalidOperationException("Seleccione al menos un día de la semana.");
                 return JsonSerializer.Serialize(new { days = i.CondDays.Distinct().OrderBy(d => d).ToList() });
             default:
-                return null; // is_holiday no lleva parámetros; un tipo desconocido lo rechaza el servicio.
+                return null; // is_holiday y manual_quantity no llevan parámetros; un tipo desconocido lo rechaza el servicio.
         }
     }
 

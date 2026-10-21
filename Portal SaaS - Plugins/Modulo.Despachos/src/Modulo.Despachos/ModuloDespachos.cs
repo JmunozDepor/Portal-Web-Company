@@ -95,6 +95,7 @@ public sealed class ModuloDespachos : IModuloPortal
         services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.DocumentsOverCondition>();
         services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.PackagesOverCondition>();
         services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.VehicleTypeIsCondition>();
+        services.AddSingleton<Dominio.Tarifas.ISurchargeCondition, Dominio.Tarifas.ManualQuantityCondition>();
         services.AddSingleton<Dominio.Tarifas.CostEngine>();
 
         services.AddDbContext<DespachosDbContext>((sp, options) =>

@@ -615,6 +615,79 @@ public class ManifestService : IManifestService
         else await RecalculateWithEventAsync(m);
     }
 
+    public const int MaxExtraChargeQuantity = 999;
+
+    public async Task<IReadOnlyList<ManifestExtraChargeRow>> ListExtraChargesAsync(Guid manifestId)
+    {
+        var m = await _db.Manifests.FirstOrDefaultAsync(x => x.Id == manifestId && x.CompanyId == CompanyId)
+                ?? throw new InvalidOperationException("El manifiesto no existe.");
+        return await LoadExtraChargeRowsAsync(m);
+    }
+
+    public async Task SetExtraChargesAsync(Guid manifestId, IReadOnlyDictionary<long, int> quantities)
+    {
+        var m = await LoadAsync(manifestId);
+        if (m.Status == ManifestStatuses.Annulled)
+            throw new InvalidOperationException("No se pueden cambiar los adicionales de un manifiesto anulado.");
+        if (quantities.Values.Any(q => q < 0 || q > MaxExtraChargeQuantity))
+            throw new InvalidOperationException($"La cantidad de cada adicional debe estar entre 0 y {MaxExtraChargeQuantity}.");
+
+        var rows = await LoadExtraChargeRowsAsync(m);
+        var allowed = rows.ToDictionary(r => r.RateSurchargeId);
+        if (quantities.Any(q => q.Value > 0 && !allowed.ContainsKey(q.Key)))
+            throw new InvalidOperationException("Un adicional seleccionado no existe o no aplica al transportista de este manifiesto.");
+
+        var stored = await _db.ManifestExtraCharges
+            .Where(x => x.CompanyId == CompanyId && x.ManifestId == m.Id).ToListAsync();
+        var changed = false;
+        foreach (var (surchargeId, quantity) in quantities)
+        {
+            var row = stored.FirstOrDefault(x => x.RateSurchargeId == surchargeId);
+            if ((row?.Quantity ?? 0) == quantity) continue;
+            changed = true;
+            if (quantity == 0) _db.ManifestExtraCharges.Remove(row!);
+            else if (row != null) { row.Quantity = quantity; row.UpdatedAt = UtcNow; row.UpdatedBy = _user.UserId; }
+            else _db.ManifestExtraCharges.Add(new ManifestExtraCharge
+            {
+                CompanyId = CompanyId, ManifestId = m.Id, RateSurchargeId = surchargeId, Quantity = quantity,
+                UpdatedAt = UtcNow, UpdatedBy = _user.UserId,
+            });
+        }
+        if (!changed) return;
+
+        var after = rows.Select(r => new
+        {
+            name = r.Name,
+            before = r.Quantity,
+            after = quantities.TryGetValue(r.RateSurchargeId, out var q) ? q : r.Quantity,
+        }).Where(x => x.before != x.after).ToList();
+        m.UpdatedAt = UtcNow;
+        m.UpdatedBy = _user.UserId;
+        AddEvent(m.Id, ManifestEventTypes.ExtraChargesChanged, null, m.Status, m.Status, new { changes = after });
+        // Se guardan antes de recalcular: el costo lee las cantidades desde la base. En borrador el costo se calcula al despachar.
+        await _db.SaveChangesAsync();
+        if (m.Status != ManifestStatuses.Draft) await RecalculateWithEventAsync(m);
+    }
+
+    private async Task<IReadOnlyList<ManifestExtraChargeRow>> LoadExtraChargeRowsAsync(Manifest m)
+    {
+        var stored = await _db.ManifestExtraCharges
+            .Where(x => x.CompanyId == CompanyId && x.ManifestId == m.Id)
+            .ToDictionaryAsync(x => x.RateSurchargeId, x => x.Quantity);
+        var storedIds = stored.Keys.ToList();
+        var date = m.DispatchDate;
+        var surcharges = await _db.RateSurcharges
+            .Where(s => s.CompanyId == CompanyId && s.ConditionType == ManualQuantityCondition.Code
+                        && (storedIds.Contains(s.Id)
+                            || (s.IsActive && (s.CarrierId == null || s.CarrierId == m.CarrierId)
+                                && s.ValidFrom <= date && (s.ValidTo == null || s.ValidTo >= date))))
+            .OrderBy(s => s.Priority).ThenBy(s => s.Name)
+            .ToListAsync();
+        return surcharges
+            .Select(s => new ManifestExtraChargeRow(s.Id, s.Name, s.EffectType, s.Value, stored.GetValueOrDefault(s.Id)))
+            .ToList();
+    }
+
     /// <summary>Recalcula y deja el evento cost_recalculated (antes/después); todo se guarda junto.</summary>
     private async Task<CostResult> RecalculateWithEventAsync(Manifest m)
     {

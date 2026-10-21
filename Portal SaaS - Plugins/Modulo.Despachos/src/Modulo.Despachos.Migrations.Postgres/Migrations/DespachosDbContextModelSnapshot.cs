@@ -806,6 +806,53 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                     b.ToTable("manifest_events", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.ManifestExtraCharge", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<Guid>("ManifestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("manifest_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<long>("RateSurchargeId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("rate_surcharge_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_manifest_extra_charges_company_id");
+
+                    b.HasIndex("RateSurchargeId");
+
+                    b.HasIndex("ManifestId", "RateSurchargeId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_manifest_extra_charges_manifest_id_rate_surcharge_id");
+
+                    b.ToTable("manifest_extra_charges", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.MonthlyClosure", b =>
                 {
                     b.Property<long>("Id")
@@ -1672,6 +1719,22 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.ManifestExtraCharge", b =>
+                {
+                    b.HasOne("Modulo.Despachos.Models.Manifest", null)
+                        .WithMany("ExtraCharges")
+                        .HasForeignKey("ManifestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Modulo.Despachos.Models.RateSurcharge", null)
+                        .WithMany()
+                        .HasForeignKey("RateSurchargeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_manifest_extra_charges_rate_surcharges");
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.Origin", b =>
                 {
                     b.HasOne("Modulo.Despachos.Models.Commune", null)
@@ -1762,6 +1825,8 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                     b.Navigation("Documents");
 
                     b.Navigation("Events");
+
+                    b.Navigation("ExtraCharges");
                 });
 
             modelBuilder.Entity("Modulo.Despachos.Models.Zone", b =>

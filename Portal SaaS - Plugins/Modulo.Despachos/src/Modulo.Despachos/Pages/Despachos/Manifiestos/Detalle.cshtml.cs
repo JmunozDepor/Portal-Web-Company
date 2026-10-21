@@ -44,6 +44,7 @@ public sealed class DetalleModel : DespachosPageModelBase
     public bool CanExport { get; private set; }
     public bool CanAdjustCost { get; private set; }
     public bool CanReturn { get; private set; }
+    public IReadOnlyList<ManifestExtraChargeRow> ExtraCharges { get; private set; } = Array.Empty<ManifestExtraChargeRow>();
 
     /// <summary>Pestaña inicial (la fija el servidor tras cada acción).</summary>
     [BindProperty(SupportsGet = true)]
@@ -96,6 +97,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         CanReturn = await HasActionOnAsync("retorno", PortalActions.Edit);
         Lookups = await ManifestLookups.LoadAsync(_data);
         Reasons = await _data.ListRejectionReasonsAsync(includeInactive: true);
+        ExtraCharges = await _manifests.ListExtraChargesAsync(m.Id);
         Communes = await _data.ListCommunesAsync();
         UserLabels = await ResolveUsersAsync(m);
         if (Header.DispatchDate is null) Header = ManifestForm.From(m);
@@ -147,6 +149,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         ManifestEventTypes.PeriodReopened => "Período reabierto",
         ManifestEventTypes.CostRecalculated => "Costo recalculado",
         ManifestEventTypes.DocumentCommuneChanged => "Comuna de destino corregida",
+        ManifestEventTypes.ExtraChargesChanged => "Adicionales modificados",
         _ => type,
     };
 
@@ -309,6 +312,28 @@ public sealed class DetalleModel : DespachosPageModelBase
             else WarningMessage = result.Status == CostStatuses.Ambiguous
                 ? "Costo recalculado: sigue habiendo una tarifa ambigua."
                 : "Costo recalculado: sigue sin tarifa para este viaje.";
+        }
+        catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
+        return RedirectToPage(new { id, tab = "costo" });
+    }
+
+    /// <summary>Cantidades de adicionales (ayudantes, puntos adicionales...): cantidades[idRecargo] = n.</summary>
+    public async Task<IActionResult> OnPostGuardarAdicionalesAsync(Guid id, Dictionary<long, string>? cantidades)
+    {
+        if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
+        try
+        {
+            var quantities = new Dictionary<long, int>();
+            foreach (var (surchargeId, raw) in cantidades ?? new())
+            {
+                var text = raw?.Trim();
+                if (string.IsNullOrEmpty(text)) { quantities[surchargeId] = 0; continue; }
+                if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var n))
+                    throw new InvalidOperationException("La cantidad de cada adicional debe ser un número entero (0 o más).");
+                quantities[surchargeId] = n;
+            }
+            await _manifests.SetExtraChargesAsync(id, quantities);
+            SuccessMessage = "Adicionales guardados.";
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
         return RedirectToPage(new { id, tab = "costo" });

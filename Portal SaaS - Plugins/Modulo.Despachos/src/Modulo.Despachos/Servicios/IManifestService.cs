@@ -37,6 +37,9 @@ public sealed record DispatchResult(bool Success, IReadOnlyList<string> Errors, 
 public sealed record ManifestFilter(
     DateOnly? From = null, DateOnly? To = null, string? Status = null, long? CarrierId = null, string? FolioContains = null);
 
+/// <summary>Adicional con cantidad del tarifario (recargo manual_quantity) que aplica al manifiesto, con su cantidad (0 si no hay).</summary>
+public sealed record ManifestExtraChargeRow(long RateSurchargeId, string Name, string EffectType, decimal Value, int Quantity);
+
 public sealed record ManifestListItem(
     Guid Id, int Number, string Status, DateOnly DispatchDate, long CarrierId, string CarrierName, string? Plate,
     int TotalDocuments, decimal? CostFinal, string CostStatus);
@@ -91,6 +94,18 @@ public interface IManifestService
     /// Si el manifiesto ya no es borrador, recalcula el costo.
     /// </summary>
     Task SetDocumentCommuneAsync(Guid manifestId, Guid manifestDocumentId, long communeId);
+
+    /// <summary>
+    /// Adicionales con cantidad que se pueden ingresar en el manifiesto: recargos manual_quantity activos, vigentes a la
+    /// fecha de despacho y del transportista del manifiesto (o de todos), más los que ya tienen cantidad guardada.
+    /// </summary>
+    Task<IReadOnlyList<ManifestExtraChargeRow>> ListExtraChargesAsync(Guid manifestId);
+
+    /// <summary>
+    /// Guarda las cantidades de adicionales (0 = quitar; máximo 999) en un manifiesto no anulado con el período abierto.
+    /// Deja el evento extra_charges_changed y, si el manifiesto ya no es borrador, recalcula el costo.
+    /// </summary>
+    Task SetExtraChargesAsync(Guid manifestId, IReadOnlyDictionary<long, int> quantities);
 
     /// <summary>Manifiesto con documentos, líneas de costo y eventos, o null si no existe.</summary>
     Task<Manifest?> GetAsync(Guid manifestId);

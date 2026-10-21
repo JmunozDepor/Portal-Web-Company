@@ -450,6 +450,10 @@
                             <label class="form-label" for="r-CondThreshold">Umbral N (se cumple si el valor es mayor que N)</label>
                             <input type="number" step="1" min="0" id="r-CondThreshold" name="Surcharge.CondThreshold" class="form-control" placeholder="Ej. 1" />
                         </div>
+                        <div class="mb-3 span-2" data-cond-fields="manual_quantity">
+                            <p class="text-muted mb-0">Logística ingresa la cantidad en cada manifiesto (pestaña Costo → Adicionales), por ejemplo
+                                ayudantes o puntos de entrega adicionales. Con el efecto "$ por cada unidad" se cobra cantidad × valor.</p>
+                        </div>
                         <div class="mb-3 span-2" data-cond-fields="departure_time_from">
                             <label class="form-label" for="r-CondTime">Hora de salida desde (hora Chile)</label>
                             <input type="time" id="r-CondTime" name="Surcharge.CondTime" class="form-control" />

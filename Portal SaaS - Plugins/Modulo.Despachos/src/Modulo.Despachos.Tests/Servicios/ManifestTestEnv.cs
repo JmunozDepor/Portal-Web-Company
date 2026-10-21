@@ -52,7 +52,8 @@ internal sealed class ManifestTestEnv
             {
                 new DistinctZonesOverCondition(), new DistinctCommunesOverCondition(), new DepartureTimeFromCondition(),
                 new ShiftIsCondition(), new WeekdayInCondition(), new IsHolidayCondition(),
-                new DocumentsOverCondition(), new PackagesOverCondition(), new VehicleTypeIsCondition()
+                new DocumentsOverCondition(), new PackagesOverCondition(), new VehicleTypeIsCondition(),
+                new ManualQuantityCondition()
             });
         var sap = new FakeSapDocumentLookupService();
         var clock = new FixedTimeProvider(new DateTimeOffset(2026, 11, 10, 15, 0, 0, TimeSpan.Zero)); // 12:00 Chile

@@ -101,3 +101,19 @@ public sealed class IsHolidayCondition : ISurchargeCondition
     public SurchargeEvaluation Evaluate(JsonElement parameters, TripCostInput trip) =>
         new(trip.IsHoliday, 1, "Despacho en día feriado");
 }
+
+/// <summary>
+/// Cantidad que logística ingresa en cada manifiesto (ayudante adicional, punto adicional...). No depende del viaje:
+/// el motor la lee de TripCostInput.ManualQuantities por id del recargo, vía <see cref="ForQuantity"/>. Con el efecto
+/// fixed_per_extra_unit cobra cantidad × valor; sin cantidad (0) no aplica. Sin parámetros.
+/// </summary>
+public sealed class ManualQuantityCondition : ISurchargeCondition
+{
+    public const string Code = "manual_quantity";
+    public string Type => Code;
+
+    public SurchargeEvaluation Evaluate(JsonElement parameters, TripCostInput trip) => ForQuantity(0);
+
+    public static SurchargeEvaluation ForQuantity(int quantity) =>
+        new(quantity > 0, Math.Max(quantity, 0), $"Cantidad ingresada: {quantity}");
+}

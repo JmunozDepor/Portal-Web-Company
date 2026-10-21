@@ -3,6 +3,7 @@
 @using System.Globalization
 @using Modulo.Despachos.Models
 @using Modulo.Despachos.Pages.Despachos.Manifiestos
+@using Modulo.Despachos.Servicios
 @{
     var m = Model.M;
     ViewData["Title"] = $"Manifiesto N° {m.Number}";
@@ -305,6 +306,48 @@
             <dt class="col-sm-3">Ajuste manual</dt><dd class="col-sm-9">@(m.CostOverride is null ? "—" : $"{m.CostOverride.Value.ToString("N0", es)} ({m.CostOverrideReason})")</dd>
             <dt class="col-sm-3">Costo final</dt><dd class="col-sm-9"><strong>@(m.CostFinal is null ? "—" : m.CostFinal.Value.ToString("N0", es))</strong></dd>
         </dl>
+
+        @* Adicionales con cantidad (recargos "Cantidad ingresada en el manifiesto" del tarifario). *@
+        <h4>Adicionales</h4>
+        @if (Model.ExtraCharges.Count == 0)
+        {
+            <p class="text-muted">El transportista no tiene adicionales con cantidad en el tarifario (ej. ayudante adicional, punto adicional).</p>
+        }
+        else
+        {
+            var canEditExtras = Model.CanEdit && m.Status != ManifestStatuses.Annulled;
+            <form method="post" asp-page-handler="GuardarAdicionales" asp-route-id="@m.Id" asp-antiforgery="true" class="mb-3">
+                <table class="table-ps">
+                    <thead><tr><th>Adicional</th><th class="text-end">Valor unitario</th><th style="width:9rem;">Cantidad</th></tr></thead>
+                    <tbody>
+                        @foreach (var x in Model.ExtraCharges)
+                        {
+                            <tr>
+                                <td><label for="extra-@x.RateSurchargeId">@x.Name</label></td>
+                                <td class="text-end">@(x.EffectType == "percent_of_base" ? $"{x.Value.ToString("0.##", es)}% del base" : x.Value.ToString("N0", es))</td>
+                                <td>
+                                    @if (canEditExtras)
+                                    {
+                                        <input type="number" step="1" min="0" max="@ManifestService.MaxExtraChargeQuantity" id="extra-@x.RateSurchargeId"
+                                               name="cantidades[@x.RateSurchargeId]" class="form-control" autocomplete="off"
+                                               value="@x.Quantity.ToString(CultureInfo.InvariantCulture)" />
+                                    }
+                                    else
+                                    {
+                                        @x.Quantity
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (canEditExtras)
+                {
+                    <button type="submit" class="btn-secondary"><i class="bi bi-check2"></i> Guardar adicionales</button>
+                    <span class="text-muted ms-2">@(m.Status == ManifestStatuses.Draft ? "Se cobran al despachar." : "Al guardar se recalcula el costo.")</span>
+                }
+            </form>
+        }
 
         <table class="table-ps">
             <thead><tr><th>Concepto</th><th>Detalle</th><th class="text-end">Monto</th></tr></thead>

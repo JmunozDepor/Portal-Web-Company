@@ -64,4 +64,5 @@ public class Manifest
     public List<ManifestDocument> Documents { get; set; } = new();
     public List<ManifestCostLine> CostLines { get; set; } = new();
     public List<ManifestEvent> Events { get; set; } = new();
+    public List<ManifestExtraCharge> ExtraCharges { get; set; } = new();
 }

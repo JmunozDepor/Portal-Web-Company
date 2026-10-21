@@ -14,7 +14,8 @@ public sealed record SimulationInput(
     int Documents,
     int Units,
     int Packages,
-    decimal? Km);
+    decimal? Km,
+    IReadOnlyDictionary<long, int>? ManualQuantities = null);
 
 /// <summary>
 /// Tarifario persistido (valores base y recargos) y su evaluación. Todo se acota a la compañía

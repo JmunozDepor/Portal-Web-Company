@@ -234,14 +234,19 @@ public sealed class MasterDataService : IMasterDataService
 
     // ---------------------------------------------------------------- Comunas
 
-    public async Task<IReadOnlyList<Commune>> ListCommunesAsync() =>
-        await _db.Communes.Where(c => c.CompanyId == CompanyId)
+    public async Task<IReadOnlyList<Commune>> ListCommunesAsync()
+    {
+        // Siembra perezosa e idempotente por compañía: la primera lectura carga el catálogo.
+        await CommuneSeeder.EnsureSeededAsync(_db, CompanyId);
+        return await _db.Communes.Where(c => c.CompanyId == CompanyId)
             .OrderBy(c => c.RegionCode).ThenBy(c => c.Name).ToListAsync();
+    }
 
     public async Task<Commune?> FindCommuneByNameAsync(string name)
     {
         var wanted = Fold(name);
         if (wanted.Length == 0) return null;
+        await CommuneSeeder.EnsureSeededAsync(_db, CompanyId);
         // El catálogo son ~346 filas: se compara en memoria porque la intercalación de la base
         // (Postgres vs SQL Server) no garantiza ignorar tildes.
         var communes = await _db.Communes.Where(c => c.CompanyId == CompanyId).ToListAsync();

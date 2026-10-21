@@ -194,4 +194,15 @@ public class MasterDataServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.SaveNotificationRecipientAsync(new NotificationRecipient { UserId = user }));
     }
+
+    [Fact]
+    public async Task ListCommunes_SiembraAutomaticamenteLaPrimeraVez()
+    {
+        var (svc, _, _) = Build();
+
+        var communes = await svc.ListCommunesAsync();
+
+        Assert.Equal(346, communes.Count);
+        Assert.Equal(346, (await svc.ListCommunesAsync()).Count); // idempotente
+    }
 }

@@ -29,4 +29,20 @@ public static class DespachosUi
         "NotDelivered" => "No entregado",
         _ => status,
     };
+
+    public static string CarrierKindLabel(string kind) => kind switch
+    {
+        "own" => "Propio",
+        "third_party" => "Tercero",
+        "marketplace" => "Marketplace",
+        "pickup" => "Retiro del cliente",
+        _ => kind,
+    };
+
+    public static string RejectionAppliesToLabel(string appliesTo) => appliesTo switch
+    {
+        "rejection" => "Rechazo",
+        "not_delivered" => "No entregado",
+        _ => appliesTo,
+    };
 }

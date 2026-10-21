@@ -1,0 +1,121 @@
+@page "/despachos/configuracion/zonas"
+@model Modulo.Despachos.Pages.Despachos.Configuracion.Zonas.IndexModel
+@{
+    ViewData["Title"] = "Zonas";
+}
+@* Mantenedor: grilla compacta con búsqueda y orden por columna; alta/edición en drawer
+   (data-drawer-open + despachos-maestros.js); eliminar con confirmación. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Zonas</h2>
+        @if (Model.CanCreate)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-zonas" data-maestro-new="form-zonas">+ Nueva zona</button>
+        }
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="filter-card mb-3">
+        <div class="col-auto flex-grow-1" style="max-width:360px;">
+            <label for="buscar-zonas" class="form-label">Buscar</label>
+            <input type="search" id="buscar-zonas" class="form-control" placeholder="Escriba para filtrar..." autocomplete="off" data-maestro-search="tabla-zonas" />
+        </div>
+    </div>
+
+    <table class="table-ps" id="tabla-zonas" data-maestro-table>
+        <thead><tr><th data-sort="text">Código</th><th data-sort="text">Nombre</th><th data-sort="text">Comunas</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var x in Model.Items)
+            {
+                <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{x.Code} {x.Name} {Model.CommuneNames(x, 999)}").ToLowerInvariant())">
+                    <td>@x.Code</td>
+                    <td>@x.Name</td>
+                    <td title="@Model.CommuneNames(x, 999)">@x.Communes.Count: @Model.CommuneNames(x, 4)</td>
+                    <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            @if (Model.CanEdit)
+                            {
+                                <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-zonas" data-maestro-edit data-row="@Model.RowJson(new { x.Id, x.Code, x.Name, x.IsActive, CommuneIds = x.Communes.Select(c => c.CommuneId).ToList() })"><i class="bi bi-pencil"></i></button>
+                            }
+                            @if (Model.CanDelete)
+                            {
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar {x.Name}?")">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Items.Count == 0)
+            {
+                <tr data-table-empty><td colspan="5" class="text-muted">Sin zonas todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.CanCreate || Model.CanEdit)
+{
+    <div id="drawer-zonas" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3 data-drawer-title data-title-new="Nueva zona" data-title-edit="Editar zona">Nueva zona</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="Save" asp-antiforgery="true" id="form-zonas">
+                <div class="drawer-body">
+                    <input type="hidden" name="Input.Id" value="0" />
+                    <div class="drawer-grid">
+                    <div class="mb-3">
+                        <label class="form-label" for="f-Code">Código</label>
+                        <input type="text" id="f-Code" name="Input.Code" class="form-control" placeholder="Ej. SUR" autocomplete="off" required  />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-Name">Nombre</label>
+                        <input type="text" id="f-Name" name="Input.Name" class="form-control" placeholder="Ej. Zona Sur" autocomplete="off" required  />
+                    </div>
+                    <div class="mb-3 d-flex align-items-end ">
+                        <label class="d-flex align-items-center gap-2"><input type="checkbox" name="Input.IsActive" value="true" checked /> Activo</label>
+                    </div>
+                    <div class="mb-3 span-2">
+                        <label class="form-label" for="f-CommuneFilter">Comunas de la zona</label>
+                        <input type="search" id="f-CommuneFilter" class="form-control mb-2" placeholder="Filtrar comunas..." data-option-filter="f-CommuneIds" autocomplete="off" />
+                        <select id="f-CommuneIds" name="Input.CommuneIds" class="form-select" multiple size="12">
+                            @foreach (var g in Model.Communes.GroupBy(c => c.RegionName))
+                            {
+                                <optgroup label="@g.Key">
+                                    @foreach (var c in g)
+                                    {
+                                        <option value="@c.Id">@c.Name</option>
+                                    }
+                                </optgroup>
+                            }
+                        </select>
+                        <div class="text-muted">Ctrl/Cmd + clic para marcar varias. Las ya marcadas no se ocultan al filtrar.</div>
+                    </div>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/table-tools.js"></script>
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+}

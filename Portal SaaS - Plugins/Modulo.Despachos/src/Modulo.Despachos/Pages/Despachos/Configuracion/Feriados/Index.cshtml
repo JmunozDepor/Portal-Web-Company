@@ -1,0 +1,101 @@
+@page "/despachos/configuracion/feriados"
+@model Modulo.Despachos.Pages.Despachos.Configuracion.Feriados.IndexModel
+@{
+    ViewData["Title"] = "Feriados";
+}
+@* Mantenedor: grilla compacta con búsqueda y orden por columna; alta/edición en drawer
+   (data-drawer-open + despachos-maestros.js); eliminar con confirmación. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="mb-0">Feriados</h2>
+        @if (Model.CanCreate)
+        {
+            <button type="button" class="btn-primary" data-drawer-open="drawer-feriados" data-maestro-new="form-feriados">+ Nuevo feriado</button>
+        }
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="filter-card mb-3">
+        <div class="col-auto flex-grow-1" style="max-width:360px;">
+            <label for="buscar-feriados" class="form-label">Buscar</label>
+            <input type="search" id="buscar-feriados" class="form-control" placeholder="Escriba para filtrar..." autocomplete="off" data-maestro-search="tabla-feriados" />
+        </div>
+    </div>
+
+    <table class="table-ps" id="tabla-feriados" data-maestro-table>
+        <thead><tr><th data-sort="number">Fecha</th><th data-sort="text">Nombre</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var x in Model.Items)
+            {
+                <tr data-buscable="@(($"{x.Date.ToString("dd-MM-yyyy", System.Globalization.CultureInfo.InvariantCulture)} {x.Name}").ToLowerInvariant())">
+                    <td data-value="@x.Date.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture)">@x.Date.ToString("dd-MM-yyyy", System.Globalization.CultureInfo.InvariantCulture)</td>
+                    <td>@x.Name</td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            @if (Model.CanEdit)
+                            {
+                                <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-feriados" data-maestro-edit data-row="@Model.RowJson(new { x.Id, Date = x.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), x.Name })"><i class="bi bi-pencil"></i></button>
+                            }
+                            @if (Model.CanDelete)
+                            {
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar {x.Name}?")">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Items.Count == 0)
+            {
+                <tr data-table-empty><td colspan="3" class="text-muted">Sin feriados todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.CanCreate || Model.CanEdit)
+{
+    <div id="drawer-feriados" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3 data-drawer-title data-title-new="Nuevo feriado" data-title-edit="Editar feriado">Nuevo feriado</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="Save" asp-antiforgery="true" id="form-feriados">
+                <div class="drawer-body">
+                    <input type="hidden" name="Input.Id" value="0" />
+                    <div class="drawer-grid">
+                    <div class="mb-3">
+                        <label class="form-label" for="f-Date">Fecha</label>
+                        <input type="date" id="f-Date" name="Input.Date" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-Name">Nombre</label>
+                        <input type="text" id="f-Name" name="Input.Name" class="form-control" placeholder="Ej. Año Nuevo" autocomplete="off" required  />
+                    </div>
+                    </div>
+                <p class="text-muted">Los feriados alimentan el recargo por día no hábil del tarifario.</p>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/table-tools.js"></script>
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+}

@@ -185,10 +185,6 @@
                 <select asp-for="Input.ItemIdentifier" asp-items="Model.ItemIdentifiers" class="form-select"></select>
                 <div class="form-text">Qué trae la columna de artículo del archivo y cómo se traduce al código de SAP.</div>
             </div>
-            <div class="form-group form-check">
-                <input asp-for="Input.BusinessPartnerFromFile" class="form-check-input" />
-                <label asp-for="Input.BusinessPartnerFromFile" class="form-check-label"></label>
-            </div>
             @if (Model.EditId is not null)
             {
                 <div class="form-group form-check">
@@ -207,27 +203,42 @@
                 <input asp-for="Input.SystemPriceListCode" type="number" class="form-control" />
             </div>
         </div>
-        @* Almacén y vendedor del documento (2026-10-15) -- ver GenericImportDocumentOptionsDto. *@
+        @* Datos de cabecera (2026-10-21): cada uno se pide en la cabecera de Importar o se
+           lee del Excel. "Se pide en pantalla" desactiva su fila en la grilla de campos
+           núcleo -- así un único formato estándar "solo detalle" sirve para muchos clientes. *@
+        <h5 class="mt-4">Datos de cabecera</h5>
+        <p class="text-muted small">"Se pide en pantalla": se elige al importar y vale para todo el archivo; su fila de la grilla de campos núcleo queda desactivada.</p>
         <div class="form-row">
             <div class="form-group">
-                <label asp-for="Input.WarehouseSource" class="form-label"></label>
-                <select asp-for="Input.WarehouseSource" asp-items="Model.WarehouseSources" class="form-select"></select>
-                <div class="form-text">Con "Almacén del cliente", si el socio no tiene el campo completo se usa la columna/valor fijo de la grilla.</div>
+                <label asp-for="Input.BusinessPartnerFromFile" class="form-label"></label>
+                <select asp-for="Input.BusinessPartnerFromFile" asp-items="Model.BusinessPartnerSources" class="form-select"></select>
             </div>
-            <div class="form-group" id="config-campo-almacen" style="@(Model.Input.WarehouseSource == GenericImportWarehouseSource.BusinessPartnerField ? "" : "display:none")">
-                <label asp-for="Input.WarehouseUserField" class="form-label"></label>
-                <input asp-for="Input.WarehouseUserField" class="form-control" placeholder="U_NX_WhsCode" />
+            <div class="form-group">
+                <label asp-for="Input.BranchSource" class="form-label"></label>
+                <select asp-for="Input.BranchSource" asp-items="Model.BranchSources" class="form-select"></select>
+                <div class="form-text">Ventas e Inventario. En pantalla requiere el cliente en pantalla.</div>
             </div>
             <div class="form-group">
                 <label asp-for="Input.SalesPersonMode" class="form-label"></label>
                 <select asp-for="Input.SalesPersonMode" asp-items="Model.SalesPersonModes" class="form-select"></select>
-                <div class="form-text">Solo aplica a Ventas. En Importar el vendedor siempre se muestra; solo "Multivendedor" permite cambiarlo.</div>
+                <div class="form-text">Solo Ventas. En Importar el vendedor siempre se muestra; solo "Se pide en pantalla" permite cambiarlo.</div>
             </div>
             <div class="form-group" id="config-vendedor-fijo" style="@(Model.Input.SalesPersonMode == GenericImportSalesPersonMode.Fixed ? "" : "display:none")">
                 <label asp-for="Input.SalesPersonCode" class="form-label"></label>
                 <select asp-for="Input.SalesPersonCode" asp-items="Model.SalesPersons" class="form-select">
                     <option value="">Seleccionar…</option>
                 </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="Input.WarehouseSource" class="form-label"></label>
+                <select asp-for="Input.WarehouseSource" asp-items="Model.WarehouseSources" class="form-select"></select>
+                <div class="form-text">Ventas y Compras, líneas de Artículo. Con "Almacén del cliente", si el socio no tiene el campo completo se usa la columna/valor fijo de la grilla.</div>
+            </div>
+            <div class="form-group" id="config-campo-almacen" style="@(Model.Input.WarehouseSource is GenericImportWarehouseSource.BusinessPartnerField or GenericImportWarehouseSource.Screen ? "" : "display:none")">
+                <label asp-for="Input.WarehouseUserField" class="form-label"></label>
+                <input asp-for="Input.WarehouseUserField" class="form-control" placeholder="U_NX_WhsCode" />
             </div>
         </div>
         <div class="form-row">
@@ -253,15 +264,19 @@
                 @for (var i = 0; i < Model.Input.Fields.Count; i++)
                 {
                     var field = Model.Input.Fields[i];
-                    <tr>
+                    var screenSource = Modulo.ImportacionGenerica.Pages.Configuracion.IndexModel.ScreenSourceOf(field.LogicalField);
+                    var asked = Model.IsAskedOnScreen(field.LogicalField);
+                    <tr data-screen-source="@screenSource" class="@(asked ? "text-muted" : null)">
                         <td>
                             @ImportDisplayNames.Field(field.LogicalField)
                             <span class="text-muted small d-block" title="Propiedad de Service Layer">@ImportDisplayNames.FieldSapName(field.LogicalField)</span>
+                            <span class="small d-block config-pedido-en-pantalla" style="@(asked ? "" : "display:none")">Se pide en pantalla</span>
                             <input type="hidden" name="Input.Fields[@i].LogicalField" value="@field.LogicalField" />
                         </td>
-                        <td><input name="Input.Fields[@i].ExcelColumn" value="@field.ExcelColumn" class="form-control form-control-sm" style="max-width:80px" /></td>
-                        <td><input type="checkbox" name="Input.Fields[@i].IsRequired" value="true" class="form-check-input" checked="@field.IsRequired" /><input type="hidden" name="Input.Fields[@i].IsRequired" value="false" /></td>
-                        <td><input name="Input.Fields[@i].FixedValue" value="@field.FixedValue" class="form-control form-control-sm" /></td>
+                        @* disabled = no viaja en el POST: al guardar, el mapeo de un dato pedido en pantalla se descarta. *@
+                        <td><input name="Input.Fields[@i].ExcelColumn" value="@field.ExcelColumn" class="form-control form-control-sm" style="max-width:80px" disabled="@asked" /></td>
+                        <td><input type="checkbox" name="Input.Fields[@i].IsRequired" value="true" class="form-check-input" checked="@field.IsRequired" disabled="@asked" /><input type="hidden" name="Input.Fields[@i].IsRequired" value="false" /></td>
+                        <td><input name="Input.Fields[@i].FixedValue" value="@field.FixedValue" class="form-control form-control-sm" disabled="@asked" /></td>
                     </tr>
                 }
             </tbody>
@@ -407,8 +422,43 @@
                 });
             }
             enlazar('Input.PriceSource', 'config-lista-fija', 'System');
-            enlazar('Input.WarehouseSource', 'config-campo-almacen', 'BusinessPartnerField');
             enlazar('Input.SalesPersonMode', 'config-vendedor-fijo', 'Fixed');
+
+            var origenAlmacen = document.querySelector('[name="Input.WarehouseSource"]');
+            var campoAlmacen = document.getElementById('config-campo-almacen');
+            if (origenAlmacen && campoAlmacen) {
+                origenAlmacen.addEventListener('change', function () {
+                    campoAlmacen.style.display = origenAlmacen.value === 'BusinessPartnerField' || origenAlmacen.value === 'Screen' ? '' : 'none';
+                });
+            }
+        })();
+
+        // Datos de cabecera "Se pide en pantalla": desactiva la fila correspondiente de la
+        // grilla de campos núcleo (data-screen-source) -- un input disabled no viaja en el
+        // POST, así que ese mapeo se descarta al guardar.
+        (function () {
+            var selectores = {
+                client: { name: 'Input.BusinessPartnerFromFile', enPantalla: function (v) { return v === 'false'; } },
+                branch: { name: 'Input.BranchSource', enPantalla: function (v) { return v === 'Screen'; } },
+                warehouse: { name: 'Input.WarehouseSource', enPantalla: function (v) { return v === 'Screen'; } },
+            };
+            Object.keys(selectores).forEach(function (clave) {
+                var def = selectores[clave];
+                var selector = document.querySelector('select[name="' + def.name + '"]');
+                var fila = document.querySelector('tr[data-screen-source="' + clave + '"]');
+                if (!selector || !fila) {
+                    return;
+                }
+                selector.addEventListener('change', function () {
+                    var enPantalla = def.enPantalla(selector.value);
+                    fila.classList.toggle('text-muted', enPantalla);
+                    fila.querySelectorAll('input:not([type="hidden"])').forEach(function (input) { input.disabled = enPantalla; });
+                    var aviso = fila.querySelector('.config-pedido-en-pantalla');
+                    if (aviso) {
+                        aviso.style.display = enPantalla ? '' : 'none';
+                    }
+                });
+            });
         })();
 
         // Muestra la celda de parámetros de una regla solo mientras esté activa.

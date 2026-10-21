@@ -55,11 +55,14 @@ public sealed class GenericImportConfig
 
     public int? SystemPriceListCode { get; set; }
 
-    /// <summary>"Mapping" | "BusinessPartnerField" -- ver GenericImportWarehouseSource.</summary>
+    /// <summary>"Mapping" | "BusinessPartnerField" | "Screen" -- ver GenericImportWarehouseSource.</summary>
     public string WarehouseSource { get; set; } = "Mapping";
 
-    /// <summary>Campo de usuario de OCRD con el almacén del cliente (ej. "U_NX_WhsCode") -- solo con WarehouseSource = BusinessPartnerField.</summary>
+    /// <summary>Campo de usuario de OCRD con el almacén del cliente (ej. "U_NX_WhsCode") -- con WarehouseSource = BusinessPartnerField, o Screen (precarga).</summary>
     public string? WarehouseUserField { get; set; }
+
+    /// <summary>"Mapping" | "Screen" -- ver GenericImportBranchSource.</summary>
+    public string BranchSource { get; set; } = "Mapping";
 
     /// <summary>"BusinessPartner" | "Fixed" | "MultiSeller" -- ver GenericImportSalesPersonMode.</summary>
     public string SalesPersonMode { get; set; } = "BusinessPartner";

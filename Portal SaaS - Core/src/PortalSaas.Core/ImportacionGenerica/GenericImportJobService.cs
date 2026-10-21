@@ -159,18 +159,21 @@ public sealed class GenericImportJobService : IGenericImportJobService
         job.BusinessPartnerCardCode = string.IsNullOrWhiteSpace(parameters.BusinessPartnerCardCode) ? null : parameters.BusinessPartnerCardCode.Trim();
         job.ConfigId = parameters.ConfigId;
         job.SalesPersonCode = parameters.SalesPersonCode;
+        job.ShipToCode = string.IsNullOrWhiteSpace(parameters.ShipToCode) ? null : parameters.ShipToCode.Trim();
+        job.WarehouseCode = string.IsNullOrWhiteSpace(parameters.WarehouseCode) ? null : parameters.WarehouseCode.Trim();
     }
 
     internal static GenericImportParametersDto ParametersOf(GenericImportJob job) => new(
         Enum.Parse<GenericImportModule>(job.Module), job.DocumentType, Enum.Parse<GenericImportLineType>(job.LineType),
-        job.BusinessPartnerCardCode, job.ConfigId, job.SalesPersonCode);
+        job.BusinessPartnerCardCode, job.ConfigId, job.SalesPersonCode, job.ShipToCode, job.WarehouseCode);
 
     // Proyección sin FileContent -- el listado/detalle nunca necesita traer el Excel.
     private static readonly System.Linq.Expressions.Expression<Func<GenericImportJob, GenericImportJob>> WithoutFile = j => new GenericImportJob
     {
         Id = j.Id, CompanyId = j.CompanyId, UserId = j.UserId, Username = j.Username, Status = j.Status,
         Module = j.Module, DocumentType = j.DocumentType, LineType = j.LineType, BusinessPartnerCardCode = j.BusinessPartnerCardCode,
-        ConfigId = j.ConfigId, SalesPersonCode = j.SalesPersonCode, FileName = j.FileName, FileHash = j.FileHash,
+        ConfigId = j.ConfigId, SalesPersonCode = j.SalesPersonCode,
+        ShipToCode = j.ShipToCode, WarehouseCode = j.WarehouseCode, FileName = j.FileName, FileHash = j.FileHash,
         ProgressCurrent = j.ProgressCurrent, ProgressTotal = j.ProgressTotal, ProgressMessage = j.ProgressMessage,
         ResultMessage = j.ResultMessage, ResultJson = j.ResultJson,
         DocumentsCreated = j.DocumentsCreated, DocumentsFailed = j.DocumentsFailed, DocumentsSkipped = j.DocumentsSkipped,

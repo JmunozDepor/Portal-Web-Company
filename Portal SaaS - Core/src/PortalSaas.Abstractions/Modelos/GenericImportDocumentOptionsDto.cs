@@ -11,6 +11,23 @@ public enum GenericImportWarehouseSource
     /// Si el socio no lo tiene completo, cae a la columna/valor fijo de la grilla.
     /// </summary>
     BusinessPartnerField,
+
+    /// <summary>
+    /// Se pide en la cabecera de Importar (un almacén para todas las líneas), precargado
+    /// con el del cliente (OCRD.&lt;WarehouseUserField&gt;). La fila Almacén de la grilla
+    /// queda desactivada (2026-10-21, formato genérico "solo detalle").
+    /// </summary>
+    Screen,
+}
+
+/// <summary>De dónde sale la sucursal (ShipToCode) del documento -- Venta e Inventario.</summary>
+public enum GenericImportBranchSource
+{
+    /// <summary>Columna del archivo o valor fijo de la grilla de campos (comportamiento de siempre).</summary>
+    Mapping,
+
+    /// <summary>Se pide en la cabecera de Importar (direcciones de despacho del cliente elegido), una para todo el archivo.</summary>
+    Screen,
 }
 
 /// <summary>Cómo se asigna el vendedor (SlpCode) de los documentos de Venta.</summary>
@@ -22,7 +39,7 @@ public enum GenericImportSalesPersonMode
     /// <summary>Un vendedor fijo definido en el formato (SalesPersonCode).</summary>
     Fixed,
 
-    /// <summary>El cliente tiene varios vendedores: se elige al importar (precargado con el del socio).</summary>
+    /// <summary>Se pide en la cabecera de Importar (precargado con el vendedor del socio).</summary>
     MultiSeller,
 }
 
@@ -39,7 +56,8 @@ public sealed record GenericImportDocumentOptionsDto(
     // Analizar stock disponible y cumplimiento de unidades en la vista previa (consulta a
     // OITW por artículo/almacén). Opcional (2026-10-15): con archivos de miles de líneas
     // es la consulta más pesada. La regla "Stock disponible" corre aparte si está activa.
-    bool AnalyzeStock = false)
+    bool AnalyzeStock = false,
+    GenericImportBranchSource BranchSource = GenericImportBranchSource.Mapping)
 {
     /// <summary>Campo de usuario sugerido para el almacén del cliente.</summary>
     public const string DefaultWarehouseUserField = "U_NX_WhsCode";

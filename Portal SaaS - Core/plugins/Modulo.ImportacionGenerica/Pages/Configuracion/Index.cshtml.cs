@@ -142,13 +142,28 @@ public sealed class IndexModel : PageModelBaseAdmin
     [
         new("Columna del archivo o valor fijo (grilla de campos)", GenericImportWarehouseSource.Mapping.ToString()),
         new("Almacén del cliente (campo de usuario del socio)", GenericImportWarehouseSource.BusinessPartnerField.ToString()),
+        new("Se pide en pantalla (precargado con el almacén del cliente)", GenericImportWarehouseSource.Screen.ToString()),
+    ];
+
+    // Formato genérico "solo detalle" (2026-10-21): Cliente, Sucursal, Vendedor y Almacén
+    // pueden pedirse en la cabecera de Importar en vez de leerse del Excel.
+    public List<SelectListItem> BusinessPartnerSources { get; } =
+    [
+        new("Se pide en pantalla (uno para todo el archivo)", "false"),
+        new("Viene del Excel (cada fila trae su socio)", "true"),
+    ];
+
+    public List<SelectListItem> BranchSources { get; } =
+    [
+        new("Viene del Excel (columna o valor fijo)", GenericImportBranchSource.Mapping.ToString()),
+        new("Se pide en pantalla (direcciones de despacho del cliente)", GenericImportBranchSource.Screen.ToString()),
     ];
 
     public List<SelectListItem> SalesPersonModes { get; } =
     [
         new("Vendedor del socio de negocio", GenericImportSalesPersonMode.BusinessPartner.ToString()),
         new("Vendedor fijo del formato", GenericImportSalesPersonMode.Fixed.ToString()),
-        new("Multivendedor (se elige al importar)", GenericImportSalesPersonMode.MultiSeller.ToString()),
+        new("Se pide en pantalla (precargado con el del socio)", GenericImportSalesPersonMode.MultiSeller.ToString()),
     ];
 
     /// <summary>Vendedores de SAP (OSLP) para el modo Fijo -- vacío si SAP no responde (el resto de la pantalla sigue funcionando).</summary>
@@ -160,6 +175,28 @@ public sealed class IndexModel : PageModelBaseAdmin
         new("Lista de precios del cliente", GenericImportPriceSource.BusinessPartner.ToString()),
         new("Lista de precios fija (N° de lista)", GenericImportPriceSource.System.ToString()),
     ];
+
+    /// <summary>
+    /// Campo núcleo -> qué dato de cabecera lo reemplaza cuando se pide en pantalla: la
+    /// fila de la grilla se desactiva mientras ese dato esté en "Se pide en pantalla"
+    /// (lo maneja el JS de Index.cshtml, data-screen-source).
+    /// </summary>
+    public static string? ScreenSourceOf(GenericImportLogicalField field) => field switch
+    {
+        GenericImportLogicalField.BusinessPartnerCardCode => "client",
+        GenericImportLogicalField.Branch => "branch",
+        GenericImportLogicalField.Warehouse => "warehouse",
+        _ => null,
+    };
+
+    /// <summary>true = la fila del campo está desactivada con los valores actuales del formulario (render inicial; después la mueve el JS).</summary>
+    public bool IsAskedOnScreen(GenericImportLogicalField field) => field switch
+    {
+        GenericImportLogicalField.BusinessPartnerCardCode => !Input.BusinessPartnerFromFile,
+        GenericImportLogicalField.Branch => Input.BranchSource == GenericImportBranchSource.Screen,
+        GenericImportLogicalField.Warehouse => Input.WarehouseSource == GenericImportWarehouseSource.Screen,
+        _ => false,
+    };
 
     /// <summary>Campos núcleo editables en la grilla -- todos menos el marcador UserField.</summary>
     public static IReadOnlyList<GenericImportLogicalField> CoreFields { get; } =
@@ -251,7 +288,15 @@ public sealed class IndexModel : PageModelBaseAdmin
             && !Input.Fields.Any(f => f.LogicalField == GenericImportLogicalField.BusinessPartnerCardCode && !string.IsNullOrWhiteSpace(f.ExcelColumn)))
         {
             ModelState.AddModelError(string.Empty,
-                "Carga multi-socio activada -- mapeá una columna Excel para el campo núcleo \"BusinessPartnerCardCode\" en la grilla de abajo.");
+                "Cliente \"Viene del Excel\" -- mapeá una columna Excel para el campo núcleo del socio de negocio en la grilla de abajo.");
+        }
+
+        // La sucursal en pantalla sale de las direcciones del cliente elegido en la
+        // cabecera -- con un socio por fila no hay un único cliente del que listarlas.
+        if (Input.BusinessPartnerFromFile && Input.BranchSource == GenericImportBranchSource.Screen)
+        {
+            ModelState.AddModelError(string.Empty,
+                "La sucursal solo se puede pedir en pantalla si el cliente también se pide en pantalla.");
         }
 
         // "Precio vs. lista fija" y "Precio vs. lista del cliente" son mutuamente
@@ -293,7 +338,8 @@ public sealed class IndexModel : PageModelBaseAdmin
 
             await _configs.SaveValidationRulesAsync(configId, BuildValidationRuleAssignments(), ct);
             await _configs.SaveDocumentOptionsAsync(configId, new GenericImportDocumentOptionsDto(
-                Input.WarehouseSource, Input.WarehouseUserField, Input.SalesPersonMode, Input.SalesPersonCode, Input.AnalyzeStock), ct);
+                Input.WarehouseSource, Input.WarehouseUserField, Input.SalesPersonMode, Input.SalesPersonCode, Input.AnalyzeStock,
+                Input.BranchSource), ct);
         }
         catch (Exception ex)
         {
@@ -426,6 +472,7 @@ public sealed class IndexModel : PageModelBaseAdmin
             SalesPersonMode = config.DocumentOptions.SalesPersonMode,
             SalesPersonCode = config.DocumentOptions.SalesPersonCode,
             AnalyzeStock = config.DocumentOptions.AnalyzeStock,
+            BranchSource = config.DocumentOptions.BranchSource,
             BusinessPartnerFromFile = config.BusinessPartnerFromFile,
         };
 
@@ -613,8 +660,11 @@ public sealed class IndexModel : PageModelBaseAdmin
         [Display(Name = "Identificación del artículo en el archivo")]
         public GenericImportItemIdentifier ItemIdentifier { get; set; }
 
-        [Display(Name = "Carga multi-socio: cada fila trae su propio código de socio de negocio (columna BusinessPartnerCardCode mapeada en la grilla)")]
+        [Display(Name = "Cliente / Proveedor")]
         public bool BusinessPartnerFromFile { get; set; }
+
+        [Display(Name = "Sucursal de entrega")]
+        public GenericImportBranchSource BranchSource { get; set; }
 
         [Required(ErrorMessage = "El alias es obligatorio.")]
         [Display(Name = "Alias")]
@@ -631,13 +681,13 @@ public sealed class IndexModel : PageModelBaseAdmin
         [Display(Name = "N° de lista de precios fija")]
         public int? SystemPriceListCode { get; set; }
 
-        [Display(Name = "Origen del almacén")]
+        [Display(Name = "Almacén")]
         public GenericImportWarehouseSource WarehouseSource { get; set; }
 
         [Display(Name = "Campo de usuario del socio con el almacén")]
         public string? WarehouseUserField { get; set; } = GenericImportDocumentOptionsDto.DefaultWarehouseUserField;
 
-        [Display(Name = "Vendedor (Ventas)")]
+        [Display(Name = "Vendedor")]
         public GenericImportSalesPersonMode SalesPersonMode { get; set; }
 
         [Display(Name = "Vendedor fijo")]

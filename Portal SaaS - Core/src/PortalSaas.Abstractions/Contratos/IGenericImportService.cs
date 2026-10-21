@@ -69,6 +69,14 @@ public interface IGenericImportService
     /// -- SAP lo valida y lo revierte, no queda registro. Ver
     /// IGenericImportFormatValidator.TestWithFileAsync.
     /// </summary>
+    /// <summary>
+    /// Almacén del cliente (OCRD.&lt;userField&gt;, ej. U_NX_WhsCode) -- precarga el selector
+    /// de almacén de la cabecera de Importar cuando el formato lo pide en pantalla. Null si
+    /// el socio no lo tiene completo o el campo no es válido.
+    /// </summary>
+    Task<string?> GetBusinessPartnerWarehouseAsync(string cardCode, string? userField, CancellationToken ct = default) =>
+        Task.FromResult<string?>(null);
+
     Task<SapSimulationResult> SimulateDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
         string portalUsername, CancellationToken ct = default) =>
         throw new NotSupportedException("Este servicio no soporta envío simulado.");

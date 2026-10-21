@@ -177,6 +177,7 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.WarehouseSource).HasMaxLength(30);
             entity.Property(e => e.WarehouseUserField).HasMaxLength(50);
             entity.Property(e => e.SalesPersonMode).HasMaxLength(20);
+            entity.Property(e => e.BranchSource).HasMaxLength(20).HasDefaultValue("Mapping");
             entity.Property(e => e.Alias).HasMaxLength(100);
             entity.Property(e => e.PriceSource).HasMaxLength(20);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId);
@@ -581,6 +582,8 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.DocumentType).HasMaxLength(50);
             entity.Property(e => e.LineType).HasMaxLength(10);
             entity.Property(e => e.BusinessPartnerCardCode).HasMaxLength(15);
+            entity.Property(e => e.ShipToCode).HasMaxLength(50);
+            entity.Property(e => e.WarehouseCode).HasMaxLength(8);
             entity.Property(e => e.FileName).HasMaxLength(260);
             entity.Property(e => e.FileHash).HasMaxLength(64);
             entity.Property(e => e.ProgressMessage).HasMaxLength(500);

@@ -46,14 +46,19 @@ public sealed class IndexModel : PageModelBaseAdmin
     private readonly ISalesEmployeeCatalogService _salesEmployees;
     private readonly IBusinessPartnerDefaultsService _partnerDefaults;
     private readonly IGenericImportJobService _jobs;
+    private readonly ICustomerShipToAddressService _shipToAddresses;
+    private readonly IWarehouseCatalogService _warehouses;
 
     public IndexModel(ICurrentUserContext currentUser, IGenericImportService importService, IGenericImportProgressStore progress,
         IGenericImportConfigService configs, ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
         ICustomerCatalogService customers, ISupplierCatalogService suppliers, IGenericImportUserFieldService userFields,
         INotificationService notifications, ISalesEmployeeCatalogService salesEmployees, IBusinessPartnerDefaultsService partnerDefaults,
-        IGenericImportJobService jobs, ILogger<IndexModel> logger) : base(currentUser)
+        IGenericImportJobService jobs, ICustomerShipToAddressService shipToAddresses, IWarehouseCatalogService warehouses,
+        ILogger<IndexModel> logger) : base(currentUser)
     {
         _jobs = jobs;
+        _shipToAddresses = shipToAddresses;
+        _warehouses = warehouses;
         _salesEmployees = salesEmployees;
         _partnerDefaults = partnerDefaults;
         _importService = importService;
@@ -92,6 +97,13 @@ public sealed class IndexModel : PageModelBaseAdmin
     public GenericImportResultDto? PreviewResult { get; private set; }
 
     /// <summary>
+    /// Archivo ya cargado en el borrador del trabajo (Input.JobId) -- "Volver a analizar"
+    /// lo reprocesa con los parámetros actuales sin subirlo de nuevo (ver OnPostProcessAsync).
+    /// Null si no hay borrador vigente (sin procesar todavía, o ya confirmado).
+    /// </summary>
+    public string? LoadedFileName { get; private set; }
+
+    /// <summary>
     /// Formatos disponibles para Módulo+Tipo de documento+Tipo de línea+Socio actuales
     /// (los del socio primero, después los estándar) -- un socio puede tener varios. El
     /// &lt;select&gt; se recarga por AJAX (OnGetFormatsAsync) al cambiar cualquiera de esos
@@ -108,6 +120,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         await LoadFormatsAsync(ct);
         await LoadSalesPersonAsync(ct);
         await ResolveBusinessPartnerFromFileAsync(ct);
+        await LoadScreenHeaderAsync(ct);
     }
 
     /// <summary>
@@ -166,7 +179,7 @@ public sealed class IndexModel : PageModelBaseAdmin
     private static string ModeLabel(GenericImportSalesPersonMode mode) => mode switch
     {
         GenericImportSalesPersonMode.Fixed => "Vendedor fijo del formato",
-        GenericImportSalesPersonMode.MultiSeller => "Multivendedor: elegí el vendedor de esta carga",
+        GenericImportSalesPersonMode.MultiSeller => "Se pide en pantalla: elegí el vendedor de esta carga",
         _ => "Vendedor del socio de negocio",
     };
 
@@ -212,9 +225,16 @@ public sealed class IndexModel : PageModelBaseAdmin
 
         try
         {
-            SalesPersons = (await _salesEmployees.ListAsync(ct: ct))
+            // Text = lo que ve y escribe el usuario (el nombre); Value = el código que se envía.
+            // Nombres repetidos llevan el código para poder distinguirlos.
+            var employees = await _salesEmployees.ListAsync(ct: ct);
+            var repeated = employees.GroupBy(s => s.SalesEmployeeName.Trim(), StringComparer.CurrentCultureIgnoreCase)
+                .Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet(StringComparer.CurrentCultureIgnoreCase);
+            SalesPersons = employees
                 .OrderBy(s => s.SalesEmployeeName)
-                .Select(s => new SelectListItem($"{s.SalesEmployeeCode} - {s.SalesEmployeeName}", s.SalesEmployeeCode.ToString()))
+                .Select(s => new SelectListItem(
+                    repeated.Contains(s.SalesEmployeeName.Trim()) ? $"{s.SalesEmployeeName.Trim()} ({s.SalesEmployeeCode})" : s.SalesEmployeeName.Trim(),
+                    s.SalesEmployeeCode.ToString()))
                 .ToList();
         }
         catch (Exception ex)
@@ -231,6 +251,132 @@ public sealed class IndexModel : PageModelBaseAdmin
         return new JsonResult(new { Code = code, Editable = mode == GenericImportSalesPersonMode.MultiSeller, Label = ModeLabel(mode) });
     }
 
+    // ------------------------------------------------- sucursal y almacén "en pantalla"
+
+    /// <summary>true = el formato pide la sucursal en la cabecera (GenericImportBranchSource.Screen).</summary>
+    public bool BranchAskedOnScreen { get; private set; }
+
+    /// <summary>true = el formato pide el almacén en la cabecera (GenericImportWarehouseSource.Screen).</summary>
+    public bool WarehouseAskedOnScreen { get; private set; }
+
+    /// <summary>Direcciones de despacho del cliente elegido (CRD1) -- solo con BranchAskedOnScreen.</summary>
+    public List<SelectListItem> ShipToOptions { get; private set; } = [];
+
+    /// <summary>Almacenes de SAP (OWHS) para el selector de almacén en pantalla; vacío si SAP no responde.</summary>
+    public List<SelectListItem> Warehouses { get; private set; } = [];
+
+    private sealed record ScreenHeader(bool BranchAsked, IReadOnlyList<SelectListItem> ShipTos, string? ShipToCode,
+        bool WarehouseAsked, string? WarehouseCode);
+
+    /// <summary>
+    /// Qué datos pide el formato en pantalla y sus valores: la sucursal se precarga con la
+    /// dirección de despacho por defecto del cliente (OCRD.ShipToDef) y el almacén con el
+    /// del cliente (OCRD.&lt;WarehouseUserField&gt;, ej. U_NX_WhsCode). Una elección previa que
+    /// sigue siendo válida se respeta (cambiar de cliente sí la reinicia).
+    /// </summary>
+    private async Task<ScreenHeader> ResolveScreenHeaderAsync(int? configId, GenericImportModule module, GenericImportLineType lineType,
+        string? cardCode, string? shipToCode, string? warehouseCode, bool partnerChanged, CancellationToken ct)
+    {
+        var config = configId is { } id ? await _configs.GetAsync(id, ct) : null;
+        if (config is null)
+        {
+            return new ScreenHeader(false, [], null, false, null);
+        }
+
+        cardCode = string.IsNullOrWhiteSpace(cardCode) ? null : cardCode.Trim();
+        var branchAsked = config.DocumentOptions.BranchSource == GenericImportBranchSource.Screen
+            && module != GenericImportModule.Purchase && !config.BusinessPartnerFromFile;
+        var warehouseAsked = config.DocumentOptions.WarehouseSource == GenericImportWarehouseSource.Screen
+            && module != GenericImportModule.Inventory && lineType == GenericImportLineType.Item;
+
+        List<SelectListItem> shipTos = [];
+        string? shipTo = null;
+        if (branchAsked && cardCode is not null)
+        {
+            try
+            {
+                shipTos = (await _shipToAddresses.ListShipToAddressesAsync(cardCode, ct))
+                    .Select(a => new SelectListItem(string.IsNullOrEmpty(a.FullAddress) ? a.Code : $"{a.Code} - {a.FullAddress}", a.Code))
+                    .ToList();
+                shipTo = !partnerChanged && shipTos.Any(o => string.Equals(o.Value, shipToCode, StringComparison.OrdinalIgnoreCase))
+                    ? shipToCode
+                    : (await _partnerDefaults.GetAsync(cardCode, ct))?.ShipToDefault;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudieron leer las direcciones de despacho del socio {CardCode}.", cardCode);
+            }
+        }
+
+        string? warehouse = null;
+        if (warehouseAsked)
+        {
+            warehouse = !partnerChanged && !string.IsNullOrWhiteSpace(warehouseCode) ? warehouseCode.Trim() : null;
+            if (warehouse is null && cardCode is not null && !config.BusinessPartnerFromFile)
+            {
+                try
+                {
+                    warehouse = await _importService.GetBusinessPartnerWarehouseAsync(cardCode, config.DocumentOptions.WarehouseUserField, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "No se pudo leer el almacén del socio {CardCode}.", cardCode);
+                }
+            }
+        }
+
+        return new ScreenHeader(branchAsked, shipTos, shipTo, warehouseAsked, warehouse);
+    }
+
+    private async Task LoadScreenHeaderAsync(CancellationToken ct)
+    {
+        var header = await ResolveScreenHeaderAsync(Input.ConfigId, Input.Module, Input.LineType, Input.BusinessPartnerCardCode,
+            Input.ShipToCode, Input.WarehouseCode, partnerChanged: false, ct);
+        BranchAskedOnScreen = header.BranchAsked;
+        WarehouseAskedOnScreen = header.WarehouseAsked;
+        ShipToOptions = header.ShipTos.ToList();
+        Input.ShipToCode = header.ShipToCode;
+        Input.WarehouseCode = header.WarehouseCode;
+        ModelState.Remove($"{nameof(Input)}.{nameof(Input.ShipToCode)}");
+        ModelState.Remove($"{nameof(Input)}.{nameof(Input.WarehouseCode)}");
+
+        // Siempre (no solo si el formato actual lo pide): el formato se cambia en pantalla
+        // por fetch y la lista no depende del cliente. OWHS es una tabla chica.
+        {
+            try
+            {
+                Warehouses = (await _warehouses.ListAsync(ct: ct))
+                    .OrderBy(w => w.WarehouseCode)
+                    .Select(w => new SelectListItem($"{w.WarehouseCode} - {w.WarehouseName}", w.WarehouseCode))
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo cargar la lista de almacenes.");
+                Warehouses = [];
+            }
+        }
+    }
+
+    /// <summary>
+    /// Llamado por fetch al cambiar Formato, Socio, Módulo o Tipo de línea (Index.cshtml,
+    /// cargarCabecera). partnerChanged = el usuario cambió de cliente: se vuelve a precargar
+    /// sucursal y almacén con los de ese cliente.
+    /// </summary>
+    public async Task<JsonResult> OnGetScreenHeaderAsync(int? configId, GenericImportModule module, GenericImportLineType lineType,
+        string? businessPartnerCardCode, string? shipToCode, string? warehouseCode, bool partnerChanged, CancellationToken ct)
+    {
+        var header = await ResolveScreenHeaderAsync(configId, module, lineType, businessPartnerCardCode, shipToCode, warehouseCode, partnerChanged, ct);
+        return new JsonResult(new
+        {
+            header.BranchAsked,
+            ShipTos = header.ShipTos.Select(o => new { Code = o.Value, Label = o.Text }),
+            header.ShipToCode,
+            header.WarehouseAsked,
+            header.WarehouseCode,
+        });
+    }
+
     private string? SelectedDocumentType() => Input.Module switch
     {
         GenericImportModule.Sales => Input.SalesDocumentType,
@@ -245,6 +391,7 @@ public sealed class IndexModel : PageModelBaseAdmin
         await LoadFormatsAsync(ct);
         await LoadSalesPersonAsync(ct);
         await ResolveBusinessPartnerFromFileAsync(ct);
+        await LoadScreenHeaderAsync(ct);
 
         // El archivo se guarda UNA vez en el servidor como borrador de trabajo
         // (IGenericImportJobService, 2026-10-15) y los pasos siguientes (Confirmar,
@@ -281,6 +428,9 @@ public sealed class IndexModel : PageModelBaseAdmin
         using var processStream = new MemoryStream(bytes);
         PreviewResult = await _importService.ProcessFileAsync(parameters, processStream, ct);
         await LoadPreviewHeaderInfoAsync(ct);
+        LoadedFileName = Input.JobId is { } loadedJob && await _jobs.GetAsync(loadedJob, ct) is { Status: GenericImportJobStatus.Draft } draft
+            ? draft.FileName
+            : null;
 
         return Page();
     }
@@ -426,6 +576,7 @@ public sealed class IndexModel : PageModelBaseAdmin
             await LoadFormatsAsync(ct);
             await LoadSalesPersonAsync(ct);
             await ResolveBusinessPartnerFromFileAsync(ct);
+            await LoadScreenHeaderAsync(ct);
             return Page();
         }
 
@@ -452,6 +603,7 @@ public sealed class IndexModel : PageModelBaseAdmin
             await LoadFormatsAsync(ct);
             await LoadSalesPersonAsync(ct);
             await ResolveBusinessPartnerFromFileAsync(ct);
+            await LoadScreenHeaderAsync(ct);
             return Page();
         }
 
@@ -506,7 +658,8 @@ public sealed class IndexModel : PageModelBaseAdmin
 
         return new GenericImportParametersDto(Input.Module, documentType ?? string.Empty,
             Input.LineType, Input.BusinessPartnerCardCode, Input.ConfigId,
-            Input.Module == GenericImportModule.Sales ? Input.SalesPersonCode : null);
+            Input.Module == GenericImportModule.Sales ? Input.SalesPersonCode : null,
+            Input.ShipToCode, Input.WarehouseCode);
     }
 
     private async Task LoadCreatableDocumentTypesAsync(CancellationToken ct)
@@ -569,6 +722,14 @@ public sealed class IndexModel : PageModelBaseAdmin
 
         [Display(Name = "Vendedor")]
         public int? SalesPersonCode { get; set; }
+
+        /// <summary>Solo si el formato pide la sucursal en pantalla -- ver GenericImportBranchSource.Screen.</summary>
+        [Display(Name = "Sucursal de entrega")]
+        public string? ShipToCode { get; set; }
+
+        /// <summary>Solo si el formato pide el almacén en pantalla -- ver GenericImportWarehouseSource.Screen.</summary>
+        [Display(Name = "Almacén")]
+        public string? WarehouseCode { get; set; }
 
         /// <summary>Trabajo (borrador) con el archivo ya guardado en el servidor -- ver IGenericImportJobService.</summary>
         public Guid? JobId { get; set; }

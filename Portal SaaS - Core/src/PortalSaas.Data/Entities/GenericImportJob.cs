@@ -29,6 +29,8 @@ public sealed class GenericImportJob
     public string? BusinessPartnerCardCode { get; set; }
     public int? ConfigId { get; set; }
     public int? SalesPersonCode { get; set; }
+    public string? ShipToCode { get; set; }
+    public string? WarehouseCode { get; set; }
 
     public string FileName { get; set; } = null!;
 

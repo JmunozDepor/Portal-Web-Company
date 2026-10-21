@@ -26,4 +26,9 @@ public sealed record GenericImportParametersDto(
     int? ConfigId = null,
     // Vendedor elegido en el asistente -- solo se usa si el formato está en modo
     // Multivendedor (GenericImportSalesPersonMode.MultiSeller); en Fijo/Del socio manda el formato.
-    int? SalesPersonCode = null);
+    int? SalesPersonCode = null,
+    // Sucursal (ShipToCode) y almacén elegidos en la cabecera -- solo se usan si el formato
+    // los pide en pantalla (GenericImportBranchSource.Screen / GenericImportWarehouseSource.Screen);
+    // se aplican a TODAS las filas del archivo.
+    string? ShipToCode = null,
+    string? WarehouseCode = null);

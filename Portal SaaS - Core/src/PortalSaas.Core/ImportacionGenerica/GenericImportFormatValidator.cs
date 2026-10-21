@@ -121,7 +121,7 @@ public sealed class GenericImportFormatValidator : IGenericImportFormatValidator
         {
             required.Add(GenericImportLogicalField.ItemCode);
             // Con almacén del cliente (campo de usuario del socio) la columna/valor fijo es
-            // solo respaldo -- no obligatoria.
+            // solo respaldo -- no obligatoria. Con almacén "en pantalla" no se mapea.
             if (config.DocumentOptions.WarehouseSource == GenericImportWarehouseSource.Mapping)
             {
                 required.Add(GenericImportLogicalField.Warehouse);
@@ -183,6 +183,16 @@ public sealed class GenericImportFormatValidator : IGenericImportFormatValidator
         if (!config.BusinessPartnerFromFile)
         {
             Ignore("el socio viene del formato o del asistente; activá \"Carga multi-socio\" para leerlo por fila", GenericImportLogicalField.BusinessPartnerCardCode);
+        }
+
+        if (config.DocumentOptions.BranchSource == GenericImportBranchSource.Screen && config.Module != GenericImportModule.Purchase)
+        {
+            Ignore("la sucursal se pide en pantalla al importar", GenericImportLogicalField.Branch);
+        }
+
+        if (config.DocumentOptions.WarehouseSource == GenericImportWarehouseSource.Screen && config.Module != GenericImportModule.Inventory)
+        {
+            Ignore("el almacén se pide en pantalla al importar", GenericImportLogicalField.Warehouse);
         }
 
         return ignored;
@@ -294,7 +304,9 @@ public sealed class GenericImportFormatValidator : IGenericImportFormatValidator
     private async Task CheckDocumentOptionsAsync(GenericImportConfigDto config, List<GenericImportFormatCheckDto> checks, CancellationToken ct)
     {
         var options = config.DocumentOptions;
-        if (options.WarehouseSource == GenericImportWarehouseSource.BusinessPartnerField && config.Module != GenericImportModule.Inventory)
+        // También en modo "pantalla": el campo precarga el selector de almacén de Importar.
+        if (options.WarehouseSource is GenericImportWarehouseSource.BusinessPartnerField or GenericImportWarehouseSource.Screen
+            && config.Module != GenericImportModule.Inventory)
         {
             var userField = options.WarehouseUserField ?? GenericImportDocumentOptionsDto.DefaultWarehouseUserField;
             var exists = userField.StartsWith("U_", StringComparison.OrdinalIgnoreCase)

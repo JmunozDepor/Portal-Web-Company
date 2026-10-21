@@ -508,6 +508,14 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("analyze_stock");
 
+                    b.Property<string>("BranchSource")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Mapping")
+                        .HasColumnName("branch_source");
+
                     b.Property<string>("BusinessPartnerCardCode")
                         .HasMaxLength(15)
                         .HasColumnType("character varying(15)")
@@ -748,6 +756,11 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("sales_person_code");
 
+                    b.Property<string>("ShipToCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("ship_to_code");
+
                     b.Property<DateTimeOffset?>("StartedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_at");
@@ -767,6 +780,11 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("username");
+
+                    b.Property<string>("WarehouseCode")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("warehouse_code");
 
                     b.HasKey("Id")
                         .HasName("pk_generic_import_jobs");

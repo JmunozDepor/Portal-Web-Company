@@ -508,6 +508,14 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("analyze_stock");
 
+                    b.Property<string>("BranchSource")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Mapping")
+                        .HasColumnName("branch_source");
+
                     b.Property<string>("BusinessPartnerCardCode")
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)")
@@ -749,6 +757,11 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("int")
                         .HasColumnName("sales_person_code");
 
+                    b.Property<string>("ShipToCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("ship_to_code");
+
                     b.Property<DateTimeOffset?>("StartedAt")
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("started_at");
@@ -768,6 +781,11 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("username");
+
+                    b.Property<string>("WarehouseCode")
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)")
+                        .HasColumnName("warehouse_code");
 
                     b.HasKey("Id")
                         .HasName("pk_generic_import_jobs");

@@ -134,6 +134,10 @@ public sealed class GenericImportService : IGenericImportService
             await ApplyBusinessPartnerWarehouseAsync(rawRows, config, parameters, ct);
         }
 
+        // Datos pedidos en la cabecera de Importar (formato genérico "solo detalle",
+        // 2026-10-21): mismo criterio -- se escriben en cada fila antes de resolver.
+        await ApplyScreenValuesAsync(rawRows, config, parameters, ct);
+
         IReadOnlyList<string> CodesOf(GenericImportLogicalField field) => rawRows
             .Select(r => r.CoreFields.GetValueOrDefault(field))
             .Where(v => !string.IsNullOrWhiteSpace(v))
@@ -778,6 +782,63 @@ public sealed class GenericImportService : IGenericImportService
                 raw.CoreFields[GenericImportLogicalField.Warehouse] = whsCode;
             }
         }
+    }
+
+    /// <summary>
+    /// Sucursal y almacén elegidos en la cabecera (GenericImportBranchSource.Screen /
+    /// GenericImportWarehouseSource.Screen): pisan la columna de cada fila. Almacén en
+    /// pantalla sin valor (ej. "Probar formato", que no tiene cabecera): cae al almacén del
+    /// cliente, el mismo que precarga el selector.
+    /// </summary>
+    private async Task ApplyScreenValuesAsync(List<RawRow> rawRows, GenericImportConfigDto config,
+        GenericImportParametersDto parameters, CancellationToken ct)
+    {
+        var warehouse = string.IsNullOrWhiteSpace(parameters.WarehouseCode) ? null : parameters.WarehouseCode.Trim();
+        if (warehouse is null && config.DocumentOptions.WarehouseSource == GenericImportWarehouseSource.Screen
+            && !config.BusinessPartnerFromFile && !string.IsNullOrWhiteSpace(parameters.BusinessPartnerCardCode))
+        {
+            warehouse = await GetBusinessPartnerWarehouseAsync(parameters.BusinessPartnerCardCode, config.DocumentOptions.WarehouseUserField, ct);
+        }
+
+        ApplyScreenValues(rawRows, config, parameters with { WarehouseCode = warehouse });
+    }
+
+    internal static void ApplyScreenValues(List<RawRow> rawRows, GenericImportConfigDto config, GenericImportParametersDto parameters)
+    {
+        var options = config.DocumentOptions;
+        if (options.BranchSource == GenericImportBranchSource.Screen && parameters.Module != GenericImportModule.Purchase)
+        {
+            var shipTo = string.IsNullOrWhiteSpace(parameters.ShipToCode) ? null : parameters.ShipToCode.Trim();
+            foreach (var raw in rawRows)
+            {
+                raw.CoreFields[GenericImportLogicalField.Branch] = shipTo;
+            }
+        }
+
+        if (options.WarehouseSource == GenericImportWarehouseSource.Screen
+            && parameters.Module != GenericImportModule.Inventory && parameters.LineType == GenericImportLineType.Item)
+        {
+            var warehouse = string.IsNullOrWhiteSpace(parameters.WarehouseCode) ? null : parameters.WarehouseCode.Trim();
+            foreach (var raw in rawRows)
+            {
+                raw.CoreFields[GenericImportLogicalField.Warehouse] = warehouse;
+            }
+        }
+    }
+
+    public async Task<string?> GetBusinessPartnerWarehouseAsync(string cardCode, string? userField, CancellationToken ct = default)
+    {
+        userField ??= GenericImportDocumentOptionsDto.DefaultWarehouseUserField;
+        // Se interpola en SQL -- mismo control de formato que al guardarlo.
+        if (string.IsNullOrWhiteSpace(cardCode) || !GenericImportConfigService.IsValidUserFieldName(userField))
+        {
+            return null;
+        }
+
+        var sql = $"SELECT \"{userField}\" AS \"WhsCode\" FROM \"OCRD\" WHERE \"CardCode\" = :cardCode";
+        var rows = await _hana.QueryDynamicAsync(sql, new Dictionary<string, object?> { ["cardCode"] = cardCode.Trim() }, ct);
+        var whsCode = rows.Count > 0 ? rows[0]["WhsCode"]?.ToString()?.Trim() : null;
+        return string.IsNullOrEmpty(whsCode) ? null : whsCode;
     }
 
     /// <summary>Vendedor del documento según el modo del formato -- ver GenericImportSalesPersonMode.</summary>

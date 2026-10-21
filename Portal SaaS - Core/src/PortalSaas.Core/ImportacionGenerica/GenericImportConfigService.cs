@@ -218,7 +218,8 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
             ?? throw new InvalidOperationException("Configuración no encontrada.");
 
         var userField = string.IsNullOrWhiteSpace(options.WarehouseUserField) ? null : options.WarehouseUserField.Trim();
-        if (options.WarehouseSource == GenericImportWarehouseSource.BusinessPartnerField)
+        var usesUserField = options.WarehouseSource is GenericImportWarehouseSource.BusinessPartnerField or GenericImportWarehouseSource.Screen;
+        if (usesUserField)
         {
             userField ??= GenericImportDocumentOptionsDto.DefaultWarehouseUserField;
             if (!IsValidUserFieldName(userField))
@@ -233,7 +234,8 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
         }
 
         entity.WarehouseSource = options.WarehouseSource.ToString();
-        entity.WarehouseUserField = options.WarehouseSource == GenericImportWarehouseSource.BusinessPartnerField ? userField : null;
+        entity.WarehouseUserField = usesUserField ? userField : null;
+        entity.BranchSource = options.BranchSource.ToString();
         entity.SalesPersonMode = options.SalesPersonMode.ToString();
         entity.SalesPersonCode = options.SalesPersonMode == GenericImportSalesPersonMode.Fixed ? options.SalesPersonCode : null;
         entity.AnalyzeStock = options.AnalyzeStock;
@@ -336,6 +338,7 @@ public sealed class GenericImportConfigService : IGenericImportConfigService
             row.WarehouseUserField,
             Enum.TryParse<GenericImportSalesPersonMode>(row.SalesPersonMode, out var salesPersonMode) ? salesPersonMode : GenericImportSalesPersonMode.BusinessPartner,
             row.SalesPersonCode,
-            row.AnalyzeStock),
+            row.AnalyzeStock,
+            Enum.TryParse<GenericImportBranchSource>(row.BranchSource, out var branchSource) ? branchSource : GenericImportBranchSource.Mapping),
     };
 }

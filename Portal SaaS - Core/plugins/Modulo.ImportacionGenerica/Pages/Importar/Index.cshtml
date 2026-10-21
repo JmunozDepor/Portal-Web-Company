@@ -74,23 +74,74 @@
                     }
                 </select>
             </div>
-            @* Vendedor (solo Ventas): siempre visible; editable solo si el formato es
-               Multivendedor -- en Fijo / Del socio muestra bloqueado el que se usará. *@
+            @* Vendedor (solo Ventas): siempre visible; editable solo si el formato lo pide en
+               pantalla -- en Fijo / Del socio muestra bloqueado el que se usará.
+               Vendedor, sucursal y almacén (2026-10-21): texto con sugerencias (<datalist>,
+               igual que el socio) en vez de <select>. Son catálogos chicos que ya vienen
+               en la página, así que el navegador filtra por código o nombre sin consultar
+               al servidor; la sucursal la recarga cargarCabecera al cambiar de cliente. *@
             <div class="form-group" id="import-vendedor-group" style="@(Model.Input.Module == GenericImportModule.Sales ? "" : "display:none")">
-                <label asp-for="Input.SalesPersonCode" class="form-label"></label>
-                <select asp-for="Input.SalesPersonCode" asp-items="Model.SalesPersons" class="form-select" id="import-vendedor-select" disabled="@(!Model.SalesPersonEditable)">
-                    <option value="">Sin vendedor</option>
-                </select>
+                @* Se ve y se escribe el NOMBRE; el código (lo que se envía) va en el oculto
+                   Input.SalesPersonCode y lo sincroniza el JS de abajo (data-code). *@
+                <label for="import-vendedor-select" class="form-label">Vendedor</label>
+                <input type="text" class="form-control" id="import-vendedor-select" list="import-vendedores-datalist" autocomplete="off"
+                       placeholder="Sin vendedor" disabled="@(!Model.SalesPersonEditable)"
+                       value="@(Model.SalesPersons.FirstOrDefault(s => s.Value == Model.Input.SalesPersonCode?.ToString())?.Text ?? Model.Input.SalesPersonCode?.ToString())" />
+                <input type="hidden" asp-for="Input.SalesPersonCode" id="import-vendedor-code" />
+                <datalist id="import-vendedores-datalist">
+                    @foreach (var vendedor in Model.SalesPersons)
+                    {
+                        <option value="@vendedor.Text" data-code="@vendedor.Value"></option>
+                    }
+                </datalist>
                 <div class="form-text" id="import-vendedor-modo">@Model.SalesPersonModeLabel</div>
+            </div>
+        </div>
+        @* Sucursal y almacén "en pantalla" (2026-10-21, formato genérico "solo detalle"):
+           solo se muestran si el formato elegido los pide; valen para todo el archivo.
+           Precargados con los del cliente y recargados por fetch (cargarCabecera). *@
+        <div class="form-row">
+            <div class="form-group" id="import-sucursal-group" style="@(Model.BranchAskedOnScreen ? "" : "display:none")">
+                <label asp-for="Input.ShipToCode" class="form-label"></label>
+                <input asp-for="Input.ShipToCode" class="form-control" id="import-sucursal-select"
+                       list="import-sucursales-datalist" autocomplete="off" placeholder="Por defecto del cliente" />
+                <datalist id="import-sucursales-datalist">
+                    @foreach (var sucursal in Model.ShipToOptions)
+                    {
+                        <option value="@sucursal.Value" label="@sucursal.Text"></option>
+                    }
+                </datalist>
+                <div class="form-text">Dirección de despacho del cliente para todo el archivo; vacío = la de por defecto.</div>
+            </div>
+            <div class="form-group" id="import-almacen-group" style="@(Model.WarehouseAskedOnScreen ? "" : "display:none")">
+                <label asp-for="Input.WarehouseCode" class="form-label"></label>
+                <input asp-for="Input.WarehouseCode" class="form-control" id="import-almacen-select"
+                       list="import-almacenes-datalist" autocomplete="off" placeholder="Código o nombre del almacén" />
+                <datalist id="import-almacenes-datalist">
+                    @foreach (var almacen in Model.Warehouses)
+                    {
+                        <option value="@almacen.Value" label="@almacen.Text"></option>
+                    }
+                </datalist>
+                <div class="form-text">Para todas las líneas; precargado con el almacén del cliente.</div>
             </div>
         </div>
         <div class="form-row">
             <div class="form-group form-group-ancho-completo">
                 <label class="form-label">Archivo (.xlsx)</label>
-                <input type="file" name="file" class="form-control" accept=".xlsx,.xls" />
+                <input type="file" name="file" class="form-control" accept=".xlsx,.xls" id="import-archivo" />
+                @if (Model.LoadedFileName is not null)
+                {
+                    @* El archivo ya quedó en el servidor (borrador del trabajo): "Volver a analizar"
+                       lo reprocesa con los parámetros actuales; elegir otro lo reemplaza. *@
+                    <div class="form-text" id="import-archivo-cargado">
+                        Archivo cargado: <strong>@Model.LoadedFileName</strong>. Cambiá los parámetros y presioná
+                        <strong>Volver a analizar</strong>, sin subirlo de nuevo; elegí otro archivo solo si querés reemplazarlo.
+                    </div>
+                }
             </div>
         </div>
-        <button type="submit" class="btn btn-primary">Procesar (vista previa)</button>
+        <button type="submit" class="btn btn-primary" id="import-procesar">@(Model.LoadedFileName is not null ? "Volver a analizar" : "Procesar (vista previa)")</button>
         @* GET puro (OnGetTemplateAsync ya existe en el codebehind, portado del módulo
            original -- "Formato para importar" según Módulo+Tipo de documento+Tipo de
            línea) -- botón type="button" a propósito, no puede ir dentro de este mismo
@@ -133,6 +184,8 @@
                     <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
                     <input type="hidden" asp-for="Input.ConfigId" />
                     <input type="hidden" asp-for="Input.SalesPersonCode" />
+                    <input type="hidden" asp-for="Input.ShipToCode" />
+                    <input type="hidden" asp-for="Input.WarehouseCode" />
                     <input type="hidden" asp-for="Input.JobId" />
                 </form>
                 <button type="button" class="btn btn-success" id="btnConfirmar">Confirmar creación en SAP</button>
@@ -155,6 +208,8 @@
                 <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
                 <input type="hidden" asp-for="Input.ConfigId" />
                 <input type="hidden" asp-for="Input.SalesPersonCode" />
+                <input type="hidden" asp-for="Input.ShipToCode" />
+                <input type="hidden" asp-for="Input.WarehouseCode" />
                 <input type="hidden" asp-for="Input.JobId" />
                 <button type="submit" class="btn btn-outline-secondary">Descargar reporte de validación</button>
             </form>
@@ -173,6 +228,8 @@
                     <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
                     <input type="hidden" asp-for="Input.ConfigId" />
                     <input type="hidden" asp-for="Input.SalesPersonCode" />
+                    <input type="hidden" asp-for="Input.ShipToCode" />
+                    <input type="hidden" asp-for="Input.WarehouseCode" />
                     <input type="hidden" asp-for="Input.JobId" />
                     <button type="submit" class="btn btn-outline-secondary">Descargar archivo con errores</button>
                 </form>
@@ -355,6 +412,7 @@
                         vacio.value = '';
                         vacio.textContent = 'Sin formatos para esta combinación';
                         select.appendChild(vacio);
+                        cargarCabecera();
                         return;
                     }
                     formatos.forEach(function (f) {
@@ -367,6 +425,7 @@
                         select.value = seleccionPrevia;
                     }
                     cargarVendedor();
+                    cargarCabecera();
                 })
                 .catch(function (error) {
                     console.error('Importar: ', error);
@@ -374,10 +433,16 @@
         }
 
         // Vendedor (solo Ventas): valor y bloqueo según el modo del formato elegido --
-        // Fijo / Del socio bloqueado con el valor que se usará, Multivendedor editable.
+        // Fijo / Del socio bloqueado con el valor que se usará, "Se pide en pantalla" editable.
         var vendedorGrupo = document.getElementById('import-vendedor-group');
         var vendedorSelect = document.getElementById('import-vendedor-select');
+        var vendedorCodigo = document.getElementById('import-vendedor-code');
         var vendedorModo = document.getElementById('import-vendedor-modo');
+        // El campo visible muestra el nombre; el código va en el oculto (data-code de la lista).
+        function nombreDeVendedor(codigo) {
+            var opcion = document.querySelector('#import-vendedores-datalist option[data-code="' + codigo + '"]');
+            return opcion ? opcion.value : codigo;
+        }
         function cargarVendedor() {
             var esVenta = valor('Input.Module') === 'Sales';
             if (vendedorGrupo) {
@@ -390,7 +455,7 @@
                 handler: 'SalesPerson',
                 configId: select.value || '',
                 businessPartnerCardCode: valor('Input.BusinessPartnerCardCode').trim(),
-                salesPersonCode: vendedorSelect.value || '',
+                salesPersonCode: vendedorCodigo.value || '',
             });
             fetch('?' + params.toString())
                 .then(function (r) { return r.ok ? r.json() : null; })
@@ -398,13 +463,64 @@
                     if (!vendedor) {
                         return;
                     }
-                    vendedorSelect.value = vendedor.code == null ? '' : String(vendedor.code);
+                    vendedorCodigo.value = vendedor.code == null ? '' : String(vendedor.code);
+                    vendedorSelect.value = vendedor.code == null ? '' : nombreDeVendedor(String(vendedor.code));
                     vendedorSelect.disabled = !vendedor.editable;
                     vendedorModo.textContent = vendedor.label;
                 })
                 .catch(function (error) { console.error('Importar (vendedor): ', error); });
         }
         select.addEventListener('change', cargarVendedor);
+
+        // Sucursal / almacén "en pantalla": visibles solo si el formato los pide. Al cambiar
+        // de cliente (partnerChanged) se precargan con los de ese cliente.
+        var sucursalGrupo = document.getElementById('import-sucursal-group');
+        var sucursalSelect = document.getElementById('import-sucursal-select');
+        var almacenGrupo = document.getElementById('import-almacen-group');
+        var almacenSelect = document.getElementById('import-almacen-select');
+        var socioCargado = valor('Input.BusinessPartnerCardCode').trim();
+        function cargarCabecera() {
+            if (!sucursalSelect || !almacenSelect) {
+                return;
+            }
+            var socioActual = valor('Input.BusinessPartnerCardCode').trim();
+            var socioCambio = socioActual !== socioCargado;
+            socioCargado = socioActual;
+            var params = new URLSearchParams({
+                handler: 'ScreenHeader',
+                configId: select.value || '',
+                module: valor('Input.Module'),
+                lineType: valor('Input.LineType'),
+                businessPartnerCardCode: socioActual,
+                shipToCode: sucursalSelect.value || '',
+                warehouseCode: almacenSelect.value || '',
+                partnerChanged: socioCambio ? 'true' : 'false',
+            });
+            fetch('?' + params.toString())
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (cabecera) {
+                    if (!cabecera) {
+                        return;
+                    }
+                    sucursalGrupo.style.display = cabecera.branchAsked ? '' : 'none';
+                    // Sugerencias = direcciones de despacho del cliente actual.
+                    var sucursales = document.getElementById('import-sucursales-datalist');
+                    sucursales.innerHTML = '';
+                    (cabecera.shipTos || []).forEach(function (s) {
+                        var option = document.createElement('option');
+                        option.value = s.code;
+                        option.label = s.label;
+                        sucursales.appendChild(option);
+                    });
+                    sucursalSelect.value = cabecera.branchAsked && cabecera.shipToCode ? cabecera.shipToCode : '';
+
+                    // La lista de almacenes viene del render inicial (no depende del cliente).
+                    almacenGrupo.style.display = cabecera.warehouseAsked ? '' : 'none';
+                    almacenSelect.value = cabecera.warehouseAsked && cabecera.warehouseCode ? cabecera.warehouseCode : '';
+                })
+                .catch(function (error) { console.error('Importar (cabecera): ', error); });
+        }
+        select.addEventListener('change', cargarCabecera);
 
         ['Input.Module', 'Input.SalesDocumentType', 'Input.PurchaseDocumentType', 'Input.InventoryDocumentType', 'Input.LineType']
             .forEach(function (nombre) {
@@ -427,6 +543,75 @@
                 cargarFormatos();
             });
         }
+    })();
+</script>
+
+<script>
+    // Vendedor / sucursal / almacén con sugerencias: al salir del campo, el valor tiene que
+    // ser uno de la lista (se normaliza al código exacto, sin importar mayúsculas). Si no,
+    // queda marcado en rojo y no se deja procesar -- evita mandar un código inexistente.
+    (function () {
+        var campos = ['import-vendedor-select', 'import-sucursal-select', 'import-almacen-select'];
+
+        function validar(input) {
+            var lista = document.getElementById(input.getAttribute('list'));
+            var texto = input.value.trim();
+            var coincidencia = null;
+            if (texto && lista) {
+                Array.prototype.forEach.call(lista.options, function (o) {
+                    if (o.value.toLowerCase() === texto.toLowerCase()) {
+                        coincidencia = o;
+                    }
+                });
+            }
+            if (coincidencia !== null) {
+                input.value = coincidencia.value;
+            }
+            // Vendedor: el código del elegido va al campo oculto que se envía.
+            if (input.id === 'import-vendedor-select' && !input.disabled) {
+                document.getElementById('import-vendedor-code').value = coincidencia ? coincidencia.dataset.code : '';
+            }
+            var valido = !texto || input.disabled || input.closest('.form-group').style.display === 'none' || coincidencia !== null;
+            input.classList.toggle('is-invalid', !valido);
+            return valido;
+        }
+
+        campos.forEach(function (id) {
+            var input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('change', function () { validar(input); });
+            }
+        });
+
+        var form = document.querySelector('form[enctype="multipart/form-data"]');
+        if (form) {
+            form.addEventListener('submit', function (evento) {
+                var invalidos = campos.map(function (id) { return document.getElementById(id); })
+                    .filter(function (input) { return input && !validar(input); });
+                if (invalidos.length > 0) {
+                    evento.preventDefault();
+                    invalidos[0].focus();
+                    alert('Elegí un valor de la lista de sugerencias (o dejalo vacío).');
+                }
+            });
+        }
+    })();
+</script>
+
+<script>
+    // Con un archivo ya cargado, elegir otro cambia el botón de vuelta a "Procesar".
+    (function () {
+        var archivo = document.getElementById('import-archivo');
+        var boton = document.getElementById('import-procesar');
+        var aviso = document.getElementById('import-archivo-cargado');
+        if (!archivo || !boton || !aviso) {
+            return;
+        }
+        archivo.addEventListener('change', function () {
+            var nuevo = archivo.files && archivo.files.length > 0;
+            boton.textContent = nuevo ? 'Procesar (vista previa)' : 'Volver a analizar';
+            aviso.style.display = nuevo ? 'none' : '';
+        });
     })();
 </script>
 

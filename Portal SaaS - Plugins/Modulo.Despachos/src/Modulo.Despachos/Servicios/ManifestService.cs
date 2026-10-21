@@ -297,8 +297,7 @@ public class ManifestService : IManifestService
                 errors.Add($"El folio {d.Folio} ya está despachado en el manifiesto N° {other}; quítelo de este manifiesto.");
         }
 
-        if (driver != null && carrier != null && driver.CarrierId != carrier.Id)
-            warnings.Add("El chofer pertenece a otro transportista.");
+        warnings.AddRange(await CarrierWarningsAsync(m.CarrierId, vehicle, driver));
         if (driver?.LicenseExpiresAt is { } exp && exp < m.DispatchDate)
             warnings.Add($"La licencia del chofer venció el {exp:dd-MM-yyyy}.");
 
@@ -344,7 +343,7 @@ public class ManifestService : IManifestService
             : (await _db.Communes.FirstOrDefaultAsync(c => c.CompanyId == CompanyId && c.Id == origin.CommuneId))?.Name;
     }
 
-    public async Task ChangeVehicleOrDriverAsync(Guid manifestId, long vehicleId, long? trailerId, long driverId, string reason)
+    public async Task<IReadOnlyList<string>> ChangeVehicleOrDriverAsync(Guid manifestId, long vehicleId, long? trailerId, long driverId, string reason)
     {
         var m = await LoadAsync(manifestId);
         if (m.Status != ManifestStatuses.Dispatched)
@@ -366,10 +365,9 @@ public class ManifestService : IManifestService
         if (!RutChileno.IsValid(driver.TaxId))
             throw new InvalidOperationException("El RUT del chofer no es válido.");
 
-        // Si el vehículo nuevo es de otro transportista, el manifiesto pasa a ese transportista.
-        var carrierId = vehicle.CarrierId ?? m.CarrierId;
-        var carrier = await _db.Carriers.FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Id == carrierId)
-            ?? throw new InvalidOperationException("El transportista del vehículo no existe.");
+        // El transportista del manifiesto no cambia nunca de forma implícita (define pago y tarifa).
+        var carrier = await _db.Carriers.FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Id == m.CarrierId)
+            ?? throw new InvalidOperationException("El transportista del manifiesto no existe.");
         var origin = await _db.Origins.FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Id == m.OriginId)
             ?? throw new InvalidOperationException("El origen no existe.");
 
@@ -377,7 +375,6 @@ public class ManifestService : IManifestService
         m.VehicleId = vehicle.Id;
         m.TrailerId = trailer?.Id;
         m.DriverId = driver.Id;
-        m.CarrierId = carrier.Id;
         await TakeSnapshotAsync(m, carrier, vehicle, trailer, driver, origin);
         m.UpdatedAt = UtcNow;
         m.UpdatedBy = _user.UserId;
@@ -387,6 +384,22 @@ public class ManifestService : IManifestService
             after = new { plate = m.Plate, trailerPlate = m.TrailerPlate, driver = m.DriverName, driverTaxId = m.DriverTaxId, carrierId = m.CarrierId },
         });
         await _cost.RecalculateAsync(m);
+        return await CarrierWarningsAsync(m.CarrierId, vehicle, driver);
+    }
+
+    /// <summary>Advertencias (no errores): vehículo de otro transportista que el del manifiesto; chofer de otro que el del vehículo.</summary>
+    private async Task<List<string>> CarrierWarningsAsync(long manifestCarrierId, Vehicle? vehicle, Driver? driver)
+    {
+        var list = new List<string>();
+        if (vehicle != null && vehicle.CarrierId != manifestCarrierId)
+        {
+            var name = vehicle.CarrierId == null ? "sin transportista"
+                : (await _db.Carriers.FirstOrDefaultAsync(c => c.CompanyId == CompanyId && c.Id == vehicle.CarrierId))?.Name ?? "otro transportista";
+            list.Add($"El vehículo {vehicle.Plate} pertenece a {name}, distinto del transportista del manifiesto.");
+        }
+        if (vehicle != null && driver != null && driver.CarrierId != vehicle.CarrierId)
+            list.Add($"El chofer {driver.FullName} no pertenece al transportista del vehículo.");
+        return list;
     }
 
     // ---------------------------------------------------------------- Consulta

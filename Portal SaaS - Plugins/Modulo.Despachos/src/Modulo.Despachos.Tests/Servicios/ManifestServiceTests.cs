@@ -538,6 +538,67 @@ public class ManifestServiceTests
     }
 
     [Fact]
+    public async Task ChangeVehicle_DeOtroTransportista_MantieneTransportistaYAdvierte()
+    {
+        var env = ManifestTestEnv.Build(seedRates: false);
+        var otro = await env.Master.SaveCarrierAsync(new Carrier { Code = "MTO", Name = "MTO", TaxId = "76543210-3" });
+        await env.Tariff.SaveRateCardAsync(new RateCard { CommuneId = env.RancaguaId, CarrierId = env.CarrierId, Amount = 100000, ValidFrom = new DateOnly(2026, 1, 1) });
+        await env.Tariff.SaveRateCardAsync(new RateCard { CommuneId = env.RancaguaId, CarrierId = otro, Amount = 999000, ValidFrom = new DateOnly(2026, 1, 1) });
+        var veh = await env.Master.SaveVehicleAsync(new Vehicle { Plate = "OT-0001", CarrierId = otro });
+        var id = await env.DraftWithDocsAsync(100);
+        await env.Svc.DispatchAsync(id);
+
+        var warnings = await env.Svc.ChangeVehicleOrDriverAsync(id, veh, null, env.DriverId, "Reemplazo");
+
+        var m = (await env.Svc.GetAsync(id))!;
+        Assert.Equal(env.CarrierId, m.CarrierId);
+        Assert.Equal("OT0001", m.Plate);
+        Assert.Equal(100000m, m.CostCalculated); // tarifa del transportista del manifiesto
+        Assert.Contains(warnings, w => w.Contains("OT0001") && w.Contains("MTO") && w.Contains("distinto del transportista del manifiesto"));
+    }
+
+    [Fact]
+    public async Task Dispatch_VehiculoDeOtroTransportista_Warning()
+    {
+        var env = ManifestTestEnv.Build();
+        var otro = await env.Master.SaveCarrierAsync(new Carrier { Code = "MTO", Name = "MTO", TaxId = "76543210-3" });
+        var veh = await env.Master.SaveVehicleAsync(new Vehicle { Plate = "OT-0001", CarrierId = otro });
+        env.AddSap(1);
+        var id = await env.Svc.CreateDraftAsync(env.Header(vehicleId: veh));
+        await env.Svc.AddDocumentAsync(id, new DocumentCapture(null, DocumentKinds.Invoice, 1));
+        var r = await env.Svc.DispatchAsync(id);
+        Assert.True(r.Success);
+        Assert.Contains(r.Warnings, w => w.Contains("El vehículo OT0001 pertenece a MTO, distinto del transportista del manifiesto."));
+        // El chofer sí es del transportista del vehículo? No: es de TSM -> también advierte del chofer.
+        Assert.Contains(r.Warnings, w => w.Contains("no pertenece al transportista del vehículo"));
+        Assert.Equal(env.CarrierId, (await env.Svc.GetAsync(id))!.CarrierId);
+    }
+
+    [Fact]
+    public async Task Dispatch_ChoferDistintoAlTransportistaDelVehiculo_Warning_YSinWarningSiCoincideConElVehiculo()
+    {
+        var env = ManifestTestEnv.Build();
+        var otro = await env.Master.SaveCarrierAsync(new Carrier { Code = "MTO", Name = "MTO", TaxId = "76543210-3" });
+        var veh = await env.Master.SaveVehicleAsync(new Vehicle { Plate = "OT-0001", CarrierId = otro });
+        var drvOtro = await env.Master.SaveDriverAsync(new Driver { TaxId = "7654321-6", FullName = "Pedro", CarrierId = otro });
+        env.AddSap(1);
+        env.AddSap(2);
+
+        // Chofer de TSM con vehículo de TSM pero chofer de otro -> advierte el chofer.
+        var a = await env.Svc.CreateDraftAsync(env.Header(driverId: drvOtro));
+        await env.Svc.AddDocumentAsync(a, new DocumentCapture(null, DocumentKinds.Invoice, 1));
+        var ra = await env.Svc.DispatchAsync(a);
+        Assert.Contains(ra.Warnings, w => w.Contains("El chofer Pedro no pertenece al transportista del vehículo."));
+
+        // Vehículo y chofer de MTO con manifiesto de TSM: solo advierte el vehículo.
+        var b = await env.Svc.CreateDraftAsync(env.Header(vehicleId: veh, driverId: drvOtro));
+        await env.Svc.AddDocumentAsync(b, new DocumentCapture(null, DocumentKinds.Invoice, 2));
+        var rb = await env.Svc.DispatchAsync(b);
+        Assert.Contains(rb.Warnings, w => w.Contains("El vehículo"));
+        Assert.DoesNotContain(rb.Warnings, w => w.Contains("El chofer"));
+    }
+
+    [Fact]
     public async Task ChangeVehicle_SinMotivoOEnBorrador_Lanza()
     {
         var env = ManifestTestEnv.Build();

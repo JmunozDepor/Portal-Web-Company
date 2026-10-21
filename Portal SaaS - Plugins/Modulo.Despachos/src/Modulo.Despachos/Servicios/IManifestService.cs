@@ -51,8 +51,11 @@ public interface IManifestService
     /// <summary>Valida, sella la salida (UTC), toma el snapshot Res.154, calcula el costo y pasa los documentos a despachado.</summary>
     Task<DispatchResult> DispatchAsync(Guid manifestId);
 
-    /// <summary>Solo con el manifiesto despachado y con motivo: renueva el snapshot y recalcula el costo.</summary>
-    Task ChangeVehicleOrDriverAsync(Guid manifestId, long vehicleId, long? trailerId, long driverId, string reason);
+    /// <summary>
+    /// Solo con el manifiesto despachado y con motivo: renueva el snapshot y recalcula el costo. El transportista
+    /// del manifiesto nunca cambia; devuelve advertencias (vehículo/chofer de otro transportista).
+    /// </summary>
+    Task<IReadOnlyList<string>> ChangeVehicleOrDriverAsync(Guid manifestId, long vehicleId, long? trailerId, long driverId, string reason);
 
     /// <summary>Manifiesto con documentos, líneas de costo y eventos, o null si no existe.</summary>
     Task<Manifest?> GetAsync(Guid manifestId);

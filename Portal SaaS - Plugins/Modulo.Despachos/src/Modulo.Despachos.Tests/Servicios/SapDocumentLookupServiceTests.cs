@@ -401,6 +401,17 @@ public class SapDocumentLookupServiceTests
         }
     }
 
+    [Fact]
+    public void Seed_Factura_LosJoinsInv1ADln1FiltranBaseType15()
+    {
+        // INV1.BaseEntry/BaseLine apuntan a una entrega solo si BaseType = 15 (si no, pueden ser un pedido u otro documento).
+        var sql = SapQuerySeeds.Get(DocumentKinds.Invoice);
+        var joins = System.Text.RegularExpressions.Regex.Matches(sql, @"INNER JOIN DLN1 \w+ ON .*");
+        Assert.Equal(2, joins.Count);
+        foreach (System.Text.RegularExpressions.Match j in joins)
+            Assert.Matches(@"\w+\.""BaseType"" = 15", j.Value);
+    }
+
     [Theory]
     [InlineData("hana", true)]
     [InlineData("SAP HANA", true)]

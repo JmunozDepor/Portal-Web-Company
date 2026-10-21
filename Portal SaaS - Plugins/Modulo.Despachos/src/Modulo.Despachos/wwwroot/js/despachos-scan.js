@@ -85,7 +85,11 @@
         body.append('__RequestVerificationToken', token);
         return fetch(url, { method: 'POST', body: body, headers: { 'RequestVerificationToken': token }, credentials: 'same-origin' })
             .then(function (r) {
-                if (r.status === 403) { throw new Error('No tiene permiso para editar este manifiesto.'); }
+                // Sesión vencida: el servidor redirige al login (HTML) o responde 401/403.
+                var type = (r.headers.get('Content-Type') || '').toLowerCase();
+                if (r.redirected || r.status === 401 || r.status === 403 || (r.ok && type.indexOf('json') < 0)) {
+                    throw new Error('Sesión expirada o sin permiso. Recargue la página.');
+                }
                 if (!r.ok) { throw new Error('El servidor respondió ' + r.status + '.'); }
                 return r.json();
             })

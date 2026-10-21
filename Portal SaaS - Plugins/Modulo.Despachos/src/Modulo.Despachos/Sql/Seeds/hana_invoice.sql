@@ -16,12 +16,12 @@ SELECT
   T0."NumAtCard" AS "customer_po",
   (SELECT MIN(D1."BaseEntry")
      FROM INV1 L1
-     INNER JOIN DLN1 D1 ON D1."DocEntry" = L1."BaseEntry" AND D1."LineNum" = L1."BaseLine"
+     INNER JOIN DLN1 D1 ON D1."DocEntry" = L1."BaseEntry" AND D1."LineNum" = L1."BaseLine" AND L1."BaseType" = 15
      WHERE L1."DocEntry" = T0."DocEntry" AND D1."BaseType" = 17) AS "base_order_entry",
   (SELECT SUM(L2."Quantity") FROM INV1 L2 WHERE L2."DocEntry" = T0."DocEntry") AS "units",
   (SELECT COUNT(DISTINCT D3."U_NX_LPN")
      FROM INV1 L3
-     INNER JOIN DLN1 D2 ON D2."DocEntry" = L3."BaseEntry" AND D2."LineNum" = L3."BaseLine"
+     INNER JOIN DLN1 D2 ON D2."DocEntry" = L3."BaseEntry" AND D2."LineNum" = L3."BaseLine" AND L3."BaseType" = 15
      INNER JOIN ODLN D3 ON D3."DocEntry" = D2."DocEntry"
      WHERE L3."DocEntry" = T0."DocEntry") AS "packages",
   T0."DocTotal" AS "total_amount",

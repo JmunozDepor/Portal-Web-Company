@@ -37,6 +37,9 @@ public class CostEngineTests
         Assert.Contains("17:42", sur[0].Explanation);
         Assert.Contains("17:00", sur[0].Explanation);
         Assert.Equal(10, sur[0].RateSurchargeId);
+        // La explicación incluye el efecto, no solo la condición (spec §4.2c paso 4).
+        Assert.Contains("→ 20% de $150.000", sur[0].Explanation);
+        Assert.Contains("→ $25.000", sur[1].Explanation);
     }
 
     [Fact]

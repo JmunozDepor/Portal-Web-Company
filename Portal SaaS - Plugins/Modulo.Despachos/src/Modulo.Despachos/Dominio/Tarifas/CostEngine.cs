@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Modulo.Despachos.Models;
 
@@ -82,11 +83,25 @@ public class CostEngine
                     $"Efecto de recargo desconocido '{s.EffectType}' en el recargo '{s.Name}'.")
             });
             total += amount;
-            lines.Add(new CostLine("surcharge", null, null, s.Id, amount, $"{s.Name}: {ev.Explanation}"));
+            lines.Add(new CostLine("surcharge", null, null, s.Id, amount,
+                $"{s.Name}: {ev.Explanation} → {EffectText(s, baseAmount, ev.ExtraUnits, amount)}"));
         }
 
         return new CostResult("ok", total, baseAmount, lines);
     }
+
+    // Pesos chilenos con punto de miles, sin depender de la cultura del servidor.
+    private static readonly NumberFormatInfo Clp = new() { NumberGroupSeparator = ".", NumberDecimalDigits = 0 };
+
+    private static string Pesos(decimal v) => "$" + v.ToString("N0", Clp);
+
+    /// <summary>El efecto del recargo en palabras (spec §4.2c paso 4): "20% de $150.000", "$25.000", "2 × $10.000 = $20.000".</summary>
+    private static string EffectText(RateSurcharge s, decimal baseAmount, int extraUnits, decimal amount) => s.EffectType switch
+    {
+        "percent_of_base" => $"{s.Value.ToString("0.##", CultureInfo.InvariantCulture)}% de {Pesos(baseAmount)}",
+        "fixed_per_extra_unit" => $"{extraUnits} × {Pesos(s.Value)} = {Pesos(amount)}",
+        _ => Pesos(amount),
+    };
 
     private SurchargeEvaluation Evaluate(RateSurcharge s, TripCostInput trip)
     {

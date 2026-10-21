@@ -36,12 +36,17 @@ public sealed class IndexModel : MaestroPageModelBase
     });
 
     public Task<IActionResult> OnPostSaveAsync() => SaveCoreAsync(Input.Id, async () =>
-        await _data.SaveNotificationRecipientAsync(new NotificationRecipient
+        {
+            // El select solo lista usuarios del tenant, pero el POST es manipulable: se valida contra la misma lista.
+            if (!(await _users.ListAsync()).Any(u => u.Id == Input.UserId))
+                throw new InvalidOperationException("El usuario seleccionado no pertenece a la organización.");
+            await _data.SaveNotificationRecipientAsync(new NotificationRecipient
             {
                 Id = Input.Id,
                 UserId = Input.UserId,
                 IsActive = Input.IsActive,
-            }),
+            });
+        },
         Input.Id == 0 ? "Destinatario creado." : "Destinatario actualizado.");
 
     public Task<IActionResult> OnPostDeleteAsync(long id) => DeleteCoreAsync(() => _data.DeleteNotificationRecipientAsync(id), "Destinatario eliminado.");

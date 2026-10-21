@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -121,6 +122,34 @@ public class ManifiestosPermisosTests
     }
 
     [Fact]
+    public async Task RecalcularCosto_SinEdit_Forbid_ConEdit_Recalcula()
+    {
+        var (viewer, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View, PortalActions.Approve));
+        var id = await env.DraftWithDocsAsync(100);
+        await env.Svc.DispatchAsync(id);
+        Assert.IsType<ForbidResult>(await viewer.OnPostRecalcularCostoAsync(id));
+
+        env.User.Grant("Despachos.manifiestos", PortalActions.Edit);
+        Assert.IsType<RedirectToPageResult>(await viewer.OnPostRecalcularCostoAsync(id));
+        Assert.Contains(env.Db.ManifestEvents, e => e.ManifestId == id && e.EventType == ManifestEventTypes.CostRecalculated);
+    }
+
+    [Fact]
+    public async Task CorregirComuna_SinEdit_Forbid_ConEdit_Corrige()
+    {
+        var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View, PortalActions.Approve));
+        env.AddSap(300, commune: "Villa Nowhere");
+        var id = await env.DraftWithDocsAsync(300);
+        await env.Svc.DispatchAsync(id);
+        var docId = (await env.Svc.GetAsync(id))!.Documents.Single().Id;
+        Assert.IsType<ForbidResult>(await page.OnPostCorregirComunaAsync(id, docId, env.CuricoId));
+
+        env.User.Grant("Despachos.manifiestos", PortalActions.Edit);
+        Assert.IsType<RedirectToPageResult>(await page.OnPostCorregirComunaAsync(id, docId, env.CuricoId));
+        Assert.Equal(env.CuricoId, (await env.Svc.GetAsync(id))!.Documents.Single().DestinationCommuneId);
+    }
+
+    [Fact]
     public async Task AgregarDocumento_SinEdit_Forbid()
     {
         var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View));
@@ -218,6 +247,53 @@ public class ManifiestosPermisosTests
 
         Assert.NotNull(page.ErrorMessage);
         Assert.Equal(ManifestStatuses.Dispatched, (await env.Svc.GetAsync(id))!.Status);
+    }
+
+    /// <summary>ITenantUserAdminService mínimo: solo ListAsync responde (lo único que usa la pantalla).</summary>
+    private class UsersProxy : DispatchProxy
+    {
+        public IReadOnlyList<TenantUserDto> Users { get; set; } = Array.Empty<TenantUserDto>();
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) =>
+            targetMethod!.Name == nameof(ITenantUserAdminService.ListAsync)
+                ? Task.FromResult(Users)
+                : throw new NotImplementedException(targetMethod.Name);
+    }
+
+    [Fact]
+    public async Task Destinatarios_UsuarioAjenoAlTenant_NoSeGuarda()
+    {
+        var env = ManifestTestEnv.Build();
+        env.User.Grant("Despachos.destinatarios-avisos", PortalActions.View, PortalActions.Create);
+        var own = new TenantUserDto { Id = Guid.NewGuid(), Username = "ana", Email = "a@x.cl", IsAdmin = false, IsActive = true, IsLocked = false };
+        var proxy = DispatchProxy.Create<ITenantUserAdminService, UsersProxy>();
+        ((UsersProxy)(object)proxy).Users = new[] { own };
+        var page = new Modulo.Despachos.Pages.Despachos.Configuracion.DestinatariosAvisos.IndexModel(env.Master, proxy, env.User) { TempData = Temp() };
+
+        page.Input = new() { UserId = Guid.NewGuid(), IsActive = true };
+        await page.OnPostSaveAsync();
+        Assert.NotNull(page.ErrorMessage);
+        Assert.Empty(await env.Master.ListNotificationRecipientsAsync(includeInactive: true));
+
+        page.ErrorMessage = null;
+        page.Input = new() { UserId = own.Id, IsActive = true };
+        await page.OnPostSaveAsync();
+        Assert.Null(page.ErrorMessage);
+        Assert.Single(await env.Master.ListNotificationRecipientsAsync(includeInactive: true));
+    }
+
+    [Fact]
+    public async Task Zonas_MensajesConGeneroFemenino()
+    {
+        var env = ManifestTestEnv.Build();
+        env.User.Grant("Despachos.zonas", PortalActions.View, PortalActions.Create, PortalActions.Delete);
+        var page = new Modulo.Despachos.Pages.Despachos.Configuracion.Zonas.IndexModel(env.Master, env.User) { TempData = Temp() };
+        page.Input = new() { Code = "Z1", Name = "Zona 1", IsActive = true, CommuneIds = new() { env.RancaguaId } };
+        await page.OnPostSaveAsync();
+        Assert.Equal("Zona creada.", page.SuccessMessage);
+        var id = (await env.Master.ListZonesAsync(includeInactive: true)).Single().Id;
+        await page.OnPostDeleteAsync(id);
+        Assert.Equal("Zona eliminada.", page.SuccessMessage);
     }
 
     [Fact]

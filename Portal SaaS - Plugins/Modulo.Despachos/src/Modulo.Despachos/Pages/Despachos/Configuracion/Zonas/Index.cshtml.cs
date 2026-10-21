@@ -47,9 +47,9 @@ public sealed class IndexModel : MaestroPageModelBase
                 IsActive = Input.IsActive,
                 Communes = Input.CommuneIds.Select(cid => new ZoneCommune { CommuneId = cid }).ToList(),
             }),
-        Input.Id == 0 ? "Zona creado." : "Zona actualizado.");
+        Input.Id == 0 ? "Zona creada." : "Zona actualizada.");
 
-    public Task<IActionResult> OnPostDeleteAsync(long id) => DeleteCoreAsync(() => _data.DeleteZoneAsync(id), "Zona eliminado.");
+    public Task<IActionResult> OnPostDeleteAsync(long id) => DeleteCoreAsync(() => _data.DeleteZoneAsync(id), "Zona eliminada.");
 
     public sealed class ZonaInput
     {

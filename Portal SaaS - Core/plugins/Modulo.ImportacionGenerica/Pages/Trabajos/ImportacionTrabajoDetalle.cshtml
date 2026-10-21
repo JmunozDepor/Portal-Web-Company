@@ -8,43 +8,92 @@
 }
 
 <div class="mb-2">
-    <a asp-page="/Trabajos/ImportacionTrabajos" class="btn btn-outline-secondary btn-sm">← Volver a Mis importaciones</a>
+    <a asp-page="/Trabajos/ImportacionTrabajos" asp-route-view="@(job.IsSaved ? "guardadas" : null)" class="btn btn-outline-secondary btn-sm">← Volver a Mis importaciones</a>
 </div>
 <h1 class="h3 mb-3">Importación: @job.FileName</h1>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
 
 <div class="card-ps doc-tab-seccion mb-3">
     <div class="form-row">
         <div class="form-group"><span class="form-label">Documento</span><div>@ImportDisplayNames.Of(job.Parameters.Module) · @ImportDisplayNames.Of(job.Parameters.DocumentType)</div></div>
         <div class="form-group"><span class="form-label">Socio de negocio</span><div>@(job.Parameters.BusinessPartnerCardCode ?? "—")</div></div>
         <div class="form-group"><span class="form-label">Usuario</span><div>@job.Username</div></div>
-        <div class="form-group"><span class="form-label">Enviado</span><div>@Fecha(job.QueuedAt)</div></div>
-        <div class="form-group"><span class="form-label">Inicio</span><div>@Fecha(job.StartedAt)</div></div>
-        <div class="form-group"><span class="form-label">Fin</span><div>@Fecha(job.FinishedAt)</div></div>
+        @if (job.IsSaved)
+        {
+            <div class="form-group"><span class="form-label">Guardada</span><div>@Fecha(job.SavedAt)</div></div>
+        }
+        else
+        {
+            <div class="form-group"><span class="form-label">Enviado</span><div>@Fecha(job.QueuedAt)@(job.SubmittedByUsername is null ? "" : $" por {job.SubmittedByUsername}")</div></div>
+            <div class="form-group"><span class="form-label">Inicio</span><div>@Fecha(job.StartedAt)</div></div>
+            <div class="form-group"><span class="form-label">Fin</span><div>@Fecha(job.FinishedAt)</div></div>
+        }
     </div>
+    @if (job.SavedReason is not null)
+    {
+        <div class="form-row">
+            <div class="form-group form-group-ancho-completo"><span class="form-label">Motivo de guardado</span><div>@job.SavedReason</div></div>
+        </div>
+    }
 </div>
 
-<div class="card-ps doc-tab-seccion mb-3">
-    <span class="doc-resumen-total-titulo">Avance</span>
-    <div class="progress" style="height: 1.5rem">
-        <div id="trabajo-progreso-barra" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+@if (job.IsSaved)
+{
+    @* Carga guardada sin enviar (borradores etapa 2): sin edición. Revalidar = vista previa
+       recalculada contra SAP con el mismo archivo y parámetros (Importar ?job=). *@
+    <div class="card-ps doc-tab-seccion mb-3">
+        <span class="doc-resumen-total-titulo">Guardada sin enviar</span>
+        <p class="text-muted mb-2">
+            No se creó nada en SAP. Cuando estén corregidos los precios o el stock en SAP (o llegue la confirmación),
+            revalidala para ver el resultado actualizado y enviala. Al enviar, el servidor vuelve a validar: las OC que
+            sigan con errores no se envían. Cada documento lleva su marca de origen, así que reenviar nunca lo duplica.
+        </p>
+        <div class="admin-row-actions">
+            <a asp-page="/Importar/Index" asp-route-job="@job.Id" class="btn btn-primary">Revalidar contra SAP</a>
+            <form method="post" asp-page-handler="Send" asp-route-id="@job.Id" class="d-inline"
+                  onsubmit="return confirm('¿Enviar esta carga a SAP sin revalidar antes en pantalla? Las OC con errores no se envían.');">
+                <button type="submit" class="btn btn-success">Enviar a SAP</button>
+            </form>
+            <form method="post" asp-page-handler="Discard" asp-route-id="@job.Id" class="d-inline"
+                  onsubmit="return confirm('¿Descartar esta carga guardada? No se puede deshacer.');">
+                <button type="submit" class="btn btn-outline-danger">Descartar</button>
+            </form>
+        </div>
     </div>
-    <div id="trabajo-progreso-mensaje" class="text-muted mt-1 small">@job.ProgressMessage</div>
-</div>
+}
+else
+{
+    <div class="card-ps doc-tab-seccion mb-3">
+        <span class="doc-resumen-total-titulo">Avance</span>
+        <div class="progress" style="height: 1.5rem">
+            <div id="trabajo-progreso-barra" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+        </div>
+        <div id="trabajo-progreso-mensaje" class="text-muted mt-1 small">@job.ProgressMessage</div>
+    </div>
 
-<div id="trabajo-resultado"></div>
+    <div id="trabajo-resultado"></div>
 
-<script src="~/js/importacion-resultado.js"></script>
-<script>
-    (function () {
-        var ir = window.importacionResultado;
-        var barra = document.getElementById('trabajo-progreso-barra');
-        var mensaje = document.getElementById('trabajo-progreso-mensaje');
-        var resultado = document.getElementById('trabajo-resultado');
-        ir.seguir('?handler=Progress',
-            function (progreso) { ir.actualizarBarra(barra, mensaje, progreso); },
-            function (progreso) {
-                ir.actualizarBarra(barra, mensaje, progreso.total > 0 ? progreso : { current: 1, total: 1, message: progreso.message });
-                ir.renderizar(resultado, progreso);
-            });
-    })();
-</script>
+    <script src="~/js/importacion-resultado.js"></script>
+    <script>
+        (function () {
+            var ir = window.importacionResultado;
+            var barra = document.getElementById('trabajo-progreso-barra');
+            var mensaje = document.getElementById('trabajo-progreso-mensaje');
+            var resultado = document.getElementById('trabajo-resultado');
+            ir.seguir('?handler=Progress',
+                function (progreso) { ir.actualizarBarra(barra, mensaje, progreso); },
+                function (progreso) {
+                    ir.actualizarBarra(barra, mensaje, progreso.total > 0 ? progreso : { current: 1, total: 1, message: progreso.message });
+                    ir.renderizar(resultado, progreso);
+                });
+        })();
+    </script>
+}

@@ -43,8 +43,8 @@ else
         </div>
     </form>
 
-    @* Parámetros de documentos de la compañía -- hoy: vencimiento de borradores (digitados
-       y, más adelante, importaciones masivas guardadas sin enviar). *@
+    @* Parámetros de documentos de la compañía: vencimiento de borradores (digitados e
+       importaciones masivas guardadas sin enviar) y UDF de la marca de origen. *@
     <form method="post" asp-page-handler="Retention" class="form-layout-admin-card mb-3">
         <input type="hidden" name="companyId" value="@Model.CompanyId" />
         <div class="form-layout-admin-header">
@@ -53,8 +53,8 @@ else
         </div>
         <label class="form-label mt-2 mb-0" for="draft-retention-days">Vencimiento de borradores</label>
         <p class="doc-form-layout-hint mb-1">
-            Días sin modificar tras los cuales un borrador (pendiente o ya enviado) se elimina automáticamente.
-            Vacío = no vencen nunca.
+            Días sin modificar tras los cuales un borrador (pendiente o ya enviado) se elimina automáticamente. También
+            vence las importaciones masivas guardadas sin enviar (contando desde que se guardaron). Vacío = no vencen nunca.
         </p>
         <div class="d-flex align-items-center gap-2">
             <input id="draft-retention-days" type="number" name="draftRetentionDays" min="1" max="3650" value="@Model.DraftRetentionDays"

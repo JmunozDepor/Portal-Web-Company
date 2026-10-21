@@ -21,10 +21,12 @@ namespace PortalSaas.Core.ImportacionGenerica;
 /// solo para ir guardando el progreso del registro -- un DbContext no se puede usar desde
 /// dos tareas a la vez.
 ///
-/// Al arrancar: los trabajos que quedaron "Running" (reinicio del Host a mitad) se marcan
-/// como fallidos -- NO se reintentan solos, podrían duplicar pedidos ya creados (la regla
-/// "OC ya cargada en SAP" ayuda a detectarlo si se vuelve a cargar). Los "Queued" se
-/// vuelven a encolar. Además limpia borradores viejos y el Excel de trabajos antiguos.
+/// Al arrancar: los trabajos que quedaron "Running" (reinicio del Host a mitad) pasan a
+/// "Saved" (guardados) y se avisa por la campana -- NO se reintentan solos; al reenviarlos,
+/// la marca de origen de cada documento (IDocumentSapMarkerService) evita duplicar los que
+/// ya se crearon (2026-10-21; antes quedaban fallidos y había que revisar SAP a mano). Los
+/// "Queued" se vuelven a encolar. Además limpia borradores temporales viejos y el Excel de
+/// trabajos antiguos. Los "Saved" los vence DocumentDraftCleanupWorker (retención por compañía).
 /// </summary>
 public sealed class GenericImportJobWorker : BackgroundService
 {
@@ -82,12 +84,27 @@ public sealed class GenericImportJobWorker : BackgroundService
         var db = scope.ServiceProvider.GetRequiredService<PortalSaasDbContext>();
         var now = DateTimeOffset.UtcNow;
 
-        foreach (var interrupted in await db.GenericImportJobs.Where(j => j.Status == GenericImportJobStatus.Running).ToListAsync(ct))
+        // Interrumpidos: con el archivo disponible pasan a "Guardada" para reenviarlos -- cada
+        // documento lleva la marca de origen (IDocumentSapMarkerService), así que al
+        // reenviar los que ya alcanzaron a crearse se reconocen y NO se duplican. Sin
+        // archivo (no debería pasar) quedan fallidos como antes.
+        var interruptedJobs = await db.GenericImportJobs.Where(j => j.Status == GenericImportJobStatus.Running).ToListAsync(ct);
+        foreach (var interrupted in interruptedJobs)
         {
-            interrupted.Status = GenericImportJobStatus.Failed;
-            interrupted.FinishedAt = now;
-            interrupted.ResultMessage = "Interrumpido por un reinicio del servidor -- algunos pedidos pueden haber quedado creados. " +
-                "Revisá en SAP antes de volver a cargar (la regla \"OC ya cargada en SAP\" lo detecta).";
+            if (interrupted.FileContent is { Length: > 0 })
+            {
+                interrupted.Status = GenericImportJobStatus.Saved;
+                interrupted.SavedAt = now;
+                interrupted.SavedReason = InterruptedReason;
+                interrupted.ProgressMessage = "Interrumpida por un reinicio del servidor -- guardada para reenviar.";
+            }
+            else
+            {
+                interrupted.Status = GenericImportJobStatus.Failed;
+                interrupted.FinishedAt = now;
+                interrupted.ResultMessage = "Interrumpido por un reinicio del servidor -- algunos pedidos pueden haber quedado creados. " +
+                    "Revisá en SAP antes de volver a cargar (la regla \"OC ya cargada en SAP\" lo detecta).";
+            }
         }
 
         var queued = await db.GenericImportJobs.Where(j => j.Status == GenericImportJobStatus.Queued)
@@ -107,11 +124,27 @@ public sealed class GenericImportJobWorker : BackgroundService
 
         await db.SaveChangesAsync(ct);
 
+        var notifications = scope.ServiceProvider.GetService<INotificationService>();
+        foreach (var interrupted in interruptedJobs.Where(j => j.Status == GenericImportJobStatus.Saved))
+        {
+            if (notifications is not null)
+            {
+                await notifications.TryEnqueueAsync(interrupted.SubmittedByUserId ?? interrupted.UserId, "Importación interrumpida",
+                    $"{interrupted.FileName}: el envío a SAP se cortó por un reinicio del servidor. Quedó guardada -- reenviala; " +
+                    "los documentos que ya se crearon no se duplican.",
+                    NotificationSeverity.Warning, $"/importacion-generica/trabajos/{interrupted.Id}", CancellationToken.None);
+            }
+        }
+
         foreach (var jobId in queued)
         {
             _queue.Enqueue(jobId);
         }
     }
+
+    internal const string InterruptedReason =
+        "Envío interrumpido por un reinicio del servidor. Al reenviar, los documentos que ya se alcanzaron a crear en SAP " +
+        "se reconocen por su marca de origen y no se duplican.";
 
     private async Task ProcessJobAsync(Guid jobId, CancellationToken ct)
     {
@@ -151,7 +184,9 @@ public sealed class GenericImportJobWorker : BackgroundService
                 throw new InvalidOperationException(preview.ErrorMessage ?? "El archivo no se pudo procesar con este formato.");
             }
 
-            var creation = importService.CreateDocumentsAsync(progressKey, job.Username, parameters, preview.Documents, ct);
+            // Firma de los documentos (U_PortalUser): quien envía -- una carga guardada la
+            // puede enviar otro usuario con permiso.
+            var creation = importService.CreateDocumentsAsync(progressKey, job.SubmittedByUsername ?? job.Username, parameters, preview.Documents, ct);
             while (!creation.IsCompleted)
             {
                 await Task.WhenAny(creation, Task.Delay(ProgressPersistInterval, ct));
@@ -212,6 +247,13 @@ public sealed class GenericImportJobWorker : BackgroundService
         }
         await notifications.TryEnqueueAsync(job.UserId, "Importación genérica",
             $"{job.FileName}: {job.ResultMessage}", severity, $"/importacion-generica/trabajos/{job.Id}", CancellationToken.None);
+
+        // Carga guardada enviada por otro usuario: también le avisa a quien la envió.
+        if (job.SubmittedByUserId is { } submitter && submitter != job.UserId)
+        {
+            await notifications.TryEnqueueAsync(submitter, "Importación genérica",
+                $"{job.FileName}: {job.ResultMessage}", severity, $"/importacion-generica/trabajos/{job.Id}", CancellationToken.None);
+        }
     }
 
     private static string? Truncate(string? value, int max) => value is null || value.Length <= max ? value : value[..max];

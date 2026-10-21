@@ -67,6 +67,7 @@ public sealed class GenericImportService : IGenericImportService
     private readonly IItemStockService _stock;
     private readonly ISalesEmployeeCatalogService _salesEmployees;
     private readonly IHanaService _hana;
+    private readonly IDocumentSapMarkerService _markers;
     private readonly ILogger<GenericImportService> _logger;
 
     public GenericImportService(IGenericImportConfigService config, IGenericImportUserFieldService userFieldsCatalog,
@@ -75,8 +76,10 @@ public sealed class GenericImportService : IGenericImportService
         IPriceListService priceList, ICustomerCatalogService customers, ISupplierCatalogService suppliers,
         ISalesDocumentService sales, IPurchaseDocumentService purchase, IInventoryDocumentService inventory,
         IGenericImportProgressStore progress, IGenericImportValidationRuleEngine validationEngine, IItemStockService stock,
-        ISalesEmployeeCatalogService salesEmployees, IHanaService hana, ILogger<GenericImportService> logger)
+        ISalesEmployeeCatalogService salesEmployees, IHanaService hana, IDocumentSapMarkerService markers,
+        ILogger<GenericImportService> logger)
     {
+        _markers = markers;
         _config = config;
         _userFieldsCatalog = userFieldsCatalog;
         _partnerDefaults = partnerDefaults;
@@ -677,6 +680,13 @@ public sealed class GenericImportService : IGenericImportService
             };
         }
 
+        // Marca de origen anti-duplicados (borradores etapa 2, 2026-10-21): solo con un
+        // trabajo real (jobId = Guid del GenericImportJob). Clave = trabajo + documento del
+        // archivo, así reenviar el MISMO trabajo (interrumpido o guardado) reconoce lo ya
+        // creado. Un archivo subido de nuevo es otro trabajo: ahí sigue mandando la regla
+        // "OC ya cargada en SAP".
+        Guid? markerJob = Guid.TryParse(jobId, out var parsedJob) ? parsedJob : null;
+
         foreach (var document in creatable)
         {
             processed++;
@@ -696,11 +706,34 @@ public sealed class GenericImportService : IGenericImportService
 
             try
             {
+                DocumentSapMarker? marker = null;
+                if (markerJob is { } job)
+                {
+                    marker = await _markers.GetMarkerAsync(MarkerKey(job, document.GroupingKey), ct);
+                    if (await FindAlreadyCreatedAsync(parameters, marker.UdfValue, ct) is { } existing)
+                    {
+                        for (var b = 1; b <= totalBatchesDocument; b++)
+                        {
+                            ReportBatch(b);
+                        }
+
+                        results.Add(existing.Lines >= document.Rows.Count
+                            ? WithSummary(new GenericImportDocumentResultDto(document.GroupingKey, true, existing.DocNum,
+                                "Ya estaba creado en SAP (envío anterior interrumpido) -- no se duplicó."))
+                                with { DocEntry = existing.DocEntry, SapDocTotal = existing.DocTotal }
+                            : WithSummary(new GenericImportDocumentResultDto(document.GroupingKey, false, existing.DocNum,
+                                $"Quedó a medio cargar en SAP en un envío anterior (DocEntry {existing.DocEntry}, {existing.Lines} de " +
+                                $"{document.Rows.Count} líneas) -- no se reenvió para no duplicarlo; completalo o cancelalo en SAP."))
+                                with { DocEntry = existing.DocEntry });
+                        continue;
+                    }
+                }
+
                 var (docEntry, docNum, docTotal) = parameters.Module switch
                 {
-                    GenericImportModule.Sales => await CreateSalesDocumentAsync(parameters, document, portalUsername, ReportBatch, ct),
-                    GenericImportModule.Purchase => await CreatePurchaseDocumentAsync(parameters, document, portalUsername, ReportBatch, ct),
-                    GenericImportModule.Inventory => await CreateInventoryDocumentAsync(parameters, document, portalUsername, ReportBatch, ct),
+                    GenericImportModule.Sales => await CreateSalesDocumentAsync(parameters, document, portalUsername, marker, ReportBatch, ct),
+                    GenericImportModule.Purchase => await CreatePurchaseDocumentAsync(parameters, document, portalUsername, marker, ReportBatch, ct),
+                    GenericImportModule.Inventory => await CreateInventoryDocumentAsync(parameters, document, portalUsername, marker, ReportBatch, ct),
                     _ => throw new InvalidOperationException($"Módulo {parameters.Module} no soportado."),
                 };
 
@@ -734,6 +767,45 @@ public sealed class GenericImportService : IGenericImportService
     }
 
     private static int CountOfBatches(int rowCount) => Math.Max(1, (int)Math.Ceiling(rowCount / (double)DefaultBatchSize));
+
+    /// <summary>
+    /// Clave de la marca de origen de un documento de un trabajo: 16 hex del trabajo + "-" +
+    /// 12 hex del SHA-256 de la clave de agrupamiento (29 caracteres, entra en un UDF de 50).
+    /// Determinística: reenviar el mismo trabajo genera las mismas claves.
+    /// </summary>
+    internal static string MarkerKey(Guid jobId, string groupingKey) =>
+        $"{jobId.ToString("N")[..16]}-{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(groupingKey)))[..12].ToLowerInvariant()}";
+
+    internal static string EngineOf(GenericImportModule module) => module switch
+    {
+        GenericImportModule.Sales => DocumentDraftEngine.Sales,
+        GenericImportModule.Purchase => DocumentDraftEngine.Purchase,
+        GenericImportModule.Inventory => DocumentDraftEngine.Inventory,
+        _ => throw new InvalidOperationException($"Módulo {module} no soportado."),
+    };
+
+    /// <summary>Documento ya creado en SAP con esta marca (envío anterior interrumpido), con su cantidad de líneas; null si no existe.</summary>
+    private async Task<(int DocEntry, int DocNum, decimal? DocTotal, int Lines)?> FindAlreadyCreatedAsync(GenericImportParametersDto parameters,
+        string markerKey, CancellationToken ct)
+    {
+        if (await _markers.FindDocEntryAsync(EngineOf(parameters.Module), parameters.DocumentType, markerKey, ct) is not { } docEntry)
+        {
+            return null;
+        }
+
+        switch (parameters.Module)
+        {
+            case GenericImportModule.Sales:
+                var sale = await _sales.GetAsync(Enum.Parse<SalesDocumentType>(parameters.DocumentType), docEntry, ct);
+                return (docEntry, sale?.DocNum ?? 0, sale?.DocTotal, sale?.Lines.Count ?? 0);
+            case GenericImportModule.Purchase:
+                var purchase = await _purchase.GetAsync(Enum.Parse<PurchaseDocumentType>(parameters.DocumentType), docEntry, ct);
+                return (docEntry, purchase?.DocNum ?? 0, purchase?.DocTotal, purchase?.Lines.Count ?? 0);
+            default:
+                var transfer = await _inventory.GetAsync(Enum.Parse<InventoryDocumentType>(parameters.DocumentType), docEntry, ct);
+                return (docEntry, transfer?.DocNum ?? 0, null, transfer?.Lines.Count ?? 0);
+        }
+    }
 
     /// <summary>
     /// Reemplaza el almacén de cada fila por el del socio (OCRD.&lt;WarehouseUserField&gt;,
@@ -985,10 +1057,14 @@ public sealed class GenericImportService : IGenericImportService
     }
 
     private async Task<(int DocEntry, int DocNum, decimal? DocTotal)> CreateSalesDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
-        string portalUsername, Action<int> reportBatch, CancellationToken ct)
+        string portalUsername, DocumentSapMarker? marker, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<SalesDocumentType>(parameters.DocumentType);
         var fullDoc = await BuildSalesDocumentAsync(parameters, document, ct);
+        if (marker is not null)
+        {
+            fullDoc = fullDoc with { Comments = marker.ApplyToComments(fullDoc.Comments), AdditionalFields = marker.ApplyToAdditionalFields(fullDoc.AdditionalFields) };
+        }
         var batches = Chunk(fullDoc.Lines.ToList(), DefaultBatchSize);
         var doc = fullDoc with { Lines = batches[0] };
 
@@ -1057,10 +1133,14 @@ public sealed class GenericImportService : IGenericImportService
     }
 
     private async Task<(int DocEntry, int DocNum, decimal? DocTotal)> CreatePurchaseDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
-        string portalUsername, Action<int> reportBatch, CancellationToken ct)
+        string portalUsername, DocumentSapMarker? marker, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<PurchaseDocumentType>(parameters.DocumentType);
         var fullDoc = BuildPurchaseDocument(parameters, document);
+        if (marker is not null)
+        {
+            fullDoc = fullDoc with { Comments = marker.ApplyToComments(fullDoc.Comments), AdditionalFields = marker.ApplyToAdditionalFields(fullDoc.AdditionalFields) };
+        }
         var batches = Chunk(fullDoc.Lines.ToList(), DefaultBatchSize);
         var doc = fullDoc with { Lines = batches[0] };
 
@@ -1119,10 +1199,14 @@ public sealed class GenericImportService : IGenericImportService
     }
 
     private async Task<(int DocEntry, int DocNum, decimal? DocTotal)> CreateInventoryDocumentAsync(GenericImportParametersDto parameters, GenericImportDocumentDto document,
-        string portalUsername, Action<int> reportBatch, CancellationToken ct)
+        string portalUsername, DocumentSapMarker? marker, Action<int> reportBatch, CancellationToken ct)
     {
         var type = Enum.Parse<InventoryDocumentType>(parameters.DocumentType);
         var fullDoc = BuildInventoryDocument(parameters, document);
+        if (marker is not null)
+        {
+            fullDoc = fullDoc with { Comments = marker.ApplyToComments(fullDoc.Comments), AdditionalFields = marker.ApplyToAdditionalFields(fullDoc.AdditionalFields) };
+        }
         var batches = Chunk(fullDoc.Lines.ToList(), DefaultBatchSize);
         // Almacenes de cabecera: InventoryDocumentService los deriva de las líneas de este
         // primer lote (el más frecuente) -- en un traslado típico todas comparten

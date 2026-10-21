@@ -36,8 +36,31 @@ Rama `feat/borradores`. Dos etapas, decididas con el dueño del proyecto.
    Parámetro editable en Administración → Formularios.
 6. **Tests**: ciclo de vida, filtro por defecto, envío atómico/doble envío, limpieza.
 
-## Etapa 2 — piezas
+## Etapa 2 — piezas (implementada 2026-10-21)
 
-Estado nuevo en `GenericImportJob` ("Guardado"), visible en "Mis importaciones", excluido
-de la limpieza de borradores temporales y sujeto a la retención por compañía; acciones
-Revalidar / Enviar a SAP / Descartar; el control de archivo duplicado lo considera.
+1. **Datos**: estado `Saved` en `generic_import_jobs` + `saved_reason`, `saved_at`,
+   `submitted_by_user_id`, `submitted_by_username`. Migración aditiva
+   `GenericImportJobSaved` (Postgres + SQL Server), aplicada en las 4 bases.
+2. **Servicio** `IGenericImportJobService`: `SaveAsync` (borrador temporal → guardado,
+   motivo obligatorio), `DiscardAsync` (solo guardadas; campana al creador si descarta
+   otro), `EnqueueAsync` acepta guardadas y las envía con SUS parámetros (sin edición),
+   registra quién envía (firma U_PortalUser). Control de archivo duplicado: no se envía
+   ni guarda si el mismo archivo está en cola, en proceso o guardado en otro trabajo.
+   `ListAsync` trae siempre todas las guardadas + los últimos N enviados.
+3. **Importar**: bloque "Guardar sin enviar" (motivo) con cualquier vista previa válida,
+   aunque haya OC con errores. `?job={id}` abre una carga guardada en modo revalidación:
+   parámetros y archivo fijos, vista previa recalculada contra SAP, botón "Enviar a SAP".
+4. **Mis importaciones**: pestañas "Enviadas a SAP | Guardadas sin enviar"; en Guardadas,
+   filtro Creador (mis cargas por defecto / todos). Detalle de una guardada: motivo,
+   Revalidar contra SAP, Enviar a SAP, Descartar.
+5. **Marca de origen** (`IDocumentSapMarkerService`) en cada documento creado por un
+   trabajo: clave = 16 hex del trabajo + 12 hex del SHA-256 de la clave de agrupamiento.
+   Antes de crear se busca en SAP: si ya existe completo se informa "ya estaba creado, no
+   se duplicó"; si quedó a medio cargar (menos líneas) no se reenvía y se informa.
+6. **Interrumpidos**: al reiniciar, los trabajos "Running" con archivo pasan a `Saved`
+   (motivo "Envío interrumpido…") con aviso por la campana, en vez de quedar fallidos.
+7. **Retención**: `DocumentDraftCleanupWorker.CleanAsync` vence también las guardadas
+   (desde `saved_at`) según `company_document_settings.draft_retention_days`.
+8. **Tests**: guardar/motivo/doble guardado, envío por otro usuario con parámetros
+   guardados, duplicado contra guardada, descartar, listado con tope, clave de marca,
+   retención.

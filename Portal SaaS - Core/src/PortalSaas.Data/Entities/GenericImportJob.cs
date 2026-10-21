@@ -8,7 +8,9 @@ namespace PortalSaas.Data.Entities;
 /// y reporte final quedan acá para consultarlos después ("Mis importaciones").
 ///
 /// CompanyId (no OrganizationId) -- regla dura del proyecto para todo lo que depende del
-/// SAP de una compañía. Status: "Draft" | "Queued" | "Running" | "Completed" | "Failed".
+/// SAP de una compañía. Status: "Draft" | "Saved" | "Queued" | "Running" | "Completed" | "Failed".
+/// "Draft" es temporal (se borra al día); "Saved" = guardado sin enviar por el usuario
+/// (borradores etapa 2, 2026-10-21), vence según company_document_settings.
 /// </summary>
 public sealed class GenericImportJob
 {
@@ -21,6 +23,14 @@ public sealed class GenericImportJob
     public string Username { get; set; } = null!;
 
     public string Status { get; set; } = "Draft";
+
+    /// <summary>Motivo de "Guardar sin enviar" (obligatorio en ese estado).</summary>
+    public string? SavedReason { get; set; }
+    public DateTimeOffset? SavedAt { get; set; }
+
+    /// <summary>Quién lo envió a SAP (puede no ser el creador si era una carga guardada). Firma los documentos (U_PortalUser).</summary>
+    public Guid? SubmittedByUserId { get; set; }
+    public string? SubmittedByUsername { get; set; }
 
     // Parámetros del asistente (los mismos de GenericImportParametersDto).
     public string Module { get; set; } = null!;

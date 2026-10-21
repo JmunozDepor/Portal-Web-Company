@@ -29,15 +29,20 @@ public sealed class GenericImportJobService : IGenericImportJobService
     private readonly ICurrentUserContext _currentUser;
     private readonly IGenericImportJobQueue _queue;
     private readonly IGenericImportProgressStore _progress;
+    private readonly INotificationService? _notifications;
+
+    /// <summary>Largo máximo del motivo de "Guardar sin enviar" (columna saved_reason).</summary>
+    public const int SavedReasonMaxLength = 500;
 
     public GenericImportJobService(PortalSaasDbContext db, ICurrentCompanyAccessor currentCompany, ICurrentUserContext currentUser,
-        IGenericImportJobQueue queue, IGenericImportProgressStore progress)
+        IGenericImportJobQueue queue, IGenericImportProgressStore progress, INotificationService? notifications = null)
     {
         _db = db;
         _currentCompany = currentCompany;
         _currentUser = currentUser;
         _queue = queue;
         _progress = progress;
+        _notifications = notifications;
     }
 
     public async Task<Guid> CreateDraftAsync(GenericImportParametersDto parameters, string fileName, byte[] content, CancellationToken ct = default)
@@ -83,39 +88,126 @@ public sealed class GenericImportJobService : IGenericImportJobService
 
     public async Task<IReadOnlyList<GenericImportJobDto>> ListAsync(int take = 100, CancellationToken ct = default)
     {
-        var jobs = await _db.GenericImportJobs.AsNoTracking()
-            .Where(j => j.CompanyId == _currentCompany.CompanyId && j.Status != GenericImportJobStatus.Draft)
+        // Los "take" más recientes ya enviados + TODAS las guardadas: una carga guardada
+        // antigua no puede desaparecer del listado por quedar fuera del tope.
+        var sent = await _db.GenericImportJobs.AsNoTracking()
+            .Where(j => j.CompanyId == _currentCompany.CompanyId && j.Status != GenericImportJobStatus.Draft
+                && j.Status != GenericImportJobStatus.Saved)
             .OrderByDescending(j => j.CreatedAt)
             .Take(take)
             .Select(WithoutFile)
             .ToListAsync(ct);
-        return jobs.Select(Map).ToList();
+        var saved = await _db.GenericImportJobs.AsNoTracking()
+            .Where(j => j.CompanyId == _currentCompany.CompanyId && j.Status == GenericImportJobStatus.Saved)
+            .Select(WithoutFile)
+            .ToListAsync(ct);
+        return sent.Concat(saved).OrderByDescending(j => j.CreatedAt).Select(Map).ToList();
     }
 
     public async Task EnqueueAsync(Guid jobId, GenericImportParametersDto parameters, CancellationToken ct = default)
     {
         var job = await FindAsync(jobId, ct)
             ?? throw new InvalidOperationException("No se encontró el archivo procesado -- volvé a procesar el archivo.");
-        if (job.Status != GenericImportJobStatus.Draft)
+        if (job.Status is not (GenericImportJobStatus.Draft or GenericImportJobStatus.Saved))
         {
             throw new InvalidOperationException("Este archivo ya fue enviado a SAP -- revisá su estado en Mis importaciones.");
         }
 
-        // Doble envío: el mismo archivo (mismo contenido) ya está en cola o ejecutándose.
-        var running = await _db.GenericImportJobs.AnyAsync(j => j.CompanyId == job.CompanyId && j.FileHash == job.FileHash
-            && j.Id != job.Id && (j.Status == GenericImportJobStatus.Queued || j.Status == GenericImportJobStatus.Running), ct);
-        if (running)
+        if (job.FileContent is not { Length: > 0 })
         {
-            throw new InvalidOperationException("Ya hay una importación en curso con este mismo archivo -- esperá a que termine (Mis importaciones).");
+            throw new InvalidOperationException("El archivo de esta carga ya no está disponible -- volvé a subirlo.");
         }
 
-        ApplyParameters(job, parameters);
+        await EnsureNoOtherJobWithSameFileAsync(job, ct);
+
+        // Carga guardada: se envía tal cual se guardó (sin edición). Borrador temporal:
+        // con los parámetros finales del asistente.
+        if (job.Status == GenericImportJobStatus.Draft)
+        {
+            ApplyParameters(job, parameters);
+        }
+
         job.Status = GenericImportJobStatus.Queued;
         job.QueuedAt = DateTimeOffset.UtcNow;
+        job.SubmittedByUserId = _currentUser.UserId;
+        job.SubmittedByUsername = _currentUser.Username;
         job.ProgressMessage = "En cola -- esperando turno para enviar a SAP.";
         await _db.SaveChangesAsync(ct);
 
         _queue.Enqueue(job.Id);
+    }
+
+    public async Task SaveAsync(Guid jobId, GenericImportParametersDto parameters, string reason, CancellationToken ct = default)
+    {
+        reason = (reason ?? string.Empty).Trim();
+        if (reason.Length == 0)
+        {
+            throw new InvalidOperationException("Indicá el motivo por el que la carga queda guardada sin enviar.");
+        }
+        if (reason.Length > SavedReasonMaxLength)
+        {
+            throw new InvalidOperationException($"El motivo admite hasta {SavedReasonMaxLength} caracteres.");
+        }
+
+        var job = await FindAsync(jobId, ct)
+            ?? throw new InvalidOperationException("No se encontró el archivo procesado -- volvé a procesar el archivo.");
+        if (job.Status != GenericImportJobStatus.Draft)
+        {
+            throw new InvalidOperationException(job.Status == GenericImportJobStatus.Saved
+                ? "Esta carga ya está guardada -- la encontrás en Mis importaciones, pestaña Guardadas."
+                : "Este archivo ya fue enviado a SAP -- revisá su estado en Mis importaciones.");
+        }
+
+        await EnsureNoOtherJobWithSameFileAsync(job, ct);
+
+        ApplyParameters(job, parameters);
+        job.Status = GenericImportJobStatus.Saved;
+        job.SavedReason = reason;
+        job.SavedAt = DateTimeOffset.UtcNow;
+        job.ProgressMessage = "Guardada sin enviar.";
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task DiscardAsync(Guid jobId, CancellationToken ct = default)
+    {
+        var job = await FindAsync(jobId, ct)
+            ?? throw new InvalidOperationException("La carga ya no existe (otro usuario la descartó o venció).");
+        if (job.Status != GenericImportJobStatus.Saved)
+        {
+            throw new InvalidOperationException("Solo se puede descartar una carga guardada sin enviar.");
+        }
+
+        _db.GenericImportJobs.Remove(job);
+        await _db.SaveChangesAsync(ct);
+
+        if (_notifications is not null && job.UserId != _currentUser.UserId)
+        {
+            await _notifications.TryEnqueueAsync(job.UserId, "Carga guardada descartada",
+                $"{_currentUser.Username} descartó tu carga guardada \"{job.FileName}\" (motivo: {job.SavedReason}).",
+                NotificationSeverity.Warning, "/importacion-generica/trabajos?view=guardadas", ct);
+        }
+    }
+
+    /// <summary>
+    /// Control de archivo duplicado (mismo contenido, misma compañía): no se puede enviar ni
+    /// guardar si otro trabajo con ese archivo está en cola, ejecutándose o guardado.
+    /// </summary>
+    private async Task EnsureNoOtherJobWithSameFileAsync(GenericImportJob job, CancellationToken ct)
+    {
+        var other = await _db.GenericImportJobs.AsNoTracking()
+            .Where(j => j.CompanyId == job.CompanyId && j.FileHash == job.FileHash && j.Id != job.Id
+                && (j.Status == GenericImportJobStatus.Queued || j.Status == GenericImportJobStatus.Running
+                    || j.Status == GenericImportJobStatus.Saved))
+            .Select(j => new { j.Status, j.Username })
+            .FirstOrDefaultAsync(ct);
+        if (other is null)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(other.Status == GenericImportJobStatus.Saved
+            ? $"Este mismo archivo ya está guardado sin enviar (por {other.Username}) -- envialo o descartalo desde Mis importaciones, pestaña Guardadas."
+            : "Ya hay una importación en curso con este mismo archivo -- esperá a que termine (Mis importaciones).");
     }
 
     public async Task<GenericImportProgressDto?> GetProgressAsync(Guid jobId, CancellationToken ct = default)
@@ -145,6 +237,7 @@ public sealed class GenericImportJobService : IGenericImportJobService
         GenericImportJobStatus.Running => "En proceso",
         GenericImportJobStatus.Completed => "Terminado",
         GenericImportJobStatus.Failed => "Falló",
+        GenericImportJobStatus.Saved => "Guardada sin enviar",
         _ => "Borrador",
     };
 
@@ -171,6 +264,7 @@ public sealed class GenericImportJobService : IGenericImportJobService
     private static readonly System.Linq.Expressions.Expression<Func<GenericImportJob, GenericImportJob>> WithoutFile = j => new GenericImportJob
     {
         Id = j.Id, CompanyId = j.CompanyId, UserId = j.UserId, Username = j.Username, Status = j.Status,
+        SavedReason = j.SavedReason, SavedAt = j.SavedAt, SubmittedByUserId = j.SubmittedByUserId, SubmittedByUsername = j.SubmittedByUsername,
         Module = j.Module, DocumentType = j.DocumentType, LineType = j.LineType, BusinessPartnerCardCode = j.BusinessPartnerCardCode,
         ConfigId = j.ConfigId, SalesPersonCode = j.SalesPersonCode,
         ShipToCode = j.ShipToCode, WarehouseCode = j.WarehouseCode, FileName = j.FileName, FileHash = j.FileHash,
@@ -183,8 +277,12 @@ public sealed class GenericImportJobService : IGenericImportJobService
     internal static GenericImportJobDto Map(GenericImportJob job) => new()
     {
         Id = job.Id,
+        UserId = job.UserId,
         Username = job.Username,
         Status = job.Status,
+        SavedReason = job.SavedReason,
+        SavedAt = job.SavedAt,
+        SubmittedByUsername = job.SubmittedByUsername is { } submitter && submitter != job.Username ? submitter : null,
         Parameters = ParametersOf(job),
         FileName = job.FileName,
         ProgressCurrent = job.ProgressCurrent,

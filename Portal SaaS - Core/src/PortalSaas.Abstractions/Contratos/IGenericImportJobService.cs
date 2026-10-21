@@ -20,15 +20,28 @@ public interface IGenericImportJobService
 
     Task<GenericImportJobDto?> GetAsync(Guid jobId, CancellationToken ct = default);
 
-    /// <summary>Trabajos de la compañía activa, más recientes primero (sin borradores).</summary>
+    /// <summary>Trabajos de la compañía activa, más recientes primero: los últimos <paramref name="take"/> enviados + todas las cargas guardadas (sin borradores temporales).</summary>
     Task<IReadOnlyList<GenericImportJobDto>> ListAsync(int take = 100, CancellationToken ct = default);
 
     /// <summary>
-    /// Pasa el borrador a la cola con los parámetros finales y lo entrega al worker. Rechaza
-    /// con InvalidOperationException si ya no es borrador o si hay otro trabajo en curso
-    /// (en cola o ejecutándose) con el mismo archivo en la compañía.
+    /// Pasa el borrador a la cola y lo entrega al worker. Un borrador temporal toma los
+    /// parámetros finales recibidos; una carga GUARDADA se envía con los suyos (sin
+    /// edición) y la puede enviar cualquier usuario con permiso. Rechaza con
+    /// InvalidOperationException si ya se envió, si hay otro trabajo en curso con el mismo
+    /// archivo o si el mismo archivo está guardado en otro trabajo.
     /// </summary>
     Task EnqueueAsync(Guid jobId, GenericImportParametersDto parameters, CancellationToken ct = default);
+
+    /// <summary>
+    /// "Guardar sin enviar" (borradores etapa 2): el borrador temporal pasa a Guardado con
+    /// sus parámetros finales y el motivo (obligatorio). Ya no lo borra la limpieza de
+    /// borradores temporales; vence según la retención de la compañía. Rechaza si no es un
+    /// borrador temporal o si el mismo archivo ya está guardado o en curso en otro trabajo.
+    /// </summary>
+    Task SaveAsync(Guid jobId, GenericImportParametersDto parameters, string reason, CancellationToken ct = default);
+
+    /// <summary>Descarta (elimina) una carga guardada sin enviar. Avisa al creador si la descarta otro usuario.</summary>
+    Task DiscardAsync(Guid jobId, CancellationToken ct = default);
 
     /// <summary>Progreso para el polling de la pantalla: en vivo mientras corre, y desde la base cuando terminó (o tras un reinicio).</summary>
     Task<GenericImportProgressDto?> GetProgressAsync(Guid jobId, CancellationToken ct = default);

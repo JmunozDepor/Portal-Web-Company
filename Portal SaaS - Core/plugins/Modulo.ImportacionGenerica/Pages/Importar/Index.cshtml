@@ -19,7 +19,30 @@
     </div>
 }
 
-<div class="card-ps doc-tab-seccion mb-4">
+@if (Model.SavedJob is { } savedJob)
+{
+    @* Revalidación de una carga guardada (borradores etapa 2): sin edición -- parámetros y
+       archivo fijos, la vista previa de abajo se recalculó recién contra SAP. *@
+    <div class="alert alert-info">
+        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+            <div>
+                <strong>Carga guardada sin enviar</strong> · @savedJob.FileName<br />
+                Guardada por <strong>@savedJob.Username</strong> el @(savedJob.SavedAt?.ToLocalTime().ToString("dd-MM-yyyy HH:mm"))
+                · Motivo: <em>@savedJob.SavedReason</em><br />
+                <span class="small">
+                    @ImportDisplayNames.Of(savedJob.Parameters.Module) · @ImportDisplayNames.Of(savedJob.Parameters.DocumentType)
+                    · Socio @(savedJob.Parameters.BusinessPartnerCardCode ?? "del archivo")
+                    -- revalidada recién contra SAP (precios, stock, reglas). Los parámetros y el archivo no se modifican:
+                    si algo está mal en el archivo, descartá la carga y subí uno corregido.
+                </span>
+            </div>
+            <a asp-page="/Trabajos/ImportacionTrabajoDetalle" asp-route-id="@savedJob.Id" class="btn btn-sm btn-outline-secondary">Volver a la carga</a>
+        </div>
+    </div>
+}
+@* En revalidación el formulario de parámetros sigue en la página (los scripts de abajo lo
+   usan) pero oculto: una carga guardada no se edita. *@
+<div class="card-ps doc-tab-seccion mb-4" style="@(Model.SavedJob is null ? "" : "display:none")">
     <span class="doc-resumen-total-titulo">Parámetros</span>
     <form method="post" asp-page-handler="Process" enctype="multipart/form-data" asp-antiforgery="true">
         <input type="hidden" asp-for="Input.JobId" />
@@ -188,12 +211,46 @@
                     <input type="hidden" asp-for="Input.WarehouseCode" />
                     <input type="hidden" asp-for="Input.JobId" />
                 </form>
-                <button type="button" class="btn btn-success" id="btnConfirmar">Confirmar creación en SAP</button>
+                <button type="button" class="btn btn-success" id="btnConfirmar">@(Model.SavedJob is null ? "Confirmar creación en SAP" : "Enviar a SAP")</button>
                 <div id="progresoConfirmar" class="mt-3" style="display:none">
                     <div class="progress" style="height: 1.5rem">
                         <div id="progresoConfirmarBarra" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
                     </div>
                     <div id="progresoConfirmarMensaje" class="text-muted mt-1 small"></div>
+                </div>
+            }
+
+            @if (Model.SavedJob is null)
+            {
+                @* "Guardar sin enviar" (borradores etapa 2): disponible aunque haya OC con
+                   errores -- justamente para corregir precio/stock en SAP o esperar la
+                   confirmación del cliente, y después revalidar y enviar desde Mis
+                   importaciones. Fetch como Confirmar (mismo criterio del antiforgery). *@
+                <div class="import-save-later mt-3" id="guardarSinEnviar">
+                    <form id="formGuardar" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Input.Module" />
+                        <input type="hidden" asp-for="Input.SalesDocumentType" />
+                        <input type="hidden" asp-for="Input.PurchaseDocumentType" />
+                        <input type="hidden" asp-for="Input.InventoryDocumentType" />
+                        <input type="hidden" asp-for="Input.LineType" />
+                        <input type="hidden" asp-for="Input.BusinessPartnerCardCode" />
+                        <input type="hidden" asp-for="Input.ConfigId" />
+                        <input type="hidden" asp-for="Input.SalesPersonCode" />
+                        <input type="hidden" asp-for="Input.ShipToCode" />
+                        <input type="hidden" asp-for="Input.WarehouseCode" />
+                        <input type="hidden" asp-for="Input.JobId" />
+                        <label for="guardarMotivo" class="form-label mb-1">¿No la vas a enviar todavía? Guardala con un motivo</label>
+                        <div class="d-flex gap-2 flex-wrap align-items-start">
+                            <input type="text" id="guardarMotivo" name="reason" class="form-control" maxlength="500" style="max-width: 520px"
+                                   placeholder="Ej.: corregir precios en SAP / esperando confirmación del cliente" />
+                            <button type="button" class="btn btn-outline-primary" id="btnGuardar">Guardar sin enviar</button>
+                        </div>
+                        <div class="form-text">
+                            No crea nada en SAP. La carga queda en Mis importaciones (pestaña Guardadas), sin edición: se revalida
+                            contra SAP y la envía cualquier usuario con permiso, o se descarta.
+                        </div>
+                    </form>
                 </div>
             }
 
@@ -288,6 +345,10 @@
                     });
                 })
                 .then(function (encolado) {
+                    var btnGuardar = document.getElementById('btnGuardar');
+                    if (btnGuardar) {
+                        btnGuardar.disabled = true;
+                    }
                     resultadoDiv.innerHTML = '<div class="alert alert-info mt-3">' + ir.escaparHtml(encolado.message) +
                         ' <a href="' + encolado.reportUrl + '">Ver en Mis importaciones</a></div>';
                     ir.seguir('?handler=Progress&jobId=' + encodeURIComponent(encolado.jobId),
@@ -303,6 +364,61 @@
                 });
             // El botón queda deshabilitado tras encolar: el mismo archivo no se puede
             // volver a enviar (el servidor también lo rechaza).
+        });
+    })();
+
+    // "Guardar sin enviar" (borradores etapa 2): mismo patrón fetch + JSON que Confirmar.
+    (function () {
+        var btnGuardar = document.getElementById('btnGuardar');
+        if (!btnGuardar) {
+            return;
+        }
+
+        var formGuardar = document.getElementById('formGuardar');
+        var motivo = document.getElementById('guardarMotivo');
+        var resultadoDiv = document.getElementById('resultadoConfirmar');
+        var ir = window.importacionResultado;
+
+        btnGuardar.addEventListener('click', function () {
+            if (!motivo.value.trim()) {
+                motivo.classList.add('is-invalid');
+                motivo.focus();
+                return;
+            }
+            motivo.classList.remove('is-invalid');
+            btnGuardar.disabled = true;
+
+            fetch('?handler=Save', { method: 'POST', body: new FormData(formGuardar) })
+                .then(function (respuesta) {
+                    return respuesta.text().then(function (texto) {
+                        var data;
+                        try {
+                            data = JSON.parse(texto);
+                        } catch (parseErr) {
+                            throw new Error('HTTP ' + respuesta.status + ' ' + respuesta.statusText + ' -- ' + texto.slice(0, 500));
+                        }
+                        if (!respuesta.ok) {
+                            throw new Error(data.message || ('HTTP ' + respuesta.status));
+                        }
+                        return data;
+                    });
+                })
+                .then(function (guardado) {
+                    // Guardada: ya no se puede confirmar desde acá (se envía desde la carga guardada).
+                    var btnConfirmar = document.getElementById('btnConfirmar');
+                    if (btnConfirmar) {
+                        btnConfirmar.disabled = true;
+                    }
+                    motivo.disabled = true;
+                    resultadoDiv.innerHTML = '<div class="alert alert-success mt-3">' + ir.escaparHtml(guardado.message) +
+                        ' <a href="' + guardado.reportUrl + '">Ver la carga guardada</a></div>';
+                })
+                .catch(function (err) {
+                    console.error('Guardar importación sin enviar: falló', err);
+                    btnGuardar.disabled = false;
+                    resultadoDiv.innerHTML = '<div class="alert alert-danger mt-3">No se pudo guardar la carga -- ' +
+                        ir.escaparHtml(err.message || 'revisá la conexión e intentá de nuevo.') + '</div>';
+                });
         });
     })();
 </script>

@@ -229,4 +229,28 @@ public class DocumentDraftServiceTests
         Assert.True(await db.DocumentDrafts.AnyAsync(d => d.Status == DocumentDraftStatus.Sending));
         Assert.True(await db.DocumentDrafts.AnyAsync(d => d.CompanyId == otraCompania.Id));
     }
+
+    [Fact]
+    public async Task Limpieza_VenceLasImportacionesGuardadas_PeroNoLasEnviadas()
+    {
+        var (db, company) = await CrearAsync();
+        db.CompanyDocumentSettings.Add(new CompanyDocumentSettings { CompanyId = company, DraftRetentionDays = 30 });
+        var viejo = DateTimeOffset.UtcNow.AddDays(-40);
+        GenericImportJob Trabajo(string status, DateTimeOffset? savedAt) => new()
+        {
+            CompanyId = company, UserId = Guid.NewGuid(), Username = "ana", Status = status, Module = "Sales", DocumentType = "SalesOrder",
+            LineType = "Item", FileName = "a.xlsx", FileHash = Guid.NewGuid().ToString("N"), SavedAt = savedAt, CreatedAt = viejo,
+        };
+        var vencida = Trabajo(GenericImportJobStatus.Saved, viejo);
+        var vigente = Trabajo(GenericImportJobStatus.Saved, DateTimeOffset.UtcNow.AddDays(-2));
+        var terminada = Trabajo(GenericImportJobStatus.Completed, null);
+        db.GenericImportJobs.AddRange(vencida, vigente, terminada);
+        await db.SaveChangesAsync();
+
+        var eliminados = await DocumentDraftCleanupWorker.CleanAsync(db, DateTimeOffset.UtcNow, CancellationToken.None);
+
+        Assert.Equal(1, eliminados);
+        Assert.False(await db.GenericImportJobs.AnyAsync(j => j.Id == vencida.Id));
+        Assert.Equal(2, await db.GenericImportJobs.CountAsync());
+    }
 }

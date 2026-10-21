@@ -159,6 +159,137 @@ public sealed class GenericImportJobServiceTests
         Assert.False(progress.Finished);
     }
 
+    // ------------------------------------------------ guardar sin enviar (borradores etapa 2)
+
+    [Fact]
+    public async Task Guardar_pasa_a_Saved_con_motivo_y_parametros_y_aparece_en_el_listado()
+    {
+        var (service, queue, db, _) = Create(nameof(Guardar_pasa_a_Saved_con_motivo_y_parametros_y_aparece_en_el_listado));
+        await using var _db = db;
+        var id = await service.CreateDraftAsync(Parameters, "orden.xlsx", File1);
+
+        await service.SaveAsync(id, Parameters with { SalesPersonCode = 33 }, "  Corregir precios en SAP  ");
+
+        var job = Assert.Single(await service.ListAsync());
+        Assert.Equal(GenericImportJobStatus.Saved, job.Status);
+        Assert.True(job.IsSaved);
+        Assert.Equal("Corregir precios en SAP", job.SavedReason);
+        Assert.NotNull(job.SavedAt);
+        Assert.Equal(33, job.Parameters.SalesPersonCode);
+        Assert.Empty(queue.Enqueued);
+
+        // Guardar dos veces: rechazado.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveAsync(id, Parameters, "otra vez"));
+    }
+
+    [Fact]
+    public async Task Guardar_sin_motivo_se_rechaza()
+    {
+        var (service, _, db, _) = Create(nameof(Guardar_sin_motivo_se_rechaza));
+        await using var _db = db;
+        var id = await service.CreateDraftAsync(Parameters, "orden.xlsx", File1);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveAsync(id, Parameters, "   "));
+        Assert.Equal(GenericImportJobStatus.Draft, (await service.GetAsync(id))!.Status);
+    }
+
+    [Fact]
+    public async Task Guardada_la_envia_otro_usuario_con_los_parametros_guardados()
+    {
+        var name = nameof(Guardada_la_envia_otro_usuario_con_los_parametros_guardados);
+        var (creator, _, db, _) = Create(name);
+        await using var _db = db;
+        var id = await creator.CreateDraftAsync(Parameters, "orden.xlsx", File1);
+        await creator.SaveAsync(id, Parameters, "Esperando confirmación");
+
+        // Otro usuario (otro FakeUser) la envía; los parámetros que mande se ignoran (sin edición).
+        var otherDb = new PortalSaasDbContext(new DbContextOptionsBuilder<PortalSaasDbContext>().UseInMemoryDatabase(name).Options);
+        await using var _otherDb = otherDb;
+        var otherQueue = new FakeQueue();
+        var sender = new GenericImportJobService(otherDb, new FakeCompany(CompanyId), new FakeUserNamed("pedro"), otherQueue, new GenericImportProgressStore());
+
+        await sender.EnqueueAsync(id, Parameters with { SalesPersonCode = 999 });
+
+        var stored = await otherDb.GenericImportJobs.AsNoTracking().SingleAsync(j => j.Id == id);
+        Assert.Equal(GenericImportJobStatus.Queued, stored.Status);
+        Assert.Equal(12, stored.SalesPersonCode);
+        Assert.Equal("pedro", stored.SubmittedByUsername);
+        Assert.Equal([id], otherQueue.Enqueued);
+        Assert.Equal("pedro", (await sender.GetAsync(id))!.SubmittedByUsername);
+    }
+
+    [Fact]
+    public async Task Mismo_archivo_guardado_bloquea_enviar_o_guardar_otro_trabajo()
+    {
+        var (service, _, db, _) = Create(nameof(Mismo_archivo_guardado_bloquea_enviar_o_guardar_otro_trabajo));
+        await using var _db = db;
+        var saved = await service.CreateDraftAsync(Parameters, "orden.xlsx", File1);
+        await service.SaveAsync(saved, Parameters, "Corregir stock");
+
+        var again = await service.CreateDraftAsync(Parameters, "orden-de-nuevo.xlsx", File1);
+
+        var send = await Assert.ThrowsAsync<InvalidOperationException>(() => service.EnqueueAsync(again, Parameters));
+        Assert.Contains("guardado", send.Message);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveAsync(again, Parameters, "duplicado"));
+    }
+
+    [Fact]
+    public async Task Descartar_elimina_solo_cargas_guardadas()
+    {
+        var (service, _, db, _) = Create(nameof(Descartar_elimina_solo_cargas_guardadas));
+        await using var _db = db;
+        var draft = await service.CreateDraftAsync(Parameters, "a.xlsx", File1);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.DiscardAsync(draft));
+
+        await service.SaveAsync(draft, Parameters, "No va todavía");
+        await service.DiscardAsync(draft);
+
+        Assert.Null(await service.GetAsync(draft));
+    }
+
+    [Fact]
+    public async Task Listado_trae_las_guardadas_aunque_queden_fuera_del_tope()
+    {
+        var (service, _, db, _) = Create(nameof(Listado_trae_las_guardadas_aunque_queden_fuera_del_tope));
+        await using var _db = db;
+        var old = await service.CreateDraftAsync(Parameters, "vieja.xlsx", [9, 9]);
+        await service.SaveAsync(old, Parameters, "Esperando cliente");
+        (await db.GenericImportJobs.SingleAsync(j => j.Id == old)).CreatedAt = DateTimeOffset.UtcNow.AddDays(-10);
+        for (var i = 0; i < 3; i++)
+        {
+            var sent = await service.CreateDraftAsync(Parameters, $"enviada{i}.xlsx", [(byte)i]);
+            await service.EnqueueAsync(sent, Parameters);
+        }
+        await db.SaveChangesAsync();
+
+        var list = await service.ListAsync(take: 2);
+
+        Assert.Equal(3, list.Count);
+        Assert.Contains(list, j => j.Id == old && j.IsSaved);
+    }
+
+    [Fact]
+    public void Clave_de_marca_es_deterministica_corta_y_distinta_por_documento()
+    {
+        var job = Guid.NewGuid();
+
+        var a = GenericImportService.MarkerKey(job, "OC-1");
+
+        Assert.Equal(a, GenericImportService.MarkerKey(job, "OC-1"));
+        Assert.NotEqual(a, GenericImportService.MarkerKey(job, "OC-2"));
+        Assert.NotEqual(a, GenericImportService.MarkerKey(Guid.NewGuid(), "OC-1"));
+        Assert.True(a.Length <= 50);
+    }
+
+    private sealed class FakeUserNamed(string username) : ICurrentUserContext
+    {
+        public Guid UserId { get; } = Guid.NewGuid();
+        public string Username => username;
+        public bool IsAdmin => true;
+        public Guid OrganizationId { get; } = Guid.NewGuid();
+        public Task<bool> HasActionAsync(string menuCode, string actionCode, CancellationToken ct = default) => Task.FromResult(true);
+    }
+
     // ------------------------------------------------ consultas por tramos
 
     [Fact]

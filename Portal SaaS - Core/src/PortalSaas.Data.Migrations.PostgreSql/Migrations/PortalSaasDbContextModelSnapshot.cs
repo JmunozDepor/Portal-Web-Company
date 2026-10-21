@@ -756,6 +756,15 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("sales_person_code");
 
+                    b.Property<DateTimeOffset?>("SavedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("saved_at");
+
+                    b.Property<string>("SavedReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("saved_reason");
+
                     b.Property<string>("ShipToCode")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -770,6 +779,15 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("status");
+
+                    b.Property<Guid?>("SubmittedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by_user_id");
+
+                    b.Property<string>("SubmittedByUsername")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("submitted_by_username");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -797,7 +815,7 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
 
                     b.ToTable("generic_import_jobs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_generic_import_jobs_status", "status in ('Draft', 'Queued', 'Running', 'Completed', 'Failed')");
+                            t.HasCheckConstraint("ck_generic_import_jobs_status", "status in ('Draft', 'Saved', 'Queued', 'Running', 'Completed', 'Failed')");
                         });
                 });
 

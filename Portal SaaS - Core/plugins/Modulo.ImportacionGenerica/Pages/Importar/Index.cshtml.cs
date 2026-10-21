@@ -114,13 +114,81 @@ public sealed class IndexModel : PageModelBaseAdmin
     /// <summary>true = la configuración vigente para Módulo+TipoDocumento+TipoLínea trae el socio por columna del Excel (carga multi-socio) -- el selector de socio del wizard queda informativo, ver Index.cshtml.</summary>
     public bool BusinessPartnerFromFile { get; private set; }
 
-    public async Task OnGetAsync(CancellationToken ct)
+    /// <summary>
+    /// Carga guardada sin enviar que se está revalidando (?job={id}, borradores etapa 2) --
+    /// sus parámetros quedan fijos (sin edición) y la vista previa se recalcula contra SAP
+    /// con el mismo archivo. Null en el uso normal del asistente.
+    /// </summary>
+    public GenericImportJobDto? SavedJob { get; private set; }
+
+    public async Task<IActionResult> OnGetAsync([FromQuery(Name = "job")] Guid? job, CancellationToken ct)
+    {
+        if (job is { } savedJobId)
+        {
+            var saved = await _jobs.GetAsync(savedJobId, ct);
+            if (saved is null || !saved.IsSaved)
+            {
+                ErrorMessage = saved is null
+                    ? "La carga guardada ya no existe (otro usuario la descartó o venció)."
+                    : "Esa carga ya no está guardada: ya se envió a SAP.";
+                return RedirectToPage("/Trabajos/ImportacionTrabajos", new { view = "guardadas" });
+            }
+
+            await PrepareSavedJobAsync(saved, ct);
+            if (await _jobs.GetFileAsync(savedJobId, ct) is not { Length: > 0 } savedFile)
+            {
+                ErrorMessage = "El archivo de esta carga ya no está disponible.";
+                return RedirectToPage("/Trabajos/ImportacionTrabajoDetalle", new { id = savedJobId });
+            }
+
+            using var savedStream = new MemoryStream(savedFile);
+            PreviewResult = await _importService.ProcessFileAsync(BuildParameters(), savedStream, ct);
+            await LoadPreviewHeaderInfoAsync(ct);
+            return Page();
+        }
+
+        await LoadWizardAsync(ct);
+        return Page();
+    }
+
+    private async Task LoadWizardAsync(CancellationToken ct)
     {
         await LoadCreatableDocumentTypesAsync(ct);
         await LoadFormatsAsync(ct);
         await LoadSalesPersonAsync(ct);
         await ResolveBusinessPartnerFromFileAsync(ct);
         await LoadScreenHeaderAsync(ct);
+    }
+
+    /// <summary>
+    /// Fija el asistente con los parámetros de la carga guardada. Se aplican antes y después
+    /// de cargar los combos: los combos pueden "corregir" una elección (ej. el vendedor por
+    /// defecto del socio cambió en SAP), pero una carga guardada se revalida y se envía
+    /// EXACTAMENTE con lo que se guardó.
+    /// </summary>
+    private async Task PrepareSavedJobAsync(GenericImportJobDto saved, CancellationToken ct)
+    {
+        SavedJob = saved;
+        ApplyJobToInput(saved);
+        await LoadWizardAsync(ct);
+        ApplyJobToInput(saved);
+    }
+
+    private void ApplyJobToInput(GenericImportJobDto job)
+    {
+        var p = job.Parameters;
+        Input.Module = p.Module;
+        Input.SalesDocumentType = p.Module == GenericImportModule.Sales ? p.DocumentType : null;
+        Input.PurchaseDocumentType = p.Module == GenericImportModule.Purchase ? p.DocumentType : null;
+        Input.InventoryDocumentType = p.Module == GenericImportModule.Inventory ? p.DocumentType : null;
+        Input.LineType = p.LineType;
+        Input.BusinessPartnerCardCode = p.BusinessPartnerCardCode;
+        Input.ConfigId = p.ConfigId;
+        Input.SalesPersonCode = p.SalesPersonCode;
+        Input.ShipToCode = p.ShipToCode;
+        Input.WarehouseCode = p.WarehouseCode;
+        Input.JobId = job.Id;
+        ModelState.Clear();
     }
 
     /// <summary>
@@ -387,11 +455,14 @@ public sealed class IndexModel : PageModelBaseAdmin
 
     public async Task<IActionResult> OnPostProcessAsync(IFormFile? file, CancellationToken ct)
     {
-        await LoadCreatableDocumentTypesAsync(ct);
-        await LoadFormatsAsync(ct);
-        await LoadSalesPersonAsync(ct);
-        await ResolveBusinessPartnerFromFileAsync(ct);
-        await LoadScreenHeaderAsync(ct);
+        // Una carga guardada no se reprocesa con otros parámetros (sin edición): se vuelve
+        // a abrir en modo revalidación.
+        if (file is not { Length: > 0 } && Input.JobId is { } postedJob && await _jobs.GetAsync(postedJob, ct) is { IsSaved: true })
+        {
+            return RedirectToPage(new { job = postedJob });
+        }
+
+        await LoadWizardAsync(ct);
 
         // El archivo se guarda UNA vez en el servidor como borrador de trabajo
         // (IGenericImportJobService, 2026-10-15) y los pasos siguientes (Confirmar,
@@ -524,6 +595,40 @@ public sealed class IndexModel : PageModelBaseAdmin
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error no previsto al encolar la importación {JobId}.", Input.JobId);
+            return new JsonResult(new { Message = GetErrorMessage(ex) }) { StatusCode = StatusCodes.Status500InternalServerError };
+        }
+    }
+
+    /// <summary>
+    /// "Guardar sin enviar" (borradores etapa 2, 2026-10-21): el archivo ya procesado queda
+    /// guardado con sus parámetros y el motivo, sin crear nada en SAP -- para corregir
+    /// precio/stock en SAP o esperar confirmación. Se revalida y se envía después desde Mis
+    /// importaciones (cualquier usuario con permiso). JSON siempre, como Confirmar.
+    /// </summary>
+    public async Task<JsonResult> OnPostSaveAsync(string? reason, CancellationToken ct)
+    {
+        try
+        {
+            if (Input.JobId is not { } jobId)
+            {
+                return new JsonResult(new { Message = "Volvé a procesar el archivo antes de guardarlo." }) { StatusCode = StatusCodes.Status400BadRequest };
+            }
+
+            await _jobs.SaveAsync(jobId, BuildParameters(), reason ?? string.Empty, ct);
+            return new JsonResult(new
+            {
+                JobId = jobId,
+                Message = "Carga guardada sin enviar. La encontrás en Mis importaciones, pestaña Guardadas: desde ahí se revalida contra SAP y se envía.",
+                ReportUrl = $"/importacion-generica/trabajos/{jobId}",
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return new JsonResult(new { Message = ex.Message }) { StatusCode = StatusCodes.Status400BadRequest };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error no previsto al guardar la importación {JobId}.", Input.JobId);
             return new JsonResult(new { Message = GetErrorMessage(ex) }) { StatusCode = StatusCodes.Status500InternalServerError };
         }
     }

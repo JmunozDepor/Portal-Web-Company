@@ -575,8 +575,10 @@ public sealed class PortalSaasDbContext : DbContext
         modelBuilder.Entity<GenericImportJob>(entity =>
         {
             entity.ToTable("generic_import_jobs", t => t.HasCheckConstraint("ck_generic_import_jobs_status",
-                "status in ('Draft', 'Queued', 'Running', 'Completed', 'Failed')"));
+                "status in ('Draft', 'Saved', 'Queued', 'Running', 'Completed', 'Failed')"));
             entity.Property(e => e.Username).HasMaxLength(100);
+            entity.Property(e => e.SavedReason).HasMaxLength(500);
+            entity.Property(e => e.SubmittedByUsername).HasMaxLength(100);
             entity.Property(e => e.Status).HasMaxLength(20);
             entity.Property(e => e.Module).HasMaxLength(20);
             entity.Property(e => e.DocumentType).HasMaxLength(50);

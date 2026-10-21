@@ -757,6 +757,15 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("int")
                         .HasColumnName("sales_person_code");
 
+                    b.Property<DateTimeOffset?>("SavedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("saved_at");
+
+                    b.Property<string>("SavedReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("saved_reason");
+
                     b.Property<string>("ShipToCode")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
@@ -771,6 +780,15 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("status");
+
+                    b.Property<Guid?>("SubmittedByUserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("submitted_by_user_id");
+
+                    b.Property<string>("SubmittedByUsername")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("submitted_by_username");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier")
@@ -798,7 +816,7 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
 
                     b.ToTable("generic_import_jobs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_generic_import_jobs_status", "status in ('Draft', 'Queued', 'Running', 'Completed', 'Failed')");
+                            t.HasCheckConstraint("ck_generic_import_jobs_status", "status in ('Draft', 'Saved', 'Queued', 'Running', 'Completed', 'Failed')");
                         });
                 });
 

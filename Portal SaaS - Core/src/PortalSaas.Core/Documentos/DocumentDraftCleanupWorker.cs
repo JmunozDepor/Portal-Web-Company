@@ -18,7 +18,8 @@ namespace PortalSaas.Core.Documentos;
 ///   interrumpidos, pero resolviendo solo (sin revisar SAP a mano). SAP caído: se reintenta
 ///   en la vuelta siguiente.
 /// - Cada 6 horas: LIMPIEZA según la retención de cada compañía
-///   (company_document_settings.draft_retention_days; sin fila o null = no vencen).
+///   (company_document_settings.draft_retention_days; sin fila o null = no vencen), de los
+///   borradores digitados y de las importaciones genéricas guardadas sin enviar.
 /// Sin base al arrancar no tumba el Host.
 /// </summary>
 public sealed class DocumentDraftCleanupWorker : BackgroundService
@@ -190,6 +191,13 @@ public sealed class DocumentDraftCleanupWorker : BackgroundService
                 .ToListAsync(ct);
             db.DocumentDrafts.RemoveRange(expired);
             removed += expired.Count;
+
+            // Importación Genérica guardada sin enviar (borradores etapa 2): misma retención.
+            var expiredImports = await db.GenericImportJobs
+                .Where(j => j.CompanyId == retention.CompanyId && j.Status == GenericImportJobStatus.Saved && j.SavedAt < limit)
+                .ToListAsync(ct);
+            db.GenericImportJobs.RemoveRange(expiredImports);
+            removed += expiredImports.Count;
         }
 
         if (removed > 0)

@@ -23,9 +23,11 @@ public interface ISapDocumentLookupService
 {
     /// <summary>
     /// Busca el documento por tipo y folio. Null si SAP no lo tiene; lanza
-    /// InvalidOperationException si el tipo no tiene consulta configurada.
+    /// InvalidOperationException si el tipo no tiene consulta configurada o si el folio existe
+    /// con más de un tipo SII y no se indicó <paramref name="siiDocumentType"/> (33 vs 34).
+    /// Siempre se enlazan :folio y :sii_document_type (0 = sin filtro).
     /// </summary>
-    Task<SapDocumentInfo?> FindAsync(string documentKind, long folio, CancellationToken ct);
+    Task<SapDocumentInfo?> FindAsync(string documentKind, long folio, int? siiDocumentType = null, CancellationToken ct = default);
 
     /// <summary>
     /// Valida la consulta (una sola sentencia SELECT/WITH, solo :folio) y la ejecuta con el

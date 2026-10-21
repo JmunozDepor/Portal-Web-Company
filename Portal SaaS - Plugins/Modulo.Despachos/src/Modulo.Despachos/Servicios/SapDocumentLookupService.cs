@@ -26,6 +26,12 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
 
     private static readonly Regex ParameterRegex = new(@":(\w+)", RegexOptions.Compiled);
 
+    // Palabras de escritura/ejecución rechazadas sobre el SQL ya sin comentarios, literales ni
+    // identificadores entre comillas. REPLACE solo se rechaza si no es la función REPLACE( ... ).
+    private static readonly Regex ForbiddenRegex = new(
+        @"\b(INSERT|UPDATE|DELETE|MERGE|INTO|EXEC|EXECUTE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|CALL|UPSERT|DECLARE|OPENROWSET|OPENQUERY|OPENDATASOURCE)\b|\bREPLACE\b(?!\s*\()|\bxp_\w*",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private readonly DespachosDbContext _db;
     private readonly ICurrentCompanyAccessor _company;
     private readonly ICurrentUserContext _user;
@@ -56,7 +62,7 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
 
     // ------------------------------------------------------------------ Búsqueda
 
-    public async Task<SapDocumentInfo?> FindAsync(string documentKind, long folio, CancellationToken ct)
+    public async Task<SapDocumentInfo?> FindAsync(string documentKind, long folio, int? siiDocumentType = null, CancellationToken ct = default)
     {
         RequireKind(documentKind);
         var query = await GetQueryAsync(documentKind, ct);
@@ -65,15 +71,31 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
                 $"No hay consulta SAP configurada para {DocumentKinds.PluralLabel(documentKind)}. " +
                 "Configúrela en Despachos > Configuración > Consultas SAP.");
 
-        var rows = await _hana.QueryDynamicAsync(Executable(query.SqlText), new { folio }, ct);
+        var rows = await _hana.QueryDynamicAsync(
+            Executable(query.SqlText), new { folio, sii_document_type = siiDocumentType ?? 0 }, ct);
         if (rows.Count == 0) return null;
 
-        var row = ToCaseInsensitive(rows[0]);
-        var missing = MissingColumns(row);
-        if (missing.Count > 0)
+        var docs = new List<SapDocumentInfo>();
+        foreach (var raw in rows)
+        {
+            var row = ToCaseInsensitive(raw);
+            var missing = MissingColumns(row);
+            if (missing.Count > 0)
+                throw new InvalidOperationException(
+                    $"La consulta SAP de {DocumentKinds.PluralLabel(documentKind)} no devuelve las columnas obligatorias: {string.Join(", ", missing)}.");
+            docs.Add(Map(documentKind, row));
+        }
+
+        if (siiDocumentType is { } wanted) docs = docs.Where(d => d.SiiDocumentType == wanted).ToList();
+        var distinct = docs.GroupBy(d => d.DocEntry).Select(g => g.First()).ToList();
+        if (distinct.Count == 0) return null;
+        if (distinct.Count > 1)
+        {
+            var types = string.Join(", ", distinct.Select(d => d.SiiDocumentType).Distinct().OrderBy(t => t));
             throw new InvalidOperationException(
-                $"La consulta SAP de {DocumentKinds.PluralLabel(documentKind)} no devuelve las columnas obligatorias: {string.Join(", ", missing)}.");
-        return Map(documentKind, row);
+                $"El folio {folio} existe con más de un tipo de documento ({types}); indique el tipo.");
+        }
+        return distinct[0];
     }
 
     // ------------------------------------------------------------------ Validación
@@ -95,7 +117,7 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         IReadOnlyList<IReadOnlyDictionary<string, object?>> rows;
         try
         {
-            rows = await _hana.QueryDynamicAsync(Executable(sql), new { folio = sampleFolio });
+            rows = await _hana.QueryDynamicAsync(Executable(sql), new { folio = sampleFolio, sii_document_type = 0 });
         }
         catch (Exception ex)
         {
@@ -113,10 +135,12 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
 
         try
         {
-            var doc = Map(documentKind ?? DocumentKinds.Invoice, row);
+            var doc = documentKind is null
+                ? Build(DocumentKinds.Invoice, ToInt(row["sii_document_type"]), row)
+                : Map(documentKind, row);
             return new SapQueryProbeResult(new QueryValidationResult(true, Array.Empty<string>(), null), doc);
         }
-        catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
+        catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException or InvalidOperationException)
         {
             return Invalid($"Una columna tiene un tipo de dato inesperado: {ex.Message}");
         }
@@ -146,9 +170,13 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
             return "La consulta debe empezar con SELECT o WITH (solo lectura).";
 
         var names = ParameterRegex.Matches(clean).Select(m => m.Groups[1].Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var extra = names.Where(n => !n.Equals("folio", StringComparison.OrdinalIgnoreCase)).ToList();
-        if (extra.Count > 0) return $"Parámetro no permitido: :{extra[0]}. Solo se admite :folio.";
-        if (names.Count == 0) return "La consulta debe filtrar por el parámetro :folio.";
+        var extra = names.Where(n => !n.Equals("folio", StringComparison.OrdinalIgnoreCase) &&
+                                     !n.Equals("sii_document_type", StringComparison.OrdinalIgnoreCase)).ToList();
+        if (extra.Count > 0) return $"Parámetro no permitido: :{extra[0]}. Solo se admiten :folio y :sii_document_type.";
+        if (!names.Contains("folio", StringComparer.OrdinalIgnoreCase)) return "La consulta debe filtrar por el parámetro :folio.";
+
+        var forbidden = ForbiddenRegex.Match(clean);
+        if (forbidden.Success) return $"La consulta contiene una palabra no permitida (solo lectura): {forbidden.Value}.";
         return null;
     }
 
@@ -174,21 +202,22 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
                 for (; i < stop; i++) sb.Append(sql[i] == '\n' ? '\n' : ' ');
                 i--;
             }
-            else if (c == '\'' || c == '"')
+            else if (c == '\'' || c == '"' || c == '[')
             {
+                var close = c == '[' ? ']' : c;
                 sb.Append(c);
                 i++;
                 while (i < sql.Length)
                 {
-                    if (sql[i] == c)
+                    if (sql[i] == close)
                     {
-                        if (i + 1 < sql.Length && sql[i + 1] == c) { sb.Append("  "); i += 2; continue; }
+                        if (i + 1 < sql.Length && sql[i + 1] == close) { sb.Append("  "); i += 2; continue; }
                         break;
                     }
                     sb.Append(' ');
                     i++;
                 }
-                if (i < sql.Length) sb.Append(c);
+                if (i < sql.Length) sb.Append(close);
             }
             else sb.Append(c);
         }
@@ -287,9 +316,18 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
     private static Dictionary<string, object?> ToCaseInsensitive(IReadOnlyDictionary<string, object?> row) =>
         new(row, StringComparer.OrdinalIgnoreCase);
 
-    private static SapDocumentInfo Map(string kind, IReadOnlyDictionary<string, object?> r) => new(
+    private static SapDocumentInfo Map(string kind, IReadOnlyDictionary<string, object?> r)
+    {
+        var sii = ToInt(r["sii_document_type"]);
+        if (DocumentKindFor(sii) != kind)
+            throw new InvalidOperationException(
+                $"La consulta SAP de {DocumentKinds.PluralLabel(kind)} devolvió un documento de tipo SII {sii}, que no corresponde a ese tipo; revise la consulta.");
+        return Build(kind, sii, r);
+    }
+
+    private static SapDocumentInfo Build(string kind, int sii, IReadOnlyDictionary<string, object?> r) => new(
         DocumentKind: kind,
-        SiiDocumentType: ToInt(r["sii_document_type"]),
+        SiiDocumentType: sii,
         Folio: ToLong(r["folio"]),
         DocEntry: ToInt(r["doc_entry"]),
         DocNum: ToInt(r["doc_num"]),

@@ -28,11 +28,11 @@ public class SapDocumentLookupServiceTests
         await db.SaveChangesAsync();
     }
 
-    private static Dictionary<string, object?> Row(bool upper = false, bool omitPackages = false)
+    private static Dictionary<string, object?> Row(bool upper = false, bool omitPackages = false, int sii = 33, int docEntry = 10)
     {
         var d = new Dictionary<string, object?>
         {
-            ["doc_entry"] = 10, ["doc_num"] = 20, ["folio"] = 1500L, ["sii_document_type"] = 33,
+            ["doc_entry"] = docEntry, ["doc_num"] = 20, ["folio"] = 1500L, ["sii_document_type"] = sii,
             ["document_date"] = new DateTime(2026, 10, 15), ["customer_code"] = "C1", ["customer_name"] = "Cliente Uno",
             ["customer_tax_id"] = "76.086.428-5", ["destination_address"] = "Av. Siempre Viva 123",
             ["destination_commune"] = "Maipú", ["customer_po"] = "OC-9", ["base_order_entry"] = 77,
@@ -53,7 +53,7 @@ public class SapDocumentLookupServiceTests
         await Configure(db, company.CompanyId, DocumentKinds.Invoice, InvoiceSql);
         hana.Results[InvoiceSql] = Rows(Row());
 
-        var info = await svc.FindAsync(DocumentKinds.Invoice, 1500, CancellationToken.None);
+        var info = await svc.FindAsync(DocumentKinds.Invoice, 1500, ct: CancellationToken.None);
 
         Assert.NotNull(info);
         Assert.Equal("Cliente Uno", info!.CustomerName);
@@ -70,16 +70,124 @@ public class SapDocumentLookupServiceTests
         Assert.Equal(1500L, Convert.ToInt64(p.GetType().GetProperty("folio")!.GetValue(p)));
     }
 
+    private static object Param(object p, string name) => p.GetType().GetProperty(name)!.GetValue(p)!;
+
+    [Fact]
+    public async Task Find_PasaSiiDocumentTypeCeroPorDefecto()
+    {
+        var (svc, db, hana, company) = Build();
+        await Configure(db, company.CompanyId, DocumentKinds.Invoice, InvoiceSql);
+        hana.Results[InvoiceSql] = Rows(Row());
+
+        await svc.FindAsync(DocumentKinds.Invoice, 1500, ct: CancellationToken.None);
+        Assert.Equal(0, Convert.ToInt32(Param(hana.LastParameters!, "sii_document_type")));
+
+        await svc.FindAsync(DocumentKinds.Invoice, 1500, 34);
+        Assert.Equal(34, Convert.ToInt32(Param(hana.LastParameters!, "sii_document_type")));
+    }
+
+    private static IReadOnlyList<IReadOnlyDictionary<string, object?>> Duplicado33y34() =>
+        new IReadOnlyDictionary<string, object?>[] { Row(sii: 33, docEntry: 10), Row(sii: 34, docEntry: 11) };
+
+    [Fact]
+    public async Task Find_FolioDuplicado33y34_SinTipo_LanzaAmbiguo()
+    {
+        var (svc, db, hana, company) = Build();
+        await Configure(db, company.CompanyId, DocumentKinds.Invoice, InvoiceSql);
+        hana.Results[InvoiceSql] = Duplicado33y34();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.FindAsync(DocumentKinds.Invoice, 1500, ct: CancellationToken.None));
+        Assert.Contains("más de un tipo de documento (33, 34)", ex.Message);
+        Assert.Contains("1500", ex.Message);
+    }
+
+    [Fact]
+    public async Task Find_FolioDuplicado_ConTipo34_DevuelveExenta()
+    {
+        var (svc, db, hana, company) = Build();
+        await Configure(db, company.CompanyId, DocumentKinds.Invoice, InvoiceSql);
+        hana.Results[InvoiceSql] = Duplicado33y34();
+
+        var info = await svc.FindAsync(DocumentKinds.Invoice, 1500, 34);
+
+        Assert.Equal(34, info!.SiiDocumentType);
+        Assert.Equal(11, info.DocEntry);
+    }
+
+    [Fact]
+    public async Task Find_TipoNoCorrespondeAlKind_Lanza()
+    {
+        var (svc, db, hana, company) = Build();
+        await Configure(db, company.CompanyId, DocumentKinds.Invoice, InvoiceSql);
+        hana.Results[InvoiceSql] = Rows(Row(sii: 52));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.FindAsync(DocumentKinds.Invoice, 1500, ct: CancellationToken.None));
+        Assert.Contains("no corresponde", ex.Message);
+    }
+
+    [Fact]
+    public async Task Validate_PermiteSiiDocumentType()
+    {
+        var (svc, _, hana, _) = Build();
+        var sql = "SELECT 1 AS \"doc_entry\" FROM DUMMY WHERE X = :folio AND (:sii_document_type = 0 OR Y = :sii_document_type)";
+        hana.Results[sql] = Rows(Row());
+        Assert.True((await svc.ValidateQueryAsync(sql, 1500)).IsValid);
+        Assert.Equal(0, Convert.ToInt32(Param(hana.LastParameters!, "sii_document_type")));
+    }
+
+    [Theory]
+    [InlineData("WITH c AS (SELECT 1 FROM DUMMY) DELETE FROM OINV WHERE :folio = 1")]
+    [InlineData("WITH c AS (SELECT 1 FROM DUMMY) UPDATE OINV SET x = 1 WHERE :folio = 1")]
+    [InlineData("SELECT [x'] FROM DUMMY WHERE :folio = 1; DELETE FROM OINV -- ']")]
+    [InlineData("SELECT * INTO t FROM OINV WHERE :folio = 1")]
+    [InlineData("SELECT 1 FROM DUMMY WHERE :folio = 1 EXEC sp_who")]
+    [InlineData("SELECT 1 FROM DUMMY WHERE :folio = 1 UNION SELECT * FROM OPENROWSET('a','b','c')")]
+    [InlineData("SELECT 1 FROM DUMMY WHERE :folio = 1 AND xp_cmdshell('dir') = 1")]
+    [InlineData("SELECT 1 FROM DUMMY WHERE :folio = 1 REPLACE INTO t VALUES (1)")]
+    [InlineData("SELECT 1 FROM DUMMY WHERE :folio = 1 DROP TABLE t")]
+    [InlineData("SELECT 1 FROM DUMMY WHERE :folio = 1 CALL p()")]
+    public async Task Validate_RechazaEscrituraYEjecucion_SinEjecutar(string sql)
+    {
+        var (svc, _, hana, _) = Build();
+        var result = await svc.ValidateQueryAsync(sql, 1500);
+        Assert.False(result.IsValid);
+        Assert.Empty(hana.ExecutedSql);
+    }
+
+    [Fact]
+    public async Task Validate_ReplaceFuncionYLiteralDelete_SiPasan()
+    {
+        var (svc, _, hana, _) = Build();
+        var sql = "SELECT REPLACE(T0.\"Street\", 'DELETE', '') AS \"doc_entry\", \"UpdateDate\", [Insert] FROM DUMMY T0 WHERE T0.X = :folio AND T0.update_date IS NOT NULL";
+        hana.Results[sql] = Rows(Row());
+        Assert.True((await svc.ValidateQueryAsync(sql, 1)).IsValid);
+    }
+
+    [Fact]
+    public async Task Validate_LosSeedsPasanLaValidacionEstatica()
+    {
+        foreach (var kind in DocumentKinds.All)
+        {
+            var (svc, _, hana, _) = Build();
+            var sql = SapQuerySeeds.Get(kind);
+            hana.Results[sql] = Rows(Row(sii: kind == DocumentKinds.Invoice ? 33 : 52));
+            var result = await svc.ValidateQueryAsync(sql, 1);
+            Assert.True(result.IsValid, kind + ": " + result.Error);
+        }
+    }
+
     [Fact]
     public async Task Find_MismoFolioOtroTipo_NoMezcla()
     {
         var (svc, db, hana, company) = Build();
         await Configure(db, company.CompanyId, DocumentKinds.TransferGuide, GuideSql);
         await Configure(db, company.CompanyId, DocumentKinds.Invoice, InvoiceSql);
-        hana.Results[GuideSql] = Rows(Row());   // folio 1500 existe solo como guía
+        hana.Results[GuideSql] = Rows(Row(sii: 52));   // folio 1500 existe solo como guía
 
-        Assert.Null(await svc.FindAsync(DocumentKinds.Invoice, 1500, CancellationToken.None));
-        Assert.NotNull(await svc.FindAsync(DocumentKinds.TransferGuide, 1500, CancellationToken.None));
+        Assert.Null(await svc.FindAsync(DocumentKinds.Invoice, 1500, ct: CancellationToken.None));
+        Assert.NotNull(await svc.FindAsync(DocumentKinds.TransferGuide, 1500, ct: CancellationToken.None));
     }
 
     [Fact]
@@ -87,7 +195,7 @@ public class SapDocumentLookupServiceTests
     {
         var (svc, _, _, _) = Build(engine: "PostgreSQL");   // sin HANA no se siembra
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => svc.FindAsync(DocumentKinds.Invoice, 1500, CancellationToken.None));
+            () => svc.FindAsync(DocumentKinds.Invoice, 1500, ct: CancellationToken.None));
         Assert.Contains("No hay consulta SAP configurada para facturas", ex.Message);
     }
 
@@ -97,7 +205,7 @@ public class SapDocumentLookupServiceTests
         var (svc, db, _, company) = Build();
         await Configure(db, company.CompanyId, DocumentKinds.Invoice, InvoiceSql, active: false);
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => svc.FindAsync(DocumentKinds.Invoice, 1500, CancellationToken.None));
+            () => svc.FindAsync(DocumentKinds.Invoice, 1500, ct: CancellationToken.None));
     }
 
     [Fact]
@@ -105,7 +213,7 @@ public class SapDocumentLookupServiceTests
     {
         var (svc, db, hana, company) = Build(engine: "SAP HANA");
 
-        var info = await svc.FindAsync(DocumentKinds.TransferGuide, 99, CancellationToken.None);
+        var info = await svc.FindAsync(DocumentKinds.TransferGuide, 99, ct: CancellationToken.None);
 
         Assert.Null(info);   // el fake no devuelve filas
         var row = db.SapDocumentQueries.Single(q => q.CompanyId == company.CompanyId);
@@ -119,8 +227,8 @@ public class SapDocumentLookupServiceTests
     public async Task Find_SemillaSoloElTipoPedido_YNoDuplicaEnLlamadasSiguientes()
     {
         var (svc, db, _, _) = Build();
-        await svc.FindAsync(DocumentKinds.Invoice, 1, CancellationToken.None);
-        await svc.FindAsync(DocumentKinds.Invoice, 2, CancellationToken.None);
+        await svc.FindAsync(DocumentKinds.Invoice, 1, ct: CancellationToken.None);
+        await svc.FindAsync(DocumentKinds.Invoice, 2, ct: CancellationToken.None);
         Assert.Equal(DocumentKinds.Invoice, db.SapDocumentQueries.Single().DocumentKind);
     }
 
@@ -144,7 +252,7 @@ public class SapDocumentLookupServiceTests
         await Configure(db, Guid.NewGuid(), DocumentKinds.Invoice, InvoiceSql);
         hana.Results[InvoiceSql] = Rows(Row());
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => svc.FindAsync(DocumentKinds.Invoice, 1500, CancellationToken.None));
+            () => svc.FindAsync(DocumentKinds.Invoice, 1500, ct: CancellationToken.None));
     }
 
     [Fact]
@@ -154,7 +262,7 @@ public class SapDocumentLookupServiceTests
         await Configure(db, company.CompanyId, DocumentKinds.Invoice, InvoiceSql);
         hana.Results[InvoiceSql] = Rows(Row(upper: true));
 
-        var info = await svc.FindAsync(DocumentKinds.Invoice, 1500, CancellationToken.None);
+        var info = await svc.FindAsync(DocumentKinds.Invoice, 1500, ct: CancellationToken.None);
         Assert.Equal(10, info!.DocEntry);
         Assert.Equal("Cliente Uno", info.CustomerName);
     }
@@ -167,7 +275,7 @@ public class SapDocumentLookupServiceTests
         hana.Results[InvoiceSql] = Rows(Row(omitPackages: true));
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => svc.FindAsync(DocumentKinds.Invoice, 1500, CancellationToken.None));
+            () => svc.FindAsync(DocumentKinds.Invoice, 1500, ct: CancellationToken.None));
         Assert.Contains("packages", ex.Message);
     }
 

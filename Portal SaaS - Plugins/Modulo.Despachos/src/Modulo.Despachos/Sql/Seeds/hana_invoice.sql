@@ -1,5 +1,6 @@
 -- Factura de venta por folio (OINV.FolioNum). Adaptada de la consulta de manifiestos de Depor.
 -- Sin esquema fijo: aplica el esquema actual de la conexion SAP de la compania.
+-- El parametro sii_document_type en 0 no filtra; 33 o 34 desambigua un FolioNum repetido.
 -- Bultos = LPN distintos de las entregas base (ODLN.U_NX_LPN); pedido base = MIN(DLN1.BaseEntry) de tipo 17.
 SELECT
   T0."DocEntry" AS "doc_entry",
@@ -29,3 +30,5 @@ FROM OINV T0
 LEFT JOIN OCRD C0 ON C0."CardCode" = T0."CardCode"
 LEFT JOIN INV12 T2 ON T2."DocEntry" = T0."DocEntry"
 WHERE T0."FolioNum" = :folio
+  AND (:sii_document_type = 0
+       OR CASE WHEN UPPER(T0."FolioPref") IN ('34', 'FAE') THEN 34 ELSE 33 END = :sii_document_type)

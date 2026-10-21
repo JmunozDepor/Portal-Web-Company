@@ -1,0 +1,7 @@
+/* Despachos: badges de estado (el tema del host no los trae). */
+.dsp-badge { display: inline-block; padding: .15rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+.dsp-badge--neutral { background: var(--bs-secondary-bg, #e9ecef); color: var(--bs-secondary-color, #495057); }
+.dsp-badge--success { background: rgba(25, 135, 84, .15); color: #198754; }
+.dsp-badge--warning { background: rgba(255, 193, 7, .2); color: #997404; }
+.dsp-badge--danger  { background: rgba(220, 53, 69, .15); color: #dc3545; }
+.dsp-badge--accent  { background: rgba(13, 110, 253, .15); color: #0d6efd; }

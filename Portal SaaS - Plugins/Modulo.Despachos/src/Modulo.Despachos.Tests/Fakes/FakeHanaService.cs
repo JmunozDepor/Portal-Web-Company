@@ -1,0 +1,41 @@
+using PortalSaas.Abstractions.Contratos;
+
+namespace Modulo.Despachos.Tests.Fakes;
+
+/// <summary>
+/// SAP de prueba: <see cref="Results"/> mapea el SQL exacto a las filas que devuelve
+/// QueryDynamicAsync; <see cref="LastParameters"/> guarda los parámetros de la última
+/// consulta. Un SQL sin resultado configurado devuelve lista vacía.
+/// </summary>
+public sealed class FakeHanaService : IHanaService
+{
+    public Dictionary<string, IReadOnlyList<IReadOnlyDictionary<string, object?>>> Results { get; } = new();
+    public object? LastParameters { get; private set; }
+    public List<string> ExecutedSql { get; } = new();
+
+    public Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> QueryDynamicAsync(
+        string sqlParametrizado, object? parametros = null, CancellationToken ct = default)
+    {
+        ExecutedSql.Add(sqlParametrizado);
+        LastParameters = parametros;
+        IReadOnlyList<IReadOnlyDictionary<string, object?>> rows =
+            Results.TryGetValue(sqlParametrizado, out var r) ? r : Array.Empty<IReadOnlyDictionary<string, object?>>();
+        return Task.FromResult(rows);
+    }
+
+    public Task<IReadOnlyList<T>> QueryAsync<T>(string sqlParametrizado, object? parametros = null, CancellationToken ct = default)
+    {
+        ExecutedSql.Add(sqlParametrizado);
+        LastParameters = parametros;
+        return Task.FromResult<IReadOnlyList<T>>(Array.Empty<T>());
+    }
+
+    public Task<int> ExecuteAsync(string sqlParametrizado, object? parametros = null, CancellationToken ct = default)
+    {
+        ExecutedSql.Add(sqlParametrizado);
+        LastParameters = parametros;
+        return Task.FromResult(0);
+    }
+
+    public Task<string> GetPlatformEngineTypeAsync(CancellationToken ct = default) => Task.FromResult("PostgreSQL");
+}

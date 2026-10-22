@@ -13,4 +13,10 @@ public interface IManifestCostService
     /// cost_calculated queda en null. Guarda los cambios pendientes del contexto (una sola escritura).
     /// </summary>
     Task<CostResult> RecalculateAsync(Manifest manifest);
+
+    /// <summary>
+    /// Calcula el costo con los datos actuales (documentos, adicionales, tarifas) sin guardar nada: es el
+    /// costo estimado que se muestra en un borrador antes de despachar.
+    /// </summary>
+    Task<CostResult> EstimateAsync(Manifest manifest);
 }

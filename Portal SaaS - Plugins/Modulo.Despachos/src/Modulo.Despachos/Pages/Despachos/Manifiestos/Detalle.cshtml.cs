@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
+using Modulo.Despachos.Dominio.Tarifas;
 using Modulo.Despachos.Models;
 using Modulo.Despachos.Servicios;
 using PortalSaas.Abstractions.Contratos;
@@ -19,11 +20,13 @@ public sealed class DetalleModel : DespachosPageModelBase
     private readonly IManifestPdfService _pdf;
     private readonly IMasterDataService _data;
     private readonly IUserContactLookupService _users;
+    private readonly IManifestCostService _cost;
 
     public DetalleModel(
         IManifestService manifests, IManifestPdfService pdf, IMasterDataService data,
-        ICurrentUserContext currentUser, IUserContactLookupService users) : base(currentUser)
+        ICurrentUserContext currentUser, IUserContactLookupService users, IManifestCostService cost) : base(currentUser)
     {
+        _cost = cost;
         _manifests = manifests;
         _pdf = pdf;
         _data = data;
@@ -45,6 +48,10 @@ public sealed class DetalleModel : DespachosPageModelBase
     public bool CanAdjustCost { get; private set; }
     public bool CanReturn { get; private set; }
     public IReadOnlyList<ManifestExtraChargeRow> ExtraCharges { get; private set; } = Array.Empty<ManifestExtraChargeRow>();
+
+    /// <summary>Costo estimado del borrador (no se guarda; el definitivo se calcula al despachar).</summary>
+    public CostResult? Estimate { get; private set; }
+    public string? EstimateError { get; private set; }
 
     /// <summary>Pestaña inicial (la fija el servidor tras cada acción).</summary>
     [BindProperty(SupportsGet = true)]
@@ -99,6 +106,11 @@ public sealed class DetalleModel : DespachosPageModelBase
         Lookups = await ManifestLookups.LoadAsync(_data);
         Reasons = await _data.ListRejectionReasonsAsync(includeInactive: true);
         ExtraCharges = await _manifests.ListExtraChargesAsync(m.Id);
+        if (m.Status == ManifestStatuses.Draft)
+        {
+            try { Estimate = await _cost.EstimateAsync(m); }
+            catch (Exception ex) { EstimateError = GetErrorMessage(ex); }
+        }
         Communes = await _data.ListCommunesAsync();
         UserLabels = await ResolveUsersAsync(m);
         if (Header.DispatchDate is null) Header = ManifestForm.From(m);

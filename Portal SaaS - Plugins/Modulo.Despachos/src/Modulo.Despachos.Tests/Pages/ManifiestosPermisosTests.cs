@@ -35,7 +35,7 @@ public class ManifiestosPermisosTests
         var env = ManifestTestEnv.Build();
         grant?.Invoke(env.User);
         var pdf = new ManifestPdfService(env.Db, env.Company, env.User, env.Svc, env.Clock);
-        var page = new Manifiestos.DetalleModel(env.Svc, pdf, env.Master, env.User, new FakeContactLookup()) { TempData = Temp() };
+        var page = new Manifiestos.DetalleModel(env.Svc, pdf, env.Master, env.User, new FakeContactLookup(), env.Cost) { TempData = Temp() };
         return (page, env);
     }
 

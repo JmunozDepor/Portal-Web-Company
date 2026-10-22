@@ -38,29 +38,7 @@ public sealed class ManifestCostService : IManifestCostService
 
         var docs = await _db.ManifestDocuments
             .Where(d => d.CompanyId == CompanyId && d.ManifestId == m.Id).ToListAsync();
-
-        CostResult result;
-        // Comuna sin resolver (o sin documentos): no hay con qué buscar tarifa -> "sin tarifa" (spec §4.2c paso 6).
-        if (docs.Count == 0 || docs.Any(d => d.DestinationCommuneId == null))
-        {
-            result = new CostResult(CostStatuses.NoRate, null, 0m, Array.Empty<CostLine>());
-        }
-        else
-        {
-            var communeIds = docs.Select(d => d.DestinationCommuneId!.Value).Distinct().ToList();
-            var km = m.OdometerStart != null && m.OdometerEnd != null && m.OdometerEnd >= m.OdometerStart
-                ? (decimal?)(m.OdometerEnd - m.OdometerStart) : null;
-            var quantities = await _db.ManifestExtraCharges
-                .Where(x => x.CompanyId == CompanyId && x.ManifestId == m.Id && x.Quantity > 0)
-                .ToDictionaryAsync(x => x.RateSurchargeId, x => x.Quantity);
-            var input = new SimulationInput(
-                m.CarrierId, m.ShiftId, m.VehicleId, m.DispatchDate, LocalDepartureTime(m), communeIds,
-                docs.Count, (int)Math.Round(docs.Sum(d => d.Units), MidpointRounding.AwayFromZero),
-                docs.Sum(d => d.Packages), km, quantities);
-            var trip = await _tariff.BuildTripAsync(input);
-            var (cards, surcharges) = await _tariff.LoadActiveAsync();
-            result = _engine.Calculate(trip, cards, surcharges);
-        }
+        var result = await ComputeAsync(m, docs);
 
         // Reemplaza el detalle anterior.
         _db.ManifestCostLines.RemoveRange(
@@ -92,6 +70,35 @@ public sealed class ManifestCostService : IManifestCostService
         m.UpdatedAt = _time.GetUtcNow().UtcDateTime;
         await _db.SaveChangesAsync();
         return result;
+    }
+
+    public async Task<CostResult> EstimateAsync(Manifest m)
+    {
+        if (m.CompanyId != CompanyId) throw new InvalidOperationException("El manifiesto no existe.");
+        var docs = await _db.ManifestDocuments.AsNoTracking()
+            .Where(d => d.CompanyId == CompanyId && d.ManifestId == m.Id).ToListAsync();
+        return await ComputeAsync(m, docs);
+    }
+
+    private async Task<CostResult> ComputeAsync(Manifest m, IReadOnlyCollection<ManifestDocument> docs)
+    {
+        // Comuna sin resolver (o sin documentos): no hay con qué buscar tarifa -> "sin tarifa" (spec §4.2c paso 6).
+        if (docs.Count == 0 || docs.Any(d => d.DestinationCommuneId == null))
+            return new CostResult(CostStatuses.NoRate, null, 0m, Array.Empty<CostLine>());
+
+        var communeIds = docs.Select(d => d.DestinationCommuneId!.Value).Distinct().ToList();
+        var km = m.OdometerStart != null && m.OdometerEnd != null && m.OdometerEnd >= m.OdometerStart
+            ? (decimal?)(m.OdometerEnd - m.OdometerStart) : null;
+        var quantities = await _db.ManifestExtraCharges
+            .Where(x => x.CompanyId == CompanyId && x.ManifestId == m.Id && x.Quantity > 0)
+            .ToDictionaryAsync(x => x.RateSurchargeId, x => x.Quantity);
+        var input = new SimulationInput(
+            m.CarrierId, m.ShiftId, m.VehicleId, m.DispatchDate, LocalDepartureTime(m), communeIds,
+            docs.Count, (int)Math.Round(docs.Sum(d => d.Units), MidpointRounding.AwayFromZero),
+            docs.Sum(d => d.Packages), km, quantities);
+        var trip = await _tariff.BuildTripAsync(input);
+        var (cards, surcharges) = await _tariff.LoadActiveAsync();
+        return _engine.Calculate(trip, cards, surcharges);
     }
 
     /// <summary>Hora de salida en hora Chile: la real si ya despachó; si no, la planificada (o 00:00).</summary>

@@ -89,6 +89,7 @@ public class ManifestPdfServiceTests
         Assert.Contains("Monto", text);
         Assert.Contains("$119.000", text);
         Assert.Contains("$357.000", text);
+        Assert.Contains("Página", text);
     }
 
     [Fact]

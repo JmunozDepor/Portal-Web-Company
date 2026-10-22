@@ -34,6 +34,10 @@ public sealed class NuevoModel : DespachosPageModelBase
         if (!await HasActionAsync(PortalActions.Create)) return Forbid();
         Lookups = await ManifestLookups.LoadAsync(_data);
         Input.DispatchDate = ChileClock.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        // Valores por defecto: el primer turno y el primer origen activos (orden alfabético; ej. "Diurno" y
+        // "Centro de Distribución"). Se pueden cambiar antes de crear el borrador.
+        Input.ShiftId = Lookups.Shifts.FirstOrDefault(x => x.IsActive)?.Id;
+        Input.OriginId = Lookups.Origins.FirstOrDefault(x => x.IsActive)?.Id ?? 0;
         return Page();
     }
 

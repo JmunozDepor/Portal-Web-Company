@@ -147,6 +147,15 @@ public class ManifestPdfService : IManifestPdfService
         s.PageSetup.TopMargin = Unit.FromCentimeter(1.5);
         s.PageSetup.BottomMargin = Unit.FromCentimeter(1.5);
 
+        // Pie: "Manifiesto N° X - Página n de N" en todas las páginas.
+        var footer = s.Footers.Primary.AddParagraph();
+        footer.Format.Alignment = ParagraphAlignment.Right;
+        footer.Format.Font.Size = 8;
+        footer.AddText($"Manifiesto N° {m.Number} - Página ");
+        footer.AddPageField();
+        footer.AddText(" de ");
+        footer.AddNumPagesField();
+
         if (copyMark != null)
         {
             var p = s.AddParagraph(copyMark);
@@ -157,7 +166,7 @@ public class ManifestPdfService : IManifestPdfService
         }
 
         // Cabecera: título a la izquierda, código de barras a la derecha.
-        // El código de barras va en su propia columna, con el número centrado bajo las barras.
+        // El código de barras va en su propia columna (el número ya está en el título).
         var top = s.AddTable();
         top.AddColumn(Unit.FromCentimeter(9.5));
         top.AddColumn(Unit.FromCentimeter(5.5));
@@ -175,9 +184,6 @@ public class ManifestPdfService : IManifestPdfService
         var barcode = topRow.Cells[1].AddParagraph();
         barcode.Format.Alignment = ParagraphAlignment.Center;
         barcode.AddImage("base64:" + Convert.ToBase64String(png)).Width = Unit.FromCentimeter(5);
-        var number = topRow.Cells[1].AddParagraph(m.Number.ToString(CultureInfo.InvariantCulture));
-        number.Format.Alignment = ParagraphAlignment.Center;
-        number.Format.Font.Size = 8;
         s.AddParagraph().Format.SpaceAfter = Unit.FromPoint(4);
 
         string Local(DateTime? utc) => utc == null ? "-" : ChileClock.ToLocal(utc.Value).ToString("dd-MM-yyyy HH:mm", ci);

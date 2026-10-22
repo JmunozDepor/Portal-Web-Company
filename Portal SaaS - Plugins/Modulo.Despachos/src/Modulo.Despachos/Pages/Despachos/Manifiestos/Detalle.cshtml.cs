@@ -60,6 +60,7 @@ public sealed class DetalleModel : DespachosPageModelBase
     public int DocCount => M.Documents.Count;
     public decimal DocUnits => M.Documents.Sum(d => d.Units);
     public int DocPackages => M.Documents.Sum(d => d.Packages);
+    public decimal DocAmount => M.Documents.Sum(d => d.TotalAmount);
 
     /// <summary>Datos del escáner: texto del lector / cámara, o tipo + folio (+ tipo SII si el folio es ambiguo).</summary>
     public sealed class ScanInput
@@ -180,10 +181,12 @@ public sealed class DetalleModel : DespachosPageModelBase
                     commune = doc.DestinationCommuneName,
                     units = doc.Units,
                     packages = doc.Packages,
+                    amount = doc.TotalAmount,
                 },
                 totalDocuments = m?.Documents.Count ?? 0,
                 totalUnits = m?.Documents.Sum(d => d.Units) ?? 0m,
                 totalPackages = m?.Documents.Sum(d => d.Packages) ?? 0,
+                totalAmount = m?.Documents.Sum(d => d.TotalAmount) ?? 0m,
             });
         }
         catch (Exception ex)
@@ -198,6 +201,7 @@ public sealed class DetalleModel : DespachosPageModelBase
                 totalDocuments = 0,
                 totalUnits = 0m,
                 totalPackages = 0,
+                totalAmount = 0m,
             });
         }
     }
@@ -225,7 +229,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         try
         {
             await _manifests.UpdateDraftHeaderAsync(id, Header.ToInput());
-            SuccessMessage = "Cabecera guardada.";
+            SuccessMessage = "Manifiesto guardado como borrador. Los documentos ya agregados quedan guardados al escanearlos.";
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
         return RedirectToPage(new { id, tab = "cabecera" });

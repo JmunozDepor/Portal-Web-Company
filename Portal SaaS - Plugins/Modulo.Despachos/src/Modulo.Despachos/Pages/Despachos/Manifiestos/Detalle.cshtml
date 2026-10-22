@@ -27,6 +27,11 @@
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <a class="btn-secondary" href="/despachos/manifiestos">Volver al listado</a>
+            @if (Model.IsDraft && Model.CanEdit)
+            {
+                @* Guarda el borrador desde cualquier pestaña: envía el formulario de la cabecera (aunque esté oculto). *@
+                <button type="submit" form="form-cabecera" class="btn-secondary"><i class="bi bi-floppy"></i> Guardar</button>
+            }
             @if (canPrint)
             {
                 <a class="btn-secondary" target="_blank" rel="noopener" asp-page-handler="Pdf" asp-route-id="@m.Id">
@@ -79,7 +84,7 @@
     <div data-tab-panel="cabecera" style="@(active == "cabecera" ? "" : "display:none;")">
         @if (Model.IsDraft && Model.CanEdit)
         {
-            <form method="post" asp-page-handler="GuardarCabecera" asp-route-id="@m.Id" asp-antiforgery="true">
+            <form method="post" id="form-cabecera" asp-page-handler="GuardarCabecera" asp-route-id="@m.Id" asp-antiforgery="true">
                 <partial name="_CabeceraCamposDespachos" model='new ManifestFormView(Model.Header, Model.Lookups, "Header")' />
                 <button type="submit" class="btn-primary">Guardar cabecera</button>
             </form>
@@ -194,10 +199,11 @@
             <span>Documentos: <strong data-doc-count>@Model.DocCount</strong></span>
             <span>Unidades: <strong data-doc-units>@Model.DocUnits.ToString("N0", es)</strong></span>
             <span>Bultos: <strong data-doc-packages>@Model.DocPackages</strong></span>
+            <span>Monto total: <strong data-doc-amount>$@Model.DocAmount.ToString("N0", es)</strong></span>
         </div>
 
         <table class="table-ps" id="docs-table">
-            <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Comuna</th><th>Unidades</th><th>Bultos</th>@if (!Model.IsDraft) { <th>Estado</th> }<th class="col-actions"></th></tr></thead>
+            <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Comuna</th><th>Unidades</th><th>Bultos</th><th class="text-end">Monto</th>@if (!Model.IsDraft) { <th>Estado</th> }<th class="col-actions"></th></tr></thead>
             <tbody id="docs-body">
                 @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
                 {
@@ -227,6 +233,7 @@
                         </td>
                         <td>@d.Units.ToString("N0", es)</td>
                         <td>@d.Packages</td>
+                        <td class="text-end">$@d.TotalAmount.ToString("N0", es)</td>
                         @if (!Model.IsDraft)
                         {
                             <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="d.DeliveryStatus" /></td>
@@ -244,7 +251,7 @@
                 }
                 @if (m.Documents.Count == 0)
                 {
-                    <tr data-table-empty><td colspan="8" class="text-muted">Sin documentos todavía.</td></tr>
+                    <tr data-table-empty><td colspan="9" class="text-muted">Sin documentos todavía.</td></tr>
                 }
             </tbody>
         </table>
@@ -255,7 +262,7 @@
             <template id="doc-row-template">
                 <tr>
                     <td data-f="kind"></td><td data-f="folio"></td><td data-f="customer"></td><td data-f="commune"></td>
-                    <td data-f="units"></td><td data-f="packages"></td>
+                    <td data-f="units"></td><td data-f="packages"></td><td class="text-end" data-f="amount"></td>
                     <td class="col-actions">
                         <form method="post" asp-page-handler="QuitarDocumento" asp-route-id="@m.Id" asp-route-documentId="00000000-0000-0000-0000-000000000000" asp-antiforgery="true" class="d-inline-block" data-confirm="¿Quitar este documento?">
                             <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-trash"></i></button>

@@ -295,9 +295,13 @@ public class ManifestService : IManifestService
         if (origin is null) errors.Add("El origen no existe.");
 
         if (carrier != null && carrier.Kind != CarrierKinds.Pickup && !RutChileno.IsValid(carrier.TaxId))
-            errors.Add("El RUT del transportista no es válido.");
+            errors.Add(string.IsNullOrWhiteSpace(carrier.TaxId)
+                ? $"El transportista «{carrier.Name}» no tiene RUT registrado: complételo en Despachos > Transportistas."
+                : $"El RUT del transportista «{carrier.Name}» ({carrier.TaxId}) no es válido: corríjalo en Despachos > Transportistas.");
         if (driver != null && !RutChileno.IsValid(driver.TaxId))
-            errors.Add("El RUT del chofer no es válido.");
+            errors.Add(string.IsNullOrWhiteSpace(driver.TaxId)
+                ? $"El chofer «{driver.FullName}» no tiene RUT registrado: complételo en Despachos > Choferes."
+                : $"El RUT del chofer «{driver.FullName}» ({driver.TaxId}) no es válido: corríjalo en Despachos > Choferes.");
         if (m.Documents.Count == 0)
             errors.Add("El manifiesto debe tener al menos un documento.");
 

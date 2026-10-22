@@ -1,5 +1,8 @@
 @page "/despachos/manifiestos/{id:guid}"
 @model Modulo.Despachos.Pages.Despachos.Manifiestos.DetalleModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
 @using System.Globalization
 @using Modulo.Despachos.Dominio.Tarifas
 @using Modulo.Despachos.Models

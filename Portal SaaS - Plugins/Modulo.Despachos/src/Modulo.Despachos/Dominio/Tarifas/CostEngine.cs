@@ -108,6 +108,8 @@ public class CostEngine
         if (!_conditions.TryGetValue(s.ConditionType, out var cond))
             throw new InvalidOperationException(
                 $"Tipo de condición desconocido '{s.ConditionType}' en el recargo '{s.Name}'.");
+        if (cond is ManualQuantityCondition)
+            return ManualQuantityCondition.ForQuantity(trip.ManualQuantities?.GetValueOrDefault(s.Id) ?? 0);
         try
         {
             using var doc = JsonDocument.Parse(

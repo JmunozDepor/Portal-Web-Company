@@ -143,6 +143,7 @@ public sealed class TariffService : ITariffService
 
     public Task<DeleteResult> DeleteSurchargeAsync(long id) => DeleteAsync(_db.RateSurcharges, id, async () =>
         await _db.ManifestCostLines.AnyAsync(l => l.CompanyId == CompanyId && l.RateSurchargeId == id)
+        || await _db.ManifestExtraCharges.AnyAsync(x => x.CompanyId == CompanyId && x.RateSurchargeId == id)
             ? "El recargo está usado en manifiestos; desactívelo en vez de eliminarlo."
             : null);
 
@@ -187,7 +188,7 @@ public sealed class TariffService : ITariffService
         return new TripCostInput(
             input.CarrierId, input.ShiftId, vehicle.VehicleTypeId, vehicle.CapacityM3 ?? type?.CapacityM3,
             input.DispatchDate, input.LocalDepartureTime, isHoliday, input.Km,
-            input.Documents, input.Units, input.Packages, localities);
+            input.Documents, input.Units, input.Packages, localities, input.ManualQuantities);
     }
 
     public async Task<CostResult> SimulateAsync(SimulationInput input)

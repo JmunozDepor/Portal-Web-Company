@@ -152,6 +152,9 @@ empate → mayor `priority`; empate persistente → error visible "tarifa ambigu
   - `weekday_in` / `is_holiday` — día de la semana / feriado (feriados como mantenedor).
   - `distinct_communes_over`, `documents_over`, `packages_over`,
     `vehicle_type_is` — mismo patrón.
+  - `manual_quantity` — **adicional con cantidad**: logística ingresa la cantidad en cada
+    manifiesto (pestaña Costo → Adicionales); con `fixed_per_extra_unit` cobra cantidad × valor.
+    Agregado 2026-10-21 (ver §15).
   - Estrategias por código (`ISurchargeCondition`): un tipo nuevo = una clase.
 - **Efecto** = `effect_type` + `value`:
   - `fixed_amount` — suma $X (ejemplo: adicional por 2 zonas).
@@ -419,3 +422,27 @@ Estructura interna del plugin, librerías de PDF/escaneo/código de barras (con 
 restricción de licencia), diseño visual dentro del sistema de diseño existente,
 mecanismo concreto de ejecución segura de las consultas configurables, estrategia de
 tests (TDD de la resolución de tarifas y de las transiciones de estado es esperable).
+
+## 15. Ajuste 2026-10-21: tarifa real TSM/MTO y adicionales con cantidad
+
+Tarifa vigente entregada por logística (valores por viaje):
+
+| Transportista | Concepto | Valor | Cómo se configura |
+|---|---|---|---|
+| TSM | Camión 8M3 / 11M3 / 40M3 / Rampla | $76.857 / $92.612 / $133.987 / $286.547 | Tipo de vehículo + tarifa base `fixed_per_trip` del transportista |
+| TSM | Santiago Viña | $318.207 | Una tarifa base más (decisión del usuario: sin tramos) |
+| TSM | Nocturno | $25.589 | Turno "Nocturno" en el manifiesto + recargo `shift_is` `fixed_amount` |
+| TSM | Ayudante adicional | $24.455 | Recargo `manual_quantity` `fixed_per_extra_unit` |
+| TSM | Mall extra (punto adicional) | $11.975 | Recargo `manual_quantity` `fixed_per_extra_unit`: un camión va por defecto a un punto; cada punto adicional se ingresa a mano |
+| MTO | Camión 11M3 | $61.500 | Tarifa base `fixed_per_trip` |
+
+Decisiones del usuario: el nocturno se marca con el turno del manifiesto (no por hora); los
+puntos adicionales se ingresan a mano (sin maestro de destinos por ahora); no hay mantenedor de
+tramos.
+
+Modelo: `manifest_extra_charges` (`manifest_id`, `rate_surcharge_id`, `quantity`; único por
+manifiesto y recargo; 0 = sin fila). Las cantidades se editan en manifiestos no anulados con el
+período abierto (máximo 999); fuera del borrador cada cambio recalcula el costo. Cada cambio deja el
+evento `extra_charges_changed`. Un recargo usado en algún manifiesto no se puede eliminar, solo
+desactivar. El simulador del tarifario no pide cantidades: los adicionales no aparecen en la simulación.
+

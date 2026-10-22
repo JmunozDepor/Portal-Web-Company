@@ -55,7 +55,7 @@
         var empty = tbody.querySelector('[data-table-empty]');
         if (empty) { empty.remove(); }
         var row = template.content.firstElementChild.cloneNode(true);
-        var fields = { kind: doc.kind, folio: doc.folio, customer: doc.customer, commune: doc.commune || '—', units: nf.format(doc.units), packages: doc.packages };
+        var fields = { kind: doc.kind, folio: doc.folio, customer: doc.customer, commune: doc.commune || '—', units: nf.format(doc.units), packages: doc.packages, amount: '$' + nf.format(doc.amount || 0) };
         Object.keys(fields).forEach(function (k) { row.querySelector('[data-f="' + k + '"]').textContent = fields[k]; });
         var form = row.querySelector('form');
         form.setAttribute('action', form.getAttribute('action').replace('00000000-0000-0000-0000-000000000000', doc.id));
@@ -67,6 +67,7 @@
         document.querySelectorAll('[data-doc-count]').forEach(function (e) { e.textContent = data.totalDocuments; });
         document.querySelectorAll('[data-doc-units]').forEach(function (e) { e.textContent = nf.format(data.totalUnits); });
         document.querySelectorAll('[data-doc-packages]').forEach(function (e) { e.textContent = data.totalPackages; });
+        document.querySelectorAll('[data-doc-amount]').forEach(function (e) { e.textContent = '$' + nf.format(data.totalAmount || 0); });
     }
 
     // ------------------------------------------------------------ envío

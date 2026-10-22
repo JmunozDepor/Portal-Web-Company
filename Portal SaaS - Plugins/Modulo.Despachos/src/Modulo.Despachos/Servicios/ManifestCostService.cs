@@ -50,10 +50,13 @@ public sealed class ManifestCostService : IManifestCostService
             var communeIds = docs.Select(d => d.DestinationCommuneId!.Value).Distinct().ToList();
             var km = m.OdometerStart != null && m.OdometerEnd != null && m.OdometerEnd >= m.OdometerStart
                 ? (decimal?)(m.OdometerEnd - m.OdometerStart) : null;
+            var quantities = await _db.ManifestExtraCharges
+                .Where(x => x.CompanyId == CompanyId && x.ManifestId == m.Id && x.Quantity > 0)
+                .ToDictionaryAsync(x => x.RateSurchargeId, x => x.Quantity);
             var input = new SimulationInput(
                 m.CarrierId, m.ShiftId, m.VehicleId, m.DispatchDate, LocalDepartureTime(m), communeIds,
                 docs.Count, (int)Math.Round(docs.Sum(d => d.Units), MidpointRounding.AwayFromZero),
-                docs.Sum(d => d.Packages), km);
+                docs.Sum(d => d.Packages), km, quantities);
             var trip = await _tariff.BuildTripAsync(input);
             var (cards, surcharges) = await _tariff.LoadActiveAsync();
             result = _engine.Calculate(trip, cards, surcharges);

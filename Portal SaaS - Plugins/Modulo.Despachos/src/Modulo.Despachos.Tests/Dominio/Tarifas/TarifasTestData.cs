@@ -13,9 +13,10 @@ internal static class TarifasTestData
     public static TripCostInput Trip(
         TimeOnly? salida = null, IReadOnlyList<TripLocality>? loc = null, long carrier = 1,
         decimal? m3 = null, decimal? km = null, int docs = 5, int packages = 10,
-        long? shift = null, long? vehicleType = null, bool holiday = false, DateOnly? fecha = null) =>
+        long? shift = null, long? vehicleType = null, bool holiday = false, DateOnly? fecha = null,
+        IReadOnlyDictionary<long, int>? manual = null) =>
         new(carrier, shift, vehicleType, m3, fecha ?? Fecha, salida ?? new TimeOnly(10, 0), holiday, km,
-            docs, docs, packages, loc ?? new[] { Rancagua });
+            docs, docs, packages, loc ?? new[] { Rancagua }, manual);
 
     public static RateCard Card(long id, decimal amount, string method = "fixed_per_trip",
         long? commune = null, long? zone = null, string? region = null, long? carrier = null,
@@ -46,6 +47,7 @@ internal static class TarifasTestData
         {
             new DistinctZonesOverCondition(), new DistinctCommunesOverCondition(), new DepartureTimeFromCondition(),
             new ShiftIsCondition(), new WeekdayInCondition(), new IsHolidayCondition(),
-            new DocumentsOverCondition(), new PackagesOverCondition(), new VehicleTypeIsCondition()
+            new DocumentsOverCondition(), new PackagesOverCondition(), new VehicleTypeIsCondition(),
+            new ManualQuantityCondition()
         });
 }

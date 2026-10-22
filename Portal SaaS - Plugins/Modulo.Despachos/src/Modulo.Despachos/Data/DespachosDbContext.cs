@@ -42,6 +42,7 @@ public class DespachosDbContext : DbContext
     public DbSet<ManifestDocument> ManifestDocuments => Set<ManifestDocument>();
     public DbSet<ManifestCostLine> ManifestCostLines => Set<ManifestCostLine>();
     public DbSet<ManifestEvent> ManifestEvents => Set<ManifestEvent>();
+    public DbSet<ManifestExtraCharge> ManifestExtraCharges => Set<ManifestExtraCharge>();
     public DbSet<MonthlyClosure> MonthlyClosures => Set<MonthlyClosure>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -310,6 +311,25 @@ public class DespachosDbContext : DbContext
             e.HasMany(x => x.Documents).WithOne().HasForeignKey(d => d.ManifestId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.CostLines).WithOne().HasForeignKey(l => l.ManifestId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Events).WithOne().HasForeignKey(l => l.ManifestId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.ExtraCharges).WithOne().HasForeignKey(l => l.ManifestId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ManifestExtraCharge>(e =>
+        {
+            e.ToTable("manifest_extra_charges");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.ManifestId).HasColumnName("manifest_id");
+            e.Property(x => x.RateSurchargeId).HasColumnName("rate_surcharge_id");
+            e.Property(x => x.Quantity).HasColumnName("quantity");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
+            e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_manifest_extra_charges_company_id");
+            e.HasIndex(x => new { x.ManifestId, x.RateSurchargeId }).IsUnique()
+                .HasDatabaseName("uq_manifest_extra_charges_manifest_id_rate_surcharge_id");
+            e.HasOne<RateSurcharge>().WithMany().HasForeignKey(x => x.RateSurchargeId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_manifest_extra_charges_rate_surcharges");
         });
 
         modelBuilder.Entity<ManifestDocument>(e =>

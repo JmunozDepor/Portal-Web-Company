@@ -1,0 +1,139 @@
+@page "/despachos/reportes/documentos"
+@model Modulo.Despachos.Pages.Despachos.Reportes.DocumentosModel
+@using System.Globalization
+@using Modulo.Despachos.Models
+@using Modulo.Despachos.Pages.Despachos.Reportes
+@{
+    ViewData["Title"] = "Reporte de documentos";
+    var es = new CultureInfo("es-CL");
+    string Status(string s) => DespachosUi.StatusLabel(DespachosUi.StatusKey(s));
+}
+@* Documentos despachados y su condición de entrega, agrupados por manifiesto (resumen + documentos). *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Reporte de documentos despachados</h2>
+        @if (Model.CanExport && Model.Report is not null)
+        {
+            <a class="btn-secondary" href="/despachos/reportes/documentos?handler=Exportar&@Model.QueryString()">
+                <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+            </a>
+        }
+    </div>
+
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label" for="rd-desde">Desde</label>
+            <input type="date" id="rd-desde" name="desde" value="@Model.From.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="rd-hasta">Hasta</label>
+            <input type="date" id="rd-hasta" name="hasta" value="@Model.To.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="rd-estado">Estado del documento</label>
+            <select id="rd-estado" name="estado" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var s in DocumentosModel.FilterStatuses)
+                {
+                    <option value="@s" selected="@(Model.Estado == s)">@Status(s)</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="rd-transportista">Transportista</label>
+            <select id="rd-transportista" name="transportista" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var c in Model.Carriers)
+                {
+                    <option value="@c.Id" selected="@(Model.Transportista == c.Id)">@c.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="rd-buscar">Folio, N° manifiesto o cliente</label>
+            <input type="text" id="rd-buscar" name="buscar" value="@Model.Buscar" class="form-control" autocomplete="off" />
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn-primary">Ver</button>
+        </div>
+    </form>
+
+    @if (Model.Report is { } r)
+    {
+        var counts = r.CountByStatus;
+        <div class="dsp-kpis mb-3">
+            <div class="dsp-kpi"><div class="dsp-kpi__label">Manifiestos</div><div class="dsp-kpi__value">@r.Manifests.Count.ToString("N0", es)</div></div>
+            <div class="dsp-kpi"><div class="dsp-kpi__label">Documentos</div><div class="dsp-kpi__value">@r.TotalDocuments.ToString("N0", es)</div></div>
+            <div class="dsp-kpi"><div class="dsp-kpi__label">Monto</div><div class="dsp-kpi__value">$@r.TotalAmount.ToString("N0", es)</div></div>
+            @foreach (var s in DocumentosModel.FilterStatuses.Where(counts.ContainsKey))
+            {
+                <div class="dsp-kpi"><div class="dsp-kpi__label">@Status(s)</div><div class="dsp-kpi__value">@counts[s].ToString("N0", es)</div></div>
+            }
+        </div>
+
+        <table class="table-ps" id="rd-table">
+            <thead>
+                <tr>
+                    <th>Tipo</th><th>Folio</th><th>Cliente</th><th>Comuna</th>
+                    <th class="text-end">Unidades</th><th class="text-end">Bultos</th><th class="text-end">Monto</th>
+                    <th>Estado</th><th>Motivo</th><th>Comentario</th>
+                </tr>
+            </thead>
+            @foreach (var m in r.Manifests)
+            {
+                <tbody>
+                    <tr class="dsp-day-row">
+                        <td colspan="10">
+                            <div class="d-flex gap-3 flex-wrap align-items-center">
+                                <a href="/despachos/manifiestos/@m.Id"><strong>Manifiesto N° @m.Number</strong></a>
+                                <span>@m.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)@(m.Shift is null ? "" : $" · {m.Shift}")</span>
+                                <span class="dsp-badge dsp-badge--neutral">@m.Carrier</span>
+                                @if (m.Plate is not null) { <span>@m.Plate</span> }
+                                @if (m.Driver is not null) { <span class="text-muted">@m.Driver</span> }
+                                <partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="m.Status" />
+                                <span class="text-muted">@m.Documents.Count doc. · @m.Units.ToString("N0", es) unid. · @m.Packages bultos · $@m.Amount.ToString("N0", es)</span>
+                            </div>
+                        </td>
+                    </tr>
+                    @foreach (var d in m.Documents)
+                    {
+                        <tr>
+                            <td>@DocumentKinds.Label(d.DocumentKind)</td>
+                            <td>@d.Folio</td>
+                            <td>@d.CustomerName</td>
+                            <td>@(d.Commune ?? "—")</td>
+                            <td class="text-end">@d.Units.ToString("N0", es)</td>
+                            <td class="text-end">@d.Packages</td>
+                            <td class="text-end">$@d.Amount.ToString("N0", es)</td>
+                            <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="d.DeliveryStatus" /></td>
+                            <td>@(d.RejectionReason ?? "")</td>
+                            <td>@(d.Comments ?? "")</td>
+                        </tr>
+                    }
+                </tbody>
+            }
+            @if (r.Manifests.Count == 0)
+            {
+                <tbody><tr><td colspan="10" class="text-muted">Sin documentos despachados con estos filtros.</td></tr></tbody>
+            }
+            else
+            {
+                <tfoot>
+                    <tr>
+                        <th colspan="4">Total: @r.Manifests.Count manifiesto(s), @r.TotalDocuments documento(s)</th>
+                        <th class="text-end">@r.TotalUnits.ToString("N0", es)</th>
+                        <th class="text-end">@r.TotalPackages.ToString("N0", es)</th>
+                        <th class="text-end">$@r.TotalAmount.ToString("N0", es)</th>
+                        <th colspan="3"></th>
+                    </tr>
+                </tfoot>
+            }
+        </table>
+    }
+</div>

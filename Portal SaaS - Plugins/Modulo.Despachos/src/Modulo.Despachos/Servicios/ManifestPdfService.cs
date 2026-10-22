@@ -197,12 +197,12 @@ public class ManifestPdfService : IManifestPdfService
         var d = s.AddTable();
         d.Borders.Width = 0.4;
         d.Borders.Color = Colors.Gray;
-        foreach (var w in new[] { 1.7, 2.0, 5.3, 2.8, 2.5, 1.9, 1.8 }) d.AddColumn(Unit.FromCentimeter(w));
+        foreach (var w in new[] { 1.7, 2.0, 7.8, 2.8, 1.9, 1.8 }) d.AddColumn(Unit.FromCentimeter(w));
         var head = d.AddRow();
         head.HeadingFormat = true;
         head.Shading.Color = Colors.LightGray;
         head.Format.Font.Bold = true;
-        var labels = new[] { "Tipo", "Folio", "Cliente", "OC", "Dirección", "Unidades", "Bultos" };
+        var labels = new[] { "Tipo", "Folio", "Cliente", "OC", "Unidades", "Bultos" };
         for (var i = 0; i < labels.Length; i++) head.Cells[i].AddParagraph(labels[i]);
 
         foreach (var g in model.Groups)
@@ -210,7 +210,7 @@ public class ManifestPdfService : IManifestPdfService
             var gr = d.AddRow();
             gr.Shading.Color = Colors.WhiteSmoke;
             gr.Format.Font.Bold = true;
-            gr.Cells[0].MergeRight = 6;
+            gr.Cells[0].MergeRight = 5;
             gr.Cells[0].AddParagraph($"Destino: {g.Title}");
             foreach (var row in g.Rows)
             {
@@ -219,24 +219,23 @@ public class ManifestPdfService : IManifestPdfService
                 rr.Cells[1].AddParagraph(row.Folio.ToString(CultureInfo.InvariantCulture));
                 rr.Cells[2].AddParagraph(row.Customer);
                 rr.Cells[3].AddParagraph(row.Po ?? "");
-                rr.Cells[4].AddParagraph(row.Address ?? "");
-                rr.Cells[5].AddParagraph(row.Units.ToString("N0", ci)).Format.Alignment = ParagraphAlignment.Right;
-                rr.Cells[6].AddParagraph(row.Packages.ToString(ci)).Format.Alignment = ParagraphAlignment.Right;
+                rr.Cells[4].AddParagraph(row.Units.ToString("N0", ci)).Format.Alignment = ParagraphAlignment.Right;
+                rr.Cells[5].AddParagraph(row.Packages.ToString(ci)).Format.Alignment = ParagraphAlignment.Right;
             }
             var sub = d.AddRow();
             sub.Format.Font.Italic = true;
-            sub.Cells[0].MergeRight = 4;
+            sub.Cells[0].MergeRight = 3;
             sub.Cells[0].AddParagraph($"Subtotal {g.Title}: {g.Documents} documento(s)").Format.Alignment = ParagraphAlignment.Right;
-            sub.Cells[5].AddParagraph(g.Units.ToString("N0", ci)).Format.Alignment = ParagraphAlignment.Right;
-            sub.Cells[6].AddParagraph(g.Packages.ToString(ci)).Format.Alignment = ParagraphAlignment.Right;
+            sub.Cells[4].AddParagraph(g.Units.ToString("N0", ci)).Format.Alignment = ParagraphAlignment.Right;
+            sub.Cells[5].AddParagraph(g.Packages.ToString(ci)).Format.Alignment = ParagraphAlignment.Right;
         }
         var tot = d.AddRow();
         tot.Format.Font.Bold = true;
         tot.Shading.Color = Colors.LightGray;
-        tot.Cells[0].MergeRight = 4;
+        tot.Cells[0].MergeRight = 3;
         tot.Cells[0].AddParagraph($"TOTAL GENERAL: {model.TotalDocuments} documento(s)").Format.Alignment = ParagraphAlignment.Right;
-        tot.Cells[5].AddParagraph(model.TotalUnits.ToString("N0", ci)).Format.Alignment = ParagraphAlignment.Right;
-        tot.Cells[6].AddParagraph(model.TotalPackages.ToString(ci)).Format.Alignment = ParagraphAlignment.Right;
+        tot.Cells[4].AddParagraph(model.TotalUnits.ToString("N0", ci)).Format.Alignment = ParagraphAlignment.Right;
+        tot.Cells[5].AddParagraph(model.TotalPackages.ToString(ci)).Format.Alignment = ParagraphAlignment.Right;
 
         // Firmas.
         s.AddParagraph().Format.SpaceAfter = Unit.FromCentimeter(2);

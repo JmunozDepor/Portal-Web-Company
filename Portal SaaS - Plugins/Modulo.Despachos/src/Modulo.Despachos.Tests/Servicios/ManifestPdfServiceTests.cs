@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Modulo.Despachos.Models;
 using Modulo.Despachos.Servicios;
@@ -65,6 +67,28 @@ public class ManifestPdfServiceTests
         var (env, id) = await DispatchedAsync();
         var bytes = await Pdf(env).RenderAsync(id, false);
         Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
+    }
+
+    [Fact]
+    public async Task Render_IncluyeNombreDeLaCompania_YMontos()
+    {
+        var (env, id) = await DispatchedAsync();
+        var http = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("CompanyName", "Depor Testing") }, "test")),
+            },
+        };
+        var bytes = await new ManifestPdfService(env.Db, env.Company, env.User, env.Svc, env.Clock, http).RenderAsync(id, false);
+        var dump = Environment.GetEnvironmentVariable("DESPACHOS_PDF_DUMP");
+        if (!string.IsNullOrEmpty(dump)) File.WriteAllBytes(dump, bytes);
+        var text = ExtractText(bytes);
+        Assert.Contains("Depor", text); // MigraDoc escribe cada palabra por separado.
+        Assert.Contains("Testing", text);
+        Assert.Contains("Monto", text);
+        Assert.Contains("$119.000", text);
+        Assert.Contains("$357.000", text);
     }
 
     [Fact]

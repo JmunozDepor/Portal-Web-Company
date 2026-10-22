@@ -49,6 +49,24 @@ public class ManifestCostServiceTests
     }
 
     [Fact]
+    public async Task Estimate_CalculaElCosto_SinGuardarNada()
+    {
+        var env = ManifestTestEnv.Build();
+        var id = await env.DraftWithDocsAsync(1);
+        var m = await LoadAsync(env, id);
+
+        var result = await env.Cost.EstimateAsync(m);
+
+        Assert.Equal("ok", result.Status);
+        Assert.Equal(150000m, result.Total);
+        Assert.NotEmpty(result.Lines);
+        Assert.Empty(await env.Db.ManifestCostLines.Where(l => l.ManifestId == id).ToListAsync());
+        var stored = await env.Db.Manifests.AsNoTracking().SingleAsync(x => x.Id == id);
+        Assert.Null(stored.CostCalculated);
+        Assert.Null(m.CostCalculated);
+    }
+
+    [Fact]
     public async Task Recalculate_ConOverride_FinalEsElOverride_YCalculadoSeConserva()
     {
         var env = ManifestTestEnv.Build();

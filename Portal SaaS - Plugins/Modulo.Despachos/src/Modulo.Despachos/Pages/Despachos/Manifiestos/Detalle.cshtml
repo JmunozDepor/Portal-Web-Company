@@ -1,6 +1,7 @@
 @page "/despachos/manifiestos/{id:guid}"
 @model Modulo.Despachos.Pages.Despachos.Manifiestos.DetalleModel
 @using System.Globalization
+@using Modulo.Despachos.Dominio.Tarifas
 @using Modulo.Despachos.Models
 @using Modulo.Despachos.Pages.Despachos.Manifiestos
 @using Modulo.Despachos.Servicios
@@ -307,12 +308,38 @@
 
     @* ------------------------------------------------------------ Costo *@
     <div data-tab-panel="costo" style="@(active == "costo" ? "" : "display:none;")">
+        @if (Model.IsDraft)
+        {
+            @* Borrador: costo estimado en vivo (no se guarda). El definitivo se calcula al despachar. *@
+            var est = Model.Estimate;
+            <dl class="row">
+                <dt class="col-sm-3">Estado del cálculo</dt>
+                <dd class="col-sm-9">@(Model.EstimateError is not null ? "Error" : est is null ? "—" : DespachosUi.CostStatusLabel(est.Status)) <span class="text-muted">(estimado)</span></dd>
+                <dt class="col-sm-3">Costo estimado</dt>
+                <dd class="col-sm-9"><strong>@(est?.Total is { } tot ? "$" + tot.ToString("N0", es) : "—")</strong></dd>
+            </dl>
+            @if (Model.EstimateError is not null)
+            {
+                <div class="alert alert-danger">No se pudo estimar el costo: @Model.EstimateError</div>
+            }
+            else if (est is not null && est.Status == CostStatuses.NoRate)
+            {
+                <div class="alert alert-warning">Sin tarifa para este viaje: revise que haya documentos con comuna resuelta y una tarifa vigente para el transportista, el tipo de vehículo y el destino.</div>
+            }
+            else if (est is not null && est.Status == CostStatuses.Ambiguous)
+            {
+                <div class="alert alert-warning">Más de una tarifa calza con la misma prioridad: ajuste las prioridades en el tarifario.</div>
+            }
+        }
+        else
+        {
         <dl class="row">
             <dt class="col-sm-3">Estado del cálculo</dt><dd class="col-sm-9">@DespachosUi.CostStatusLabel(m.CostStatus)</dd>
             <dt class="col-sm-3">Costo calculado</dt><dd class="col-sm-9">@(m.CostCalculated is null ? "—" : m.CostCalculated.Value.ToString("N0", es))</dd>
             <dt class="col-sm-3">Ajuste manual</dt><dd class="col-sm-9">@(m.CostOverride is null ? "—" : $"{m.CostOverride.Value.ToString("N0", es)} ({m.CostOverrideReason})")</dd>
             <dt class="col-sm-3">Costo final</dt><dd class="col-sm-9"><strong>@(m.CostFinal is null ? "—" : m.CostFinal.Value.ToString("N0", es))</strong></dd>
         </dl>
+        }
 
         @* Adicionales con cantidad (recargos "Cantidad ingresada en el manifiesto" del tarifario). *@
         <h4>Adicionales</h4>
@@ -351,7 +378,7 @@
                 @if (canEditExtras)
                 {
                     <button type="submit" class="btn-secondary"><i class="bi bi-check2"></i> Guardar adicionales</button>
-                    <span class="text-muted ms-2">@(m.Status == ManifestStatuses.Draft ? "Se cobran al despachar." : "Al guardar se recalcula el costo.")</span>
+                    <span class="text-muted ms-2">@(m.Status == ManifestStatuses.Draft ? "Al guardar se actualiza el costo estimado; se cobran al despachar." : "Al guardar se recalcula el costo.")</span>
                 }
             </form>
         }
@@ -359,6 +386,23 @@
         <table class="table-ps">
             <thead><tr><th>Concepto</th><th>Detalle</th><th class="text-end">Monto</th></tr></thead>
             <tbody>
+                @if (Model.IsDraft)
+                {
+                    foreach (var l in (Model.Estimate?.Lines ?? Array.Empty<CostLine>()).OrderBy(x => x.Kind == "base" ? 0 : 1))
+                    {
+                        <tr>
+                            <td>@(l.Kind == "base" ? "Valor base" : "Recargo")</td>
+                            <td>@l.Explanation</td>
+                            <td class="text-end">@l.Amount.ToString("N0", es)</td>
+                        </tr>
+                    }
+                    if ((Model.Estimate?.Lines.Count ?? 0) == 0)
+                    {
+                        <tr><td colspan="3" class="text-muted">Sin líneas de costo estimado.</td></tr>
+                    }
+                }
+                else
+                {
                 @foreach (var l in m.CostLines.OrderBy(x => x.Kind == "base" ? 0 : 1).ThenBy(x => x.Id))
                 {
                     <tr>
@@ -370,6 +414,7 @@
                 @if (m.CostLines.Count == 0)
                 {
                     <tr><td colspan="3" class="text-muted">Sin líneas de costo (el costo se calcula al despachar).</td></tr>
+                }
                 }
             </tbody>
         </table>

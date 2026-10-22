@@ -69,6 +69,7 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
             IsAdmin = user.IsAdmin,
             IsActive = user.IsActive,
             IsLocked = user.IsLocked,
+            LastLoginAt = user.LastLoginAt,
             DefaultCompanyId = defaultCompanyId,
         };
     }
@@ -399,6 +400,12 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
             return TenantUserOperationResult.Failure("Usuario no encontrado.");
         }
 
+        var errores = PasswordPolicy.Validate(newPassword);
+        if (errores.Count > 0)
+        {
+            return TenantUserOperationResult.Failure(string.Join(" ", errores));
+        }
+
         var (hash, salt) = PasswordHasher.Hash(newPassword);
         user.PasswordHash = hash;
         user.PasswordSalt = salt;
@@ -409,6 +416,8 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
 
         return TenantUserOperationResult.Success(user.Id);
     }
+
+    public IReadOnlyList<string> ValidatePassword(string password) => PasswordPolicy.Validate(password);
 
     public async Task<TenantUserPasswordResult> GenerateAndSetPasswordAsync(Guid userId, CancellationToken ct = default)
     {

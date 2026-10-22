@@ -31,6 +31,8 @@ namespace Modulo.ImportacionGenerica.Pages.Importar;
 /// </summary>
 public sealed class IndexModel : PageModelBaseAdmin
 {
+    protected override string MenuCode => "ImportacionGenerica.importar";
+
     private readonly IGenericImportService _importService;
     private readonly IGenericImportProgressStore _progress;
     private readonly IGenericImportConfigService _configs;

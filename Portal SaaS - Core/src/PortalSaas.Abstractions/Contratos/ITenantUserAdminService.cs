@@ -62,13 +62,15 @@ public interface ITenantUserAdminService
     Task<TenantUserOperationResult> SetDefaultCompanyAsync(Guid userId, Guid? companyId, CancellationToken ct = default);
 
     /// <summary>
-    /// Fija una contraseña ya generada por el llamador (admin, vía RandomPasswordGenerator)
-    /// -- a diferencia de CreateAsync, acá el hash SÍ se comunica (por correo o en pantalla),
-    /// por eso el llamador es responsable de que newPassword cumpla PasswordPolicy antes de
-    /// invocar este método. Resetea intentos fallidos y desbloquea, mismo criterio que
-    /// PasswordResetService.ResetPasswordAsync.
+    /// Fija una contraseña elegida por el admin (propuesta a mano o generada). Valida
+    /// PasswordPolicy acá mismo y rechaza con los motivos si no la cumple (desde
+    /// 2026-10-21, antes era responsabilidad del llamador). Resetea intentos fallidos y
+    /// desbloquea, mismo criterio que PasswordResetService.ResetPasswordAsync.
     /// </summary>
     Task<TenantUserOperationResult> SetPasswordAsync(Guid userId, string newPassword, CancellationToken ct = default);
+
+    /// <summary>Incumplimientos de PasswordPolicy (vacío = válida) -- para validar una contraseña propuesta ANTES de crear el usuario, sin que el plugin conozca PasswordPolicy.</summary>
+    IReadOnlyList<string> ValidatePassword(string password);
 
     /// <summary>
     /// Genera una contraseña aleatoria que cumple PasswordPolicy y la fija de inmediato --

@@ -336,7 +336,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
     {
         options.LoginPath = "/Account/Login";
-        options.AccessDeniedPath = "/Account/Login";
+        // Página propia, NO el login -- ver Pages/Account/AccessDenied.cshtml.cs.
+        options.AccessDeniedPath = "/Account/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
         // "Desconectar" desde /Admin/Sessions (ver IUserSessionService.RevokeAsync) no

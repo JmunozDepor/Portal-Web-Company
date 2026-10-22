@@ -23,6 +23,8 @@ namespace Modulo.ImportacionGenerica.Pages.Configuracion;
 /// </summary>
 public sealed class IndexModel : PageModelBaseAdmin
 {
+    protected override string MenuCode => "ImportacionGenerica.configuracion";
+
     private readonly IGenericImportConfigService _configs;
     private readonly IGenericImportUserFieldService _userFields;
     private readonly ICustomerCatalogService _customers;

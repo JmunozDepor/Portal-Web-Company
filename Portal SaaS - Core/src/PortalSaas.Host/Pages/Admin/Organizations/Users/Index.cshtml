@@ -43,6 +43,10 @@
                     {
                         <span class="text-danger">Bloqueado</span>
                     }
+                    else if (user.LastLoginAt is null)
+                    {
+                        <span class="text-muted" title="Nunca inició sesión">Pendiente de activar</span>
+                    }
                     else
                     {
                         <span class="text-success">Activo</span>

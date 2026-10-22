@@ -22,6 +22,8 @@ public sealed class IndexModel : PageModelBaseAdmin
         _userFields = userFields;
     }
 
+    protected override string MenuCode => "ImportacionGenerica.campos-usuario";
+
     [BindProperty(SupportsGet = true)]
     public int? EditId { get; set; }
 

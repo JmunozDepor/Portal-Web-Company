@@ -44,6 +44,14 @@
                 {
                     <span class="badge-status badge-status--neutral">Inactivo</span>
                 }
+                @if (Model.Detalle.IsLocked)
+                {
+                    <span class="badge-status badge-status--danger">Bloqueado</span>
+                }
+                @if (Model.Detalle.LastLoginAt is null)
+                {
+                    <span class="badge-status badge-status--neutral" title="Nunca inició sesión">Pendiente de activar</span>
+                }
                 @if (Model.Detalle.IsAdmin)
                 {
                     <span class="badge-status badge-status--warning">Administrador</span>
@@ -84,7 +92,11 @@
             @if (Model.EsNuevo)
             {
                 <div class="mb-3">
-                    <p class="text-muted mb-0">Se le enviará un correo de invitación para que elija su propia contraseña.</p>
+                    <label asp-for="Input.Password" class="form-label"></label>
+                    <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
+                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                    <p class="text-muted mb-0" style="font-size:12px;">Déjala vacía para enviarle un correo de invitación (vence en 72 horas) y que elija su propia contraseña. Mínimo 10 caracteres, con mayúscula, minúscula, número y símbolo.</p>
+                    <label class="d-flex align-items-center gap-2 mt-2"><input asp-for="Input.EnviarPasswordPorCorreo" type="checkbox" /> Enviarle también la contraseña por correo</label>
                 </div>
             }
         </div>
@@ -116,6 +128,26 @@
                 <button type="submit" class="btn-secondary">Generar y mostrar contraseña</button>
             </form>
         </div>
+
+        <h3 class="h6 mt-4 mb-2">O define tú la contraseña</h3>
+        <form method="post" asp-page-handler="DefinirPassword" asp-route-id="@Model.Detalle!.Id" class="d-flex flex-wrap align-items-end gap-2">
+            <div class="flex-grow-1" style="min-width:220px;">
+                <label class="form-label" for="nuevaPassword">Contraseña nueva</label>
+                <input id="nuevaPassword" name="nuevaPassword" type="password" class="form-control" autocomplete="new-password" />
+            </div>
+            <label class="d-flex align-items-center gap-2 mb-2"><input name="enviarPorCorreo" type="checkbox" value="true" /> Enviar por correo</label>
+            <button type="submit" class="btn-secondary">Guardar contraseña</button>
+        </form>
+
+        @if (Model.Detalle!.LastLoginAt is null)
+        {
+            <hr class="my-4" />
+            <h2 class="h5 mb-1">Invitación</h2>
+            <p class="text-muted mb-3">Este usuario nunca inició sesión. Reenvíale el correo de invitación (el enlace vence en 72 horas) para que elija su contraseña.</p>
+            <form method="post" asp-page-handler="ReenviarInvitacion" asp-route-id="@Model.Detalle.Id">
+                <button type="submit" class="btn-secondary"><i class="bi bi-envelope"></i> Reenviar invitación</button>
+            </form>
+        }
     }
 </div>
 

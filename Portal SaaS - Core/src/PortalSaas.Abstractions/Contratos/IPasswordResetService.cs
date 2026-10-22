@@ -20,6 +20,18 @@ public interface IPasswordResetService
     Task<string?> RequestResetAsync(Guid organizationId, string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Igual que <see cref="RequestResetAsync"/> (mismo token, mismo /Account/ResetPassword),
+    /// pero con vida larga (<see cref="InvitationLifetime"/>) -- para el correo de
+    /// invitación de un usuario recién creado, que no está esperando el correo como quien
+    /// pidió recuperar su contraseña (caso real 2026-10-21: con 1 hora, el link venció
+    /// antes de que el usuario lo abriera).
+    /// </summary>
+    Task<string?> RequestInvitationAsync(Guid organizationId, string email, CancellationToken ct = default);
+
+    /// <summary>Vida del token de invitación -- expuesta para que el texto del correo no la repita a mano.</summary>
+    static TimeSpan InvitationLifetime => TimeSpan.FromHours(72);
+
+    /// <summary>
     /// Aplica la nueva contraseña si el token es válido, no expiró y no fue usado
     /// antes. Devuelve false en cualquiera de esos casos -- sin distinguir el motivo
     /// exacto de cara al usuario (mismo criterio anti-enumeración).

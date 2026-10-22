@@ -19,6 +19,8 @@ namespace Modulo.ImportacionGenerica.Pages.Configuracion;
 /// </summary>
 public sealed class ProbarFormatoModel : PageModelBaseAdmin
 {
+    protected override string MenuCode => "ImportacionGenerica.configuracion";
+
     private readonly IGenericImportConfigService _configs;
     private readonly IGenericImportFormatValidator _validator;
     private readonly ICustomerCatalogService _customers;

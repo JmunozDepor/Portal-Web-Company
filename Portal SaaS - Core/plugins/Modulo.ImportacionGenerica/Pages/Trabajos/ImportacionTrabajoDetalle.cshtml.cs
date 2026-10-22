@@ -23,6 +23,8 @@ public sealed class ImportacionTrabajoDetalleModel : PageModelBaseAdmin
         _logger = logger;
     }
 
+    protected override string MenuCode => "ImportacionGenerica.trabajos";
+
     [BindProperty(SupportsGet = true)]
     public Guid Id { get; set; }
 

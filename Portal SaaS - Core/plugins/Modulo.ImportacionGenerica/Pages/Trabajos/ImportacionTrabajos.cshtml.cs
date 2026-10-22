@@ -23,6 +23,8 @@ public sealed class ImportacionTrabajosModel : PageModelBaseAdmin
         _jobs = jobs;
     }
 
+    protected override string MenuCode => "ImportacionGenerica.trabajos";
+
     /// <summary>"enviadas" (default) | "guardadas".</summary>
     [BindProperty(SupportsGet = true, Name = "view")]
     public string? View { get; set; }

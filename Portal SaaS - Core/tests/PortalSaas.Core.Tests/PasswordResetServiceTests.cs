@@ -47,6 +47,21 @@ public class PasswordResetServiceTests
     }
 
     [Fact]
+    public async Task RequestInvitation_TokenViveMasQueElDeRecuperacion()
+    {
+        var (db, org, user) = await CrearUsuarioAsync();
+        var servicio = new PasswordResetService(db);
+
+        await servicio.RequestResetAsync(org.Id, "jperez@cliente.cl", default);
+        await servicio.RequestInvitationAsync(org.Id, "jperez@cliente.cl", default);
+
+        var tokens = await db.PasswordResetTokens.Where(t => t.UserId == user.Id).OrderBy(t => t.ExpiresAt).ToListAsync();
+        Assert.Equal(2, tokens.Count);
+        Assert.True(tokens[0].ExpiresAt <= DateTimeOffset.UtcNow.AddHours(1).AddMinutes(1));
+        Assert.True(tokens[1].ExpiresAt >= DateTimeOffset.UtcNow.AddHours(71));
+    }
+
+    [Fact]
     public async Task RequestReset_ConCorreoInexistente_DevuelveNull()
     {
         var (db, org, _) = await CrearUsuarioAsync();

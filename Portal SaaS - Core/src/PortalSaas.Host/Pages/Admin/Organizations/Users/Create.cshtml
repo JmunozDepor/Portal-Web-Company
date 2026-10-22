@@ -8,7 +8,7 @@
 
 <div class="card-surface mb-4">
     <h2 class="h5 mb-3">Nuevo usuario en @Model.Organization.LegalName</h2>
-    <p class="text-muted">Al crear el usuario se le enviará un correo de invitación para que elija su propia contraseña.</p>
+    <p class="text-muted">Si dejas la contraseña vacía, se le enviará un correo de invitación (vence en 72 horas) para que elija la suya.</p>
     <form method="post" asp-antiforgery="true">
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
@@ -23,6 +23,13 @@
                 <label asp-for="Input.Email" class="form-label"></label>
                 <input asp-for="Input.Email" class="form-control" />
                 <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
+                <label asp-for="Input.Password" class="form-label"></label>
+                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+                <div class="form-text">Mínimo 10 caracteres, con mayúscula, minúscula, número y símbolo.</div>
             </div>
 
             <div class="col-12 d-flex align-items-center">

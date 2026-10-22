@@ -74,6 +74,14 @@ public class EditarModel : AdminPageModelBase
 
         [Display(Name = "Bloqueado")]
         public bool IsLocked { get; set; }
+
+        /// <summary>Solo al crear: contraseña propuesta por el admin. Vacía = invitación por correo (el usuario la elige).</summary>
+        [DataType(DataType.Password)]
+        [Display(Name = "Contraseña (opcional)")]
+        public string? Password { get; set; }
+
+        /// <summary>Solo al crear con contraseña propuesta: además mandarla por correo.</summary>
+        public bool EnviarPasswordPorCorreo { get; set; }
     }
 
     public sealed class PermissionsInputModel
@@ -129,6 +137,23 @@ public class EditarModel : AdminPageModelBase
 
         if (EsNuevo)
         {
+            var passwordPropuesta = string.IsNullOrWhiteSpace(Input.Password) ? null : Input.Password;
+
+            // Validar ANTES de crear -- si no, un usuario quedaría creado con una contraseña
+            // aleatoria y sin invitación.
+            if (passwordPropuesta is not null)
+            {
+                foreach (var error in _usuarios.ValidatePassword(passwordPropuesta))
+                {
+                    ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Password)}", error);
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    return Page();
+                }
+            }
+
             var resultado = await _usuarios.CreateAsync(Input.Username, Input.Email, Input.IsAdmin);
             if (!resultado.IsSuccess)
             {
@@ -136,9 +161,32 @@ public class EditarModel : AdminPageModelBase
                 return Page();
             }
 
-            MensajeExito = await EnviarInvitacionAsync(Input.Email)
-                ? "Usuario creado correctamente. Se envió un correo de invitación para que cree su contraseña."
-                : "Usuario creado correctamente, pero no se pudo enviar el correo de invitación (revisa la configuración de correo de la organización).";
+            if (passwordPropuesta is null)
+            {
+                MensajeExito = await EnviarInvitacionAsync(Input.Email)
+                    ? "Usuario creado correctamente. Se envió un correo de invitación para que cree su contraseña."
+                    : "Usuario creado correctamente, pero no se pudo enviar el correo de invitación (revisa la configuración de correo de la organización).";
+                return RedirectToPage(new { id = resultado.UserId });
+            }
+
+            var fijada = await _usuarios.SetPasswordAsync(resultado.UserId!.Value, passwordPropuesta);
+            if (!fijada.IsSuccess)
+            {
+                MensajeError = $"Usuario creado, pero no se pudo fijar la contraseña: {fijada.Reason}";
+                return RedirectToPage(new { id = resultado.UserId });
+            }
+
+            if (Input.EnviarPasswordPorCorreo)
+            {
+                MensajeExito = await EnviarPasswordPorCorreoAsync(resultado.UserId.Value, Input.Email, passwordPropuesta)
+                    ? "Usuario creado con la contraseña indicada. Se le envió por correo."
+                    : "Usuario creado con la contraseña indicada, pero no se pudo enviar el correo (revisa la configuración de correo de la organización). Comunícasela tú.";
+            }
+            else
+            {
+                MensajeExito = "Usuario creado con la contraseña indicada. Comunícasela al usuario.";
+            }
+
             return RedirectToPage(new { id = resultado.UserId });
         }
 
@@ -179,26 +227,97 @@ public class EditarModel : AdminPageModelBase
             return RedirectToPage(new { id });
         }
 
-        var organizationId = CurrentUser.OrganizationId;
-        try
+        if (await EnviarPasswordPorCorreoAsync(id, detalle.Email, password))
         {
-            await _emailSenderService.SendAsync(organizationId, new EmailMessage(
-                detalle.Email,
-                "Tu contraseña fue actualizada — Portal SaaS",
-                $"""
-                <p>Un administrador generó una contraseña nueva para tu cuenta en el Portal SaaS.</p>
-                <p>Tu nueva contraseña es: <strong>{password}</strong></p>
-                <p>Te recomendamos cambiarla la próxima vez que inicies sesión.</p>
-                """));
             MensajeExito = "Se generó una contraseña nueva y se envió por correo al usuario.";
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Falló el envío del correo de contraseña nueva para el usuario {UserId} de la organización {OrganizationId}", id, organizationId);
             MensajeError = "Se generó la contraseña nueva, pero no se pudo enviar el correo (revisa la configuración de correo de la organización).";
         }
 
         return RedirectToPage(new { id });
+    }
+
+    /// <summary>Contraseña propuesta por el admin (en vez de una aleatoria) para un usuario existente.</summary>
+    public async Task<IActionResult> OnPostDefinirPasswordAsync(Guid id, string? nuevaPassword, bool enviarPorCorreo)
+    {
+        var detalle = await _usuarios.GetAsync(id);
+        if (detalle is null)
+        {
+            return NotFound();
+        }
+
+        if (string.IsNullOrWhiteSpace(nuevaPassword))
+        {
+            MensajeError = "Escribe la contraseña que quieres asignar.";
+            return RedirectToPage(new { id });
+        }
+
+        var resultado = await _usuarios.SetPasswordAsync(id, nuevaPassword);
+        if (!resultado.IsSuccess)
+        {
+            MensajeError = resultado.Reason;
+            return RedirectToPage(new { id });
+        }
+
+        if (!enviarPorCorreo)
+        {
+            MensajeExito = "Contraseña actualizada (la cuenta queda desbloqueada). Comunícasela al usuario.";
+        }
+        else if (await EnviarPasswordPorCorreoAsync(id, detalle.Email, nuevaPassword))
+        {
+            MensajeExito = "Contraseña actualizada y enviada por correo al usuario.";
+        }
+        else
+        {
+            MensajeError = "Contraseña actualizada, pero no se pudo enviar el correo (revisa la configuración de correo de la organización). Comunícasela tú.";
+        }
+
+        return RedirectToPage(new { id });
+    }
+
+    /// <summary>Nuevo link de invitación (72 h) para un usuario que todavía no activó su cuenta.</summary>
+    public async Task<IActionResult> OnPostReenviarInvitacionAsync(Guid id)
+    {
+        var detalle = await _usuarios.GetAsync(id);
+        if (detalle is null)
+        {
+            return NotFound();
+        }
+
+        if (await EnviarInvitacionAsync(detalle.Email))
+        {
+            MensajeExito = $"Se reenvió la invitación a {detalle.Email}.";
+        }
+        else
+        {
+            MensajeError = "No se pudo enviar la invitación (usuario inactivo o configuración de correo de la organización con problemas).";
+        }
+
+        return RedirectToPage(new { id });
+    }
+
+    private async Task<bool> EnviarPasswordPorCorreoAsync(Guid userId, string email, string password)
+    {
+        var organizationId = CurrentUser.OrganizationId;
+        try
+        {
+            await _emailSenderService.SendAsync(organizationId, new EmailMessage(
+                email,
+                "Tu contraseña fue actualizada — Portal SaaS",
+                $"""
+                <p>Un administrador definió una contraseña para tu cuenta en el Portal SaaS.</p>
+                <p>Tu contraseña es: <strong>{System.Net.WebUtility.HtmlEncode(password)}</strong></p>
+                <p>Te recomendamos cambiarla la próxima vez que inicies sesión.</p>
+                """));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falló el envío del correo de contraseña para el usuario {UserId} de la organización {OrganizationId}", userId, organizationId);
+            return false;
+        }
     }
 
     public async Task<IActionResult> OnPostGuardarPermisosAsync(Guid id)
@@ -240,22 +359,24 @@ public class EditarModel : AdminPageModelBase
     private async Task<bool> EnviarInvitacionAsync(string email)
     {
         var organizationId = CurrentUser.OrganizationId;
-        var rawToken = await _passwordResetService.RequestResetAsync(organizationId, email);
+        var rawToken = await _passwordResetService.RequestInvitationAsync(organizationId, email);
         if (rawToken is null)
         {
             return false;
         }
 
         var resetLink = Url.PageLink("/Account/ResetPassword", values: new { token = rawToken });
+        var horas = (int)IPasswordResetService.InvitationLifetime.TotalHours;
 
         try
         {
             await _emailSenderService.SendAsync(organizationId, new EmailMessage(
                 email,
-                "Creá tu contraseña — Portal SaaS",
+                "Crea tu contraseña — Portal SaaS",
                 $"""
-                <p>Se creó una cuenta para vos en el Portal SaaS.</p>
-                <p><a href="{resetLink}">Hacé clic acá para elegir tu contraseña</a> (el link vence en 1 hora).</p>
+                <p>Se creó una cuenta para ti en el Portal SaaS.</p>
+                <p><a href="{resetLink}">Haz clic aquí para elegir tu contraseña</a> (el enlace vence en {horas} horas).</p>
+                <p>Si vence, pide a tu administrador que te reenvíe la invitación.</p>
                 """));
             return true;
         }

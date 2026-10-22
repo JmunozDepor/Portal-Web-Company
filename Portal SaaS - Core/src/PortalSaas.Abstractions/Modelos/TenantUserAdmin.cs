@@ -25,6 +25,9 @@ public sealed class TenantUserDetailDto
     public required bool IsActive { get; init; }
     public required bool IsLocked { get; init; }
 
+    /// <summary>Null = nunca inició sesión ("Pendiente de activar": no usó la invitación ni la contraseña entregada).</summary>
+    public DateTimeOffset? LastLoginAt { get; init; }
+
     /// <summary>Compañía que SelectCompany preselecciona al loguearse -- ver UserPreference.DefaultCompanyId. Null = sin default, el usuario elige como siempre.</summary>
     public Guid? DefaultCompanyId { get; init; }
 }

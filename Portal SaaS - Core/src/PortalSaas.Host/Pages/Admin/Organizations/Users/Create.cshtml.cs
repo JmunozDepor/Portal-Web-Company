@@ -95,15 +95,24 @@ public class CreateModel : PageModel
             ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Email)}", "Ya existe un usuario con ese correo en esta organización.");
         }
 
+        var passwordPropuesta = string.IsNullOrWhiteSpace(Input.Password) ? null : Input.Password;
+        if (passwordPropuesta is not null)
+        {
+            foreach (var error in PasswordPolicy.Validate(passwordPropuesta))
+            {
+                ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Password)}", error);
+            }
+        }
+
         if (!ModelState.IsValid)
         {
             return Page();
         }
 
-        // Sin campo de contraseña en el alta -- el usuario la elige él mismo vía el
-        // correo de invitación (mismo link/token que ForgotPassword). La contraseña
-        // aleatoria acá nunca se comunica a nadie, es solo para dejar el hash no-nulo.
-        var (hash, salt) = PasswordHasher.Hash(Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)));
+        // Contraseña opcional: si el admin la propone se usa tal cual (se la comunica él);
+        // si no, el usuario la elige vía el correo de invitación (mismo link/token que
+        // ForgotPassword) y la aleatoria de acá nunca se comunica, solo deja el hash no-nulo.
+        var (hash, salt) = PasswordHasher.Hash(passwordPropuesta ?? Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)));
         _db.Users.Add(new User
         {
             OrganizationId = organizationId,
@@ -116,9 +125,16 @@ public class CreateModel : PageModel
 
         await _db.SaveChangesAsync();
 
-        Message = await EnviarInvitacionAsync(organizationId, email)
-            ? "Usuario creado correctamente. Se envió un correo de invitación para que cree su contraseña."
-            : "Usuario creado correctamente, pero no se pudo enviar el correo de invitación (revisa la configuración de correo de la organización).";
+        if (passwordPropuesta is not null)
+        {
+            Message = "Usuario creado con la contraseña indicada. Comunícasela al usuario.";
+        }
+        else
+        {
+            Message = await EnviarInvitacionAsync(organizationId, email)
+                ? "Usuario creado correctamente. Se envió un correo de invitación para que cree su contraseña."
+                : "Usuario creado correctamente, pero no se pudo enviar el correo de invitación (revisa la configuración de correo de la organización).";
+        }
 
         return RedirectToPage("/Admin/Organizations/Users/Index", new { organizationId });
     }
@@ -132,22 +148,24 @@ public class CreateModel : PageModel
     /// </summary>
     private async Task<bool> EnviarInvitacionAsync(Guid organizationId, string email)
     {
-        var rawToken = await _passwordResetService.RequestResetAsync(organizationId, email);
+        var rawToken = await _passwordResetService.RequestInvitationAsync(organizationId, email);
         if (rawToken is null)
         {
             return false;
         }
 
         var resetLink = Url.PageLink("/Account/ResetPassword", values: new { token = rawToken });
+        var horas = (int)IPasswordResetService.InvitationLifetime.TotalHours;
 
         try
         {
             await _emailSenderService.SendAsync(organizationId, new EmailMessage(
                 email,
-                "Creá tu contraseña — Portal SaaS",
+                "Crea tu contraseña — Portal SaaS",
                 $"""
-                <p>Se creó una cuenta para vos en el Portal SaaS.</p>
-                <p><a href="{resetLink}">Hacé clic acá para elegir tu contraseña</a> (el link vence en 1 hora).</p>
+                <p>Se creó una cuenta para ti en el Portal SaaS.</p>
+                <p><a href="{resetLink}">Haz clic aquí para elegir tu contraseña</a> (el enlace vence en {horas} horas).</p>
+                <p>Si vence, pide a tu administrador que te reenvíe la invitación.</p>
                 """));
             return true;
         }
@@ -171,5 +189,10 @@ public class CreateModel : PageModel
 
         [Display(Name = "Administrador de la organización")]
         public bool IsAdmin { get; set; }
+
+        /// <summary>Opcional -- vacía = invitación por correo.</summary>
+        [DataType(DataType.Password)]
+        [Display(Name = "Contraseña (opcional)")]
+        public string? Password { get; set; }
     }
 }

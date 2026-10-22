@@ -63,6 +63,10 @@
                     {
                         <span class="badge-status badge-status--danger">Bloqueado</span>
                     }
+                    else if (u.LastLoginAt is null)
+                    {
+                        <span class="badge-status badge-status--neutral" title="Nunca inició sesión">Pendiente de activar</span>
+                    }
                     else
                     {
                         <span class="badge-status badge-status--success">Activo</span>
@@ -111,7 +115,10 @@
                         <input name="Input.Email" type="email" class="form-control" />
                     </div>
                     <div class="mb-3 span-2">
-                        <p class="text-muted mb-0">Se le enviará un correo de invitación para que elija su propia contraseña.</p>
+                        <label class="form-label">Contraseña (opcional)</label>
+                        <input name="Input.Password" type="password" class="form-control" autocomplete="new-password" />
+                        <p class="text-muted mb-0" style="font-size:12px;">Vacía = se le envía un correo de invitación (vence en 72 horas) para que elija la suya. Mínimo 10 caracteres, con mayúscula, minúscula, número y símbolo.</p>
+                        <label class="d-flex align-items-center gap-2 mt-2"><input name="Input.EnviarPasswordPorCorreo" type="checkbox" value="true" /> Enviarle también la contraseña por correo</label>
                     </div>
                     <div class="mb-3 span-2 d-flex align-items-center gap-2">
                         <label class="d-flex align-items-center gap-2"><input name="Input.IsAdmin" type="checkbox" value="true" /> Administrador de la organización</label>

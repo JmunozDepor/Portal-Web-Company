@@ -240,6 +240,21 @@ public class TenantUserAdminServiceTests
     }
 
     [Fact]
+    public async Task SetPasswordAsync_ContrasenaPropuestaQueNoCumpleLaPolitica_RechazaSinCambiarElHash()
+    {
+        var (db, org, _) = await CrearOrganizacionConPlanAsync();
+        var servicio = CrearServicio(db, org.Id);
+        var alta = await servicio.CreateAsync("jperez", "jperez@test.cl", isAdmin: false);
+        var hashAntes = (await db.Users.FindAsync(alta.UserId))!.PasswordHash;
+
+        var resultado = await servicio.SetPasswordAsync(alta.UserId!.Value, "corta");
+
+        Assert.False(resultado.IsSuccess);
+        Assert.NotEmpty(servicio.ValidatePassword("corta"));
+        Assert.Equal(hashAntes, (await db.Users.FindAsync(alta.UserId))!.PasswordHash);
+    }
+
+    [Fact]
     public async Task SetPasswordAsync_UsuarioDeOtraOrganizacion_Rechaza()
     {
         var (db, org, _) = await CrearOrganizacionConPlanAsync();

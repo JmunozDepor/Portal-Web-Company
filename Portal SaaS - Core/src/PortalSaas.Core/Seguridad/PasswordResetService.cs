@@ -23,7 +23,13 @@ public sealed class PasswordResetService : IPasswordResetService
         _db = db;
     }
 
-    public async Task<string?> RequestResetAsync(Guid organizationId, string email, CancellationToken ct = default)
+    public Task<string?> RequestResetAsync(Guid organizationId, string email, CancellationToken ct = default) =>
+        CreateTokenAsync(organizationId, email, TokenLifetime, ct);
+
+    public Task<string?> RequestInvitationAsync(Guid organizationId, string email, CancellationToken ct = default) =>
+        CreateTokenAsync(organizationId, email, IPasswordResetService.InvitationLifetime, ct);
+
+    private async Task<string?> CreateTokenAsync(Guid organizationId, string email, TimeSpan lifetime, CancellationToken ct)
     {
         var normalizedEmail = email.Trim().ToLowerInvariant();
 
@@ -42,7 +48,7 @@ public sealed class PasswordResetService : IPasswordResetService
         {
             UserId = user.Id,
             TokenHash = HashToken(rawToken),
-            ExpiresAt = DateTimeOffset.UtcNow.Add(TokenLifetime),
+            ExpiresAt = DateTimeOffset.UtcNow.Add(lifetime),
         });
 
         await _db.SaveChangesAsync(ct);

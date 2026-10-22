@@ -32,6 +32,7 @@ public sealed class ModuloDespachos : IModuloPortal
         yield return Group("grupo-operacion", "raiz", "Operación", "bi-truck-flatbed", 1);
         yield return Leaf("manifiestos", "grupo-operacion", "Manifiestos", "bi-card-list", "/despachos/manifiestos", 1);
         yield return Leaf("retorno", "grupo-operacion", "Retorno", "bi-arrow-return-left", "/despachos/retorno", 2);
+        yield return Leaf("reporte-documentos", "grupo-operacion", "Reporte de documentos", "bi-file-earmark-check", "/despachos/reportes/documentos", 3);
 
         yield return Group("grupo-costos", "raiz", "Costos", "bi-cash-coin", 2);
         yield return Leaf("tarifario", "grupo-costos", "Tarifario", "bi-tags", "/despachos/tarifario", 1);
@@ -72,6 +73,7 @@ public sealed class ModuloDespachos : IModuloPortal
         services.AddScoped<Servicios.ISapDocumentLookupService, Servicios.SapDocumentLookupService>();
         services.AddScoped<Servicios.IMonthlyClosureService, Servicios.MonthlyClosureService>();
         services.AddScoped<Servicios.IDispatchReportService, Servicios.DispatchReportService>();
+        services.AddScoped<Servicios.IDocumentReportService, Servicios.DocumentReportService>();
         services.AddScoped<Servicios.IManifestCostService, Servicios.ManifestCostService>();
         services.AddScoped<Servicios.IManifestService, Servicios.ManifestService>();
         services.AddScoped<Servicios.IManifestPdfService, Servicios.ManifestPdfService>();

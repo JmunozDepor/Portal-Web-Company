@@ -240,6 +240,14 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("dispatch_type");
 
+                    b.Property<string>("GuideLineGrouping")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("sku")
+                        .HasColumnName("guide_line_grouping");
+
                     b.Property<bool>("GuidesEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("guides_enabled");

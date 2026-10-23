@@ -59,8 +59,10 @@ public sealed class MasterDataService : IMasterDataService
     public async Task<DespachosSetting?> GetSettingsAsync() =>
         await _db.Settings.AsNoTracking().FirstOrDefaultAsync(x => x.CompanyId == CompanyId);
 
-    public async Task SaveGuideSettingsAsync(bool guidesEnabled, int transferIndicator, int? dispatchType)
+    public async Task SaveGuideSettingsAsync(bool guidesEnabled, int transferIndicator, int? dispatchType, string lineGrouping = GuideLineGroupings.Sku)
     {
+        if (!GuideLineGroupings.All.Contains(lineGrouping))
+            throw new InvalidOperationException($"Resumen de líneas inválido: '{lineGrouping}'.");
         if (transferIndicator is < 1 or > 9)
             throw new InvalidOperationException("El indicador de traslado debe estar entre 1 y 9.");
         if (dispatchType is not null and (< 1 or > 3))
@@ -80,6 +82,7 @@ public sealed class MasterDataService : IMasterDataService
         row.GuidesEnabled = guidesEnabled;
         row.TransferIndicator = transferIndicator;
         row.DispatchType = dispatchType;
+        row.GuideLineGrouping = lineGrouping;
         await _db.SaveChangesAsync();
     }
 

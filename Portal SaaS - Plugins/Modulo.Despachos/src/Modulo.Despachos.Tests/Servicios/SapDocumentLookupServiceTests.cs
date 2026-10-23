@@ -480,6 +480,8 @@ public class SapDocumentLookupServiceTests
         var notes = sql.IndexOf("C0.\"Notes\"", StringComparison.Ordinal);
         Assert.True(nx > 0 && nx < sub && sub < notes, sql);
         Assert.Contains("40)", sql);
+        // Modelo (código sin talla) para las guías agrupadas por modelo.
+        Assert.Contains("I.\"U_GSP_REFERENCE\" AS \"model_code\"", sql);
     }
 
     [Fact]
@@ -496,6 +498,22 @@ public class SapDocumentLookupServiceTests
         Assert.Equal(2, lines.Lines.Count);
         Assert.Equal(new SapDocumentLine(1, "B2", "Artículo B2", 3.5m, "UN", null), lines.Lines[1]);
         Assert.Equal(4567, (int)hana.LastParameters!.GetType().GetProperty("doc_entry")!.GetValue(hana.LastParameters)!);
+    }
+
+    [Fact]
+    public async Task GetLines_ColumnasOpcionalesDeModelo()
+    {
+        var (svc, db, hana, company) = Build();
+        await Configure(db, company.CompanyId, SapQueryKinds.InvoiceLines, LinesSql);
+        var conModelo = LineRow(0, "761952C-805-7", 2, 1m);
+        conModelo["model_code"] = "761952C-805";
+        conModelo["model_name"] = "ZAPATILLA X";
+        hana.Results[LinesSql] = new IReadOnlyDictionary<string, object?>[] { conModelo, LineRow(1, "B2", 1, null) };
+
+        var lines = await svc.GetLinesAsync(SapQueryKinds.InvoiceLines, 1);
+
+        Assert.Equal(("761952C-805", "ZAPATILLA X"), (lines.Lines[0].ModelCode, lines.Lines[0].ModelName));
+        Assert.Equal(((string?)null, (string?)null), (lines.Lines[1].ModelCode, lines.Lines[1].ModelName));
     }
 
     [Fact]

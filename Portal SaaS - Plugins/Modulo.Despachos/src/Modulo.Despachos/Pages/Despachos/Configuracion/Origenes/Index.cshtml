@@ -70,6 +70,15 @@
                     }
                 </select>
             </div>
+            <div class="col-auto">
+                <label for="guides-grouping" class="form-label">Líneas de la guía</label>
+                <select id="guides-grouping" name="GuidesInput.LineGrouping" class="form-select" disabled="@(!Model.CanEdit)">
+                    @foreach (var g in GuideLineGroupings.All)
+                    {
+                        <option value="@g" selected="@(Model.GuidesInput.LineGrouping == g)">@GuideLineGroupings.Label(g)</option>
+                    }
+                </select>
+            </div>
             @if (Model.CanEdit)
             {
                 <button type="submit" class="btn btn-primary">Guardar ajustes de guías</button>

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Modulo.Despachos.Models;
 using Modulo.Despachos.Servicios;
 using Modulo.Despachos.Tests.Fakes;
 using PortalSaas.Abstractions.Modelos;
@@ -50,16 +51,22 @@ public class OrigenesEmisorPageTests
     public async Task SaveGuides_ConEdit_Guarda_YRechazaIndicadorInvalido()
     {
         var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View, PortalActions.Edit));
-        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 5, DispatchType = 3 };
+        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 5, DispatchType = 3, LineGrouping = GuideLineGroupings.Model };
         await page.OnPostSaveGuidesAsync();
         var s = await svc.GetSettingsAsync();
         Assert.True(s!.GuidesEnabled);
         Assert.Equal((5, (int?)3), (s.TransferIndicator, s.DispatchType));
+        Assert.Equal(GuideLineGroupings.Model, s.GuideLineGrouping);
 
         page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 12, DispatchType = 2 };
         await page.OnPostSaveGuidesAsync();
         Assert.NotNull(page.ErrorMessage);
         Assert.Equal(5, (await svc.GetSettingsAsync())!.TransferIndicator);
+
+        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 1, DispatchType = 2, LineGrouping = "marca" };
+        await page.OnPostSaveGuidesAsync();
+        Assert.NotNull(page.ErrorMessage);
+        Assert.Equal(GuideLineGroupings.Model, (await svc.GetSettingsAsync())!.GuideLineGrouping);
     }
 
     [Fact]

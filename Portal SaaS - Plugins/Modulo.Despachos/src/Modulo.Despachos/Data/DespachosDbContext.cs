@@ -275,6 +275,8 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.GuidesEnabled).HasColumnName("guides_enabled");
             e.Property(x => x.TransferIndicator).HasColumnName("transfer_indicator").HasDefaultValue(1);
             e.Property(x => x.DispatchType).HasColumnName("dispatch_type");
+            e.Property(x => x.GuideLineGrouping).HasColumnName("guide_line_grouping").HasMaxLength(10)
+                .IsRequired().HasDefaultValue(GuideLineGroupings.Sku);
             e.HasIndex(x => x.CompanyId).IsUnique().HasDatabaseName("uq_despachos_settings_company_id");
         });
 

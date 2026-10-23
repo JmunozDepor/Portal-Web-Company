@@ -428,13 +428,18 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
             ItemName: Str(r["item_name"]) ?? "",
             Quantity: ToDecimal(r["quantity"]),
             Unit: Str(r["unit"]),
-            WeightKg: IsNull(r["weight_kg"]) ? null : ToDecimal(r["weight_kg"]))).ToList();
+            WeightKg: IsNull(r["weight_kg"]) ? null : ToDecimal(r["weight_kg"]),
+            ModelCode: OptionalStr(r, "model_code"),
+            ModelName: OptionalStr(r, "model_name"))).ToList();
         var first = rows.Count > 0 ? rows[0] : null;
         return new SapDocumentLines(
             first is null ? null : Str(first["customer_activity"]),
             first is null ? null : Str(first["destination_city"]),
             lines);
     }
+
+    private static string? OptionalStr(IReadOnlyDictionary<string, object?> r, string key) =>
+        r.TryGetValue(key, out var v) && !IsNull(v) && Str(v) is { Length: > 0 } s ? s : null;
 
     private static decimal? Optional(IReadOnlyDictionary<string, object?> r, string key) =>
         r.TryGetValue(key, out var v) && !IsNull(v) ? ToDecimal(v) : null;

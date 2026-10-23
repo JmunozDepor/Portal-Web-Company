@@ -6,6 +6,9 @@
 --   OCRD."U_U_NX_giro" (clientes mayoristas internos), "U_GSP_SubGroupName" (clientes creados por el punto de
 --   venta, sin su codigo "10001-") y, al final, "Notes". Se repite en cada fila. Campos de Depor: ajustar por compania.
 -- destination_city = ciudad de la direccion de despacho (INV12."CityS"); se repite en cada fila.
+-- model_code (opcional) = codigo del modelo sin talla (OITM."U_GSP_REFERENCE" en Depor): con "Lineas de la guia =
+--   por modelo" las tallas de un modelo van en una sola linea. model_name (opcional) = nombre del modelo; si no
+--   viene se usa el nombre del primer articulo del modelo.
 SELECT
   L."LineNum" AS "line_num",
   L."ItemCode" AS "item_code",
@@ -20,7 +23,8 @@ SELECT
     NULLIF(TRIM(SUBSTR_AFTER(C0."U_GSP_SubGroupName", '-')), ''),
     NULLIF(TRIM(C0."U_GSP_SubGroupName"), ''),
     NULLIF(TRIM(C0."Notes"), '')), 40) AS "customer_activity",
-  T2."CityS" AS "destination_city"
+  T2."CityS" AS "destination_city",
+  I."U_GSP_REFERENCE" AS "model_code"
 FROM INV1 L
 INNER JOIN OINV T0 ON T0."DocEntry" = L."DocEntry"
 LEFT JOIN OITM I ON I."ItemCode" = L."ItemCode"

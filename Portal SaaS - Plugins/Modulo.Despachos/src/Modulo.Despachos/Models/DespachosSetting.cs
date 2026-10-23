@@ -17,4 +17,7 @@ public class DespachosSetting : AuditedEntity
 
     /// <summary>TipoDespacho (1 por cuenta del receptor, 2 emisor a cliente, 3 emisor a otras instalaciones); null = no se informa.</summary>
     public int? DispatchType { get; set; } = 2;
+
+    /// <summary>Resumen de las líneas de la guía: GuideLineGroupings.Sku (default) o .Model.</summary>
+    public string GuideLineGrouping { get; set; } = GuideLineGroupings.Sku;
 }

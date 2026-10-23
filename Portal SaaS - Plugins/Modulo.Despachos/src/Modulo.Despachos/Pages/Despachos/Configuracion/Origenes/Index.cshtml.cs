@@ -68,6 +68,7 @@ public sealed class IndexModel : MaestroPageModelBase
         GuidesInput = new GuideSettingsInput
         {
             GuidesEnabled = s?.GuidesEnabled ?? false, TransferIndicator = s?.TransferIndicator ?? 1, DispatchType = s is null ? 2 : s.DispatchType,
+            LineGrouping = s?.GuideLineGrouping ?? GuideLineGroupings.Sku,
         };
         try { DteStatus = await _dte.GetConfigurationAsync(); }
         catch (Exception ex)
@@ -78,7 +79,8 @@ public sealed class IndexModel : MaestroPageModelBase
 
     /// <summary>Guarda los ajustes de guías de despacho. Exige EDIT sobre "origenes".</summary>
     public Task<IActionResult> OnPostSaveGuidesAsync() => SaveCoreAsync(1,
-        () => _data.SaveGuideSettingsAsync(GuidesInput.GuidesEnabled, GuidesInput.TransferIndicator, GuidesInput.DispatchType),
+        () => _data.SaveGuideSettingsAsync(GuidesInput.GuidesEnabled, GuidesInput.TransferIndicator, GuidesInput.DispatchType,
+            GuidesInput.LineGrouping ?? GuideLineGroupings.Sku),
         "Ajustes de guías de despacho actualizados.");
 
     /// <summary>Guarda el RUT emisor de la compañía. Exige EDIT sobre "origenes".</summary>
@@ -105,6 +107,7 @@ public sealed class IndexModel : MaestroPageModelBase
         public bool GuidesEnabled { get; set; }
         public int TransferIndicator { get; set; } = 1;
         public int? DispatchType { get; set; } = 2;
+        public string? LineGrouping { get; set; } = GuideLineGroupings.Sku;
     }
 
     public sealed class OrigenInput

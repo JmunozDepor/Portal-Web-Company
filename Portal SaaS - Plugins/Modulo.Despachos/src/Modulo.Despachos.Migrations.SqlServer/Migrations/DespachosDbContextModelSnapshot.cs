@@ -240,6 +240,14 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("int")
                         .HasColumnName("dispatch_type");
 
+                    b.Property<string>("GuideLineGrouping")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("sku")
+                        .HasColumnName("guide_line_grouping");
+
                     b.Property<bool>("GuidesEnabled")
                         .HasColumnType("bit")
                         .HasColumnName("guides_enabled");

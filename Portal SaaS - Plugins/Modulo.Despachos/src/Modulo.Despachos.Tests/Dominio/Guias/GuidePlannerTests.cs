@@ -67,6 +67,59 @@ public class GuidePlannerTests
         Assert.Equal("Curicó", p.Guides[1].Document.Receiver.Commune);
     }
 
+    private static SapDocumentLines LineasModelo(bool conNombre, params (string Item, string? Model, decimal Qty, decimal? Kg)[] items) =>
+        new("Venta al por menor", "Talca", items.Select((x, i) => new SapDocumentLine(
+            i, x.Item, $"Artículo {x.Item}", x.Qty, "UN", x.Kg, x.Model,
+            conNombre && x.Model is not null ? $"Modelo {x.Model}" : null)).ToList());
+
+    private static GuidePlan PlanAgrupado(string grouping, params (ManifestDocument Doc, SapDocumentLines Lines)[] docs) =>
+        GuidePlanner.Plan(new GuidePlanInput(Manifiesto(), docs, id => id switch { Talca => "Talca", Curico => "Curicó", _ => null },
+            TransferIndicator: 1, DispatchType: 2, IssueDate: Hoy, DepartureTime: new TimeOnly(12, 30), LineGrouping: grouping));
+
+    [Fact]
+    public void Plan_PorModelo_SumaLasTallasEnUnaLinea_YLoSinModeloQuedaPorSku()
+    {
+        var p = PlanAgrupado(GuideLineGroupings.Model, (Factura(100), LineasModelo(true,
+            ("761952C-805-7", "761952C-805", 2, 1m), ("761952C-805-9", "761952C-805", 3, 1.5m), ("SINMOD", null, 1, 0.5m))));
+
+        var lines = Assert.Single(p.Guides).Document.Lines;
+        Assert.Equal(2, lines.Count);
+        Assert.Equal(("761952C-805", "Modelo 761952C-805", 5m), (lines[0].ItemCode, lines[0].Name, lines[0].Quantity));
+        Assert.Equal(("SINMOD", 1m), (lines[1].ItemCode, lines[1].Quantity));
+        Assert.Equal(3m, p.Guides[0].Document.Transport!.Customs!.NetWeightKg);
+    }
+
+    [Fact]
+    public void Plan_PorModelo_DosFacturasMismoDestino_SeJuntanPorModelo()
+    {
+        var p = PlanAgrupado(GuideLineGroupings.Model,
+            (Factura(100), LineasModelo(true, ("761952C-805-7", "761952C-805", 2, 1m))),
+            (Factura(101), LineasModelo(true, ("761952C-805-8", "761952C-805", 4, 1m))));
+
+        var guide = Assert.Single(p.Guides);
+        var line = Assert.Single(guide.Document.Lines);
+        Assert.Equal(6m, line.Quantity);
+        Assert.Equal(2, guide.Document.References!.Count);
+    }
+
+    [Fact]
+    public void Plan_PorModelo_SinNombreDeModelo_UsaElNombreDelPrimerArticulo()
+    {
+        var p = PlanAgrupado(GuideLineGroupings.Model, (Factura(100), LineasModelo(false,
+            ("761952C-805-7", "761952C-805", 2, 1m), ("761952C-805-9", "761952C-805", 3, 1m))));
+
+        Assert.Equal("Artículo 761952C-805-7", Assert.Single(p.Guides).Document.Lines[0].Name);
+    }
+
+    [Fact]
+    public void Plan_PorSku_NoJuntaLasTallas()
+    {
+        var p = PlanAgrupado(GuideLineGroupings.Sku, (Factura(100), LineasModelo(true,
+            ("761952C-805-7", "761952C-805", 2, 1m), ("761952C-805-9", "761952C-805", 3, 1m))));
+
+        Assert.Equal(new[] { "761952C-805-7", "761952C-805-9" }, Assert.Single(p.Guides).Document.Lines.Select(l => l.ItemCode));
+    }
+
     [Fact]
     public void Plan_ConsolidaPorArticulo()
     {

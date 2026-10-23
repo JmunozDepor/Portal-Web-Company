@@ -37,6 +37,24 @@ public static class SapQueryKinds
     };
 }
 
+/// <summary>
+/// Cómo se resumen las líneas de la guía de despacho: por SKU (ItemCode, una línea por talla) o por modelo
+/// (código sin talla, columna opcional "model_code" de la consulta de líneas; sin modelo, la línea queda por SKU).
+/// </summary>
+public static class GuideLineGroupings
+{
+    public const string Sku = "sku";
+    public const string Model = "model";
+
+    public static readonly IReadOnlyList<string> All = new[] { Sku, Model };
+
+    public static string Label(string grouping) => grouping switch
+    {
+        Model => "Por modelo (código sin talla)",
+        _ => "Por SKU (código de artículo)",
+    };
+}
+
 /// <summary>Tipos de documento SAP que se pueden agregar a un manifiesto (document_kind).</summary>
 public static class DocumentKinds
 {

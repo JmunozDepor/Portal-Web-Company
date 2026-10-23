@@ -13,7 +13,8 @@ public sealed record GuidePlanInput(
     int TransferIndicator,
     int? DispatchType,
     DateOnly IssueDate,
-    TimeOnly DepartureTime);
+    TimeOnly DepartureTime,
+    string LineGrouping = GuideLineGroupings.Sku);
 
 public sealed record PlannedGuide(int Sequence, IReadOnlyList<Guid> ManifestDocumentIds, DteDocument Document);
 
@@ -22,7 +23,7 @@ public sealed record GuidePlan(IReadOnlyList<PlannedGuide> Guides, IReadOnlyList
 /// <summary>
 /// Arma las guías de despacho (DTE 52) de un manifiesto, sin I/O:
 /// - una guía por destino (RUT receptor + dirección normalizada + comuna), en el orden de aparición;
-/// - detalle consolidado por artículo, sin precios (montos 0, la mercadería ya está facturada) [validar con el asesor];
+/// - detalle consolidado por SKU o por modelo (LineGrouping), sin precios (montos 0, la mercadería ya está facturada) [validar con el asesor];
 /// - una referencia por factura amparada;
 /// - división cuando el destino excede 60 líneas o 40 referencias (formato DTE); una factura de más de 60
 ///   artículos se reparte en trozos de 60 y cada trozo la referencia;
@@ -76,7 +77,7 @@ public static partial class GuidePlanner
         var missingWeight = 0;
         foreach (var g in groups)
         {
-            foreach (var chunk in Split(g.Docs))
+            foreach (var chunk in Split(g.Docs, input.LineGrouping == GuideLineGroupings.Model))
             {
                 var document = BuildDocument(input, g, chunk, out var noWeight);
                 missingWeight += noWeight;
@@ -104,13 +105,13 @@ public static partial class GuidePlanner
         public List<(ManifestDocument Doc, SapDocumentLines Lines)> Docs { get; } = new();
     }
 
-    private static IEnumerable<List<ChunkPart>> Split(List<(ManifestDocument Doc, SapDocumentLines Lines)> docs)
+    private static IEnumerable<List<ChunkPart>> Split(List<(ManifestDocument Doc, SapDocumentLines Lines)> docs, bool byModel)
     {
         var current = new List<ChunkPart>();
         var currentKeys = new HashSet<string>();
         foreach (var (doc, lines) in docs)
         {
-            var own = Consolidate(lines.Lines);
+            var own = Consolidate(lines.Lines, byModel);
             var newKeys = own.Count(l => !currentKeys.Contains(l.Key));
             if (current.Count > 0 && (currentKeys.Count + newKeys > MaxLines || current.Count + 1 > MaxReferences))
             {
@@ -131,14 +132,23 @@ public static partial class GuidePlanner
         if (current.Count > 0) yield return current;
     }
 
-    private static List<ConsolidatedLine> Consolidate(IEnumerable<SapDocumentLine> lines)
+    /// <summary>
+    /// Suma las líneas por SKU o, con <paramref name="byModel"/>, por modelo (las tallas de un modelo quedan en una
+    /// línea con el código y nombre del modelo; sin nombre de modelo se usa el del primer artículo). Una línea sin
+    /// modelo queda por SKU.
+    /// </summary>
+    private static List<ConsolidatedLine> Consolidate(IEnumerable<SapDocumentLine> lines, bool byModel)
     {
         var result = new List<ConsolidatedLine>();
         foreach (var l in lines)
         {
-            var key = string.IsNullOrWhiteSpace(l.ItemCode) ? "#" + l.ItemName.Trim().ToUpperInvariant() : l.ItemCode.Trim();
+            var model = byModel && !string.IsNullOrWhiteSpace(l.ModelCode) ? l.ModelCode.Trim() : null;
+            var code = model ?? l.ItemCode.Trim();
+            var key = model is not null ? "M:" + model
+                : string.IsNullOrWhiteSpace(l.ItemCode) ? "#" + l.ItemName.Trim().ToUpperInvariant() : l.ItemCode.Trim();
+            var name = model is not null && !string.IsNullOrWhiteSpace(l.ModelName) ? l.ModelName.Trim() : l.ItemName;
             var i = result.FindIndex(x => x.Key == key);
-            if (i < 0) result.Add(new ConsolidatedLine(key, l.ItemCode.Trim(), l.ItemName, l.Quantity, l.Unit, l.WeightKg));
+            if (i < 0) result.Add(new ConsolidatedLine(key, code, name, l.Quantity, l.Unit, l.WeightKg));
             else
             {
                 var x = result[i];
@@ -156,8 +166,13 @@ public static partial class GuidePlanner
     private static DteDocument BuildDocument(GuidePlanInput input, Group g, List<ChunkPart> chunk, out int missingWeight)
     {
         var m = input.Manifest;
-        var merged = Consolidate(chunk.SelectMany(c => c.Lines.Select(l =>
-            new SapDocumentLine(0, l.ItemCode, l.Name, l.Quantity, l.Unit, l.WeightKg))));
+        // Las líneas ya vienen resumidas (por SKU o modelo): se juntan las de las facturas del trozo por su llave.
+        var merged = chunk.SelectMany(c => c.Lines).GroupBy(l => l.Key).Select(grp => grp.Aggregate((x, l) => x with
+        {
+            Quantity = x.Quantity + l.Quantity,
+            Unit = x.Unit ?? l.Unit,
+            WeightKg = x.WeightKg is null || l.WeightKg is null ? null : x.WeightKg + l.WeightKg,
+        })).ToList();
         missingWeight = merged.Count(l => l.WeightKg is null);
         decimal? weight = missingWeight == 0 ? merged.Sum(l => l.WeightKg!.Value) : null;
         var packages = chunk.Where(c => c.CountsPackages).Sum(c => c.Doc.Packages);

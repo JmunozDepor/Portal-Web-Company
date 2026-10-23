@@ -2,17 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Modulo.Despachos.Data;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Modulo.Despachos.Migrations.SqlServer.Migrations
+namespace Modulo.Despachos.Migrations.Postgres.Migrations
 {
     [DbContext(typeof(DespachosDbContext))]
-    [Migration("20261023024623_GuiasRes154")]
+    [Migration("20261023025020_GuiasRes154")]
     partial class GuiasRes154
     {
         /// <inheritdoc />
@@ -21,9 +21,9 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "8.0.10")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Modulo.Despachos.Models.Carrier", b =>
                 {
@@ -32,53 +32,53 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("code");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("kind");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("name");
 
                     b.Property<string>("TaxId")
                         .HasMaxLength(12)
-                        .HasColumnType("nvarchar(12)")
+                        .HasColumnType("character varying(12)")
                         .HasColumnName("tax_id");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -100,50 +100,50 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<string>("CutCode")
                         .IsRequired()
                         .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)")
+                        .HasColumnType("character varying(5)")
                         .HasColumnName("cut_code");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<string>("RegionCode")
                         .IsRequired()
                         .HasMaxLength(2)
-                        .HasColumnType("nvarchar(2)")
+                        .HasColumnType("character varying(2)")
                         .HasColumnName("region_code");
 
                     b.Property<string>("RegionName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("region_name");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -165,45 +165,45 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<int?>("DispatchType")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("dispatch_type");
 
                     b.Property<bool>("GuidesEnabled")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("guides_enabled");
 
                     b.Property<string>("IssuerTaxId")
                         .HasMaxLength(12)
-                        .HasColumnType("nvarchar(12)")
+                        .HasColumnType("character varying(12)")
                         .HasColumnName("issuer_tax_id");
 
                     b.Property<int>("TransferIndicator")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasDefaultValue(1)
                         .HasColumnName("transfer_indicator");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -222,37 +222,37 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<long?>("CarrierId")
                         .HasColumnType("bigint")
                         .HasColumnName("carrier_id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("full_name");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("LicenseClass")
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("license_class");
 
                     b.Property<DateOnly?>("LicenseExpiresAt")
@@ -262,15 +262,15 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                     b.Property<string>("TaxId")
                         .IsRequired()
                         .HasMaxLength(12)
-                        .HasColumnType("nvarchar(12)")
+                        .HasColumnType("character varying(12)")
                         .HasColumnName("tax_id");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -295,18 +295,18 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<DateOnly>("Date")
@@ -316,15 +316,15 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -342,7 +342,7 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
             modelBuilder.Entity("Modulo.Despachos.Models.Manifest", b =>
                 {
                     b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<long>("CarrierId")
@@ -351,53 +351,53 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
                     b.Property<string>("CarrierTaxId")
                         .HasMaxLength(12)
-                        .HasColumnType("nvarchar(12)")
+                        .HasColumnType("character varying(12)")
                         .HasColumnName("carrier_tax_id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<decimal?>("CostCalculated")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("cost_calculated");
 
                     b.Property<decimal?>("CostFinal")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("cost_final");
 
                     b.Property<DateTime?>("CostFrozenAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("cost_frozen_at");
 
                     b.Property<decimal?>("CostOverride")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("cost_override");
 
                     b.Property<string>("CostOverrideReason")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("cost_override_reason");
 
                     b.Property<string>("CostStatus")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("cost_status");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<DateTime?>("DepartedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("departed_at");
 
                     b.Property<DateOnly>("DispatchDate")
@@ -410,12 +410,12 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
                     b.Property<string>("DriverName")
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("driver_name");
 
                     b.Property<string>("DriverTaxId")
                         .HasMaxLength(12)
-                        .HasColumnType("nvarchar(12)")
+                        .HasColumnType("character varying(12)")
                         .HasColumnName("driver_tax_id");
 
                     b.Property<DateOnly?>("EstimatedArrivalDate")
@@ -423,29 +423,29 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("estimated_arrival_date");
 
                     b.Property<TimeOnly?>("EstimatedArrivalTime")
-                        .HasColumnType("time")
+                        .HasColumnType("time without time zone")
                         .HasColumnName("estimated_arrival_time");
 
                     b.Property<int>("Number")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("number");
 
                     b.Property<int?>("OdometerEnd")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("odometer_end");
 
                     b.Property<int?>("OdometerStart")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("odometer_start");
 
                     b.Property<string>("OriginAddress")
                         .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)")
+                        .HasColumnType("character varying(250)")
                         .HasColumnName("origin_address");
 
                     b.Property<string>("OriginCommune")
                         .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)")
+                        .HasColumnType("character varying(60)")
                         .HasColumnName("origin_commune");
 
                     b.Property<long>("OriginId")
@@ -453,12 +453,12 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("origin_id");
 
                     b.Property<TimeOnly?>("PlannedDepartureTime")
-                        .HasColumnType("time")
+                        .HasColumnType("time without time zone")
                         .HasColumnName("planned_departure_time");
 
                     b.Property<string>("Plate")
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("plate");
 
                     b.Property<long?>("RateCardId")
@@ -467,16 +467,16 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
                     b.Property<string>("Remarks")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("remarks");
 
                     b.Property<DateTime?>("ReturnedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("returned_at");
 
                     b.Property<string>("ServiceOrder")
                         .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)")
+                        .HasColumnType("character varying(60)")
                         .HasColumnName("service_order");
 
                     b.Property<long?>("ShiftId")
@@ -486,20 +486,20 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.Property<int>("TotalDocuments")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("total_documents");
 
                     b.Property<int>("TotalPackages")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("total_packages");
 
                     b.Property<decimal>("TotalUnits")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("total_units");
 
                     b.Property<long?>("TrailerId")
@@ -508,15 +508,15 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
                     b.Property<string>("TrailerPlate")
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("trailer_plate");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.Property<long>("VehicleId")
@@ -545,11 +545,11 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal>("Amount")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<long?>("CommuneId")
@@ -557,31 +557,31 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("commune_id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<int>("Documents")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("documents");
 
                     b.Property<string>("Explanation")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("explanation");
 
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("kind");
 
                     b.Property<Guid>("ManifestId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("manifest_id");
 
                     b.Property<int>("Packages")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("packages");
 
                     b.Property<long?>("RateCardId")
@@ -594,7 +594,7 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
                     b.Property<decimal>("Units")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("units");
 
                     b.HasKey("Id");
@@ -611,63 +611,63 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
             modelBuilder.Entity("Modulo.Despachos.Models.ManifestDocument", b =>
                 {
                     b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<DateTime>("AddedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("added_at");
 
                     b.Property<Guid?>("AddedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("added_by");
 
                     b.Property<string>("CaptureMethod")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("capture_method");
 
                     b.Property<string>("Comments")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("comments");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("CustomerCode")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("customer_code");
 
                     b.Property<string>("CustomerName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("customer_name");
 
                     b.Property<string>("CustomerPo")
                         .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)")
+                        .HasColumnType("character varying(60)")
                         .HasColumnName("customer_po");
 
                     b.Property<string>("CustomerTaxId")
                         .HasMaxLength(12)
-                        .HasColumnType("nvarchar(12)")
+                        .HasColumnType("character varying(12)")
                         .HasColumnName("customer_tax_id");
 
                     b.Property<string>("DeliveryStatus")
                         .IsRequired()
                         .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)")
+                        .HasColumnType("character varying(25)")
                         .HasColumnName("delivery_status");
 
                     b.Property<string>("DestinationAddress")
                         .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)")
+                        .HasColumnType("character varying(250)")
                         .HasColumnName("destination_address");
 
                     b.Property<long?>("DestinationCommuneId")
@@ -676,7 +676,7 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
                     b.Property<string>("DestinationCommuneName")
                         .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)")
+                        .HasColumnType("character varying(60)")
                         .HasColumnName("destination_commune_name");
 
                     b.Property<DateOnly>("DocumentDate")
@@ -686,7 +686,7 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                     b.Property<string>("DocumentKind")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("document_kind");
 
                     b.Property<long>("Folio")
@@ -694,11 +694,11 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("folio");
 
                     b.Property<Guid>("ManifestId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("manifest_id");
 
                     b.Property<int>("Packages")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("packages");
 
                     b.Property<long?>("RejectionReasonId")
@@ -706,47 +706,47 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("rejection_reason_id");
 
                     b.Property<DateTime?>("ReturnedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("returned_at");
 
                     b.Property<Guid?>("ReturnedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("returned_by");
 
                     b.Property<int?>("SapBaseOrderEntry")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sap_base_order_entry");
 
                     b.Property<int>("SapDocEntry")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sap_doc_entry");
 
                     b.Property<int>("SapDocNum")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sap_doc_num");
 
                     b.Property<int>("SiiDocumentType")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sii_document_type");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("total_amount");
 
                     b.Property<decimal>("Units")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("units");
 
                     b.Property<decimal?>("VolumeM3")
                         .HasPrecision(9, 2)
-                        .HasColumnType("decimal(9,2)")
+                        .HasColumnType("numeric(9,2)")
                         .HasColumnName("volume_m3");
 
                     b.Property<decimal?>("WeightKg")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("weight_kg");
 
                     b.HasKey("Id");
@@ -770,46 +770,46 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("EventType")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("event_type");
 
                     b.Property<string>("FromStatus")
                         .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)")
+                        .HasColumnType("character varying(25)")
                         .HasColumnName("from_status");
 
                     b.Property<Guid?>("ManifestDocumentId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("manifest_document_id");
 
                     b.Property<Guid>("ManifestId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("manifest_id");
 
                     b.Property<DateTime>("OccurredAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("occurred_at");
 
                     b.Property<string>("PayloadJson")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("payload_json");
 
                     b.Property<string>("ToStatus")
                         .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)")
+                        .HasColumnType("character varying(25)")
                         .HasColumnName("to_status");
 
                     b.Property<Guid?>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
@@ -830,18 +830,18 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<Guid>("ManifestId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("manifest_id");
 
                     b.Property<int>("Quantity")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("quantity");
 
                     b.Property<long>("RateSurchargeId")
@@ -849,11 +849,11 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("rate_surcharge_id");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -877,68 +877,68 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime?>("ClosedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("closed_at");
 
                     b.Property<Guid?>("ClosedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("closed_by");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<int>("ManifestCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("manifest_count");
 
                     b.Property<string>("Period")
                         .IsRequired()
                         .HasMaxLength(7)
-                        .HasColumnType("nvarchar(7)")
+                        .HasColumnType("character varying(7)")
                         .HasColumnName("period");
 
                     b.Property<string>("ReopenReason")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("reopen_reason");
 
                     b.Property<DateTime?>("ReopenedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("reopened_at");
 
                     b.Property<Guid?>("ReopenedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("reopened_by");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)")
+                        .HasColumnType("character varying(15)")
                         .HasColumnName("status");
 
                     b.Property<decimal>("TotalCost")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("total_cost");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -960,34 +960,34 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
@@ -1009,17 +1009,17 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Address")
                         .HasMaxLength(70)
-                        .HasColumnType("nvarchar(70)")
+                        .HasColumnType("character varying(70)")
                         .HasColumnName("address");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("code");
 
                     b.Property<long?>("CommuneId")
@@ -1027,38 +1027,38 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("commune_id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<string>("SapWarehouseCode")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("sap_warehouse_code");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -1083,17 +1083,17 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal>("Amount")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<string>("CalculationMethod")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("calculation_method");
 
                     b.Property<long?>("CarrierId")
@@ -1105,47 +1105,47 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("commune_id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<decimal?>("M3From")
                         .HasPrecision(9, 2)
-                        .HasColumnType("decimal(9,2)")
+                        .HasColumnType("numeric(9,2)")
                         .HasColumnName("m3_from");
 
                     b.Property<decimal?>("M3To")
                         .HasPrecision(9, 2)
-                        .HasColumnType("decimal(9,2)")
+                        .HasColumnType("numeric(9,2)")
                         .HasColumnName("m3_to");
 
                     b.Property<decimal?>("MinAmount")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("min_amount");
 
                     b.Property<string>("ParametersJson")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("parameters_json");
 
                     b.Property<int>("Priority")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("priority");
 
                     b.Property<string>("RegionCode")
                         .HasMaxLength(2)
-                        .HasColumnType("nvarchar(2)")
+                        .HasColumnType("character varying(2)")
                         .HasColumnName("region_code");
 
                     b.Property<long?>("ShiftId")
@@ -1153,11 +1153,11 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("shift_id");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.Property<DateOnly>("ValidFrom")
@@ -1206,60 +1206,60 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<long?>("CarrierId")
                         .HasColumnType("bigint")
                         .HasColumnName("carrier_id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<string>("ConditionParametersJson")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("condition_parameters_json");
 
                     b.Property<string>("ConditionType")
                         .IsRequired()
                         .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)")
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("condition_type");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<string>("EffectType")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("effect_type");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("name");
 
                     b.Property<int>("Priority")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("priority");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.Property<DateOnly>("ValidFrom")
@@ -1272,7 +1272,7 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
                     b.Property<decimal>("Value")
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("numeric(18,2)")
                         .HasColumnName("value");
 
                     b.HasKey("Id");
@@ -1293,48 +1293,48 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("AppliesTo")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("applies_to");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("code");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("name");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -1356,45 +1356,45 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<string>("DocumentKind")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("document_kind");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("SqlText")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("sql_text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.Property<DateTime?>("ValidatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("validated_at");
 
                     b.HasKey("Id");
@@ -1416,42 +1416,42 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("code");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -1469,36 +1469,41 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
             modelBuilder.Entity("Modulo.Despachos.Models.TransportGuide", b =>
                 {
                     b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("DestinationAddress")
                         .IsRequired()
                         .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)")
+                        .HasColumnType("character varying(250)")
                         .HasColumnName("destination_address");
 
                     b.Property<string>("DestinationCity")
                         .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)")
+                        .HasColumnType("character varying(60)")
                         .HasColumnName("destination_city");
 
                     b.Property<string>("DestinationCommune")
                         .IsRequired()
                         .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)")
+                        .HasColumnType("character varying(60)")
                         .HasColumnName("destination_commune");
 
+                    b.Property<string>("DocumentJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("document_json");
+
                     b.Property<Guid>("EmissionKey")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("emission_key");
 
                     b.Property<long?>("Folio")
@@ -1506,56 +1511,56 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("folio");
 
                     b.Property<DateTime?>("IssuedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("issued_at");
 
                     b.Property<string>("LastError")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("last_error");
 
                     b.Property<int>("LineCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("line_count");
 
                     b.Property<Guid>("ManifestId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("manifest_id");
 
                     b.Property<string>("ReceiverName")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)")
+                        .HasColumnType("character varying(150)")
                         .HasColumnName("receiver_name");
 
                     b.Property<string>("ReceiverTaxId")
                         .IsRequired()
                         .HasMaxLength(12)
-                        .HasColumnType("nvarchar(12)")
+                        .HasColumnType("character varying(12)")
                         .HasColumnName("receiver_tax_id");
 
                     b.Property<int>("Sequence")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sequence");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.Property<decimal>("TotalQuantity")
                         .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)")
+                        .HasColumnType("numeric(18,4)")
                         .HasColumnName("total_quantity");
 
                     b.Property<int>("TransferIndicator")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("transfer_indicator");
 
                     b.Property<decimal?>("WeightKg")
                         .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)")
+                        .HasColumnType("numeric(18,3)")
                         .HasColumnName("weight_kg");
 
                     b.HasKey("Id");
@@ -1581,18 +1586,18 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<Guid>("ManifestDocumentId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("manifest_document_id");
 
                     b.Property<Guid>("TransportGuideId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("transport_guide_id");
 
                     b.HasKey("Id");
@@ -1617,11 +1622,11 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal?>("CapacityM3")
                         .HasPrecision(9, 2)
-                        .HasColumnType("decimal(9,2)")
+                        .HasColumnType("numeric(9,2)")
                         .HasColumnName("capacity_m3");
 
                     b.Property<long?>("CarrierId")
@@ -1629,37 +1634,37 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnName("carrier_id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<bool>("IsTrailer")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_trailer");
 
                     b.Property<string>("Plate")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
+                        .HasColumnType("character varying(10)")
                         .HasColumnName("plate");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.Property<long?>("VehicleTypeId")
@@ -1691,52 +1696,52 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal?>("CapacityKg")
                         .HasPrecision(9, 2)
-                        .HasColumnType("decimal(9,2)")
+                        .HasColumnType("numeric(9,2)")
                         .HasColumnName("capacity_kg");
 
                     b.Property<decimal?>("CapacityM3")
                         .HasPrecision(9, 2)
-                        .HasColumnType("decimal(9,2)")
+                        .HasColumnType("numeric(9,2)")
                         .HasColumnName("capacity_m3");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("code");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -1758,42 +1763,42 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("code");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -1815,14 +1820,14 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<long>("CommuneId")
                         .HasColumnType("bigint")
                         .HasColumnName("commune_id");
 
                     b.Property<Guid>("CompanyId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
                     b.Property<long>("ZoneId")

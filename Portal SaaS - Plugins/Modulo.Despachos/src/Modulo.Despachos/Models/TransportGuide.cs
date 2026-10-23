@@ -28,6 +28,12 @@ public class TransportGuide
     public decimal TotalQuantity { get; set; }
     public decimal? WeightKg { get; set; }
 
+    /// <summary>
+    /// DteDocument planificado (JSON). Lo que se reenvía en cada reintento: una guía en curso nunca cambia de
+    /// contenido; solo una rechazada (o aún no enviada) se reemplaza al replanificar con los datos corregidos.
+    /// </summary>
+    public string DocumentJson { get; set; } = "";
+
     public string Status { get; set; } = TransportGuideStatuses.Planned;
     public long? Folio { get; set; }
     public string? LastError { get; set; }

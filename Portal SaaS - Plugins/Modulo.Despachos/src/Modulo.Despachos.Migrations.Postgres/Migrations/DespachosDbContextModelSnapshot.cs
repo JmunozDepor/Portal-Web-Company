@@ -1494,6 +1494,11 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasColumnType("character varying(60)")
                         .HasColumnName("destination_commune");
 
+                    b.Property<string>("DocumentJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("document_json");
+
                     b.Property<Guid>("EmissionKey")
                         .HasColumnType("uuid")
                         .HasColumnName("emission_key");

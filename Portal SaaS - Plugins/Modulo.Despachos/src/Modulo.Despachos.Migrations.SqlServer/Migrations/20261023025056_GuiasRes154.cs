@@ -49,6 +49,7 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                     line_count = table.Column<int>(type: "int", nullable: false),
                     total_quantity = table.Column<decimal>(type: "decimal(18,4)", precision: 18, scale: 4, nullable: false),
                     weight_kg = table.Column<decimal>(type: "decimal(18,3)", precision: 18, scale: 3, nullable: true),
+                    document_json = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     folio = table.Column<long>(type: "bigint", nullable: true),
                     last_error = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),

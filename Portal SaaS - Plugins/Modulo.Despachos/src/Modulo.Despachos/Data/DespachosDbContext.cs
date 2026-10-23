@@ -337,6 +337,7 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.LineCount).HasColumnName("line_count");
             e.Property(x => x.TotalQuantity).HasColumnName("total_quantity").HasPrecision(18, 4);
             e.Property(x => x.WeightKg).HasColumnName("weight_kg").HasPrecision(18, 3);
+            e.Property(x => x.DocumentJson).HasColumnName("document_json").IsRequired();
             e.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
             e.Property(x => x.Folio).HasColumnName("folio");
             e.Property(x => x.LastError).HasColumnName("last_error").HasMaxLength(1000);

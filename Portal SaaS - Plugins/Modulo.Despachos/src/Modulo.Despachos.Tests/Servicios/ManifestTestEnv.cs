@@ -25,6 +25,9 @@ internal sealed class ManifestTestEnv
     public required ManifestService Svc { get; init; }
     public required FakeNotificationService Notifications { get; init; }
     public required MonthlyClosureService Closure { get; init; }
+    public required FakeDteEmissionService Dte { get; init; }
+    /// <summary>Guías Res. 154 (deshabilitadas por defecto: ver <see cref="EnableGuidesAsync"/>).</summary>
+    public required TransportGuideService Guides { get; init; }
 
     public long CarrierId, VehicleId, TrailerId, DriverId, OriginId, ShiftId, SmallTypeId;
     public long RancaguaId, CuricoId;
@@ -60,13 +63,15 @@ internal sealed class ManifestTestEnv
         var closure = new MonthlyClosureService(db, company, user, clock);
         var cost = new ManifestCostService(db, company, tariff, TarifasTestData.Engine(), clock, closure);
         var notifications = new FakeNotificationService();
+        var dte = new FakeDteEmissionService { IssuerTaxId = IssuerRut };
+        var guides = new TransportGuideService(db, company, user, sap, dte, clock, notifications);
         var svc = factory != null
             ? factory(db, company, user, sap, master, cost, clock, notifications, closure)
-            : new ManifestService(db, company, user, sap, master, cost, clock, notifications, closure);
+            : new ManifestService(db, company, user, sap, master, cost, clock, notifications, closure, guides: guides);
         var env = new ManifestTestEnv
         {
             Db = db, Company = company, User = user, Master = master, Tariff = tariff, Sap = sap,
-            Clock = clock, Cost = cost, Svc = svc, Notifications = notifications, Closure = closure,
+            Clock = clock, Cost = cost, Svc = svc, Notifications = notifications, Closure = closure, Dte = dte, Guides = guides,
         };
         env.SeedAsync(seedRates).GetAwaiter().GetResult();
         return env;
@@ -97,9 +102,36 @@ internal sealed class ManifestTestEnv
     }
 
     public ManifestHeaderInput Header(DateOnly? date = null, long? vehicleId = null, long? driverId = null,
-        TimeOnly? planned = null) =>
+        TimeOnly? planned = null, DateOnly? arrival = null) =>
         new(date ?? Fecha, ShiftId, OriginId, CarrierId, vehicleId ?? VehicleId, TrailerId, driverId ?? DriverId,
-            null, null, planned, "OS-1", "obs", 1000);
+            arrival, null, planned, "OS-1", "obs", 1000);
+
+    /// <summary>Activa "emitir guías al despachar" en la compañía del entorno.</summary>
+    public async Task EnableGuidesAsync()
+    {
+        var s = Db.Settings.Single(x => x.CompanyId == Company.CompanyId);
+        s.GuidesEnabled = true;
+        await Db.SaveChangesAsync();
+    }
+
+    /// <summary>Líneas SAP de la factura <paramref name="folio"/> (DocEntry = folio + 1000, como <see cref="Doc"/>).</summary>
+    public void AddLines(long folio, params (string Item, decimal Qty, decimal? Kg)[] items) =>
+        Sap.Lines[(int)folio + 1000] = new SapDocumentLines("Venta al por menor", "Rancagua",
+            items.Select((x, i) => new SapDocumentLine(i, x.Item, $"Artículo {x.Item}", x.Qty, "UN", x.Kg)).ToList());
+
+    /// <summary>Borrador con fecha de llegada y facturas con líneas, listo para emitir guías.</summary>
+    public async Task<Guid> GuideReadyDraftAsync(params long[] folios)
+    {
+        var id = await Svc.CreateDraftAsync(Header(arrival: Fecha));
+        foreach (var f in folios)
+        {
+            if (!Sap.Docs.Any(d => d.Folio == f)) AddSap(f);
+            if (!Sap.Lines.ContainsKey((int)f + 1000)) AddLines(f, ("ART-" + f, 2, 1.5m));
+            var r = await Svc.AddDocumentAsync(id, new DocumentCapture(null, DocumentKinds.Invoice, f));
+            Assert.Equal("added", r.Outcome);
+        }
+        return id;
+    }
 
     public SapDocumentInfo Doc(long folio, string kind = DocumentKinds.Invoice, int sii = 33, string? commune = "Rancagua",
         decimal units = 10, int packages = 4, bool canceled = false, DateOnly? date = null, decimal total = 119000) =>

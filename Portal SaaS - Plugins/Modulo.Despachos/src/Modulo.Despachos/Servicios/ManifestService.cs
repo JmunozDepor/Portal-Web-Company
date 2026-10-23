@@ -30,13 +30,16 @@ public class ManifestService : IManifestService
     private readonly INotificationService _notifications;
     private readonly IMonthlyClosureService _closure;
     private readonly ILogger<ManifestService>? _logger;
+    private readonly ITransportGuideService? _guides;
 
     public ManifestService(
         DespachosDbContext db, ICurrentCompanyAccessor company, ICurrentUserContext user,
         ISapDocumentLookupService sap, IMasterDataService master, IManifestCostService cost, TimeProvider time,
-        INotificationService notifications, IMonthlyClosureService closure, ILogger<ManifestService>? logger = null)
+        INotificationService notifications, IMonthlyClosureService closure, ILogger<ManifestService>? logger = null,
+        ITransportGuideService? guides = null)
     {
         _logger = logger;
+        _guides = guides;
         _db = db;
         _company = company;
         _user = user;
@@ -317,10 +320,21 @@ public class ManifestService : IManifestService
         if (driver?.LicenseExpiresAt is { } exp && exp < m.DispatchDate)
             warnings.Add($"La licencia del chofer venció el {exp:dd-MM-yyyy}.");
 
+        // Guías Res. 154: el plan se valida ANTES de cambiar nada (el camión no espera por datos que faltan).
+        var withGuides = _guides != null && await _guides.IsEnabledAsync();
+        if (withGuides && errors.Count == 0)
+        {
+            var preview = await _guides!.PreviewAsync(m.Id);
+            errors.AddRange(preview.Errors);
+            warnings.AddRange(preview.Warnings);
+        }
+
         if (errors.Count > 0) return new DispatchResult(false, errors, warnings);
 
         var now = UtcNow;
-        m.Status = ManifestStatuses.Dispatched;
+        // Con guías, el manifiesto queda en "guías pendientes" hasta que todas estén emitidas.
+        var target = withGuides ? ManifestStatuses.PendingGuides : ManifestStatuses.Dispatched;
+        m.Status = target;
         m.DepartedAt = DateTime.SpecifyKind(now, DateTimeKind.Utc);
         await TakeSnapshotAsync(m, carrier!, vehicle!, trailer, driver!, origin!);
         m.TotalDocuments = m.Documents.Count;
@@ -329,13 +343,9 @@ public class ManifestService : IManifestService
         m.UpdatedAt = now;
         m.UpdatedBy = _user.UserId;
 
-        AddEvent(m.Id, ManifestEventTypes.Dispatched, null, ManifestStatuses.Draft, ManifestStatuses.Dispatched,
+        AddEvent(m.Id, ManifestEventTypes.Dispatched, null, ManifestStatuses.Draft, target,
             new { departedAtUtc = m.DepartedAt, documents = m.TotalDocuments });
-        foreach (var d in m.Documents)
-        {
-            d.DeliveryStatus = DeliveryStatuses.Dispatched;
-            AddEvent(m.Id, ManifestEventTypes.Dispatched, d.Id, DeliveryStatuses.Pending, DeliveryStatuses.Dispatched, null);
-        }
+        if (!withGuides) MarkDocumentsDispatched(m);
 
         // Recalcula y guarda todo en una sola escritura; si el cálculo falla no se despacha nada.
         var cost = await _cost.RecalculateAsync(m);
@@ -343,7 +353,44 @@ public class ManifestService : IManifestService
             warnings.Add("Sin tarifa para este viaje: se despacha igual, pero deberá corregir las comunas/tarifas o ingresar un costo manual con motivo antes del cierre mensual.");
         else if (cost.Status == CostStatuses.Ambiguous)
             warnings.Add("Tarifa ambigua para este viaje: revise el tarifario antes del cierre mensual.");
+        if (!withGuides) return new DispatchResult(true, Array.Empty<string>(), warnings);
+
+        return await CompleteGuidesAsync(m, await _guides!.EmitAsync(m.Id), warnings);
+    }
+
+    public async Task<DispatchResult> RetryGuidesAsync(Guid manifestId)
+    {
+        var m = await LoadAsync(manifestId);
+        RequireStatus(m, ManifestStatuses.PendingGuides, "Solo se reintentan las guías de un manifiesto con guías pendientes.");
+        if (_guides is null) throw new InvalidOperationException("La emisión de guías no está disponible.");
+        return await CompleteGuidesAsync(m, await _guides.EmitAsync(m.Id), new List<string>());
+    }
+
+    /// <summary>Con todas las guías emitidas el manifiesto pasa a despachado; si no, sigue en guías pendientes.</summary>
+    private async Task<DispatchResult> CompleteGuidesAsync(Manifest m, GuideEmissionOutcome outcome, List<string> warnings)
+    {
+        if (!outcome.AllIssued)
+        {
+            warnings.Add("El camión no debe salir sin guía; reintente desde la pestaña Guías.");
+            return new DispatchResult(false, outcome.Errors.Count > 0 ? outcome.Errors : new[] { "Hay guías sin emitir." }, warnings);
+        }
+        var from = m.Status;
+        m.Status = ManifestStatuses.Dispatched;
+        m.UpdatedAt = UtcNow;
+        m.UpdatedBy = _user.UserId;
+        AddEvent(m.Id, ManifestEventTypes.Dispatched, null, from, ManifestStatuses.Dispatched, new { guides = outcome.Issued });
+        MarkDocumentsDispatched(m);
+        await _db.SaveChangesAsync();
         return new DispatchResult(true, Array.Empty<string>(), warnings);
+    }
+
+    private void MarkDocumentsDispatched(Manifest m)
+    {
+        foreach (var d in m.Documents)
+        {
+            d.DeliveryStatus = DeliveryStatuses.Dispatched;
+            AddEvent(m.Id, ManifestEventTypes.Dispatched, d.Id, DeliveryStatuses.Pending, DeliveryStatuses.Dispatched, null);
+        }
     }
 
     private async Task TakeSnapshotAsync(
@@ -543,10 +590,13 @@ public class ManifestService : IManifestService
     public async Task AnnulAsync(Guid manifestId, string reason)
     {
         var m = await LoadAsync(manifestId);
-        if (m.Status != ManifestStatuses.Draft && m.Status != ManifestStatuses.Dispatched)
-            throw new InvalidOperationException("Solo se puede anular un manifiesto en borrador o despachado.");
+        if (m.Status != ManifestStatuses.Draft && m.Status != ManifestStatuses.Dispatched && m.Status != ManifestStatuses.PendingGuides)
+            throw new InvalidOperationException("Solo se puede anular un manifiesto en borrador, con guías pendientes o despachado.");
         if (string.IsNullOrWhiteSpace(reason))
             throw new InvalidOperationException("Indique el motivo de la anulación.");
+        // Solo si ninguna guía quedó emitida (lanza en ese caso); libera los folios reservados.
+        if (m.Status == ManifestStatuses.PendingGuides && _guides != null)
+            await _guides.AbandonPendingAsync(m.Id, reason.Trim());
         var from = m.Status;
         m.Status = ManifestStatuses.Annulled;
         m.UpdatedAt = UtcNow;
@@ -602,8 +652,9 @@ public class ManifestService : IManifestService
     public async Task SetDocumentCommuneAsync(Guid manifestId, Guid manifestDocumentId, long communeId)
     {
         var m = await LoadAsync(manifestId);
-        if (m.Status != ManifestStatuses.Draft && m.Status != ManifestStatuses.Dispatched && m.Status != ManifestStatuses.Returned)
-            throw new InvalidOperationException("Solo se puede corregir la comuna de un manifiesto en borrador, despachado o retornado.");
+        if (m.Status != ManifestStatuses.Draft && m.Status != ManifestStatuses.PendingGuides
+            && m.Status != ManifestStatuses.Dispatched && m.Status != ManifestStatuses.Returned)
+            throw new InvalidOperationException("Solo se puede corregir la comuna de un manifiesto en borrador, con guías pendientes, despachado o retornado.");
         var doc = m.Documents.FirstOrDefault(d => d.Id == manifestDocumentId)
             ?? throw new InvalidOperationException("El documento no está en este manifiesto.");
         var commune = await _db.Communes.FirstOrDefaultAsync(c => c.CompanyId == CompanyId && c.Id == communeId)

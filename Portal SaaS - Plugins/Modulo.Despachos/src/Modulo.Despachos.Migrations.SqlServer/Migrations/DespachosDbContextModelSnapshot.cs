@@ -1494,6 +1494,11 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(60)")
                         .HasColumnName("destination_commune");
 
+                    b.Property<string>("DocumentJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("document_json");
+
                     b.Property<Guid>("EmissionKey")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("emission_key");

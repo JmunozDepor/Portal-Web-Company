@@ -55,8 +55,15 @@ public interface IManifestService
     Task<AddDocumentResult> AddDocumentAsync(Guid manifestId, DocumentCapture capture);
     Task RemoveDocumentAsync(Guid manifestId, Guid manifestDocumentId);
 
-    /// <summary>Valida, sella la salida (UTC), toma el snapshot Res.154, calcula el costo y pasa los documentos a despachado.</summary>
+    /// <summary>
+    /// Valida, sella la salida (UTC), toma el snapshot Res.154, calcula el costo y pasa los documentos a despachado.
+    /// Con guías habilitadas valida antes el plan de guías y emite: si alguna no se emite el manifiesto queda en
+    /// "guías pendientes" (Success false, con los errores) y se reintenta con <see cref="RetryGuidesAsync"/>.
+    /// </summary>
     Task<DispatchResult> DispatchAsync(Guid manifestId);
+
+    /// <summary>Reintenta las guías no emitidas de un manifiesto en "guías pendientes" (mismas claves de emisión).</summary>
+    Task<DispatchResult> RetryGuidesAsync(Guid manifestId);
 
     /// <summary>
     /// Solo con el manifiesto despachado y con motivo: renueva el snapshot y recalcula el costo. El transportista
@@ -71,7 +78,10 @@ public interface IManifestService
     /// </summary>
     Task RegisterReturnAsync(Guid manifestId, IReadOnlyList<DocumentReturnInput> documents, int? odometerEnd);
 
-    /// <summary>Anula un manifiesto en borrador o despachado, con motivo; sus documentos quedan libres.</summary>
+    /// <summary>
+    /// Anula un manifiesto en borrador, con guías pendientes (solo si ninguna guía quedó emitida; libera los folios
+    /// reservados) o despachado, con motivo; sus documentos quedan libres.
+    /// </summary>
     Task AnnulAsync(Guid manifestId, string reason);
 
     /// <summary>Costo manual con motivo (manifiesto despachado, retornado o cerrado con el período abierto); cost_final pasa a ser el override.</summary>

@@ -11,7 +11,7 @@ public class OrigenesEmisorPageTests
     private static (Origenes.IndexModel Page, MasterDataService Svc) Build(FakeCurrentUserContext user)
     {
         var svc = new MasterDataService(TestDb.Create(), new FakeCurrentCompanyAccessor(), user);
-        return (new Origenes.IndexModel(svc, user), svc);
+        return (new Origenes.IndexModel(svc, user, new FakeDteEmissionService()), svc);
     }
 
     [Fact]
@@ -35,5 +35,39 @@ public class OrigenesEmisorPageTests
         await page.OnPostSaveIssuerAsync();
         Assert.Equal("76123456-0", await svc.GetIssuerTaxIdAsync());
         Assert.NotNull(page.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task SaveGuides_SinPermisoEdit_Forbid_YNoGuarda()
+    {
+        var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View));
+        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 1, DispatchType = 2 };
+        Assert.IsType<ForbidResult>(await page.OnPostSaveGuidesAsync());
+        Assert.False((await svc.GetSettingsAsync())?.GuidesEnabled ?? false);
+    }
+
+    [Fact]
+    public async Task SaveGuides_ConEdit_Guarda_YRechazaIndicadorInvalido()
+    {
+        var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View, PortalActions.Edit));
+        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 5, DispatchType = 3 };
+        await page.OnPostSaveGuidesAsync();
+        var s = await svc.GetSettingsAsync();
+        Assert.True(s!.GuidesEnabled);
+        Assert.Equal((5, (int?)3), (s.TransferIndicator, s.DispatchType));
+
+        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 12, DispatchType = 2 };
+        await page.OnPostSaveGuidesAsync();
+        Assert.NotNull(page.ErrorMessage);
+        Assert.Equal(5, (await svc.GetSettingsAsync())!.TransferIndicator);
+    }
+
+    [Fact]
+    public async Task OnGet_MuestraEstadoDeLaConfiguracionDte()
+    {
+        var (page, _) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View));
+        await page.OnGetAsync();
+        Assert.True(page.DteStatus!.IsConfigured);
+        Assert.Equal("FAKE", page.DteStatus.ProviderCode);
     }
 }

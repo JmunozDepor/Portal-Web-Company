@@ -18,6 +18,14 @@ public interface IMasterDataService
     /// <summary>Guarda el RUT emisor (validado, dígito verificador); vacío lo borra.</summary>
     Task SaveIssuerTaxIdAsync(string? rut);
 
+    /// <summary>Ajustes del módulo de la compañía (null si nunca se guardaron).</summary>
+    Task<DespachosSetting?> GetSettingsAsync();
+
+    /// <summary>
+    /// Guías de despacho Res. 154: activar la emisión al despachar, IndTraslado (1..9) y TipoDespacho (1..3 o null).
+    /// </summary>
+    Task SaveGuideSettingsAsync(bool guidesEnabled, int transferIndicator, int? dispatchType);
+
     Task<IReadOnlyList<Carrier>> ListCarriersAsync(bool includeInactive = false);
     Task<long> SaveCarrierAsync(Carrier entity);
     Task<DeleteResult> DeleteCarrierAsync(long id);

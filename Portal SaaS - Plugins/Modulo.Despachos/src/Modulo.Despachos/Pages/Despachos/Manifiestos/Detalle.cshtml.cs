@@ -9,10 +9,11 @@ using PortalSaas.Abstractions.Modelos;
 namespace Modulo.Despachos.Pages.Despachos.Manifiestos;
 
 /// <summary>
-/// Detalle del manifiesto con pestañas Cabecera / Documentos / Retorno / Costo / Historial. En borrador la
+/// Detalle del manifiesto con pestañas Cabecera / Documentos / Guías / Retorno / Costo / Historial. En borrador la
 /// pestaña Documentos hospeda el escaneo continuo (wwwroot/js/despachos-scan.js). Permisos (menú
-/// "manifiestos"): VIEW ver, EDIT editar borrador y cambiar chofer/vehículo, DELETE anular, APPROVE despachar
-/// y cerrar, EXPORT PDF; el ajuste de costo exige EDIT en "cierre-mensual".
+/// "manifiestos"): VIEW ver (incluye borrador y PDF de las guías), EDIT editar borrador y cambiar chofer/vehículo,
+/// DELETE anular, APPROVE despachar, reintentar guías y cerrar, EXPORT PDF del manifiesto; el ajuste de costo exige
+/// EDIT en "cierre-mensual". La pestaña Guías (Res. 154) solo aparece si la compañía emite guías al despachar.
 /// </summary>
 public sealed class DetalleModel : DespachosPageModelBase
 {
@@ -21,12 +22,15 @@ public sealed class DetalleModel : DespachosPageModelBase
     private readonly IMasterDataService _data;
     private readonly IUserContactLookupService _users;
     private readonly IManifestCostService _cost;
+    private readonly ITransportGuideService _guides;
 
     public DetalleModel(
         IManifestService manifests, IManifestPdfService pdf, IMasterDataService data,
-        ICurrentUserContext currentUser, IUserContactLookupService users, IManifestCostService cost) : base(currentUser)
+        ICurrentUserContext currentUser, IUserContactLookupService users, IManifestCostService cost,
+        ITransportGuideService guides) : base(currentUser)
     {
         _cost = cost;
+        _guides = guides;
         _manifests = manifests;
         _pdf = pdf;
         _data = data;
@@ -53,12 +57,24 @@ public sealed class DetalleModel : DespachosPageModelBase
     public CostResult? Estimate { get; private set; }
     public string? EstimateError { get; private set; }
 
+    /// <summary>La compañía emite guías de despacho (Res. 154) al despachar.</summary>
+    public bool GuidesEnabled { get; private set; }
+    /// <summary>Vista previa de las guías (solo en borrador).</summary>
+    public GuidePreview? GuidePreview { get; private set; }
+    /// <summary>Guías planificadas/emitidas (después de despachar).</summary>
+    public IReadOnlyList<TransportGuide> Guides { get; private set; } = Array.Empty<TransportGuide>();
+    public string? GuidesError { get; private set; }
+
     /// <summary>Pestaña inicial (la fija el servidor tras cada acción).</summary>
     [BindProperty(SupportsGet = true)]
     public string? Tab { get; set; }
 
     public string ActiveTab => Tab is "cabecera" or "documentos" or "retorno" or "costo" or "historial"
-        ? Tab : (M.Status == ManifestStatuses.Draft ? "documentos" : "cabecera");
+                                   || (Tab == "guias" && GuidesEnabled)
+        ? Tab : M.Status == ManifestStatuses.Draft ? "documentos"
+        : M.Status == ManifestStatuses.PendingGuides && GuidesEnabled ? "guias" : "cabecera";
+
+    public bool IsPendingGuides => M.Status == ManifestStatuses.PendingGuides;
 
     [BindProperty] public ManifestForm Header { get; set; } = new();
     [BindProperty] public ChangeVehicleInput Change { get; set; } = new();
@@ -110,6 +126,16 @@ public sealed class DetalleModel : DespachosPageModelBase
         {
             try { Estimate = await _cost.EstimateAsync(m); }
             catch (Exception ex) { EstimateError = GetErrorMessage(ex); }
+        }
+        GuidesEnabled = await _guides.IsEnabledAsync();
+        if (GuidesEnabled)
+        {
+            try
+            {
+                if (m.Status == ManifestStatuses.Draft) GuidePreview = await _guides.PreviewAsync(m.Id);
+                else Guides = await _guides.ListAsync(m.Id);
+            }
+            catch (Exception ex) { GuidesError = GetErrorMessage(ex); }
         }
         Communes = await _data.ListCommunesAsync();
         UserLabels = await ResolveUsersAsync(m);
@@ -163,6 +189,9 @@ public sealed class DetalleModel : DespachosPageModelBase
         ManifestEventTypes.CostRecalculated => "Costo recalculado",
         ManifestEventTypes.DocumentCommuneChanged => "Comuna de destino corregida",
         ManifestEventTypes.ExtraChargesChanged => "Adicionales modificados",
+        ManifestEventTypes.GuidesPlanned => "Guías de despacho planificadas",
+        ManifestEventTypes.GuideIssued => "Guía de despacho emitida",
+        ManifestEventTypes.GuideFailed => "Guías de despacho sin emitir",
         _ => type,
     };
 
@@ -269,12 +298,60 @@ public sealed class DetalleModel : DespachosPageModelBase
             if (!result.Success)
             {
                 ErrorMessage = string.Join(" ", result.Errors);
-                return RedirectToPage(new { id, tab = "documentos" });
+                // Si quedó en "guías pendientes" la acción sigue en la pestaña Guías (reintentar).
+                var m = await _manifests.GetAsync(id);
+                return RedirectToPage(new { id, tab = m?.Status == ManifestStatuses.PendingGuides ? "guias" : "documentos" });
             }
             SuccessMessage = "Manifiesto despachado.";
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
         return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostReintentarGuiasAsync(Guid id)
+    {
+        if (!await HasActionAsync(PortalActions.Approve)) return Forbid();
+        try
+        {
+            var result = await _manifests.RetryGuidesAsync(id);
+            if (result.Warnings.Count > 0) WarningMessage = string.Join(" ", result.Warnings);
+            if (!result.Success) ErrorMessage = string.Join(" ", result.Errors);
+            else SuccessMessage = "Guías emitidas: manifiesto despachado.";
+        }
+        catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
+        return RedirectToPage(new { id, tab = "guias" });
+    }
+
+    /// <summary>PDF borrador (sin folio) de una guía de la vista previa.</summary>
+    public async Task<IActionResult> OnGetGuiaBorradorAsync(Guid id, int sequence)
+    {
+        if (!await HasActionAsync(PortalActions.View)) return Forbid();
+        try
+        {
+            var bytes = await _guides.PreviewPdfAsync(id, sequence);
+            return new InlinePdfResult(bytes, $"guia-borrador-{sequence}.pdf");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = GetErrorMessage(ex);
+            return RedirectToPage(new { id, tab = "guias" });
+        }
+    }
+
+    /// <summary>PDF de una guía emitida o de todas unidas (sequence vacío).</summary>
+    public async Task<IActionResult> OnGetGuiasPdfAsync(Guid id, int? sequence)
+    {
+        if (!await HasActionAsync(PortalActions.View)) return Forbid();
+        try
+        {
+            var bytes = await _guides.GetPdfAsync(id, sequence);
+            return new InlinePdfResult(bytes, sequence is { } s ? $"guia-{s}.pdf" : "guias.pdf");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = GetErrorMessage(ex);
+            return RedirectToPage(new { id, tab = "guias" });
+        }
     }
 
     public async Task<IActionResult> OnPostAnularAsync(Guid id, string? reason)

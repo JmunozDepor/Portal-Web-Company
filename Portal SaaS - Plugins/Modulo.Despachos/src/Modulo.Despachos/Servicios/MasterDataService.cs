@@ -56,6 +56,33 @@ public sealed class MasterDataService : IMasterDataService
         await _db.SaveChangesAsync();
     }
 
+    public async Task<DespachosSetting?> GetSettingsAsync() =>
+        await _db.Settings.AsNoTracking().FirstOrDefaultAsync(x => x.CompanyId == CompanyId);
+
+    public async Task SaveGuideSettingsAsync(bool guidesEnabled, int transferIndicator, int? dispatchType)
+    {
+        if (transferIndicator is < 1 or > 9)
+            throw new InvalidOperationException("El indicador de traslado debe estar entre 1 y 9.");
+        if (dispatchType is not null and (< 1 or > 3))
+            throw new InvalidOperationException("El tipo de despacho debe ser 1, 2 o 3.");
+        var row = await _db.Settings.FirstOrDefaultAsync(x => x.CompanyId == CompanyId);
+        var now = DateTime.UtcNow;
+        if (row is null)
+        {
+            row = new DespachosSetting { CompanyId = CompanyId, CreatedAt = now, CreatedBy = _user.UserId };
+            _db.Settings.Add(row);
+        }
+        else
+        {
+            row.UpdatedAt = now;
+            row.UpdatedBy = _user.UserId;
+        }
+        row.GuidesEnabled = guidesEnabled;
+        row.TransferIndicator = transferIndicator;
+        row.DispatchType = dispatchType;
+        await _db.SaveChangesAsync();
+    }
+
     // ---------------------------------------------------------------- Transportistas
 
     public async Task<IReadOnlyList<Carrier>> ListCarriersAsync(bool includeInactive = false) =>

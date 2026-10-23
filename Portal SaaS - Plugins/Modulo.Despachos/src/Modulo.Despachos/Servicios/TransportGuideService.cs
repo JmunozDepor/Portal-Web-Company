@@ -52,6 +52,11 @@ public sealed class TransportGuideService : ITransportGuideService
     public async Task<bool> IsEnabledAsync() =>
         await _db.Settings.AnyAsync(s => s.CompanyId == CompanyId && s.GuidesEnabled);
 
+    public async Task<IReadOnlyList<TransportGuide>> ListAsync(Guid manifestId) =>
+        await _db.TransportGuides.AsNoTracking().Include(g => g.Documents)
+            .Where(g => g.CompanyId == CompanyId && g.ManifestId == manifestId)
+            .OrderBy(g => g.Sequence).ToListAsync();
+
     // ---------------------------------------------------------------- Vista previa
 
     public async Task<GuidePreview> PreviewAsync(Guid manifestId)

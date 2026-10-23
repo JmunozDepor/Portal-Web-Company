@@ -51,6 +51,25 @@ public static class DespachosUi
         _ => status,
     };
 
+    /// <summary>Etiqueta del estado de una guía de despacho (transport_guides.status).</summary>
+    public static string GuideStatusLabel(string status) => status switch
+    {
+        "planned" => "Planificada",
+        "pending" => "Pendiente",
+        "issued" => "Emitida",
+        "failed" => "Rechazada",
+        "abandoned" => "Anulada",
+        _ => status,
+    };
+
+    public static string GuideStatusBadgeClass(string status) => status switch
+    {
+        "issued" => "dsp-badge--success",
+        "pending" => "dsp-badge--warning",
+        "failed" => "dsp-badge--danger",
+        _ => "dsp-badge--neutral",
+    };
+
     public static string CostStatusLabel(string status) => status switch
     {
         "ok" => "Calculado",

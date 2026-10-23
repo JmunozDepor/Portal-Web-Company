@@ -1,0 +1,3 @@
+@model string
+@* Badge de estado de una guía de despacho (transport_guides.status). Mismas clases que _EstadoDespachos. *@
+<span class="dsp-badge @DespachosUi.GuideStatusBadgeClass(Model)">@DespachosUi.GuideStatusLabel(Model)</span>

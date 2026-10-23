@@ -17,6 +17,9 @@ public sealed record GuideEmissionOutcome(bool AllIssued, int Issued, int Pendin
 /// </summary>
 public interface ITransportGuideService
 {
+    /// <summary>Guías persistidas del manifiesto (vacío si aún no se planificaron), por secuencia.</summary>
+    Task<IReadOnlyList<Models.TransportGuide>> ListAsync(Guid manifestId);
+
     /// <summary>La compañía tiene activado "emitir guías al despachar" (DespachosSetting.GuidesEnabled).</summary>
     Task<bool> IsEnabledAsync();
 

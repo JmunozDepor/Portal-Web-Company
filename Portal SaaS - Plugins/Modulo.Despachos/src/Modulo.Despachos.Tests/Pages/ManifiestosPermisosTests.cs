@@ -35,8 +35,66 @@ public class ManifiestosPermisosTests
         var env = ManifestTestEnv.Build();
         grant?.Invoke(env.User);
         var pdf = new ManifestPdfService(env.Db, env.Company, env.User, env.Svc, env.Clock);
-        var page = new Manifiestos.DetalleModel(env.Svc, pdf, env.Master, env.User, new FakeContactLookup(), env.Cost) { TempData = Temp() };
+        var page = new Manifiestos.DetalleModel(env.Svc, pdf, env.Master, env.User, new FakeContactLookup(), env.Cost, env.Guides) { TempData = Temp() };
         return (page, env);
+    }
+
+    [Fact]
+    public async Task Guias_BorradorPdf_RequiereVer()
+    {
+        var (page, env) = BuildDetalle();
+        await env.EnableGuidesAsync();
+        var id = await env.GuideReadyDraftAsync(1);
+        Assert.IsType<ForbidResult>(await page.OnGetGuiaBorradorAsync(id, 1));
+
+        env.User.Grant("Despachos.manifiestos", PortalActions.View);
+        Assert.IsType<Manifiestos.InlinePdfResult>(await page.OnGetGuiaBorradorAsync(id, 1));
+    }
+
+    [Fact]
+    public async Task Guias_Pdf_RequiereVer_YDevuelveGuiasEmitidas()
+    {
+        var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.Approve));
+        await env.EnableGuidesAsync();
+        var id = await env.GuideReadyDraftAsync(1);
+        Assert.True((await env.Svc.DispatchAsync(id)).Success);
+        Assert.IsType<ForbidResult>(await page.OnGetGuiasPdfAsync(id, null));
+
+        env.User.Grant("Despachos.manifiestos", PortalActions.View);
+        Assert.IsType<Manifiestos.InlinePdfResult>(await page.OnGetGuiasPdfAsync(id, null));
+    }
+
+    [Fact]
+    public async Task Guias_Reintentar_RequiereDespachar()
+    {
+        var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View, PortalActions.Edit));
+        await env.EnableGuidesAsync();
+        var id = await env.GuideReadyDraftAsync(1);
+        env.Dte.Down = true;
+        await env.Svc.DispatchAsync(id);
+        env.Dte.Down = false;
+        Assert.IsType<ForbidResult>(await page.OnPostReintentarGuiasAsync(id));
+        Assert.Equal(ManifestStatuses.PendingGuides, (await env.Svc.GetAsync(id))!.Status);
+
+        env.User.Grant("Despachos.manifiestos", PortalActions.Approve);
+        Assert.IsType<RedirectToPageResult>(await page.OnPostReintentarGuiasAsync(id));
+        Assert.Equal(ManifestStatuses.Dispatched, (await env.Svc.GetAsync(id))!.Status);
+    }
+
+    [Fact]
+    public async Task Detalle_ConGuias_CargaVistaPreviaEnBorrador_YGuiasTrasDespachar()
+    {
+        var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View, PortalActions.Approve));
+        await env.EnableGuidesAsync();
+        var id = await env.GuideReadyDraftAsync(1);
+
+        Assert.IsType<Microsoft.AspNetCore.Mvc.RazorPages.PageResult>(await page.OnGetAsync(id));
+        Assert.True(page.GuidesEnabled);
+        Assert.Single(page.GuidePreview!.Guides);
+
+        await env.Svc.DispatchAsync(id);
+        Assert.IsType<Microsoft.AspNetCore.Mvc.RazorPages.PageResult>(await page.OnGetAsync(id));
+        Assert.Equal(500, Assert.Single(page.Guides).Folio);
     }
 
     [Fact]

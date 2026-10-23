@@ -41,6 +41,52 @@
         </form>
     </div>
 
+    @* Guías de despacho electrónicas (Res. 154): el proveedor DTE (FACELE, BES...) y sus credenciales se configuran
+       en Administración por compañía; aquí solo se activa la emisión al despachar y sus indicadores. *@
+    <div class="filter-card mb-3">
+        <form method="post" asp-page-handler="SaveGuides" asp-antiforgery="true" class="d-flex flex-wrap align-items-end gap-3">
+            <div class="col-auto">
+                <label class="d-flex align-items-center gap-2">
+                    <input type="checkbox" name="GuidesInput.GuidesEnabled" value="true" checked="@Model.GuidesInput.GuidesEnabled" disabled="@(!Model.CanEdit)" />
+                    Emitir guías de despacho electrónicas al despachar (Res. 154)
+                </label>
+            </div>
+            <div class="col-auto">
+                <label for="guides-transfer" class="form-label">Indicador de traslado</label>
+                <select id="guides-transfer" name="GuidesInput.TransferIndicator" class="form-select" disabled="@(!Model.CanEdit)">
+                    @foreach (var (value, label) in Modulo.Despachos.Pages.Despachos.Configuracion.Origenes.IndexModel.TransferIndicators)
+                    {
+                        <option value="@value" selected="@(Model.GuidesInput.TransferIndicator == value)">@label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <label for="guides-dispatch" class="form-label">Tipo de despacho</label>
+                <select id="guides-dispatch" name="GuidesInput.DispatchType" class="form-select" disabled="@(!Model.CanEdit)">
+                    <option value="" selected="@(Model.GuidesInput.DispatchType is null)">No informar</option>
+                    @foreach (var (value, label) in Modulo.Despachos.Pages.Despachos.Configuracion.Origenes.IndexModel.DispatchTypes)
+                    {
+                        <option value="@value" selected="@(Model.GuidesInput.DispatchType == value)">@label</option>
+                    }
+                </select>
+            </div>
+            @if (Model.CanEdit)
+            {
+                <button type="submit" class="btn-primary">Guardar ajustes de guías</button>
+            }
+        </form>
+        <div class="form-text mt-2">
+            @if (Model.DteStatus is { IsConfigured: true } dte)
+            {
+                <span>Documentos electrónicos: <strong>@dte.ProviderCode</strong> · @(dte.Environment == "production" ? "Producción" : "Certificación") · RUT emisor @dte.IssuerTaxId</span>
+            }
+            else
+            {
+                <span class="text-danger">@(Model.DteStatus?.Error ?? "La compañía no tiene configurados los documentos electrónicos.")</span>
+            }
+        </div>
+    </div>
+
     <div class="filter-card mb-3">
         <div class="col-auto flex-grow-1" style="max-width:360px;">
             <label for="buscar-origenes" class="form-label">Buscar</label>

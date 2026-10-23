@@ -57,7 +57,7 @@
                     <button type="submit" class="btn-primary"><i class="bi bi-lock"></i> Cerrar</button>
                 </form>
             }
-            @if (Model.CanDelete && (m.Status == ManifestStatuses.Draft || m.Status == ManifestStatuses.PendingGuides || m.Status == ManifestStatuses.Dispatched))
+            @if (Model.CanAnnulNow)
             {
                 <button type="button" class="btn-ghost btn-ghost--danger" data-drawer-open="drawer-anular"><i class="bi bi-x-octagon"></i> Anular</button>
             }
@@ -93,7 +93,7 @@
     <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;">
         <button type="button" class="doc-tab-btn @(active == "cabecera" ? "active" : "")" data-tab-btn="cabecera">Cabecera</button>
         <button type="button" class="doc-tab-btn @(active == "documentos" ? "active" : "")" data-tab-btn="documentos">Documentos (<span data-doc-count>@Model.DocCount</span>)</button>
-        @if (Model.GuidesEnabled)
+        @if (Model.ShowGuides)
         {
             <button type="button" class="doc-tab-btn @(active == "guias" ? "active" : "")" data-tab-btn="guias">Guías</button>
         }
@@ -296,7 +296,7 @@
     </div>
 
     @* ------------------------------------------------------------ Guías (Res. 154) *@
-    @if (Model.GuidesEnabled)
+    @if (Model.ShowGuides)
     {
         <div data-tab-panel="guias" style="@(active == "guias" ? "" : "display:none;")">
             @if (Model.GuidesError is not null)
@@ -582,7 +582,7 @@
     </div>
 </div>
 
-@if (Model.CanDelete && (m.Status == ManifestStatuses.Draft || m.Status == ManifestStatuses.Dispatched))
+@if (Model.CanAnnulNow)
 {
     <div id="drawer-anular" class="drawer-overlay" data-drawer>
         <aside class="drawer-panel">

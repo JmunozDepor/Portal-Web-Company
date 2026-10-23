@@ -21,6 +21,8 @@ public sealed class FakeDteEmissionService : IDteEmissionService
     public List<DteEmissionRequest> Calls { get; } = new();
     public List<Guid> Abandoned { get; } = new();
     public Dictionary<Guid, DteEmissionResult> Emissions { get; } = new();
+    /// <summary>Contenido (JSON) de cada emisión, para replicar "misma clave, otro contenido" de la pasarela real.</summary>
+    public Dictionary<Guid, string> Contents { get; } = new();
 
     public Task<DteConfigurationStatus> GetConfigurationAsync(CancellationToken ct = default) => Task.FromResult(Configured
         ? new DteConfigurationStatus(true, "FAKE", "certification", IssuerTaxId, new[] { 33, 52 }, null)
@@ -36,8 +38,16 @@ public sealed class FakeDteEmissionService : IDteEmissionService
     {
         if (!Configured) throw new InvalidOperationException("La compañía no tiene configurados los documentos electrónicos.");
         Calls.Add(request);
-        if (Emissions.TryGetValue(request.EmissionKey, out var existing) && existing.Status == DteEmissionStatuses.Issued)
-            return Task.FromResult(existing);
+        var json = System.Text.Json.JsonSerializer.Serialize(request.Document);
+        if (Emissions.TryGetValue(request.EmissionKey, out var existing))
+        {
+            var changed = Contents.TryGetValue(request.EmissionKey, out var old) && old != json;
+            if (changed && !(existing.Status == DteEmissionStatuses.Failed && existing.Folio is null))
+                throw new InvalidOperationException("La emisión ya existe con otro contenido; genere una clave nueva para reemitir.");
+            if (existing.Status is DteEmissionStatuses.Issued or DteEmissionStatuses.Released or DteEmissionStatuses.Abandoned)
+                return Task.FromResult(existing);
+        }
+        Contents[request.EmissionKey] = json;
         DteEmissionResult r;
         if (Down || Unavailable.Contains(request.EmissionKey))
             r = new DteEmissionResult(request.EmissionKey, DteEmissionStatuses.Pending, null, "FAKE: proveedor sin conexión.", "FAKE", "certification");

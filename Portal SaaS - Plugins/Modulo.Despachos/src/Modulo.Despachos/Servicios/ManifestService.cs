@@ -335,6 +335,7 @@ public class ManifestService : IManifestService
         // Con guías, el manifiesto queda en "guías pendientes" hasta que todas estén emitidas.
         var target = withGuides ? ManifestStatuses.PendingGuides : ManifestStatuses.Dispatched;
         m.Status = target;
+        m.Version++;
         m.DepartedAt = DateTime.SpecifyKind(now, DateTimeKind.Utc);
         await TakeSnapshotAsync(m, carrier!, vehicle!, trailer, driver!, origin!);
         m.TotalDocuments = m.Documents.Count;
@@ -348,7 +349,15 @@ public class ManifestService : IManifestService
         if (!withGuides) MarkDocumentsDispatched(m);
 
         // Recalcula y guarda todo en una sola escritura; si el cálculo falla no se despacha nada.
-        var cost = await _cost.RecalculateAsync(m);
+        CostResult cost;
+        try
+        {
+            cost = await _cost.RecalculateAsync(m);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException(ConcurrentChangeMessage);
+        }
         if (cost.Status == CostStatuses.NoRate)
             warnings.Add("Sin tarifa para este viaje: se despacha igual, pero deberá corregir las comunas/tarifas o ingresar un costo manual con motivo antes del cierre mensual.");
         else if (cost.Status == CostStatuses.Ambiguous)
@@ -363,8 +372,21 @@ public class ManifestService : IManifestService
         var m = await LoadAsync(manifestId);
         RequireStatus(m, ManifestStatuses.PendingGuides, "Solo se reintentan las guías de un manifiesto con guías pendientes.");
         if (_guides is null) throw new InvalidOperationException("La emisión de guías no está disponible.");
+        // Toma el manifiesto (token de concurrencia) antes de emitir: dos reintentos simultáneos no corren a la vez.
+        m.Version++;
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException(ConcurrentChangeMessage);
+        }
         return await CompleteGuidesAsync(m, await _guides.EmitAsync(m.Id), new List<string>());
     }
+
+    private const string ConcurrentChangeMessage =
+        "Otro usuario modificó este manifiesto al mismo tiempo (despacho o reintento de guías): recargue la página y revise su estado.";
 
     /// <summary>Con todas las guías emitidas el manifiesto pasa a despachado; si no, sigue en guías pendientes.</summary>
     private async Task<DispatchResult> CompleteGuidesAsync(Manifest m, GuideEmissionOutcome outcome, List<string> warnings)
@@ -376,11 +398,19 @@ public class ManifestService : IManifestService
         }
         var from = m.Status;
         m.Status = ManifestStatuses.Dispatched;
+        m.Version++;
         m.UpdatedAt = UtcNow;
         m.UpdatedBy = _user.UserId;
         AddEvent(m.Id, ManifestEventTypes.Dispatched, null, from, ManifestStatuses.Dispatched, new { guides = outcome.Issued });
         MarkDocumentsDispatched(m);
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException(ConcurrentChangeMessage);
+        }
         return new DispatchResult(true, Array.Empty<string>(), warnings);
     }
 
@@ -594,11 +624,13 @@ public class ManifestService : IManifestService
             throw new InvalidOperationException("Solo se puede anular un manifiesto en borrador, con guías pendientes o despachado.");
         if (string.IsNullOrWhiteSpace(reason))
             throw new InvalidOperationException("Indique el motivo de la anulación.");
-        // Solo si ninguna guía quedó emitida (lanza en ese caso); libera los folios reservados.
-        if (m.Status == ManifestStatuses.PendingGuides && _guides != null)
-            await _guides.AbandonPendingAsync(m.Id, reason.Trim());
         var from = m.Status;
         m.Status = ManifestStatuses.Annulled;
+        m.Version++;
+        // Solo si ninguna guía quedó emitida (lanza en ese caso, sin guardar nada); libera los folios reservados.
+        // Su guardado incluye ya el estado anulado del manifiesto: no queda un manifiesto vivo con guías abandonadas.
+        if (from == ManifestStatuses.PendingGuides && _guides != null)
+            await _guides.AbandonPendingAsync(m.Id, reason.Trim());
         m.UpdatedAt = UtcNow;
         m.UpdatedBy = _user.UserId;
         // Los documentos se conservan como historial; quedan libres porque el manifiesto está anulado.

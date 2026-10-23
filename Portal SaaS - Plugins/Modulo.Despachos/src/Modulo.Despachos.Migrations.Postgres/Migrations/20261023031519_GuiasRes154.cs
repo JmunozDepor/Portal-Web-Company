@@ -1,9 +1,10 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Modulo.Despachos.Migrations.SqlServer.Migrations
+namespace Modulo.Despachos.Migrations.Postgres.Migrations
 {
     /// <inheritdoc />
     public partial class GuiasRes154 : Migration
@@ -12,22 +13,29 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<int>(
+                name: "version",
+                table: "manifests",
+                type: "integer",
+                nullable: false,
+                defaultValue: 0);
+
+            migrationBuilder.AddColumn<int>(
                 name: "dispatch_type",
                 table: "despachos_settings",
-                type: "int",
+                type: "integer",
                 nullable: true);
 
             migrationBuilder.AddColumn<bool>(
                 name: "guides_enabled",
                 table: "despachos_settings",
-                type: "bit",
+                type: "boolean",
                 nullable: false,
                 defaultValue: false);
 
             migrationBuilder.AddColumn<int>(
                 name: "transfer_indicator",
                 table: "despachos_settings",
-                type: "int",
+                type: "integer",
                 nullable: false,
                 defaultValue: 1);
 
@@ -35,26 +43,26 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                 name: "transport_guides",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    company_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    manifest_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    sequence = table.Column<int>(type: "int", nullable: false),
-                    emission_key = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    receiver_tax_id = table.Column<string>(type: "nvarchar(12)", maxLength: 12, nullable: false),
-                    receiver_name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
-                    destination_address = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: false),
-                    destination_commune = table.Column<string>(type: "nvarchar(60)", maxLength: 60, nullable: false),
-                    destination_city = table.Column<string>(type: "nvarchar(60)", maxLength: 60, nullable: true),
-                    transfer_indicator = table.Column<int>(type: "int", nullable: false),
-                    line_count = table.Column<int>(type: "int", nullable: false),
-                    total_quantity = table.Column<decimal>(type: "decimal(18,4)", precision: 18, scale: 4, nullable: false),
-                    weight_kg = table.Column<decimal>(type: "decimal(18,3)", precision: 18, scale: 3, nullable: true),
-                    document_json = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    company_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    manifest_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    sequence = table.Column<int>(type: "integer", nullable: false),
+                    emission_key = table.Column<Guid>(type: "uuid", nullable: false),
+                    receiver_tax_id = table.Column<string>(type: "character varying(12)", maxLength: 12, nullable: false),
+                    receiver_name = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    destination_address = table.Column<string>(type: "character varying(250)", maxLength: 250, nullable: false),
+                    destination_commune = table.Column<string>(type: "character varying(60)", maxLength: 60, nullable: false),
+                    destination_city = table.Column<string>(type: "character varying(60)", maxLength: 60, nullable: true),
+                    transfer_indicator = table.Column<int>(type: "integer", nullable: false),
+                    line_count = table.Column<int>(type: "integer", nullable: false),
+                    total_quantity = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
+                    weight_kg = table.Column<decimal>(type: "numeric(18,3)", precision: 18, scale: 3, nullable: true),
+                    document_json = table.Column<string>(type: "text", nullable: false),
+                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     folio = table.Column<long>(type: "bigint", nullable: true),
-                    last_error = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    issued_at = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    last_error = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    issued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -72,10 +80,10 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    company_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    transport_guide_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    manifest_document_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    company_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    transport_guide_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    manifest_document_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -136,6 +144,10 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
             migrationBuilder.DropTable(
                 name: "transport_guides");
+
+            migrationBuilder.DropColumn(
+                name: "version",
+                table: "manifests");
 
             migrationBuilder.DropColumn(
                 name: "dispatch_type",

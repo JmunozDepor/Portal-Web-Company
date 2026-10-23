@@ -520,6 +520,11 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("vehicle_id");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int")
+                        .HasColumnName("version");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId")

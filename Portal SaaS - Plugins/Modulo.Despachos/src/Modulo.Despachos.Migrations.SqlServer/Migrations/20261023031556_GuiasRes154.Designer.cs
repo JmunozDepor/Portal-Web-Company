@@ -12,7 +12,7 @@ using Modulo.Despachos.Data;
 namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 {
     [DbContext(typeof(DespachosDbContext))]
-    [Migration("20261023025056_GuiasRes154")]
+    [Migration("20261023031556_GuiasRes154")]
     partial class GuiasRes154
     {
         /// <inheritdoc />
@@ -522,6 +522,11 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                     b.Property<long>("VehicleId")
                         .HasColumnType("bigint")
                         .HasColumnName("vehicle_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int")
+                        .HasColumnName("version");
 
                     b.HasKey("Id");
 

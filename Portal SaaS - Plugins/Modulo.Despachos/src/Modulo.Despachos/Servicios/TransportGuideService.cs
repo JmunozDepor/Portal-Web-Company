@@ -93,10 +93,25 @@ public sealed class TransportGuideService : ITransportGuideService
                 ?? throw new InvalidOperationException("El manifiesto no existe.");
         if (m.Status != ManifestStatuses.PendingGuides)
             throw new InvalidOperationException("Solo se emiten guías de un manifiesto con guías pendientes.");
-        var settings = await RequireSettingsAsync();
 
         var guides = await _db.TransportGuides.Include(g => g.Documents)
             .Where(g => g.CompanyId == CompanyId && g.ManifestId == m.Id).OrderBy(g => g.Sequence).ToListAsync();
+        if (guides.Any(g => g.Status == TransportGuideStatuses.Abandoned))
+            return new GuideEmissionOutcome(false, 0, 0, new[] { "Las guías de este manifiesto fueron anuladas: no se pueden emitir." });
+        // Con guías ya planificadas se sigue aunque luego se desactive la emisión (si no, el manifiesto queda atascado).
+        var settings = guides.Count > 0
+            ? await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.CompanyId == CompanyId) ?? new DespachosSetting()
+            : await RequireSettingsAsync();
+
+        // Estado real en la pasarela: una guía con emisión en curso o emitida nunca se replanifica (mismo contenido).
+        var locked = new HashSet<Guid>();
+        foreach (var g in guides.Where(g => g.Status != TransportGuideStatuses.Issued))
+        {
+            var gw = await _dte.GetAsync(g.EmissionKey);
+            if (gw is null || (gw.Status == DteEmissionStatuses.Failed && gw.Folio is null)) continue;
+            locked.Add(g.Id);
+            Apply(g, gw);
+        }
 
         // Plan vigente (con el snapshot ya tomado): define las guías la primera vez y reemplaza las rechazadas.
         var (plan, planErrors) = await PlanAsync(m, settings, previewSnapshot: false);
@@ -107,9 +122,9 @@ public sealed class TransportGuideService : ITransportGuideService
             AddEvent(m, ManifestEventTypes.GuidesPlanned, new { guides = guides.Count });
             await _db.SaveChangesAsync();
         }
-        else if (plan is not null && planErrors.Count == 0)
+        else
         {
-            Replan(guides, plan);
+            if (plan is not null && planErrors.Count == 0) Replan(guides.Where(g => !locked.Contains(g.Id)).ToList(), plan);
             await _db.SaveChangesAsync();
         }
 
@@ -135,14 +150,15 @@ public sealed class TransportGuideService : ITransportGuideService
         }
 
         var issued = guides.Count(g => g.Status == TransportGuideStatuses.Issued);
-        var pending = guides.Count(g => g.Status != TransportGuideStatuses.Issued && g.Status != TransportGuideStatuses.Abandoned);
+        var pending = guides.Count - issued;
         if (pending > 0)
         {
             AddEvent(m, ManifestEventTypes.GuideFailed, new { issued, pending, errors });
             await _db.SaveChangesAsync();
             await NotifyFailureAsync(m, pending, errors);
         }
-        return new GuideEmissionOutcome(pending == 0, issued, pending, errors);
+        // "Todas emitidas" exige al menos una guía y todas emitidas: nunca se despacha con cero guías.
+        return new GuideEmissionOutcome(guides.Count > 0 && pending == 0, issued, pending, errors);
     }
 
     public async Task<byte[]> GetPdfAsync(Guid manifestId, int? sequence)
@@ -169,7 +185,8 @@ public sealed class TransportGuideService : ITransportGuideService
                 "Hay guías emitidas: no se puede anular el manifiesto; consulte cómo anular la guía (pendiente con FACELE).");
         foreach (var g in guides.Where(g => g.Status != TransportGuideStatuses.Abandoned))
         {
-            if (g.Status != TransportGuideStatuses.Planned && await _dte.GetAsync(g.EmissionKey) is not null)
+            // Se consulta la pasarela aunque la guía figure "planificada": pudo quedar una emisión a medias.
+            if (await _dte.GetAsync(g.EmissionKey) is not null)
                 await _dte.AbandonAsync(g.EmissionKey, reason);
             g.Status = TransportGuideStatuses.Abandoned;
             g.LastError = Truncate("Anulada: " + reason);

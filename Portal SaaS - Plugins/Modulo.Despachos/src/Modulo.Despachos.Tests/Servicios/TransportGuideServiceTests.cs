@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Modulo.Despachos.Models;
 using Modulo.Despachos.Servicios;
+using Modulo.Despachos.Tests.Fakes;
 using PdfSharp.Pdf.IO;
 using PortalSaas.Abstractions.Modelos.Dte;
 
@@ -260,5 +261,106 @@ public class TransportGuideServiceTests
         var doc = (await env.Svc.GetAsync(id))!.Documents.First();
         await env.Svc.SetDocumentCommuneAsync(id, doc.Id, env.CuricoId);
         Assert.Equal(env.CuricoId, (await env.Svc.GetAsync(id))!.Documents.First(d => d.Id == doc.Id).DestinationCommuneId);
+    }
+
+    [Fact]
+    public async Task RetryGuides_GuiaDesincronizada_SeSincronizaSinReplanificar()
+    {
+        var (env, id) = await TwoGuidesAsync();
+        env.Dte.Down = true;
+        await env.Svc.DispatchAsync(id);
+        var guides = await GuidesOf(env, id);
+        // La pasarela emitió la guía 1 en segundo plano, pero en Despachos quedó "planificada" (caída a mitad).
+        env.Dte.Emissions[guides[0].EmissionKey] = new DteEmissionResult(guides[0].EmissionKey, DteEmissionStatuses.Issued, 900, null, "FAKE", "certification");
+        guides[0].Status = TransportGuideStatuses.Planned;
+        await env.Db.SaveChangesAsync();
+        env.AddLines(1, ("ART-CAMBIADO", 9, 1)); // SAP cambió: replanificar daría otro contenido
+        env.Dte.Down = false;
+
+        var r = await env.Svc.RetryGuidesAsync(id);
+
+        Assert.True(r.Success, string.Join(" | ", r.Errors));
+        var after = await GuidesOf(env, id);
+        Assert.Equal(TransportGuideStatuses.Issued, after[0].Status);
+        Assert.Equal(900, after[0].Folio);
+        Assert.DoesNotContain("ART-CAMBIADO", after[0].DocumentJson);
+    }
+
+    [Fact]
+    public async Task RetryGuides_TodasAbandonadas_NoDespacha()
+    {
+        var (env, id) = await TwoGuidesAsync();
+        env.Dte.Down = true;
+        await env.Svc.DispatchAsync(id);
+        foreach (var g in await GuidesOf(env, id)) g.Status = TransportGuideStatuses.Abandoned;
+        await env.Db.SaveChangesAsync();
+        env.Dte.Down = false;
+
+        var r = await env.Svc.RetryGuidesAsync(id);
+
+        Assert.False(r.Success);
+        Assert.Equal(ManifestStatuses.PendingGuides, (await env.Svc.GetAsync(id))!.Status);
+    }
+
+    [Fact]
+    public async Task Annul_GuiaPlanificadaConEmisionEnPasarela_LaAbandona()
+    {
+        var (env, id) = await TwoGuidesAsync();
+        env.Dte.Down = true;
+        await env.Svc.DispatchAsync(id);
+        var guides = await GuidesOf(env, id);
+        guides[0].Status = TransportGuideStatuses.Planned; // desincronizada: la pasarela sí tiene la emisión
+        await env.Db.SaveChangesAsync();
+
+        await env.Svc.AnnulAsync(id, "Camión en panne");
+
+        Assert.Contains(guides[0].EmissionKey, env.Dte.Abandoned);
+        Assert.Contains(guides[1].EmissionKey, env.Dte.Abandoned);
+    }
+
+    [Fact]
+    public async Task RetryGuides_GuiasDeshabilitadasDespues_SigueFuncionando()
+    {
+        var (env, id) = await TwoGuidesAsync();
+        env.Dte.Down = true;
+        await env.Svc.DispatchAsync(id);
+        var s = env.Db.Settings.Single(x => x.CompanyId == env.Company.CompanyId);
+        s.GuidesEnabled = false;
+        await env.Db.SaveChangesAsync();
+        env.Dte.Down = false;
+
+        var r = await env.Svc.RetryGuidesAsync(id);
+
+        Assert.True(r.Success, string.Join(" | ", r.Errors));
+        Assert.Equal(ManifestStatuses.Dispatched, (await env.Svc.GetAsync(id))!.Status);
+    }
+
+    [Fact]
+    public async Task Dispatch_Concurrente_ElSegundoFallaSinPisarLaSalida()
+    {
+        var name = "despachos-" + Guid.NewGuid();
+        var env = ManifestTestEnv.Build(db: TestDb.Create(name));
+        await env.EnableGuidesAsync();
+        env.AddSap(1);
+        var id = await env.GuideReadyDraftAsync(1);
+
+        // Segundo usuario: otro contexto que cargó el borrador ANTES de que el primero despachara.
+        var db2 = TestDb.Create(name);
+        var master2 = new MasterDataService(db2, env.Company, env.User);
+        var closure2 = new MonthlyClosureService(db2, env.Company, env.User, env.Clock);
+        var cost2 = new ManifestCostService(db2, env.Company, env.Tariff, Modulo.Despachos.Tests.Dominio.Tarifas.TarifasTestData.Engine(), env.Clock, closure2);
+        var guides2 = new TransportGuideService(db2, env.Company, env.User, env.Sap, env.Dte, env.Clock, env.Notifications);
+        var svc2 = new ManifestService(db2, env.Company, env.User, env.Sap, master2, cost2, env.Clock, env.Notifications, closure2, guides: guides2);
+        Assert.Equal(ManifestStatuses.Draft, (await svc2.GetAsync(id))!.Status);
+
+        Assert.True((await env.Svc.DispatchAsync(id)).Success);
+        var departed = (await env.Svc.GetAsync(id))!.DepartedAt;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc2.DispatchAsync(id));
+        var fresh = TestDb.Create(name);
+        var m = fresh.Manifests.Single(x => x.Id == id);
+        Assert.Equal(ManifestStatuses.Dispatched, m.Status);
+        Assert.Equal(departed, m.DepartedAt);
+        Assert.Single(fresh.TransportGuides.Where(g => g.ManifestId == id));
     }
 }

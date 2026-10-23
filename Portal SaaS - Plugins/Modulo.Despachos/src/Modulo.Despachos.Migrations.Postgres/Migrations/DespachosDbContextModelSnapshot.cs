@@ -520,6 +520,11 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("vehicle_id");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId")

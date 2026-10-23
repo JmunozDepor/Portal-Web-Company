@@ -361,4 +361,19 @@ public class ManifiestosPermisosTests
         var page = new Manifiestos.IndexModel(env.Svc, env.Master, env.User) { TempData = Temp() };
         Assert.IsType<ForbidResult>(await page.OnGetAsync());
     }
+
+    [Fact]
+    public async Task Detalle_GuiasPendientes_PermiteAnular()
+    {
+        var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View, PortalActions.Delete));
+        await env.EnableGuidesAsync();
+        var id = await env.GuideReadyDraftAsync(1);
+        env.Dte.Down = true;
+        await env.Svc.DispatchAsync(id);
+
+        await page.OnGetAsync(id);
+
+        Assert.True(page.CanAnnulNow);
+        Assert.True(page.ShowGuides);
+    }
 }

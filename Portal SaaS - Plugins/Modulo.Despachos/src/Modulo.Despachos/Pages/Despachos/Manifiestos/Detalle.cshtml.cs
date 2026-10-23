@@ -70,11 +70,18 @@ public sealed class DetalleModel : DespachosPageModelBase
     public string? Tab { get; set; }
 
     public string ActiveTab => Tab is "cabecera" or "documentos" or "retorno" or "costo" or "historial"
-                                   || (Tab == "guias" && GuidesEnabled)
+                                   || (Tab == "guias" && ShowGuides)
         ? Tab : M.Status == ManifestStatuses.Draft ? "documentos"
-        : M.Status == ManifestStatuses.PendingGuides && GuidesEnabled ? "guias" : "cabecera";
+        : M.Status == ManifestStatuses.PendingGuides && ShowGuides ? "guias" : "cabecera";
 
     public bool IsPendingGuides => M.Status == ManifestStatuses.PendingGuides;
+
+    /// <summary>Pestaña Guías visible: la compañía emite guías o el manifiesto ya tiene guías (aunque luego se desactivaran).</summary>
+    public bool ShowGuides => GuidesEnabled || Guides.Count > 0;
+
+    /// <summary>Anular disponible (botón y drawer usan la misma condición).</summary>
+    public bool CanAnnulNow => CanDelete && (M.Status == ManifestStatuses.Draft || M.Status == ManifestStatuses.PendingGuides
+                                             || M.Status == ManifestStatuses.Dispatched);
 
     [BindProperty] public ManifestForm Header { get; set; } = new();
     [BindProperty] public ChangeVehicleInput Change { get; set; } = new();
@@ -128,15 +135,12 @@ public sealed class DetalleModel : DespachosPageModelBase
             catch (Exception ex) { EstimateError = GetErrorMessage(ex); }
         }
         GuidesEnabled = await _guides.IsEnabledAsync();
-        if (GuidesEnabled)
+        try
         {
-            try
-            {
-                if (m.Status == ManifestStatuses.Draft) GuidePreview = await _guides.PreviewAsync(m.Id);
-                else Guides = await _guides.ListAsync(m.Id);
-            }
-            catch (Exception ex) { GuidesError = GetErrorMessage(ex); }
+            if (m.Status == ManifestStatuses.Draft) { if (GuidesEnabled) GuidePreview = await _guides.PreviewAsync(m.Id); }
+            else Guides = await _guides.ListAsync(m.Id);
         }
+        catch (Exception ex) { GuidesError = GetErrorMessage(ex); }
         Communes = await _data.ListCommunesAsync();
         UserLabels = await ResolveUsersAsync(m);
         if (Header.DispatchDate is null) Header = ManifestForm.From(m);

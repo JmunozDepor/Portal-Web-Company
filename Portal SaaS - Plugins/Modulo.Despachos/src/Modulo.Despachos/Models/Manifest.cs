@@ -56,6 +56,12 @@ public class Manifest
     public decimal TotalUnits { get; set; }
     public int TotalPackages { get; set; }
 
+    /// <summary>
+    /// Token de concurrencia: se incrementa en cada transición de estado (despachar, reintentar guías, anular), así
+    /// dos usuarios que despachan el mismo borrador a la vez no se pisan (el segundo recibe un error).
+    /// </summary>
+    public int Version { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }

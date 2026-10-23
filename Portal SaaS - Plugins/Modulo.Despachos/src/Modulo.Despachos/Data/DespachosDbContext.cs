@@ -306,6 +306,7 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.TotalDocuments).HasColumnName("total_documents");
             e.Property(x => x.TotalUnits).HasColumnName("total_units").HasPrecision(18, 2);
             e.Property(x => x.TotalPackages).HasColumnName("total_packages");
+            e.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken();
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.CreatedBy).HasColumnName("created_by");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");

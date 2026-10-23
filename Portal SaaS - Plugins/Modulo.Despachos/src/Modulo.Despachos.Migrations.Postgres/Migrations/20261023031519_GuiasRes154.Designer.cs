@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Modulo.Despachos.Migrations.Postgres.Migrations
 {
     [DbContext(typeof(DespachosDbContext))]
-    [Migration("20261023025020_GuiasRes154")]
+    [Migration("20261023031519_GuiasRes154")]
     partial class GuiasRes154
     {
         /// <inheritdoc />
@@ -522,6 +522,11 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                     b.Property<long>("VehicleId")
                         .HasColumnType("bigint")
                         .HasColumnName("vehicle_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
 
                     b.HasKey("Id");
 

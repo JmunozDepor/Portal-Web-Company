@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos.Dte;
 using PortalSaas.Core.DocumentosElectronicos;
 using PortalSaas.Core.Seguridad;
@@ -67,6 +68,26 @@ internal sealed class FakeDteProvider : IDteProvider
 
     public Task TestAsync(DteProviderContext ctx, CancellationToken ct) =>
         TestFails ? throw new DteProviderUnavailableException("FAKE: HTTP 405 en sinConfirmar.") : Task.CompletedTask;
+}
+
+internal sealed class FakeCompany : ICurrentCompanyAccessor
+{
+    public Guid? Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId => Id ?? throw new InvalidOperationException("Sin compañía.");
+    public string Code => "TEST";
+    public string Database => "TEST";
+    public string ServiceLayerUrl => "";
+    public string Country => "CL";
+    public bool HasCompany => Id is not null;
+}
+
+internal sealed class FakeUser : ICurrentUserContext
+{
+    public Guid UserId { get; } = Guid.NewGuid();
+    public string Username => "tester";
+    public bool IsAdmin => false;
+    public Guid OrganizationId { get; } = Guid.NewGuid();
+    public Task<bool> HasActionAsync(string menuCode, string actionCode, CancellationToken ct = default) => Task.FromResult(true);
 }
 
 internal static class DteTestSupport

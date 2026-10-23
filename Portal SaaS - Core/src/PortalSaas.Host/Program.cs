@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -145,10 +146,13 @@ builder.Services.AddScoped<IDocumentSapMarkerService, PortalSaas.Core.Documentos
 builder.Services.AddHostedService<PortalSaas.Core.Documentos.DocumentDraftCleanupWorker>();
 // Pasarela de documentos tributarios electrónicos (DTE): configuración por compañía + adaptadores por
 // proveedor (docs/superpowers/specs/2026-10-22-pasarela-documentos-electronicos-design.md).
+builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteProviderRegistry>();
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteSettingsService>();
 builder.Services.AddHttpClient<PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele.FaceleSoapClient>(c => c.Timeout = TimeSpan.FromSeconds(60));
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.IDteProvider, PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele.FaceleDteProvider>();
+builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteEmissionService>();
+builder.Services.AddScoped<IDteEmissionService>(sp => sp.GetRequiredService<PortalSaas.Core.DocumentosElectronicos.DteEmissionService>());
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<IContractLimitService, ContractLimitService>();

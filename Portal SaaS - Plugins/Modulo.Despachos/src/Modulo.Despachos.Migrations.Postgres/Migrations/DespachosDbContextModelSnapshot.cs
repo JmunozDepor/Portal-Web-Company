@@ -240,6 +240,14 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("dispatch_type");
 
+                    b.Property<string>("GuideItemCodePlacement")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("column")
+                        .HasColumnName("guide_item_code_placement");
+
                     b.Property<string>("GuideLineGrouping")
                         .IsRequired()
                         .ValueGeneratedOnAdd()

@@ -51,12 +51,13 @@ public class OrigenesEmisorPageTests
     public async Task SaveGuides_ConEdit_Guarda_YRechazaIndicadorInvalido()
     {
         var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View, PortalActions.Edit));
-        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 5, DispatchType = 3, LineGrouping = GuideLineGroupings.Model };
+        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 5, DispatchType = 3, LineGrouping = GuideLineGroupings.Model, ItemCodePlacement = GuideItemCodePlacements.Name };
         await page.OnPostSaveGuidesAsync();
         var s = await svc.GetSettingsAsync();
         Assert.True(s!.GuidesEnabled);
         Assert.Equal((5, (int?)3), (s.TransferIndicator, s.DispatchType));
         Assert.Equal(GuideLineGroupings.Model, s.GuideLineGrouping);
+        Assert.Equal(GuideItemCodePlacements.Name, s.GuideItemCodePlacement);
 
         page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 12, DispatchType = 2 };
         await page.OnPostSaveGuidesAsync();

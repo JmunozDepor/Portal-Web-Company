@@ -20,4 +20,7 @@ public class DespachosSetting : AuditedEntity
 
     /// <summary>Resumen de las líneas de la guía: GuideLineGroupings.Sku (default) o .Model.</summary>
     public string GuideLineGrouping { get; set; } = GuideLineGroupings.Sku;
+
+    /// <summary>Código del artículo en la guía: GuideItemCodePlacements.Column (default) o .Name.</summary>
+    public string GuideItemCodePlacement { get; set; } = GuideItemCodePlacements.Column;
 }

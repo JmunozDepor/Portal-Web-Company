@@ -79,6 +79,15 @@
                     }
                 </select>
             </div>
+            <div class="col-auto">
+                <label for="guides-code" class="form-label">Código del artículo</label>
+                <select id="guides-code" name="GuidesInput.ItemCodePlacement" class="form-select" disabled="@(!Model.CanEdit)">
+                    @foreach (var c in GuideItemCodePlacements.All)
+                    {
+                        <option value="@c" selected="@(Model.GuidesInput.ItemCodePlacement == c)">@GuideItemCodePlacements.Label(c)</option>
+                    }
+                </select>
+            </div>
             @if (Model.CanEdit)
             {
                 <button type="submit" class="btn btn-primary">Guardar ajustes de guías</button>

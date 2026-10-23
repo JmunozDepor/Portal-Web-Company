@@ -55,6 +55,24 @@ public static class GuideLineGroupings
     };
 }
 
+/// <summary>
+/// Dónde va el código del artículo en la guía: en la columna Código (CdgItem) o al inicio del detalle (NmbItem),
+/// para plantillas PDF cuya columna Código es angosta y lo superpone al detalle.
+/// </summary>
+public static class GuideItemCodePlacements
+{
+    public const string Column = "column";
+    public const string Name = "name";
+
+    public static readonly IReadOnlyList<string> All = new[] { Column, Name };
+
+    public static string Label(string placement) => placement switch
+    {
+        Name => "Al inicio del detalle",
+        _ => "En la columna Código",
+    };
+}
+
 /// <summary>Tipos de documento SAP que se pueden agregar a un manifiesto (document_kind).</summary>
 public static class DocumentKinds
 {

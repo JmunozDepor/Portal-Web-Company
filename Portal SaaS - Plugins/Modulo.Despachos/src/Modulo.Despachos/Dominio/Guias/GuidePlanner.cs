@@ -14,7 +14,8 @@ public sealed record GuidePlanInput(
     int? DispatchType,
     DateOnly IssueDate,
     TimeOnly DepartureTime,
-    string LineGrouping = GuideLineGroupings.Sku);
+    string LineGrouping = GuideLineGroupings.Sku,
+    string ItemCodePlacement = GuideItemCodePlacements.Column);
 
 public sealed record PlannedGuide(int Sequence, IReadOnlyList<Guid> ManifestDocumentIds, DteDocument Document);
 
@@ -177,8 +178,13 @@ public static partial class GuidePlanner
         decimal? weight = missingWeight == 0 ? merged.Sum(l => l.WeightKg!.Value) : null;
         var packages = chunk.Where(c => c.CountsPackages).Sum(c => c.Doc.Packages);
 
+        // Código al inicio del detalle: la columna Código de algunas plantillas PDF es angosta y lo superpone.
+        var codeInName = input.ItemCodePlacement == GuideItemCodePlacements.Name;
         var lines = merged.Select((l, i) => new DteLine(
-            i + 1, string.IsNullOrEmpty(l.ItemCode) ? null : l.ItemCode, l.Name, null, l.Quantity, l.Unit, null, 0)).ToList();
+            i + 1,
+            codeInName || string.IsNullOrEmpty(l.ItemCode) ? null : l.ItemCode,
+            codeInName && !string.IsNullOrEmpty(l.ItemCode) ? $"{l.ItemCode} {l.Name}" : l.Name,
+            null, l.Quantity, l.Unit, null, 0)).ToList();
         var refs = chunk.Select(c => c.Doc).DistinctBy(d => d.Id).Select((d, i) => new DteReference(
             i + 1, d.SiiDocumentType.ToString(System.Globalization.CultureInfo.InvariantCulture), d.Folio, d.DocumentDate, null,
             $"Traslado de mercadería facturada (manifiesto {m.Number})")).ToList();

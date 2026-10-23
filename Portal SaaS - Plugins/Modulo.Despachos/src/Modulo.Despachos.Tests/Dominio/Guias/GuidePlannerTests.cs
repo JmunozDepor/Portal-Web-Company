@@ -112,6 +112,18 @@ public class GuidePlannerTests
     }
 
     [Fact]
+    public void Plan_CodigoEnElDetalle_NoInformaCdgItem_YAnteponeElCodigoAlNombre()
+    {
+        var p = GuidePlanner.Plan(new GuidePlanInput(Manifiesto(), new[] { (Factura(100), Lineas(("CNVFA23MJOG2-001", 2, 1m))) },
+            id => id switch { Talca => "Talca", _ => null }, TransferIndicator: 1, DispatchType: 2, IssueDate: Hoy,
+            DepartureTime: new TimeOnly(12, 30), ItemCodePlacement: GuideItemCodePlacements.Name));
+
+        var line = Assert.Single(Assert.Single(p.Guides).Document.Lines);
+        Assert.Null(line.ItemCode);
+        Assert.Equal("CNVFA23MJOG2-001 Artículo CNVFA23MJOG2-001", line.Name);
+    }
+
+    [Fact]
     public void Plan_PorSku_NoJuntaLasTallas()
     {
         var p = PlanAgrupado(GuideLineGroupings.Sku, (Factura(100), LineasModelo(true,

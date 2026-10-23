@@ -44,6 +44,8 @@ public class DespachosDbContext : DbContext
     public DbSet<ManifestEvent> ManifestEvents => Set<ManifestEvent>();
     public DbSet<ManifestExtraCharge> ManifestExtraCharges => Set<ManifestExtraCharge>();
     public DbSet<MonthlyClosure> MonthlyClosures => Set<MonthlyClosure>();
+    public DbSet<TransportGuide> TransportGuides => Set<TransportGuide>();
+    public DbSet<TransportGuideDocument> TransportGuideDocuments => Set<TransportGuideDocument>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -257,6 +259,9 @@ public class DespachosDbContext : DbContext
         {
             Base(e, "despachos_settings");
             e.Property(x => x.IssuerTaxId).HasColumnName("issuer_tax_id").HasMaxLength(12);
+            e.Property(x => x.GuidesEnabled).HasColumnName("guides_enabled");
+            e.Property(x => x.TransferIndicator).HasColumnName("transfer_indicator").HasDefaultValue(1);
+            e.Property(x => x.DispatchType).HasColumnName("dispatch_type");
             e.HasIndex(x => x.CompanyId).IsUnique().HasDatabaseName("uq_despachos_settings_company_id");
         });
 
@@ -312,6 +317,54 @@ public class DespachosDbContext : DbContext
             e.HasMany(x => x.CostLines).WithOne().HasForeignKey(l => l.ManifestId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Events).WithOne().HasForeignKey(l => l.ManifestId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.ExtraCharges).WithOne().HasForeignKey(l => l.ManifestId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TransportGuide>(e =>
+        {
+            e.ToTable("transport_guides");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.ManifestId).HasColumnName("manifest_id");
+            e.Property(x => x.Sequence).HasColumnName("sequence");
+            e.Property(x => x.EmissionKey).HasColumnName("emission_key");
+            e.Property(x => x.ReceiverTaxId).HasColumnName("receiver_tax_id").HasMaxLength(12).IsRequired();
+            e.Property(x => x.ReceiverName).HasColumnName("receiver_name").HasMaxLength(150).IsRequired();
+            e.Property(x => x.DestinationAddress).HasColumnName("destination_address").HasMaxLength(250).IsRequired();
+            e.Property(x => x.DestinationCommune).HasColumnName("destination_commune").HasMaxLength(60).IsRequired();
+            e.Property(x => x.DestinationCity).HasColumnName("destination_city").HasMaxLength(60);
+            e.Property(x => x.TransferIndicator).HasColumnName("transfer_indicator");
+            e.Property(x => x.LineCount).HasColumnName("line_count");
+            e.Property(x => x.TotalQuantity).HasColumnName("total_quantity").HasPrecision(18, 4);
+            e.Property(x => x.WeightKg).HasColumnName("weight_kg").HasPrecision(18, 3);
+            e.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+            e.Property(x => x.Folio).HasColumnName("folio");
+            e.Property(x => x.LastError).HasColumnName("last_error").HasMaxLength(1000);
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.IssuedAt).HasColumnName("issued_at");
+            e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_transport_guides_company_id");
+            e.HasIndex(x => new { x.ManifestId, x.Sequence }).IsUnique().HasDatabaseName("uq_transport_guides_manifest_id_sequence");
+            e.HasIndex(x => x.EmissionKey).IsUnique().HasDatabaseName("uq_transport_guides_emission_key");
+            e.HasOne<Manifest>().WithMany().HasForeignKey(x => x.ManifestId)
+                .OnDelete(DeleteBehavior.Cascade).HasConstraintName("fk_transport_guides_manifests");
+            e.HasMany(x => x.Documents).WithOne().HasForeignKey(d => d.TransportGuideId)
+                .OnDelete(DeleteBehavior.Cascade).HasConstraintName("fk_transport_guide_documents_transport_guides");
+        });
+
+        modelBuilder.Entity<TransportGuideDocument>(e =>
+        {
+            e.ToTable("transport_guide_documents");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.TransportGuideId).HasColumnName("transport_guide_id");
+            e.Property(x => x.ManifestDocumentId).HasColumnName("manifest_document_id");
+            e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_transport_guide_documents_company_id");
+            e.HasIndex(x => x.ManifestDocumentId).HasDatabaseName("ix_transport_guide_documents_manifest_document_id");
+            e.HasIndex(x => new { x.TransportGuideId, x.ManifestDocumentId }).IsUnique()
+                .HasDatabaseName("uq_transport_guide_documents_guide_id_document_id");
+            e.HasOne<ManifestDocument>().WithMany().HasForeignKey(x => x.ManifestDocumentId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_transport_guide_documents_manifest_documents");
         });
 
         modelBuilder.Entity<ManifestExtraCharge>(e =>

@@ -88,6 +88,18 @@ public class DocumentReportServiceTests
     }
 
     [Fact]
+    public async Task DocumentReport_ExcluyeGuiasPendientes()
+    {
+        var (env, rep, _, numberB) = await BuildAsync();
+        var b = env.Db.Manifests.Single(m => m.Number == numberB);
+        b.Status = ManifestStatuses.PendingGuides;
+        await env.Db.SaveChangesAsync();
+
+        var r = await rep.GetAsync(Day(env));
+        Assert.DoesNotContain(r.Manifests, m => m.Number == numberB);
+    }
+
+    [Fact]
     public async Task Get_RangoInvalido_Falla()
     {
         var (env, rep, _, _) = await BuildAsync();

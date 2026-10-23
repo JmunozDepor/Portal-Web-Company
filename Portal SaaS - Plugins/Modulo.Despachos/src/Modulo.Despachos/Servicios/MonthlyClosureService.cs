@@ -162,9 +162,11 @@ public sealed class MonthlyClosureService : IMonthlyClosureService
             if (nums.Count > 0) result.Add($"{label}: {string.Join(", ", nums)}");
         }
         Add("Manifiestos en borrador", manifests.Where(m => m.Status == ManifestStatuses.Draft));
+        Add("Manifiestos con guías pendientes de emitir", manifests.Where(m => m.Status == ManifestStatuses.PendingGuides));
         Add("Manifiestos despachados sin retorno", manifests.Where(m => m.Status == ManifestStatuses.Dispatched));
         Add("Manifiestos sin costo (sin tarifa o tarifa ambigua, y sin ajuste manual)",
             manifests.Where(m => m.Status != ManifestStatuses.Draft && m.Status != ManifestStatuses.Dispatched
+                                 && m.Status != ManifestStatuses.PendingGuides
                                  && m.CostStatus != CostStatuses.Ok && m.CostOverride == null));
         return result;
     }

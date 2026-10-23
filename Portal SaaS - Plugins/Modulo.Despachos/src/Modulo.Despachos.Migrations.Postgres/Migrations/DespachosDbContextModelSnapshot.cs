@@ -176,10 +176,24 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<int?>("DispatchType")
+                        .HasColumnType("integer")
+                        .HasColumnName("dispatch_type");
+
+                    b.Property<bool>("GuidesEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("guides_enabled");
+
                     b.Property<string>("IssuerTaxId")
                         .HasMaxLength(12)
                         .HasColumnType("character varying(12)")
                         .HasColumnName("issuer_tax_id");
+
+                    b.Property<int>("TransferIndicator")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("transfer_indicator");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1449,6 +1463,150 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                     b.ToTable("shifts", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.TransportGuide", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DestinationAddress")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("destination_address");
+
+                    b.Property<string>("DestinationCity")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("destination_city");
+
+                    b.Property<string>("DestinationCommune")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("destination_commune");
+
+                    b.Property<Guid>("EmissionKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("emission_key");
+
+                    b.Property<long?>("Folio")
+                        .HasColumnType("bigint")
+                        .HasColumnName("folio");
+
+                    b.Property<DateTime?>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<int>("LineCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_count");
+
+                    b.Property<Guid>("ManifestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("manifest_id");
+
+                    b.Property<string>("ReceiverName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("receiver_name");
+
+                    b.Property<string>("ReceiverTaxId")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("receiver_tax_id");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer")
+                        .HasColumnName("sequence");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("TotalQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("total_quantity");
+
+                    b.Property<int>("TransferIndicator")
+                        .HasColumnType("integer")
+                        .HasColumnName("transfer_indicator");
+
+                    b.Property<decimal?>("WeightKg")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("weight_kg");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_transport_guides_company_id");
+
+                    b.HasIndex("EmissionKey")
+                        .IsUnique()
+                        .HasDatabaseName("uq_transport_guides_emission_key");
+
+                    b.HasIndex("ManifestId", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("uq_transport_guides_manifest_id_sequence");
+
+                    b.ToTable("transport_guides", (string)null);
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.TransportGuideDocument", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<Guid>("ManifestDocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("manifest_document_id");
+
+                    b.Property<Guid>("TransportGuideId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transport_guide_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_transport_guide_documents_company_id");
+
+                    b.HasIndex("ManifestDocumentId")
+                        .HasDatabaseName("ix_transport_guide_documents_manifest_document_id");
+
+                    b.HasIndex("TransportGuideId", "ManifestDocumentId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_transport_guide_documents_guide_id_document_id");
+
+                    b.ToTable("transport_guide_documents", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.Vehicle", b =>
                 {
                     b.Property<long>("Id")
@@ -1786,6 +1944,33 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasConstraintName("fk_rate_surcharges_carriers");
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.TransportGuide", b =>
+                {
+                    b.HasOne("Modulo.Despachos.Models.Manifest", null)
+                        .WithMany()
+                        .HasForeignKey("ManifestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_transport_guides_manifests");
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.TransportGuideDocument", b =>
+                {
+                    b.HasOne("Modulo.Despachos.Models.ManifestDocument", null)
+                        .WithMany()
+                        .HasForeignKey("ManifestDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_transport_guide_documents_manifest_documents");
+
+                    b.HasOne("Modulo.Despachos.Models.TransportGuide", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("TransportGuideId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_transport_guide_documents_transport_guides");
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.Vehicle", b =>
                 {
                     b.HasOne("Modulo.Despachos.Models.Carrier", null)
@@ -1827,6 +2012,11 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                     b.Navigation("Events");
 
                     b.Navigation("ExtraCharges");
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.TransportGuide", b =>
+                {
+                    b.Navigation("Documents");
                 });
 
             modelBuilder.Entity("Modulo.Despachos.Models.Zone", b =>

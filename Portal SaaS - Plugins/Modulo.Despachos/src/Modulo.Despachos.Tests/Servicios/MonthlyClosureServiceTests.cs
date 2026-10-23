@@ -46,6 +46,18 @@ public class MonthlyClosureServiceTests
     }
 
     [Fact]
+    public async Task Close_ConGuiasPendientes_Bloquea()
+    {
+        var env = ManifestTestEnv.Build();
+        await SeedManifestAsync(env, 66, new DateOnly(2026, 9, 1), ManifestStatuses.PendingGuides);
+
+        var r = await env.Closure.CloseAsync(2026, 9);
+
+        Assert.False(r.Closed);
+        Assert.Contains(r.Blockers, b => b.Contains("guías pendientes") && b.Contains("66"));
+    }
+
+    [Fact]
     public async Task Close_ConCostOverrideNoBloquea_YCongelaYRegistraEventos()
     {
         var env = ManifestTestEnv.Build();

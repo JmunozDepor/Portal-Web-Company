@@ -13,6 +13,7 @@ public static class DespachosUi
     public static string StatusKey(string status) => status switch
     {
         "draft" => "Draft",
+        "pending_guides" => "PendingGuides",
         "dispatched" => "Dispatched",
         "returned" => "Returned",
         "closed" => "Closed",
@@ -27,7 +28,7 @@ public static class DespachosUi
 
     public static string StatusBadgeClass(string status) => status switch
     {
-        "Dispatched" or "Pending" => "dsp-badge--warning",
+        "Dispatched" or "Pending" or "PendingGuides" => "dsp-badge--warning",
         "Returned" or "Delivered" or "Closed" => "dsp-badge--success",
         "Rejected" or "NotDelivered" or "Cancelled" => "dsp-badge--danger",
         "PartiallyReturned" => "dsp-badge--accent",
@@ -37,6 +38,7 @@ public static class DespachosUi
     public static string StatusLabel(string status) => status switch
     {
         "Draft" => "Borrador",
+        "PendingGuides" => "Guías pendientes",
         "Dispatched" => "Despachado",
         "PartiallyReturned" => "Retorno parcial",
         "Returned" => "Retornado",

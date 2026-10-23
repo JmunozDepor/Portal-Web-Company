@@ -39,7 +39,7 @@ el portal por `DocEntry` + objeto (67), igual que hoy lo lleva el add-on.
 
 **Del diseñador (revisar)**
 7. **Ajustes por compañía** (Despachos > Orígenes):
-   - prefijo de folio a grabar en `FolioPref` (ej. `GD`); vacío = no se graba el folio en SAP;
+   - prefijo de folio a grabar en `FolioPref` (default `52`); vacío = no se graba el folio en SAP;
    - campos de usuario opcionales "N° de manifiesto" y "fecha de despacho" (ej. `U_NX_Manifiesto`); vacío = no
      se escriben.
 8. **Botón "Probar escritura":** reescribe el valor actual de esos campos en una transferencia cerrada de
@@ -150,7 +150,7 @@ SapTransferWriteback → ISapDocumentFieldWriter (Core, Service Layer PATCH Stoc
 
 **Usuario** (respondidas 2026-10-23: control por `DocEntry` + objeto, folio en `FolioNum`/`FolioPref`, lista
 de bodegas sucursal)
-1. Prefijo a grabar en `FolioPref` para la guía (ej. `GD` o `52`): el mismo que use SAP para las guías 52.
+1. Prefijo de `FolioPref`: **`52`** (respondido 2026-10-23; queda configurable por compañía).
 
 **Administrador SAP**
 2. ¿Se quieren también manifiesto y fecha de despacho en `OWTR`? Si sí, nombres de los campos de usuario.

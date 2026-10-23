@@ -58,6 +58,8 @@ public static class ManifestEventTypes
     public const string GuidesPlanned = "guides_planned";
     public const string GuideIssued = "guide_issued";
     public const string GuideFailed = "guide_failed";
+    /// <summary>No se pudo escribir el folio de la guía en la transferencia SAP (Fase B).</summary>
+    public const string SapWritebackFailed = "sap_writeback_failed";
 }
 
 /// <summary>Estado de una guía de despacho del manifiesto (transport_guides.status).</summary>

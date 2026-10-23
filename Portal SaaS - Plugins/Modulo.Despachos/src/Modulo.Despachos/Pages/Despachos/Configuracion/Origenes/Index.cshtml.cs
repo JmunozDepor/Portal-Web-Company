@@ -1,3 +1,4 @@
+using PortalSaas.Abstractions.Modelos;
 using Microsoft.AspNetCore.Mvc;
 using Modulo.Despachos.Models;
 using PortalSaas.Abstractions.Contratos;
@@ -15,10 +16,14 @@ public sealed class IndexModel : MaestroPageModelBase
     private readonly IMasterDataService _data;
     private readonly IDteEmissionService _dte;
 
-    public IndexModel(IMasterDataService data, ICurrentUserContext currentUser, IDteEmissionService dte) : base(currentUser)
+    private readonly ITransportGuideService? _guides;
+
+    public IndexModel(IMasterDataService data, ICurrentUserContext currentUser, IDteEmissionService dte, ITransportGuideService? guides = null)
+        : base(currentUser)
     {
         _data = data;
         _dte = dte;
+        _guides = guides;
     }
 
     protected override string MenuCode => "origenes";
@@ -101,6 +106,23 @@ public sealed class IndexModel : MaestroPageModelBase
         () => _data.SaveTransferSettingsAsync(TransfersInput.LpnPattern, TransfersInput.FolioPrefix, TransfersInput.ManifestField,
             TransfersInput.DispatchDateField, TransfersInput.InternalTransferIndicator, TransfersInput.InternalDispatchType),
         "Ajustes de guías de traslado actualizados.");
+
+    /// <summary>
+    /// "Probar escritura" (Fase B): reescribe con su valor actual los campos configurados de una transferencia SAP,
+    /// para validar antes de operar que SAP acepta actualizarla (aunque esté cerrada). Exige EDIT.
+    /// </summary>
+    public async Task<IActionResult> OnPostTestSapWriteAsync(int docEntry)
+    {
+        if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
+        try
+        {
+            if (docEntry <= 0) throw new InvalidOperationException("Indique el DocEntry de una transferencia de SAP.");
+            if (_guides is null) throw new InvalidOperationException("La escritura en SAP no está disponible.");
+            SuccessMessage = await _guides.TestSapWriteAsync(docEntry);
+        }
+        catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
+        return RedirectToPage();
+    }
 
     /// <summary>Guarda el RUT emisor de la compañía. Exige EDIT sobre "origenes".</summary>
     public Task<IActionResult> OnPostSaveIssuerAsync() => SaveCoreAsync(1, () => _data.SaveIssuerTaxIdAsync(IssuerInput),

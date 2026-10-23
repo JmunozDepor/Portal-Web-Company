@@ -21,6 +21,18 @@ public sealed record GuideEmissionOutcome(bool AllIssued, int Issued, int Pendin
 /// </summary>
 public interface ITransportGuideService
 {
+    /// <summary>
+    /// Reintenta escribir en SAP el folio de las guías de traslado emitidas en las transferencias que quedaron
+    /// pendientes (Fase B). No vuelve a emitir guías. Devuelve cuántas siguen pendientes.
+    /// </summary>
+    Task<int> RetrySapWritebackAsync(Guid manifestId);
+
+    /// <summary>
+    /// "Probar escritura": lee los campos configurados de la transferencia <paramref name="docEntry"/> y los
+    /// reescribe con su valor actual (sin cambio real). Lanza con el mensaje de SAP si la rechaza.
+    /// </summary>
+    Task<string> TestSapWriteAsync(int docEntry);
+
     /// <summary>Guías persistidas del manifiesto (vacío si aún no se planificaron), por secuencia.</summary>
     Task<IReadOnlyList<Models.TransportGuide>> ListAsync(Guid manifestId);
 

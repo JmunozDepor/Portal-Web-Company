@@ -40,6 +40,29 @@ public class ManifiestosPermisosTests
     }
 
     [Fact]
+    public async Task ReintentarSap_RequiereEditar_YEscribe()
+    {
+        var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View));
+        await env.EnableGuidesAsync();
+        await env.Master.SaveTransferSettingsAsync(null, "52", null, null, 5, 3);
+        await env.Master.SaveBranchWarehouseAsync(new BranchWarehouse { WarehouseCode = "TDA01", Name = "Tienda", Address = "Estado 387", CommuneName = "Rancagua" });
+        env.Sap.Transfers.Add(new SapTransferInfo(501, 1501, ManifestTestEnv.Fecha, "TDA01", "Tienda", null, null, 2m, false, "CTBO1"));
+        env.Sap.Lines[501] = new SapDocumentLines(null, "Rancagua", new[] { new SapDocumentLine(0, "A", "Zapatilla", 2, "UN", 1m) });
+        var id = await env.Svc.CreateDraftAsync(env.Header(arrival: ManifestTestEnv.Fecha));
+        await env.Svc.AddDocumentAsync(id, new DocumentCapture("CTBO1", null, null));
+        env.Writer.FailWith = "SAP caído";
+        await env.Svc.DispatchAsync(id);
+        env.Writer.FailWith = null;
+        Assert.IsType<ForbidResult>(await page.OnPostReintentarSapAsync(id));
+
+        env.User.Grant("Despachos.manifiestos", PortalActions.Edit);
+        Assert.IsType<RedirectToPageResult>(await page.OnPostReintentarSapAsync(id));
+
+        Assert.Contains("SAP", page.SuccessMessage);
+        Assert.Single(env.Writer.Writes);
+    }
+
+    [Fact]
     public async Task AgregarPendientes_RequiereEditar_YAgrega()
     {
         var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View));

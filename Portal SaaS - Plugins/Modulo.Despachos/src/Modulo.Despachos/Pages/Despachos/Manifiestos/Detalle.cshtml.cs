@@ -334,6 +334,20 @@ public sealed class DetalleModel : DespachosPageModelBase
         return RedirectToPage(new { id });
     }
 
+    /// <summary>Reintenta escribir en SAP el folio de las guías de traslado en las transferencias pendientes. Exige EDIT.</summary>
+    public async Task<IActionResult> OnPostReintentarSapAsync(Guid id)
+    {
+        if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
+        try
+        {
+            var pending = await _guides.RetrySapWritebackAsync(id);
+            if (pending == 0) SuccessMessage = "Folios escritos en SAP.";
+            else ErrorMessage = $"SAP sigue rechazando la escritura en {pending} transferencia(s); revise el detalle en la pestaña Guías.";
+        }
+        catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
+        return RedirectToPage(new { id, tab = "guias" });
+    }
+
     public async Task<IActionResult> OnPostReintentarGuiasAsync(Guid id)
     {
         if (!await HasActionAsync(PortalActions.Approve)) return Forbid();

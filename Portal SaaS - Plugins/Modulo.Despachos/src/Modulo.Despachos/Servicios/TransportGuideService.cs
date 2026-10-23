@@ -32,10 +32,14 @@ public sealed class TransportGuideService : ITransportGuideService
     private readonly INotificationService _notifications;
     private readonly ILogger<TransportGuideService>? _logger;
 
+    private readonly ISapTransferWriter? _writer;
+
     public TransportGuideService(
         DespachosDbContext db, ICurrentCompanyAccessor company, ICurrentUserContext user, ISapDocumentLookupService sap,
-        IDteEmissionService dte, TimeProvider time, INotificationService notifications, ILogger<TransportGuideService>? logger = null)
+        IDteEmissionService dte, TimeProvider time, INotificationService notifications, ILogger<TransportGuideService>? logger = null,
+        ISapTransferWriter? writer = null)
     {
+        _writer = writer;
         _db = db;
         _company = company;
         _user = user;
@@ -143,7 +147,11 @@ public sealed class TransportGuideService : ITransportGuideService
                 g.LastError = Truncate(ex.Message);
             }
             if (g.Status == TransportGuideStatuses.Issued)
+            {
                 AddEvent(m, ManifestEventTypes.GuideIssued, new { sequence = g.Sequence, folio = g.Folio });
+                await _db.SaveChangesAsync();
+                await WriteBackAsync(m, g, settings);
+            }
             else
                 errors.Add($"Guía {g.Sequence} ({g.ReceiverName}, {g.DestinationCommune}): {g.LastError ?? "sin respuesta del proveedor"}");
             await _db.SaveChangesAsync();
@@ -192,6 +200,103 @@ public sealed class TransportGuideService : ITransportGuideService
             g.LastError = Truncate("Anulada: " + reason);
         }
         await _db.SaveChangesAsync();
+    }
+
+    // ---------------------------------------------------------------- Escritura en SAP (Fase B)
+
+    public async Task<int> RetrySapWritebackAsync(Guid manifestId)
+    {
+        var m = await _db.Manifests.Include(x => x.Documents)
+                    .FirstOrDefaultAsync(x => x.Id == manifestId && x.CompanyId == CompanyId)
+                ?? throw new InvalidOperationException("El manifiesto no existe.");
+        var settings = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.CompanyId == CompanyId) ?? new DespachosSetting();
+        var guides = await _db.TransportGuides.Include(g => g.Documents)
+            .Where(g => g.CompanyId == CompanyId && g.ManifestId == m.Id && g.Status == TransportGuideStatuses.Issued)
+            .OrderBy(g => g.Sequence).ToListAsync();
+        foreach (var g in guides) await WriteBackAsync(m, g, settings);
+        return m.Documents.Count(d => d.SapWritebackStatus == SapWritebackStatuses.Pending);
+    }
+
+    public async Task<string> TestSapWriteAsync(int docEntry)
+    {
+        var settings = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.CompanyId == CompanyId) ?? new DespachosSetting();
+        var names = WritebackFields(settings, 0, 0, default).Keys.ToList();
+        if (names.Count == 0 || _writer is null)
+            throw new InvalidOperationException("No hay campos configurados para escribir en SAP (prefijo de folio o campos de usuario).");
+        try
+        {
+            var current = await _writer.ReadAsync(docEntry, names);
+            await _writer.WriteAsync(docEntry, current);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"SAP rechazó la escritura en la transferencia {docEntry}: {ex.Message}", ex);
+        }
+        return $"SAP aceptó la escritura en la transferencia {docEntry}.";
+    }
+
+    /// <summary>
+    /// Campos que se escriben en la transferencia: FolioNumber + FolioPrefixString si hay prefijo, y los campos de
+    /// usuario configurados (N° de manifiesto, fecha de despacho yyyy-MM-dd). Vacío = no se escribe nada.
+    /// </summary>
+    public static IReadOnlyDictionary<string, object?> WritebackFields(DespachosSetting s, long folio, int manifestNumber, DateOnly dispatchDate)
+    {
+        var fields = new Dictionary<string, object?>();
+        if (!string.IsNullOrWhiteSpace(s.TransferFolioPrefix))
+        {
+            fields["FolioNumber"] = folio;
+            fields["FolioPrefixString"] = s.TransferFolioPrefix.Trim();
+        }
+        if (!string.IsNullOrWhiteSpace(s.TransferManifestField)) fields[s.TransferManifestField.Trim()] = manifestNumber;
+        if (!string.IsNullOrWhiteSpace(s.TransferDispatchDateField))
+            fields[s.TransferDispatchDateField.Trim()] = dispatchDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        return fields;
+    }
+
+    /// <summary>
+    /// Escribe el folio de la guía emitida en sus transferencias aún no escritas. Una falla deja la transferencia
+    /// "SAP pendiente" con aviso por la campana: la guía emitida es el documento legal y el despacho sigue.
+    /// </summary>
+    private async Task WriteBackAsync(Manifest m, TransportGuide g, DespachosSetting settings)
+    {
+        if (g.Folio is not { } folio || _writer is null) return;
+        var ids = g.Documents.Select(x => x.ManifestDocumentId).ToHashSet();
+        var docs = m.Documents.Where(d => ids.Contains(d.Id) && d.DocumentKind == DocumentKinds.Transfer
+                                          && d.SapWritebackStatus != SapWritebackStatuses.Ok).ToList();
+        var fields = WritebackFields(settings, folio, m.Number, m.DispatchDate);
+        if (docs.Count == 0 || fields.Count == 0) return;
+
+        var failed = new List<ManifestDocument>();
+        foreach (var d in docs)
+        {
+            try
+            {
+                await _writer.WriteAsync(d.SapDocEntry, fields);
+                d.SapWritebackStatus = SapWritebackStatuses.Ok;
+                d.SapWritebackError = null;
+            }
+            catch (Exception ex)
+            {
+                d.SapWritebackStatus = SapWritebackStatuses.Pending;
+                d.SapWritebackError = ex.Message is { Length: > 500 } e ? e[..500] : ex.Message;
+                failed.Add(d);
+            }
+        }
+        if (failed.Count > 0)
+            AddEvent(m, ManifestEventTypes.SapWritebackFailed, new { folio, transfers = failed.Select(d => d.Folio), error = failed[0].SapWritebackError });
+        await _db.SaveChangesAsync();
+        if (failed.Count == 0) return;
+        try
+        {
+            var list = string.Join(", ", failed.Select(d => d.Folio));
+            await _notifications.TryEnqueueAsync(_user.UserId, $"SAP pendiente en manifiesto N° {m.Number}",
+                $"Manifiesto N° {m.Number}: no se pudo escribir el folio {folio} en la transferencia {list} de SAP. Reintente desde la pestaña Guías.",
+                NotificationSeverity.Warning, $"/despachos/manifiestos/{m.Id:D}?tab=guias");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "No se pudo avisar la escritura SAP pendiente del manifiesto N° {Number}.", m.Number);
+        }
     }
 
     // ---------------------------------------------------------------- Plan

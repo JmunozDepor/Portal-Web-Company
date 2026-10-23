@@ -9,10 +9,36 @@ namespace Modulo.Despachos.Tests.Pages;
 
 public class OrigenesEmisorPageTests
 {
-    private static (Origenes.IndexModel Page, MasterDataService Svc) Build(FakeCurrentUserContext user)
+    private static (Origenes.IndexModel Page, MasterDataService Svc) Build(FakeCurrentUserContext user) => Build(user, out _);
+
+    private static (Origenes.IndexModel Page, MasterDataService Svc) Build(FakeCurrentUserContext user, out FakeSapTransferWriter writer)
     {
-        var svc = new MasterDataService(TestDb.Create(), new FakeCurrentCompanyAccessor(), user);
-        return (new Origenes.IndexModel(svc, user, new FakeDteEmissionService()), svc);
+        var db = TestDb.Create();
+        var company = new FakeCurrentCompanyAccessor();
+        var svc = new MasterDataService(db, company, user);
+        writer = new FakeSapTransferWriter();
+        var guides = new TransportGuideService(db, company, user, new FakeSapDocumentLookupService(), new FakeDteEmissionService(),
+            TimeProvider.System, new FakeNotificationService(), writer: writer);
+        return (new Origenes.IndexModel(svc, user, new FakeDteEmissionService(), guides), svc);
+    }
+
+    [Fact]
+    public async Task ProbarEscritura_RequiereEditar_YMuestraElResultado()
+    {
+        var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View), out var writer);
+        await svc.SaveTransferSettingsAsync(null, "52", null, null, 5, 3);
+        Assert.IsType<ForbidResult>(await page.OnPostTestSapWriteAsync(777));
+
+        var (page2, svc2) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View, PortalActions.Edit), out var writer2);
+        await svc2.SaveTransferSettingsAsync(null, "52", null, null, 5, 3);
+        await page2.OnPostTestSapWriteAsync(777);
+        Assert.Contains("SAP aceptó", page2.SuccessMessage);
+        Assert.Equal(777, Assert.Single(writer2.Writes).DocEntry);
+
+        writer2.FailWith = "Documento cerrado";
+        await page2.OnPostTestSapWriteAsync(777);
+        Assert.Contains("SAP rechazó", page2.ErrorMessage);
+        Assert.Empty(writer.Writes);
     }
 
     private static Origenes.IndexModel.TransferSettingsInput Traslados(string? field = "U_NX_Manifiesto", string? pattern = @"^(CTBO|ICBO)\d+$") => new()

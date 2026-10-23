@@ -28,6 +28,8 @@ internal sealed class ManifestTestEnv
     public required FakeDteEmissionService Dte { get; init; }
     /// <summary>Guías Res. 154 (deshabilitadas por defecto: ver <see cref="EnableGuidesAsync"/>).</summary>
     public required TransportGuideService Guides { get; init; }
+    /// <summary>Escritura del folio en la transferencia SAP (Fase B).</summary>
+    public required FakeSapTransferWriter Writer { get; init; }
 
     public long CarrierId, VehicleId, TrailerId, DriverId, OriginId, ShiftId, SmallTypeId;
     public long RancaguaId, CuricoId;
@@ -64,14 +66,15 @@ internal sealed class ManifestTestEnv
         var cost = new ManifestCostService(db, company, tariff, TarifasTestData.Engine(), clock, closure);
         var notifications = new FakeNotificationService();
         var dte = new FakeDteEmissionService { IssuerTaxId = IssuerRut };
-        var guides = new TransportGuideService(db, company, user, sap, dte, clock, notifications);
+        var writer = new FakeSapTransferWriter();
+        var guides = new TransportGuideService(db, company, user, sap, dte, clock, notifications, writer: writer);
         var svc = factory != null
             ? factory(db, company, user, sap, master, cost, clock, notifications, closure)
             : new ManifestService(db, company, user, sap, master, cost, clock, notifications, closure, guides: guides);
         var env = new ManifestTestEnv
         {
             Db = db, Company = company, User = user, Master = master, Tariff = tariff, Sap = sap,
-            Clock = clock, Cost = cost, Svc = svc, Notifications = notifications, Closure = closure, Dte = dte, Guides = guides,
+            Clock = clock, Cost = cost, Svc = svc, Notifications = notifications, Closure = closure, Dte = dte, Guides = guides, Writer = writer,
         };
         env.SeedAsync(seedRates).GetAwaiter().GetResult();
         return env;

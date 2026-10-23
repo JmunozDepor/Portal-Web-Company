@@ -262,6 +262,10 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasDefaultValue(60)
                         .HasColumnName("guide_max_lines");
 
+                    b.Property<bool>("GuideValued")
+                        .HasColumnType("bit")
+                        .HasColumnName("guide_valued");
+
                     b.Property<bool>("GuidesEnabled")
                         .HasColumnType("bit")
                         .HasColumnName("guides_enabled");

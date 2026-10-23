@@ -29,4 +29,10 @@ public class DespachosSetting : AuditedEntity
     /// proveedor no alcanza a imprimirlas sin montarlas sobre el pie (FACELE: 27).
     /// </summary>
     public int GuideMaxLines { get; set; } = 60;
+
+    /// <summary>
+    /// Valorizar la guía con los montos netos de las facturas (columna "line_amount" de la consulta de líneas).
+    /// Apagado = precios vacíos y montos 0.
+    /// </summary>
+    public bool GuideValued { get; set; }
 }

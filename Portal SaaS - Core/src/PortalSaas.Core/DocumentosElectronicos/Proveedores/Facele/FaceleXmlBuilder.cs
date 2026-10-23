@@ -142,6 +142,7 @@ public static class FaceleXmlBuilder
             Elem(w, "VlrCodigo", l.ItemCode, 35);
             w.WriteEndElement();
         }
+        if (l.Exempt) Elem(w, "IndExe", "1");
         Elem(w, "NmbItem", l.Name, 80);
         OptElem(w, "DscItem", l.Description, 1000);
         Elem(w, "QtyItem", Num(l.Quantity));
@@ -163,12 +164,16 @@ public static class FaceleXmlBuilder
         w.WriteEndElement();
     }
 
-    /// <summary>Totales desde las líneas: neto = Σ montos, IVA 19% redondeado a pesos (todo 0 si las líneas valen 0).</summary>
+    /// <summary>
+    /// Totales desde las líneas: neto = Σ montos afectos, exento = Σ montos exentos (IndExe), IVA 19% del neto
+    /// redondeado a pesos (todo 0 si las líneas valen 0).
+    /// </summary>
     internal static DteTotals ComputeTotals(IReadOnlyList<DteLine> lines)
     {
-        var net = Math.Round(lines.Sum(l => l.Amount), 0, MidpointRounding.AwayFromZero);
+        var net = Math.Round(lines.Where(l => !l.Exempt).Sum(l => l.Amount), 0, MidpointRounding.AwayFromZero);
+        var exempt = Math.Round(lines.Where(l => l.Exempt).Sum(l => l.Amount), 0, MidpointRounding.AwayFromZero);
         var vat = Math.Round(net * DefaultVatRate / 100m, 0, MidpointRounding.AwayFromZero);
-        return new DteTotals(net, 0, DefaultVatRate, vat, net + vat);
+        return new DteTotals(net, exempt, DefaultVatRate, vat, net + exempt + vat);
     }
 
     private static void Elem(XmlWriter w, string name, string value, int? max = null) =>

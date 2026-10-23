@@ -60,7 +60,7 @@ public sealed class MasterDataService : IMasterDataService
         await _db.Settings.AsNoTracking().FirstOrDefaultAsync(x => x.CompanyId == CompanyId);
 
     public async Task SaveGuideSettingsAsync(bool guidesEnabled, int transferIndicator, int? dispatchType, string lineGrouping = GuideLineGroupings.Sku,
-        string itemCodePlacement = GuideItemCodePlacements.Column, int maxLines = 60)
+        string itemCodePlacement = GuideItemCodePlacements.Column, int maxLines = 60, bool valued = false)
     {
         if (maxLines is < 1 or > 60)
             throw new InvalidOperationException("El máximo de líneas por guía debe estar entre 1 y 60.");
@@ -90,6 +90,7 @@ public sealed class MasterDataService : IMasterDataService
         row.GuideLineGrouping = lineGrouping;
         row.GuideItemCodePlacement = itemCodePlacement;
         row.GuideMaxLines = maxLines;
+        row.GuideValued = valued;
         await _db.SaveChangesAsync();
     }
 

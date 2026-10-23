@@ -157,6 +157,70 @@ public class GuidePlannerTests
         Assert.Equal(new[] { 20, 20 }, p.Guides.Select(g => g.Document.Lines.Count));
     }
 
+    private static SapDocumentLines LineasMonto(params (string Item, string? Model, decimal Qty, decimal? Amount)[] items) =>
+        new("Venta al por menor", "Talca", items.Select((x, i) => new SapDocumentLine(
+            i, x.Item, $"Artículo {x.Item}", x.Qty, "UN", 1m, x.Model, null, x.Amount)).ToList());
+
+    private static GuidePlan PlanValorizado(string grouping, params (ManifestDocument Doc, SapDocumentLines Lines)[] docs) =>
+        GuidePlanner.Plan(new GuidePlanInput(Manifiesto(), docs, id => id switch { Talca => "Talca", _ => null },
+            TransferIndicator: 1, DispatchType: 2, IssueDate: Hoy, DepartureTime: new TimeOnly(12, 30),
+            LineGrouping: grouping, Valued: true));
+
+    [Fact]
+    public void Plan_Valorizada_PrecioYMontoDesdeLaFactura()
+    {
+        var p = PlanValorizado(GuideLineGroupings.Sku, (Factura(100), LineasMonto(("A", null, 3, 30000m), ("B", null, 2, 15001m))));
+
+        var lines = Assert.Single(p.Guides).Document.Lines;
+        Assert.Equal((10000m, 30000m, false), (lines[0].UnitPrice!.Value, lines[0].Amount, lines[0].Exempt));
+        Assert.Equal((7500.5m, 15001m), (lines[1].UnitPrice!.Value, lines[1].Amount));
+    }
+
+    [Fact]
+    public void Plan_Valorizada_PorModelo_SumaMontos_YPrecioPromedio()
+    {
+        var p = PlanValorizado(GuideLineGroupings.Model,
+            (Factura(100), LineasMonto(("M-7", "M", 2, 20000m))),
+            (Factura(101), LineasMonto(("M-9", "M", 1, 13000m))));
+
+        var line = Assert.Single(Assert.Single(p.Guides).Document.Lines);
+        Assert.Equal(33000m, line.Amount);
+        Assert.Equal(11000m, line.UnitPrice);
+        Assert.Equal(line.Amount, Math.Round(line.Quantity * line.UnitPrice!.Value, 0, MidpointRounding.AwayFromZero));
+    }
+
+    [Fact]
+    public void Plan_Valorizada_FacturaExenta_LineasExentasSinMezclarseConAfectas()
+    {
+        var exenta = Factura(101);
+        exenta.SiiDocumentType = 34;
+        var p = PlanValorizado(GuideLineGroupings.Sku,
+            (Factura(100), LineasMonto(("A", null, 1, 1000m))),
+            (exenta, LineasMonto(("A", null, 1, 500m))));
+
+        var lines = Assert.Single(p.Guides).Document.Lines;
+        Assert.Equal(2, lines.Count);
+        Assert.Equal((false, 1000m), (lines[0].Exempt, lines[0].Amount));
+        Assert.Equal((true, 500m), (lines[1].Exempt, lines[1].Amount));
+    }
+
+    [Fact]
+    public void Plan_Valorizada_SinMontoEnLaConsulta_Error()
+    {
+        var p = PlanValorizado(GuideLineGroupings.Sku, (Factura(100), LineasMonto(("A", null, 1, null))));
+
+        Assert.Contains(p.Errors, e => e.Contains("Folio 100") && e.Contains("line_amount"));
+    }
+
+    [Fact]
+    public void Plan_SinValorizar_MontosCero()
+    {
+        var p = PlanAgrupado(GuideLineGroupings.Sku, (Factura(100), LineasMonto(("A", null, 1, 1000m))));
+
+        var line = Assert.Single(Assert.Single(p.Guides).Document.Lines);
+        Assert.Equal((null, 0m), (line.UnitPrice, line.Amount));
+    }
+
     [Fact]
     public void Plan_PorSku_NoJuntaLasTallas()
     {

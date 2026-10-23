@@ -6,6 +6,8 @@
 --   OCRD."U_U_NX_giro" (clientes mayoristas internos), "U_GSP_SubGroupName" (clientes creados por el punto de
 --   venta, sin su codigo "10001-") y, al final, "Notes". Se repite en cada fila. Campos de Depor: ajustar por compania.
 -- item_name = descripcion corta del articulo (OITM."FrgnName"); si esta vacia, la descripcion de la linea.
+-- line_amount (opcional) = monto neto de la linea en pesos con el descuento de cabecera de la factura; con
+--   "Valorizar la guia" la guia lleva precio = monto / cantidad.
 -- destination_city = ciudad de la direccion de despacho (INV12."CityS"); se repite en cada fila.
 -- model_code (opcional) = codigo del modelo sin talla (OITM."U_GSP_REFERENCE" en Depor): con "Lineas de la guia =
 --   por modelo" las tallas de un modelo van en una sola linea. model_name (opcional) = nombre del modelo: el mayor
@@ -25,6 +27,7 @@ SELECT
     NULLIF(TRIM(C0."U_GSP_SubGroupName"), ''),
     NULLIF(TRIM(C0."Notes"), '')), 40) AS "customer_activity",
   T2."CityS" AS "destination_city",
+  L."LineTotal" * (1 - COALESCE(T0."DiscPrcnt", 0) / 100) AS "line_amount",
   I."U_GSP_REFERENCE" AS "model_code",
   (SELECT MAX(NULLIF(TRIM(X."FrgnName"), '')) FROM OITM X WHERE X."U_GSP_REFERENCE" = I."U_GSP_REFERENCE") AS "model_name"
 FROM INV1 L

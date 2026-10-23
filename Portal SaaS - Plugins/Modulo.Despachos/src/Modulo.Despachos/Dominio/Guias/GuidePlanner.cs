@@ -16,7 +16,8 @@ public sealed record GuidePlanInput(
     TimeOnly DepartureTime,
     string LineGrouping = GuideLineGroupings.Sku,
     string ItemCodePlacement = GuideItemCodePlacements.Column,
-    int MaxLines = GuidePlanner.MaxLines);
+    int MaxLines = GuidePlanner.MaxLines,
+    bool Valued = false);
 
 public sealed record PlannedGuide(int Sequence, IReadOnlyList<Guid> ManifestDocumentIds, DteDocument Document);
 
@@ -25,7 +26,8 @@ public sealed record GuidePlan(IReadOnlyList<PlannedGuide> Guides, IReadOnlyList
 /// <summary>
 /// Arma las guías de despacho (DTE 52) de un manifiesto, sin I/O:
 /// - una guía por destino (RUT receptor + dirección normalizada + comuna), en el orden de aparición;
-/// - detalle consolidado por SKU o por modelo (LineGrouping), sin precios (montos 0, la mercadería ya está facturada) [validar con el asesor];
+/// - detalle consolidado por SKU o por modelo (LineGrouping); valorizado con los montos netos de las facturas
+///   (Valued: precio = monto / cantidad; las líneas de facturas exentas 34 van exentas y aparte) o sin precios;
 /// - una referencia por factura amparada;
 /// - división cuando el destino excede el máximo de líneas (60 del formato DTE, o menos si la compañía lo baja
 ///   para que la plantilla PDF no se monte sobre el pie) o 40 referencias; una factura con más líneas que el
@@ -61,8 +63,11 @@ public static partial class GuidePlanner
             if (!RutChileno.IsValid(doc.CustomerTaxId)) errors.Add($"{prefix}: el RUT del cliente «{doc.CustomerTaxId}» no es válido.");
             if (string.IsNullOrWhiteSpace(doc.DestinationAddress)) errors.Add($"{prefix}: falta la dirección de despacho en SAP.");
             if (lines.Lines.Count == 0) errors.Add($"{prefix}: la consulta SAP no devolvió líneas de la factura.");
+            var noAmount = input.Valued && lines.Lines.Any(l => l.Amount is null);
+            if (noAmount)
+                errors.Add($"{prefix}: la consulta SAP de líneas no trae el monto (columna line_amount); no se puede valorizar la guía.");
             if (commune is null || !RutChileno.IsValid(doc.CustomerTaxId) || string.IsNullOrWhiteSpace(doc.DestinationAddress)
-                || lines.Lines.Count == 0)
+                || lines.Lines.Count == 0 || noAmount)
                 continue;
 
             var rut = RutChileno.Normalize(doc.CustomerTaxId!);
@@ -80,7 +85,7 @@ public static partial class GuidePlanner
         var missingWeight = 0;
         foreach (var g in groups)
         {
-            foreach (var chunk in Split(g.Docs, input.LineGrouping == GuideLineGroupings.Model, Math.Clamp(input.MaxLines, 1, MaxLines)))
+            foreach (var chunk in Split(g.Docs, input.LineGrouping == GuideLineGroupings.Model, Math.Clamp(input.MaxLines, 1, MaxLines), input.Valued))
             {
                 var document = BuildDocument(input, g, chunk, out var noWeight);
                 missingWeight += noWeight;
@@ -96,7 +101,8 @@ public static partial class GuidePlanner
     /// <summary>Trozo de guía: documento + las líneas consolidadas suyas que van en ESTA guía + si aporta los bultos.</summary>
     private sealed record ChunkPart(ManifestDocument Doc, IReadOnlyList<ConsolidatedLine> Lines, bool CountsPackages);
 
-    private sealed record ConsolidatedLine(string Key, string ItemCode, string Name, decimal Quantity, string? Unit, decimal? WeightKg);
+    private sealed record ConsolidatedLine(string Key, string ItemCode, string Name, decimal Quantity, string? Unit, decimal? WeightKg,
+        decimal Amount, bool Exempt);
 
     private sealed class Group(string key, string rut, ManifestDocument first, string commune, SapDocumentLines lines)
     {
@@ -108,13 +114,14 @@ public static partial class GuidePlanner
         public List<(ManifestDocument Doc, SapDocumentLines Lines)> Docs { get; } = new();
     }
 
-    private static IEnumerable<List<ChunkPart>> Split(List<(ManifestDocument Doc, SapDocumentLines Lines)> docs, bool byModel, int maxLines)
+    private static IEnumerable<List<ChunkPart>> Split(List<(ManifestDocument Doc, SapDocumentLines Lines)> docs, bool byModel, int maxLines, bool valued)
     {
         var current = new List<ChunkPart>();
         var currentKeys = new HashSet<string>();
         foreach (var (doc, lines) in docs)
         {
-            var own = Consolidate(lines.Lines, byModel);
+            // Valorizada: las líneas de una factura exenta (34) van exentas y no se juntan con las afectas.
+            var own = Consolidate(lines.Lines, byModel, exempt: valued && doc.SiiDocumentType == 34);
             var newKeys = own.Count(l => !currentKeys.Contains(l.Key));
             if (current.Count > 0 && (currentKeys.Count + newKeys > maxLines || current.Count + 1 > MaxReferences))
             {
@@ -141,18 +148,18 @@ public static partial class GuidePlanner
     /// modelo queda por SKU. El nombre de una línea que junta varias es el mayor (orden ordinal): estable sin
     /// importar el orden de las facturas ni de las tallas.
     /// </summary>
-    private static List<ConsolidatedLine> Consolidate(IEnumerable<SapDocumentLine> lines, bool byModel)
+    private static List<ConsolidatedLine> Consolidate(IEnumerable<SapDocumentLine> lines, bool byModel, bool exempt)
     {
         var result = new List<ConsolidatedLine>();
         foreach (var l in lines)
         {
             var model = byModel && !string.IsNullOrWhiteSpace(l.ModelCode) ? l.ModelCode.Trim() : null;
             var code = model ?? l.ItemCode.Trim();
-            var key = model is not null ? "M:" + model
-                : string.IsNullOrWhiteSpace(l.ItemCode) ? "#" + l.ItemName.Trim().ToUpperInvariant() : l.ItemCode.Trim();
+            var key = (exempt ? "E|" : "") + (model is not null ? "M:" + model
+                : string.IsNullOrWhiteSpace(l.ItemCode) ? "#" + l.ItemName.Trim().ToUpperInvariant() : l.ItemCode.Trim());
             var name = model is not null && !string.IsNullOrWhiteSpace(l.ModelName) ? l.ModelName.Trim() : l.ItemName;
             var i = result.FindIndex(x => x.Key == key);
-            if (i < 0) result.Add(new ConsolidatedLine(key, code, name, l.Quantity, l.Unit, l.WeightKg));
+            if (i < 0) result.Add(new ConsolidatedLine(key, code, name, l.Quantity, l.Unit, l.WeightKg, l.Amount ?? 0, exempt));
             else
             {
                 var x = result[i];
@@ -162,6 +169,7 @@ public static partial class GuidePlanner
                     Quantity = x.Quantity + l.Quantity,
                     Unit = x.Unit ?? l.Unit,
                     WeightKg = x.WeightKg is null || l.WeightKg is null ? null : x.WeightKg + l.WeightKg,
+                    Amount = x.Amount + (l.Amount ?? 0),
                 };
             }
         }
@@ -178,6 +186,7 @@ public static partial class GuidePlanner
             Quantity = x.Quantity + l.Quantity,
             Unit = x.Unit ?? l.Unit,
             WeightKg = x.WeightKg is null || l.WeightKg is null ? null : x.WeightKg + l.WeightKg,
+            Amount = x.Amount + l.Amount,
         })).ToList();
         missingWeight = merged.Count(l => l.WeightKg is null);
         decimal? weight = missingWeight == 0 ? merged.Sum(l => l.WeightKg!.Value) : null;
@@ -185,11 +194,18 @@ public static partial class GuidePlanner
 
         // Código al inicio del detalle: la columna Código de algunas plantillas PDF es angosta y lo superpone.
         var codeInName = input.ItemCodePlacement == GuideItemCodePlacements.Name;
-        var lines = merged.Select((l, i) => new DteLine(
-            i + 1,
-            codeInName || string.IsNullOrEmpty(l.ItemCode) ? null : l.ItemCode,
-            codeInName && !string.IsNullOrEmpty(l.ItemCode) ? $"{l.ItemCode} {l.Name}" : l.Name,
-            null, l.Quantity, l.Unit, null, 0)).ToList();
+        var lines = merged.Select((l, i) =>
+        {
+            // Valorizada: precio = monto / cantidad (6 decimales, lo que admite el SII) y monto = cantidad x precio
+            // redondeado, para que cuadre con la validación del SII.
+            decimal? price = input.Valued && l.Quantity > 0 ? Math.Round(l.Amount / l.Quantity, 6, MidpointRounding.AwayFromZero) : null;
+            var amount = price is { } p ? Math.Round(l.Quantity * p, 0, MidpointRounding.AwayFromZero) : 0;
+            return new DteLine(
+                i + 1,
+                codeInName || string.IsNullOrEmpty(l.ItemCode) ? null : l.ItemCode,
+                codeInName && !string.IsNullOrEmpty(l.ItemCode) ? $"{l.ItemCode} {l.Name}" : l.Name,
+                null, l.Quantity, l.Unit, price, amount, Exempt: input.Valued && l.Exempt);
+        }).ToList();
         var refs = chunk.Select(c => c.Doc).DistinctBy(d => d.Id).Select((d, i) => new DteReference(
             i + 1, d.SiiDocumentType.ToString(System.Globalization.CultureInfo.InvariantCulture), d.Folio, d.DocumentDate, null,
             $"Traslado de mercadería facturada (manifiesto {m.Number})")).ToList();

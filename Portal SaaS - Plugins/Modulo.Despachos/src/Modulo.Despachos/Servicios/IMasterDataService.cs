@@ -25,7 +25,7 @@ public interface IMasterDataService
     /// Guías de despacho Res. 154: activar la emisión al despachar, IndTraslado (1..9) y TipoDespacho (1..3 o null).
     /// </summary>
     Task SaveGuideSettingsAsync(bool guidesEnabled, int transferIndicator, int? dispatchType, string lineGrouping = GuideLineGroupings.Sku,
-        string itemCodePlacement = GuideItemCodePlacements.Column, int maxLines = 60);
+        string itemCodePlacement = GuideItemCodePlacements.Column, int maxLines = 60, bool valued = false);
 
     Task<IReadOnlyList<Carrier>> ListCarriersAsync(bool includeInactive = false);
     Task<long> SaveCarrierAsync(Carrier entity);

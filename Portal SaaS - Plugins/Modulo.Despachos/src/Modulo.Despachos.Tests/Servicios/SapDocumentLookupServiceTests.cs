@@ -487,6 +487,8 @@ public class SapDocumentLookupServiceTests
         // Un solo nombre por modelo (el máximo de sus SKU), para no repetir el modelo con nombres distintos.
         Assert.Contains("MAX(", sql);
         Assert.Contains("AS \"model_name\"", sql);
+        // Monto neto de la línea con el descuento de cabecera de la factura, para valorizar la guía.
+        Assert.Contains("L.\"LineTotal\" * (1 - COALESCE(T0.\"DiscPrcnt\", 0) / 100) AS \"line_amount\"", sql);
     }
 
     [Fact]
@@ -513,11 +515,14 @@ public class SapDocumentLookupServiceTests
         var conModelo = LineRow(0, "761952C-805-7", 2, 1m);
         conModelo["model_code"] = "761952C-805";
         conModelo["model_name"] = "ZAPATILLA X";
+        conModelo["line_amount"] = 25990.5m;
         hana.Results[LinesSql] = new IReadOnlyDictionary<string, object?>[] { conModelo, LineRow(1, "B2", 1, null) };
 
         var lines = await svc.GetLinesAsync(SapQueryKinds.InvoiceLines, 1);
 
         Assert.Equal(("761952C-805", "ZAPATILLA X"), (lines.Lines[0].ModelCode, lines.Lines[0].ModelName));
+        Assert.Equal(25990.5m, lines.Lines[0].Amount);
+        Assert.Null(lines.Lines[1].Amount);
         Assert.Equal(((string?)null, (string?)null), (lines.Lines[1].ModelCode, lines.Lines[1].ModelName));
     }
 

@@ -47,9 +47,10 @@ public sealed record DteCustoms(decimal? NetWeightKg, int? TotalPackages, string
 
 public sealed record DteTotals(decimal Net, decimal Exempt, decimal VatRate, decimal Vat, decimal Total);
 
+/// <summary>Línea de detalle. Exempt = IndExe 1 (monto exento: va a MntExe, sin IVA).</summary>
 public sealed record DteLine(
     int LineNumber, string? ItemCode, string Name, string? Description, decimal Quantity, string? Unit,
-    decimal? UnitPrice, decimal Amount);
+    decimal? UnitPrice, decimal Amount, bool Exempt = false);
 
 /// <summary>Referencia. DocumentType es texto porque admite "33", "801", "HES", etc.</summary>
 public sealed record DteReference(int LineNumber, string DocumentType, long? Folio, DateOnly Date, int? ReasonCode, string? Reason);

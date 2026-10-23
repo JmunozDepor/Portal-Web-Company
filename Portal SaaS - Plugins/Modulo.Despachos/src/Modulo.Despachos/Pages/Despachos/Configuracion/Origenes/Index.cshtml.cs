@@ -71,6 +71,7 @@ public sealed class IndexModel : MaestroPageModelBase
             LineGrouping = s?.GuideLineGrouping ?? GuideLineGroupings.Sku,
             ItemCodePlacement = s?.GuideItemCodePlacement ?? GuideItemCodePlacements.Column,
             MaxLines = s?.GuideMaxLines ?? 60,
+            Valued = s?.GuideValued ?? false,
         };
         try { DteStatus = await _dte.GetConfigurationAsync(); }
         catch (Exception ex)
@@ -83,7 +84,7 @@ public sealed class IndexModel : MaestroPageModelBase
     public Task<IActionResult> OnPostSaveGuidesAsync() => SaveCoreAsync(1,
         () => _data.SaveGuideSettingsAsync(GuidesInput.GuidesEnabled, GuidesInput.TransferIndicator, GuidesInput.DispatchType,
             GuidesInput.LineGrouping ?? GuideLineGroupings.Sku, GuidesInput.ItemCodePlacement ?? GuideItemCodePlacements.Column,
-            GuidesInput.MaxLines),
+            GuidesInput.MaxLines, GuidesInput.Valued),
         "Ajustes de guías de despacho actualizados.");
 
     /// <summary>Guarda el RUT emisor de la compañía. Exige EDIT sobre "origenes".</summary>
@@ -113,6 +114,7 @@ public sealed class IndexModel : MaestroPageModelBase
         public string? LineGrouping { get; set; } = GuideLineGroupings.Sku;
         public string? ItemCodePlacement { get; set; } = GuideItemCodePlacements.Column;
         public int MaxLines { get; set; } = 60;
+        public bool Valued { get; set; }
     }
 
     public sealed class OrigenInput

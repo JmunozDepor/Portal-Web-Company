@@ -13,9 +13,12 @@ public sealed record SapDocumentInfo(
 public sealed record QueryValidationResult(bool IsValid, IReadOnlyList<string> MissingColumns, string? Error);
 
 /// <summary>Línea de un documento SAP (consulta "invoice_lines"). WeightKg null = el artículo no tiene peso en SAP.</summary>
-/// <summary>Línea de factura. ModelCode/ModelName = columnas opcionales "model_code"/"model_name" (código sin talla).</summary>
+/// <summary>
+/// Línea de factura. Columnas opcionales: "model_code"/"model_name" (código y nombre sin talla) y "line_amount"
+/// (monto neto de la línea, para valorizar la guía).
+/// </summary>
 public sealed record SapDocumentLine(int LineNum, string ItemCode, string ItemName, decimal Quantity, string? Unit, decimal? WeightKg,
-    string? ModelCode = null, string? ModelName = null);
+    string? ModelCode = null, string? ModelName = null, decimal? Amount = null);
 
 /// <summary>Líneas de un documento + datos del receptor que solo trae esa consulta (giro y ciudad de despacho).</summary>
 public sealed record SapDocumentLines(string? CustomerActivity, string? DestinationCity, IReadOnlyList<SapDocumentLine> Lines);

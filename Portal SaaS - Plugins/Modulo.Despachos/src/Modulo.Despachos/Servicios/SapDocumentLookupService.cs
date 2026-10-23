@@ -430,7 +430,8 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
             Unit: Str(r["unit"]),
             WeightKg: IsNull(r["weight_kg"]) ? null : ToDecimal(r["weight_kg"]),
             ModelCode: OptionalStr(r, "model_code"),
-            ModelName: OptionalStr(r, "model_name"))).ToList();
+            ModelName: OptionalStr(r, "model_name"),
+            Amount: Optional(r, "line_amount"))).ToList();
         var first = rows.Count > 0 ? rows[0] : null;
         return new SapDocumentLines(
             first is null ? null : Str(first["customer_activity"]),

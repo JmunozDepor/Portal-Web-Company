@@ -50,6 +50,10 @@
                     <input type="checkbox" name="GuidesInput.GuidesEnabled" value="true" checked="@Model.GuidesInput.GuidesEnabled" disabled="@(!Model.CanEdit)" />
                     Emitir guías de despacho electrónicas al despachar (Res. 154)
                 </label>
+                <label class="d-flex align-items-center gap-2">
+                    <input type="checkbox" name="GuidesInput.Valued" value="true" checked="@Model.GuidesInput.Valued" disabled="@(!Model.CanEdit)" />
+                    Valorizar la guía con los montos netos de las facturas
+                </label>
             </div>
             <div class="col-auto">
                 <label for="guides-transfer" class="form-label">Indicador de traslado</label>

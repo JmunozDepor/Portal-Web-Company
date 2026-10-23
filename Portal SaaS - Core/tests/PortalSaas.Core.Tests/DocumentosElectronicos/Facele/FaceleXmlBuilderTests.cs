@@ -74,6 +74,33 @@ public class FaceleXmlBuilderTests
     }
 
     [Fact]
+    public void Build_Valorizada_ConLineaExenta_IndExeYTotalesSeparados()
+    {
+        var doc = GuiaVenta() with
+        {
+            Lines = new[]
+            {
+                new DteLine(1, "A", "Afecto", null, 2, "UN", 1000.5m, 2001),
+                new DteLine(2, "B", "Exento", null, 1, "UN", 500, 500, Exempt: true),
+            },
+        };
+        var xml = Parse(FaceleXmlBuilder.Build(doc, Depor));
+
+        var lines = xml.Descendants("Detalle").ToList();
+        Assert.Null(lines[0].Element("IndExe"));
+        Assert.Equal("1", lines[1].Element("IndExe")!.Value);
+        // Orden SII: CdgItem, IndExe, NmbItem.
+        Assert.Equal(new[] { "NroLinDet", "CdgItem", "IndExe", "NmbItem" }, lines[1].Elements().Take(4).Select(e => e.Name.LocalName));
+        Assert.Equal("1000.5", lines[0].Element("PrcItem")!.Value);
+
+        var t = xml.Descendants("Totales").Single();
+        Assert.Equal("2001", t.Element("MntNeto")!.Value);
+        Assert.Equal("500", t.Element("MntExe")!.Value);
+        Assert.Equal("380", t.Element("IVA")!.Value);
+        Assert.Equal("2881", t.Element("MntTotal")!.Value);
+    }
+
+    [Fact]
     public void Build_TransporteEnOrdenRes154()
     {
         var doc = GuiaVenta() with { Transport = Transporte with { Customs = new DteCustoms(12.5m, 3, "TSM") } };

@@ -70,6 +70,7 @@ public sealed class IndexModel : MaestroPageModelBase
             GuidesEnabled = s?.GuidesEnabled ?? false, TransferIndicator = s?.TransferIndicator ?? 1, DispatchType = s is null ? 2 : s.DispatchType,
             LineGrouping = s?.GuideLineGrouping ?? GuideLineGroupings.Sku,
             ItemCodePlacement = s?.GuideItemCodePlacement ?? GuideItemCodePlacements.Column,
+            MaxLines = s?.GuideMaxLines ?? 60,
         };
         try { DteStatus = await _dte.GetConfigurationAsync(); }
         catch (Exception ex)
@@ -81,7 +82,8 @@ public sealed class IndexModel : MaestroPageModelBase
     /// <summary>Guarda los ajustes de guías de despacho. Exige EDIT sobre "origenes".</summary>
     public Task<IActionResult> OnPostSaveGuidesAsync() => SaveCoreAsync(1,
         () => _data.SaveGuideSettingsAsync(GuidesInput.GuidesEnabled, GuidesInput.TransferIndicator, GuidesInput.DispatchType,
-            GuidesInput.LineGrouping ?? GuideLineGroupings.Sku, GuidesInput.ItemCodePlacement ?? GuideItemCodePlacements.Column),
+            GuidesInput.LineGrouping ?? GuideLineGroupings.Sku, GuidesInput.ItemCodePlacement ?? GuideItemCodePlacements.Column,
+            GuidesInput.MaxLines),
         "Ajustes de guías de despacho actualizados.");
 
     /// <summary>Guarda el RUT emisor de la compañía. Exige EDIT sobre "origenes".</summary>
@@ -110,6 +112,7 @@ public sealed class IndexModel : MaestroPageModelBase
         public int? DispatchType { get; set; } = 2;
         public string? LineGrouping { get; set; } = GuideLineGroupings.Sku;
         public string? ItemCodePlacement { get; set; } = GuideItemCodePlacements.Column;
+        public int MaxLines { get; set; } = 60;
     }
 
     public sealed class OrigenInput

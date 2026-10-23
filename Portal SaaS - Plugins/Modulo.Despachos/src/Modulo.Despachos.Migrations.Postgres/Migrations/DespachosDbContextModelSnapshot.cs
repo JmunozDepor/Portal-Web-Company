@@ -256,6 +256,12 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasDefaultValue("sku")
                         .HasColumnName("guide_line_grouping");
 
+                    b.Property<int>("GuideMaxLines")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(60)
+                        .HasColumnName("guide_max_lines");
+
                     b.Property<bool>("GuidesEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("guides_enabled");

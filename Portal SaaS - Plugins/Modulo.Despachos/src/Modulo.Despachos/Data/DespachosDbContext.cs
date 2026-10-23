@@ -279,6 +279,7 @@ public class DespachosDbContext : DbContext
                 .IsRequired().HasDefaultValue(GuideLineGroupings.Sku);
             e.Property(x => x.GuideItemCodePlacement).HasColumnName("guide_item_code_placement").HasMaxLength(10)
                 .IsRequired().HasDefaultValue(GuideItemCodePlacements.Column);
+            e.Property(x => x.GuideMaxLines).HasColumnName("guide_max_lines").HasDefaultValue(60);
             e.HasIndex(x => x.CompanyId).IsUnique().HasDatabaseName("uq_despachos_settings_company_id");
         });
 

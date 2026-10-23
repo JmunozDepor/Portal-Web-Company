@@ -88,6 +88,12 @@
                     }
                 </select>
             </div>
+            <div class="col-auto">
+                <label for="guides-maxlines" class="form-label">Máximo de líneas por guía</label>
+                <input type="number" id="guides-maxlines" name="GuidesInput.MaxLines" class="form-control" min="1" max="60" step="1"
+                       value="@Model.GuidesInput.MaxLines.ToString(System.Globalization.CultureInfo.InvariantCulture)" disabled="@(!Model.CanEdit)"
+                       title="60 es el máximo del SII; bájelo si la plantilla PDF monta el detalle sobre el pie (FACELE: 27)" />
+            </div>
             @if (Model.CanEdit)
             {
                 <button type="submit" class="btn btn-primary">Guardar ajustes de guías</button>

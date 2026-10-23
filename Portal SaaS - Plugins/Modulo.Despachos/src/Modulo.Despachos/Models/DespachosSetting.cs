@@ -23,4 +23,10 @@ public class DespachosSetting : AuditedEntity
 
     /// <summary>Código del artículo en la guía: GuideItemCodePlacements.Column (default) o .Name.</summary>
     public string GuideItemCodePlacement { get; set; } = GuideItemCodePlacements.Column;
+
+    /// <summary>
+    /// Máximo de líneas por guía (1..60). 60 es el máximo del formato SII; menos cuando la plantilla PDF del
+    /// proveedor no alcanza a imprimirlas sin montarlas sobre el pie (FACELE: 27).
+    /// </summary>
+    public int GuideMaxLines { get; set; } = 60;
 }

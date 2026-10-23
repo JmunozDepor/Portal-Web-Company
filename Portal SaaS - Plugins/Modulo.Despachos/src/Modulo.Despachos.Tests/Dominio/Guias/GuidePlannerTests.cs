@@ -136,6 +136,27 @@ public class GuidePlannerTests
         Assert.Equal("Artículo 761952C-805-9", Assert.Single(Assert.Single(b.Guides).Document.Lines).Name);
     }
 
+    private static GuidePlan PlanMax(int maxLines, params (ManifestDocument Doc, SapDocumentLines Lines)[] docs) =>
+        GuidePlanner.Plan(new GuidePlanInput(Manifiesto(), docs, id => id switch { Talca => "Talca", _ => null },
+            TransferIndicator: 1, DispatchType: 2, IssueDate: Hoy, DepartureTime: new TimeOnly(12, 30), MaxLines: maxLines));
+
+    [Fact]
+    public void Plan_MaximoDeLineasDeLaCompania_DivideLaFacturaEnGuiasDe27()
+    {
+        var p = PlanMax(27, (Factura(100, bultos: 5), Muchas(1, 30)));
+
+        Assert.Equal(new[] { 27, 3 }, p.Guides.Select(g => g.Document.Lines.Count));
+        Assert.All(p.Guides, g => Assert.Equal(100, Assert.Single(g.Document.References!).Folio));
+    }
+
+    [Fact]
+    public void Plan_MaximoDeLineasDeLaCompania_DosFacturasQueNoCabenJuntas_VanEnGuiasSeparadas()
+    {
+        var p = PlanMax(27, (Factura(100), Muchas(1, 20)), (Factura(101), Muchas(100, 20)));
+
+        Assert.Equal(new[] { 20, 20 }, p.Guides.Select(g => g.Document.Lines.Count));
+    }
+
     [Fact]
     public void Plan_PorSku_NoJuntaLasTallas()
     {

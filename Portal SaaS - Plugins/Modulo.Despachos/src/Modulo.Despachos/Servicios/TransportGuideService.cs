@@ -240,7 +240,7 @@ public sealed class TransportGuideService : ITransportGuideService
             m, docs, id => id is { } x && communes.TryGetValue(x, out var n) ? n : null,
             settings.TransferIndicator, settings.DispatchType,
             DateOnly.FromDateTime(departure), new TimeOnly(departure.Hour, departure.Minute), settings.GuideLineGrouping,
-            settings.GuideItemCodePlacement));
+            settings.GuideItemCodePlacement, settings.GuideMaxLines));
         errors.AddRange(plan.Errors);
 
         foreach (var g in plan.Guides)

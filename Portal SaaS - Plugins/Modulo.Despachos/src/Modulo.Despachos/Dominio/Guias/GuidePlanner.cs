@@ -15,7 +15,8 @@ public sealed record GuidePlanInput(
     DateOnly IssueDate,
     TimeOnly DepartureTime,
     string LineGrouping = GuideLineGroupings.Sku,
-    string ItemCodePlacement = GuideItemCodePlacements.Column);
+    string ItemCodePlacement = GuideItemCodePlacements.Column,
+    int MaxLines = GuidePlanner.MaxLines);
 
 public sealed record PlannedGuide(int Sequence, IReadOnlyList<Guid> ManifestDocumentIds, DteDocument Document);
 
@@ -26,8 +27,9 @@ public sealed record GuidePlan(IReadOnlyList<PlannedGuide> Guides, IReadOnlyList
 /// - una guía por destino (RUT receptor + dirección normalizada + comuna), en el orden de aparición;
 /// - detalle consolidado por SKU o por modelo (LineGrouping), sin precios (montos 0, la mercadería ya está facturada) [validar con el asesor];
 /// - una referencia por factura amparada;
-/// - división cuando el destino excede 60 líneas o 40 referencias (formato DTE); una factura de más de 60
-///   artículos se reparte en trozos de 60 y cada trozo la referencia;
+/// - división cuando el destino excede el máximo de líneas (60 del formato DTE, o menos si la compañía lo baja
+///   para que la plantilla PDF no se monte sobre el pie) o 40 referencias; una factura con más líneas que el
+///   máximo se reparte en trozos y cada trozo la referencia;
 /// - transporte desde el snapshot del manifiesto.
 /// Errores = bloquean el despacho; advertencias = se emite igual.
 /// </summary>
@@ -78,7 +80,7 @@ public static partial class GuidePlanner
         var missingWeight = 0;
         foreach (var g in groups)
         {
-            foreach (var chunk in Split(g.Docs, input.LineGrouping == GuideLineGroupings.Model))
+            foreach (var chunk in Split(g.Docs, input.LineGrouping == GuideLineGroupings.Model, Math.Clamp(input.MaxLines, 1, MaxLines)))
             {
                 var document = BuildDocument(input, g, chunk, out var noWeight);
                 missingWeight += noWeight;
@@ -106,7 +108,7 @@ public static partial class GuidePlanner
         public List<(ManifestDocument Doc, SapDocumentLines Lines)> Docs { get; } = new();
     }
 
-    private static IEnumerable<List<ChunkPart>> Split(List<(ManifestDocument Doc, SapDocumentLines Lines)> docs, bool byModel)
+    private static IEnumerable<List<ChunkPart>> Split(List<(ManifestDocument Doc, SapDocumentLines Lines)> docs, bool byModel, int maxLines)
     {
         var current = new List<ChunkPart>();
         var currentKeys = new HashSet<string>();
@@ -114,15 +116,15 @@ public static partial class GuidePlanner
         {
             var own = Consolidate(lines.Lines, byModel);
             var newKeys = own.Count(l => !currentKeys.Contains(l.Key));
-            if (current.Count > 0 && (currentKeys.Count + newKeys > MaxLines || current.Count + 1 > MaxReferences))
+            if (current.Count > 0 && (currentKeys.Count + newKeys > maxLines || current.Count + 1 > MaxReferences))
             {
                 yield return current;
                 current = new List<ChunkPart>();
                 currentKeys = new HashSet<string>();
             }
-            if (own.Count > MaxLines)
+            if (own.Count > maxLines)
             {
-                var pieces = own.Chunk(MaxLines).ToList();
+                var pieces = own.Chunk(maxLines).ToList();
                 for (var i = 0; i < pieces.Count; i++)
                     yield return new List<ChunkPart> { new(doc, pieces[i], CountsPackages: i == 0) };
                 continue;

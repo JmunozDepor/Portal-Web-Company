@@ -51,18 +51,24 @@ public class OrigenesEmisorPageTests
     public async Task SaveGuides_ConEdit_Guarda_YRechazaIndicadorInvalido()
     {
         var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View, PortalActions.Edit));
-        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 5, DispatchType = 3, LineGrouping = GuideLineGroupings.Model, ItemCodePlacement = GuideItemCodePlacements.Name };
+        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 5, DispatchType = 3, LineGrouping = GuideLineGroupings.Model, ItemCodePlacement = GuideItemCodePlacements.Name, MaxLines = 27 };
         await page.OnPostSaveGuidesAsync();
         var s = await svc.GetSettingsAsync();
         Assert.True(s!.GuidesEnabled);
         Assert.Equal((5, (int?)3), (s.TransferIndicator, s.DispatchType));
         Assert.Equal(GuideLineGroupings.Model, s.GuideLineGrouping);
         Assert.Equal(GuideItemCodePlacements.Name, s.GuideItemCodePlacement);
+        Assert.Equal(27, s.GuideMaxLines);
 
         page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 12, DispatchType = 2 };
         await page.OnPostSaveGuidesAsync();
         Assert.NotNull(page.ErrorMessage);
         Assert.Equal(5, (await svc.GetSettingsAsync())!.TransferIndicator);
+
+        page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 1, DispatchType = 2, MaxLines = 61 };
+        await page.OnPostSaveGuidesAsync();
+        Assert.Contains("entre 1 y 60", page.ErrorMessage);
+        Assert.Equal(27, (await svc.GetSettingsAsync())!.GuideMaxLines);
 
         page.GuidesInput = new Origenes.IndexModel.GuideSettingsInput { GuidesEnabled = true, TransferIndicator = 1, DispatchType = 2, LineGrouping = "marca" };
         await page.OnPostSaveGuidesAsync();

@@ -5,11 +5,11 @@ using Modulo.Despachos.Servicios;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
-namespace Modulo.Despachos.Pages.Despachos.PreGuias;
+namespace Modulo.Despachos.Pages.Despachos.AgruparTraslados;
 
 /// <summary>
-/// Generar pre-guías: transferencias SAP libres hacia las sucursales, agrupadas por sucursal y marcadas por defecto;
-/// "Generar" crea una pre-guía por sucursal (CREATE).
+/// Generar agrupaciones: transferencias SAP libres hacia las sucursales, agrupadas por sucursal y marcadas por defecto;
+/// "Generar" crea una agrupación por sucursal (CREATE).
 /// </summary>
 public sealed class GenerarModel : DespachosPageModelBase
 {
@@ -22,7 +22,7 @@ public sealed class GenerarModel : DespachosPageModelBase
         _data = data;
     }
 
-    protected override string MenuCode => "pre-guias";
+    protected override string MenuCode => "agrupar-traslados";
 
     public IReadOnlyList<BranchCandidates> Candidates { get; private set; } = Array.Empty<BranchCandidates>();
     public IReadOnlyList<BranchWarehouse> Branches { get; private set; } = Array.Empty<BranchWarehouse>();
@@ -60,7 +60,7 @@ public sealed class GenerarModel : DespachosPageModelBase
             var dispatch = ParseDate(dispatchDate, "Indique la fecha de despacho.");
             var from = ParseDate(fromDate, "Indique la fecha desde la que se buscan las transferencias.");
             var created = await _groups.GenerateAsync(dispatch, from, docEntries ?? Array.Empty<int>());
-            SuccessMessage = created.Count == 1 ? "Se generó 1 pre-guía." : $"Se generaron {created.Count} pre-guías.";
+            SuccessMessage = created.Count == 1 ? "Se generó 1 agrupación." : $"Se generaron {created.Count} agrupaciones.";
             return RedirectToPage("Index", new { DispatchDate = dispatch.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) });
         }
         catch (Exception ex)

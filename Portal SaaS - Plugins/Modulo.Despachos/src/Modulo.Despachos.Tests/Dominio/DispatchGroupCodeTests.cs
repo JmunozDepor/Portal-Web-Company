@@ -2,15 +2,15 @@ using Modulo.Despachos.Dominio;
 
 namespace Modulo.Despachos.Tests.Dominio;
 
-/// <summary>Código visible de la pre-guía (PG-000123), el mismo que lleva el Code128 de la hoja.</summary>
+/// <summary>Código visible de la agrupación (AT-000123), el mismo que lleva el Code128 de la hoja.</summary>
 public class DispatchGroupCodeTests
 {
     [Fact]
-    public void Format_RellenaASeisDigitos() => Assert.Equal("PG-000123", DispatchGroupCode.Format(123));
+    public void Format_RellenaASeisDigitos() => Assert.Equal("AT-000123", DispatchGroupCode.Format(123));
 
     [Theory]
-    [InlineData("PG-000123", 123)]
-    [InlineData(" pg-12 ", 12)]
+    [InlineData("AT-000123", 123)]
+    [InlineData(" at-12 ", 12)]
     public void TryParse_Valido(string raw, int expected)
     {
         Assert.True(DispatchGroupCode.TryParse(raw, out var n));
@@ -18,11 +18,11 @@ public class DispatchGroupCodeTests
     }
 
     [Theory]
-    [InlineData("PG-")]
-    [InlineData("PGX-1")]
+    [InlineData("AT-")]
+    [InlineData("ATX-1")]
     [InlineData("CTBO123")]
     [InlineData("")]
     [InlineData(null)]
-    [InlineData("PG-1234567890")]
+    [InlineData("AT-1234567890")]
     public void TryParse_Invalido(string? raw) => Assert.False(DispatchGroupCode.TryParse(raw, out _));
 }

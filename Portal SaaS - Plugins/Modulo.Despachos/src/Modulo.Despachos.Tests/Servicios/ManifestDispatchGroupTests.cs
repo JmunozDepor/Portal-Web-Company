@@ -4,12 +4,12 @@ using Modulo.Despachos.Servicios;
 
 namespace Modulo.Despachos.Tests.Servicios;
 
-/// <summary>Pre-guías en el manifiesto: escanear la hoja PG, bloqueo del LPN suelto y ciclo de estados.</summary>
+/// <summary>Agrupaciones en el manifiesto: escanear la hoja AT, bloqueo del LPN suelto y ciclo de estados.</summary>
 public class ManifestDispatchGroupTests
 {
     private static readonly DateOnly Desde = DispatchGroupServiceTests.Desde;
 
-    /// <summary>Entorno con una pre-guía PG-000001 de TDA01 (501, 502) y un borrador de manifiesto.</summary>
+    /// <summary>Entorno con una agrupación AT-000001 de TDA01 (501, 502) y un borrador de manifiesto.</summary>
     private static async Task<(ManifestTestEnv Env, DispatchGroup Group, Guid ManifestId)> ArrangeAsync(int[]? entries = null)
     {
         var env = await DispatchGroupServiceTests.EnvAsync();
@@ -29,7 +29,7 @@ public class ManifestDispatchGroupTests
     {
         var (env, g, id) = await ArrangeAsync();
 
-        var r = await Scan(env, id, "PG-000001");
+        var r = await Scan(env, id, "AT-000001");
 
         Assert.Equal(AddDocumentOutcomes.GroupAdded, r.Outcome);
         Assert.Contains("2 transferencias agregadas", r.Warnings[0]);
@@ -46,7 +46,7 @@ public class ManifestDispatchGroupTests
         var i = env.Sap.Transfers.FindIndex(t => t.DocEntry == 502);
         env.Sap.Transfers[i] = env.Sap.Transfers[i] with { IsCanceled = true };
 
-        var r = await Scan(env, id, "pg-1");
+        var r = await Scan(env, id, "at-1");
 
         Assert.Equal(AddDocumentOutcomes.GroupAdded, r.Outcome);
         Assert.Equal(501, Assert.Single((await env.Svc.GetAsync(id))!.Documents).SapDocEntry);
@@ -57,10 +57,10 @@ public class ManifestDispatchGroupTests
     public async Task EscanearHoja_EnOtroManifiesto_Rechaza()
     {
         var (env, _, id) = await ArrangeAsync();
-        await Scan(env, id, "PG-000001");
+        await Scan(env, id, "AT-000001");
         var other = await env.Svc.CreateDraftAsync(env.Header());
 
-        var r = await Scan(env, other, "PG-000001");
+        var r = await Scan(env, other, "AT-000001");
 
         Assert.Equal(AddDocumentOutcomes.InOtherManifest, r.Outcome);
         Assert.Contains("manifiesto N°", r.Warnings[0]);
@@ -71,8 +71,8 @@ public class ManifestDispatchGroupTests
     public async Task EscanearHoja_DosVecesEnElMismo_Duplicado()
     {
         var (env, _, id) = await ArrangeAsync();
-        await Scan(env, id, "PG-000001");
-        Assert.Equal(AddDocumentOutcomes.DuplicateInThis, (await Scan(env, id, "PG-000001")).Outcome);
+        await Scan(env, id, "AT-000001");
+        Assert.Equal(AddDocumentOutcomes.DuplicateInThis, (await Scan(env, id, "AT-000001")).Outcome);
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public class ManifestDispatchGroupTests
         var (env, g, id) = await ArrangeAsync();
         await env.Groups.AnnulAsync(g.Id, "error");
 
-        var r = await Scan(env, id, "PG-000001");
+        var r = await Scan(env, id, "AT-000001");
 
         Assert.Equal(AddDocumentOutcomes.Canceled, r.Outcome);
         Assert.Contains("anulada", r.Warnings[0]);
@@ -91,9 +91,9 @@ public class ManifestDispatchGroupTests
     public async Task EscanearHoja_Inexistente_NotFound()
     {
         var (env, _, id) = await ArrangeAsync();
-        var r = await Scan(env, id, "PG-000099");
+        var r = await Scan(env, id, "AT-000099");
         Assert.Equal(AddDocumentOutcomes.NotFound, r.Outcome);
-        Assert.Contains("PG-000099", r.Warnings[0]);
+        Assert.Contains("AT-000099", r.Warnings[0]);
     }
 
     [Fact]
@@ -103,40 +103,40 @@ public class ManifestDispatchGroupTests
         await env.Groups.GenerateAsync(ManifestTestEnv.Fecha.AddDays(1), Desde, new[] { 501 });
         var id = await env.Svc.CreateDraftAsync(env.Header());
 
-        var r = await Scan(env, id, "PG-000001");
+        var r = await Scan(env, id, "AT-000001");
 
         Assert.Equal(AddDocumentOutcomes.GroupAdded, r.Outcome);
-        Assert.Contains(r.Warnings, w => w.Contains("La pre-guía es para el 11-11-2026"));
+        Assert.Contains(r.Warnings, w => w.Contains("La agrupación es para el 11-11-2026"));
     }
 
     [Fact]
-    public async Task LpnSuelto_DePreGuia_Rechaza()
+    public async Task LpnSuelto_DeAgrupacion_Rechaza()
     {
         var (env, _, id) = await ArrangeAsync();
 
         var r = await Scan(env, id, "CTBO501");
 
         Assert.Equal(AddDocumentOutcomes.InDispatchGroup, r.Outcome);
-        Assert.Contains("PG-000001", r.Warnings[0]);
+        Assert.Contains("AT-000001", r.Warnings[0]);
         Assert.Contains("escanee la hoja", r.Warnings[0]);
     }
 
     [Fact]
-    public async Task AgregarPendientes_OmiteLasDePreGuia()
+    public async Task AgregarPendientes_OmiteLasDeAgrupacion()
     {
         var (env, _, id) = await ArrangeAsync(new[] { 501 });
 
         var r = await env.Svc.AddPendingTransfersAsync(id, "TDA01", Desde);
 
         Assert.Equal(1, r.Added);
-        Assert.Contains(r.Skipped, s => s.Contains("PG-000001"));
+        Assert.Contains(r.Skipped, s => s.Contains("AT-000001"));
     }
 
     [Fact]
     public async Task QuitarUltimaTransferencia_VuelveAArmada()
     {
         var (env, g, id) = await ArrangeAsync(new[] { 501 });
-        await Scan(env, id, "PG-000001");
+        await Scan(env, id, "AT-000001");
         var doc = Assert.Single((await env.Svc.GetAsync(id))!.Documents);
 
         await env.Svc.RemoveDocumentAsync(id, doc.Id);
@@ -148,7 +148,7 @@ public class ManifestDispatchGroupTests
     public async Task QuitarUnaDeDos_SigueEnManifiesto()
     {
         var (env, g, id) = await ArrangeAsync();
-        await Scan(env, id, "PG-000001");
+        await Scan(env, id, "AT-000001");
         var doc = (await env.Svc.GetAsync(id))!.Documents.First();
 
         await env.Svc.RemoveDocumentAsync(id, doc.Id);
@@ -157,10 +157,10 @@ public class ManifestDispatchGroupTests
     }
 
     [Fact]
-    public async Task QuitarPreGuia_SacaTodas_VuelveAArmada()
+    public async Task QuitarAgrupacion_SacaTodas_VuelveAArmada()
     {
         var (env, g, id) = await ArrangeAsync();
-        await Scan(env, id, "PG-000001");
+        await Scan(env, id, "AT-000001");
 
         await env.Svc.RemoveDispatchGroupAsync(id, g.Id);
 
@@ -172,18 +172,18 @@ public class ManifestDispatchGroupTests
     public async Task AnularManifiesto_VuelveAArmada()
     {
         var (env, g, id) = await ArrangeAsync();
-        await Scan(env, id, "PG-000001");
+        await Scan(env, id, "AT-000001");
 
         await env.Svc.AnnulAsync(id, "se suspende");
 
         Assert.Equal(DispatchGroupStatuses.Armed, await GroupStatus(env, g.Id));
     }
 
-    /// <summary>Despacha la pre-guía PG-000001 (501, 502) y registra el retorno con 501 no entregada.</summary>
+    /// <summary>Despacha la agrupación AT-000001 (501, 502) y registra el retorno con 501 no entregada.</summary>
     private static async Task<ManifestTestEnv> DespachadaConNoEntregadaAsync()
     {
         var (env, _, id) = await ArrangeAsync();
-        await Scan(env, id, "PG-000001");
+        await Scan(env, id, "AT-000001");
         Assert.True((await env.Svc.DispatchAsync(id)).Success);
         var reason = await env.Master.SaveRejectionReasonAsync(new RejectionReason
             { Code = "ND", Name = "Tienda cerrada", AppliesTo = RejectionAppliesTo.NotDelivered, IsActive = true });
@@ -195,7 +195,7 @@ public class ManifestDispatchGroupTests
     }
 
     [Fact]
-    public async Task NoEntregadaDePreGuiaDespachada_SePuedeVolverADespacharSuelta()
+    public async Task NoEntregadaDeAgrupacionDespachada_SePuedeVolverADespacharSuelta()
     {
         var env = await DespachadaConNoEntregadaAsync();
         var next = await env.Svc.CreateDraftAsync(env.Header());
@@ -206,7 +206,7 @@ public class ManifestDispatchGroupTests
     }
 
     [Fact]
-    public async Task NoEntregadaDePreGuiaDespachada_VuelveACandidatos()
+    public async Task NoEntregadaDeAgrupacionDespachada_VuelveACandidatos()
     {
         var env = await DespachadaConNoEntregadaAsync();
 
@@ -223,7 +223,7 @@ public class ManifestDispatchGroupTests
         env.Sap.Lines[501] = new SapDocumentLines(null, "Rancagua", new[] { new SapDocumentLine(0, "A", "Zapatilla", 8, "UN", 1m) });
         env.Sap.Lines[502] = new SapDocumentLines(null, "Rancagua", new[] { new SapDocumentLine(0, "B", "Polera", 9, "UN", 1m) });
         await env.Svc.UpdateDraftHeaderAsync(id, env.Header(arrival: ManifestTestEnv.Fecha));
-        await Scan(env, id, "PG-000001");
+        await Scan(env, id, "AT-000001");
         env.Dte.Down = true;
 
         await env.Svc.DispatchAsync(id);
@@ -240,7 +240,7 @@ public class ManifestDispatchGroupTests
     public async Task Despachar_PasaADespachada()
     {
         var (env, g, id) = await ArrangeAsync();
-        await Scan(env, id, "PG-000001");
+        await Scan(env, id, "AT-000001");
 
         var r = await env.Svc.DispatchAsync(id);
 

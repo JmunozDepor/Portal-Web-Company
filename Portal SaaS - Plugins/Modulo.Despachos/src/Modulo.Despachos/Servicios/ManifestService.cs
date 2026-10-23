@@ -157,7 +157,7 @@ public class ManifestService : IManifestService
         {
             if (!TedParser.TryParse(capture.RawScan, out var parsed))
             {
-                // Hoja de pre-guía (PG-000123): entran todas sus transferencias.
+                // Hoja de agrupación (AT-000123): entran todas sus transferencias.
                 if (DispatchGroupCode.TryParse(capture.RawScan, out var groupNumber))
                     return await AddDispatchGroupAsync(m, groupNumber);
                 // No es un timbre: puede ser el LPN de una transferencia a sucursal (Fase B).
@@ -307,7 +307,7 @@ public class ManifestService : IManifestService
                 new[] { $"La transferencia {t.DocNum} ya está en el manifiesto N° {other}." });
         if (dispatchGroupId is null && await ActiveGroupNumberOfAsync(t.DocEntry) is { } groupNumber)
             return Result(AddDocumentOutcomes.InDispatchGroup,
-                $"El LPN {t.Lpn ?? t.DocNum.ToString()} pertenece a la pre-guía {DispatchGroupCode.Format(groupNumber)}; escanee la hoja.");
+                $"El LPN {t.Lpn ?? t.DocNum.ToString()} pertenece a la agrupación {DispatchGroupCode.Format(groupNumber)}; escanee la hoja.");
 
         var warnings = new List<string>();
         var communeName = branch.CommuneName ?? t.DestinationCommune;
@@ -337,10 +337,10 @@ public class ManifestService : IManifestService
 
     private static AddDocumentResult Result(string outcome, string message) => new(outcome, null, null, new[] { message });
 
-    // ---------------------------------------------------------------- Pre-guías
+    // ---------------------------------------------------------------- Agrupaciones
 
     /// <summary>
-    /// Hoja de pre-guía: revalida sus transferencias contra SAP con una sola consulta (pendientes de su sucursal) y
+    /// Hoja de agrupación: revalida sus transferencias contra SAP con una sola consulta (pendientes de su sucursal) y
     /// agrega las vigentes con las reglas de siempre; las demás se informan y el resto entra igual.
     /// </summary>
     private async Task<AddDocumentResult> AddDispatchGroupAsync(Manifest m, int number)
@@ -348,17 +348,17 @@ public class ManifestService : IManifestService
         var code = DispatchGroupCode.Format(number);
         var g = await _db.DispatchGroups.Include(x => x.Transfers)
             .FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Number == number);
-        if (g is null) return Result(AddDocumentOutcomes.NotFound, $"No existe la pre-guía {code}.");
-        if (g.Status == DispatchGroupStatuses.Annulled) return Result(AddDocumentOutcomes.Canceled, $"La pre-guía {code} está anulada.");
+        if (g is null) return Result(AddDocumentOutcomes.NotFound, $"No existe la agrupación {code}.");
+        if (g.Status == DispatchGroupStatuses.Annulled) return Result(AddDocumentOutcomes.Canceled, $"La agrupación {code} está anulada.");
         var holder = await ManifestOfGroupAsync(g.Id);
         if (holder is { } h && h.Id != m.Id)
             return new AddDocumentResult(AddDocumentOutcomes.InOtherManifest, null, h.Number, new[]
             {
                 g.Status == DispatchGroupStatuses.Dispatched
-                    ? $"La pre-guía {code} ya fue despachada en el manifiesto N° {h.Number}."
-                    : $"La pre-guía {code} ya está en el manifiesto N° {h.Number}.",
+                    ? $"La agrupación {code} ya fue despachada en el manifiesto N° {h.Number}."
+                    : $"La agrupación {code} ya está en el manifiesto N° {h.Number}.",
             });
-        if (g.Transfers.Count == 0) return Result(AddDocumentOutcomes.NotFound, $"La pre-guía {code} no tiene transferencias.");
+        if (g.Transfers.Count == 0) return Result(AddDocumentOutcomes.NotFound, $"La agrupación {code} no tiene transferencias.");
 
         var current = (await _sap.ListPendingTransfersAsync(g.WarehouseCode, g.Transfers.Min(t => t.DocumentDate)))
             .GroupBy(t => t.DocEntry).ToDictionary(x => x.Key, x => x.First());
@@ -378,12 +378,12 @@ public class ManifestService : IManifestService
 
         if (added == 0)
             return holder is not null && notes.Count == 0
-                ? Result(AddDocumentOutcomes.DuplicateInThis, $"La pre-guía {code} ya está en este manifiesto.")
+                ? Result(AddDocumentOutcomes.DuplicateInThis, $"La agrupación {code} ya está en este manifiesto.")
                 : new AddDocumentResult(AddDocumentOutcomes.NotFound, null, null,
                     new[] { $"{code}: no se agregó ninguna transferencia." }.Concat(notes).ToList());
 
         if (g.DispatchDate != m.DispatchDate)
-            notes.Add($"La pre-guía es para el {g.DispatchDate:dd-MM-yyyy} y el manifiesto sale el {m.DispatchDate:dd-MM-yyyy}.");
+            notes.Add($"La agrupación es para el {g.DispatchDate:dd-MM-yyyy} y el manifiesto sale el {m.DispatchDate:dd-MM-yyyy}.");
         await SyncDispatchGroupsAsync(new[] { g.Id });
         return new AddDocumentResult(AddDocumentOutcomes.GroupAdded, null, null,
             new[] { $"{code}: {added} transferencias agregadas." }.Concat(notes).ToList());
@@ -394,7 +394,7 @@ public class ManifestService : IManifestService
         var m = await LoadAsync(manifestId);
         RequireStatus(m, ManifestStatuses.Draft, "Solo se pueden quitar documentos de un manifiesto en borrador.");
         var docs = m.Documents.Where(d => d.DispatchGroupId == dispatchGroupId).ToList();
-        if (docs.Count == 0) throw new InvalidOperationException("La pre-guía no está en este manifiesto.");
+        if (docs.Count == 0) throw new InvalidOperationException("La agrupación no está en este manifiesto.");
         foreach (var doc in docs)
         {
             _db.ManifestDocuments.Remove(doc);
@@ -405,7 +405,7 @@ public class ManifestService : IManifestService
         await SyncDispatchGroupsAsync(new[] { dispatchGroupId });
     }
 
-    /// <summary>Número de la pre-guía (armada o en manifiesto) que retiene la transferencia, o null.</summary>
+    /// <summary>Número de la agrupación (armada o en manifiesto) que retiene la transferencia, o null.</summary>
     private async Task<int?> ActiveGroupNumberOfAsync(int docEntry)
     {
         var holding = DispatchGroupStatuses.Holding.ToArray();
@@ -417,7 +417,7 @@ public class ManifestService : IManifestService
                       select (int?)g.Number).FirstOrDefaultAsync();
     }
 
-    /// <summary>Manifiesto no anulado que tiene documentos de la pre-guía, o null.</summary>
+    /// <summary>Manifiesto no anulado que tiene documentos de la agrupación, o null.</summary>
     private async Task<(Guid Id, int Number)?> ManifestOfGroupAsync(long groupId)
     {
         var row = await (from d in _db.ManifestDocuments
@@ -429,7 +429,7 @@ public class ManifestService : IManifestService
     }
 
     /// <summary>
-    /// Estado de cada pre-guía no anulada según sus documentos (ya guardados) en manifiestos no anulados: despachada si
+    /// Estado de cada agrupación no anulada según sus documentos (ya guardados) en manifiestos no anulados: despachada si
     /// alguno salió, en manifiesto si hay alguno, armada si no queda ninguno.
     /// </summary>
     /// <remarks>
@@ -444,7 +444,7 @@ public class ManifestService : IManifestService
         }
         catch (Exception ex) when (ex is DbUpdateException or InvalidOperationException)
         {
-            _logger?.LogWarning(ex, "No se pudo actualizar el estado de las pre-guías.");
+            _logger?.LogWarning(ex, "No se pudo actualizar el estado de las agrupaciones.");
         }
     }
 
@@ -888,7 +888,7 @@ public class ManifestService : IManifestService
         // Los documentos se conservan como historial; quedan libres porque el manifiesto está anulado.
         AddEvent(m.Id, ManifestEventTypes.Annulled, null, from, ManifestStatuses.Annulled, new { reason = reason.Trim() });
         await _db.SaveChangesAsync();
-        // Sus pre-guías vuelven a "armada" (o siguen despachadas si otro manifiesto vigente las lleva).
+        // Sus agrupaciones vuelven a "armada" (o siguen despachadas si otro manifiesto vigente las lleva).
         await SyncDispatchGroupsAsync(GroupIdsOf(m));
     }
 

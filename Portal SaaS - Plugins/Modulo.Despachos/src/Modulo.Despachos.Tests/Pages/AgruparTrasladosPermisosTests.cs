@@ -9,14 +9,14 @@ using Modulo.Despachos.Tests.Servicios;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 using Manifiestos = Modulo.Despachos.Pages.Despachos.Manifiestos;
-using PreGuias = Modulo.Despachos.Pages.Despachos.PreGuias;
+using AgruparTraslados = Modulo.Despachos.Pages.Despachos.AgruparTraslados;
 
 namespace Modulo.Despachos.Tests.Pages;
 
-/// <summary>Gates de permisos de las pantallas de pre-guías y la hoja escaneada en el manifiesto.</summary>
-public class PreGuiasPermisosTests
+/// <summary>Gates de permisos de las pantallas de agrupaciones y la hoja escaneada en el manifiesto.</summary>
+public class AgruparTrasladosPermisosTests
 {
-    private const string Menu = "Despachos.pre-guias";
+    private const string Menu = "Despachos.agrupar-traslados";
 
     private sealed class NullTempDataProvider : ITempDataProvider
     {
@@ -35,17 +35,17 @@ public class PreGuiasPermisosTests
     private static DispatchGroupPdfService Pdf(ManifestTestEnv env) => new(env.Groups, env.Company);
 
     [Fact]
-    public void Menu_PreGuias_ConIconoYRuta()
+    public void Menu_AgruparTraslados_ConIconoYRuta()
     {
-        var item = new ModuloDespachos().GetMenu().Single(i => i.Code == "pre-guias");
-        Assert.Equal(("grupo-operacion", "bi-box-seam", "/despachos/pre-guias"), (item.ParentCode, item.Icon, item.PageRoute));
+        var item = new ModuloDespachos().GetMenu().Single(i => i.Code == "agrupar-traslados");
+        Assert.Equal(("grupo-operacion", "bi-box-seam", "/despachos/agrupar-traslados"), (item.ParentCode, item.Icon, item.PageRoute));
     }
 
     [Fact]
     public async Task Index_SinView_Forbid()
     {
         var env = await DispatchGroupServiceTests.EnvAsync();
-        var page = new PreGuias.IndexModel(env.Groups, Pdf(env), env.Master, env.User) { TempData = Temp() };
+        var page = new AgruparTraslados.IndexModel(env.Groups, Pdf(env), env.Master, env.User) { TempData = Temp() };
         Assert.IsType<ForbidResult>(await page.OnGetAsync());
 
         env.User.Grant(Menu, PortalActions.View);
@@ -57,7 +57,7 @@ public class PreGuiasPermisosTests
     {
         var env = await DispatchGroupServiceTests.EnvAsync();
         env.User.Grant(Menu, PortalActions.View);
-        var page = new PreGuias.GenerarModel(env.Groups, env.Master, env.User) { TempData = Temp() };
+        var page = new AgruparTraslados.GenerarModel(env.Groups, env.Master, env.User) { TempData = Temp() };
         Assert.IsType<ForbidResult>(await page.OnGetAsync());
         Assert.IsType<ForbidResult>(await page.OnPostGenerarAsync("2026-11-10", "2026-11-01", new[] { 501 }));
     }
@@ -67,14 +67,14 @@ public class PreGuiasPermisosTests
     {
         var env = await DispatchGroupServiceTests.EnvAsync();
         env.User.Grant(Menu, PortalActions.View, PortalActions.Create);
-        var page = new PreGuias.GenerarModel(env.Groups, env.Master, env.User) { TempData = Temp() };
+        var page = new AgruparTraslados.GenerarModel(env.Groups, env.Master, env.User) { TempData = Temp() };
 
         Assert.IsType<PageResult>(await page.OnGetAsync());
         Assert.Equal(2, page.Candidates.Count);
         Assert.IsType<RedirectToPageResult>(await page.OnPostGenerarAsync("2026-11-10", "2026-11-01", new[] { 501, 502 }));
 
         Assert.Equal(1, await env.Db.DispatchGroups.CountAsync());
-        Assert.Contains("1 pre-guía", page.SuccessMessage);
+        Assert.Contains("1 agrupación", page.SuccessMessage);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class PreGuiasPermisosTests
         var env = await DispatchGroupServiceTests.EnvAsync();
         var g = Assert.Single(await env.Groups.GenerateAsync(ManifestTestEnv.Fecha, DispatchGroupServiceTests.Desde, new[] { 501 }));
         env.User.Grant(Menu, PortalActions.View);
-        var page = new PreGuias.DetalleModel(env.Groups, Pdf(env), env.User) { TempData = Temp() };
+        var page = new AgruparTraslados.DetalleModel(env.Groups, Pdf(env), env.User) { TempData = Temp() };
 
         Assert.IsType<PageResult>(await page.OnGetAsync(g.Id));
         Assert.IsType<ForbidResult>(await page.OnPostAgregarLpnAsync(g.Id, "CTBO502"));
@@ -99,7 +99,7 @@ public class PreGuiasPermisosTests
         var env = await DispatchGroupServiceTests.EnvAsync();
         var g = Assert.Single(await env.Groups.GenerateAsync(ManifestTestEnv.Fecha, DispatchGroupServiceTests.Desde, new[] { 501 }));
         env.User.Grant(Menu, PortalActions.View, PortalActions.Edit);
-        var page = new PreGuias.DetalleModel(env.Groups, Pdf(env), env.User) { TempData = Temp() };
+        var page = new AgruparTraslados.DetalleModel(env.Groups, Pdf(env), env.User) { TempData = Temp() };
 
         Assert.IsType<ForbidResult>(await page.OnPostAnularAsync(g.Id, "error"));
 
@@ -112,7 +112,7 @@ public class PreGuiasPermisosTests
     {
         var env = await DispatchGroupServiceTests.EnvAsync();
         var g = Assert.Single(await env.Groups.GenerateAsync(ManifestTestEnv.Fecha, DispatchGroupServiceTests.Desde, new[] { 501 }));
-        var page = new PreGuias.DetalleModel(env.Groups, Pdf(env), env.User) { TempData = Temp() };
+        var page = new AgruparTraslados.DetalleModel(env.Groups, Pdf(env), env.User) { TempData = Temp() };
         Assert.IsType<ForbidResult>(await page.OnGetPdfAsync(g.Id));
 
         env.User.Grant(Menu, PortalActions.View);
@@ -129,7 +129,7 @@ public class PreGuiasPermisosTests
         var page = new Manifiestos.DetalleModel(env.Svc, pdf, env.Master, env.User, new FakeContactLookup(), env.Cost, env.Guides) { TempData = Temp() };
         var id = await env.Svc.CreateDraftAsync(env.Header());
 
-        var json = Assert.IsType<JsonResult>(await page.OnPostAgregarDocumentoAsync(id, new Manifiestos.DetalleModel.ScanInput { RawScan = "PG-000001" }));
+        var json = Assert.IsType<JsonResult>(await page.OnPostAgregarDocumentoAsync(id, new Manifiestos.DetalleModel.ScanInput { RawScan = "AT-000001" }));
 
         object? Prop(string name) => json.Value!.GetType().GetProperty(name)!.GetValue(json.Value);
         Assert.Equal(true, Prop("reload"));

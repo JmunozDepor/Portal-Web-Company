@@ -31,7 +31,7 @@ public static class SapQueryKinds
     // Fase B: transferencias de stock a bodegas sucursal.
     public const string TransferByLpn = "transfer_by_lpn";
     public const string TransferPending = "transfer_pending";
-    /// <summary>Pendientes a todas las bodegas (pre-guías); el portal filtra por bodegas sucursal.</summary>
+    /// <summary>Pendientes a todas las bodegas (agrupaciones); el portal filtra por bodegas sucursal.</summary>
     public const string TransferPendingAll = "transfer_pending_all";
     public const string TransferLines = "transfer_lines";
     public const string Warehouses = "warehouses";

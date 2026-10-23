@@ -8,10 +8,10 @@ using PortalSaas.Abstractions.Contratos;
 
 namespace Modulo.Despachos.Servicios;
 
-/// <summary>Hoja de pre-guías (una página por pre-guía) que despacho escanea en el manifiesto. Solo cantidades.</summary>
+/// <summary>Hoja de agrupaciones (una página por agrupación) que despacho escanea en el manifiesto. Solo cantidades.</summary>
 public interface IDispatchGroupPdfService
 {
-    /// <summary>PDF con una página por pre-guía, en el orden recibido. Lanza si ninguna existe.</summary>
+    /// <summary>PDF con una página por agrupación, en el orden recibido. Lanza si ninguna existe.</summary>
     Task<byte[]> RenderAsync(IReadOnlyList<long> groupIds);
 }
 
@@ -33,7 +33,7 @@ public class DispatchGroupPdfService : IDispatchGroupPdfService
         var groups = new List<DispatchGroup>();
         foreach (var id in groupIds.Distinct())
             if (await _groups.GetAsync(id) is { } g) groups.Add(g);
-        if (groups.Count == 0) throw new InvalidOperationException("No hay pre-guías para imprimir.");
+        if (groups.Count == 0) throw new InvalidOperationException("No hay agrupaciones para imprimir.");
         return Build(groups, CompanyName());
     }
 
@@ -48,7 +48,7 @@ public class DispatchGroupPdfService : IDispatchGroupPdfService
     {
         var ci = CultureInfo.GetCultureInfo("es-CL");
         var doc = new Document();
-        doc.Info.Title = groups.Count == 1 ? DispatchGroupCode.Format(groups[0].Number) : "Pre-guías";
+        doc.Info.Title = groups.Count == 1 ? DispatchGroupCode.Format(groups[0].Number) : "Agrupaciones";
         var normal = doc.Styles[StyleNames.Normal]!;
         normal.Font.Name = "Arial";
         normal.Font.Size = 10;
@@ -66,7 +66,7 @@ public class DispatchGroupPdfService : IDispatchGroupPdfService
             top.AddColumn(Unit.FromCentimeter(9.5));
             top.AddColumn(Unit.FromCentimeter(8.5));
             var row = top.AddRow();
-            var title = row.Cells[0].AddParagraph($"PRE-GUÍA {code}");
+            var title = row.Cells[0].AddParagraph($"AGRUPACIÓN {code}");
             title.Format.Font.Size = 16;
             title.Format.Font.Bold = true;
             var company = row.Cells[0].AddParagraph(companyName);

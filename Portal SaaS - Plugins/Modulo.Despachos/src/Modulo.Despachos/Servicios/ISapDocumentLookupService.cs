@@ -76,7 +76,7 @@ public interface ISapDocumentLookupService
     /// <summary>Transferencias no anuladas a la bodega desde la fecha (:warehouse, :from_date).</summary>
     Task<IReadOnlyList<SapTransferInfo>> ListPendingTransfersAsync(string warehouseCode, DateOnly fromDate, CancellationToken ct = default);
 
-    /// <summary>Transferencias no anuladas a cualquier bodega desde la fecha (:from_date), para las pre-guías.</summary>
+    /// <summary>Transferencias no anuladas a cualquier bodega desde la fecha (:from_date), para las agrupaciones.</summary>
     Task<IReadOnlyList<SapTransferInfo>> ListPendingTransfersAllAsync(DateOnly fromDate, CancellationToken ct = default);
 
     /// <summary>Bodegas de SAP (sin parámetros).</summary>

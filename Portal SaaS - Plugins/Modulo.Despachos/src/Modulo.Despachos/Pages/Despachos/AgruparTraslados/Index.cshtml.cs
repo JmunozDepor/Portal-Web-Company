@@ -6,9 +6,9 @@ using Modulo.Despachos.Servicios;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
-namespace Modulo.Despachos.Pages.Despachos.PreGuias;
+namespace Modulo.Despachos.Pages.Despachos.AgruparTraslados;
 
-/// <summary>Listado de pre-guías por fecha de despacho, sucursal y estado. Menú "pre-guias" (permisos: Despachos.pre-guias).</summary>
+/// <summary>Listado de agrupaciones por fecha de despacho, sucursal y estado. Menú "agrupar-traslados" (permisos: Despachos.agrupar-traslados).</summary>
 public sealed class IndexModel : DespachosPageModelBase
 {
     private readonly IDispatchGroupService _groups;
@@ -23,7 +23,7 @@ public sealed class IndexModel : DespachosPageModelBase
         _data = data;
     }
 
-    protected override string MenuCode => "pre-guias";
+    protected override string MenuCode => "agrupar-traslados";
 
     public bool CanCreate { get; private set; }
     public IReadOnlyList<DispatchGroupListItem> Items { get; private set; } = Array.Empty<DispatchGroupListItem>();
@@ -50,7 +50,7 @@ public sealed class IndexModel : DespachosPageModelBase
         return Page();
     }
 
-    /// <summary>Hojas de todas las pre-guías no anuladas del filtro, en un solo PDF.</summary>
+    /// <summary>Hojas de todas las agrupaciones no anuladas del filtro, en un solo PDF.</summary>
     public async Task<IActionResult> OnGetPdfAsync()
     {
         if (!await HasActionAsync(PortalActions.View)) return Forbid();
@@ -60,7 +60,7 @@ public sealed class IndexModel : DespachosPageModelBase
                 .Where(x => x.Status != DispatchGroupStatuses.Annulled)
                 .OrderBy(x => x.WarehouseCode).ThenBy(x => x.Sequence)
                 .Select(x => x.Id).ToList();
-            return new InlinePdfResult(await _pdf.RenderAsync(ids), "pre-guias.pdf");
+            return new InlinePdfResult(await _pdf.RenderAsync(ids), "agrupar-traslados.pdf");
         }
         catch (Exception ex)
         {

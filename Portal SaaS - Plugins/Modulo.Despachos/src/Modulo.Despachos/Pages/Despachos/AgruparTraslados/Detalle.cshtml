@@ -1,5 +1,5 @@
-@page "/despachos/pre-guias/{id:long}"
-@model Modulo.Despachos.Pages.Despachos.PreGuias.DetalleModel
+@page "/despachos/agrupar-traslados/{id:long}"
+@model Modulo.Despachos.Pages.Despachos.AgruparTraslados.DetalleModel
 @section Styles {
     <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
 }
@@ -10,14 +10,14 @@
     var es = new CultureInfo("es-CL");
     var canEdit = Model.CanEdit && Model.IsArmed;
 }
-@* Detalle de la pre-guía: mientras está armada se pueden agregar LPN escaneando, quitar transferencias o anularla. *@
+@* Detalle de la agrupación: mientras está armada se pueden agregar LPN escaneando, quitar transferencias o anularla. *@
 
 <div class="card-surface">
     <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
-        <h2 class="mb-0">Pre-guía @Model.Code <span class="dsp-badge @DespachosUi.DispatchGroupBadgeClass(g.Status)">@DispatchGroupStatuses.Label(g.Status)</span></h2>
+        <h2 class="mb-0">Agrupación @Model.Code <span class="dsp-badge @DespachosUi.DispatchGroupBadgeClass(g.Status)">@DispatchGroupStatuses.Label(g.Status)</span></h2>
         <div class="d-flex gap-2 flex-wrap">
-            <a class="btn btn-secondary" href="~/despachos/pre-guias?DispatchDate=@g.DispatchDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">Volver</a>
-            <a class="btn btn-primary" target="_blank" rel="noopener" href="~/despachos/pre-guias/@g.Id?handler=Pdf"><i class="bi bi-printer"></i> Imprimir hoja</a>
+            <a class="btn btn-secondary" href="~/despachos/agrupar-traslados?DispatchDate=@g.DispatchDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">Volver</a>
+            <a class="btn btn-primary" target="_blank" rel="noopener" href="~/despachos/agrupar-traslados/@g.Id?handler=Pdf"><i class="bi bi-printer"></i> Imprimir hoja</a>
         </div>
     </div>
 
@@ -77,7 +77,7 @@
                 }
                 @if (g.Transfers.Count == 0)
                 {
-                    <tr><td colspan="5" class="text-muted">La pre-guía no tiene transferencias.</td></tr>
+                    <tr><td colspan="5" class="text-muted">La agrupación no tiene transferencias.</td></tr>
                 }
             </tbody>
         </table>
@@ -86,12 +86,12 @@
     @if (Model.CanDelete && Model.IsArmed)
     {
         <form method="post" asp-page-handler="Anular" asp-route-id="@g.Id" asp-antiforgery="true" class="d-flex gap-2 align-items-end flex-wrap mt-3"
-              data-confirm="@($"¿Anular la pre-guía {Model.Code}? Sus transferencias quedarán libres.")">
+              data-confirm="@($"¿Anular la agrupación {Model.Code}? Sus transferencias quedarán libres.")">
             <div>
                 <label class="form-label" for="reason">Motivo de anulación</label>
                 <input type="text" id="reason" name="reason" class="form-control" required maxlength="200" />
             </div>
-            <button type="submit" class="btn btn-danger">Anular pre-guía</button>
+            <button type="submit" class="btn btn-danger">Anular agrupación</button>
         </form>
     }
 </div>

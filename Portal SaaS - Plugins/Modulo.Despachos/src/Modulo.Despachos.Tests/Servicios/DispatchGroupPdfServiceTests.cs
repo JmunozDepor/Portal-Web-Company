@@ -4,7 +4,7 @@ using PdfSharp.Pdf.IO;
 
 namespace Modulo.Despachos.Tests.Servicios;
 
-/// <summary>Hoja de pre-guía: una página por pre-guía, con Code128, LPN y unidades; nunca montos.</summary>
+/// <summary>Hoja de agrupación: una página por agrupación, con Code128, LPN y unidades; nunca montos.</summary>
 public class DispatchGroupPdfServiceTests
 {
     private static async Task<(ManifestTestEnv Env, DispatchGroupPdfService Pdf, List<long> Ids)> ArrangeAsync()
@@ -15,7 +15,7 @@ public class DispatchGroupPdfServiceTests
     }
 
     [Fact]
-    public async Task Render_PdfValido_UnaPaginaPorPreGuia()
+    public async Task Render_PdfValido_UnaPaginaPorAgrupacion()
     {
         var (_, pdf, ids) = await ArrangeAsync();
 
@@ -26,8 +26,8 @@ public class DispatchGroupPdfServiceTests
         Assert.Equal(2, PdfReader.Open(ms, PdfDocumentOpenMode.Import).PageCount);
         // MigraDoc corta las palabras en el guion: se compara sin espacios.
         var text = string.Concat(ManifestPdfServiceTests.ExtractText(bytes).Where(c => !char.IsWhiteSpace(c)));
-        Assert.Contains("PG-000001", text);
-        Assert.Contains("PG-000002", text);
+        Assert.Contains("AT-000001", text);
+        Assert.Contains("AT-000002", text);
         Assert.Contains("CTBO501", text);
         Assert.Contains("10502", text);
     }
@@ -52,6 +52,6 @@ public class DispatchGroupPdfServiceTests
     {
         var (_, pdf, _) = await ArrangeAsync();
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => pdf.RenderAsync(Array.Empty<long>()));
-        Assert.Contains("No hay pre-guías para imprimir", ex.Message);
+        Assert.Contains("No hay agrupaciones para imprimir", ex.Message);
     }
 }

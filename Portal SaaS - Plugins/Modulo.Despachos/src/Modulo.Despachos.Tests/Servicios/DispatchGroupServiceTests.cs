@@ -4,7 +4,7 @@ using Modulo.Despachos.Servicios;
 
 namespace Modulo.Despachos.Tests.Servicios;
 
-/// <summary>Pre-guías: candidatos por sucursal, generar (corte por horario), editar y anular.</summary>
+/// <summary>Agrupaciones: candidatos por sucursal, generar (corte por horario), editar y anular.</summary>
 public class DispatchGroupServiceTests
 {
     internal static readonly DateOnly Desde = new(2026, 11, 1);
@@ -60,7 +60,7 @@ public class DispatchGroupServiceTests
     }
 
     [Fact]
-    public async Task Generar_UnaPreGuiaPorSucursal_ConFotoDeDatos()
+    public async Task Generar_UnaAgrupacionPorSucursal_ConFotoDeDatos()
     {
         var env = await EnvAsync();
 
@@ -117,8 +117,8 @@ public class DispatchGroupServiceTests
         await env.Groups.GenerateAsync(ManifestTestEnv.Fecha, Desde, new[] { 501, 503 });
 
         var n = Assert.Single(env.Notifications.Enqueued);
-        Assert.Contains("2 pre-guías listas para el 10-11 (2 sucursales)", n.Message);
-        Assert.Equal("/despachos/pre-guias?dispatchDate=2026-11-10", n.Url);
+        Assert.Contains("2 agrupaciones listas para el 10-11 (2 sucursales)", n.Message);
+        Assert.Equal("/despachos/agrupar-traslados?dispatchDate=2026-11-10", n.Url);
     }
 
     [Fact]
@@ -127,17 +127,17 @@ public class DispatchGroupServiceTests
         var env = await EnvAsync();
         var g = Assert.Single(await env.Groups.GenerateAsync(ManifestTestEnv.Fecha, Desde, new[] { 501 }));
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => env.Groups.AddLpnAsync(g.Id, "CTBO503"));
-        Assert.Contains("no a la sucursal de esta pre-guía", ex.Message);
+        Assert.Contains("no a la sucursal de esta agrupación", ex.Message);
     }
 
     [Fact]
-    public async Task AgregarLpn_EnOtraPreGuia_Rechaza()
+    public async Task AgregarLpn_EnOtraAgrupacion_Rechaza()
     {
         var env = await EnvAsync();
         await env.Groups.GenerateAsync(ManifestTestEnv.Fecha, Desde, new[] { 501 });
         var g2 = Assert.Single(await env.Groups.GenerateAsync(ManifestTestEnv.Fecha, Desde, new[] { 502 }));
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => env.Groups.AddLpnAsync(g2.Id, "CTBO501"));
-        Assert.Contains("PG-000001", ex.Message);
+        Assert.Contains("AT-000001", ex.Message);
     }
 
     [Fact]
@@ -202,6 +202,6 @@ public class DispatchGroupServiceTests
         var list = await env.Groups.ListAsync(new DispatchGroupFilter(ManifestTestEnv.Fecha));
 
         var only = Assert.Single(list);
-        Assert.Equal(("PG-000001", "TDA01", 2, 17m), (only.Code, only.WarehouseCode, only.Transfers, only.Units));
+        Assert.Equal(("AT-000001", "TDA01", 2, 17m), (only.Code, only.WarehouseCode, only.Transfers, only.Units));
     }
 }

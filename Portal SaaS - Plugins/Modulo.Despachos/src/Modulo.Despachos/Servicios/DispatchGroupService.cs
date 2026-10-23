@@ -66,7 +66,7 @@ public class DispatchGroupService : IDispatchGroupService
             .Where(c => c.Transfers.Count > 0)
             .ToList();
         if (candidates.Count == 0)
-            throw new InvalidOperationException("No hay transferencias libres para generar pre-guías con la selección indicada.");
+            throw new InvalidOperationException("No hay transferencias libres para generar agrupaciones con la selección indicada.");
 
         var number = (await _db.DispatchGroups.Where(g => g.CompanyId == CompanyId).MaxAsync(g => (int?)g.Number) ?? 0);
         var created = new List<DispatchGroup>();
@@ -101,20 +101,20 @@ public class DispatchGroupService : IDispatchGroupService
         try
         {
             var branches = created.Select(g => g.WarehouseCode).Distinct(StringComparer.OrdinalIgnoreCase).Count();
-            var message = $"{created.Count} pre-guías listas para el {dispatchDate:dd-MM} ({branches} sucursales).";
-            var url = $"/despachos/pre-guias?dispatchDate={dispatchDate:yyyy-MM-dd}";
+            var message = $"{created.Count} agrupaciones listas para el {dispatchDate:dd-MM} ({branches} sucursales).";
+            var url = $"/despachos/agrupar-traslados?dispatchDate={dispatchDate:yyyy-MM-dd}";
             foreach (var r in await _master.ListNotificationRecipientsAsync())
             {
-                try { await _notifications.TryEnqueueAsync(r.UserId, "Pre-guías listas", message, NotificationSeverity.Info, url); }
+                try { await _notifications.TryEnqueueAsync(r.UserId, "Agrupaciones listas", message, NotificationSeverity.Info, url); }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "No se pudo avisar al usuario {UserId} de las pre-guías generadas.", r.UserId);
+                    _logger?.LogWarning(ex, "No se pudo avisar al usuario {UserId} de las agrupaciones generadas.", r.UserId);
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "No se pudo enviar el aviso de pre-guías generadas.");
+            _logger?.LogWarning(ex, "No se pudo enviar el aviso de agrupaciones generadas.");
         }
     }
 
@@ -137,7 +137,7 @@ public class DispatchGroupService : IDispatchGroupService
         var groups = await q.OrderByDescending(g => g.DispatchDate).ThenBy(g => g.WarehouseCode).ThenBy(g => g.Sequence)
             .Take(500).ToListAsync();
 
-        // Manifiesto vigente (no anulado) de cada pre-guía, por sus documentos.
+        // Manifiesto vigente (no anulado) de cada agrupación, por sus documentos.
         var ids = groups.Select(g => g.Id).ToList();
         var manifests = await (from doc in _db.ManifestDocuments
                                join m in _db.Manifests on doc.ManifestId equals m.Id
@@ -168,7 +168,7 @@ public class DispatchGroupService : IDispatchGroupService
             throw new InvalidOperationException($"La transferencia {t.DocNum} del LPN {text} está anulada en SAP.");
         if (!string.Equals(t.WarehouseCode, g.WarehouseCode, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
-                $"El LPN {text} va a la bodega {t.WarehouseCode} ({t.WarehouseName}), no a la sucursal de esta pre-guía.");
+                $"El LPN {text} va a la bodega {t.WarehouseCode} ({t.WarehouseName}), no a la sucursal de esta agrupación.");
         if ((await OccupiedAsync(new[] { t.DocEntry })).TryGetValue(t.DocEntry, out var reason))
             throw new InvalidOperationException($"El LPN {text} {reason}.");
 
@@ -182,7 +182,7 @@ public class DispatchGroupService : IDispatchGroupService
     {
         var g = await RequireArmedAsync(groupId);
         var line = g.Transfers.FirstOrDefault(t => t.Id == transferId)
-            ?? throw new InvalidOperationException("La transferencia no está en esta pre-guía.");
+            ?? throw new InvalidOperationException("La transferencia no está en esta agrupación.");
         _db.DispatchGroupTransfers.Remove(line);
         Touch(g);
         await _db.SaveChangesAsync();
@@ -206,20 +206,20 @@ public class DispatchGroupService : IDispatchGroupService
 
     private async Task<DispatchGroup> RequireArmedAsync(long groupId)
     {
-        var g = await GetAsync(groupId) ?? throw new InvalidOperationException("La pre-guía no existe.");
+        var g = await GetAsync(groupId) ?? throw new InvalidOperationException("La agrupación no existe.");
         var code = DispatchGroupCode.Format(g.Number);
         return g.Status switch
         {
             DispatchGroupStatuses.Armed => g,
             DispatchGroupStatuses.InManifest => throw new InvalidOperationException(
-                $"La pre-guía {code} ya está en un manifiesto; quítela del manifiesto para modificarla."),
-            DispatchGroupStatuses.Dispatched => throw new InvalidOperationException($"La pre-guía {code} está despachada."),
-            _ => throw new InvalidOperationException($"La pre-guía {code} está anulada."),
+                $"La agrupación {code} ya está en un manifiesto; quítela del manifiesto para modificarla."),
+            DispatchGroupStatuses.Dispatched => throw new InvalidOperationException($"La agrupación {code} está despachada."),
+            _ => throw new InvalidOperationException($"La agrupación {code} está anulada."),
         };
     }
 
     /// <summary>
-    /// Transferencias ocupadas (DocEntry → motivo): en una pre-guía activa o en un manifiesto no anulado sin marcar
+    /// Transferencias ocupadas (DocEntry → motivo): en una agrupación activa o en un manifiesto no anulado sin marcar
     /// "no entregado" (misma regla que el manifiesto).
     /// </summary>
     private async Task<Dictionary<int, string>> OccupiedAsync(IEnumerable<int> docEntries)
@@ -234,7 +234,7 @@ public class DispatchGroupService : IDispatchGroupService
                               where t.CompanyId == CompanyId && g.CompanyId == CompanyId && entries.Contains(t.SapDocEntry)
                                     && holding.Contains(g.Status)
                               select new { t.SapDocEntry, g.Number }).ToListAsync();
-        foreach (var x in inGroups) result.TryAdd(x.SapDocEntry, $"ya está en la pre-guía {DispatchGroupCode.Format(x.Number)}");
+        foreach (var x in inGroups) result.TryAdd(x.SapDocEntry, $"ya está en la agrupación {DispatchGroupCode.Format(x.Number)}");
 
         var inManifests = await (from d in _db.ManifestDocuments
                                  join m in _db.Manifests on d.ManifestId equals m.Id

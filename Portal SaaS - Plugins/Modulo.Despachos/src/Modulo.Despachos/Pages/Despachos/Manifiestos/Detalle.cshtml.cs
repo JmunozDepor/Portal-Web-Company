@@ -47,7 +47,7 @@ public sealed class DetalleModel : DespachosPageModelBase
     public IReadOnlyDictionary<Guid, string> UserLabels { get; private set; } = new Dictionary<Guid, string>();
     public IReadOnlyList<Commune> Communes { get; private set; } = Array.Empty<Commune>();
 
-    /// <summary>Código PG de cada pre-guía presente en el manifiesto (por id), para la tabla y "Quitar pre-guía".</summary>
+    /// <summary>Código AT de cada agrupación presente en el manifiesto (por id), para la tabla y "Quitar agrupación".</summary>
     public IReadOnlyDictionary<long, string> GroupCodes { get; private set; } = new Dictionary<long, string>();
 
     /// <summary>Bodegas sucursal activas (formulario "Agregar pendientes" del borrador).</summary>
@@ -233,7 +233,7 @@ public sealed class DetalleModel : DespachosPageModelBase
                 message = OutcomeMessage(result, doc),
                 warnings = result.Warnings,
                 otherManifestNumber = result.OtherManifestNumber,
-                // Hoja de pre-guía: entraron varias filas de una vez; la página se recarga para mostrarlas.
+                // Hoja de agrupación: entraron varias filas de una vez; la página se recarga para mostrarlas.
                 reload = result.Outcome == AddDocumentOutcomes.GroupAdded,
                 document = doc is null ? null : new
                 {
@@ -336,14 +336,14 @@ public sealed class DetalleModel : DespachosPageModelBase
         return RedirectToPage(new { id, tab = "documentos" });
     }
 
-    /// <summary>Quita del borrador todas las transferencias de una pre-guía (vuelve a "armada"). Exige EDIT.</summary>
-    public async Task<IActionResult> OnPostQuitarPreGuiaAsync(Guid id, long groupId)
+    /// <summary>Quita del borrador todas las transferencias de una agrupación (vuelve a "armada"). Exige EDIT.</summary>
+    public async Task<IActionResult> OnPostQuitarAgrupacionAsync(Guid id, long groupId)
     {
         if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
         try
         {
             await _manifests.RemoveDispatchGroupAsync(id, groupId);
-            SuccessMessage = "Pre-guía quitada del manifiesto.";
+            SuccessMessage = "Agrupación quitada del manifiesto.";
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
         return RedirectToPage(new { id, tab = "documentos" });

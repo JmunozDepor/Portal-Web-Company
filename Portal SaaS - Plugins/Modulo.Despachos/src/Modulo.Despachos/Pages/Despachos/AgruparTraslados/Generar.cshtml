@@ -1,11 +1,11 @@
-@page "/despachos/pre-guias/generar"
-@model Modulo.Despachos.Pages.Despachos.PreGuias.GenerarModel
+@page "/despachos/agrupar-traslados/generar"
+@model Modulo.Despachos.Pages.Despachos.AgruparTraslados.GenerarModel
 @section Styles {
     <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
 }
 @using System.Globalization
 @{
-    ViewData["Title"] = "Generar pre-guías";
+    ViewData["Title"] = "Agrupar traslados";
     var es = new CultureInfo("es-CL");
 }
 @* Transferencias SAP libres a las sucursales, agrupadas por sucursal; cada "Generar" es un corte: lo que se
@@ -13,8 +13,8 @@
 
 <div class="card-surface">
     <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
-        <h2 class="mb-0">Generar pre-guías</h2>
-        <a class="btn btn-secondary" href="~/despachos/pre-guias?DispatchDate=@Model.DispatchDate">Volver</a>
+        <h2 class="mb-0">Agrupar traslados</h2>
+        <a class="btn btn-secondary" href="~/despachos/agrupar-traslados?DispatchDate=@Model.DispatchDate">Volver</a>
     </div>
 
     @if (Model.ErrorMessage is not null)
@@ -84,7 +84,7 @@
             }
 
             <div class="d-flex gap-2 flex-wrap">
-                <button type="submit" class="btn btn-primary">Generar pre-guías</button>
+                <button type="submit" class="btn btn-primary">Agrupar seleccionados</button>
             </div>
         </form>
     }

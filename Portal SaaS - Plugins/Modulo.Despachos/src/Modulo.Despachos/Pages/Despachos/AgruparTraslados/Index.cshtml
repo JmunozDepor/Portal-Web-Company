@@ -1,26 +1,26 @@
-@page "/despachos/pre-guias"
-@model Modulo.Despachos.Pages.Despachos.PreGuias.IndexModel
+@page "/despachos/agrupar-traslados"
+@model Modulo.Despachos.Pages.Despachos.AgruparTraslados.IndexModel
 @section Styles {
     <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
 }
 @using System.Globalization
 @{
-    ViewData["Title"] = "Pre-guías";
+    ViewData["Title"] = "Agrupar traslados";
     var es = new CultureInfo("es-CL");
 }
-@* Pre-guías: transferencias agrupadas por sucursal y día de despacho; la hoja se escanea en el manifiesto. *@
+@* Agrupaciones: transferencias agrupadas por sucursal y día de despacho; la hoja se escanea en el manifiesto. *@
 
 <div class="card-surface">
     <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
-        <h2 class="mb-0">Pre-guías</h2>
+        <h2 class="mb-0">Agrupar traslados</h2>
         <div class="d-flex gap-2 flex-wrap">
             <a class="btn btn-secondary" target="_blank" rel="noopener"
-               href="~/despachos/pre-guias?handler=Pdf&DispatchDate=@Model.DispatchDate&WarehouseCode=@Model.WarehouseCode&Status=@Model.Status">
+               href="~/despachos/agrupar-traslados?handler=Pdf&DispatchDate=@Model.DispatchDate&WarehouseCode=@Model.WarehouseCode&Status=@Model.Status">
                 <i class="bi bi-printer"></i> Imprimir todas
             </a>
             @if (Model.CanCreate)
             {
-                <a class="btn btn-primary" href="~/despachos/pre-guias/generar?DispatchDate=@Model.DispatchDate">+ Generar pre-guías</a>
+                <a class="btn btn-primary" href="~/despachos/agrupar-traslados/generar?DispatchDate=@Model.DispatchDate">+ Agrupar traslados</a>
             }
         </div>
     </div>
@@ -65,7 +65,7 @@
         </div>
         <div class="col-auto align-self-end">
             <button type="submit" class="btn btn-primary">Filtrar</button>
-            <a class="btn btn-secondary" href="~/despachos/pre-guias">Limpiar</a>
+            <a class="btn btn-secondary" href="~/despachos/agrupar-traslados">Limpiar</a>
         </div>
     </form>
 
@@ -76,7 +76,7 @@
                 @foreach (var x in Model.Items)
                 {
                     <tr>
-                        <td><a href="~/despachos/pre-guias/@x.Id">@x.Code</a></td>
+                        <td><a href="~/despachos/agrupar-traslados/@x.Id">@x.Code</a></td>
                         <td>@x.WarehouseCode - @x.BranchName</td>
                         <td>@x.Sequence</td>
                         <td class="text-nowrap">@x.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
@@ -94,14 +94,14 @@
                             }
                         </td>
                         <td class="col-actions">
-                            <a class="btn-ghost" title="Imprimir hoja" target="_blank" rel="noopener" href="~/despachos/pre-guias/@x.Id?handler=Pdf"><i class="bi bi-printer"></i></a>
-                            <a class="btn-ghost" title="Abrir" href="~/despachos/pre-guias/@x.Id"><i class="bi bi-box-arrow-up-right"></i></a>
+                            <a class="btn-ghost" title="Imprimir hoja" target="_blank" rel="noopener" href="~/despachos/agrupar-traslados/@x.Id?handler=Pdf"><i class="bi bi-printer"></i></a>
+                            <a class="btn-ghost" title="Abrir" href="~/despachos/agrupar-traslados/@x.Id"><i class="bi bi-box-arrow-up-right"></i></a>
                         </td>
                     </tr>
                 }
                 @if (Model.Items.Count == 0)
                 {
-                    <tr><td colspan="9" class="text-muted">Sin pre-guías para el filtro indicado.</td></tr>
+                    <tr><td colspan="9" class="text-muted">Sin agrupaciones para el filtro indicado.</td></tr>
                 }
             </tbody>
         </table>

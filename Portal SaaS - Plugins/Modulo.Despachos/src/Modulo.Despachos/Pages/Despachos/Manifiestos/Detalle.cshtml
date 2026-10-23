@@ -212,14 +212,14 @@
                 </details>
                 @if (Model.GroupCodes.Count > 0)
                 {
-                    @* Pre-guías escaneadas: se pueden quitar completas. *@
+                    @* Agrupaciones escaneadas: se pueden quitar completas. *@
                     <div class="d-flex gap-2 align-items-center flex-wrap mb-2">
-                        <span class="text-muted">Pre-guías:</span>
+                        <span class="text-muted">Agrupaciones:</span>
                         @foreach (var (gid, gcode) in Model.GroupCodes)
                         {
-                            <form method="post" asp-page-handler="QuitarPreGuia" asp-route-id="@m.Id" asp-route-groupId="@gid" asp-antiforgery="true" class="d-inline-block"
-                                  data-confirm="@($"¿Quitar todas las transferencias de la pre-guía {gcode}?")">
-                                <button type="submit" class="btn btn-secondary" title="Quitar pre-guía">@gcode <i class="bi bi-x-lg"></i></button>
+                            <form method="post" asp-page-handler="QuitarAgrupacion" asp-route-id="@m.Id" asp-route-groupId="@gid" asp-antiforgery="true" class="d-inline-block"
+                                  data-confirm="@($"¿Quitar todas las transferencias de la agrupación {gcode}?")">
+                                <button type="submit" class="btn btn-secondary" title="Quitar agrupación">@gcode <i class="bi bi-x-lg"></i></button>
                             </form>
                         }
                     </div>
@@ -274,7 +274,7 @@
                                 @d.Folio@if (d.Lpn is not null) { <div class="text-muted">LPN @d.Lpn</div> }
                                 @if (d.DispatchGroupId is { } gid && Model.GroupCodes.TryGetValue(gid, out var gcode))
                                 {
-                                    <div><a class="text-muted" href="~/despachos/pre-guias/@gid">@gcode</a></div>
+                                    <div><a class="text-muted" href="~/despachos/agrupar-traslados/@gid">@gcode</a></div>
                                 }
                             </td>
                             <td>@d.CustomerName</td>

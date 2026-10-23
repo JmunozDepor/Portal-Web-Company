@@ -51,7 +51,7 @@ public static class DespachosUi
         _ => status,
     };
 
-    /// <summary>Clase del badge de una pre-guía (despachos_dispatch_groups.status).</summary>
+    /// <summary>Clase del badge de una agrupación (despachos_dispatch_groups.status).</summary>
     public static string DispatchGroupBadgeClass(string status) => status switch
     {
         Models.DispatchGroupStatuses.InManifest => "dsp-badge--warning",

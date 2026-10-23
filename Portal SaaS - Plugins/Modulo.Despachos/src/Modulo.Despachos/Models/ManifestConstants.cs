@@ -92,7 +92,7 @@ public static class ClosureStatuses
     public const string Reopened = "reopened";
 }
 
-/// <summary>Estados de una pre-guía (despachos_dispatch_groups.status).</summary>
+/// <summary>Estados de una agrupación (despachos_dispatch_groups.status).</summary>
 public static class DispatchGroupStatuses
 {
     public const string Armed = "armed";
@@ -101,7 +101,7 @@ public static class DispatchGroupStatuses
     public const string Annulled = "annulled";
 
     /// <summary>
-    /// Estados en que la pre-guía retiene sus transferencias (no se agregan sueltas ni a otra pre-guía). Una vez
+    /// Estados en que la agrupación retiene sus transferencias (no se agregan sueltas ni a otra agrupación). Una vez
     /// despachada manda la regla del manifiesto: una transferencia "no entregada" vuelve a quedar libre.
     /// </summary>
     public static readonly IReadOnlyList<string> Holding = new[] { Armed, InManifest };

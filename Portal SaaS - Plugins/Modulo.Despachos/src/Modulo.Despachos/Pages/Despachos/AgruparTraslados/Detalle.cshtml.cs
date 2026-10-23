@@ -6,9 +6,9 @@ using Modulo.Despachos.Servicios;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos;
 
-namespace Modulo.Despachos.Pages.Despachos.PreGuias;
+namespace Modulo.Despachos.Pages.Despachos.AgruparTraslados;
 
-/// <summary>Detalle de una pre-guía: transferencias, agregar LPN / quitar (EDIT), anular (DELETE) e imprimir la hoja (VIEW).</summary>
+/// <summary>Detalle de una agrupación: transferencias, agregar LPN / quitar (EDIT), anular (DELETE) e imprimir la hoja (VIEW).</summary>
 public sealed class DetalleModel : DespachosPageModelBase
 {
     private readonly IDispatchGroupService _groups;
@@ -20,7 +20,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         _pdf = pdf;
     }
 
-    protected override string MenuCode => "pre-guias";
+    protected override string MenuCode => "agrupar-traslados";
 
     public DispatchGroup G { get; private set; } = null!;
     public string Code => DispatchGroupCode.Format(G.Number);
@@ -53,7 +53,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         try
         {
             await _groups.RemoveTransferAsync(id, transferId);
-            SuccessMessage = "Transferencia quitada de la pre-guía.";
+            SuccessMessage = "Transferencia quitada de la agrupación.";
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
         return RedirectToPage(new { id });
@@ -65,7 +65,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         try
         {
             await _groups.AnnulAsync(id, reason ?? "");
-            SuccessMessage = "Pre-guía anulada; sus transferencias quedaron libres.";
+            SuccessMessage = "Agrupación anulada; sus transferencias quedaron libres.";
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
         return RedirectToPage(new { id });

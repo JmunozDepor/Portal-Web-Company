@@ -30,7 +30,7 @@ internal sealed class ManifestTestEnv
     public required TransportGuideService Guides { get; init; }
     /// <summary>Escritura del folio en la transferencia SAP (Fase B).</summary>
     public required FakeSapTransferWriter Writer { get; init; }
-    /// <summary>Pre-guías (agrupación de transferencias por sucursal).</summary>
+    /// <summary>Agrupaciones (agrupación de transferencias por sucursal).</summary>
     public required DispatchGroupService Groups { get; init; }
 
     public long CarrierId, VehicleId, TrailerId, DriverId, OriginId, ShiftId, SmallTypeId;

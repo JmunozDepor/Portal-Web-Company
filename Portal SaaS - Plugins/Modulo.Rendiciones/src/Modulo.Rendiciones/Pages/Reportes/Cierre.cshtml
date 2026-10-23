@@ -32,44 +32,46 @@
         </a>
     </form>
 
-    <table class="admin-table">
-    <thead>
-        <tr>
-            <th>Rendición</th>
-            <th>Colaborador</th>
-            <th>Centro de costo</th>
-            <th>Tipo de gasto</th>
-            <th>Fecha</th>
-            <th>Monto</th>
-            <th>Glosa</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var l in Model.Lines)
-        {
+    <div class="table-responsive-lg">
+        <table class="admin-table">
+        <thead>
             <tr>
-                <td>#@l.ExpenseReportId @(l.Round > 1 ? $"(ronda {l.Round})" : "")</td>
-                <td>@l.EmployeeName</td>
-                <td>@(l.CostCenterName ?? l.CostCenterCode ?? "—")</td>
-                <td>@l.ExpenseTypeName</td>
-                <td>@l.Date.ToString("dd-MM-yyyy")</td>
-                <td><rnd-amount value="@l.Amount" currency="@l.Currency" /></td>
-                <td>@l.Notes</td>
+                <th>Rendición</th>
+                <th>Colaborador</th>
+                <th>Centro de costo</th>
+                <th>Tipo de gasto</th>
+                <th>Fecha</th>
+                <th>Monto</th>
+                <th>Glosa</th>
             </tr>
-        }
-        @if (Model.Lines.Count == 0)
+        </thead>
+        <tbody>
+            @foreach (var l in Model.Lines)
+            {
+                <tr>
+                    <td>#@l.ExpenseReportId @(l.Round > 1 ? $"(ronda {l.Round})" : "")</td>
+                    <td>@l.EmployeeName</td>
+                    <td>@(l.CostCenterName ?? l.CostCenterCode ?? "—")</td>
+                    <td>@l.ExpenseTypeName</td>
+                    <td>@l.Date.ToString("dd-MM-yyyy")</td>
+                    <td><rnd-amount value="@l.Amount" currency="@l.Currency" /></td>
+                    <td>@l.Notes</td>
+                </tr>
+            }
+            @if (Model.Lines.Count == 0)
+            {
+                <tr><td colspan="7" class="admin-muted">Sin rendiciones aprobadas en el período seleccionado.</td></tr>
+            }
+        </tbody>
+        @if (Model.Lines.Count > 0)
         {
-            <tr><td colspan="7" class="admin-muted">Sin rendiciones aprobadas en el período seleccionado.</td></tr>
+            <tfoot>
+                <tr>
+                    <td colspan="5"><strong>Total</strong></td>
+                    <td colspan="2"><strong><rnd-amount value="@Model.Lines.Sum(l => l.Amount)" /></strong></td>
+                </tr>
+            </tfoot>
         }
-    </tbody>
-    @if (Model.Lines.Count > 0)
-    {
-        <tfoot>
-            <tr>
-                <td colspan="5"><strong>Total</strong></td>
-                <td colspan="2"><strong><rnd-amount value="@Model.Lines.Sum(l => l.Amount)" /></strong></td>
-            </tr>
-        </tfoot>
-    }
-    </table>
+        </table>
+    </div>
 </div>

@@ -10,11 +10,11 @@
 }
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">SKU por cliente</h2>
         @if (Model.PuedeVer && Model.PuedeCrear)
         {
-            <button type="button" class="btn-primary" data-drawer-open="drawer-sku">+ Nuevo SKU</button>
+            <button type="button" class="btn btn-primary" data-drawer-open="drawer-sku">+ Nuevo SKU</button>
         }
     </div>
 
@@ -36,7 +36,7 @@
                 </p>
                 <form asp-page="./Index" asp-page-handler="ImportarParidad" method="post" enctype="multipart/form-data" class="d-flex align-items-center gap-2">
                     <input type="file" name="archivoParidad" accept=".csv" class="form-control" required style="max-width:320px;" />
-                    <button type="submit" class="btn-secondary">Importar CSV</button>
+                    <button type="submit" class="btn btn-secondary">Importar CSV</button>
                 </form>
 
                 @if (Model.ErroresImportacion is { Count: > 0 })
@@ -82,53 +82,55 @@
                     }
                 </select>
             </div>
-            <button type="submit" class="btn-secondary">Buscar</button>
+            <button type="submit" class="btn btn-secondary">Buscar</button>
             <a href="~/sellout/clientesku" class="btn-ghost">Limpiar</a>
         </form>
 
         <p class="text-muted mb-2">@Model.TotalRegistros registro(s) · página @Model.Pagina de @Model.TotalPaginas</p>
 
-        <table class="table-ps">
-            <thead><tr><th>Cliente</th><th>SKU</th><th>Descripción</th><th>Barcode</th><th>Producto (paridad)</th><th>Costo</th><th>Venta</th><th>Activo</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @foreach (var s in Model.Skus)
-                {
-                    <tr class="@((s.Activo ?? true) ? "" : "row-inactive")">
-                        <td>@s.NomCliente</td>
-                        <td>@s.Sku</td>
-                        <td>@s.DescripcionCliente</td>
-                        <td>@s.Barcode</td>
-                        <td>@s.Producto</td>
-                        <td>@s.CostoUnit</td>
-                        <td>@s.VentaUnit</td>
-                        <td>@((s.Activo ?? true) ? "Sí" : "No")</td>
-                        <td class="col-actions">
-                            @if (Model.PuedeEditar)
-                            {
-                                <a href="~/sellout/clientesku?editandoCliente=@s.IdCliente&editandoSku=@s.Sku&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto&filtroSoloSinParidad=@Model.FiltroSoloSinParidad&pagina=@Model.Pagina&tamanoPagina=@Model.TamanoPagina" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-                            }
-                            @if (Model.PuedeEliminar)
-                            {
-                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@s.IdCliente" asp-route-sku="@s.Sku" method="post" class="d-inline-block"
-                                      onsubmit="return confirm('¿Eliminar el SKU &quot;@s.Sku&quot;?');">
-                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-                @if (Model.Skus.Count == 0)
-                {
-                    <tr><td colspan="9" class="text-muted">Sin SKU todavía.</td></tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead><tr><th>Cliente</th><th>SKU</th><th>Descripción</th><th>Barcode</th><th>Producto (paridad)</th><th>Costo</th><th>Venta</th><th>Activo</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @foreach (var s in Model.Skus)
+                    {
+                        <tr class="@((s.Activo ?? true) ? "" : "row-inactive")">
+                            <td>@s.NomCliente</td>
+                            <td>@s.Sku</td>
+                            <td>@s.DescripcionCliente</td>
+                            <td>@s.Barcode</td>
+                            <td>@s.Producto</td>
+                            <td>@s.CostoUnit</td>
+                            <td>@s.VentaUnit</td>
+                            <td>@((s.Activo ?? true) ? "Sí" : "No")</td>
+                            <td class="col-actions">
+                                @if (Model.PuedeEditar)
+                                {
+                                    <a href="~/sellout/clientesku?editandoCliente=@s.IdCliente&editandoSku=@s.Sku&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto&filtroSoloSinParidad=@Model.FiltroSoloSinParidad&pagina=@Model.Pagina&tamanoPagina=@Model.TamanoPagina" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (Model.PuedeEliminar)
+                                {
+                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@s.IdCliente" asp-route-sku="@s.Sku" method="post" class="d-inline-block"
+                                          onsubmit="return confirm('¿Eliminar el SKU &quot;@s.Sku&quot;?');">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Skus.Count == 0)
+                    {
+                        <tr><td colspan="9" class="text-muted">Sin SKU todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         <div class="d-flex align-items-center justify-content-center gap-3 mt-3">
-            <a class="btn-secondary @(Model.Pagina <= 1 ? "disabled" : "")"
+            <a class="btn btn-secondary @(Model.Pagina <= 1 ? "disabled" : "")"
                href="@(Model.Pagina <= 1 ? "#" : ConstruirUrlPagina(Model.Pagina - 1))">« Anterior</a>
             <span class="text-muted">Página @Model.Pagina de @Model.TotalPaginas</span>
-            <a class="btn-secondary @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")"
+            <a class="btn btn-secondary @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")"
                href="@(Model.Pagina >= Model.TotalPaginas ? "#" : ConstruirUrlPagina(Model.Pagina + 1))">Siguiente »</a>
         </div>
     }
@@ -212,8 +214,8 @@
                         </div>
                     </div>
                     <div class="drawer-footer">
-                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                        <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                        <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
                     </div>
                 </form>
             </aside>

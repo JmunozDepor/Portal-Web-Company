@@ -62,19 +62,21 @@
         {
             <div class="card" style="background:var(--input-bg); max-width:480px; margin-bottom:16px;">
                 <p style="color:var(--text-muted); font-size:13px; margin:0 0 8px;">Estado de resultados (Ingresos - Costo - Gastos)</p>
-                <table style="width:100%; border-collapse:collapse; font-size:14px;">
-                    <tr><td>Ingresos</td><td style="text-align:right;">@vm.Ingresos.ToString("N0")</td></tr>
-                    <tr><td>(-) Costo de ventas</td><td style="text-align:right;">@vm.CostoVentas.ToString("N0")</td></tr>
-                    <tr style="border-top:1px solid var(--card-border); font-weight:600;"><td>= Utilidad bruta</td><td style="text-align:right;">@vm.UtilidadBruta.ToString("N0")</td></tr>
-                    <tr><td>(-) Gastos directos del canal</td><td style="text-align:right;">@vm.GastosDirectos.ToString("N0")</td></tr>
-                    <tr style="border-top:1px solid var(--card-border); font-weight:600;"><td>= Resultado operacional 1</td><td style="text-align:right;">@vm.ResultadoOperacional1.ToString("N0")</td></tr>
-                    <tr><td>(-) Gastos indirectos (no directos del canal)</td><td style="text-align:right;">@vm.GastosIndirectos.ToString("N0")</td></tr>
-                    <tr style="border-top:1px solid var(--card-border); font-weight:600;"><td>= Resultado operacional 2</td><td style="text-align:right;">@vm.ResultadoOperacional2.ToString("N0")</td></tr>
-                    <tr style="border-top:2px solid var(--card-border); font-weight:700; font-size:16px;">
-                        <td>= Resultado final</td>
-                        <td style="text-align:right; color:@(vm.ResultadoFinal >= 0 ? "var(--success)" : "var(--danger)")">@vm.ResultadoFinal.ToString("N0")</td>
-                    </tr>
-                </table>
+                <div class="table-responsive-lg">
+                    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                        <tr><td>Ingresos</td><td style="text-align:right;">@vm.Ingresos.ToString("N0")</td></tr>
+                        <tr><td>(-) Costo de ventas</td><td style="text-align:right;">@vm.CostoVentas.ToString("N0")</td></tr>
+                        <tr style="border-top:1px solid var(--card-border); font-weight:600;"><td>= Utilidad bruta</td><td style="text-align:right;">@vm.UtilidadBruta.ToString("N0")</td></tr>
+                        <tr><td>(-) Gastos directos del canal</td><td style="text-align:right;">@vm.GastosDirectos.ToString("N0")</td></tr>
+                        <tr style="border-top:1px solid var(--card-border); font-weight:600;"><td>= Resultado operacional 1</td><td style="text-align:right;">@vm.ResultadoOperacional1.ToString("N0")</td></tr>
+                        <tr><td>(-) Gastos indirectos (no directos del canal)</td><td style="text-align:right;">@vm.GastosIndirectos.ToString("N0")</td></tr>
+                        <tr style="border-top:1px solid var(--card-border); font-weight:600;"><td>= Resultado operacional 2</td><td style="text-align:right;">@vm.ResultadoOperacional2.ToString("N0")</td></tr>
+                        <tr style="border-top:2px solid var(--card-border); font-weight:700; font-size:16px;">
+                            <td>= Resultado final</td>
+                            <td style="text-align:right; color:@(vm.ResultadoFinal >= 0 ? "var(--success)" : "var(--danger)")">@vm.ResultadoFinal.ToString("N0")</td>
+                        </tr>
+                    </table>
+                </div>
                 <p style="color:var(--text-muted); font-size:12px; margin:8px 0 0;">
                     Los gastos "directos"/"indirectos" se marcan por línea en la asignación manual de cada cuenta (columna "Indirecto"). Por defecto toda línea es directa (Resultado Operacional 1).
                 </p>

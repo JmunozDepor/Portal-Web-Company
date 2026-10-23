@@ -34,7 +34,7 @@
             <input asp-for="Input.AllowEan13" type="checkbox" class="form-check-input" />
             <label asp-for="Input.AllowEan13" class="form-check-label">EAN-13 (13 dígitos)</label>
         </div>
-        <button type="submit" class="btn-primary">Guardar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
     </form>
 </div>
 
@@ -50,7 +50,7 @@
             <label asp-for="UrlInput.PwaUrl" class="form-label">URL pública de la PWA</label>
             <input asp-for="UrlInput.PwaUrl" class="form-control" placeholder="https://pwa.midominio.cl" />
         </div>
-        <button type="submit" class="btn-primary">Guardar URL</button>
+        <button type="submit" class="btn btn-primary">Guardar URL</button>
     </form>
 
     @if (Model.QrCodeBase64 is not null)

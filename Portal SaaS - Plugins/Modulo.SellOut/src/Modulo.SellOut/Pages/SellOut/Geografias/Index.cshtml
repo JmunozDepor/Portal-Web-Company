@@ -7,11 +7,11 @@
 }
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Geografías</h2>
         @if (Model.PuedeVer && Model.PuedeCrear)
         {
-            <button type="button" class="btn-primary" data-drawer-open="drawer-geografia">+ Nueva geografía</button>
+            <button type="button" class="btn btn-primary" data-drawer-open="drawer-geografia">+ Nueva geografía</button>
         }
     </div>
 
@@ -28,43 +28,45 @@
                 <label for="filtro-texto" class="form-label">Buscar</label>
                 <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Región, región corto o país..." />
             </div>
-            <button type="submit" class="btn-secondary">Buscar</button>
+            <button type="submit" class="btn btn-secondary">Buscar</button>
             <a href="~/sellout/geografias" class="btn-ghost">Limpiar</a>
         </form>
 
-        <table class="table-ps">
-            <thead><tr><th>ID</th><th>Región</th><th>Región corto</th><th>Grupo región</th><th>País</th><th>Código postal</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @foreach (var g in Model.Geografias)
-                {
-                    <tr>
-                        <td>@g.IDGeografia</td>
-                        <td>@g.Region</td>
-                        <td>@g.RegionCorto</td>
-                        <td>@g.GrupoRegion</td>
-                        <td>@g.Pais (@g.CodigoPais)</td>
-                        <td>@g.CodigoPostal</td>
-                        <td class="col-actions">
-                            @if (Model.PuedeEditar)
-                            {
-                                <a href="~/sellout/geografias?editando=@g.IDGeografia&filtroTexto=@Model.FiltroTexto" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-                            }
-                            @if (Model.PuedeEliminar)
-                            {
-                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@g.IDGeografia" method="post" class="d-inline-block"
-                                      onsubmit="return confirm('¿Eliminar la geografía &quot;@g.Region&quot;?');">
-                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-                @if (Model.Geografias.Count == 0)
-                {
-                    <tr><td colspan="7" class="text-muted">Sin geografías todavía.</td></tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead><tr><th>ID</th><th>Región</th><th>Región corto</th><th>Grupo región</th><th>País</th><th>Código postal</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @foreach (var g in Model.Geografias)
+                    {
+                        <tr>
+                            <td>@g.IDGeografia</td>
+                            <td>@g.Region</td>
+                            <td>@g.RegionCorto</td>
+                            <td>@g.GrupoRegion</td>
+                            <td>@g.Pais (@g.CodigoPais)</td>
+                            <td>@g.CodigoPostal</td>
+                            <td class="col-actions">
+                                @if (Model.PuedeEditar)
+                                {
+                                    <a href="~/sellout/geografias?editando=@g.IDGeografia&filtroTexto=@Model.FiltroTexto" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (Model.PuedeEliminar)
+                                {
+                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@g.IDGeografia" method="post" class="d-inline-block"
+                                          onsubmit="return confirm('¿Eliminar la geografía &quot;@g.Region&quot;?');">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Geografias.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-muted">Sin geografías todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     }
 
     @if (puedeAbrirFormulario)
@@ -111,8 +113,8 @@
                         </div>
                     </div>
                     <div class="drawer-footer">
-                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                        <button type="submit" class="btn-primary">@(Model.EditandoId is null ? "Crear" : "Guardar")</button>
+                        <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn btn-primary">@(Model.EditandoId is null ? "Crear" : "Guardar")</button>
                     </div>
                 </form>
             </aside>

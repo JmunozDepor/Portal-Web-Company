@@ -7,9 +7,9 @@
 @{ var perfilDrawerAbierto = Model.EditId is not null || !ViewData.ModelState.IsValid; }
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-1">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1 flex-wrap">
         <h2 class="mb-0">Perfiles de tu organización</h2>
-        <button type="button" class="btn-primary" data-drawer-open="drawer-perfil">+ Nuevo perfil</button>
+        <button type="button" class="btn btn-primary" data-drawer-open="drawer-perfil">+ Nuevo perfil</button>
     </div>
     <p class="text-muted mb-3">
         Un perfil agrupa acciones (Ver/Crear/Editar/Eliminar/Aprobar/Exportar) -- después lo
@@ -26,38 +26,40 @@
     <div class="alert alert-danger">@Model.MensajeError</div>
 }
 
-<table class="table-ps">
-    <thead>
-        <tr>
-            <th>Nombre</th>
-            <th>Origen</th>
-            <th class="col-actions"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var profile in Model.Profiles)
-        {
+<div class="table-responsive-lg">
+    <table class="table-ps">
+        <thead>
             <tr>
-                <td>@profile.Name</td>
-                <td>@(profile.IsGlobalTemplate ? "Plantilla de plataforma" : "Propio")</td>
-                <td class="col-actions">
-                    <div class="admin-row-actions">
-                        <a asp-page="/Perfiles/Index" asp-route-editId="@profile.Id" class="btn-ghost" title="@(profile.IsGlobalTemplate ? "Ver" : "Editar")">
-                            <i class="bi @(profile.IsGlobalTemplate ? "bi-eye" : "bi-pencil")"></i>
-                        </a>
-                        @if (!profile.IsGlobalTemplate)
-                        {
-                            <form method="post" asp-page-handler="Delete" asp-antiforgery="true" class="d-inline-block" onsubmit="return confirm('¿Eliminar este perfil?');">
-                                <input type="hidden" name="id" value="@profile.Id" />
-                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                            </form>
-                        }
-                    </div>
-                </td>
+                <th>Nombre</th>
+                <th>Origen</th>
+                <th class="col-actions"></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var profile in Model.Profiles)
+            {
+                <tr>
+                    <td>@profile.Name</td>
+                    <td>@(profile.IsGlobalTemplate ? "Plantilla de plataforma" : "Propio")</td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            <a asp-page="/Perfiles/Index" asp-route-editId="@profile.Id" class="btn-ghost" title="@(profile.IsGlobalTemplate ? "Ver" : "Editar")">
+                                <i class="bi @(profile.IsGlobalTemplate ? "bi-eye" : "bi-pencil")"></i>
+                            </a>
+                            @if (!profile.IsGlobalTemplate)
+                            {
+                                <form method="post" asp-page-handler="Delete" asp-antiforgery="true" class="d-inline-block" onsubmit="return confirm('¿Eliminar este perfil?');">
+                                    <input type="hidden" name="id" value="@profile.Id" />
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 @if (Model.Profiles.Count == 0)
 {
@@ -105,8 +107,8 @@
                     </div>
                 </div>
                 <div class="drawer-footer">
-                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                    <button type="submit" class="btn-primary">@(Model.EditId is null ? "Crear" : "Guardar")</button>
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary">@(Model.EditId is null ? "Crear" : "Guardar")</button>
                 </div>
             </form>
         }

@@ -4,7 +4,7 @@
     ViewData["Title"] = "Clientes conectados";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
     <div>
         <h1 class="h3 mb-0">Clientes conectados</h1>
         <span class="text-muted">@Model.TotalSessions sesión(es) activa(s)@(Model.OrganizationId is null ? " -- todas las organizaciones" : "")</span>
@@ -28,7 +28,7 @@
 @foreach (var grupo in Model.SessionsByOrganization)
 {
     <div class="card-ps mb-3">
-        <div class="d-flex justify-content-between align-items-center p-3 border-bottom" style="border-color: var(--card-border);">
+        <div class="d-flex justify-content-between align-items-center p-3 border-bottom flex-wrap" style="border-color: var(--card-border);">
             <strong>@grupo.Key</strong>
             <span class="text-muted">@grupo.Count() sesión(es)</span>
         </div>

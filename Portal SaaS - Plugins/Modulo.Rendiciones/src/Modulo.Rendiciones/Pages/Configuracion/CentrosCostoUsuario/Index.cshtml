@@ -24,26 +24,28 @@
     costo de SAP al declarar gastos o fondos. Asigná acá solo si necesitás acotarlo.
 </p>
 
-<table class="table-ps">
-    <thead><tr><th>Usuario</th><th>Correo</th><th>Centros asignados</th><th class="col-actions"></th></tr></thead>
-    <tbody>
-        @foreach (var u in Model.Users)
-        {
-            <tr>
-                <td>@u.Username</td>
-                <td>@u.Email</td>
-                <td>@Model.AssignedCountByUserId.GetValueOrDefault(u.Id, 0)</td>
-                <td class="col-actions">
-                    <a asp-page="./Index" asp-route-UserId="@u.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-                </td>
-            </tr>
-        }
-        @if (Model.Users.Count == 0)
-        {
-            <tr><td colspan="4" class="text-muted">Sin usuarios en esta organización.</td></tr>
-        }
-    </tbody>
-</table>
+<div class="table-responsive-lg">
+    <table class="table-ps">
+        <thead><tr><th>Usuario</th><th>Correo</th><th>Centros asignados</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var u in Model.Users)
+            {
+                <tr>
+                    <td>@u.Username</td>
+                    <td>@u.Email</td>
+                    <td>@Model.AssignedCountByUserId.GetValueOrDefault(u.Id, 0)</td>
+                    <td class="col-actions">
+                        <a asp-page="./Index" asp-route-UserId="@u.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Users.Count == 0)
+            {
+                <tr><td colspan="4" class="text-muted">Sin usuarios en esta organización.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
 </div>
 
 @if (Model.UserId is { Length: > 0 })
@@ -51,27 +53,29 @@
     <div class="card-surface mt-3">
         <p class="mb-1"><a asp-page="./Index" class="text-decoration-none">‹ Volver al listado</a></p>
         <h3 class="h6 mb-3">Asignados a @Model.SelectedUserName</h3>
-        <table class="table-ps mb-3">
-            <thead><tr><th>Código</th><th>Nombre</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @foreach (var a in Model.Assigned)
-                {
-                    <tr>
-                        <td>@a.CostCenterCode</td>
-                        <td>@a.CostCenterName</td>
-                        <td class="col-actions">
-                            <form asp-page="./Index" asp-page-handler="Quitar" asp-route-id="@a.Id" asp-route-UserId="@Model.UserId" method="post">
-                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-x-lg"></i></button>
-                            </form>
-                        </td>
-                    </tr>
-                }
-                @if (Model.Assigned.Count == 0)
-                {
-                    <tr><td colspan="3" class="text-muted">Sin asignaciones -- usa el catálogo completo de SAP.</td></tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps mb-3">
+                <thead><tr><th>Código</th><th>Nombre</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @foreach (var a in Model.Assigned)
+                    {
+                        <tr>
+                            <td>@a.CostCenterCode</td>
+                            <td>@a.CostCenterName</td>
+                            <td class="col-actions">
+                                <form asp-page="./Index" asp-page-handler="Quitar" asp-route-id="@a.Id" asp-route-UserId="@Model.UserId" method="post">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Assigned.Count == 0)
+                    {
+                        <tr><td colspan="3" class="text-muted">Sin asignaciones -- usa el catálogo completo de SAP.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         <form asp-page="./Index" asp-page-handler="Asignar" asp-route-UserId="@Model.UserId" method="post" class="d-flex align-items-end gap-3">
             <div class="mb-0 flex-grow-1" style="max-width:320px;">
@@ -84,7 +88,7 @@
                     }
                 </select>
             </div>
-            <button type="submit" class="btn-secondary">+ Asignar</button>
+            <button type="submit" class="btn btn-secondary">+ Asignar</button>
         </form>
     </div>
 }

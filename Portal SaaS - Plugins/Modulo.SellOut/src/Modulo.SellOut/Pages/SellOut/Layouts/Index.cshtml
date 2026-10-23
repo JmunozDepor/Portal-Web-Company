@@ -10,11 +10,11 @@
    del Design System unificado (.card-surface/.table-ps/.btn-*/form-label). *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-2">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-2 flex-wrap">
         <h2 class="mb-0">Configuración de layouts</h2>
         @if (Model.PuedeVer && Model.PuedeCrear)
         {
-            <a href="~/sellout/layouts?filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto#form-layout" class="btn-primary">+ Nueva configuración</a>
+            <a href="~/sellout/layouts?filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto#form-layout" class="btn btn-primary">+ Nueva configuración</a>
         }
     </div>
 
@@ -46,41 +46,43 @@
                 <label for="filtro-texto" class="form-label">Buscar</label>
                 <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Tipo, patrón o cliente..." />
             </div>
-            <button type="submit" class="btn-secondary">Buscar</button>
+            <button type="submit" class="btn btn-secondary">Buscar</button>
             <a href="~/sellout/layouts" class="btn-ghost">Limpiar</a>
         </form>
 
-        <table class="table-ps">
-            <thead><tr><th>Cliente</th><th>Tipo archivo</th><th>File pattern</th><th>Activo</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @foreach (var l in Model.Layouts)
-                {
-                    <tr class="@((l.Activo ?? true) ? "" : "row-inactive")">
-                        <td>@l.NomCliente</td>
-                        <td>@l.TipoArchivo</td>
-                        <td>@l.FilePattern</td>
-                        <td>@((l.Activo ?? true) ? "Sí" : "No")</td>
-                        <td class="col-actions">
-                            @if (Model.PuedeEditar)
-                            {
-                                <a href="~/sellout/layouts?editandoCliente=@l.IdCliente&editandoTipo=@l.TipoArchivo&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto#form-layout" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-                            }
-                            @if (Model.PuedeEliminar)
-                            {
-                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@l.IdCliente" asp-route-tipoArchivo="@l.TipoArchivo" method="post" class="d-inline-block"
-                                      onsubmit="return confirm('¿Eliminar la configuración de &quot;@l.NomCliente&quot; / &quot;@l.TipoArchivo&quot;?');">
-                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-                @if (Model.Layouts.Count == 0)
-                {
-                    <tr><td colspan="5" class="text-muted">Sin configuraciones todavía.</td></tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead><tr><th>Cliente</th><th>Tipo archivo</th><th>File pattern</th><th>Activo</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @foreach (var l in Model.Layouts)
+                    {
+                        <tr class="@((l.Activo ?? true) ? "" : "row-inactive")">
+                            <td>@l.NomCliente</td>
+                            <td>@l.TipoArchivo</td>
+                            <td>@l.FilePattern</td>
+                            <td>@((l.Activo ?? true) ? "Sí" : "No")</td>
+                            <td class="col-actions">
+                                @if (Model.PuedeEditar)
+                                {
+                                    <a href="~/sellout/layouts?editandoCliente=@l.IdCliente&editandoTipo=@l.TipoArchivo&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto#form-layout" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (Model.PuedeEliminar)
+                                {
+                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@l.IdCliente" asp-route-tipoArchivo="@l.TipoArchivo" method="post" class="d-inline-block"
+                                          onsubmit="return confirm('¿Eliminar la configuración de &quot;@l.NomCliente&quot; / &quot;@l.TipoArchivo&quot;?');">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Layouts.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-muted">Sin configuraciones todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         @if (Model.PuedeCrear || Model.PuedeEditar)
         {
@@ -186,10 +188,10 @@
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                        <button type="submit" class="btn btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
                         @if (Model.Editando is not null)
                         {
-                            <a href="~/sellout/layouts?filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto" class="btn-secondary">Cancelar</a>
+                            <a href="~/sellout/layouts?filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto" class="btn btn-secondary">Cancelar</a>
                         }
                     </div>
                 </form>

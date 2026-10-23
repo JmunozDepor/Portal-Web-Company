@@ -10,9 +10,9 @@
 @{ var grupoDrawerAbierto = Model.EditId is not null || !ViewData.ModelState.IsValid; }
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-1">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1 flex-wrap">
         <h2 class="mb-0">Grupos de menú de tu organización</h2>
-        <button type="button" class="btn-primary" data-drawer-open="drawer-grupo-menu">+ Nuevo grupo</button>
+        <button type="button" class="btn btn-primary" data-drawer-open="drawer-grupo-menu">+ Nuevo grupo</button>
     </div>
     <p class="text-muted mb-3">
         Un grupo de menú define qué pantallas ve un usuario -- después le asignás perfil por
@@ -30,51 +30,53 @@
     <div class="alert alert-danger">@Model.MensajeError</div>
 }
 
-<table class="table-ps">
-    <thead>
-        <tr>
-            <th>Nombre</th>
-            <th>Compañía</th>
-            <th>Origen</th>
-            <th>Estado</th>
-            <th class="col-actions"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var group in Model.Groups)
-        {
+<div class="table-responsive-lg">
+    <table class="table-ps">
+        <thead>
             <tr>
-                <td>@group.Name</td>
-                <td>@(group.CompanyId is null ? "Todas" : Model.Companies.FirstOrDefault(c => c.Value == group.CompanyId.ToString())?.Text ?? group.CompanyId.ToString())</td>
-                <td>@(group.IsGlobalTemplate ? "Plantilla de plataforma" : "Propio")</td>
-                <td>
-                    @if (group.IsActive)
-                    {
-                        <span class="badge-status badge-status--success">Activo</span>
-                    }
-                    else
-                    {
-                        <span class="badge-status badge-status--neutral">Inactivo</span>
-                    }
-                </td>
-                <td class="col-actions">
-                    <div class="admin-row-actions">
-                        <a asp-page="/GruposMenu/Index" asp-route-editId="@group.Id" class="btn-ghost" title="@(group.IsGlobalTemplate ? "Ver" : "Editar")">
-                            <i class="bi @(group.IsGlobalTemplate ? "bi-eye" : "bi-pencil")"></i>
-                        </a>
-                        @if (!group.IsGlobalTemplate)
-                        {
-                            <form method="post" asp-page-handler="Delete" asp-antiforgery="true" class="d-inline-block" onsubmit="return confirm('¿Eliminar este grupo de menú?');">
-                                <input type="hidden" name="id" value="@group.Id" />
-                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                            </form>
-                        }
-                    </div>
-                </td>
+                <th>Nombre</th>
+                <th>Compañía</th>
+                <th>Origen</th>
+                <th>Estado</th>
+                <th class="col-actions"></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var group in Model.Groups)
+            {
+                <tr>
+                    <td>@group.Name</td>
+                    <td>@(group.CompanyId is null ? "Todas" : Model.Companies.FirstOrDefault(c => c.Value == group.CompanyId.ToString())?.Text ?? group.CompanyId.ToString())</td>
+                    <td>@(group.IsGlobalTemplate ? "Plantilla de plataforma" : "Propio")</td>
+                    <td>
+                        @if (group.IsActive)
+                        {
+                            <span class="badge-status badge-status--success">Activo</span>
+                        }
+                        else
+                        {
+                            <span class="badge-status badge-status--neutral">Inactivo</span>
+                        }
+                    </td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            <a asp-page="/GruposMenu/Index" asp-route-editId="@group.Id" class="btn-ghost" title="@(group.IsGlobalTemplate ? "Ver" : "Editar")">
+                                <i class="bi @(group.IsGlobalTemplate ? "bi-eye" : "bi-pencil")"></i>
+                            </a>
+                            @if (!group.IsGlobalTemplate)
+                            {
+                                <form method="post" asp-page-handler="Delete" asp-antiforgery="true" class="d-inline-block" onsubmit="return confirm('¿Eliminar este grupo de menú?');">
+                                    <input type="hidden" name="id" value="@group.Id" />
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 @if (Model.Groups.Count == 0)
 {
@@ -162,8 +164,8 @@
                     </div>
                 </div>
                 <div class="drawer-footer">
-                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                    <button type="submit" class="btn-primary">@(Model.EditId is null ? "Crear" : "Guardar")</button>
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary">@(Model.EditId is null ? "Crear" : "Guardar")</button>
                 </div>
             </form>
         }

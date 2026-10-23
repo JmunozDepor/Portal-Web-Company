@@ -7,11 +7,11 @@
 }
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Departamentos</h2>
         @if (Model.PuedeVer && Model.PuedeCrear)
         {
-            <button type="button" class="btn-primary" data-drawer-open="drawer-departamento">+ Nuevo departamento</button>
+            <button type="button" class="btn btn-primary" data-drawer-open="drawer-departamento">+ Nuevo departamento</button>
         }
     </div>
 
@@ -34,40 +34,42 @@
                 <label for="filtro-texto" class="form-label">Buscar</label>
                 <input id="filtro-texto" name="FiltroTexto" class="form-control" value="@Model.FiltroTexto" placeholder="Departamento o descripción..." />
             </div>
-            <button type="submit" class="btn-secondary">Buscar</button>
+            <button type="submit" class="btn btn-secondary">Buscar</button>
             <a href="~/sellout/departamentos" class="btn-ghost">Limpiar</a>
         </form>
 
-        <table class="table-ps">
-            <thead><tr><th>Cliente</th><th>Departamento (cliente)</th><th>Descripción local</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @foreach (var d in Model.Departamentos)
-                {
-                    <tr>
-                        <td>@d.NomCliente</td>
-                        <td>@d.ClienteDepartamento</td>
-                        <td>@d.DescripcionDeptoLocal</td>
-                        <td class="col-actions">
-                            @if (Model.PuedeEditar)
-                            {
-                                <a href="~/sellout/departamentos?editandoCliente=@d.IdCliente&editandoDepartamento=@d.ClienteDepartamento&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-                            }
-                            @if (Model.PuedeEliminar)
-                            {
-                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@d.IdCliente" asp-route-clienteDepartamento="@d.ClienteDepartamento" method="post" class="d-inline-block"
-                                      onsubmit="return confirm('¿Eliminar el departamento &quot;@d.ClienteDepartamento&quot;?');">
-                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-                @if (Model.Departamentos.Count == 0)
-                {
-                    <tr><td colspan="4" class="text-muted">Sin departamentos todavía.</td></tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead><tr><th>Cliente</th><th>Departamento (cliente)</th><th>Descripción local</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @foreach (var d in Model.Departamentos)
+                    {
+                        <tr>
+                            <td>@d.NomCliente</td>
+                            <td>@d.ClienteDepartamento</td>
+                            <td>@d.DescripcionDeptoLocal</td>
+                            <td class="col-actions">
+                                @if (Model.PuedeEditar)
+                                {
+                                    <a href="~/sellout/departamentos?editandoCliente=@d.IdCliente&editandoDepartamento=@d.ClienteDepartamento&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (Model.PuedeEliminar)
+                                {
+                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@d.IdCliente" asp-route-clienteDepartamento="@d.ClienteDepartamento" method="post" class="d-inline-block"
+                                          onsubmit="return confirm('¿Eliminar el departamento &quot;@d.ClienteDepartamento&quot;?');">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Departamentos.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-muted">Sin departamentos todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     }
 
     @if (puedeAbrirFormulario)
@@ -118,8 +120,8 @@
                         </div>
                     </div>
                     <div class="drawer-footer">
-                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                        <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                        <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
                     </div>
                 </form>
             </aside>

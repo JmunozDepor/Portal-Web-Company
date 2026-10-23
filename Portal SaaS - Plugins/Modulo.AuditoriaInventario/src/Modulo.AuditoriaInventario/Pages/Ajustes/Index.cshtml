@@ -9,7 +9,7 @@
         <h2 class="mb-0">Ajustes de Inventario</h2>
         @if (Model.Ajustes.Any(a => a.SapQueueStatus is not null))
         {
-            <a class="btn-secondary" asp-page-handler="Exportar">
+            <a class="btn btn-secondary" asp-page-handler="Exportar">
                 <i class="bi bi-file-earmark-excel"></i> Exportar a SAP
             </a>
         }

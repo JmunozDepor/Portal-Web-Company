@@ -10,11 +10,11 @@
 @{ var proveedorEditarAbierto = Model.Selected is not null; }
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-1">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1 flex-wrap">
         <h2 class="mb-0">Proveedores de servicios externos</h2>
         <div class="d-flex gap-2">
-            <a asp-page="/Configuracion/ConsumoServicios/Index" class="btn-secondary">Ver consumo</a>
-            <button type="button" class="btn-primary" data-drawer-open="drawer-nuevo-proveedor">+ Nuevo proveedor</button>
+            <a asp-page="/Configuracion/ConsumoServicios/Index" class="btn btn-secondary">Ver consumo</a>
+            <button type="button" class="btn btn-primary" data-drawer-open="drawer-nuevo-proveedor">+ Nuevo proveedor</button>
         </div>
     </div>
 
@@ -56,49 +56,51 @@
     la URL del recurso (<code>https://&lt;nombre&gt;.cognitiveservices.azure.com/</code>).
 </p>
 
-<table class="table-ps">
-    <thead>
-        <tr>
-            <th>Servicio</th>
-            <th>Nombre</th>
-            <th>Límite / período</th>
-            <th>Prioridad</th>
-            <th>Estado</th>
-            <th class="col-actions"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var p in Model.Providers)
-        {
-            <tr class="@(p.IsActive ? "" : "row-inactive")">
-                <td>@p.ServiceType</td>
-                <td>@p.Name</td>
-                <td>@p.MonthlyLimit</td>
-                <td>@p.Priority</td>
-                <td>
-                    @if (p.IsActive)
-                    {
-                        <span class="badge-status badge-status--success">Activo</span>
-                    }
-                    else
-                    {
-                        <span class="badge-status badge-status--neutral">Inactivo</span>
-                    }
-                </td>
-                <td class="col-actions">
-                    <form method="post" asp-page="./Index" asp-page-handler="Probar" asp-route-id="@p.Id" class="d-inline">
-                        <button type="submit" class="btn-ghost" title="Probar funcionalidad (verifica clave y endpoint sin consumir cuota)"><i class="bi bi-heart-pulse"></i></button>
-                    </form>
-                    <a asp-page="./Index" asp-route-id="@p.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-                </td>
+<div class="table-responsive-lg">
+    <table class="table-ps">
+        <thead>
+            <tr>
+                <th>Servicio</th>
+                <th>Nombre</th>
+                <th>Límite / período</th>
+                <th>Prioridad</th>
+                <th>Estado</th>
+                <th class="col-actions"></th>
             </tr>
-        }
-        @if (Model.Providers.Count == 0)
-        {
-            <tr><td colspan="6" class="text-muted">Sin proveedores configurados todavía.</td></tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.Providers)
+            {
+                <tr class="@(p.IsActive ? "" : "row-inactive")">
+                    <td>@p.ServiceType</td>
+                    <td>@p.Name</td>
+                    <td>@p.MonthlyLimit</td>
+                    <td>@p.Priority</td>
+                    <td>
+                        @if (p.IsActive)
+                        {
+                            <span class="badge-status badge-status--success">Activo</span>
+                        }
+                        else
+                        {
+                            <span class="badge-status badge-status--neutral">Inactivo</span>
+                        }
+                    </td>
+                    <td class="col-actions">
+                        <form method="post" asp-page="./Index" asp-page-handler="Probar" asp-route-id="@p.Id" class="d-inline">
+                            <button type="submit" class="btn-ghost" title="Probar funcionalidad (verifica clave y endpoint sin consumir cuota)"><i class="bi bi-heart-pulse"></i></button>
+                        </form>
+                        <a asp-page="./Index" asp-route-id="@p.Id" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Providers.Count == 0)
+            {
+                <tr><td colspan="6" class="text-muted">Sin proveedores configurados todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
 </div>
 
 @* Drawer -- Editar proveedor seleccionado *@
@@ -154,8 +156,8 @@
                 <div class="drawer-footer">
                     <button type="submit" form="form-eliminar-proveedor" class="btn btn-outline-danger btn-sm me-auto"
                             onclick="return confirm('¿Eliminar este proveedor?');">Eliminar</button>
-                    <a href="~/rendiciones/configuracion/proveedores" class="btn-secondary">Cancelar</a>
-                    <button type="submit" class="btn-primary">Guardar</button>
+                    <a href="~/rendiciones/configuracion/proveedores" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
                 </div>
             </form>
             <form id="form-eliminar-proveedor" method="post" asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@selected.Id" hidden></form>
@@ -208,8 +210,8 @@
                 </div>
             </div>
             <div class="drawer-footer">
-                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                <button type="submit" class="btn-primary">Crear</button>
+                <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear</button>
             </div>
         </form>
     </aside>

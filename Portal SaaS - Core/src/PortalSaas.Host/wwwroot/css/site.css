@@ -1754,10 +1754,15 @@ body {
     padding: 16px;
   }
 
-  .doc-tabs {
+  .doc-tabs,
+  .doc-list-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .doc-list-tab {
+    flex-shrink: 0;
   }
 }
 

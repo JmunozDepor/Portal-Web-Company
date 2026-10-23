@@ -44,56 +44,58 @@ else
         </div>
     </form>
 
-    <table class="table-ps">
-        <thead>
-            <tr>
-                <th>Módulo</th>
-                <th>Instancia</th>
-                <th>Base de datos</th>
-                <th>Credencial</th>
-                <th class="col-actions"></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var b in Model.Bindings)
-            {
-                var asignado = b.InstanceId is not null;
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead>
                 <tr>
-                    <td>@b.ModuleName</td>
-                    <td>
-                        @if (asignado)
-                        {
-                            @b.InstanceName
-                        }
-                        else
-                        {
-                            <span class="badge-status badge-status--warning">Sin asignar</span>
-                        }
-                    </td>
-                    <td>@b.DatabaseName</td>
-                    <td>@(asignado ? (b.HasOwnCredentials ? $"Propia ({b.OwnTechnicalUsername})" : "De la instancia") : "")</td>
-                    <td class="col-actions">
-                        <div class="admin-row-actions">
-                            <a class="btn-ghost" title="@(asignado ? "Editar" : "Asignar")" href="~/organizacion/conexiones-externas/editar/@b.ModuleCode?companyId=@CompanyIdStr"><i class="bi bi-pencil"></i></a>
+                    <th>Módulo</th>
+                    <th>Instancia</th>
+                    <th>Base de datos</th>
+                    <th>Credencial</th>
+                    <th class="col-actions"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model.Bindings)
+                {
+                    var asignado = b.InstanceId is not null;
+                    <tr>
+                        <td>@b.ModuleName</td>
+                        <td>
                             @if (asignado)
                             {
-                                <form method="post" asp-page-handler="Test" class="d-inline-block">
-                                    <input type="hidden" name="companyId" value="@CompanyIdStr" />
-                                    <input type="hidden" name="moduleCode" value="@b.ModuleCode" />
-                                    <button type="submit" class="btn-ghost" title="Probar"><i class="bi bi-plug"></i></button>
-                                </form>
-                                <form method="post" asp-page-handler="Clear" class="d-inline-block" onsubmit="return confirm('¿Quitar la base asignada a @b.ModuleName?');">
-                                    <input type="hidden" name="companyId" value="@CompanyIdStr" />
-                                    <input type="hidden" name="moduleCode" value="@b.ModuleCode" />
-                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @b.InstanceName
                             }
-                        </div>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                            else
+                            {
+                                <span class="badge-status badge-status--warning">Sin asignar</span>
+                            }
+                        </td>
+                        <td>@b.DatabaseName</td>
+                        <td>@(asignado ? (b.HasOwnCredentials ? $"Propia ({b.OwnTechnicalUsername})" : "De la instancia") : "")</td>
+                        <td class="col-actions">
+                            <div class="admin-row-actions">
+                                <a class="btn-ghost" title="@(asignado ? "Editar" : "Asignar")" href="~/organizacion/conexiones-externas/editar/@b.ModuleCode?companyId=@CompanyIdStr"><i class="bi bi-pencil"></i></a>
+                                @if (asignado)
+                                {
+                                    <form method="post" asp-page-handler="Test" class="d-inline-block">
+                                        <input type="hidden" name="companyId" value="@CompanyIdStr" />
+                                        <input type="hidden" name="moduleCode" value="@b.ModuleCode" />
+                                        <button type="submit" class="btn-ghost" title="Probar"><i class="bi bi-plug"></i></button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Clear" class="d-inline-block" onsubmit="return confirm('¿Quitar la base asignada a @b.ModuleName?');">
+                                        <input type="hidden" name="companyId" value="@CompanyIdStr" />
+                                        <input type="hidden" name="moduleCode" value="@b.ModuleCode" />
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
     @if (Model.Bindings.Count == 0)
     {
         <p class="text-muted">Ningún módulo de tu organización usa una base de datos externa.</p>

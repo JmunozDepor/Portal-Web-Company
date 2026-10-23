@@ -10,12 +10,12 @@
         <div class="d-flex gap-2">
             @if (Model.Filas.Count > 0)
             {
-                <a class="btn-secondary" asp-page-handler="ExportarResumen"
+                <a class="btn btn-secondary" asp-page-handler="ExportarResumen"
                    asp-route-TareaFiltro="@Model.TareaFiltro" asp-route-BranchIdFiltro="@Model.BranchIdFiltro" asp-route-FechaDesde="@Model.FechaDesde">
                     <i class="bi bi-file-earmark-excel"></i> Exportar resumen
                 </a>
             }
-            <button type="button" class="btn-primary" data-drawer-open="drawer-nueva-tarea">+ Nueva tarea</button>
+            <button type="button" class="btn btn-primary" data-drawer-open="drawer-nueva-tarea">+ Nueva tarea</button>
         </div>
     </div>
     <p class="text-muted mb-3">
@@ -43,7 +43,7 @@
             <label class="form-label">Fecha desde</label>
             <input type="date" name="FechaDesde" value="@(Model.FechaDesde?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm" />
         </div>
-        <button type="submit" class="btn-secondary">Filtrar</button>
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
         @if (!string.IsNullOrWhiteSpace(Model.TareaFiltro) || Model.BranchIdFiltro.HasValue || Model.FechaDesde.HasValue)
         {
             <a class="btn-ghost" asp-page="./Index">Limpiar filtros</a>
@@ -182,8 +182,8 @@
                 </div>
             </div>
             <div class="drawer-footer">
-                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                <button type="submit" class="btn-primary">Crear tarea</button>
+                <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear tarea</button>
             </div>
         </form>
     </aside>
@@ -199,7 +199,7 @@
             <div class="drawer-body">
                 <input type="hidden" id="congelado-sessionid" asp-for="Congelado.SessionId" />
                 <div class="mb-3">
-                    <a class="btn-secondary" asp-page-handler="DescargarPlantillaCongelado">
+                    <a class="btn btn-secondary" asp-page-handler="DescargarPlantillaCongelado">
                         <i class="bi bi-download"></i> Descargar plantilla (.xlsx)
                     </a>
                 </div>
@@ -209,20 +209,22 @@
                 </div>
                 <div class="alert alert-light border small mb-3">
                     <strong>Formato esperado</strong> -- la fila 1 es encabezado (se ignora, podés usar el de la plantilla), los datos arrancan en la fila 2:
-                    <table class="table table-sm mb-2 mt-2">
-                        <thead><tr><th>A</th><th>B</th><th>C</th><th>D</th></tr></thead>
-                        <tbody>
-                            <tr><td>Código de barra</td><td>Cantidad</td><td>Costo unitario (opcional)</td><td>Código de producto</td></tr>
-                            <tr class="text-muted"><td>7801234567890</td><td>12</td><td>1590.50</td><td>372860C-102-2X</td></tr>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive-lg">
+                        <table class="table table-sm mb-2 mt-2">
+                            <thead><tr><th>A</th><th>B</th><th>C</th><th>D</th></tr></thead>
+                            <tbody>
+                                <tr><td>Código de barra</td><td>Cantidad</td><td>Costo unitario (opcional)</td><td>Código de producto</td></tr>
+                                <tr class="text-muted"><td>7801234567890</td><td>12</td><td>1590.50</td><td>372860C-102-2X</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                     Código de barra (A) y código de producto (D) son <strong>alternativos</strong> -- alcanza con uno de los dos por fila (si solo ponés código de producto, tiene que existir en el Maestro de Productos). Cantidad tiene que ser un número entero. Si no cargás costo unitario, esa línea queda sin valorización en los reportes de monto ($0).
                 </div>
                 <p class="text-muted small">Carga manual -- la importación directa desde SAP queda para una próxima etapa.</p>
             </div>
             <div class="drawer-footer">
-                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                <button type="submit" class="btn-primary">Cargar</button>
+                <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn btn-primary">Cargar</button>
             </div>
         </form>
     </aside>

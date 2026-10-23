@@ -89,6 +89,34 @@ Pasarela de documentos electrónicos (plataforma)
 - **Configuración por compañía:** proveedor activo, ambiente (certificación / producción), credenciales cifradas (escritura sola, nunca se muestran; nunca en el repositorio ni en el chat).
 - **Ubicación del adaptador FACELE:** referencia técnica conocida, `DoceleOL.generaDTE`, formato XML, folio asignado por FACELE. El detalle del contrato sale de la experiencia previa del equipo con FACELE.
 
+### 5.3b Adaptador FACELE (DoceleOL) — protocolo
+
+Fuente: "Manual WebService Emisión 2022 v6" de FACELE + WSDL del ambiente de pruebas
+(`https://caoba.docele.cl/cl-dol-auth/DoceleOLService?wsdl`, con header `facele.user` / `facele.pass`;
+la consulta de estado está en `.../cl-dol/DocumentosEmitidosService?wsdl`). Las credenciales van cifradas
+en la configuración de la compañía (en desarrollo, user-secrets); nunca en el repositorio.
+
+La emisión es en **dos pasos**, y el adaptador debe tratarlos como una sola emisión idempotente:
+
+| Paso | Operación | Efecto |
+|---|---|---|
+| 1 | `generaDTE(rutEmisor, tipoDTE, formato=XML, xml, uuid)` | Valida el XML y **asigna el folio** (`folioDTE`). El documento aún **no está confirmado** |
+| 2 | `obtieneDTE(rutEmisor, tipoDTE, folioDTE, formato=PDF\|XML\|URL_PDF, cedible, cantidad)` | **Confirma** la emisión y devuelve el PDF (base64 **decodificado dos veces**), el XML o una URL |
+| Recuperación | `sinConfirmar(rutEmisor)` | Lista folios generados y no confirmados (ej. se cayó la red entre 1 y 2) |
+| Recuperación | `controversia(..., operacion=libera\|anula\|confirma)` | Resuelve un folio no confirmado: liberar (reutilizable), anular o confirmar |
+| Vista previa | `obtieneBorrador(rutEmisor, tipoDTE, formato, xml)` | **PDF de prueba sin emitir ni consumir folio** (está en el WSDL, no en el manual) → base de la vista previa de la pestaña Guías y de las pruebas del XML |
+| Estado SII | `Consultar` (DocumentosEmitidosService) | `estadoSII`: DOK, RLV (reparos leves), RPR (reparos por realizar), DPR (por recibir), RCH (rechazado); `estadoRecepcion` del receptor |
+| Reimpresión | `reimprimeDTE` / `obtieneDTE` | Nueva copia del PDF |
+
+- `uuid` = `emission_key` de la guía planificada (FACELE no acepta dos documentos con el mismo uuid).
+- Respuestas con `estadoOperacion = 0` traen la glosa del error en `descripcionOperacion` → se guarda en la guía y se muestra.
+- Mapeo de estados: `generaDTE` ok → `enviada` (con folio); `obtieneDTE` ok → `aceptada` (emitida); `Consultar` RLV/RPR → `aceptada_con_reparos`, RCH → `rechazada`.
+- Campos libres (`A0..A10`, formato `XML_OBS`): disponibles para datos no normados (ej. N° de manifiesto, transportista); requieren habilitación por FACELE en el PDF.
+
+**XML a enviar:** es el DTE en el formato estándar del SII (`<DTE><Documento>` con `Encabezado` /
+`Detalle` / `Referencia`). Pendiente de confirmar con FACELE (§13): qué parte agrega FACELE (folio, timbre
+TED, firma) y la versión del formato que acepta con los campos de transporte de la Res. 154.
+
 ### 5.4 Aislamiento por compañía
 
 - El proveedor se resuelve **siempre por la compañía de la sesión** (la misma que hoy elige la base SAP y la base del módulo vía `company_module_connections`). No hay selección manual de proveedor ni emisión cruzada: un manifiesto de DEPOR solo puede emitir por FACELE con el RUT emisor de DEPOR, y uno de Block solo por BES con el de Block.
@@ -203,6 +231,15 @@ Anulación/reemplazo ante cambios, conciliación de estado SII, reportes de guí
 | Peso faltante en artículos | Revisión temprana del maestro (§10.3) y regla definida (§9.6) |
 | Caída del proveedor al despachar | Vista previa anticipada, reintento, contingencia si está permitida |
 | Interpretación tributaria | Puntos [validar] cerrados antes de producción |
+
+## 13. Pendiente con FACELE
+
+1. **Un XML de ejemplo de guía de despacho (52)** aceptado por DoceleOL, idealmente con los campos de transporte de la Res. 154.
+2. Qué nodos **no** debe enviar el ERP (folio, TED, firma, `TmstFirma`) o con qué valor.
+3. Versión del formato SII que acepta y soporte de los campos nuevos de la Res. 154.
+4. RUT emisor de DEPOR habilitado en el ambiente de pruebas (caoba) para `obtieneBorrador` / `generaDTE`.
+5. Habilitación de campos libres en el PDF de la guía (N° de manifiesto).
+6. URL y credenciales de producción (por canal seguro, no por correo ni chat).
 
 ## 12. Decisiones del diseñador (revisar)
 

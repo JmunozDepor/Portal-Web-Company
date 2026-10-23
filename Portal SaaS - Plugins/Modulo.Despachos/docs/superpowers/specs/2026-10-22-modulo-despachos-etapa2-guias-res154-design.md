@@ -82,6 +82,9 @@ Pasarela de documentos electrónicos (plataforma)
 
 ### 5.1 Pasarela (plataforma)
 
+> **Diseño detallado en el spec de plataforma** `Portal SaaS - Core/docs/superpowers/specs/2026-10-22-pasarela-documentos-electronicos-design.md`
+> (emisión de cualquier DTE + recepción de facturas de proveedor). Donde difiera con esta sección, manda ese spec.
+
 - **Contrato en `PortalSaas.Abstractions`**, para que la usen otros módulos más adelante.
 - **Modelo canónico** basado en la estructura del DTE del SII (encabezado: emisor, receptor, totales, tipo de traslado; bloque transporte; detalle; referencias). Cada adaptador solo traduce y transporta.
 - **Capacidades declaradas por adaptador:** quién asigna el folio (proveedor o el portal con CAF), emisión síncrona o asíncrona, si soporta anulación, si entrega PDF o solo XML. El orquestador se comporta según ellas, nunca preguntando "¿es FACELE?".
@@ -194,6 +197,10 @@ Entrada: manifiesto con sus unidades de carga + datos de SAP. Salida: lista de *
 - **Validaciones previas** (bloquean la emisión): comuna destino resuelta, RUT receptor y transportista válidos, artículo con peso (o regla definida para peso faltante), emisor configurado.
 
 ### 5.3 Orquestador y estados
+
+> **Ajuste por el spec de plataforma (§5.5):** folio, idempotencia, XML y recuperación ante caídas viven en
+> `dte_emissions` de la plataforma; `transport_guides` guarda la `emission_key` y el estado de negocio de la guía,
+> y se actualiza vía `IDteEmissionListener`.
 
 Tabla `transport_guides` (por manifiesto): grupo, `emission_key`, proveedor, folio, tipo de traslado, estado,
 intentos, último error, referencias a XML/PDF, fechas. Líneas en `transport_guide_lines` y referencias en

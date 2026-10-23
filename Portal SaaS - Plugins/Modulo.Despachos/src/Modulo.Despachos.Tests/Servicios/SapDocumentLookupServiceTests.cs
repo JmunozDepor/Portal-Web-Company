@@ -482,6 +482,8 @@ public class SapDocumentLookupServiceTests
         Assert.Contains("40)", sql);
         // Modelo (código sin talla) para las guías agrupadas por modelo.
         Assert.Contains("I.\"U_GSP_REFERENCE\" AS \"model_code\"", sql);
+        // Nombre corto del artículo (OITM.FrgnName) en vez de la descripción larga del SKU; sin él, la de la línea.
+        Assert.Contains("COALESCE(NULLIF(TRIM(I.\"FrgnName\"), ''), L.\"Dscription\") AS \"item_name\"", sql);
     }
 
     [Fact]

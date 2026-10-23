@@ -5,6 +5,7 @@
 -- customer_activity = giro del cliente (GiroRecep, max. 40), el primero con dato de:
 --   OCRD."U_U_NX_giro" (clientes mayoristas internos), "U_GSP_SubGroupName" (clientes creados por el punto de
 --   venta, sin su codigo "10001-") y, al final, "Notes". Se repite en cada fila. Campos de Depor: ajustar por compania.
+-- item_name = descripcion corta del articulo (OITM."FrgnName"); si esta vacia, la descripcion de la linea.
 -- destination_city = ciudad de la direccion de despacho (INV12."CityS"); se repite en cada fila.
 -- model_code (opcional) = codigo del modelo sin talla (OITM."U_GSP_REFERENCE" en Depor): con "Lineas de la guia =
 --   por modelo" las tallas de un modelo van en una sola linea. model_name (opcional) = nombre del modelo; si no
@@ -12,7 +13,7 @@
 SELECT
   L."LineNum" AS "line_num",
   L."ItemCode" AS "item_code",
-  L."Dscription" AS "item_name",
+  COALESCE(NULLIF(TRIM(I."FrgnName"), ''), L."Dscription") AS "item_name",
   L."Quantity" AS "quantity",
   L."unitMsr" AS "unit",
   CASE WHEN I."SWeight1" > 0 AND W."WightInMG" > 0

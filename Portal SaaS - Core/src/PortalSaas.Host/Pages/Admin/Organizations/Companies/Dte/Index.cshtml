@@ -1,0 +1,136 @@
+@page "{companyId:guid}"
+@model PortalSaas.Host.Pages.Admin.Organizations.Companies.Dte.IndexModel
+@using PortalSaas.Data.Entities
+@{
+    ViewData["Title"] = $"Documentos electrónicos · {Model.Company.Code}";
+    string EnvLabel(string e) => e == DteEnvironments.Production ? "Producción" : "Certificación";
+}
+
+<partial name="~/Pages/Admin/Organizations/_OrganizationSubnav.cshtml" model="@(new OrganizationSubnavViewModel { OrganizationId = Model.Organization.Id, OrganizationName = Model.Organization.LegalName, Mode = Model.Organization.Mode, ActivePage = "Companies" })" />
+
+<div class="card-surface mb-4">
+    <h2 class="h5 mb-3">Documentos electrónicos &mdash; @Model.Company.Code</h2>
+    <p class="text-muted">
+        Proveedor de documentos tributarios electrónicos de esta compañía (guías de despacho y, más adelante,
+        otros documentos). Cada compañía emite solo con su propio proveedor y RUT emisor.
+    </p>
+
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.Current is { } c)
+    {
+        <p>
+            Estado: <strong>@(c.IsEnabled ? "Habilitado" : "Deshabilitado")</strong>
+            · @c.ProviderCode · @EnvLabel(c.Environment)
+            · actualizado @c.UpdatedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")
+        </p>
+    }
+
+    <form method="post" asp-antiforgery="true">
+        <div asp-validation-summary="All" class="text-danger"></div>
+
+        <h3 class="h6 mt-3">Proveedor</h3>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label asp-for="Input.ProviderCode" class="form-label">Proveedor</label>
+                <select asp-for="Input.ProviderCode" class="form-select">
+                    @foreach (var code in Model.ProviderCodes)
+                    {
+                        <option value="@code">@code</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Input.Environment" class="form-label">Ambiente</label>
+                <select asp-for="Input.Environment" class="form-select">
+                    @foreach (var e in DteEnvironments.All)
+                    {
+                        <option value="@e">@EnvLabel(e)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <div class="form-check">
+                    <input asp-for="Input.IsEnabled" class="form-check-input" />
+                    <label asp-for="Input.IsEnabled" class="form-check-label">Habilitado para emitir</label>
+                </div>
+            </div>
+            <div class="col-12">
+                <label asp-for="Input.BaseUrl" class="form-label">URL base del servicio</label>
+                <input asp-for="Input.BaseUrl" class="form-control" placeholder="https://caoba.docele.cl/cl-dol-auth" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Input.Username" class="form-label">Usuario</label>
+                <input asp-for="Input.Username" class="form-control" autocomplete="off" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Input.Password" class="form-label">Contraseña @(Model.Current?.HasSecret == true ? "(en blanco = no cambiarla)" : "")</label>
+                <input asp-for="Input.Password" type="password" class="form-control" autocomplete="new-password" />
+            </div>
+        </div>
+
+        <h3 class="h6 mt-4">Emisor</h3>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label asp-for="Input.IssuerTaxId" class="form-label">RUT emisor</label>
+                <input asp-for="Input.IssuerTaxId" class="form-control" placeholder="76123456-0" />
+            </div>
+            <div class="col-md-9">
+                <label asp-for="Input.IssuerName" class="form-label">Razón social</label>
+                <input asp-for="Input.IssuerName" class="form-control" maxlength="100" />
+            </div>
+            <div class="col-md-9">
+                <label asp-for="Input.IssuerActivity" class="form-label">Giro</label>
+                <input asp-for="Input.IssuerActivity" class="form-control" maxlength="80" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Input.IssuerActivityCode" class="form-label">Acteco</label>
+                <input asp-for="Input.IssuerActivityCode" type="number" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Input.IssuerAddress" class="form-label">Dirección casa matriz</label>
+                <input asp-for="Input.IssuerAddress" class="form-control" maxlength="70" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Input.IssuerCommune" class="form-label">Comuna</label>
+                <input asp-for="Input.IssuerCommune" class="form-control" maxlength="20" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Input.IssuerCity" class="form-label">Ciudad</label>
+                <input asp-for="Input.IssuerCity" class="form-control" maxlength="20" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Input.IssuerSiiBranchCode" class="form-label">Código sucursal SII (opcional)</label>
+                <input asp-for="Input.IssuerSiiBranchCode" type="number" class="form-control" />
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <a asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@Model.Organization.Id" class="btn-secondary">Volver</a>
+        </div>
+    </form>
+
+    @if (Model.Current is not null)
+    {
+        <div class="d-flex gap-2 mt-3">
+            <form method="post" asp-page-handler="Test" asp-route-companyId="@Model.Company.Id" class="d-inline">
+                <button type="submit" class="btn-secondary">Probar conexión</button>
+            </form>
+            <form method="post" asp-page-handler="Delete" asp-route-companyId="@Model.Company.Id" class="d-inline"
+                  onsubmit="return confirm('¿Eliminar la configuración de documentos electrónicos de esta compañía?');">
+                <button type="submit" class="btn-secondary">Eliminar</button>
+            </form>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

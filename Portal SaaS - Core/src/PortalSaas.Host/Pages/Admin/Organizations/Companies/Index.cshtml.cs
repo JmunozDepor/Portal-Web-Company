@@ -79,10 +79,12 @@ public class IndexModel : PageModel
         var inUse = await _db.UserMenuGroups.AnyAsync(g => g.CompanyId == id)
             || await _db.UserMenuProfiles.AnyAsync(p => p.CompanyId == id)
             || await _db.CompanyModuleConnections.AnyAsync(b => b.CompanyId == id)
-            || await _db.ApiClientCredentials.AnyAsync(c => c.CompanyId == id && c.Activo);
+            || await _db.ApiClientCredentials.AnyAsync(c => c.CompanyId == id && c.Activo)
+            // Documentos electrónicos emitidos: historial legal, nunca se borran con la compañía.
+            || await _db.DteEmissions.AnyAsync(e => e.CompanyId == id);
         if (inUse)
         {
-            ErrorMessage = "No se puede eliminar: la compañía tiene usuarios con acceso asignado, conexiones de plugin configuradas o claves de API activas.";
+            ErrorMessage = "No se puede eliminar: la compañía tiene usuarios con acceso asignado, conexiones de plugin configuradas, claves de API activas o documentos electrónicos emitidos.";
             return RedirectToPage(new { organizationId });
         }
 
@@ -96,6 +98,8 @@ public class IndexModel : PageModel
             // compañía, sin sentido sin ella -- mismo criterio que los formularios.
             _db.DocumentDrafts.RemoveRange(_db.DocumentDrafts.Where(d => d.CompanyId == id));
             _db.CompanyDocumentSettings.RemoveRange(_db.CompanyDocumentSettings.Where(s => s.CompanyId == id));
+            // Configuración DTE sin emisiones (bloqueado arriba): solo parámetros de la compañía.
+            _db.CompanyDteSettings.RemoveRange(_db.CompanyDteSettings.Where(s => s.CompanyId == id));
             _db.Companies.Remove(company);
             await _db.SaveChangesAsync();
         }

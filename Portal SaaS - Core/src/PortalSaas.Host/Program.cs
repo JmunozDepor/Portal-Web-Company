@@ -143,6 +143,10 @@ builder.Services.AddScoped<IDocumentDraftService, PortalSaas.Core.Documentos.Doc
 builder.Services.AddScoped<ICompanyDocumentSettingsService, PortalSaas.Core.Documentos.CompanyDocumentSettingsService>();
 builder.Services.AddScoped<IDocumentSapMarkerService, PortalSaas.Core.Documentos.DocumentSapMarkerService>();
 builder.Services.AddHostedService<PortalSaas.Core.Documentos.DocumentDraftCleanupWorker>();
+// Pasarela de documentos tributarios electrónicos (DTE): configuración por compañía + adaptadores por
+// proveedor (docs/superpowers/specs/2026-10-22-pasarela-documentos-electronicos-design.md).
+builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteProviderRegistry>();
+builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteSettingsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<IContractLimitService, ContractLimitService>();

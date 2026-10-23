@@ -136,7 +136,8 @@ public static partial class GuidePlanner
     /// <summary>
     /// Suma las líneas por SKU o, con <paramref name="byModel"/>, por modelo (las tallas de un modelo quedan en una
     /// línea con el código y nombre del modelo; sin nombre de modelo se usa el del primer artículo). Una línea sin
-    /// modelo queda por SKU.
+    /// modelo queda por SKU. El nombre de una línea que junta varias es el mayor (orden ordinal): estable sin
+    /// importar el orden de las facturas ni de las tallas.
     /// </summary>
     private static List<ConsolidatedLine> Consolidate(IEnumerable<SapDocumentLine> lines, bool byModel)
     {
@@ -155,6 +156,7 @@ public static partial class GuidePlanner
                 var x = result[i];
                 result[i] = x with
                 {
+                    Name = MaxName(x.Name, name),
                     Quantity = x.Quantity + l.Quantity,
                     Unit = x.Unit ?? l.Unit,
                     WeightKg = x.WeightKg is null || l.WeightKg is null ? null : x.WeightKg + l.WeightKg,
@@ -170,6 +172,7 @@ public static partial class GuidePlanner
         // Las líneas ya vienen resumidas (por SKU o modelo): se juntan las de las facturas del trozo por su llave.
         var merged = chunk.SelectMany(c => c.Lines).GroupBy(l => l.Key).Select(grp => grp.Aggregate((x, l) => x with
         {
+            Name = MaxName(x.Name, l.Name),
             Quantity = x.Quantity + l.Quantity,
             Unit = x.Unit ?? l.Unit,
             WeightKg = x.WeightKg is null || l.WeightKg is null ? null : x.WeightKg + l.WeightKg,
@@ -203,6 +206,8 @@ public static partial class GuidePlanner
                 input.IssueDate, input.DepartureTime, m.EstimatedArrivalDate),
             null, lines, refs, Array.Empty<DteExtraField>());
     }
+
+    private static string MaxName(string a, string b) => string.CompareOrdinal(a, b) >= 0 ? a : b;
 
     private static string NormalizeAddress(string address) => SpacesRegex().Replace(address.Trim(), " ").ToUpperInvariant();
 

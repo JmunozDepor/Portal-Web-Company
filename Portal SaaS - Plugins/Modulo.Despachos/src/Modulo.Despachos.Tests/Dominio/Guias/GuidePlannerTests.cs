@@ -103,12 +103,12 @@ public class GuidePlannerTests
     }
 
     [Fact]
-    public void Plan_PorModelo_SinNombreDeModelo_UsaElNombreDelPrimerArticulo()
+    public void Plan_PorModelo_SinNombreDeModelo_UsaElMayorNombre()
     {
         var p = PlanAgrupado(GuideLineGroupings.Model, (Factura(100), LineasModelo(false,
             ("761952C-805-7", "761952C-805", 2, 1m), ("761952C-805-9", "761952C-805", 3, 1m))));
 
-        Assert.Equal("Artículo 761952C-805-7", Assert.Single(p.Guides).Document.Lines[0].Name);
+        Assert.Equal("Artículo 761952C-805-9", Assert.Single(p.Guides).Document.Lines[0].Name);
     }
 
     [Fact]
@@ -121,6 +121,19 @@ public class GuidePlannerTests
         var line = Assert.Single(Assert.Single(p.Guides).Document.Lines);
         Assert.Null(line.ItemCode);
         Assert.Equal("CNVFA23MJOG2-001 Artículo CNVFA23MJOG2-001", line.Name);
+    }
+
+    [Fact]
+    public void Plan_PorModelo_SinNombreDeModelo_UsaElMaximoDeLosNombres_SinImportarElOrden()
+    {
+        var a = PlanAgrupado(GuideLineGroupings.Model, (Factura(100), LineasModelo(false,
+            ("761952C-805-9", "761952C-805", 1, 1m), ("761952C-805-7", "761952C-805", 1, 1m))));
+        var b = PlanAgrupado(GuideLineGroupings.Model,
+            (Factura(100), LineasModelo(false, ("761952C-805-7", "761952C-805", 1, 1m))),
+            (Factura(101), LineasModelo(false, ("761952C-805-9", "761952C-805", 1, 1m))));
+
+        Assert.Equal("Artículo 761952C-805-9", Assert.Single(Assert.Single(a.Guides).Document.Lines).Name);
+        Assert.Equal("Artículo 761952C-805-9", Assert.Single(Assert.Single(b.Guides).Document.Lines).Name);
     }
 
     [Fact]

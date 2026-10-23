@@ -484,6 +484,9 @@ public class SapDocumentLookupServiceTests
         Assert.Contains("I.\"U_GSP_REFERENCE\" AS \"model_code\"", sql);
         // Nombre corto del artículo (OITM.FrgnName) en vez de la descripción larga del SKU; sin él, la de la línea.
         Assert.Contains("COALESCE(NULLIF(TRIM(I.\"FrgnName\"), ''), L.\"Dscription\") AS \"item_name\"", sql);
+        // Un solo nombre por modelo (el máximo de sus SKU), para no repetir el modelo con nombres distintos.
+        Assert.Contains("MAX(", sql);
+        Assert.Contains("AS \"model_name\"", sql);
     }
 
     [Fact]

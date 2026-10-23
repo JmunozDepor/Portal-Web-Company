@@ -8,8 +8,8 @@
 -- item_name = descripcion corta del articulo (OITM."FrgnName"); si esta vacia, la descripcion de la linea.
 -- destination_city = ciudad de la direccion de despacho (INV12."CityS"); se repite en cada fila.
 -- model_code (opcional) = codigo del modelo sin talla (OITM."U_GSP_REFERENCE" en Depor): con "Lineas de la guia =
---   por modelo" las tallas de un modelo van en una sola linea. model_name (opcional) = nombre del modelo; si no
---   viene se usa el nombre del primer articulo del modelo.
+--   por modelo" las tallas de un modelo van en una sola linea. model_name (opcional) = nombre del modelo: el mayor
+--   FrgnName de sus SKU, para que el modelo tenga un solo nombre; si no viene, el mayor item_name de la guia.
 SELECT
   L."LineNum" AS "line_num",
   L."ItemCode" AS "item_code",
@@ -25,7 +25,8 @@ SELECT
     NULLIF(TRIM(C0."U_GSP_SubGroupName"), ''),
     NULLIF(TRIM(C0."Notes"), '')), 40) AS "customer_activity",
   T2."CityS" AS "destination_city",
-  I."U_GSP_REFERENCE" AS "model_code"
+  I."U_GSP_REFERENCE" AS "model_code",
+  (SELECT MAX(NULLIF(TRIM(X."FrgnName"), '')) FROM OITM X WHERE X."U_GSP_REFERENCE" = I."U_GSP_REFERENCE") AS "model_name"
 FROM INV1 L
 INNER JOIN OINV T0 ON T0."DocEntry" = L."DocEntry"
 LEFT JOIN OITM I ON I."ItemCode" = L."ItemCode"

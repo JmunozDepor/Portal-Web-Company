@@ -153,6 +153,7 @@ builder.Services.AddHttpClient<PortalSaas.Core.DocumentosElectronicos.Proveedore
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.IDteProvider, PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele.FaceleDteProvider>();
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteEmissionService>();
 builder.Services.AddScoped<IDteEmissionService>(sp => sp.GetRequiredService<PortalSaas.Core.DocumentosElectronicos.DteEmissionService>());
+builder.Services.AddHostedService<PortalSaas.Core.DocumentosElectronicos.DteReconciliationHostedService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<IContractLimitService, ContractLimitService>();

@@ -151,6 +151,7 @@ public sealed class DteEmissionService : IDteEmissionService
 
             if (row.Status == DteEmissionStatuses.FolioReserved && row.Folio is { } folio)
             {
+                row.Attempts++;
                 var confirm = await provider.ConfirmAsync(ctx, row.DteType, folio, ct);
                 if (confirm.Ok)
                 {

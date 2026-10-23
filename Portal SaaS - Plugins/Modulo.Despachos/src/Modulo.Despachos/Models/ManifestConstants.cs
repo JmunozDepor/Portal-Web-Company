@@ -100,8 +100,11 @@ public static class DispatchGroupStatuses
     public const string Dispatched = "dispatched";
     public const string Annulled = "annulled";
 
-    /// <summary>Estados en que la pre-guía ocupa sus transferencias.</summary>
-    public static readonly IReadOnlyList<string> Active = new[] { Armed, InManifest, Dispatched };
+    /// <summary>
+    /// Estados en que la pre-guía retiene sus transferencias (no se agregan sueltas ni a otra pre-guía). Una vez
+    /// despachada manda la regla del manifiesto: una transferencia "no entregada" vuelve a quedar libre.
+    /// </summary>
+    public static readonly IReadOnlyList<string> Holding = new[] { Armed, InManifest };
 
     public static string Label(string status) => status switch
     {

@@ -405,14 +405,14 @@ public class ManifestService : IManifestService
         await SyncDispatchGroupsAsync(new[] { dispatchGroupId });
     }
 
-    /// <summary>Número de la pre-guía activa que contiene la transferencia, o null.</summary>
+    /// <summary>Número de la pre-guía (armada o en manifiesto) que retiene la transferencia, o null.</summary>
     private async Task<int?> ActiveGroupNumberOfAsync(int docEntry)
     {
-        var active = DispatchGroupStatuses.Active.ToArray();
+        var holding = DispatchGroupStatuses.Holding.ToArray();
         return await (from t in _db.DispatchGroupTransfers
                       join g in _db.DispatchGroups on t.DispatchGroupId equals g.Id
                       where t.CompanyId == CompanyId && g.CompanyId == CompanyId && t.SapDocEntry == docEntry
-                            && active.Contains(g.Status)
+                            && holding.Contains(g.Status)
                       orderby g.Number
                       select (int?)g.Number).FirstOrDefaultAsync();
     }
@@ -432,7 +432,23 @@ public class ManifestService : IManifestService
     /// Estado de cada pre-guía no anulada según sus documentos (ya guardados) en manifiestos no anulados: despachada si
     /// alguno salió, en manifiesto si hay alguno, armada si no queda ninguno.
     /// </summary>
+    /// <remarks>
+    /// Accesorio: corre después de guardar el manifiesto y nunca lanza (una falla no debe impedir la emisión de guías
+    /// ni deshacer la operación); el estado se recalcula en la próxima operación sobre esos documentos.
+    /// </remarks>
     private async Task SyncDispatchGroupsAsync(IEnumerable<long> groupIds)
+    {
+        try
+        {
+            await SyncDispatchGroupsCoreAsync(groupIds);
+        }
+        catch (Exception ex) when (ex is DbUpdateException or InvalidOperationException)
+        {
+            _logger?.LogWarning(ex, "No se pudo actualizar el estado de las pre-guías.");
+        }
+    }
+
+    private async Task SyncDispatchGroupsCoreAsync(IEnumerable<long> groupIds)
     {
         var ids = groupIds.Distinct().ToList();
         if (ids.Count == 0) return;

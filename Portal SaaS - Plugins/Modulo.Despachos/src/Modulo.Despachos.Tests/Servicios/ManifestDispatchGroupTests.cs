@@ -179,6 +179,63 @@ public class ManifestDispatchGroupTests
         Assert.Equal(DispatchGroupStatuses.Armed, await GroupStatus(env, g.Id));
     }
 
+    /// <summary>Despacha la pre-guía PG-000001 (501, 502) y registra el retorno con 501 no entregada.</summary>
+    private static async Task<ManifestTestEnv> DespachadaConNoEntregadaAsync()
+    {
+        var (env, _, id) = await ArrangeAsync();
+        await Scan(env, id, "PG-000001");
+        Assert.True((await env.Svc.DispatchAsync(id)).Success);
+        var reason = await env.Master.SaveRejectionReasonAsync(new RejectionReason
+            { Code = "ND", Name = "Tienda cerrada", AppliesTo = RejectionAppliesTo.NotDelivered, IsActive = true });
+        var docs = (await env.Svc.GetAsync(id))!.Documents;
+        await env.Svc.RegisterReturnAsync(id, docs.Select(d => new DocumentReturnInput(d.Id,
+            d.SapDocEntry == 501 ? DeliveryStatuses.NotDelivered : DeliveryStatuses.Delivered,
+            d.SapDocEntry == 501 ? reason : null, null)).ToList(), null);
+        return env;
+    }
+
+    [Fact]
+    public async Task NoEntregadaDePreGuiaDespachada_SePuedeVolverADespacharSuelta()
+    {
+        var env = await DespachadaConNoEntregadaAsync();
+        var next = await env.Svc.CreateDraftAsync(env.Header());
+
+        var r = await Scan(env, next, "CTBO501");
+
+        Assert.Equal(AddDocumentOutcomes.Added, r.Outcome);
+    }
+
+    [Fact]
+    public async Task NoEntregadaDePreGuiaDespachada_VuelveACandidatos()
+    {
+        var env = await DespachadaConNoEntregadaAsync();
+
+        var c = await env.Groups.ListCandidatesAsync(Desde);
+
+        Assert.Contains(501, c.SelectMany(x => x.Transfers).Select(t => t.DocEntry));
+    }
+
+    [Fact]
+    public async Task ConGuias_PendientesQuedaEnManifiesto_AlEmitirPasaADespachada()
+    {
+        var (env, g, id) = await ArrangeAsync();
+        await env.EnableGuidesAsync();
+        env.Sap.Lines[501] = new SapDocumentLines(null, "Rancagua", new[] { new SapDocumentLine(0, "A", "Zapatilla", 8, "UN", 1m) });
+        env.Sap.Lines[502] = new SapDocumentLines(null, "Rancagua", new[] { new SapDocumentLine(0, "B", "Polera", 9, "UN", 1m) });
+        await env.Svc.UpdateDraftHeaderAsync(id, env.Header(arrival: ManifestTestEnv.Fecha));
+        await Scan(env, id, "PG-000001");
+        env.Dte.Down = true;
+
+        await env.Svc.DispatchAsync(id);
+
+        Assert.Equal(ManifestStatuses.PendingGuides, (await env.Svc.GetAsync(id))!.Status);
+        Assert.Equal(DispatchGroupStatuses.InManifest, await GroupStatus(env, g.Id));
+
+        env.Dte.Down = false;
+        Assert.True((await env.Svc.RetryGuidesAsync(id)).Success);
+        Assert.Equal(DispatchGroupStatuses.Dispatched, await GroupStatus(env, g.Id));
+    }
+
     [Fact]
     public async Task Despachar_PasaADespachada()
     {

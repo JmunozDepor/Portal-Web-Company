@@ -228,11 +228,11 @@ public class DispatchGroupService : IDispatchGroupService
         var result = new Dictionary<int, string>();
         if (entries.Count == 0) return result;
 
-        var active = DispatchGroupStatuses.Active.ToArray();
+        var holding = DispatchGroupStatuses.Holding.ToArray();
         var inGroups = await (from t in _db.DispatchGroupTransfers
                               join g in _db.DispatchGroups on t.DispatchGroupId equals g.Id
                               where t.CompanyId == CompanyId && g.CompanyId == CompanyId && entries.Contains(t.SapDocEntry)
-                                    && active.Contains(g.Status)
+                                    && holding.Contains(g.Status)
                               select new { t.SapDocEntry, g.Number }).ToListAsync();
         foreach (var x in inGroups) result.TryAdd(x.SapDocEntry, $"ya está en la pre-guía {DispatchGroupCode.Format(x.Number)}");
 

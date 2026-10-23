@@ -27,10 +27,15 @@ public static class AddDocumentOutcomes
     public const string OtherIssuer = "other_issuer";
     /// <summary>El folio existe con más de un tipo de documento: la UI debe pedir el tipo.</summary>
     public const string Ambiguous = "ambiguous";
+    /// <summary>La transferencia va a una bodega que no es sucursal activa (Fase B).</summary>
+    public const string NotBranch = "not_branch";
 }
 
 public sealed record AddDocumentResult(
     string Outcome, Guid? ManifestDocumentId, int? OtherManifestNumber, IReadOnlyList<string> Warnings);
+
+/// <summary>Resultado de "Agregar pendientes": cuántas transferencias entraron y por qué se saltaron las demás.</summary>
+public sealed record AddPendingTransfersResult(int Added, IReadOnlyList<string> Skipped);
 
 public sealed record DispatchResult(bool Success, IReadOnlyList<string> Errors, IReadOnlyList<string> Warnings);
 
@@ -52,7 +57,17 @@ public interface IManifestService
 {
     Task<Guid> CreateDraftAsync(ManifestHeaderInput input);
     Task UpdateDraftHeaderAsync(Guid manifestId, ManifestHeaderInput input);
+    /// <summary>
+    /// Agrega un documento por timbre PDF417, por tipo + folio o, si el texto escaneado no es un timbre, por LPN
+    /// (transferencia a una bodega sucursal; con patrón LPN configurado el texto debe calzar con él).
+    /// </summary>
     Task<AddDocumentResult> AddDocumentAsync(Guid manifestId, DocumentCapture capture);
+
+    /// <summary>
+    /// Agrega las transferencias de SAP a la bodega sucursal desde la fecha que pasan las reglas de
+    /// AddDocumentAsync; las demás vuelven en Skipped con su motivo. Lanza si la bodega no es sucursal activa.
+    /// </summary>
+    Task<AddPendingTransfersResult> AddPendingTransfersAsync(Guid manifestId, string warehouseCode, DateOnly fromDate);
     Task RemoveDocumentAsync(Guid manifestId, Guid manifestDocumentId);
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Modulo.Despachos.Data;
@@ -155,7 +156,16 @@ public class ManifestService : IManifestService
         if (!string.IsNullOrWhiteSpace(capture.RawScan))
         {
             if (!TedParser.TryParse(capture.RawScan, out var parsed))
-                return Result(AddDocumentOutcomes.InvalidScan, "No se pudo leer el timbre del documento; reintente el escaneo o digite el folio.");
+            {
+                // No es un timbre: puede ser el LPN de una transferencia a sucursal (Fase B).
+                var lpn = await LpnFromScanAsync(capture.RawScan);
+                if (lpn is null)
+                    return Result(AddDocumentOutcomes.InvalidScan, "No se pudo leer el timbre del documento; reintente el escaneo o digite el folio.");
+                var transfer = await _sap.FindTransferByLpnAsync(lpn);
+                if (transfer is null)
+                    return Result(AddDocumentOutcomes.NotFound, $"No se encontró el LPN {lpn} en SAP.");
+                return await AddTransferAsync(m, transfer, CaptureMethods.Pdf417);
+            }
             ted = parsed;
 
             var issuer = await _master.GetIssuerTaxIdAsync();
@@ -233,10 +243,93 @@ public class ManifestService : IManifestService
             new { kind = doc.DocumentKind, sii = doc.SiiDocumentType, folio = doc.Folio, method = captureMethod });
         await _db.SaveChangesAsync();
         return new AddDocumentResult(AddDocumentOutcomes.Added, doc.Id, null, warnings);
-
-        static AddDocumentResult Result(string outcome, string message) =>
-            new(outcome, null, null, new[] { message });
     }
+
+    public async Task<AddPendingTransfersResult> AddPendingTransfersAsync(Guid manifestId, string warehouseCode, DateOnly fromDate)
+    {
+        var m = await LoadAsync(manifestId);
+        RequireStatus(m, ManifestStatuses.Draft, "Solo se pueden agregar documentos a un manifiesto en borrador.");
+        var branch = await _master.FindBranchWarehouseAsync(warehouseCode);
+        if (branch is not { IsActive: true })
+            throw new InvalidOperationException($"La bodega {warehouseCode} no es una sucursal activa.");
+
+        var added = 0;
+        var skipped = new List<string>();
+        foreach (var t in await _sap.ListPendingTransfersAsync(branch.WarehouseCode, fromDate))
+        {
+            var r = await AddTransferAsync(m, t, CaptureMethods.Manual);
+            if (r.Outcome == AddDocumentOutcomes.Added) added++;
+            else skipped.Add($"{t.DocNum}: {r.Warnings.FirstOrDefault()}");
+        }
+        return new AddPendingTransfersResult(added, skipped);
+    }
+
+    private static readonly Regex LpnShape = new(@"^[A-Z0-9_-]+$", RegexOptions.Compiled);
+
+    /// <summary>LPN normalizado si el texto escaneado puede ser uno (una palabra y, si la compañía lo configuró, calzando con su patrón).</summary>
+    private async Task<string?> LpnFromScanAsync(string raw)
+    {
+        var text = raw.Trim().ToUpperInvariant();
+        // Un LPN es una sola palabra (letras, dígitos, '-' o '_'): un timbre roto o basura del lector no lo es.
+        if (text.Length == 0 || text.Length > 30 || !LpnShape.IsMatch(text)) return null;
+        var pattern = (await _master.GetSettingsAsync())?.LpnPattern;
+        if (string.IsNullOrWhiteSpace(pattern)) return text;
+        try
+        {
+            return Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)) ? text : null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or RegexMatchTimeoutException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Agrega una transferencia (objeto 67, controlada por DocEntry): anulada, a bodega no sucursal, ya en este
+    /// manifiesto o en otro manifiesto no anulado se rechaza con su motivo.
+    /// </summary>
+    private async Task<AddDocumentResult> AddTransferAsync(Manifest m, SapTransferInfo t, string captureMethod)
+    {
+        if (t.IsCanceled)
+            return Result(AddDocumentOutcomes.Canceled, $"La transferencia {t.DocNum} está anulada en SAP.");
+        var branch = await _master.FindBranchWarehouseAsync(t.WarehouseCode);
+        if (branch is not { IsActive: true })
+            return Result(AddDocumentOutcomes.NotBranch,
+                $"La transferencia {t.DocNum} va a la bodega {t.WarehouseCode} ({t.WarehouseName}), que no es sucursal.");
+        if (m.Documents.Any(d => d.DocumentKind == DocumentKinds.Transfer && d.SapDocEntry == t.DocEntry))
+            return Result(AddDocumentOutcomes.DuplicateInThis, $"La transferencia {t.DocNum} ya está en este manifiesto.");
+        var other = await FindActiveElsewhereAsync(DocumentKinds.Transfer, 0, t.DocNum, m.Id, includeDrafts: true, t.DocEntry);
+        if (other != null)
+            return new AddDocumentResult(AddDocumentOutcomes.InOtherManifest, null, other,
+                new[] { $"La transferencia {t.DocNum} ya está en el manifiesto N° {other}." });
+
+        var warnings = new List<string>();
+        var communeName = branch.CommuneName ?? t.DestinationCommune;
+        var commune = string.IsNullOrWhiteSpace(communeName) ? null : await _master.FindCommuneByNameAsync(communeName);
+        if (commune is null)
+            warnings.Add($"La comuna de destino '{communeName}' no se pudo resolver; elíjala en la tabla de documentos (se recordará para las próximas). Mientras tanto el costo queda sin tarifa y no se puede emitir la guía.");
+
+        var doc = new ManifestDocument
+        {
+            Id = Guid.NewGuid(), CompanyId = CompanyId, ManifestId = m.Id,
+            DocumentKind = DocumentKinds.Transfer, SiiDocumentType = 0, Folio = t.DocNum,
+            SapDocEntry = t.DocEntry, SapDocNum = t.DocNum, DocumentDate = t.DocumentDate, TotalAmount = 0,
+            Lpn = t.Lpn is { Length: > 30 } l ? l[..30] : t.Lpn,
+            CustomerCode = branch.WarehouseCode, CustomerName = branch.Name, CustomerTaxId = await _master.GetIssuerTaxIdAsync(),
+            DestinationAddress = branch.Address ?? t.DestinationAddress, DestinationCommuneName = communeName,
+            DestinationCommuneId = commune?.Id,
+            Units = t.Units, Packages = 1,
+            DeliveryStatus = DeliveryStatuses.Pending, CaptureMethod = captureMethod,
+            AddedAt = UtcNow, AddedBy = _user.UserId,
+        };
+        _db.ManifestDocuments.Add(doc);
+        AddEvent(m.Id, ManifestEventTypes.DocumentAdded, doc.Id, null, null,
+            new { kind = doc.DocumentKind, folio = doc.Folio, lpn = doc.Lpn, method = captureMethod });
+        await _db.SaveChangesAsync();
+        return new AddDocumentResult(AddDocumentOutcomes.Added, doc.Id, null, warnings);
+    }
+
+    private static AddDocumentResult Result(string outcome, string message) => new(outcome, null, null, new[] { message });
 
     public async Task RemoveDocumentAsync(Guid manifestId, Guid manifestDocumentId)
     {
@@ -258,16 +351,22 @@ public class ManifestService : IManifestService
     private async Task<int?> FindActiveElsewhereAsync(SapDocumentInfo info, Guid exceptManifestId, bool includeDrafts) =>
         await FindActiveElsewhereAsync(info.DocumentKind, info.SiiDocumentType, info.Folio, exceptManifestId, includeDrafts);
 
-    private async Task<int?> FindActiveElsewhereAsync(string kind, int sii, long folio, Guid exceptManifestId, bool includeDrafts) =>
-        await (from d in _db.ManifestDocuments
+    /// <remarks>Las transferencias se controlan por DocEntry (el DocNum puede repetirse entre series).</remarks>
+    private async Task<int?> FindActiveElsewhereAsync(string kind, int sii, long folio, Guid exceptManifestId, bool includeDrafts,
+        int docEntry = 0)
+    {
+        var byEntry = kind == DocumentKinds.Transfer;
+        return await (from d in _db.ManifestDocuments
                join o in _db.Manifests on d.ManifestId equals o.Id
                where d.CompanyId == CompanyId && o.CompanyId == CompanyId && o.Id != exceptManifestId
-                     && d.DocumentKind == kind && d.SiiDocumentType == sii && d.Folio == folio
+                     && d.DocumentKind == kind && d.SiiDocumentType == sii
+                     && (byEntry ? d.SapDocEntry == docEntry : d.Folio == folio)
                      && o.Status != ManifestStatuses.Annulled
                      && (includeDrafts || o.Status != ManifestStatuses.Draft)
                      && d.DeliveryStatus != DeliveryStatuses.NotDelivered
                orderby o.Number
                select (int?)o.Number).FirstOrDefaultAsync();
+    }
 
     private static bool SameRut(string a, string b)
     {
@@ -311,7 +410,7 @@ public class ManifestService : IManifestService
         // Revalida contra otros manifiestos: el chequeo al agregar no cubre dos usuarios simultáneos.
         foreach (var d in m.Documents)
         {
-            var other = await FindActiveElsewhereAsync(d.DocumentKind, d.SiiDocumentType, d.Folio, m.Id, includeDrafts: false);
+            var other = await FindActiveElsewhereAsync(d.DocumentKind, d.SiiDocumentType, d.Folio, m.Id, includeDrafts: false, d.SapDocEntry);
             if (other != null)
                 errors.Add($"El folio {d.Folio} ya está despachado en el manifiesto N° {other}; quítelo de este manifiesto.");
         }

@@ -45,6 +45,9 @@ public sealed class DetalleModel : DespachosPageModelBase
     public IReadOnlyDictionary<Guid, string> UserLabels { get; private set; } = new Dictionary<Guid, string>();
     public IReadOnlyList<Commune> Communes { get; private set; } = Array.Empty<Commune>();
 
+    /// <summary>Bodegas sucursal activas (formulario "Agregar pendientes" del borrador).</summary>
+    public IReadOnlyList<BranchWarehouse> BranchWarehouses { get; private set; } = Array.Empty<BranchWarehouse>();
+
     public bool CanEdit { get; private set; }
     public bool CanApprove { get; private set; }
     public bool CanDelete { get; private set; }
@@ -142,6 +145,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         }
         catch (Exception ex) { GuidesError = GetErrorMessage(ex); }
         Communes = await _data.ListCommunesAsync();
+        if (m.Status == ManifestStatuses.Draft) BranchWarehouses = await _data.ListBranchWarehousesAsync();
         UserLabels = await ResolveUsersAsync(m);
         if (Header.DispatchDate is null) Header = ManifestForm.From(m);
         if (Change.VehicleId == 0)
@@ -279,6 +283,23 @@ public sealed class DetalleModel : DespachosPageModelBase
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
         return RedirectToPage(new { id, tab = "cabecera" });
+    }
+
+    /// <summary>Agrega las transferencias pendientes de una bodega sucursal desde la fecha (yyyy-MM-dd). Exige EDIT.</summary>
+    public async Task<IActionResult> OnPostAgregarPendientesAsync(Guid id, string? warehouseCode, string? fromDate)
+    {
+        if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
+        try
+        {
+            if (!DateOnly.TryParseExact(fromDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var from))
+                throw new InvalidOperationException("Indique la fecha desde la que se buscan las transferencias.");
+            var r = await _manifests.AddPendingTransfersAsync(id, warehouseCode ?? "", from);
+            SuccessMessage = $"Se agregaron {r.Added} transferencia(s).";
+            if (r.Skipped.Count > 0)
+                ErrorMessage = $"No se agregaron {r.Skipped.Count}: " + string.Join(" · ", r.Skipped);
+        }
+        catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
+        return RedirectToPage(new { id, tab = "documentos" });
     }
 
     public async Task<IActionResult> OnPostQuitarDocumentoAsync(Guid id, Guid documentId)

@@ -210,6 +210,30 @@
                         <button type="button" class="btn btn-primary" id="manual-add">Agregar</button>
                     </div>
                 </details>
+                @if (Model.BranchWarehouses.Count > 0)
+                {
+                    @* Transferencias a sucursales (Fase B): el LPN se escanea arriba; aquí se agregan en bloque. *@
+                    <details class="mb-2">
+                        <summary>Agregar transferencias pendientes de una sucursal</summary>
+                        <form method="post" asp-page-handler="AgregarPendientes" asp-route-id="@m.Id" asp-antiforgery="true" class="d-flex gap-2 align-items-end flex-wrap mt-2">
+                            <div>
+                                <label class="form-label" for="pending-warehouse">Sucursal</label>
+                                <select id="pending-warehouse" name="warehouseCode" class="form-select" required>
+                                    @foreach (var b in Model.BranchWarehouses)
+                                    {
+                                        <option value="@b.WarehouseCode">@b.WarehouseCode - @b.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="pending-from">Desde</label>
+                                <input type="date" id="pending-from" name="fromDate" class="form-control" required
+                                       value="@DateTime.Today.AddDays(-30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" />
+                            </div>
+                            <button type="submit" class="btn btn-primary">Agregar pendientes</button>
+                        </form>
+                    </details>
+                }
                 <div id="scan-camera-panel" hidden class="mb-2">
                     <video id="scan-video" playsinline muted style="width:100%;max-width:420px;border-radius:8px;"></video>
                     <div><button type="button" class="btn btn-secondary mt-1" id="scan-camera-close">Cerrar cámara</button></div>
@@ -232,7 +256,7 @@
                     {
                         <tr>
                             <td>@DocumentKinds.Label(d.DocumentKind)</td>
-                            <td>@d.Folio</td>
+                            <td>@d.Folio@if (d.Lpn is not null) { <div class="text-muted">LPN @d.Lpn</div> }</td>
                             <td>@d.CustomerName</td>
                             <td>
                                 @(d.DestinationCommuneName ?? "—")
@@ -428,7 +452,7 @@
                         {
                             <tr>
                                 <td>@DocumentKinds.Label(d.DocumentKind)</td>
-                                <td>@d.Folio</td>
+                                <td>@d.Folio@if (d.Lpn is not null) { <div class="text-muted">LPN @d.Lpn</div> }</td>
                                 <td>@d.CustomerName</td>
                                 <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="d.DeliveryStatus" /></td>
                                 <td>@Model.ReasonName(d.RejectionReasonId)</td>

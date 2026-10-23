@@ -40,6 +40,22 @@ public class ManifiestosPermisosTests
     }
 
     [Fact]
+    public async Task AgregarPendientes_RequiereEditar_YAgrega()
+    {
+        var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View));
+        await env.Master.SaveBranchWarehouseAsync(new BranchWarehouse { WarehouseCode = "TDA01", Name = "Tienda", CommuneName = "Santiago" });
+        env.Sap.Transfers.Add(new SapTransferInfo(501, 1501, new DateOnly(2026, 11, 5), "TDA01", "Tienda", "Estado 387", "Santiago", 3m, false, "CTBO1"));
+        var id = await env.Svc.CreateDraftAsync(env.Header());
+        Assert.IsType<ForbidResult>(await page.OnPostAgregarPendientesAsync(id, "TDA01", "2026-11-01"));
+
+        env.User.Grant("Despachos.manifiestos", PortalActions.Edit);
+        Assert.IsType<RedirectToPageResult>(await page.OnPostAgregarPendientesAsync(id, "TDA01", "2026-11-01"));
+
+        Assert.Contains("1 transferencia", page.SuccessMessage);
+        Assert.Single((await env.Svc.GetAsync(id))!.Documents);
+    }
+
+    [Fact]
     public async Task Guias_BorradorPdf_RequiereVer()
     {
         var (page, env) = BuildDetalle();

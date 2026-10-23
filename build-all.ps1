@@ -1,5 +1,5 @@
 # Compila los plugins externos (Modulo.Rendiciones, Modulo.GestionDistribucionGastos,
-# Modulo.SellOut, Modulo.AuditoriaInventario) y luego Portal SaaS - Core, en ese orden -- los plugins primero porque su output se
+# Modulo.SellOut, Modulo.AuditoriaInventario, Modulo.Despachos) y luego Portal SaaS - Core, en ese orden -- los plugins primero porque su output se
 # copia (por el junction de cada uno) a Core\artifacts\plugins\{Modulo} antes de que el
 # Host los cargue. Para el Host antes de compilar Core (mismo motivo que
 # .vscode/stop-host.ps1): el DLL queda bloqueado mientras el proceso corre.
@@ -69,7 +69,8 @@ Write-Host "== Limpiando dist\ de los plugins externos ==" -ForegroundColor Cyan
     "$root\Portal SaaS - Plugins\Modulo.Rendiciones\dist\Modulo.Rendiciones",
     "$root\Portal SaaS - Plugins\Modulo.GestionDistribucionGastos\dist\Modulo.GestionDistribucionGastos",
     "$root\Portal SaaS - Plugins\Modulo.SellOut\dist\Modulo.SellOut",
-    "$root\Portal SaaS - Plugins\Modulo.AuditoriaInventario\dist\Modulo.AuditoriaInventario"
+    "$root\Portal SaaS - Plugins\Modulo.AuditoriaInventario\dist\Modulo.AuditoriaInventario",
+    "$root\Portal SaaS - Plugins\Modulo.Despachos\dist\Modulo.Despachos"
 ) | ForEach-Object {
     if (Test-Path $_) {
         Write-Host "Borrando $_"
@@ -92,6 +93,10 @@ if ($LASTEXITCODE -ne 0) { throw "Falló el build de Modulo.SellOut" }
 Write-Host "== Compilando Modulo.AuditoriaInventario (Release) ==" -ForegroundColor Cyan
 dotnet build "$root\Portal SaaS - Plugins\Modulo.AuditoriaInventario\src\Modulo.AuditoriaInventario\Modulo.AuditoriaInventario.csproj" -c Release
 if ($LASTEXITCODE -ne 0) { throw "Falló el build de Modulo.AuditoriaInventario" }
+
+Write-Host "== Compilando Modulo.Despachos (Release) ==" -ForegroundColor Cyan
+dotnet build "$root\Portal SaaS - Plugins\Modulo.Despachos\src\Modulo.Despachos\Modulo.Despachos.csproj" -c Release
+if ($LASTEXITCODE -ne 0) { throw "Falló el build de Modulo.Despachos" }
 
 Write-Host "== Compilando Portal SaaS - Core ==" -ForegroundColor Cyan
 dotnet build "$root\Portal SaaS - Core\PortalSaas.sln"

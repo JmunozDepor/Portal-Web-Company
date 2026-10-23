@@ -399,6 +399,134 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                     b.ToTable("despachos_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.DispatchGroup", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AnnulReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("annul_reason");
+
+                    b.Property<string>("BranchName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("branch_name");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateOnly>("DispatchDate")
+                        .HasColumnType("date")
+                        .HasColumnName("dispatch_date");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer")
+                        .HasColumnName("number");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer")
+                        .HasColumnName("sequence");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("WarehouseCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("warehouse_code");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_despachos_dispatch_groups_company_id");
+
+                    b.HasIndex("CompanyId", "DispatchDate")
+                        .HasDatabaseName("ix_despachos_dispatch_groups_company_id_dispatch_date");
+
+                    b.HasIndex("CompanyId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("uq_despachos_dispatch_groups_company_id_number");
+
+                    b.ToTable("despachos_dispatch_groups", (string)null);
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.DispatchGroupTransfer", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<long>("DispatchGroupId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("dispatch_group_id");
+
+                    b.Property<DateOnly>("DocumentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("document_date");
+
+                    b.Property<string>("Lpn")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("lpn");
+
+                    b.Property<int>("SapDocEntry")
+                        .HasColumnType("integer")
+                        .HasColumnName("sap_doc_entry");
+
+                    b.Property<int>("SapDocNum")
+                        .HasColumnType("integer")
+                        .HasColumnName("sap_doc_num");
+
+                    b.Property<decimal>("Units")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("units");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DispatchGroupId");
+
+                    b.HasIndex("CompanyId", "SapDocEntry")
+                        .HasDatabaseName("ix_despachos_dispatch_group_transfers_company_id_sap_doc_entry");
+
+                    b.ToTable("despachos_dispatch_group_transfers", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.Driver", b =>
                 {
                     b.Property<long>("Id")
@@ -868,6 +996,10 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasColumnType("character varying(60)")
                         .HasColumnName("destination_commune_name");
 
+                    b.Property<long?>("DispatchGroupId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("dispatch_group_id");
+
                     b.Property<DateOnly>("DocumentDate")
                         .HasColumnType("date")
                         .HasColumnName("document_date");
@@ -957,6 +1089,9 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
 
                     b.HasIndex("CompanyId")
                         .HasDatabaseName("ix_manifest_documents_company_id");
+
+                    b.HasIndex("DispatchGroupId")
+                        .HasDatabaseName("ix_manifest_documents_dispatch_group_id");
 
                     b.HasIndex("ManifestId")
                         .HasDatabaseName("ix_manifest_documents_manifest_id");
@@ -2066,6 +2201,15 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasConstraintName("fk_commune_aliases_communes");
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.DispatchGroupTransfer", b =>
+                {
+                    b.HasOne("Modulo.Despachos.Models.DispatchGroup", null)
+                        .WithMany("Transfers")
+                        .HasForeignKey("DispatchGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.Driver", b =>
                 {
                     b.HasOne("Modulo.Despachos.Models.Carrier", null)
@@ -2226,6 +2370,11 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_zone_communes_zones");
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.DispatchGroup", b =>
+                {
+                    b.Navigation("Transfers");
                 });
 
             modelBuilder.Entity("Modulo.Despachos.Models.Manifest", b =>

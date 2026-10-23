@@ -35,6 +35,8 @@ public class DespachosDbContext : DbContext
     public DbSet<RejectionReason> RejectionReasons => Set<RejectionReason>();
     public DbSet<Holiday> Holidays => Set<Holiday>();
     public DbSet<BranchWarehouse> BranchWarehouses => Set<BranchWarehouse>();
+    public DbSet<DispatchGroup> DispatchGroups => Set<DispatchGroup>();
+    public DbSet<DispatchGroupTransfer> DispatchGroupTransfers => Set<DispatchGroupTransfer>();
     public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
     public DbSet<RateCard> RateCards => Set<RateCard>();
     public DbSet<RateSurcharge> RateSurcharges => Set<RateSurcharge>();
@@ -206,6 +208,39 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.HasIndex(x => new { x.CompanyId, x.WarehouseCode }).IsUnique()
                 .HasDatabaseName("uq_despachos_branch_warehouses_company_id_warehouse_code");
+        });
+
+        modelBuilder.Entity<DispatchGroup>(e =>
+        {
+            Base(e, "despachos_dispatch_groups");
+            e.Property(x => x.Number).HasColumnName("number");
+            e.Property(x => x.WarehouseCode).HasColumnName("warehouse_code").HasMaxLength(20).IsRequired();
+            e.Property(x => x.BranchName).HasColumnName("branch_name").HasMaxLength(100).IsRequired();
+            e.Property(x => x.DispatchDate).HasColumnName("dispatch_date");
+            e.Property(x => x.Sequence).HasColumnName("sequence");
+            e.Property(x => x.Status).HasColumnName("status").HasMaxLength(15).IsRequired();
+            e.Property(x => x.AnnulReason).HasColumnName("annul_reason").HasMaxLength(200);
+            e.HasIndex(x => new { x.CompanyId, x.Number }).IsUnique()
+                .HasDatabaseName("uq_despachos_dispatch_groups_company_id_number");
+            e.HasIndex(x => new { x.CompanyId, x.DispatchDate })
+                .HasDatabaseName("ix_despachos_dispatch_groups_company_id_dispatch_date");
+            e.HasMany(x => x.Transfers).WithOne().HasForeignKey(x => x.DispatchGroupId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DispatchGroupTransfer>(e =>
+        {
+            e.ToTable("despachos_dispatch_group_transfers");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.DispatchGroupId).HasColumnName("dispatch_group_id");
+            e.Property(x => x.SapDocEntry).HasColumnName("sap_doc_entry");
+            e.Property(x => x.SapDocNum).HasColumnName("sap_doc_num");
+            e.Property(x => x.Lpn).HasColumnName("lpn").HasMaxLength(30);
+            e.Property(x => x.Units).HasColumnName("units").HasPrecision(18, 2);
+            e.Property(x => x.DocumentDate).HasColumnName("document_date");
+            e.HasIndex(x => new { x.CompanyId, x.SapDocEntry })
+                .HasDatabaseName("ix_despachos_dispatch_group_transfers_company_id_sap_doc_entry");
         });
 
         modelBuilder.Entity<NotificationRecipient>(e =>
@@ -448,6 +483,8 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.Lpn).HasColumnName("lpn").HasMaxLength(30);
             e.Property(x => x.SapWritebackStatus).HasColumnName("sap_writeback_status").HasMaxLength(10);
             e.Property(x => x.SapWritebackError).HasColumnName("sap_writeback_error").HasMaxLength(500);
+            e.Property(x => x.DispatchGroupId).HasColumnName("dispatch_group_id");
+            e.HasIndex(x => x.DispatchGroupId).HasDatabaseName("ix_manifest_documents_dispatch_group_id");
             e.HasIndex(x => new { x.CompanyId, x.DocumentKind, x.SapDocEntry })
                 .HasDatabaseName("ix_manifest_documents_company_id_document_kind_sap_doc_entry");
             e.Property(x => x.SapBaseOrderEntry).HasColumnName("sap_base_order_entry");

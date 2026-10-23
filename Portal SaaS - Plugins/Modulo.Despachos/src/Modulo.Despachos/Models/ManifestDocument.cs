@@ -32,6 +32,9 @@ public class ManifestDocument
     public string? SapWritebackStatus { get; set; }
     public string? SapWritebackError { get; set; }
 
+    /// <summary>Pre-guía de la que entró la transferencia (escaneando su hoja); null si entró suelta.</summary>
+    public long? DispatchGroupId { get; set; }
+
     public int? SapBaseOrderEntry { get; set; }
     public string? CustomerPo { get; set; }
     public decimal Units { get; set; }

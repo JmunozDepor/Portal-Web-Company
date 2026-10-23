@@ -91,3 +91,24 @@ public static class ClosureStatuses
     public const string Closed = "closed";
     public const string Reopened = "reopened";
 }
+
+/// <summary>Estados de una pre-guía (despachos_dispatch_groups.status).</summary>
+public static class DispatchGroupStatuses
+{
+    public const string Armed = "armed";
+    public const string InManifest = "in_manifest";
+    public const string Dispatched = "dispatched";
+    public const string Annulled = "annulled";
+
+    /// <summary>Estados en que la pre-guía ocupa sus transferencias.</summary>
+    public static readonly IReadOnlyList<string> Active = new[] { Armed, InManifest, Dispatched };
+
+    public static string Label(string status) => status switch
+    {
+        Armed => "Armada",
+        InManifest => "En manifiesto",
+        Dispatched => "Despachada",
+        Annulled => "Anulada",
+        _ => status,
+    };
+}

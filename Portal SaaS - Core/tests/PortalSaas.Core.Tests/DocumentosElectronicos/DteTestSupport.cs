@@ -30,7 +30,13 @@ internal sealed class FakeDteProvider : IDteProvider
     public int FailNextReserves { get; set; }
     public bool TestFails { get; set; }
 
-    public string BuildXml(DteDocument doc, DteIssuerData issuer) => $"<DTE tipo=\"{doc.IdDoc.DteType}\" emisor=\"{issuer.TaxId}\"/>";
+    /// <summary>Si devuelve true para el documento, BuildXml lanza (simula un error inesperado al armar el XML).</summary>
+    public Func<DteDocument, bool>? ThrowOnBuild { get; set; }
+
+    public string BuildXml(DteDocument doc, DteIssuerData issuer) =>
+        ThrowOnBuild?.Invoke(doc) == true
+            ? throw new ArgumentException("String contains invalid Unicode code points.")
+            : $"<DTE tipo=\"{doc.IdDoc.DteType}\" emisor=\"{issuer.TaxId}\"/>";
 
     public Task<byte[]> PreviewAsync(DteProviderContext ctx, string xml, int dteType, CancellationToken ct)
     {

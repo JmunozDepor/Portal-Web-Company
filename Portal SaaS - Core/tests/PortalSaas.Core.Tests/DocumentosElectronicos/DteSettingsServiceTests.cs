@@ -123,4 +123,31 @@ public class DteSettingsServiceTests
         Assert.DoesNotContain("clave-secreta", ex.Message);
         Assert.DoesNotContain("usuario-prueba", ex.Message);
     }
+
+    [Fact]
+    public async Task Save_CambiarAmbienteORutConEmisionesEnCurso_Falla()
+    {
+        var (svc, db, _) = Build();
+        await svc.SaveAsync(CompanyId, DteTestSupport.ValidInput());
+        db.DteEmissions.Add(new DteEmission
+        {
+            CompanyId = CompanyId, EmissionKey = Guid.NewGuid(), SourceModule = "despachos", SourceRef = "x", DteType = 52,
+            ProviderCode = "FAKE", IssuerTaxId = "76030680-0", Environment = "certification", Status = "folio_reserved",
+            RequestHash = "h", RequestJson = "{}",
+        });
+        await db.SaveChangesAsync();
+
+        var prod = DteTestSupport.ValidInput();
+        prod.Environment = DteEnvironments.Production;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.SaveAsync(CompanyId, prod));
+        var otherRut = DteTestSupport.ValidInput();
+        otherRut.IssuerTaxId = "78454830-9";
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.SaveAsync(CompanyId, otherRut));
+        Assert.Equal("certification", (await db.CompanyDteSettings.SingleAsync()).Environment);
+
+        // Cambiar otra cosa (ej. el giro) sí se permite.
+        var giro = DteTestSupport.ValidInput();
+        giro.IssuerActivity = "Otro giro";
+        await svc.SaveAsync(CompanyId, giro);
+    }
 }

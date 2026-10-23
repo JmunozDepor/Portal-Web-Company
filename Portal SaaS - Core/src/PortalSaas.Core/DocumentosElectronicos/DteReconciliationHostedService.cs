@@ -93,10 +93,24 @@ public sealed class DteReconciliationHostedService : BackgroundService
         var rows = await StaleQuery(db, companyId, now).ToListAsync(ct);
         foreach (var row in rows)
         {
-            var result = await svc.AdvanceAsync(row, ct);
-            if (result.Status != DteEmissionStatuses.Issued)
+            try
             {
-                logger.LogWarning("Emisión DTE {EmissionKey} ({SourceRef}) sigue en {Status}.", row.EmissionKey, row.SourceRef, result.Status);
+                var result = await svc.AdvanceAsync(row, ct);
+                if (result.Status != DteEmissionStatuses.Issued)
+                {
+                    logger.LogWarning("Emisión DTE {EmissionKey} ({SourceRef}) sigue en {Status}.", row.EmissionKey, row.SourceRef, result.Status);
+                }
+                if (row.Attempts >= MaxAttempts)
+                {
+                    logger.LogError("Emisión DTE {EmissionKey} ({SourceRef}) alcanzó {Max} intentos: ya no se reintenta sola.",
+                        row.EmissionKey, row.SourceRef, MaxAttempts);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Una fila con problemas no detiene a las demás de la compañía.
+                logger.LogError("No se pudo conciliar la emisión DTE {EmissionKey} ({SourceRef}): {Error}",
+                    row.EmissionKey, row.SourceRef, ex.GetType().Name);
             }
         }
         return rows.Count;

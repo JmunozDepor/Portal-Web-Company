@@ -175,10 +175,10 @@ public class DteEmissionServiceTests
     }
 
     [Fact]
-    public async Task Abandon_Pendiente_Abandona()
+    public async Task Abandon_RechazadaSinFolio_Abandona()
     {
         var env = await BuildAsync();
-        env.Provider.FailNextReserves = 1;
+        env.Provider.RejectNextReserve = "Error de esquema";
         var req = Request();
         await env.Svc.EmitAsync(req);
         await env.Svc.AbandonAsync(req.EmissionKey, "Manifiesto anulado");
@@ -199,13 +199,13 @@ public class DteEmissionServiceTests
     public async Task Emit_Abandonada_NoReemite()
     {
         var env = await BuildAsync();
-        env.Provider.FailNextReserves = 1;
+        env.Provider.RejectNextReserve = "Error de esquema";
         var req = Request();
         await env.Svc.EmitAsync(req);
         await env.Svc.AbandonAsync(req.EmissionKey, "x");
         var r = await env.Svc.EmitAsync(req);
         Assert.Equal(DteEmissionStatuses.Abandoned, r.Status);
-        Assert.Equal(0, env.Provider.Reserves);
+        Assert.Equal(1, env.Provider.Reserves); // solo el intento original
     }
 
     [Fact]
@@ -257,5 +257,64 @@ public class DteEmissionServiceTests
         var env = await BuildAsync();
         var doc = DteRulesTests.Guia52Valida() with { IdDoc = new DteIdDoc(39, new DateOnly(2026, 11, 10), null, null) };
         await Assert.ThrowsAsync<InvalidOperationException>(() => env.Svc.EmitAsync(Request(doc: doc)));
+    }
+
+    [Fact]
+    public async Task Emit_BuildXmlLanza_QuedaFailedConMensaje_YCuentaIntento()
+    {
+        var env = await BuildAsync();
+        env.Provider.ThrowOnBuild = _ => true;
+
+        var r = await env.Svc.EmitAsync(Request());
+
+        Assert.Equal(DteEmissionStatuses.Failed, r.Status);
+        Assert.Contains("No se pudo armar", r.Error);
+        Assert.Equal(1, (await env.Db.DteEmissions.SingleAsync()).Attempts);
+        Assert.Equal(0, env.Provider.Reserves);
+    }
+
+    [Fact]
+    public async Task Advance_AmbienteCambiado_NoConfirmaContraOtroAmbiente()
+    {
+        var env = await BuildAsync();
+        env.Provider.FailNextConfirms = 1;
+        var req = Request();
+        await env.Svc.EmitAsync(req);                       // folio reservado en certificación
+        var s = await env.Db.CompanyDteSettings.SingleAsync();
+        s.Environment = "production";                        // cambio directo (saltando la validación)
+        await env.Db.SaveChangesAsync();
+
+        var r = await env.Svc.EmitAsync(req);
+
+        Assert.Equal(DteEmissionStatuses.FolioReserved, r.Status);
+        Assert.Contains("configuración", r.Error);
+        Assert.Equal(0, env.Provider.Confirms);
+    }
+
+    [Fact]
+    public async Task Abandon_PendienteConIntentos_ResuelveFolioYLibera()
+    {
+        var env = await BuildAsync();
+        env.Provider.FailNextReserves = 1;                   // generaDTE sin respuesta: ¿asignó folio?
+        var req = Request();
+        await env.Svc.EmitAsync(req);
+
+        await env.Svc.AbandonAsync(req.EmissionKey, "Manifiesto anulado");
+
+        Assert.Equal(new[] { req.EmissionKey }, env.Provider.ReservedKeys); // misma clave: devuelve el folio si existía
+        Assert.Equal(1, env.Provider.Releases);
+        Assert.Equal(DteEmissionStatuses.Released, (await env.Svc.GetAsync(req.EmissionKey))!.Status);
+    }
+
+    [Fact]
+    public async Task Abandon_PendienteConIntentos_ProveedorCaido_FallaYNoAbandona()
+    {
+        var env = await BuildAsync();
+        env.Provider.FailNextReserves = 2;
+        var req = Request();
+        await env.Svc.EmitAsync(req);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => env.Svc.AbandonAsync(req.EmissionKey, "x"));
+        Assert.Equal(DteEmissionStatuses.Pending, (await env.Svc.GetAsync(req.EmissionKey))!.Status);
     }
 }

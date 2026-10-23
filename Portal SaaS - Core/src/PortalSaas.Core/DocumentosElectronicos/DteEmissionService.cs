@@ -117,10 +117,9 @@ public sealed class DteEmissionService : IDteEmissionService
     {
         if (DteEmissionStatuses.IsFinal(row.Status)) return ToResult(row);
 
-        var resolved = await _settings.ResolveAsync(row.CompanyId);
-        if (resolved is not { } r || !string.Equals(r.Provider.Code, row.ProviderCode, StringComparison.OrdinalIgnoreCase))
+        if (await ResolveForRowAsync(row) is not { } r)
         {
-            await SaveErrorAsync(row, "La configuración de documentos electrónicos de la compañía cambió o se deshabilitó; revísela en Administración.", ct);
+            await SaveErrorAsync(row, ConfigChangedMessage, ct);
             return ToResult(row);
         }
         var (ctx, issuer, provider) = r;
@@ -129,9 +128,21 @@ public sealed class DteEmissionService : IDteEmissionService
         {
             if (row.Status is DteEmissionStatuses.Pending or DteEmissionStatuses.Failed && row.Folio is null)
             {
-                var doc = JsonSerializer.Deserialize<DteDocument>(row.RequestJson, Json)!;
                 row.Attempts++;
-                row.XmlSent = provider.BuildXml(doc, issuer);
+                try
+                {
+                    var doc = JsonSerializer.Deserialize<DteDocument>(row.RequestJson, Json)!;
+                    row.XmlSent = provider.BuildXml(doc, issuer);
+                }
+                catch (Exception ex) when (ex is not DteProviderUnavailableException and not OperationCanceledException)
+                {
+                    // Nunca se envió: queda rechazada (el módulo corrige el contenido y reemite con la misma clave).
+                    row.Status = DteEmissionStatuses.Failed;
+                    row.LastError = Truncate($"No se pudo armar el documento: {ex.Message}");
+                    row.UpdatedAt = _time.GetUtcNow();
+                    await _db.SaveChangesAsync(ct);
+                    return ToResult(row);
+                }
                 var reserve = await provider.ReserveAsync(ctx, row.XmlSent, row.DteType, row.EmissionKey, ct);
                 if (reserve.Ok || reserve.UuidAlreadyUsed)
                 {
@@ -172,7 +183,28 @@ public sealed class DteEmissionService : IDteEmissionService
         {
             await SaveErrorAsync(row, ex.Message, ct);
         }
+        catch (Exception ex) when (ex is not OperationCanceledException and not DbUpdateException)
+        {
+            // Respuesta inesperada del proveedor (formato, folio ausente...): se deja en su estado y se registra.
+            await SaveErrorAsync(row, $"Respuesta inesperada del proveedor ({ex.GetType().Name}).", ct);
+        }
         return ToResult(row);
+    }
+
+    private const string ConfigChangedMessage =
+        "La configuración de documentos electrónicos de la compañía cambió (proveedor, ambiente o RUT emisor) o se deshabilitó; revísela en Administración.";
+
+    /// <summary>
+    /// Configuración vigente SOLO si es la misma con que se inició la emisión (proveedor, ambiente y RUT emisor):
+    /// un folio de certificación nunca se confirma en producción ni con otro emisor.
+    /// </summary>
+    private async Task<(DteProviderContext Ctx, DteIssuerData Issuer, IDteProvider Provider)?> ResolveForRowAsync(DteEmission row)
+    {
+        var resolved = await _settings.ResolveAsync(row.CompanyId);
+        if (resolved is not { } r) return null;
+        var same = string.Equals(r.Provider.Code, row.ProviderCode, StringComparison.OrdinalIgnoreCase)
+                   && r.Ctx.Environment == row.Environment && r.Issuer.TaxId == row.IssuerTaxId;
+        return same ? r : null;
     }
 
     public async Task<DteEmissionResult?> GetAsync(Guid emissionKey, CancellationToken ct = default)
@@ -186,7 +218,7 @@ public sealed class DteEmissionService : IDteEmissionService
         var row = await FindAsync(emissionKey, ct) ?? throw new InvalidOperationException("La emisión no existe.");
         if (row.Status != DteEmissionStatuses.Issued || row.Folio is not { } folio)
             throw new InvalidOperationException("El documento todavía no está emitido.");
-        var (ctx, _, provider) = await RequireConfigurationAsync();
+        var (ctx, _, provider) = await ResolveForRowAsync(row) ?? throw new InvalidOperationException(ConfigChangedMessage);
         try
         {
             return await provider.GetPdfAsync(ctx, row.DteType, folio, cedible, copies, ct);
@@ -207,17 +239,37 @@ public sealed class DteEmissionService : IDteEmissionService
             case DteEmissionStatuses.Released or DteEmissionStatuses.Abandoned:
                 return;
             case DteEmissionStatuses.FolioReserved when row.Folio is { } folio:
-                var (ctx, _, provider) = await RequireConfigurationAsync();
+            {
+                var (ctx, _, provider) = await ResolveForRowAsync(row) ?? throw new InvalidOperationException(ConfigChangedMessage);
+                await ReleaseAsync(provider, ctx, row, folio, ct);
+                break;
+            }
+            case DteEmissionStatuses.Pending when row.Attempts > 0 && row.XmlSent is not null:
+            {
+                // generaDTE se envió sin respuesta: puede haber un folio reservado. Reenviar con la MISMA clave
+                // devuelve ese folio ("uuid ya utilizado") o uno nuevo; en ambos casos se libera.
+                var (ctx, _, provider) = await ResolveForRowAsync(row) ?? throw new InvalidOperationException(ConfigChangedMessage);
+                DteReserveResult reserve;
                 try
                 {
-                    await provider.ReleaseAsync(ctx, row.DteType, folio, ct);
+                    reserve = await provider.ReserveAsync(ctx, row.XmlSent, row.DteType, row.EmissionKey, ct);
                 }
                 catch (DteProviderUnavailableException ex)
                 {
-                    throw new InvalidOperationException($"No se pudo liberar el folio {folio}: {ex.Message}");
+                    throw new InvalidOperationException(
+                        $"No se pudo confirmar con el proveedor si quedó un folio reservado ({ex.Message}); reintente la anulación.");
                 }
-                row.Status = DteEmissionStatuses.Released;
+                if ((reserve.Ok || reserve.UuidAlreadyUsed) && reserve.Folio is { } reserved)
+                {
+                    row.Folio = reserved;
+                    await ReleaseAsync(provider, ctx, row, reserved, ct);
+                }
+                else
+                {
+                    row.Status = DteEmissionStatuses.Abandoned;
+                }
                 break;
+            }
             default:
                 row.Status = DteEmissionStatuses.Abandoned;
                 break;
@@ -225,6 +277,19 @@ public sealed class DteEmissionService : IDteEmissionService
         row.LastError = Truncate("Desistida: " + reason);
         row.UpdatedAt = _time.GetUtcNow();
         await _db.SaveChangesAsync(ct);
+    }
+
+    private static async Task ReleaseAsync(IDteProvider provider, DteProviderContext ctx, DteEmission row, long folio, CancellationToken ct)
+    {
+        try
+        {
+            await provider.ReleaseAsync(ctx, row.DteType, folio, ct);
+        }
+        catch (DteProviderUnavailableException ex)
+        {
+            throw new InvalidOperationException($"No se pudo liberar el folio {folio}: {ex.Message}");
+        }
+        row.Status = DteEmissionStatuses.Released;
     }
 
     private const string NotConfiguredMessage =

@@ -189,17 +189,18 @@ public static class FaceleXmlBuilder
     internal static string Clean(string value, int? max)
     {
         var sb = new StringBuilder(value.Length);
-        foreach (var ch in value.Trim())
+        // Por Rune, no por char: un emoji son dos surrogates y Normalize() lanza con un surrogate suelto.
+        foreach (var rune in value.Trim().EnumerateRunes())
         {
-            if (char.IsControl(ch)) { sb.Append(' '); continue; }
-            if (ch <= 0xFF) { sb.Append(ch); continue; }
-            var mapped = ch switch
+            if (Rune.IsControl(rune)) { sb.Append(' '); continue; }
+            if (rune.Value <= 0xFF) { sb.Append((char)rune.Value); continue; }
+            var mapped = rune.Value switch
             {
-                '–' or '—' or '−' => "-",
-                '“' or '”' or '„' => "\"",
-                '‘' or '’' or '‚' => "'",
-                '…' => "...",
-                _ => StripAccents(ch),
+                0x2010 or 0x2011 or 0x2012 or 0x2013 or 0x2014 or 0x2212 => "-",
+                0x201C or 0x201D or 0x201E => "\"",
+                0x2018 or 0x2019 or 0x201A => "'",
+                0x2026 => "...",
+                _ => StripAccents(rune),
             };
             sb.Append(mapped);
         }
@@ -207,12 +208,19 @@ public static class FaceleXmlBuilder
         return max is { } m && s.Length > m ? s[..m].TrimEnd() : s;
     }
 
-    private static string StripAccents(char ch)
+    private static string StripAccents(Rune rune)
     {
-        var basic = ch.ToString().Normalize(NormalizationForm.FormD)
-            .Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark && c <= 0xFF)
-            .ToArray();
-        return basic.Length > 0 ? new string(basic) : "?";
+        try
+        {
+            var basic = rune.ToString().Normalize(NormalizationForm.FormD)
+                .Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark && c <= 0xFF)
+                .ToArray();
+            return basic.Length > 0 ? new string(basic) : "?";
+        }
+        catch (ArgumentException)
+        {
+            return "?";
+        }
     }
 
     private sealed class Latin1StringWriter : StringWriter

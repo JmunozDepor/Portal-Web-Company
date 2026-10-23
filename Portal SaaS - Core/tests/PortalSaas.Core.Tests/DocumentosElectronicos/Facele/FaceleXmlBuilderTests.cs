@@ -138,4 +138,21 @@ public class FaceleXmlBuilderTests
         Assert.Empty(root.Descendants("TED"));
         Assert.Empty(root.Descendants("TmstFirma"));
     }
+
+    [Fact]
+    public void Build_EmojiYSurrogatesNoRompen()
+    {
+        var doc = GuiaVenta() with
+        {
+            Receiver = GuiaVenta().Receiver with { Name = "Caja 📦 ‐ 𝔸 Ñandú" },
+            Lines = new[] { new DteLine(1, "A", "Zapatilla 👟", null, 1, "UN", null, 0) },
+        };
+        var bytes = FaceleXmlBuilder.Encode(FaceleXmlBuilder.Build(doc, Depor));
+        var root = XDocument.Parse(Encoding.Latin1.GetString(bytes));
+        var name = root.Descendants("RznSocRecep").Single().Value;
+        Assert.Contains("Caja", name);
+        Assert.Contains("Ñandú", name);
+        Assert.All(name, c => Assert.True(c <= 0xFF));
+        Assert.StartsWith("Zapatilla", root.Descendants("NmbItem").Single().Value);
+    }
 }

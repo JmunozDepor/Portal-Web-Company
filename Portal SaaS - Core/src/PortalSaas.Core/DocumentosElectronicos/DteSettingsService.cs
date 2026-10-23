@@ -83,13 +83,22 @@ public sealed class DteSettingsService
 
         var s = await _db.CompanyDteSettings.FirstOrDefaultAsync(x => x.CompanyId == companyId);
         var isNew = s is null;
+        var newProvider = _providers.Get(input.ProviderCode.Trim()).Code;
+        if (s is not null && (s.Environment != input.Environment || s.IssuerTaxId != issuerRut
+                              || !string.Equals(s.ProviderCode, newProvider, StringComparison.OrdinalIgnoreCase)))
+        {
+            var inFlight = await CountInFlightAsync(companyId);
+            if (inFlight > 0)
+                throw new InvalidOperationException(
+                    $"Hay {inFlight} emisión(es) en curso: no se puede cambiar el proveedor, el ambiente ni el RUT emisor hasta que terminen.");
+        }
         s ??= new CompanyDteSetting { CompanyId = companyId };
 
         if (!string.IsNullOrEmpty(input.Password)) s.SecretKey = _crypto.Encrypt(input.Password);
         if (input.IsEnabled && string.IsNullOrEmpty(s.SecretKey))
             throw new InvalidOperationException("No se puede habilitar sin cargar la contraseña del proveedor.");
 
-        s.ProviderCode = _providers.Get(input.ProviderCode.Trim()).Code;
+        s.ProviderCode = newProvider;
         s.Environment = input.Environment;
         s.BaseUrl = url.ToString().TrimEnd('/');
         s.Username = input.Username.Trim();
@@ -111,14 +120,17 @@ public sealed class DteSettingsService
     {
         var s = await _db.CompanyDteSettings.FirstOrDefaultAsync(x => x.CompanyId == companyId);
         if (s is null) return;
-        var pending = await _db.DteEmissions.CountAsync(x => x.CompanyId == companyId
-            && (x.Status == DteEmissionStatuses.Pending || x.Status == DteEmissionStatuses.FolioReserved));
+        var pending = await CountInFlightAsync(companyId);
         if (pending > 0)
             throw new InvalidOperationException(
                 $"Hay {pending} emisión(es) en curso con este proveedor: espere a que terminen antes de eliminar la configuración.");
         _db.CompanyDteSettings.Remove(s);
         await _db.SaveChangesAsync();
     }
+
+    private Task<int> CountInFlightAsync(Guid companyId) =>
+        _db.DteEmissions.CountAsync(x => x.CompanyId == companyId
+            && (x.Status == DteEmissionStatuses.Pending || x.Status == DteEmissionStatuses.FolioReserved));
 
     /// <summary>Prueba de conexión de solo lectura. Los errores salen sin credenciales.</summary>
     public async Task TestAsync(Guid companyId)

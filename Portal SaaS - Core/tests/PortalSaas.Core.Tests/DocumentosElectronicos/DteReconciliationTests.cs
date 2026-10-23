@@ -127,4 +127,25 @@ public class DteReconciliationTests
 
         Assert.Equal(0, await RunAsync(env, company));
     }
+
+    [Fact]
+    public async Task Reconciler_FilaQueLanza_NoDetieneLasDemas()
+    {
+        var env = Build();
+        var company = Guid.NewGuid();
+        await env.Settings.SaveAsync(company, DteTestSupport.ValidInput());
+        var bad = await StuckAsync(env, company, minutesAgo: 40, failReserve: true);
+        var good = await StuckAsync(env, company, minutesAgo: 30, failReserve: true);
+        // La fila "mala" lanza un error que no es del proveedor (JSON corrupto).
+        var badRow = await env.Db.DteEmissions.SingleAsync(x => x.EmissionKey == bad);
+        badRow.RequestJson = "{no es json";
+        await env.Db.SaveChangesAsync();
+
+        await RunAsync(env, company);
+
+        Assert.Equal(DteEmissionStatuses.Issued, (await env.Db.DteEmissions.SingleAsync(x => x.EmissionKey == good)).Status);
+        var after = await env.Db.DteEmissions.SingleAsync(x => x.EmissionKey == bad);
+        Assert.NotEqual(DteEmissionStatuses.Issued, after.Status);
+        Assert.NotNull(after.LastError);
+    }
 }

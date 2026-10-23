@@ -24,6 +24,12 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         "base_order_entry", "units", "packages", "total_amount", "is_canceled",
     };
 
+    /// <summary>Contrato de la consulta de líneas de factura (parámetro :doc_entry).</summary>
+    public static readonly IReadOnlyList<string> LineColumns = new[]
+    {
+        "line_num", "item_code", "item_name", "quantity", "unit", "weight_kg", "customer_activity", "destination_city",
+    };
+
     private static readonly Regex ParameterRegex = new(@":(\w+)", RegexOptions.Compiled);
 
     // Palabras de escritura/ejecución rechazadas sobre el SQL ya sin comentarios, literales ni
@@ -98,6 +104,24 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         return distinct[0];
     }
 
+    public async Task<SapDocumentLines> GetLinesAsync(string queryKind, int docEntry, CancellationToken ct = default)
+    {
+        if (queryKind != SapQueryKinds.InvoiceLines)
+            throw new InvalidOperationException($"Consulta de líneas inválida: '{queryKind}'.");
+        var query = await GetQueryAsync(queryKind, ct);
+        if (query is null || !query.IsActive)
+            throw new InvalidOperationException(
+                "Configure la consulta SAP de líneas de factura en Despachos > Configuración > Consultas SAP.");
+
+        var rows = await _hana.QueryDynamicAsync(Executable(query.SqlText), new { doc_entry = docEntry }, ct);
+        var mapped = rows.Select(ToCaseInsensitive).ToList();
+        var missing = mapped.Count == 0 ? new List<string>() : LineColumns.Where(c => !mapped[0].ContainsKey(c)).ToList();
+        if (missing.Count > 0)
+            throw new InvalidOperationException(
+                $"La consulta SAP de líneas de factura no devuelve las columnas obligatorias: {string.Join(", ", missing)}.");
+        return MapLines(mapped);
+    }
+
     // ------------------------------------------------------------------ Validación
 
     public async Task<QueryValidationResult> ValidateQueryAsync(string sql, long sampleFolio) =>
@@ -105,13 +129,48 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
 
     public Task<SapQueryProbeResult> ProbeAsync(string documentKind, string sql, long sampleFolio)
     {
-        RequireKind(documentKind);
-        return ProbeCoreAsync(documentKind, sql, sampleFolio);
+        RequireQueryKind(documentKind);
+        return documentKind == SapQueryKinds.InvoiceLines
+            ? ProbeLinesAsync(sql, checked((int)sampleFolio))
+            : ProbeCoreAsync(documentKind, sql, sampleFolio);
+    }
+
+    /// <summary>"Probar" de la consulta de líneas: <paramref name="sampleDocEntry"/> es un DocEntry de factura.</summary>
+    private async Task<SapQueryProbeResult> ProbeLinesAsync(string sql, int sampleDocEntry)
+    {
+        var staticError = CheckStatic(sql, LinesParameter);
+        if (staticError is not null) return Invalid(staticError);
+
+        IReadOnlyList<IReadOnlyDictionary<string, object?>> rows;
+        try
+        {
+            rows = await _hana.QueryDynamicAsync(Executable(sql), new { doc_entry = sampleDocEntry });
+        }
+        catch (Exception ex)
+        {
+            return Invalid($"SAP rechazó la consulta: {ex.Message}");
+        }
+        if (rows.Count == 0)
+            return Invalid($"La consulta no devolvió líneas para el DocEntry {sampleDocEntry}; pruebe con una factura que exista en SAP.");
+
+        var mapped = rows.Select(ToCaseInsensitive).ToList();
+        var missing = LineColumns.Where(c => !mapped[0].ContainsKey(c)).ToList();
+        if (missing.Count > 0)
+            return new SapQueryProbeResult(
+                new QueryValidationResult(false, missing, "Faltan columnas obligatorias: " + string.Join(", ", missing) + "."), null);
+        try
+        {
+            return new SapQueryProbeResult(new QueryValidationResult(true, Array.Empty<string>(), null), null, MapLines(mapped));
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
+        {
+            return Invalid($"Una columna tiene un tipo de dato inesperado: {ex.Message}");
+        }
     }
 
     private async Task<SapQueryProbeResult> ProbeCoreAsync(string? documentKind, string sql, long sampleFolio)
     {
-        var staticError = CheckStatic(sql);
+        var staticError = CheckStatic(sql, FolioParameters);
         if (staticError is not null) return Invalid(staticError);
 
         IReadOnlyList<IReadOnlyDictionary<string, object?>> rows;
@@ -152,11 +211,17 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
     private static List<string> MissingColumns(IReadOnlyDictionary<string, object?> row) =>
         RequiredColumns.Where(c => !row.ContainsKey(c)).ToList();
 
+    /// <summary>Parámetros de las consultas por folio: :folio (obligatorio) y :sii_document_type.</summary>
+    private static readonly (string Required, string[] Allowed) FolioParameters = ("folio", new[] { "folio", "sii_document_type" });
+
+    /// <summary>Parámetro de la consulta de líneas: :doc_entry.</summary>
+    private static readonly (string Required, string[] Allowed) LinesParameter = ("doc_entry", new[] { "doc_entry" });
+
     /// <summary>
     /// Comprobaciones previas a ejecutar: una sola sentencia SELECT/WITH, sin ';' salvo uno
-    /// final, y solo el parámetro :folio (que debe usarse). Devuelve el error o null.
+    /// final, y solo los parámetros permitidos (el obligatorio debe usarse). Devuelve el error o null.
     /// </summary>
-    private static string? CheckStatic(string sql)
+    private static string? CheckStatic(string sql, (string Required, string[] Allowed) parameters)
     {
         if (string.IsNullOrWhiteSpace(sql)) return "La consulta está vacía.";
         var clean = Sanitize(sql).Trim();
@@ -170,10 +235,11 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
             return "La consulta debe empezar con SELECT o WITH (solo lectura).";
 
         var names = ParameterRegex.Matches(clean).Select(m => m.Groups[1].Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var extra = names.Where(n => !n.Equals("folio", StringComparison.OrdinalIgnoreCase) &&
-                                     !n.Equals("sii_document_type", StringComparison.OrdinalIgnoreCase)).ToList();
-        if (extra.Count > 0) return $"Parámetro no permitido: :{extra[0]}. Solo se admiten :folio y :sii_document_type.";
-        if (!names.Contains("folio", StringComparer.OrdinalIgnoreCase)) return "La consulta debe filtrar por el parámetro :folio.";
+        var extra = names.Where(n => !parameters.Allowed.Contains(n, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (extra.Count > 0)
+            return $"Parámetro no permitido: :{extra[0]}. Solo se admiten {string.Join(" y ", parameters.Allowed.Select(a => ":" + a))}.";
+        if (!names.Contains(parameters.Required, StringComparer.OrdinalIgnoreCase))
+            return $"La consulta debe filtrar por el parámetro :{parameters.Required}.";
 
         var forbidden = ForbiddenRegex.Match(clean);
         if (forbidden.Success) return $"La consulta contiene una palabra no permitida (solo lectura): {forbidden.Value}.";
@@ -236,7 +302,7 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
 
     public async Task<IReadOnlyList<SapDocumentQuery>> ListQueriesAsync()
     {
-        foreach (var kind in DocumentKinds.All) await GetQueryAsync(kind, CancellationToken.None);
+        foreach (var kind in SapQueryKinds.All) await GetQueryAsync(kind, CancellationToken.None);
         return await _db.SapDocumentQueries.AsNoTracking()
             .Where(q => q.CompanyId == CompanyId)
             .OrderBy(q => q.DocumentKind)
@@ -245,9 +311,11 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
 
     public async Task SaveQueryAsync(string documentKind, string sql, bool isActive, long sampleFolio)
     {
-        RequireKind(documentKind);
+        RequireQueryKind(documentKind);
         sql = (sql ?? "").Trim();
-        var result = await ValidateQueryAsync(sql, sampleFolio);
+        var result = documentKind == SapQueryKinds.InvoiceLines
+            ? (await ProbeLinesAsync(sql, checked((int)sampleFolio))).Validation
+            : await ValidateQueryAsync(sql, sampleFolio);
         if (!result.IsValid)
             throw new InvalidOperationException("La consulta no se guardó. " + result.Error);
 
@@ -305,6 +373,12 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         return row;
     }
 
+    private static void RequireQueryKind(string kind)
+    {
+        if (!SapQueryKinds.All.Contains(kind))
+            throw new InvalidOperationException($"Tipo de consulta inválido: '{kind}'.");
+    }
+
     private static void RequireKind(string kind)
     {
         if (!DocumentKinds.All.Contains(kind))
@@ -345,6 +419,22 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         IsCanceled: ToBool(r["is_canceled"]),
         WeightKg: Optional(r, "weight_kg"),
         VolumeM3: Optional(r, "volume_m3"));
+
+    private static SapDocumentLines MapLines(IReadOnlyList<Dictionary<string, object?>> rows)
+    {
+        var lines = rows.Select(r => new SapDocumentLine(
+            LineNum: ToInt(r["line_num"]),
+            ItemCode: Str(r["item_code"]) ?? "",
+            ItemName: Str(r["item_name"]) ?? "",
+            Quantity: ToDecimal(r["quantity"]),
+            Unit: Str(r["unit"]),
+            WeightKg: IsNull(r["weight_kg"]) ? null : ToDecimal(r["weight_kg"]))).ToList();
+        var first = rows.Count > 0 ? rows[0] : null;
+        return new SapDocumentLines(
+            first is null ? null : Str(first["customer_activity"]),
+            first is null ? null : Str(first["destination_city"]),
+            lines);
+    }
 
     private static decimal? Optional(IReadOnlyDictionary<string, object?> r, string key) =>
         r.TryGetValue(key, out var v) && !IsNull(v) ? ToDecimal(v) : null;

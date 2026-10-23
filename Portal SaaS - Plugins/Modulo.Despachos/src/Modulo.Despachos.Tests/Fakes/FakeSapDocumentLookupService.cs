@@ -20,6 +20,14 @@ public sealed class FakeSapDocumentLookupService : ISapDocumentLookupService
         return Task.FromResult(found.FirstOrDefault());
     }
 
+    /// <summary>Líneas por DocEntry (consulta invoice_lines). Sin entrada = lanza como la consulta sin configurar.</summary>
+    public Dictionary<int, SapDocumentLines> Lines { get; } = new();
+
+    public Task<SapDocumentLines> GetLinesAsync(string queryKind, int docEntry, CancellationToken ct = default) =>
+        Lines.TryGetValue(docEntry, out var l)
+            ? Task.FromResult(l)
+            : throw new InvalidOperationException("Configure la consulta SAP de líneas de factura en Despachos > Configuración > Consultas SAP.");
+
     public Task<QueryValidationResult> ValidateQueryAsync(string sql, long sampleFolio) => throw new NotSupportedException();
     public Task<SapQueryProbeResult> ProbeAsync(string documentKind, string sql, long sampleFolio) => throw new NotSupportedException();
     public Task<IReadOnlyList<SapDocumentQuery>> ListQueriesAsync() => throw new NotSupportedException();

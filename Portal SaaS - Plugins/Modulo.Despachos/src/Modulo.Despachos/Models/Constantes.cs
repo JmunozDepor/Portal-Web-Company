@@ -20,6 +20,23 @@ public static class RejectionAppliesTo
     public static readonly IReadOnlyList<string> All = new[] { Rejection, NotDelivered };
 }
 
+/// <summary>
+/// Consultas SAP configurables (sap_document_queries.document_kind): las de búsqueda por folio
+/// (<see cref="DocumentKinds"/>) más la de líneas de factura para las guías Res. 154.
+/// </summary>
+public static class SapQueryKinds
+{
+    public const string InvoiceLines = "invoice_lines";
+
+    public static readonly IReadOnlyList<string> All = new[] { DocumentKinds.Invoice, DocumentKinds.TransferGuide, InvoiceLines };
+
+    public static string Label(string kind) => kind switch
+    {
+        InvoiceLines => "Líneas de factura",
+        _ => DocumentKinds.Label(kind),
+    };
+}
+
 /// <summary>Tipos de documento SAP que se pueden agregar a un manifiesto (document_kind).</summary>
 public static class DocumentKinds
 {

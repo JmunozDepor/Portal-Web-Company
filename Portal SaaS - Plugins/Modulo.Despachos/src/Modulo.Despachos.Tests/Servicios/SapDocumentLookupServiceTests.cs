@@ -233,12 +233,12 @@ public class SapDocumentLookupServiceTests
     }
 
     [Fact]
-    public async Task List_EnHana_SiembraAmbosTipos_YEnOtroMotorNo()
+    public async Task List_EnHana_SiembraLasTresConsultas_YEnOtroMotorNo()
     {
         var (svc, db, _, _) = Build();
         var list = await svc.ListQueriesAsync();
-        Assert.Equal(2, list.Count);
-        Assert.Equal(2, db.SapDocumentQueries.Count());
+        Assert.Equal(3, list.Count);
+        Assert.Equal(3, db.SapDocumentQueries.Count());
 
         var (svc2, db2, _, _) = Build(engine: "PostgreSQL");
         Assert.Empty(await svc2.ListQueriesAsync());
@@ -420,4 +420,79 @@ public class SapDocumentLookupServiceTests
     [InlineData("", false)]
     public void IsHana_DetectaElMotor(string engine, bool expected) =>
         Assert.Equal(expected, SapDocumentLookupService.IsHana(engine));
+    // ------------------------------------------------------------------ Líneas de factura (guías Res. 154)
+
+    private const string LinesSql = "SELECT 1 AS \"line_num\" FROM DUMMY WHERE :doc_entry = :doc_entry";
+
+    private static Dictionary<string, object?> LineRow(int line, string item, decimal qty, decimal? weight, bool omitWeight = false)
+    {
+        var d = new Dictionary<string, object?>
+        {
+            ["line_num"] = line, ["item_code"] = item, ["item_name"] = $"Artículo {item}", ["quantity"] = qty,
+            ["unit"] = "UN", ["weight_kg"] = weight, ["customer_activity"] = "Venta al por menor", ["destination_city"] = "Talca",
+        };
+        if (omitWeight) d.Remove("weight_kg");
+        return d;
+    }
+
+    [Fact]
+    public async Task ValidateQuery_LineasSinDocEntry_Error()
+    {
+        var (svc, _, _, _) = Build();
+        var r = await svc.ProbeAsync(SapQueryKinds.InvoiceLines, "SELECT 1 FROM DUMMY WHERE :folio = 1", 10);
+        Assert.False(r.Validation.IsValid);
+        Assert.Contains(":doc_entry", r.Validation.Error);
+    }
+
+    [Fact]
+    public async Task ValidateQuery_LineasFaltaColumna_ReportaFaltantes()
+    {
+        var (svc, _, hana, _) = Build();
+        hana.Results[LinesSql] = Rows(LineRow(0, "A1", 2, 1.5m, omitWeight: true));
+        var r = await svc.ProbeAsync(SapQueryKinds.InvoiceLines, LinesSql, 10);
+        Assert.False(r.Validation.IsValid);
+        Assert.Equal(new[] { "weight_kg" }, r.Validation.MissingColumns);
+    }
+
+    [Fact]
+    public async Task ValidateQuery_LineasOk_DevuelveLineas()
+    {
+        var (svc, _, hana, _) = Build();
+        hana.Results[LinesSql] = Rows(LineRow(0, "A1", 2, 1.5m));
+        var r = await svc.ProbeAsync(SapQueryKinds.InvoiceLines, LinesSql, 10);
+        Assert.True(r.Validation.IsValid);
+        Assert.Equal("A1", Assert.Single(r.Lines!.Lines).ItemCode);
+    }
+
+    [Fact]
+    public async Task GetLines_MapeaContrato()
+    {
+        var (svc, db, hana, company) = Build();
+        await Configure(db, company.CompanyId, SapQueryKinds.InvoiceLines, LinesSql);
+        hana.Results[LinesSql] = new IReadOnlyDictionary<string, object?>[] { LineRow(0, "A1", 2, 1.5m), LineRow(1, "B2", 3.5m, null) };
+
+        var lines = await svc.GetLinesAsync(SapQueryKinds.InvoiceLines, 4567);
+
+        Assert.Equal("Venta al por menor", lines.CustomerActivity);
+        Assert.Equal("Talca", lines.DestinationCity);
+        Assert.Equal(2, lines.Lines.Count);
+        Assert.Equal(new SapDocumentLine(1, "B2", "Artículo B2", 3.5m, "UN", null), lines.Lines[1]);
+        Assert.Equal(4567, (int)hana.LastParameters!.GetType().GetProperty("doc_entry")!.GetValue(hana.LastParameters)!);
+    }
+
+    [Fact]
+    public async Task GetLines_SinConsulta_MensajeClaro()
+    {
+        var (svc, _, _, _) = Build(engine: "PostgreSQL");
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.GetLinesAsync(SapQueryKinds.InvoiceLines, 1));
+        Assert.Contains("líneas de factura", ex.Message);
+    }
+
+    [Fact]
+    public async Task ListQueries_Hana_SiembraTambienLineas()
+    {
+        var (svc, _, _, _) = Build();
+        var list = await svc.ListQueriesAsync();
+        Assert.Contains(list, q => q.DocumentKind == SapQueryKinds.InvoiceLines && q.SqlText.Contains(":doc_entry"));
+    }
 }

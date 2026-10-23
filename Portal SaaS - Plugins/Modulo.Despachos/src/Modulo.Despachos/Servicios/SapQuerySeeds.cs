@@ -11,6 +11,7 @@ public static class SapQuerySeeds
         {
             DocumentKinds.Invoice => "hana_invoice.sql",
             DocumentKinds.TransferGuide => "hana_transfer_guide.sql",
+            SapQueryKinds.InvoiceLines => "hana_invoice_lines.sql",
             _ => throw new InvalidOperationException($"Tipo de documento desconocido: '{documentKind}'."),
         };
         var assembly = typeof(SapQuerySeeds).Assembly;

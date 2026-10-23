@@ -12,8 +12,14 @@ public sealed record SapDocumentInfo(
 /// <summary>Resultado de validar una consulta SAP (estática + ejecución de prueba).</summary>
 public sealed record QueryValidationResult(bool IsValid, IReadOnlyList<string> MissingColumns, string? Error);
 
-/// <summary>Resultado de "Probar": la validación y, si fue válida, el documento mapeado.</summary>
-public sealed record SapQueryProbeResult(QueryValidationResult Validation, SapDocumentInfo? Document);
+/// <summary>Línea de un documento SAP (consulta "invoice_lines"). WeightKg null = el artículo no tiene peso en SAP.</summary>
+public sealed record SapDocumentLine(int LineNum, string ItemCode, string ItemName, decimal Quantity, string? Unit, decimal? WeightKg);
+
+/// <summary>Líneas de un documento + datos del receptor que solo trae esa consulta (giro y ciudad de despacho).</summary>
+public sealed record SapDocumentLines(string? CustomerActivity, string? DestinationCity, IReadOnlyList<SapDocumentLine> Lines);
+
+/// <summary>Resultado de "Probar": la validación y, si fue válida, el documento (o las líneas) mapeado.</summary>
+public sealed record SapQueryProbeResult(QueryValidationResult Validation, SapDocumentInfo? Document, SapDocumentLines? Lines = null);
 
 /// <summary>
 /// Búsqueda de facturas / guías de traslado por folio con las consultas SAP configuradas
@@ -37,6 +43,13 @@ public interface ISapDocumentLookupService
 
     /// <summary>Como ValidateQueryAsync pero devuelve además el documento mapeado (pantalla "Probar").</summary>
     Task<SapQueryProbeResult> ProbeAsync(string documentKind, string sql, long sampleFolio);
+
+    /// <summary>
+    /// Líneas del documento SAP <paramref name="docEntry"/> con la consulta <paramref name="queryKind"/>
+    /// (hoy solo <see cref="SapQueryKinds.InvoiceLines"/>, parámetro :doc_entry). Lanza InvalidOperationException
+    /// si la consulta no está configurada o no cumple el contrato de columnas.
+    /// </summary>
+    Task<SapDocumentLines> GetLinesAsync(string queryKind, int docEntry, CancellationToken ct = default);
 
     /// <summary>Consultas de la compañía (siembra las de HANA si faltan).</summary>
     Task<IReadOnlyList<SapDocumentQuery>> ListQueriesAsync();

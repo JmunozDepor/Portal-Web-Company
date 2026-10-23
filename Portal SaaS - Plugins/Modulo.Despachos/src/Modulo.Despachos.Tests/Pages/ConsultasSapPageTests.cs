@@ -43,11 +43,12 @@ public class ConsultasSapPageTests
     }
 
     [Fact]
-    public async Task OnGet_ConView_ListaAmbosTipos_ConSeedEnHana()
+    public async Task OnGet_ConView_ListaLasTresConsultas_ConSeedEnHana()
     {
         var (page, _) = Build(new FakeCurrentUserContext().Grant("Despachos.consultas-sap", PortalActions.View));
         Assert.IsType<PageResult>(await page.OnGetAsync());
-        Assert.Equal(2, page.Rows.Count);
+        Assert.Equal(3, page.Rows.Count);
+        Assert.Contains(page.Rows, r => r.Kind == SapQueryKinds.InvoiceLines);
         Assert.All(page.Rows, r => Assert.NotNull(r.Query));
     }
 

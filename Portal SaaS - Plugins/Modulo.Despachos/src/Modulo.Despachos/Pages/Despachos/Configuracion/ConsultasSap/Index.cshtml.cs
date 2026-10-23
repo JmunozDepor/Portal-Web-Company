@@ -7,7 +7,7 @@ using PortalSaas.Abstractions.Modelos;
 namespace Modulo.Despachos.Pages.Despachos.Configuracion.ConsultasSap;
 
 /// <summary>
-/// Mantenedor de las consultas SAP (factura / guía de traslado) por compañía. Menú
+/// Mantenedor de las consultas SAP (factura / guía de traslado / líneas de factura) por compañía. Menú
 /// "consultas-sap" (permisos: Despachos.consultas-sap). Guardar exige que la consulta pase
 /// la prueba con un folio real; "Probar" ejecuta sin guardar y muestra el documento mapeado
 /// o los errores.
@@ -60,7 +60,7 @@ public sealed class IndexModel : MaestroPageModelBase
     private async Task LoadRowsAsync()
     {
         var queries = await _lookup.ListQueriesAsync();
-        Rows = DocumentKinds.All
+        Rows = SapQueryKinds.All
             .Select(k => (k, queries.FirstOrDefault(q => q.DocumentKind == k)))
             .ToList();
     }
@@ -68,7 +68,9 @@ public sealed class IndexModel : MaestroPageModelBase
     private long RequireFolio()
     {
         if (Input.SampleFolio is not > 0)
-            throw new InvalidOperationException("Indique un folio de prueba (número de un documento que exista en SAP).");
+            throw new InvalidOperationException(Input.DocumentKind == SapQueryKinds.InvoiceLines
+                ? "Indique un DocEntry de prueba (número interno de una factura que exista en SAP)."
+                : "Indique un folio de prueba (número de un documento que exista en SAP).");
         return Input.SampleFolio.Value;
     }
 

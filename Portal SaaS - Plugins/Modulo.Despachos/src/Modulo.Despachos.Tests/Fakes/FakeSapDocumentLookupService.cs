@@ -42,6 +42,10 @@ public sealed class FakeSapDocumentLookupService : ISapDocumentLookupService
         Task.FromResult<IReadOnlyList<SapTransferInfo>>(Transfers
             .Where(t => t.WarehouseCode == warehouseCode && t.DocumentDate >= fromDate && !t.IsCanceled).ToList());
 
+    public Task<IReadOnlyList<SapTransferInfo>> ListPendingTransfersAllAsync(DateOnly fromDate, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<SapTransferInfo>>(Transfers
+            .Where(t => t.DocumentDate >= fromDate && !t.IsCanceled).ToList());
+
     public Task<IReadOnlyList<SapWarehouse>> ListSapWarehousesAsync(CancellationToken ct = default) =>
         WarehousesError is null
             ? Task.FromResult<IReadOnlyList<SapWarehouse>>(Warehouses)

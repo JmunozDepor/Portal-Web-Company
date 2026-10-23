@@ -145,6 +145,11 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
             new { warehouse = warehouseCode, from_date = fromDate.ToDateTime(TimeOnly.MinValue) }, ct))
         .GroupBy(t => t.DocEntry).Select(g => g.First()).ToList();
 
+    public async Task<IReadOnlyList<SapTransferInfo>> ListPendingTransfersAllAsync(DateOnly fromDate, CancellationToken ct = default) =>
+        (await QueryTransfersAsync(SapQueryKinds.TransferPendingAll,
+            new { from_date = fromDate.ToDateTime(TimeOnly.MinValue) }, ct))
+        .GroupBy(t => t.DocEntry).Select(g => g.First()).ToList();
+
     public async Task<IReadOnlyList<SapWarehouse>> ListSapWarehousesAsync(CancellationToken ct = default)
     {
         var query = await RequireActiveQueryAsync(SapQueryKinds.Warehouses, ct);
@@ -209,6 +214,8 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
             SapQueryKinds.TransferPending => ProbeTransfersAsync(sql, PendingParameters,
                 new { warehouse = (sampleText ?? "").Trim(), from_date = DateTime.Today.AddDays(-30) },
                 $"la bodega {sampleText} en los últimos 30 días"),
+            SapQueryKinds.TransferPendingAll => ProbeTransfersAsync(sql, PendingAllParameters,
+                new { from_date = DateTime.Today.AddDays(-30) }, "los últimos 30 días"),
             SapQueryKinds.Warehouses => ProbeWarehousesAsync(sql),
             _ => ProbeCoreAsync(documentKind, sql, sampleFolio),
         };
@@ -348,6 +355,7 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
     /// <summary>Transferencias: por LPN (:lpn) y pendientes (:warehouse obligatorio, :from_date); bodegas sin parámetros.</summary>
     private static readonly (string? Required, string[] Allowed) LpnParameters = ("lpn", new[] { "lpn" });
     private static readonly (string? Required, string[] Allowed) PendingParameters = ("warehouse", new[] { "warehouse", "from_date" });
+    private static readonly (string? Required, string[] Allowed) PendingAllParameters = ("from_date", new[] { "from_date" });
     private static readonly (string? Required, string[] Allowed) NoParameters = (null, Array.Empty<string>());
 
     /// <summary>

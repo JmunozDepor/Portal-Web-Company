@@ -72,6 +72,7 @@
     <EmbeddedResource Include="Sql\Seeds\hana_invoice_lines.sql" />
     <EmbeddedResource Include="Sql\Seeds\hana_transfer_by_lpn.sql" />
     <EmbeddedResource Include="Sql\Seeds\hana_transfer_pending.sql" />
+    <EmbeddedResource Include="Sql\Seeds\hana_transfer_pending_all.sql" />
     <EmbeddedResource Include="Sql\Seeds\hana_transfer_lines.sql" />
     <EmbeddedResource Include="Sql\Seeds\hana_warehouses.sql" />
   </ItemGroup>

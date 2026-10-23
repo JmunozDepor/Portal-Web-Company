@@ -76,6 +76,7 @@ public sealed class IndexModel : MaestroPageModelBase
         switch (Input.DocumentKind)
         {
             case SapQueryKinds.Warehouses:
+            case SapQueryKinds.TransferPendingAll:
                 return (0, null);
             case SapQueryKinds.TransferByLpn:
                 if (sample.Length == 0) throw new InvalidOperationException("Indique un LPN de prueba (de una transferencia que exista en SAP).");
@@ -98,6 +99,7 @@ public sealed class IndexModel : MaestroPageModelBase
         SapQueryKinds.TransferByLpn => "LPN de prueba",
         SapQueryKinds.TransferPending => "Código de bodega de prueba",
         SapQueryKinds.Warehouses => "Sin muestra (la consulta no usa parámetros)",
+        SapQueryKinds.TransferPendingAll => "Sin muestra (prueba con los últimos 30 días)",
         _ => "Folio de prueba",
     };
 

@@ -10,6 +10,7 @@ public class SapTransferQueriesTests
 {
     private const string LpnSql = "SELECT 1 AS \"doc_entry\" FROM DUMMY WHERE :lpn = :lpn";
     private const string PendingSql = "SELECT 1 AS \"doc_entry\" FROM DUMMY WHERE :warehouse = :warehouse AND :from_date IS NOT NULL";
+    private const string PendingAllSql = "SELECT 1 AS \"doc_entry\" FROM DUMMY WHERE :from_date IS NOT NULL";
     private const string LinesSql = "SELECT 1 AS \"line_num\" FROM DUMMY WHERE :doc_entry = :doc_entry";
     private const string WarehousesSql = "SELECT 'TDA01' AS \"warehouse_code\" FROM DUMMY";
 
@@ -112,6 +113,40 @@ public class SapTransferQueriesTests
     }
 
     [Fact]
+    public async Task ListPendingTransfersAll_EnlazaSoloFecha()
+    {
+        var (svc, db, hana, company) = Build();
+        await Configure(db, company.CompanyId, SapQueryKinds.TransferPendingAll, PendingAllSql);
+        hana.Results[PendingAllSql] = Rows(TransferRow(501), TransferRow(502, "CTBO124"));
+
+        var list = await svc.ListPendingTransfersAllAsync(new DateOnly(2026, 10, 1));
+
+        Assert.Equal(new[] { 501, 502 }, list.Select(x => x.DocEntry));
+        Assert.Equal(new DateTime(2026, 10, 1), Param(hana, "from_date"));
+        Assert.Null(hana.LastParameters!.GetType().GetProperty("warehouse"));
+    }
+
+    [Fact]
+    public async Task Probe_PendientesTodas_SinMuestra_Valida()
+    {
+        var (svc, _, hana, _) = Build();
+        hana.Results[PendingAllSql] = Rows(TransferRow());
+
+        var r = await svc.ProbeAsync(SapQueryKinds.TransferPendingAll, PendingAllSql, 0);
+
+        Assert.True(r.Validation.IsValid, r.Validation.Error);
+        Assert.Equal(501, Assert.Single(r.Transfers!).DocEntry);
+    }
+
+    [Fact]
+    public async Task Probe_PendientesTodas_ConParametroWarehouse_Invalida()
+    {
+        var (svc, _, _, _) = Build();
+        var r = await svc.ProbeAsync(SapQueryKinds.TransferPendingAll, PendingSql, 0);
+        Assert.False(r.Validation.IsValid);
+    }
+
+    [Fact]
     public async Task GetLines_Transferencia_UsaConsultaDeLineasDeTransferencia()
     {
         var (svc, db, hana, company) = Build();
@@ -149,7 +184,10 @@ public class SapTransferQueriesTests
 
         var queries = await svc.ListQueriesAsync();
 
-        Assert.Equal(7, queries.Count);
+        Assert.Equal(8, queries.Count);
+        var all = queries.Single(q => q.DocumentKind == SapQueryKinds.TransferPendingAll).SqlText;
+        Assert.Contains(":from_date", all);
+        Assert.DoesNotContain(":warehouse", all);
         Assert.Contains("\"U_NX_LPN\" = :lpn", queries.Single(q => q.DocumentKind == SapQueryKinds.TransferByLpn).SqlText);
         Assert.Contains(":warehouse", queries.Single(q => q.DocumentKind == SapQueryKinds.TransferPending).SqlText);
         Assert.Contains("WTR1", queries.Single(q => q.DocumentKind == SapQueryKinds.TransferLines).SqlText);

@@ -14,6 +14,7 @@ public static class SapQuerySeeds
             SapQueryKinds.InvoiceLines => "hana_invoice_lines.sql",
             SapQueryKinds.TransferByLpn => "hana_transfer_by_lpn.sql",
             SapQueryKinds.TransferPending => "hana_transfer_pending.sql",
+            SapQueryKinds.TransferPendingAll => "hana_transfer_pending_all.sql",
             SapQueryKinds.TransferLines => "hana_transfer_lines.sql",
             SapQueryKinds.Warehouses => "hana_warehouses.sql",
             _ => throw new InvalidOperationException($"Tipo de documento desconocido: '{documentKind}'."),

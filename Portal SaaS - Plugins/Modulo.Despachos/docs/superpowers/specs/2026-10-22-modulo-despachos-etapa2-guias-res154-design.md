@@ -42,6 +42,7 @@ intercambiable por compañía (FACELE para DEPOR, BES para Block, otros a futuro
 4. **Recepción en tienda:** fuera de alcance (la resuelve el POS).
 5. **Transición:** **no** se sigue llenando `@INX_ODGC` / `@INX_DGC1`. El add-on se retira cuando entre la Fase B.
 6. **Prioridad:** urgente **facturas primero** (Fase A), luego guías de traslado (Fase B). Primer proveedor: **FACELE** (hay experiencia previa de integración).
+7. **Proveedor por compañía:** **DEPOR → FACELE**, **Block → BES**. Cada compañía tiene su propia base SAP y su propia base del módulo; el usuario **cambia de compañía en el portal** para trabajar los despachos y emitir las guías de cada una (§5.4).
 
 ## 4. Objetivos, no-objetivos, anti-objetivos
 
@@ -87,6 +88,13 @@ Pasarela de documentos electrónicos (plataforma)
 - **Idempotencia:** cada emisión lleva un identificador propio estable (`emission_key`, UUID generado al planificar). FACELE ya acepta un `uuid` anti-duplicado. Ante un timeout, primero se consulta por ese identificador antes de reintentar.
 - **Configuración por compañía:** proveedor activo, ambiente (certificación / producción), credenciales cifradas (escritura sola, nunca se muestran; nunca en el repositorio ni en el chat).
 - **Ubicación del adaptador FACELE:** referencia técnica conocida, `DoceleOL.generaDTE`, formato XML, folio asignado por FACELE. El detalle del contrato sale de la experiencia previa del equipo con FACELE.
+
+### 5.4 Aislamiento por compañía
+
+- El proveedor se resuelve **siempre por la compañía de la sesión** (la misma que hoy elige la base SAP y la base del módulo vía `company_module_connections`). No hay selección manual de proveedor ni emisión cruzada: un manifiesto de DEPOR solo puede emitir por FACELE con el RUT emisor de DEPOR, y uno de Block solo por BES con el de Block.
+- Emisor (RUT, razón social, giro, dirección), credenciales, ambiente, tipos de traslado y consultas SAP son **configuración por compañía**.
+- Compañía sin proveedor configurado o con configuración incompleta → la vista previa lo muestra como error y no se puede despachar (mensaje claro, sin caer a otro proveedor).
+- La guía guarda el proveedor y el RUT emisor con que se emitió (trazabilidad si la configuración cambia después).
 
 ### 5.2 Planificador de guías (Despachos)
 

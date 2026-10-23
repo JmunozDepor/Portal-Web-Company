@@ -42,6 +42,19 @@ public class BodegasSucursalPageTests
     }
 
     [Fact]
+    public async Task BodegasSucursal_GuardarSinMarcarActiva_QuedaInactiva()
+    {
+        var (page, svc, _) = Build(new FakeCurrentUserContext().Grant("Despachos.bodegas-sucursal", PortalActions.View, PortalActions.Create, PortalActions.Edit));
+        var id = await svc.SaveBranchWarehouseAsync(new Models.BranchWarehouse { WarehouseCode = "TDA01", Name = "Tienda", Address = "A", CommuneName = "Santiago" });
+        // Checkbox desmarcado: el formulario no envía Input.IsActive.
+        page.Input = new Bodegas.IndexModel.BodegaInput { Id = id, WarehouseCode = "TDA01", Name = "Tienda", Address = "A", CommuneName = "Santiago" };
+
+        await page.OnPostSaveAsync();
+
+        Assert.False((await svc.FindBranchWarehouseAsync("TDA01"))!.IsActive);
+    }
+
+    [Fact]
     public async Task BodegasSucursal_SapNoResponde_LaPaginaCargaIgual()
     {
         var (page, _, sap) = Build(new FakeCurrentUserContext().Grant("Despachos.bodegas-sucursal", PortalActions.View));

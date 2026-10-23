@@ -63,6 +63,20 @@ public class ManifiestosPermisosTests
     }
 
     [Fact]
+    public async Task Escanear_LpnABodegaNoSucursal_MuestraElMotivo()
+    {
+        var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View, PortalActions.Edit));
+        env.Sap.Transfers.Add(new SapTransferInfo(501, 1501, new DateOnly(2026, 11, 5), "BOD99", "Bodega virtual", null, null, 3m, false, "CTBO1"));
+        var id = await env.Svc.CreateDraftAsync(env.Header());
+
+        var json = Assert.IsType<JsonResult>(await page.OnPostAgregarDocumentoAsync(id, new Manifiestos.DetalleModel.ScanInput { RawScan = "CTBO1" }));
+
+        var message = (string)json.Value!.GetType().GetProperty("message")!.GetValue(json.Value)!;
+        Assert.Contains("BOD99", message);
+        Assert.Contains("no es sucursal", message);
+    }
+
+    [Fact]
     public async Task AgregarPendientes_RequiereEditar_YAgrega()
     {
         var (page, env) = BuildDetalle(u => u.Grant("Despachos.manifiestos", PortalActions.View));

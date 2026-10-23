@@ -68,6 +68,7 @@ public sealed class IndexModel : MaestroPageModelBase
         public string? Name { get; set; }
         public string? Address { get; set; }
         public string? CommuneName { get; set; }
-        public bool IsActive { get; set; } = true;
+        // Sin valor inicial: un checkbox desmarcado no se envía y debe quedar inactiva.
+        public bool IsActive { get; set; }
     }
 }

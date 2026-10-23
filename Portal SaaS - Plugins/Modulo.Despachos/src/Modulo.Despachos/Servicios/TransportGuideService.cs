@@ -147,15 +147,16 @@ public sealed class TransportGuideService : ITransportGuideService
                 g.LastError = Truncate(ex.Message);
             }
             if (g.Status == TransportGuideStatuses.Issued)
-            {
                 AddEvent(m, ManifestEventTypes.GuideIssued, new { sequence = g.Sequence, folio = g.Folio });
-                await _db.SaveChangesAsync();
-                await WriteBackAsync(m, g, settings);
-            }
             else
                 errors.Add($"Guía {g.Sequence} ({g.ReceiverName}, {g.DestinationCommune}): {g.LastError ?? "sin respuesta del proveedor"}");
             await _db.SaveChangesAsync();
         }
+
+        // Folio en las transferencias SAP de toda guía emitida: las de este envío y las que la pasarela emitió
+        // entretanto (reconciliadas arriba). Idempotente: no reescribe las que ya quedaron escritas.
+        foreach (var g in guides.Where(g => g.Status == TransportGuideStatuses.Issued))
+            await WriteBackAsync(m, g, settings);
 
         var issued = guides.Count(g => g.Status == TransportGuideStatuses.Issued);
         var pending = guides.Count - issued;

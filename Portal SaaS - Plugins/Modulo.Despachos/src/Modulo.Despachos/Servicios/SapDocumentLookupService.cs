@@ -133,6 +133,8 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
     {
         var list = await QueryTransfersAsync(SapQueryKinds.TransferByLpn, new { lpn }, ct);
         var distinct = list.GroupBy(t => t.DocEntry).Select(g => g.First()).ToList();
+        // Transferencia anulada y recreada con el mismo LPN: vale la vigente.
+        if (distinct.Count > 1 && distinct.Count(t => !t.IsCanceled) == 1) return distinct.Single(t => !t.IsCanceled);
         if (distinct.Count > 1)
             throw new InvalidOperationException($"El LPN {lpn} está en más de una transferencia en SAP; revise el LPN.");
         return distinct.FirstOrDefault();

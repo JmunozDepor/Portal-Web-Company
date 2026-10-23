@@ -2,6 +2,7 @@
 -- Sin esquema fijo: aplica el esquema actual de la conexion SAP de la compania.
 -- warehouse_* / destination_* = bodega destino (OWHS por OWTR."ToWhsCode") [validar: direccion y comuna en OWHS].
 -- No se consultan tablas del add-on: el control de transferencias ya despachadas lo lleva el portal.
+-- CANCELED = 'C' es el documento de cancelacion que SAP crea al anular (copia los campos de usuario): se excluye.
 SELECT
   T0."DocEntry" AS "doc_entry",
   T0."DocNum" AS "doc_num",
@@ -16,3 +17,4 @@ SELECT
 FROM OWTR T0
 LEFT JOIN OWHS W ON W."WhsCode" = T0."ToWhsCode"
 WHERE T0."U_NX_LPN" = :lpn
+  AND T0."CANCELED" <> 'C'

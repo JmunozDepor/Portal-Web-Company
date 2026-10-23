@@ -58,6 +58,26 @@ public class SapWritebackTests
     }
 
     [Fact]
+    public async Task Emitir_Traslado_EmitidaRecienEnElReintento_EscribeEnSap()
+    {
+        var (env, id) = await TransferDraftAsync();
+        env.Dte.Down = true;
+        await env.Svc.DispatchAsync(id);
+        Assert.Equal(ManifestStatuses.PendingGuides, (await env.Svc.GetAsync(id))!.Status);
+        // El reconciliador de la pasarela la emitió entretanto (folio 900).
+        var g = await env.Db.TransportGuides.AsNoTracking().SingleAsync(x => x.ManifestId == id);
+        env.Dte.Emissions[g.EmissionKey] = new PortalSaas.Abstractions.Modelos.Dte.DteEmissionResult(
+            g.EmissionKey, PortalSaas.Abstractions.Modelos.Dte.DteEmissionStatuses.Issued, 900, null, "FAKE", "certification");
+        env.Dte.Down = false;
+
+        await env.Svc.RetryGuidesAsync(id);
+
+        var (docEntry, fields) = Assert.Single(env.Writer.Writes);
+        Assert.Equal((501, 900L), (docEntry, (long)fields["FolioNumber"]!));
+        Assert.Equal(SapWritebackStatuses.Ok, (await TransferDoc(env, id)).SapWritebackStatus);
+    }
+
+    [Fact]
     public async Task ReintentarSap_EscribeLosPendientes_SinReemitir()
     {
         var (env, id) = await TransferDraftAsync();

@@ -78,6 +78,26 @@ public class SapTransferQueriesTests
     }
 
     [Fact]
+    public async Task FindTransferByLpn_AnuladaYRecreada_DevuelveLaVigente()
+    {
+        var (svc, db, hana, company) = Build();
+        await Configure(db, company.CompanyId, SapQueryKinds.TransferByLpn, LpnSql);
+        hana.Results[LpnSql] = Rows(TransferRow(501, canceled: "Y"), TransferRow(503));
+
+        var t = await svc.FindTransferByLpnAsync("CTBO123");
+
+        Assert.Equal(503, t!.DocEntry);
+    }
+
+    [Fact]
+    public async Task Seed_TransferenciaPorLpn_ExcluyeDocumentosDeCancelacion()
+    {
+        var (svc, _, _, _) = Build();
+        var sql = (await svc.ListQueriesAsync()).Single(q => q.DocumentKind == SapQueryKinds.TransferByLpn).SqlText;
+        Assert.Contains("\"CANCELED\" <> 'C'", sql);
+    }
+
+    [Fact]
     public async Task ListPendingTransfers_EnlazaBodegaYFecha()
     {
         var (svc, db, hana, company) = Build();

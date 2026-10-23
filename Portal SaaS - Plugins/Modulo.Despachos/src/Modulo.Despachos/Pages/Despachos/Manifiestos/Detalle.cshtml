@@ -228,7 +228,7 @@
                             <div>
                                 <label class="form-label" for="pending-from">Desde</label>
                                 <input type="date" id="pending-from" name="fromDate" class="form-control" required
-                                       value="@DateTime.Today.AddDays(-30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" />
+                                       value="@DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" />
                             </div>
                             <button type="submit" class="btn btn-primary">Agregar pendientes</button>
                         </form>

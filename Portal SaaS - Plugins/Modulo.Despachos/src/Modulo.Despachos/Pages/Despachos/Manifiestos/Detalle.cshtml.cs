@@ -256,7 +256,13 @@ public sealed class DetalleModel : DespachosPageModelBase
         }
     }
 
-    private static string OutcomeMessage(AddDocumentResult r, ManifestDocument? doc) => r.Outcome switch
+    /// <summary>Mensaje del escáner: el motivo específico del servicio si lo hay (ej. bodega no sucursal), si no uno genérico.</summary>
+    private static string OutcomeMessage(AddDocumentResult r, ManifestDocument? doc) =>
+        r.Outcome != AddDocumentOutcomes.Added && r.Warnings.FirstOrDefault() is { Length: > 0 } reason
+            ? reason
+            : GenericOutcomeMessage(r, doc);
+
+    private static string GenericOutcomeMessage(AddDocumentResult r, ManifestDocument? doc) => r.Outcome switch
     {
         AddDocumentOutcomes.Added => doc is null
             ? "Documento agregado."
@@ -268,6 +274,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         AddDocumentOutcomes.InvalidScan => "Lectura no válida: no es el timbre (PDF417) de un documento.",
         AddDocumentOutcomes.OtherIssuer => "El documento pertenece a otro emisor.",
         AddDocumentOutcomes.Ambiguous => "El folio existe como factura (33) y factura exenta (34): indique el tipo.",
+        AddDocumentOutcomes.NotBranch => "La transferencia va a una bodega que no es sucursal.",
         _ => r.Outcome,
     };
 

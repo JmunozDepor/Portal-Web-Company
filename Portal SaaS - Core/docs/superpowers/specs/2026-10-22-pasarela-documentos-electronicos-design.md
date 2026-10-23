@@ -63,7 +63,7 @@ Los módulos hablan "DTE del SII" y nunca "FACELE".
 
 - **Contratos y modelo canónico:** `PortalSaas.Abstractions` (lo único que ven los plugins).
 - **Orquestación, registro, bandeja y jobs:** `PortalSaas.Core`, igual que los demás servicios de plataforma.
-- **Adaptadores:** un proyecto por proveedor (`PortalSaas.Dte.Facele`, `PortalSaas.Dte.Bes`). Implementan las interfaces de proveedor y se registran por código (`"FACELE"`, `"BES"`). *Decisión del diseñador:* no son plugins, porque no tienen páginas ni menú y necesitan acceso a credenciales de plataforma.
+- **Adaptadores:** carpeta por proveedor dentro de `PortalSaas.Core` (`DocumentosElectronicos/Proveedores/Facele`, `.../Bes`), implementan las interfaces de proveedor y se registran por código (`"FACELE"`, `"BES"`). *Decisión del diseñador (revisada al planificar):* sin proyecto aparte; no son plugins (sin páginas ni menú, usan credenciales de plataforma). Se separan en proyectos si un proveedor arrastra dependencias pesadas.
 
 ## 5. Emisión
 
@@ -206,7 +206,7 @@ Esto se diseña en su propio spec. Aquí solo se fija que la bandeja y el contra
 ## 7. Configuración y aislamiento por compañía
 
 - **Proveedor resuelto por la compañía de la sesión:** `ICurrentCompanyAccessor`. Los jobs recorren las compañías de forma explícita con `ICurrentCompanyOverride`. Nunca hay selección manual de proveedor ni respaldo hacia otro.
-- **Conexión al proveedor:** se reutiliza el catálogo `company_external_connections` (`Kind = HttpApi`, URL base y credenciales cifradas de solo escritura) con un binding del módulo de plataforma `dte` y propósitos `Emision` / `Recepcion`. No se crea un almacén de secretos nuevo.
+- **Conexión al proveedor:** tabla de plataforma `company_dte_settings` (una fila por compañía): proveedor, ambiente, URL base, usuario y contraseña **cifrada con `ISecretoCifradoService`** (solo escritura, nunca se muestra). *Revisado al planificar:* el catálogo `company_external_connections` ya no existe (lo reemplazó "Instancia como servidor de BD de módulos"), así que no se reutiliza.
 - **Configuración DTE por compañía** (tabla nueva, pantalla en Administración):
   - código de proveedor y ambiente;
   - datos del emisor (RUT, razón social, giro, Acteco, direcciones o sucursales SII);

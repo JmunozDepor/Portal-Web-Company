@@ -229,6 +229,113 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.ToTable("company_document_settings", (string)null);
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.CompanyDteSetting", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("BaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("base_url");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("environment");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<string>("IssuerActivity")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("issuer_activity");
+
+                    b.Property<int>("IssuerActivityCode")
+                        .HasColumnType("int")
+                        .HasColumnName("issuer_activity_code");
+
+                    b.Property<string>("IssuerAddress")
+                        .IsRequired()
+                        .HasMaxLength(70)
+                        .HasColumnType("nvarchar(70)")
+                        .HasColumnName("issuer_address");
+
+                    b.Property<string>("IssuerCity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("issuer_city");
+
+                    b.Property<string>("IssuerCommune")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("issuer_commune");
+
+                    b.Property<string>("IssuerName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("issuer_name");
+
+                    b.Property<long?>("IssuerSiiBranchCode")
+                        .HasColumnType("bigint")
+                        .HasColumnName("issuer_sii_branch_code");
+
+                    b.Property<string>("IssuerTaxId")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)")
+                        .HasColumnName("issuer_tax_id");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("SecretKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("secret_key");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id")
+                        .HasName("pk_company_dte_settings");
+
+                    b.HasIndex("CompanyId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_company_dte_settings_company");
+
+                    b.ToTable("company_dte_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_company_dte_settings_environment", "environment in ('certification', 'production')");
+                        });
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.CompanyModuleConnection", b =>
                 {
                     b.Property<long>("Id")
@@ -402,6 +509,131 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.ToTable("document_drafts", null, t =>
                         {
                             t.HasCheckConstraint("ck_document_drafts_status", "status in ('draft', 'sending', 'sent', 'error')");
+                        });
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.DteEmission", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int")
+                        .HasColumnName("attempts");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("DteType")
+                        .HasColumnType("int")
+                        .HasColumnName("dte_type");
+
+                    b.Property<Guid>("EmissionKey")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("emission_key");
+
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("environment");
+
+                    b.Property<long?>("Folio")
+                        .HasColumnType("bigint")
+                        .HasColumnName("folio");
+
+                    b.Property<DateTimeOffset?>("IssuedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("issued_at");
+
+                    b.Property<string>("IssuerTaxId")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)")
+                        .HasColumnName("issuer_tax_id");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("request_hash");
+
+                    b.Property<string>("RequestJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("request_json");
+
+                    b.Property<DateTimeOffset?>("ReservedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("reserved_at");
+
+                    b.Property<string>("SourceModule")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("source_module");
+
+                    b.Property<string>("SourceRef")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("source_ref");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("XmlSent")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("xml_sent");
+
+                    b.Property<string>("XmlSigned")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("xml_signed");
+
+                    b.HasKey("Id")
+                        .HasName("pk_dte_emissions");
+
+                    b.HasIndex("CompanyId", "EmissionKey")
+                        .IsUnique()
+                        .HasDatabaseName("uq_dte_emissions_company_emission_key");
+
+                    b.HasIndex("CompanyId", "Status", "UpdatedAt")
+                        .HasDatabaseName("ix_dte_emissions_company_id_status_updated_at");
+
+                    b.ToTable("dte_emissions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_dte_emissions_status", "status in ('pending', 'folio_reserved', 'issued', 'failed', 'released', 'abandoned')");
                         });
                 });
 
@@ -2466,6 +2698,18 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.Navigation("Company");
                 });
 
+            modelBuilder.Entity("PortalSaas.Data.Entities.CompanyDteSetting", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_company_dte_settings_companies_company_id");
+
+                    b.Navigation("Company");
+                });
+
             modelBuilder.Entity("PortalSaas.Data.Entities.CompanyModuleConnection", b =>
                 {
                     b.HasOne("PortalSaas.Data.Entities.Company", "Company")
@@ -2495,6 +2739,18 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_document_drafts_companies_company_id");
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.DteEmission", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_dte_emissions_companies_company_id");
 
                     b.Navigation("Company");
                 });

@@ -63,6 +63,8 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<FormFieldLayout> FormFieldLayouts => Set<FormFieldLayout>();
     public DbSet<DocumentDraft> DocumentDrafts => Set<DocumentDraft>();
     public DbSet<CompanyDocumentSettings> CompanyDocumentSettings => Set<CompanyDocumentSettings>();
+    public DbSet<CompanyDteSetting> CompanyDteSettings => Set<CompanyDteSetting>();
+    public DbSet<DteEmission> DteEmissions => Set<DteEmission>();
     public DbSet<IntegrationDefinition> IntegrationDefinitions => Set<IntegrationDefinition>();
     public DbSet<IntegrationFieldMapping> IntegrationFieldMappings => Set<IntegrationFieldMapping>();
     public DbSet<IntegrationRunLog> IntegrationRunLogs => Set<IntegrationRunLog>();
@@ -542,6 +544,48 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.DraftMarkerUdfName).HasMaxLength(50);
             entity.HasKey(e => e.CompanyId);
             entity.HasOne(e => e.Company).WithOne().HasForeignKey<CompanyDocumentSettings>(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CompanyDteSetting>(entity =>
+        {
+            entity.ToTable("company_dte_settings", t => t.HasCheckConstraint("ck_company_dte_settings_environment",
+                "environment in ('certification', 'production')"));
+            entity.HasIndex(e => e.CompanyId).IsUnique().HasDatabaseName("uq_company_dte_settings_company");
+            entity.Property(e => e.ProviderCode).HasMaxLength(20);
+            entity.Property(e => e.Environment).HasMaxLength(20);
+            entity.Property(e => e.BaseUrl).HasMaxLength(300);
+            entity.Property(e => e.Username).HasMaxLength(100);
+            entity.Property(e => e.SecretKey).HasMaxLength(500);
+            // Largos del formato DTE del SII (Encabezado/Emisor).
+            entity.Property(e => e.IssuerTaxId).HasMaxLength(12);
+            entity.Property(e => e.IssuerName).HasMaxLength(100);
+            entity.Property(e => e.IssuerActivity).HasMaxLength(80);
+            entity.Property(e => e.IssuerAddress).HasMaxLength(70);
+            entity.Property(e => e.IssuerCommune).HasMaxLength(20);
+            entity.Property(e => e.IssuerCity).HasMaxLength(20);
+            // Restrict -- mismo motivo que CompanyDocumentSettings.Company.
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DteEmission>(entity =>
+        {
+            entity.ToTable("dte_emissions", t => t.HasCheckConstraint("ck_dte_emissions_status",
+                "status in ('pending', 'folio_reserved', 'issued', 'failed', 'released', 'abandoned')"));
+            entity.HasIndex(e => new { e.CompanyId, e.EmissionKey }).IsUnique()
+                .HasDatabaseName("uq_dte_emissions_company_emission_key");
+            entity.HasIndex(e => new { e.CompanyId, e.Status, e.UpdatedAt });
+            entity.Property(e => e.SourceModule).HasMaxLength(50);
+            entity.Property(e => e.SourceRef).HasMaxLength(100);
+            entity.Property(e => e.ProviderCode).HasMaxLength(20);
+            entity.Property(e => e.IssuerTaxId).HasMaxLength(12);
+            entity.Property(e => e.Environment).HasMaxLength(20);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.LastError).HasMaxLength(1000);
+            entity.Property(e => e.RequestHash).HasMaxLength(64);
+            // Historial legal: una compañía con emisiones no se puede borrar (Companies/Index lo bloquea).
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

@@ -1,6 +1,7 @@
 using Modulo.Despachos.Dominio.Guias;
 using Modulo.Despachos.Models;
 using Modulo.Despachos.Servicios;
+using PortalSaas.Abstractions.Modelos.Dte;
 
 namespace Modulo.Despachos.Tests.Dominio.Guias;
 
@@ -221,6 +222,78 @@ public class GuidePlannerTests
         Assert.Equal((null, 0m), (line.UnitPrice, line.Amount));
     }
 
+    private static readonly DteReceiver Propia = new("76030680-0", "COMERCIAL DEPOR LIMITADA", "Comercio de vestuario", null, null, null);
+
+    private static ManifestDocument Transferencia(int docEntry, string bodega, string dir = "Estado 387", long? comuna = Talca) => new()
+    {
+        Id = Guid.NewGuid(), DocumentKind = DocumentKinds.Transfer, SiiDocumentType = 0, Folio = docEntry + 1000, SapDocEntry = docEntry,
+        DocumentDate = Hoy.AddDays(-1), CustomerCode = bodega, CustomerName = "Tienda " + bodega, CustomerTaxId = "76030680-0",
+        DestinationAddress = dir, DestinationCommuneId = comuna, Packages = 1, Lpn = "CTBO" + docEntry,
+    };
+
+    private static GuidePlan PlanTraslado(DteReceiver? propia, params (ManifestDocument Doc, SapDocumentLines Lines)[] docs) =>
+        GuidePlanner.Plan(new GuidePlanInput(Manifiesto(), docs, id => id switch { Talca => "Talca", Curico => "Curicó", _ => null },
+            TransferIndicator: 1, DispatchType: 2, IssueDate: Hoy, DepartureTime: new TimeOnly(12, 30), Valued: true,
+            OwnCompany: propia, InternalTransferIndicator: 5, InternalDispatchType: 3));
+
+    [Fact]
+    public void Plan_Transferencias_GuiaPorSucursal_IndTraslado5_ReceptorPropio_SinReferencias_EnCero()
+    {
+        var p = PlanTraslado(Propia,
+            (Transferencia(501, "TDA01"), LineasMonto(("A", null, 2, 1000m))),
+            (Transferencia(502, "TDA01"), LineasMonto(("B", null, 1, 500m))),
+            (Transferencia(503, "TDA02", "Merced 10", Curico), LineasMonto(("A", null, 3, 900m))));
+
+        Assert.Empty(p.Errors);
+        Assert.Equal(2, p.Guides.Count);
+        var g = p.Guides[0];
+        Assert.Equal(2, g.ManifestDocumentIds.Count);
+        Assert.Equal((5, (int?)3), (g.Document.IdDoc.TransferIndicator, g.Document.IdDoc.DispatchType));
+        Assert.Equal(("76030680-0", "COMERCIAL DEPOR LIMITADA", "Comercio de vestuario"),
+            (g.Document.Receiver.TaxId, g.Document.Receiver.Name, g.Document.Receiver.Activity));
+        Assert.Equal(("Estado 387", "Talca"), (g.Document.Receiver.Address, g.Document.Receiver.Commune));
+        Assert.Empty(g.Document.References);
+        Assert.All(g.Document.Lines, l => { Assert.Null(l.UnitPrice); Assert.Equal(0m, l.Amount); Assert.False(l.Exempt); });
+        Assert.Equal(2, g.Document.Transport!.Customs!.TotalPackages);
+        Assert.Equal("Curicó", p.Guides[1].Document.Receiver.Commune);
+    }
+
+    [Fact]
+    public void Plan_Mixto_FacturasYTransferencias_GuiasSeparadas()
+    {
+        var p = PlanTraslado(Propia,
+            (Factura(100), LineasMonto(("A", null, 1, 1000m))),
+            (Transferencia(501, "TDA01", "Av. Uno 100"), LineasMonto(("A", null, 2, 2000m))));
+
+        Assert.Equal(2, p.Guides.Count);
+        var factura = p.Guides.Single(g => g.Document.IdDoc.TransferIndicator == 1);
+        var traslado = p.Guides.Single(g => g.Document.IdDoc.TransferIndicator == 5);
+        Assert.Single(factura.Document.References);
+        Assert.Equal(1000m, Assert.Single(factura.Document.Lines).Amount);
+        Assert.Empty(traslado.Document.References);
+        Assert.Equal(0m, Assert.Single(traslado.Document.Lines).Amount);
+    }
+
+    [Fact]
+    public void Plan_GuiaDelAddon_SeOmite()
+    {
+        var p = PlanTraslado(Propia,
+            (Factura(100), LineasMonto(("A", null, 1, 1000m))),
+            (Factura(900, kind: DocumentKinds.TransferGuide), new SapDocumentLines(null, null, Array.Empty<SapDocumentLine>())));
+
+        Assert.Empty(p.Errors);
+        Assert.Single(Assert.Single(p.Guides).ManifestDocumentIds);
+    }
+
+    [Fact]
+    public void Plan_TransferenciaSinEmpresaPropia_Error()
+    {
+        var p = PlanTraslado(null, (Transferencia(501, "TDA01"), LineasMonto(("A", null, 2, 1000m))));
+
+        Assert.Contains(p.Errors, e => e.Contains("razón social y giro"));
+        Assert.Empty(p.Guides);
+    }
+
     [Fact]
     public void Plan_PorSku_NoJuntaLasTallas()
     {
@@ -299,13 +372,6 @@ public class GuidePlannerTests
     {
         var p = Plan(Manifiesto(), (Factura(100), Lineas()));
         Assert.Contains(p.Errors, e => e.Contains("Folio 100") && e.Contains("líneas"));
-    }
-
-    [Fact]
-    public void Plan_GuiaDeTraslado_ErrorFaseA()
-    {
-        var p = Plan(Manifiesto(), (Factura(100, kind: DocumentKinds.TransferGuide), Lineas(("X", 1, 1))));
-        Assert.Contains(p.Errors, e => e.Contains("facturas"));
     }
 
     [Fact]

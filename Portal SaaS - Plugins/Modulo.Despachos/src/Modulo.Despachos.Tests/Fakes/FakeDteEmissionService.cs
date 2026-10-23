@@ -9,6 +9,8 @@ public sealed class FakeDteEmissionService : IDteEmissionService
 {
     public bool Configured { get; set; } = true;
     public string IssuerTaxId { get; set; } = "76123456-0";
+    public string IssuerName { get; set; } = "COMERCIAL PRUEBA LIMITADA";
+    public string IssuerActivity { get; set; } = "Comercio al por mayor";
     public long NextFolio { get; set; } = 500;
 
     /// <summary>Claves que responden "proveedor caído" (quedan pending) mientras estén aquí.</summary>
@@ -25,7 +27,7 @@ public sealed class FakeDteEmissionService : IDteEmissionService
     public Dictionary<Guid, string> Contents { get; } = new();
 
     public Task<DteConfigurationStatus> GetConfigurationAsync(CancellationToken ct = default) => Task.FromResult(Configured
-        ? new DteConfigurationStatus(true, "FAKE", "certification", IssuerTaxId, new[] { 33, 52 }, null)
+        ? new DteConfigurationStatus(true, "FAKE", "certification", IssuerTaxId, new[] { 33, 52 }, null, IssuerName, IssuerActivity)
         : new DteConfigurationStatus(false, null, null, null, Array.Empty<int>(), "La compañía no tiene configurados los documentos electrónicos."));
 
     public Task<IReadOnlyList<DteValidationError>> ValidateAsync(DteDocument doc, CancellationToken ct = default) =>

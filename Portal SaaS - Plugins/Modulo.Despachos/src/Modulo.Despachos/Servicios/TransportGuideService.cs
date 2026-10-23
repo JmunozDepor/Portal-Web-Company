@@ -216,18 +216,24 @@ public sealed class TransportGuideService : ITransportGuideService
         var docs = new List<(ManifestDocument, SapDocumentLines)>();
         foreach (var d in m.Documents.OrderBy(d => d.AddedAt))
         {
-            if (d.DocumentKind != DocumentKinds.Invoice)
+            var linesKind = d.DocumentKind switch
+            {
+                DocumentKinds.Invoice => SapQueryKinds.InvoiceLines,
+                DocumentKinds.Transfer => SapQueryKinds.TransferLines,
+                _ => null, // guía del add-on por folio: ya tiene su guía
+            };
+            if (linesKind is null)
             {
                 docs.Add((d, new SapDocumentLines(null, null, Array.Empty<SapDocumentLine>())));
                 continue;
             }
             try
             {
-                docs.Add((d, await _sap.GetLinesAsync(SapQueryKinds.InvoiceLines, d.SapDocEntry)));
+                docs.Add((d, await _sap.GetLinesAsync(linesKind, d.SapDocEntry)));
             }
             catch (InvalidOperationException ex)
             {
-                errors.Add($"Folio {d.Folio}: {ex.Message}");
+                errors.Add($"{(d.DocumentKind == DocumentKinds.Transfer ? "Transferencia" : "Folio")} {d.Folio}: {ex.Message}");
             }
         }
 
@@ -240,7 +246,12 @@ public sealed class TransportGuideService : ITransportGuideService
             m, docs, id => id is { } x && communes.TryGetValue(x, out var n) ? n : null,
             settings.TransferIndicator, settings.DispatchType,
             DateOnly.FromDateTime(departure), new TimeOnly(departure.Hour, departure.Minute), settings.GuideLineGrouping,
-            settings.GuideItemCodePlacement, settings.GuideMaxLines, settings.GuideValued));
+            settings.GuideItemCodePlacement, settings.GuideMaxLines, settings.GuideValued,
+            // Guías de traslado interno (Fase B): el receptor es la propia compañía, con su razón social y giro DTE.
+            config.IsConfigured && !string.IsNullOrWhiteSpace(config.IssuerName)
+                ? new DteReceiver(config.IssuerTaxId ?? "", config.IssuerName, config.IssuerActivity, null, null, null)
+                : null,
+            settings.InternalTransferIndicator, settings.InternalDispatchType));
         errors.AddRange(plan.Errors);
 
         foreach (var g in plan.Guides)
@@ -282,7 +293,8 @@ public sealed class TransportGuideService : ITransportGuideService
             var g = new TransportGuide
             {
                 Id = Guid.NewGuid(), CompanyId = CompanyId, ManifestId = m.Id, Sequence = p.Sequence, EmissionKey = Guid.NewGuid(),
-                TransferIndicator = settings.TransferIndicator, Status = TransportGuideStatuses.Planned, CreatedAt = now,
+                TransferIndicator = p.Document.IdDoc.TransferIndicator ?? settings.TransferIndicator,
+                Status = TransportGuideStatuses.Planned, CreatedAt = now,
                 Documents = p.ManifestDocumentIds.Select(id => new TransportGuideDocument { CompanyId = CompanyId, ManifestDocumentId = id }).ToList(),
             };
             Fill(g, p);

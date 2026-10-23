@@ -17,7 +17,10 @@ public sealed record GuidePlanInput(
     string LineGrouping = GuideLineGroupings.Sku,
     string ItemCodePlacement = GuideItemCodePlacements.Column,
     int MaxLines = GuidePlanner.MaxLines,
-    bool Valued = false);
+    bool Valued = false,
+    DteReceiver? OwnCompany = null,
+    int InternalTransferIndicator = 5,
+    int? InternalDispatchType = 3);
 
 public sealed record PlannedGuide(int Sequence, IReadOnlyList<Guid> ManifestDocumentIds, DteDocument Document);
 
@@ -32,7 +35,10 @@ public sealed record GuidePlan(IReadOnlyList<PlannedGuide> Guides, IReadOnlyList
 /// - división cuando el destino excede el máximo de líneas (60 del formato DTE, o menos si la compañía lo baja
 ///   para que la plantilla PDF no se monte sobre el pie) o 40 referencias; una factura con más líneas que el
 ///   máximo se reparte en trozos y cada trozo la referencia;
-/// - transporte desde el snapshot del manifiesto.
+/// - transporte desde el snapshot del manifiesto;
+/// - transferencias a sucursales (Fase B): una guía por bodega destino, IndTraslado/TipoDespacho internos,
+///   receptor = la propia compañía con la dirección de la sucursal, sin referencias y nunca valorizada;
+/// - guías del add-on agregadas por folio: ya tienen su guía, no generan otra.
 /// Errores = bloquean el despacho; advertencias = se emite igual.
 /// </summary>
 public static partial class GuidePlanner
@@ -50,32 +56,47 @@ public static partial class GuidePlanner
             errors.Add("Ingrese la fecha de llegada estimada (obligatoria en la guía de despacho, Res. 154).");
 
         var groups = new List<Group>();
+        var ownCompanyMissing = false;
         foreach (var (doc, lines) in input.Documents)
         {
-            var prefix = $"Folio {doc.Folio}";
-            if (doc.DocumentKind != DocumentKinds.Invoice)
+            // Guía del add-on agregada por su folio: ya tiene su guía.
+            if (doc.DocumentKind == DocumentKinds.TransferGuide) continue;
+            var isTransfer = doc.DocumentKind == DocumentKinds.Transfer;
+            var prefix = isTransfer ? $"Transferencia {doc.Folio}" : $"Folio {doc.Folio}";
+            if (!isTransfer && doc.DocumentKind != DocumentKinds.Invoice)
             {
-                errors.Add($"{prefix}: esta etapa solo emite guías para facturas.");
+                errors.Add($"{prefix}: este tipo de documento no lleva guía de despacho.");
+                continue;
+            }
+            if (isTransfer && input.OwnCompany is null)
+            {
+                if (!ownCompanyMissing)
+                    errors.Add("Configure los documentos electrónicos de la compañía (razón social y giro del emisor) para emitir guías de traslado.");
+                ownCompanyMissing = true;
                 continue;
             }
             var commune = input.CommuneName(doc.DestinationCommuneId);
             if (commune is null) errors.Add($"{prefix}: la comuna de destino no está resuelta; corríjala en la pestaña Documentos.");
-            if (!RutChileno.IsValid(doc.CustomerTaxId)) errors.Add($"{prefix}: el RUT del cliente «{doc.CustomerTaxId}» no es válido.");
-            if (string.IsNullOrWhiteSpace(doc.DestinationAddress)) errors.Add($"{prefix}: falta la dirección de despacho en SAP.");
-            if (lines.Lines.Count == 0) errors.Add($"{prefix}: la consulta SAP no devolvió líneas de la factura.");
-            var noAmount = input.Valued && lines.Lines.Any(l => l.Amount is null);
+            var badRut = !isTransfer && !RutChileno.IsValid(doc.CustomerTaxId);
+            if (badRut) errors.Add($"{prefix}: el RUT del cliente «{doc.CustomerTaxId}» no es válido.");
+            if (string.IsNullOrWhiteSpace(doc.DestinationAddress))
+                errors.Add(isTransfer ? $"{prefix}: falta la dirección de la bodega sucursal {doc.CustomerCode}." : $"{prefix}: falta la dirección de despacho en SAP.");
+            if (lines.Lines.Count == 0)
+                errors.Add($"{prefix}: la consulta SAP no devolvió líneas de la {(isTransfer ? "transferencia" : "factura")}.");
+            var noAmount = input.Valued && !isTransfer && lines.Lines.Any(l => l.Amount is null);
             if (noAmount)
                 errors.Add($"{prefix}: la consulta SAP de líneas no trae el monto (columna line_amount); no se puede valorizar la guía.");
-            if (commune is null || !RutChileno.IsValid(doc.CustomerTaxId) || string.IsNullOrWhiteSpace(doc.DestinationAddress)
-                || lines.Lines.Count == 0 || noAmount)
+            if (commune is null || badRut || string.IsNullOrWhiteSpace(doc.DestinationAddress) || lines.Lines.Count == 0 || noAmount)
                 continue;
 
-            var rut = RutChileno.Normalize(doc.CustomerTaxId!);
-            var key = $"{rut}|{NormalizeAddress(doc.DestinationAddress!)}|{doc.DestinationCommuneId}";
+            var rut = isTransfer ? input.OwnCompany!.TaxId : RutChileno.Normalize(doc.CustomerTaxId!);
+            var key = isTransfer
+                ? $"T|{doc.CustomerCode}|{NormalizeAddress(doc.DestinationAddress!)}|{doc.DestinationCommuneId}"
+                : $"{rut}|{NormalizeAddress(doc.DestinationAddress!)}|{doc.DestinationCommuneId}";
             var group = groups.FirstOrDefault(g => g.Key == key);
             if (group is null)
             {
-                group = new Group(key, rut, doc, commune, lines);
+                group = new Group(key, rut, doc, commune, lines, isTransfer);
                 groups.Add(group);
             }
             group.Docs.Add((doc, lines));
@@ -85,7 +106,8 @@ public static partial class GuidePlanner
         var missingWeight = 0;
         foreach (var g in groups)
         {
-            foreach (var chunk in Split(g.Docs, input.LineGrouping == GuideLineGroupings.Model, Math.Clamp(input.MaxLines, 1, MaxLines), input.Valued))
+            foreach (var chunk in Split(g.Docs, input.LineGrouping == GuideLineGroupings.Model, Math.Clamp(input.MaxLines, 1, MaxLines),
+                         input.Valued && !g.IsTransfer))
             {
                 var document = BuildDocument(input, g, chunk, out var noWeight);
                 missingWeight += noWeight;
@@ -104,8 +126,10 @@ public static partial class GuidePlanner
     private sealed record ConsolidatedLine(string Key, string ItemCode, string Name, decimal Quantity, string? Unit, decimal? WeightKg,
         decimal Amount, bool Exempt);
 
-    private sealed class Group(string key, string rut, ManifestDocument first, string commune, SapDocumentLines lines)
+    private sealed class Group(string key, string rut, ManifestDocument first, string commune, SapDocumentLines lines, bool isTransfer)
     {
+        /// <summary>Guía de traslado interno a una sucursal (Fase B).</summary>
+        public bool IsTransfer { get; } = isTransfer;
         public string Key { get; } = key;
         public string Rut { get; } = rut;
         public ManifestDocument First { get; } = first;
@@ -179,6 +203,7 @@ public static partial class GuidePlanner
     private static DteDocument BuildDocument(GuidePlanInput input, Group g, List<ChunkPart> chunk, out int missingWeight)
     {
         var m = input.Manifest;
+        var valued = input.Valued && !g.IsTransfer; // la guía de traslado interno nunca se valoriza
         // Las líneas ya vienen resumidas (por SKU o modelo): se juntan las de las facturas del trozo por su llave.
         var merged = chunk.SelectMany(c => c.Lines).GroupBy(l => l.Key).Select(grp => grp.Aggregate((x, l) => x with
         {
@@ -198,24 +223,31 @@ public static partial class GuidePlanner
         {
             // Valorizada: precio = monto / cantidad (6 decimales, lo que admite el SII) y monto = cantidad x precio
             // redondeado, para que cuadre con la validación del SII.
-            decimal? price = input.Valued && l.Quantity > 0 ? Math.Round(l.Amount / l.Quantity, 6, MidpointRounding.AwayFromZero) : null;
+            decimal? price = valued && l.Quantity > 0 ? Math.Round(l.Amount / l.Quantity, 6, MidpointRounding.AwayFromZero) : null;
             var amount = price is { } p ? Math.Round(l.Quantity * p, 0, MidpointRounding.AwayFromZero) : 0;
             return new DteLine(
                 i + 1,
                 codeInName || string.IsNullOrEmpty(l.ItemCode) ? null : l.ItemCode,
                 codeInName && !string.IsNullOrEmpty(l.ItemCode) ? $"{l.ItemCode} {l.Name}" : l.Name,
-                null, l.Quantity, l.Unit, price, amount, Exempt: input.Valued && l.Exempt);
+                null, l.Quantity, l.Unit, price, amount, Exempt: valued && l.Exempt);
         }).ToList();
-        var refs = chunk.Select(c => c.Doc).DistinctBy(d => d.Id).Select((d, i) => new DteReference(
-            i + 1, d.SiiDocumentType.ToString(System.Globalization.CultureInfo.InvariantCulture), d.Folio, d.DocumentDate, null,
-            $"Traslado de mercadería facturada (manifiesto {m.Number})")).ToList();
+        // Traslado interno: la transferencia SAP no es un DTE, la guía no lleva referencias [validar con el asesor].
+        var refs = g.IsTransfer
+            ? new List<DteReference>()
+            : chunk.Select(c => c.Doc).DistinctBy(d => d.Id).Select((d, i) => new DteReference(
+                i + 1, d.SiiDocumentType.ToString(System.Globalization.CultureInfo.InvariantCulture), d.Folio, d.DocumentDate, null,
+                $"Traslado de mercadería facturada (manifiesto {m.Number})")).ToList();
 
         var address = g.First.DestinationAddress!.Trim();
         var city = g.FirstLines.DestinationCity;
         return new DteDocument(
-            new DteIdDoc(52, input.IssueDate, input.TransferIndicator, input.DispatchType),
+            g.IsTransfer
+                ? new DteIdDoc(52, input.IssueDate, input.InternalTransferIndicator, input.InternalDispatchType)
+                : new DteIdDoc(52, input.IssueDate, input.TransferIndicator, input.DispatchType),
             new DteIssuerOverride(m.OriginAddress, m.OriginCommune, null),
-            new DteReceiver(g.Rut, g.First.CustomerName, g.FirstLines.CustomerActivity, address, g.Commune, city),
+            g.IsTransfer
+                ? new DteReceiver(input.OwnCompany!.TaxId, input.OwnCompany.Name, input.OwnCompany.Activity, address, g.Commune, city)
+                : new DteReceiver(g.Rut, g.First.CustomerName, g.FirstLines.CustomerActivity, address, g.Commune, city),
             new DteTransport(
                 m.Plate, m.TrailerPlate, m.CarrierTaxId,
                 m.DriverTaxId is null && m.DriverName is null ? null : new DteDriver(m.DriverTaxId ?? "", m.DriverName ?? ""),

@@ -24,6 +24,40 @@ public class TransportGuideServiceTests
         env.Db.TransportGuides.Where(g => g.ManifestId == id).OrderBy(g => g.Sequence).ToListAsync();
 
     [Fact]
+    public async Task Dispatch_SoloGuiasDelAddon_DespachaSinModoGuias()
+    {
+        var env = ManifestTestEnv.Build();
+        await env.EnableGuidesAsync();
+        env.AddSap(900, kind: DocumentKinds.TransferGuide, sii: 52);
+        var id = await env.Svc.CreateDraftAsync(env.Header(arrival: ManifestTestEnv.Fecha));
+        Assert.Equal("added", (await env.Svc.AddDocumentAsync(id, new DocumentCapture(null, DocumentKinds.TransferGuide, 900))).Outcome);
+
+        Assert.True((await env.Svc.DispatchAsync(id)).Success);
+
+        Assert.Equal(ManifestStatuses.Dispatched, (await env.Svc.GetAsync(id))!.Status);
+        Assert.Empty(await GuidesOf(env, id));
+    }
+
+    [Fact]
+    public async Task Emit_Transferencia_PersisteIndicador5_YReceptorPropio()
+    {
+        var env = ManifestTestEnv.Build();
+        await env.EnableGuidesAsync();
+        await env.Master.SaveBranchWarehouseAsync(new BranchWarehouse { WarehouseCode = "TDA01", Name = "Tienda", Address = "Estado 387", CommuneName = "Rancagua" });
+        env.Sap.Transfers.Add(new SapTransferInfo(501, 1501, ManifestTestEnv.Fecha, "TDA01", "Tienda", null, null, 2m, false, "CTBO1"));
+        env.Sap.Lines[501] = new SapDocumentLines(null, "Rancagua", new[] { new SapDocumentLine(0, "A", "Zapatilla", 2, "UN", 1m) });
+        var id = await env.Svc.CreateDraftAsync(env.Header(arrival: ManifestTestEnv.Fecha));
+        Assert.Equal("added", (await env.Svc.AddDocumentAsync(id, new DocumentCapture("CTBO1", null, null))).Outcome);
+
+        Assert.True((await env.Svc.DispatchAsync(id)).Success);
+
+        var g = Assert.Single(await GuidesOf(env, id));
+        Assert.Equal(5, g.TransferIndicator);
+        Assert.Equal((env.Dte.IssuerTaxId, env.Dte.IssuerName), (g.ReceiverTaxId, g.ReceiverName));
+        Assert.Equal(TransportGuideStatuses.Issued, g.Status);
+    }
+
+    [Fact]
     public async Task Preview_Borrador_PlanificaConMaestrosVigentes()
     {
         var (env, id) = await TwoGuidesAsync();

@@ -465,6 +465,23 @@ public class SapDocumentLookupServiceTests
     }
 
     [Fact]
+    public async Task GetLines_SinFilaEnHana_SiembraSeedConGirosDeDepor()
+    {
+        var (svc, db, hana, company) = Build(engine: "SAP HANA");
+
+        await svc.GetLinesAsync(SapQueryKinds.InvoiceLines, 1);
+
+        var sql = db.SapDocumentQueries.Single(q => q.CompanyId == company.CompanyId && q.DocumentKind == SapQueryKinds.InvoiceLines).SqlText;
+        // Giro por prioridad: mayorista interno, luego punto de venta (grupo, subgrupo), luego Notes; máx. 40 (GiroRecep).
+        var nx = sql.IndexOf("\"U_U_NX_giro\"", StringComparison.Ordinal);
+        var group = sql.IndexOf("\"U_GSP_GroupName\"", StringComparison.Ordinal);
+        var sub = sql.IndexOf("\"U_GSP_SubGroupName\"", StringComparison.Ordinal);
+        var notes = sql.IndexOf("C0.\"Notes\"", StringComparison.Ordinal);
+        Assert.True(nx > 0 && nx < group && group < sub && sub < notes, sql);
+        Assert.Contains("40)", sql);
+    }
+
+    [Fact]
     public async Task GetLines_MapeaContrato()
     {
         var (svc, db, hana, company) = Build();

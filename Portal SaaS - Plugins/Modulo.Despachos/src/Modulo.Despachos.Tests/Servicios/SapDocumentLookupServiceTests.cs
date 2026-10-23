@@ -472,12 +472,13 @@ public class SapDocumentLookupServiceTests
         await svc.GetLinesAsync(SapQueryKinds.InvoiceLines, 1);
 
         var sql = db.SapDocumentQueries.Single(q => q.CompanyId == company.CompanyId && q.DocumentKind == SapQueryKinds.InvoiceLines).SqlText;
-        // Giro por prioridad: mayorista interno, luego punto de venta (grupo, subgrupo), luego Notes; máx. 40 (GiroRecep).
+        // Giro por prioridad: mayorista interno, luego subgrupo del punto de venta, luego Notes; máx. 40 (GiroRecep).
+        // U_GSP_GroupName no existe en OCRD de Depor (HANA: invalid column name).
+        Assert.DoesNotContain("U_GSP_GroupName", sql);
         var nx = sql.IndexOf("\"U_U_NX_giro\"", StringComparison.Ordinal);
-        var group = sql.IndexOf("\"U_GSP_GroupName\"", StringComparison.Ordinal);
         var sub = sql.IndexOf("\"U_GSP_SubGroupName\"", StringComparison.Ordinal);
         var notes = sql.IndexOf("C0.\"Notes\"", StringComparison.Ordinal);
-        Assert.True(nx > 0 && nx < group && group < sub && sub < notes, sql);
+        Assert.True(nx > 0 && nx < sub && sub < notes, sql);
         Assert.Contains("40)", sql);
     }
 

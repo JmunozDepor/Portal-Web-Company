@@ -3,8 +3,8 @@
 -- weight_kg = cantidad x peso unitario de venta (OITM.SWeight1) convertido a kg con la unidad OWGT
 --   [validar con el administrador SAP: unidad y campo de peso de cada SAP]; NULL si el articulo no tiene peso.
 -- customer_activity = giro del cliente (GiroRecep, max. 40), el primero con dato de:
---   OCRD."U_U_NX_giro" (clientes mayoristas internos), "U_GSP_GroupName" y "U_GSP_SubGroupName" (clientes
---   creados por el punto de venta; el subgrupo sin su codigo "10001-") y, al final, "Notes". Se repite en cada fila.
+--   OCRD."U_U_NX_giro" (clientes mayoristas internos), "U_GSP_SubGroupName" (clientes creados por el punto de
+--   venta, sin su codigo "10001-") y, al final, "Notes". Se repite en cada fila. Campos de Depor: ajustar por compania.
 -- destination_city = ciudad de la direccion de despacho (INV12."CityS"); se repite en cada fila.
 SELECT
   L."LineNum" AS "line_num",
@@ -17,7 +17,6 @@ SELECT
        ELSE NULL END AS "weight_kg",
   LEFT(COALESCE(
     NULLIF(TRIM(C0."U_U_NX_giro"), ''),
-    NULLIF(TRIM(C0."U_GSP_GroupName"), ''),
     NULLIF(TRIM(SUBSTR_AFTER(C0."U_GSP_SubGroupName", '-')), ''),
     NULLIF(TRIM(C0."U_GSP_SubGroupName"), ''),
     NULLIF(TRIM(C0."Notes"), '')), 40) AS "customer_activity",

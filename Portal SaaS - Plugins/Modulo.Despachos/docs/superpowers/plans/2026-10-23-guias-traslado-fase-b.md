@@ -97,18 +97,18 @@
 
 **Interfaces:**
 - Produces:
-  - `public sealed record SapTransferInfo(int DocEntry, int DocNum, DateOnly DocumentDate, string WarehouseCode, string WarehouseName, string? DestinationAddress, string? DestinationCommune, decimal Units, bool IsCanceled, string? Lpn, long? AddonGuideFolio);`
+  - `public sealed record SapTransferInfo(int DocEntry, int DocNum, DateOnly DocumentDate, string WarehouseCode, string WarehouseName, string? DestinationAddress, string? DestinationCommune, decimal Units, bool IsCanceled, string? Lpn);`
   - `public sealed record SapWarehouse(string Code, string Name, string? Address, string? Commune);`
   - `Task<SapTransferInfo?> FindTransferByLpnAsync(string lpn, CancellationToken ct = default)` (parámetro `:lpn`; con más de una fila lanza "El LPN {lpn} está en más de una transferencia").
   - `Task<IReadOnlyList<SapTransferInfo>> ListPendingTransfersAsync(string warehouseCode, DateOnly fromDate, CancellationToken ct = default)` (`:warehouse`, `:from_date`).
   - `GetLinesAsync(SapQueryKinds.TransferLines, docEntry)` con el mismo contrato de columnas que las líneas de factura (`LineColumns`; el seed devuelve `NULL AS "customer_activity"`).
   - `Task<IReadOnlyList<SapWarehouse>> ListSapWarehousesAsync(CancellationToken ct = default)` (sin parámetros).
   - `ProbeAsync(string kind, string sql, string sample)` y `SaveQueryAsync(string kind, string sql, bool isActive, string sample)`: **la muestra pasa de `long` a `string`**. Facturas/guías: folio numérico; líneas: DocEntry numérico; LPN: texto; pendientes: código de bodega (fecha desde = hoy − 30 días); bodegas: se ignora.
-- Contrato de columnas de transferencia (`TransferColumns`): `doc_entry, doc_num, document_date, warehouse_code, warehouse_name, destination_address, destination_commune, units, is_canceled, lpn, addon_guide_folio`. Bodegas: `warehouse_code, warehouse_name, address, commune`.
-- Seeds (HANA, `[validar]` en comentario): base `OWTR T0` + `OWHS W ON W."WhsCode" = T0."ToWhsCode"`; `units` = `SUM(WTR1."Quantity")`; `lpn` = `T0."U_NX_LPN"`; `addon_guide_folio` = `MAX(H."U_FoliNo")` de `"@INX_DGC1" D JOIN "@INX_ODGC" H` con `D."U_BseEntry" = T0."DocEntry"`; dirección `W."Street"`, comuna `W."County"`. En pendientes: `T0."ToWhsCode" = :warehouse AND T0."DocDate" >= :from_date AND T0."CANCELED" = 'N'` y sin guía del add-on. En líneas (`WTR1 L`): mismo armado que `hana_invoice_lines.sql` (FrgnName, peso, `model_code`/`model_name`), sin `line_amount` y con `W."City"` como `destination_city`.
+- Contrato de columnas de transferencia (`TransferColumns`): `doc_entry, doc_num, document_date, warehouse_code, warehouse_name, destination_address, destination_commune, units, is_canceled, lpn`. Bodegas: `warehouse_code, warehouse_name, address, commune`.
+- Seeds (HANA, `[validar]` en comentario): base `OWTR T0` + `OWHS W ON W."WhsCode" = T0."ToWhsCode"`; `units` = `SUM(WTR1."Quantity")`; `lpn` = `T0."U_NX_LPN"`; dirección `W."Street"`, comuna `W."County"`. En pendientes: `T0."ToWhsCode" = :warehouse AND T0."DocDate" >= :from_date AND T0."CANCELED" = 'N'`. **Sin** tablas del add-on (`@INX_ODGC`/`@INX_DGC1`): el control de emitidas es del portal (Task 4). En líneas (`WTR1 L`): mismo armado que `hana_invoice_lines.sql` (FrgnName, peso, `model_code`/`model_name`), sin `line_amount` y con `W."City"` como `destination_city`.
 
 - [ ] **Step 1: Write the failing tests** (con el fake de HANA existente):
-  - `FindTransferByLpn_MapeaContrato_YEnlazaLpn`: fila con `addon_guide_folio = null` → `SapTransferInfo` con `WarehouseCode`, `Units` y `Lpn`; el parámetro enlazado es `lpn = "CTBO123"`.
+  - `FindTransferByLpn_MapeaContrato_YEnlazaLpn`: una fila → `SapTransferInfo` con `WarehouseCode`, `Units` y `Lpn`; el parámetro enlazado es `lpn = "CTBO123"`.
   - `FindTransferByLpn_SinFila_Null` y `FindTransferByLpn_DosFilas_Lanza`.
   - `ListPendingTransfers_EnlazaBodegaYFecha`.
   - `GetLines_Transferencia_UsaConsultaDeLineasDeTransferencia`.
@@ -139,9 +139,9 @@
   - "No se encontró el LPN {lpn} en SAP."
   - "La transferencia {DocNum} está anulada en SAP."
   - "La transferencia {DocNum} va a la bodega {code} ({name}), que no es sucursal." (no existe o está inactiva)
-  - "La transferencia {DocNum} ya tiene la guía {folio} del add-on; agréguela por el folio de esa guía."
   - duplicado en este manifiesto → `DuplicateInThis`
   - en otro manifiesto no anulado → `InOtherManifest` con su número (control por `DocumentKind = transfer` + `SapDocEntry`).
+- Transición: las transferencias guiadas por el add-on antes de la puesta en marcha no se detectan (no se consulta su tabla). La fecha "desde" de las pendientes se elige a partir de la puesta en marcha.
 - En bloque: aplica las mismas reglas por fila y salta las que no pasan, con el motivo en `Skipped` (`"{DocNum}: <motivo>"`). Exige manifiesto en borrador y bodega sucursal activa.
 - UI (pestaña Documentos, solo si `canScan` y hay bodegas sucursal activas): un formulario compacto bajo el escáner con `select` de bodegas sucursal, `input type=date` (default hoy − 30 días, `yyyy-MM-dd`) y el botón "Agregar pendientes", handler `OnPostAgregarPendientesAsync(Guid id, string warehouseCode, DateOnly fromDate)`. El resultado va a `SuccessMessage` ("Se agregaron N transferencia(s).") y los saltados a `ErrorMessage` como lista. La tabla de documentos muestra el LPN bajo el folio en las filas de transferencia.
 
@@ -150,7 +150,6 @@
   - `Lpn_NoExiste_NotFound`
   - `Lpn_Anulada_Canceled`
   - `Lpn_BodegaNoSucursal_Rechaza` (también inactiva)
-  - `Lpn_ConGuiaDelAddon_Rechaza`
   - `Lpn_DosVecesEnElMismo_Duplicado`
   - `Lpn_EnOtroManifiestoDespachado_InOtherManifest`
   - `Lpn_PatronConfigurado_TextoQueNoCalza_InvalidScan`

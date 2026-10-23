@@ -66,9 +66,9 @@ el portal por `DocEntry` + objeto (67), igual que hoy lo lleva el add-on.
 13. **Plataforma:** contrato nuevo en `PortalSaas.Abstractions`,
     `ISapDocumentFieldWriter.UpdateHeaderFieldsAsync(objectType, docEntry, fields)`, implementado en Core con
     `SapSession.PatchAsync`. Así el plugin escribe en SAP sin referenciar Core, y otros módulos lo reutilizan.
-14. **Coexistencia con el add-on:** una transferencia que ya está en una guía del add-on (`@INX_DGC1`) no se
-    acepta como transferencia ("ya tiene la guía N del add-on; agrégala por ese folio") y sigue entrando como
-    hoy, por el folio de esa guía. Sin fecha de corte: lo decide el control por `DocEntry`.
+14. **Sin tablas del add-on (usuario, 2026-10-23):** no se consultan `@INX_ODGC` / `@INX_DGC1`. El control de
+    emitidas es solo del portal (§3.4). Las transferencias guiadas por el add-on antes de la puesta en marcha no
+    se detectan: la fecha "desde" de las pendientes se fija a partir de la puesta en marcha.
 
 ## 4. Objetivos, no-objetivos, anti-objetivos
 
@@ -108,8 +108,8 @@ SapTransferWriteback → ISapDocumentFieldWriter (Core, Service Layer PATCH Stoc
 
 | Consulta | Parámetros | Devuelve |
 |---|---|---|
-| Transferencia por LPN | `:lpn` | Mismo contrato que la de facturas: `doc_entry`, `doc_num`, `document_date`, `customer_code` (= bodega destino), `customer_name` (= nombre de la bodega), `destination_address`, `destination_commune`, `units`, `packages` (= 1), `is_canceled`. Más `lpn` y `addon_guide_folio` (folio de la guía del add-on si la transferencia está en `@INX_DGC1`) |
-| Transferencias pendientes | `:warehouse`, `:from_date` | Una fila por transferencia no cancelada a esa bodega desde la fecha, que **no** está en `@INX_DGC1`; mismas columnas. El portal descarta además las que ya están en una guía suya |
+| Transferencia por LPN | `:lpn` | Mismo contrato que la de facturas: `doc_entry`, `doc_num`, `document_date`, `customer_code` (= bodega destino), `customer_name` (= nombre de la bodega), `destination_address`, `destination_commune`, `units`, `packages` (= 1), `is_canceled`. Más `lpn` |
+| Transferencias pendientes | `:warehouse`, `:from_date` | Una fila por transferencia no cancelada a esa bodega desde la fecha; mismas columnas. El portal descarta las que ya están en un manifiesto suyo |
 | Bodegas | — | `OWHS`: código, nombre, dirección, comuna; para elegir las bodegas sucursal |
 | Líneas de transferencia | `:doc_entry` | Mismo contrato que "Líneas de factura" (`WTR1`): artículo, nombre, cantidad, unidad, peso; ciudad de destino |
 
@@ -133,7 +133,7 @@ SapTransferWriteback → ISapDocumentFieldWriter (Core, Service Layer PATCH Stoc
 - **Agregar una transferencia:** se rechaza si
   - está cancelada;
   - va a una bodega que no es sucursal: "la bodega X no es sucursal";
-  - ya está en una guía emitida del portal ("ya despachada en la guía N") o del add-on;
+  - ya está en otro manifiesto del portal no anulado;
   - está en otro manifiesto activo (misma regla que las facturas);
   - o su LPN no existe.
 - **Agregar las pendientes de una sucursal:** suma todas las que pasan las reglas anteriores y muestra cuántas

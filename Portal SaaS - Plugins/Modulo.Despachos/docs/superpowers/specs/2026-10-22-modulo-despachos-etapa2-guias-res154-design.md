@@ -141,6 +141,37 @@ FACELE los agrega. FACELE devuelve y guarda el XML en **ISO-8859-1**. Ejemplos p
 | 17 | `Consultar` estado de las guías emitidas | En caoba las guías del día **no aparecieron** en `DocumentosEmitidosService` (los 33/61 antiguos sí, con `estadoSII` ING "Por Aprobar SII") → estado SII no verificable en pruebas |
 | 18 | **Plantilla PDF de la guía 52** | **No imprime ningún dato de transporte** (patente, carro, transportista, chofer, fechas/hora de salida y llegada) aunque van en el XML → **FACELE debe actualizar la plantilla** |
 
+| 19 | Guía con `PatenteCarro` = "SIN DATO" y peso en `Aduana/PesoNeto` + `NombreTransp` | Aceptada (folio 107, liberado) |
+| 20 | Factura 33 con `TipoDespacho 2` y transporte "SIN DATO" en `RUTTrans` / `RUTChofer` | **Rechazada**: "'SIN DATO' does not match pattern for RUTType" → contradice el manual Res. 154 de FACELE [aclarar con FACELE] |
+
+#### Mapeo Res. 154 / Formato DTE 2.5 (manual FACELE "Cambios Normativos Formato DTE 2.5", v1.4, 19-03-2026)
+
+Obligatoriedad en **guía de despacho (52): siempre**. En facturas 33/34/46: cuando `TipoDespacho` es 1, 2 o 3
+(si no se conoce el dato, "SIN DATO" — ver prueba 20).
+
+| Dato | XML (`Encabezado/Transporte`) | Fuente en el portal |
+|---|---|---|
+| Patente vehículo | `Patente` | Snapshot manifiesto `plate` |
+| Patente carro / remolque | `PatenteCarro` (nuevo; "SIN DATO" si no hay carro) | `trailer_plate` o "SIN DATO" |
+| RUT transportista | `RUTTrans` | `carrier_tax_id` |
+| RUT y nombre chofer | `Chofer/RUTChofer`, `Chofer/NombreChofer` | `driver_tax_id`, `driver_name` |
+| Dirección / comuna / ciudad destino | `DirDest`, `CmnaDest`, `CiudadDest` | Documento SAP (dirección de despacho) + comuna resuelta |
+| Peso (y transportista) | `Aduana/PesoNeto` (+ `NombreTransp`), según ejemplo FACELE | Suma de peso de las líneas SAP (maestro de artículos) [validar unidad] |
+| Fecha y hora de salida | `FchSalida`, `HraSalida` (nuevos) | `departed_at` (hora Chile) al despachar |
+| Fecha de llegada | `FchLlegada` (nuevo; no existe hora de llegada) | `estimated_arrival_date` → pasa a ser **obligatoria** al despachar |
+| Origen | `Emisor/DirOrigen`, `CmnaOrigen`, `CiudadOrigen` | Origen del manifiesto |
+
+Otros cambios del formato 2.5: el indicador de traslado 7 pasa a llamarse "Devolución de mercaderías";
+`UnmdItem` deja de ser obligatorio en guías (solo en exportación / agente retenedor); campos de manejo de
+madera no aplican a DEPOR/Block. El ejemplo de FACELE usa `IndTraslado 2` y `TipoDespacho 2` para una guía de venta.
+
+**Consecuencias para el diseño:**
+- El manifiesto debe exigir **fecha de llegada estimada** (hoy opcional) y la vista previa debe validar
+  todos los campos "siempre obligatorios" de la guía, porque el ambiente de pruebas de FACELE **no** los exige (prueba 11).
+- La **factura anticipada** de Comercial también cae en la Res. 154 si informa `TipoDespacho` 1/2/3: debe ir con
+  transporte "SIN DATO" (o sin `TipoDespacho`, a confirmar con el asesor) y la guía del manifiesto lleva los datos reales.
+  Esto es del proceso de facturación SAP, fuera de Despachos, pero hay que avisarlo a quien mantiene esa integración.
+
 Detalles de protocolo: la respuesta de `ConsultarResponse` usa el elemento mal escrito `respuestaOperacon`
 (sin "i"); `obtieneDTE` devuelve `<XML>` y `Obtener` devuelve `<xml>` (mayúsculas distintas).
 
@@ -270,6 +301,8 @@ esquema, RUT de DEPOR habilitado en caoba.
 3. Si para Res. 154 en guías nacionales corresponde informar peso/bultos en `Transporte/Aduana` y si su PDF lo imprime.
 4. Por qué las guías emitidas en caoba no aparecen en `Consultar` (para probar el seguimiento de estado SII).
 5. Habilitación de campos libres en el PDF de la guía (N° de manifiesto).
+5b. "SIN DATO" en `RUTTrans` / `RUTChofer`: el manual lo indica para facturas, pero el esquema de caoba lo rechaza (prueba 20). ¿Cómo debe informarse?
+5c. Confirmar que la producción exige los campos obligatorios de la guía 52 (caoba no los exige).
 6. URL y credenciales de producción (por canal seguro, no por correo ni chat).
 
 ## 12. Decisiones del diseñador (revisar)

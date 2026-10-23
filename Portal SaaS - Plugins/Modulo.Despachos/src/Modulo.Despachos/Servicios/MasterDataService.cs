@@ -325,6 +325,38 @@ public sealed class MasterDataService : IMasterDataService
 
     public Task<DeleteResult> DeleteHolidayAsync(long id) => DeleteAsync(_db.Holidays, id, null);
 
+    // ---------------------------------------------------------------- Bodegas sucursal
+
+    public async Task<IReadOnlyList<BranchWarehouse>> ListBranchWarehousesAsync(bool includeInactive = false) =>
+        await Scoped(_db.BranchWarehouses, includeInactive, b => b.IsActive).OrderBy(b => b.WarehouseCode).ToListAsync();
+
+    public async Task<long> SaveBranchWarehouseAsync(BranchWarehouse e)
+    {
+        e.WarehouseCode = Required(e.WarehouseCode, "El código de bodega").ToUpperInvariant();
+        e.Name = Required(e.Name, "El nombre");
+        e.Address = string.IsNullOrWhiteSpace(e.Address) ? null : e.Address.Trim();
+        e.CommuneName = string.IsNullOrWhiteSpace(e.CommuneName) ? null : e.CommuneName.Trim();
+        var code = e.WarehouseCode;
+        return await SaveAsync(e, x => x.WarehouseCode == code, $"Ya existe una bodega sucursal con el código '{code}'.");
+    }
+
+    public Task<DeleteResult> DeleteBranchWarehouseAsync(long id) => DeleteAsync(_db.BranchWarehouses, id, async () =>
+    {
+        var code = await _db.BranchWarehouses.Where(b => b.Id == id && b.CompanyId == CompanyId)
+            .Select(b => b.WarehouseCode).FirstOrDefaultAsync();
+        return code != null && await _db.ManifestDocuments.AnyAsync(d =>
+                d.CompanyId == CompanyId && d.DocumentKind == DocumentKinds.Transfer && d.CustomerCode == code)
+            ? "La bodega se usó en manifiestos; desactívela en vez de eliminarla."
+            : null;
+    });
+
+    public async Task<BranchWarehouse?> FindBranchWarehouseAsync(string warehouseCode)
+    {
+        var code = (warehouseCode ?? "").Trim().ToUpperInvariant();
+        return code.Length == 0 ? null
+            : await _db.BranchWarehouses.FirstOrDefaultAsync(b => b.CompanyId == CompanyId && b.WarehouseCode == code);
+    }
+
     // ---------------------------------------------------------------- Destinatarios de avisos
 
     public async Task<IReadOnlyList<NotificationRecipient>> ListNotificationRecipientsAsync(bool includeInactive = false) =>

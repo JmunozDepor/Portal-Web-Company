@@ -25,6 +25,13 @@ public class ManifestDocument
     /// <summary>Null = comuna no resuelta (la Etapa 2 exigirá corregirla).</summary>
     public long? DestinationCommuneId { get; set; }
 
+    /// <summary>LPN de la transferencia (OWTR.U_NX_LPN); solo DocumentKind = transfer.</summary>
+    public string? Lpn { get; set; }
+
+    /// <summary>Escritura del folio en la transferencia SAP (SapWritebackStatuses) y su último error.</summary>
+    public string? SapWritebackStatus { get; set; }
+    public string? SapWritebackError { get; set; }
+
     public int? SapBaseOrderEntry { get; set; }
     public string? CustomerPo { get; set; }
     public decimal Units { get; set; }

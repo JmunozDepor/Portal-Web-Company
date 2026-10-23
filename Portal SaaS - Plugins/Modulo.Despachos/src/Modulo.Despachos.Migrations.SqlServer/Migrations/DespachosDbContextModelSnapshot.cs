@@ -22,6 +22,73 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Modulo.Despachos.Models.BranchWarehouse", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(70)
+                        .HasColumnType("nvarchar(70)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("CommuneName")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)")
+                        .HasColumnName("commune_name");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("WarehouseCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("warehouse_code");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_despachos_branch_warehouses_company_id");
+
+                    b.HasIndex("CompanyId", "WarehouseCode")
+                        .IsUnique()
+                        .HasDatabaseName("uq_despachos_branch_warehouses_company_id_warehouse_code");
+
+                    b.ToTable("despachos_branch_warehouses", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.Carrier", b =>
                 {
                     b.Property<long>("Id")
@@ -270,16 +337,50 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("guides_enabled");
 
+                    b.Property<int?>("InternalDispatchType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(3)
+                        .HasColumnName("internal_dispatch_type");
+
+                    b.Property<int>("InternalTransferIndicator")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(5)
+                        .HasColumnName("internal_transfer_indicator");
+
                     b.Property<string>("IssuerTaxId")
                         .HasMaxLength(12)
                         .HasColumnType("nvarchar(12)")
                         .HasColumnName("issuer_tax_id");
+
+                    b.Property<string>("LpnPattern")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("lpn_pattern");
+
+                    b.Property<string>("TransferDispatchDateField")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("transfer_dispatch_date_field");
+
+                    b.Property<string>("TransferFolioPrefix")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("52")
+                        .HasColumnName("transfer_folio_prefix");
 
                     b.Property<int>("TransferIndicator")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1)
                         .HasColumnName("transfer_indicator");
+
+                    b.Property<string>("TransferManifestField")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("transfer_manifest_field");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2")
@@ -781,6 +882,11 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("folio");
 
+                    b.Property<string>("Lpn")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("lpn");
+
                     b.Property<Guid>("ManifestId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("manifest_id");
@@ -813,6 +919,16 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("int")
                         .HasColumnName("sap_doc_num");
 
+                    b.Property<string>("SapWritebackError")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("sap_writeback_error");
+
+                    b.Property<string>("SapWritebackStatus")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("sap_writeback_status");
+
                     b.Property<int>("SiiDocumentType")
                         .HasColumnType("int")
                         .HasColumnName("sii_document_type");
@@ -844,6 +960,9 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
                     b.HasIndex("ManifestId")
                         .HasDatabaseName("ix_manifest_documents_manifest_id");
+
+                    b.HasIndex("CompanyId", "DocumentKind", "SapDocEntry")
+                        .HasDatabaseName("ix_manifest_documents_company_id_document_kind_sap_doc_entry");
 
                     b.HasIndex("CompanyId", "DocumentKind", "SiiDocumentType", "Folio")
                         .HasDatabaseName("ix_manifest_documents_company_id_kind_sii_folio");

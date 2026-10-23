@@ -35,4 +35,20 @@ public class DespachosSetting : AuditedEntity
     /// Apagado = precios vacíos y montos 0.
     /// </summary>
     public bool GuideValued { get; set; }
+
+    // ---------------------------------------------------------------- Traslados a sucursales (Fase B)
+
+    /// <summary>Expresión regular que reconoce un LPN en el escáner (ej. ^(CTBO|ICBO)\d+$); vacío = todo texto no-timbre.</summary>
+    public string? LpnPattern { get; set; }
+
+    /// <summary>FolioPref que se graba en la transferencia SAP junto al folio de la guía; vacío = no se graba el folio.</summary>
+    public string? TransferFolioPrefix { get; set; } = "52";
+
+    /// <summary>Campos de usuario de OWTR opcionales para el N° de manifiesto y la fecha de despacho (ej. U_NX_Manifiesto).</summary>
+    public string? TransferManifestField { get; set; }
+    public string? TransferDispatchDateField { get; set; }
+
+    /// <summary>IndTraslado y TipoDespacho de la guía de traslado interno (5 y 3 por defecto).</summary>
+    public int InternalTransferIndicator { get; set; } = 5;
+    public int? InternalDispatchType { get; set; } = 3;
 }

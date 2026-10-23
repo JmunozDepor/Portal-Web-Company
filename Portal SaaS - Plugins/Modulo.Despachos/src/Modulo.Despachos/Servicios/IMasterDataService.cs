@@ -78,6 +78,14 @@ public interface IMasterDataService
     /// </summary>
     Task<Commune?> FindCommuneByNameAsync(string name);
 
+    /// <summary>Bodegas sucursal (Fase B); por defecto solo las activas, por código.</summary>
+    Task<IReadOnlyList<BranchWarehouse>> ListBranchWarehousesAsync(bool includeInactive = false);
+    Task<long> SaveBranchWarehouseAsync(BranchWarehouse entity);
+    Task<DeleteResult> DeleteBranchWarehouseAsync(long id);
+
+    /// <summary>Bodega sucursal por código (activa o no; el llamador decide), ignorando mayúsculas y espacios.</summary>
+    Task<BranchWarehouse?> FindBranchWarehouseAsync(string warehouseCode);
+
     /// <summary>Equivalencias de comuna de la compañía (texto de SAP → comuna del catálogo).</summary>
     Task<IReadOnlyList<CommuneAlias>> ListCommuneAliasesAsync();
     Task<long> SaveCommuneAliasAsync(CommuneAlias entity);

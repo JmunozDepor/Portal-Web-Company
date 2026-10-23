@@ -22,6 +22,73 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Modulo.Despachos.Models.BranchWarehouse", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("CommuneName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("commune_name");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("WarehouseCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("warehouse_code");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_despachos_branch_warehouses_company_id");
+
+                    b.HasIndex("CompanyId", "WarehouseCode")
+                        .IsUnique()
+                        .HasDatabaseName("uq_despachos_branch_warehouses_company_id_warehouse_code");
+
+                    b.ToTable("despachos_branch_warehouses", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.Carrier", b =>
                 {
                     b.Property<long>("Id")
@@ -270,16 +337,50 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("guides_enabled");
 
+                    b.Property<int?>("InternalDispatchType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(3)
+                        .HasColumnName("internal_dispatch_type");
+
+                    b.Property<int>("InternalTransferIndicator")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(5)
+                        .HasColumnName("internal_transfer_indicator");
+
                     b.Property<string>("IssuerTaxId")
                         .HasMaxLength(12)
                         .HasColumnType("character varying(12)")
                         .HasColumnName("issuer_tax_id");
+
+                    b.Property<string>("LpnPattern")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("lpn_pattern");
+
+                    b.Property<string>("TransferDispatchDateField")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("transfer_dispatch_date_field");
+
+                    b.Property<string>("TransferFolioPrefix")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("52")
+                        .HasColumnName("transfer_folio_prefix");
 
                     b.Property<int>("TransferIndicator")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
                         .HasColumnName("transfer_indicator");
+
+                    b.Property<string>("TransferManifestField")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("transfer_manifest_field");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -781,6 +882,11 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("folio");
 
+                    b.Property<string>("Lpn")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("lpn");
+
                     b.Property<Guid>("ManifestId")
                         .HasColumnType("uuid")
                         .HasColumnName("manifest_id");
@@ -813,6 +919,16 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("sap_doc_num");
 
+                    b.Property<string>("SapWritebackError")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("sap_writeback_error");
+
+                    b.Property<string>("SapWritebackStatus")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("sap_writeback_status");
+
                     b.Property<int>("SiiDocumentType")
                         .HasColumnType("integer")
                         .HasColumnName("sii_document_type");
@@ -844,6 +960,9 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
 
                     b.HasIndex("ManifestId")
                         .HasDatabaseName("ix_manifest_documents_manifest_id");
+
+                    b.HasIndex("CompanyId", "DocumentKind", "SapDocEntry")
+                        .HasDatabaseName("ix_manifest_documents_company_id_document_kind_sap_doc_entry");
 
                     b.HasIndex("CompanyId", "DocumentKind", "SiiDocumentType", "Folio")
                         .HasDatabaseName("ix_manifest_documents_company_id_kind_sii_folio");

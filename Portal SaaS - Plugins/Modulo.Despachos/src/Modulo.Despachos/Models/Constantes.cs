@@ -79,6 +79,12 @@ public static class DocumentKinds
     public const string Invoice = "invoice";
     public const string TransferGuide = "transfer_guide";
 
+    /// <summary>
+    /// Transferencia de stock a una bodega sucursal (OWTR, Fase B): entra por LPN o en bloque, no por folio, por eso
+    /// no está en <see cref="All"/> (la lista de tipos buscables por folio).
+    /// </summary>
+    public const string Transfer = "transfer";
+
     public static readonly IReadOnlyList<string> All = new[] { Invoice, TransferGuide };
 
     /// <summary>Nombre plural para mensajes ("facturas", "guías de traslado").</summary>
@@ -86,6 +92,7 @@ public static class DocumentKinds
     {
         Invoice => "facturas",
         TransferGuide => "guías de traslado",
+        Transfer => "transferencias",
         _ => kind,
     };
 
@@ -93,6 +100,17 @@ public static class DocumentKinds
     {
         Invoice => "Factura",
         TransferGuide => "Guía de traslado",
+        Transfer => "Transferencia",
         _ => kind,
     };
+}
+
+/// <summary>
+/// Escritura del folio de la guía en la transferencia SAP (manifest_documents.sap_writeback_status).
+/// null = no aplica o no hay nada configurado para escribir.
+/// </summary>
+public static class SapWritebackStatuses
+{
+    public const string Ok = "ok";
+    public const string Pending = "pending";
 }

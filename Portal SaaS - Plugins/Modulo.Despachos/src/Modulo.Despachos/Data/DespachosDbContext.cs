@@ -34,6 +34,7 @@ public class DespachosDbContext : DbContext
     public DbSet<Origin> Origins => Set<Origin>();
     public DbSet<RejectionReason> RejectionReasons => Set<RejectionReason>();
     public DbSet<Holiday> Holidays => Set<Holiday>();
+    public DbSet<BranchWarehouse> BranchWarehouses => Set<BranchWarehouse>();
     public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
     public DbSet<RateCard> RateCards => Set<RateCard>();
     public DbSet<RateSurcharge> RateSurcharges => Set<RateSurcharge>();
@@ -195,6 +196,18 @@ public class DespachosDbContext : DbContext
             e.HasIndex(x => new { x.CompanyId, x.Date }).IsUnique().HasDatabaseName("uq_holidays_company_id_date");
         });
 
+        modelBuilder.Entity<BranchWarehouse>(e =>
+        {
+            Base(e, "despachos_branch_warehouses");
+            e.Property(x => x.WarehouseCode).HasColumnName("warehouse_code").HasMaxLength(20).IsRequired();
+            e.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+            e.Property(x => x.Address).HasColumnName("address").HasMaxLength(70);
+            e.Property(x => x.CommuneName).HasColumnName("commune_name").HasMaxLength(60);
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.HasIndex(x => new { x.CompanyId, x.WarehouseCode }).IsUnique()
+                .HasDatabaseName("uq_despachos_branch_warehouses_company_id_warehouse_code");
+        });
+
         modelBuilder.Entity<NotificationRecipient>(e =>
         {
             Base(e, "notification_recipients");
@@ -281,6 +294,12 @@ public class DespachosDbContext : DbContext
                 .IsRequired().HasDefaultValue(GuideItemCodePlacements.Column);
             e.Property(x => x.GuideMaxLines).HasColumnName("guide_max_lines").HasDefaultValue(60);
             e.Property(x => x.GuideValued).HasColumnName("guide_valued");
+            e.Property(x => x.LpnPattern).HasColumnName("lpn_pattern").HasMaxLength(100);
+            e.Property(x => x.TransferFolioPrefix).HasColumnName("transfer_folio_prefix").HasMaxLength(10).HasDefaultValue("52");
+            e.Property(x => x.TransferManifestField).HasColumnName("transfer_manifest_field").HasMaxLength(50);
+            e.Property(x => x.TransferDispatchDateField).HasColumnName("transfer_dispatch_date_field").HasMaxLength(50);
+            e.Property(x => x.InternalTransferIndicator).HasColumnName("internal_transfer_indicator").HasDefaultValue(5);
+            e.Property(x => x.InternalDispatchType).HasColumnName("internal_dispatch_type").HasDefaultValue(3);
             e.HasIndex(x => x.CompanyId).IsUnique().HasDatabaseName("uq_despachos_settings_company_id");
         });
 
@@ -426,6 +445,11 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.DestinationAddress).HasColumnName("destination_address").HasMaxLength(250);
             e.Property(x => x.DestinationCommuneName).HasColumnName("destination_commune_name").HasMaxLength(60);
             e.Property(x => x.DestinationCommuneId).HasColumnName("destination_commune_id");
+            e.Property(x => x.Lpn).HasColumnName("lpn").HasMaxLength(30);
+            e.Property(x => x.SapWritebackStatus).HasColumnName("sap_writeback_status").HasMaxLength(10);
+            e.Property(x => x.SapWritebackError).HasColumnName("sap_writeback_error").HasMaxLength(500);
+            e.HasIndex(x => new { x.CompanyId, x.DocumentKind, x.SapDocEntry })
+                .HasDatabaseName("ix_manifest_documents_company_id_document_kind_sap_doc_entry");
             e.Property(x => x.SapBaseOrderEntry).HasColumnName("sap_base_order_entry");
             e.Property(x => x.CustomerPo).HasColumnName("customer_po").HasMaxLength(60);
             e.Property(x => x.Units).HasColumnName("units").HasPrecision(18, 2);

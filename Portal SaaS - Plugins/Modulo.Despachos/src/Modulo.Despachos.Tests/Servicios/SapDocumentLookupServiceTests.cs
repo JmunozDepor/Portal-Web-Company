@@ -233,12 +233,12 @@ public class SapDocumentLookupServiceTests
     }
 
     [Fact]
-    public async Task List_EnHana_SiembraLasTresConsultas_YEnOtroMotorNo()
+    public async Task List_EnHana_SiembraLasSieteConsultas_YEnOtroMotorNo()
     {
         var (svc, db, _, _) = Build();
         var list = await svc.ListQueriesAsync();
-        Assert.Equal(3, list.Count);
-        Assert.Equal(3, db.SapDocumentQueries.Count());
+        Assert.Equal(7, list.Count);
+        Assert.Equal(7, db.SapDocumentQueries.Count());
 
         var (svc2, db2, _, _) = Build(engine: "PostgreSQL");
         Assert.Empty(await svc2.ListQueriesAsync());
@@ -531,7 +531,7 @@ public class SapDocumentLookupServiceTests
     {
         var (svc, _, _, _) = Build(engine: "PostgreSQL");
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.GetLinesAsync(SapQueryKinds.InvoiceLines, 1));
-        Assert.Contains("líneas de factura", ex.Message);
+        Assert.Contains("Líneas de factura", ex.Message);
     }
 
     [Fact]

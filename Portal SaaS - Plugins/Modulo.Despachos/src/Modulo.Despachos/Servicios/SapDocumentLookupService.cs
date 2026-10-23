@@ -30,6 +30,16 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         "line_num", "item_code", "item_name", "quantity", "unit", "weight_kg", "customer_activity", "destination_city",
     };
 
+    /// <summary>Contrato de las consultas de transferencias (por LPN y pendientes).</summary>
+    public static readonly IReadOnlyList<string> TransferColumns = new[]
+    {
+        "doc_entry", "doc_num", "document_date", "warehouse_code", "warehouse_name", "destination_address",
+        "destination_commune", "units", "is_canceled", "lpn",
+    };
+
+    /// <summary>Contrato de la consulta de bodegas.</summary>
+    public static readonly IReadOnlyList<string> WarehouseColumns = new[] { "warehouse_code", "warehouse_name", "address", "commune" };
+
     private static readonly Regex ParameterRegex = new(@":(\w+)", RegexOptions.Compiled);
 
     // Palabras de escritura/ejecución rechazadas sobre el SQL ya sin comentarios, literales ni
@@ -106,34 +116,150 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
 
     public async Task<SapDocumentLines> GetLinesAsync(string queryKind, int docEntry, CancellationToken ct = default)
     {
-        if (queryKind != SapQueryKinds.InvoiceLines)
+        if (queryKind is not (SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines))
             throw new InvalidOperationException($"Consulta de líneas inválida: '{queryKind}'.");
-        var query = await GetQueryAsync(queryKind, ct);
-        if (query is null || !query.IsActive)
-            throw new InvalidOperationException(
-                "Configure la consulta SAP de líneas de factura en Despachos > Configuración > Consultas SAP.");
+        var query = await RequireActiveQueryAsync(queryKind, ct);
 
         var rows = await _hana.QueryDynamicAsync(Executable(query.SqlText), new { doc_entry = docEntry }, ct);
         var mapped = rows.Select(ToCaseInsensitive).ToList();
         var missing = mapped.Count == 0 ? new List<string>() : LineColumns.Where(c => !mapped[0].ContainsKey(c)).ToList();
         if (missing.Count > 0)
             throw new InvalidOperationException(
-                $"La consulta SAP de líneas de factura no devuelve las columnas obligatorias: {string.Join(", ", missing)}.");
+                $"La consulta SAP «{SapQueryKinds.Label(queryKind)}» no devuelve las columnas obligatorias: {string.Join(", ", missing)}.");
         return MapLines(mapped);
     }
+
+    public async Task<SapTransferInfo?> FindTransferByLpnAsync(string lpn, CancellationToken ct = default)
+    {
+        var list = await QueryTransfersAsync(SapQueryKinds.TransferByLpn, new { lpn }, ct);
+        var distinct = list.GroupBy(t => t.DocEntry).Select(g => g.First()).ToList();
+        if (distinct.Count > 1)
+            throw new InvalidOperationException($"El LPN {lpn} está en más de una transferencia en SAP; revise el LPN.");
+        return distinct.FirstOrDefault();
+    }
+
+    public async Task<IReadOnlyList<SapTransferInfo>> ListPendingTransfersAsync(string warehouseCode, DateOnly fromDate, CancellationToken ct = default) =>
+        (await QueryTransfersAsync(SapQueryKinds.TransferPending,
+            new { warehouse = warehouseCode, from_date = fromDate.ToDateTime(TimeOnly.MinValue) }, ct))
+        .GroupBy(t => t.DocEntry).Select(g => g.First()).ToList();
+
+    public async Task<IReadOnlyList<SapWarehouse>> ListSapWarehousesAsync(CancellationToken ct = default)
+    {
+        var query = await RequireActiveQueryAsync(SapQueryKinds.Warehouses, ct);
+        var rows = (await _hana.QueryDynamicAsync(Executable(query.SqlText), null, ct)).Select(ToCaseInsensitive).ToList();
+        RequireColumns(SapQueryKinds.Warehouses, rows, WarehouseColumns);
+        return rows.Select(MapWarehouse).ToList();
+    }
+
+    private async Task<List<SapTransferInfo>> QueryTransfersAsync(string kind, object parameters, CancellationToken ct)
+    {
+        var query = await RequireActiveQueryAsync(kind, ct);
+        var rows = (await _hana.QueryDynamicAsync(Executable(query.SqlText), parameters, ct)).Select(ToCaseInsensitive).ToList();
+        RequireColumns(kind, rows, TransferColumns);
+        return rows.Select(MapTransfer).ToList();
+    }
+
+    private async Task<SapDocumentQuery> RequireActiveQueryAsync(string kind, CancellationToken ct)
+    {
+        var query = await GetQueryAsync(kind, ct);
+        if (query is null || !query.IsActive)
+            throw new InvalidOperationException(
+                $"Configure la consulta SAP «{SapQueryKinds.Label(kind)}» en Despachos > Configuración > Consultas SAP.");
+        return query;
+    }
+
+    private static void RequireColumns(string kind, IReadOnlyList<Dictionary<string, object?>> rows, IReadOnlyList<string> columns)
+    {
+        var missing = rows.Count == 0 ? new List<string>() : columns.Where(c => !rows[0].ContainsKey(c)).ToList();
+        if (missing.Count > 0)
+            throw new InvalidOperationException(
+                $"La consulta SAP «{SapQueryKinds.Label(kind)}» no devuelve las columnas obligatorias: {string.Join(", ", missing)}.");
+    }
+
+    private static SapTransferInfo MapTransfer(IReadOnlyDictionary<string, object?> r) => new(
+        DocEntry: ToInt(r["doc_entry"]),
+        DocNum: ToInt(r["doc_num"]),
+        DocumentDate: ToDate(r["document_date"]),
+        WarehouseCode: Str(r["warehouse_code"]) ?? "",
+        WarehouseName: Str(r["warehouse_name"]) ?? "",
+        DestinationAddress: Str(r["destination_address"]),
+        DestinationCommune: Str(r["destination_commune"]),
+        Units: ToDecimal(r["units"]),
+        IsCanceled: ToBool(r["is_canceled"]),
+        Lpn: Str(r["lpn"]));
+
+    private static SapWarehouse MapWarehouse(IReadOnlyDictionary<string, object?> r) => new(
+        Str(r["warehouse_code"]) ?? "", Str(r["warehouse_name"]) ?? "", Str(r["address"]), Str(r["commune"]));
 
     // ------------------------------------------------------------------ Validación
 
     public async Task<QueryValidationResult> ValidateQueryAsync(string sql, long sampleFolio) =>
         (await ProbeCoreAsync(null, sql, sampleFolio)).Validation;
 
-    public Task<SapQueryProbeResult> ProbeAsync(string documentKind, string sql, long sampleFolio)
+    public Task<SapQueryProbeResult> ProbeAsync(string documentKind, string sql, long sampleFolio, string? sampleText = null)
     {
         RequireQueryKind(documentKind);
-        return documentKind == SapQueryKinds.InvoiceLines
-            ? ProbeLinesAsync(sql, checked((int)sampleFolio))
-            : ProbeCoreAsync(documentKind, sql, sampleFolio);
+        return documentKind switch
+        {
+            SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines => ProbeLinesAsync(sql, checked((int)sampleFolio)),
+            SapQueryKinds.TransferByLpn => ProbeTransfersAsync(sql, LpnParameters, new { lpn = (sampleText ?? "").Trim() },
+                $"el LPN {sampleText}"),
+            SapQueryKinds.TransferPending => ProbeTransfersAsync(sql, PendingParameters,
+                new { warehouse = (sampleText ?? "").Trim(), from_date = DateTime.Today.AddDays(-30) },
+                $"la bodega {sampleText} en los últimos 30 días"),
+            SapQueryKinds.Warehouses => ProbeWarehousesAsync(sql),
+            _ => ProbeCoreAsync(documentKind, sql, sampleFolio),
+        };
     }
+
+    private async Task<SapQueryProbeResult> ProbeTransfersAsync(
+        string sql, (string? Required, string[] Allowed) parameters, object values, string sampleLabel)
+    {
+        var staticError = CheckStatic(sql, parameters);
+        if (staticError is not null) return Invalid(staticError);
+        var (rows, error) = await TryRunAsync(sql, values);
+        if (error is not null) return Invalid(error);
+        if (rows!.Count == 0) return Invalid($"La consulta no devolvió transferencias para {sampleLabel}; pruebe con otra muestra.");
+        var missing = TransferColumns.Where(c => !rows[0].ContainsKey(c)).ToList();
+        if (missing.Count > 0) return MissingResult(missing);
+        try
+        {
+            return new SapQueryProbeResult(Valid, null, Transfers: rows.Select(MapTransfer).ToList());
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
+        {
+            return Invalid($"Una columna tiene un tipo de dato inesperado: {ex.Message}");
+        }
+    }
+
+    private async Task<SapQueryProbeResult> ProbeWarehousesAsync(string sql)
+    {
+        var staticError = CheckStatic(sql, NoParameters);
+        if (staticError is not null) return Invalid(staticError);
+        var (rows, error) = await TryRunAsync(sql, null);
+        if (error is not null) return Invalid(error);
+        if (rows!.Count == 0) return Invalid("La consulta no devolvió bodegas.");
+        var missing = WarehouseColumns.Where(c => !rows[0].ContainsKey(c)).ToList();
+        if (missing.Count > 0) return MissingResult(missing);
+        return new SapQueryProbeResult(Valid, null, Warehouses: rows.Select(MapWarehouse).ToList());
+    }
+
+    private async Task<(List<Dictionary<string, object?>>? Rows, string? Error)> TryRunAsync(string sql, object? values)
+    {
+        try
+        {
+            return ((await _hana.QueryDynamicAsync(Executable(sql), values)).Select(ToCaseInsensitive).ToList(), null);
+        }
+        catch (Exception ex)
+        {
+            return (null, $"SAP rechazó la consulta: {ex.Message}");
+        }
+    }
+
+    private static readonly QueryValidationResult Valid = new(true, Array.Empty<string>(), null);
+
+    private static SapQueryProbeResult MissingResult(List<string> missing) =>
+        new(new QueryValidationResult(false, missing, "Faltan columnas obligatorias: " + string.Join(", ", missing) + "."), null);
 
     /// <summary>"Probar" de la consulta de líneas: <paramref name="sampleDocEntry"/> es un DocEntry de factura.</summary>
     private async Task<SapQueryProbeResult> ProbeLinesAsync(string sql, int sampleDocEntry)
@@ -212,16 +338,21 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         RequiredColumns.Where(c => !row.ContainsKey(c)).ToList();
 
     /// <summary>Parámetros de las consultas por folio: :folio (obligatorio) y :sii_document_type.</summary>
-    private static readonly (string Required, string[] Allowed) FolioParameters = ("folio", new[] { "folio", "sii_document_type" });
+    private static readonly (string? Required, string[] Allowed) FolioParameters = ("folio", new[] { "folio", "sii_document_type" });
 
     /// <summary>Parámetro de la consulta de líneas: :doc_entry.</summary>
-    private static readonly (string Required, string[] Allowed) LinesParameter = ("doc_entry", new[] { "doc_entry" });
+    private static readonly (string? Required, string[] Allowed) LinesParameter = ("doc_entry", new[] { "doc_entry" });
+
+    /// <summary>Transferencias: por LPN (:lpn) y pendientes (:warehouse obligatorio, :from_date); bodegas sin parámetros.</summary>
+    private static readonly (string? Required, string[] Allowed) LpnParameters = ("lpn", new[] { "lpn" });
+    private static readonly (string? Required, string[] Allowed) PendingParameters = ("warehouse", new[] { "warehouse", "from_date" });
+    private static readonly (string? Required, string[] Allowed) NoParameters = (null, Array.Empty<string>());
 
     /// <summary>
     /// Comprobaciones previas a ejecutar: una sola sentencia SELECT/WITH, sin ';' salvo uno
     /// final, y solo los parámetros permitidos (el obligatorio debe usarse). Devuelve el error o null.
     /// </summary>
-    private static string? CheckStatic(string sql, (string Required, string[] Allowed) parameters)
+    private static string? CheckStatic(string sql, (string? Required, string[] Allowed) parameters)
     {
         if (string.IsNullOrWhiteSpace(sql)) return "La consulta está vacía.";
         var clean = Sanitize(sql).Trim();
@@ -237,8 +368,10 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         var names = ParameterRegex.Matches(clean).Select(m => m.Groups[1].Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var extra = names.Where(n => !parameters.Allowed.Contains(n, StringComparer.OrdinalIgnoreCase)).ToList();
         if (extra.Count > 0)
-            return $"Parámetro no permitido: :{extra[0]}. Solo se admiten {string.Join(" y ", parameters.Allowed.Select(a => ":" + a))}.";
-        if (!names.Contains(parameters.Required, StringComparer.OrdinalIgnoreCase))
+            return parameters.Allowed.Length == 0
+                ? $"Parámetro no permitido: :{extra[0]}. Esta consulta no usa parámetros."
+                : $"Parámetro no permitido: :{extra[0]}. Solo se admiten {string.Join(" y ", parameters.Allowed.Select(a => ":" + a))}.";
+        if (parameters.Required is not null && !names.Contains(parameters.Required, StringComparer.OrdinalIgnoreCase))
             return $"La consulta debe filtrar por el parámetro :{parameters.Required}.";
 
         var forbidden = ForbiddenRegex.Match(clean);
@@ -309,13 +442,11 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
             .ToListAsync();
     }
 
-    public async Task SaveQueryAsync(string documentKind, string sql, bool isActive, long sampleFolio)
+    public async Task SaveQueryAsync(string documentKind, string sql, bool isActive, long sampleFolio, string? sampleText = null)
     {
         RequireQueryKind(documentKind);
         sql = (sql ?? "").Trim();
-        var result = documentKind == SapQueryKinds.InvoiceLines
-            ? (await ProbeLinesAsync(sql, checked((int)sampleFolio))).Validation
-            : await ValidateQueryAsync(sql, sampleFolio);
+        var result = (await ProbeAsync(documentKind, sql, sampleFolio, sampleText)).Validation;
         if (!result.IsValid)
             throw new InvalidOperationException("La consulta no se guardó. " + result.Error);
 

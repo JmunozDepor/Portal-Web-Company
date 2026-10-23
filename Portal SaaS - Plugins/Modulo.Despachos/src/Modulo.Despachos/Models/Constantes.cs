@@ -28,11 +28,25 @@ public static class SapQueryKinds
 {
     public const string InvoiceLines = "invoice_lines";
 
-    public static readonly IReadOnlyList<string> All = new[] { DocumentKinds.Invoice, DocumentKinds.TransferGuide, InvoiceLines };
+    // Fase B: transferencias de stock a bodegas sucursal.
+    public const string TransferByLpn = "transfer_by_lpn";
+    public const string TransferPending = "transfer_pending";
+    public const string TransferLines = "transfer_lines";
+    public const string Warehouses = "warehouses";
+
+    public static readonly IReadOnlyList<string> All = new[]
+    {
+        DocumentKinds.Invoice, DocumentKinds.TransferGuide, InvoiceLines,
+        TransferByLpn, TransferPending, TransferLines, Warehouses,
+    };
 
     public static string Label(string kind) => kind switch
     {
         InvoiceLines => "Líneas de factura",
+        TransferByLpn => "Transferencia por LPN",
+        TransferPending => "Transferencias pendientes",
+        TransferLines => "Líneas de transferencia",
+        Warehouses => "Bodegas",
         _ => DocumentKinds.Label(kind),
     };
 }

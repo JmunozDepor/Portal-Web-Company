@@ -114,6 +114,41 @@
             </div>
             <p class="text-muted mt-2 mb-0">Compare cliente, unidades y bultos con el documento en SAP antes de guardar.</p>
         }
+        else if (v.IsValid && Model.Probe.Transfers is { } ts)
+        {
+            <div class="alert alert-success">La consulta cumple el contrato: @ts.Count transferencia(s).</div>
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead><tr><th>DocEntry / DocNum</th><th>Fecha</th><th>LPN</th><th>Bodega destino</th><th>Dirección</th><th>Comuna</th><th class="text-end">Unidades</th><th>Anulada</th></tr></thead>
+                    <tbody>
+                        @foreach (var t in ts)
+                        {
+                            <tr>
+                                <td>@t.DocEntry / @t.DocNum</td><td>@t.DocumentDate.ToString("yyyy-MM-dd")</td><td>@(t.Lpn ?? "—")</td>
+                                <td>@t.WarehouseCode - @t.WarehouseName</td><td>@(t.DestinationAddress ?? "—")</td><td>@(t.DestinationCommune ?? "—")</td>
+                                <td class="text-end">@t.Units.ToString("0.##")</td><td>@(t.IsCanceled ? "Sí" : "No")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted mt-2 mb-0">Compare bodega, LPN y unidades con la transferencia en SAP antes de guardar.</p>
+        }
+        else if (v.IsValid && Model.Probe.Warehouses is { } ws)
+        {
+            <div class="alert alert-success">La consulta cumple el contrato: @ws.Count bodega(s).</div>
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead><tr><th>Código</th><th>Nombre</th><th>Dirección</th><th>Comuna</th></tr></thead>
+                    <tbody>
+                        @foreach (var w in ws)
+                        {
+                            <tr><td>@w.Code</td><td>@w.Name</td><td>@(w.Address ?? "—")</td><td>@(w.Commune ?? "—")</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
         else
         {
             <div class="alert alert-danger">@v.Error</div>
@@ -144,7 +179,7 @@
                                value="@(probed ? SapQueryKinds.Label(Model.Input.DocumentKind ?? "") : "")" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="f-SqlText">SQL (solo SELECT/WITH, parámetro :folio; líneas de factura: :doc_entry)</label>
+                        <label class="form-label" for="f-SqlText">SQL (solo SELECT/WITH; parámetros: :folio, :doc_entry en líneas, :lpn, :warehouse y :from_date en transferencias)</label>
                         <textarea id="f-SqlText" name="Input.SqlText" class="form-control" rows="22" spellcheck="false" required
                                   style="font-family:ui-monospace,Consolas,monospace;font-size:.8rem;white-space:pre;">@(probed ? Model.Input.SqlText : "")</textarea>
                     </div>
@@ -152,9 +187,9 @@
                         <label class="d-flex align-items-center gap-2"><input type="checkbox" name="Input.IsActive" value="true" checked="@(!probed || Model.Input.IsActive)" /> Activa</label>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="f-SampleFolio">Folio de prueba (líneas de factura: DocEntry de prueba)</label>
-                        <input type="number" min="1" step="1" id="f-SampleFolio" name="Input.SampleFolio" class="form-control" placeholder="Folio de un documento real en SAP" autocomplete="off" required
-                               value="@(Model.Input.SampleFolio?.ToString(System.Globalization.CultureInfo.InvariantCulture))" />
+                        <label class="form-label" for="f-Sample">@(probed ? Modulo.Despachos.Pages.Despachos.Configuracion.ConsultasSap.IndexModel.SampleLabel(Model.Input.DocumentKind) : "Muestra de prueba") (folio, DocEntry, LPN o bodega según la consulta)</label>
+                        <input type="text" id="f-Sample" name="Input.Sample" class="form-control" placeholder="Un dato real en SAP" autocomplete="off"
+                               value="@Model.Input.Sample" />
                     </div>
                 </div>
                 <div class="drawer-footer">

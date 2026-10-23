@@ -70,6 +70,10 @@
     <EmbeddedResource Include="Sql\Seeds\hana_invoice.sql" />
     <EmbeddedResource Include="Sql\Seeds\hana_transfer_guide.sql" />
     <EmbeddedResource Include="Sql\Seeds\hana_invoice_lines.sql" />
+    <EmbeddedResource Include="Sql\Seeds\hana_transfer_by_lpn.sql" />
+    <EmbeddedResource Include="Sql\Seeds\hana_transfer_pending.sql" />
+    <EmbeddedResource Include="Sql\Seeds\hana_transfer_lines.sql" />
+    <EmbeddedResource Include="Sql\Seeds\hana_warehouses.sql" />
   </ItemGroup>
 
   <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ dentro de este repo. El

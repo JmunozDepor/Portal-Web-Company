@@ -37,8 +37,8 @@ public sealed class IndexModel : MaestroPageModelBase
 
     public Task<IActionResult> OnPostSaveAsync() => SaveCoreAsync(Input.Id, async () =>
     {
-        var folio = RequireFolio();
-        await _lookup.SaveQueryAsync(Input.DocumentKind ?? "", Input.SqlText ?? "", Input.IsActive, folio);
+        var (folio, text) = RequireSample();
+        await _lookup.SaveQueryAsync(Input.DocumentKind ?? "", Input.SqlText ?? "", Input.IsActive, folio, text);
     }, "Consulta SAP validada y guardada.");
 
     public async Task<IActionResult> OnPostProbeAsync()
@@ -48,7 +48,8 @@ public sealed class IndexModel : MaestroPageModelBase
         await LoadRowsAsync();
         try
         {
-            Probe = await _lookup.ProbeAsync(Input.DocumentKind ?? "", Input.SqlText ?? "", RequireFolio());
+            var (folio, text) = RequireSample();
+            Probe = await _lookup.ProbeAsync(Input.DocumentKind ?? "", Input.SqlText ?? "", folio, text);
         }
         catch (Exception ex)
         {
@@ -65,14 +66,40 @@ public sealed class IndexModel : MaestroPageModelBase
             .ToList();
     }
 
-    private long RequireFolio()
+    /// <summary>
+    /// Muestra de prueba según el tipo: LPN o código de bodega como texto; folio o DocEntry como número; las
+    /// bodegas no usan muestra.
+    /// </summary>
+    private (long Folio, string? Text) RequireSample()
     {
-        if (Input.SampleFolio is not > 0)
-            throw new InvalidOperationException(Input.DocumentKind == SapQueryKinds.InvoiceLines
-                ? "Indique un DocEntry de prueba (número interno de una factura que exista en SAP)."
+        var sample = Input.Sample?.Trim() ?? "";
+        switch (Input.DocumentKind)
+        {
+            case SapQueryKinds.Warehouses:
+                return (0, null);
+            case SapQueryKinds.TransferByLpn:
+                if (sample.Length == 0) throw new InvalidOperationException("Indique un LPN de prueba (de una transferencia que exista en SAP).");
+                return (0, sample);
+            case SapQueryKinds.TransferPending:
+                if (sample.Length == 0) throw new InvalidOperationException("Indique el código de una bodega de prueba (con transferencias de los últimos 30 días).");
+                return (0, sample);
+        }
+        if (!long.TryParse(sample, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) || n <= 0)
+            throw new InvalidOperationException(Input.DocumentKind is SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines
+                ? "Indique un DocEntry de prueba (número interno de un documento que exista en SAP)."
                 : "Indique un folio de prueba (número de un documento que exista en SAP).");
-        return Input.SampleFolio.Value;
+        return (n, null);
     }
+
+    /// <summary>Etiqueta del campo de muestra según el tipo de consulta.</summary>
+    public static string SampleLabel(string? kind) => kind switch
+    {
+        SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines => "DocEntry de prueba",
+        SapQueryKinds.TransferByLpn => "LPN de prueba",
+        SapQueryKinds.TransferPending => "Código de bodega de prueba",
+        SapQueryKinds.Warehouses => "Sin muestra (la consulta no usa parámetros)",
+        _ => "Folio de prueba",
+    };
 
     public sealed class ConsultaInput
     {
@@ -80,6 +107,6 @@ public sealed class IndexModel : MaestroPageModelBase
         public string? DocumentKind { get; set; }
         public string? SqlText { get; set; }
         public bool IsActive { get; set; }
-        public long? SampleFolio { get; set; }
+        public string? Sample { get; set; }
     }
 }

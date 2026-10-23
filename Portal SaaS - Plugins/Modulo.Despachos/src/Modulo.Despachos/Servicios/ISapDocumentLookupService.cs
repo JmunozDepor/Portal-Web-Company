@@ -23,8 +23,18 @@ public sealed record SapDocumentLine(int LineNum, string ItemCode, string ItemNa
 /// <summary>Líneas de un documento + datos del receptor que solo trae esa consulta (giro y ciudad de despacho).</summary>
 public sealed record SapDocumentLines(string? CustomerActivity, string? DestinationCity, IReadOnlyList<SapDocumentLine> Lines);
 
-/// <summary>Resultado de "Probar": la validación y, si fue válida, el documento (o las líneas) mapeado.</summary>
-public sealed record SapQueryProbeResult(QueryValidationResult Validation, SapDocumentInfo? Document, SapDocumentLines? Lines = null);
+/// <summary>Transferencia de stock (OWTR) mapeada al contrato de las consultas de transferencias (Fase B).</summary>
+public sealed record SapTransferInfo(
+    int DocEntry, int DocNum, DateOnly DocumentDate, string WarehouseCode, string WarehouseName,
+    string? DestinationAddress, string? DestinationCommune, decimal Units, bool IsCanceled, string? Lpn);
+
+/// <summary>Bodega de SAP (OWHS), para elegir las bodegas sucursal.</summary>
+public sealed record SapWarehouse(string Code, string Name, string? Address, string? Commune);
+
+/// <summary>Resultado de "Probar": la validación y, si fue válida, lo que devolvió la consulta ya mapeado.</summary>
+public sealed record SapQueryProbeResult(
+    QueryValidationResult Validation, SapDocumentInfo? Document, SapDocumentLines? Lines = null,
+    IReadOnlyList<SapTransferInfo>? Transfers = null, IReadOnlyList<SapWarehouse>? Warehouses = null);
 
 /// <summary>
 /// Búsqueda de facturas / guías de traslado por folio con las consultas SAP configuradas
@@ -46,19 +56,32 @@ public interface ISapDocumentLookupService
     /// </summary>
     Task<QueryValidationResult> ValidateQueryAsync(string sql, long sampleFolio);
 
-    /// <summary>Como ValidateQueryAsync pero devuelve además el documento mapeado (pantalla "Probar").</summary>
-    Task<SapQueryProbeResult> ProbeAsync(string documentKind, string sql, long sampleFolio);
+    /// <summary>
+    /// Como ValidateQueryAsync pero devuelve además lo mapeado (pantalla "Probar"). La muestra depende del tipo:
+    /// folio (facturas, guías), DocEntry (líneas), <paramref name="sampleText"/> = LPN o código de bodega
+    /// (transferencias por LPN / pendientes); las bodegas no usan muestra.
+    /// </summary>
+    Task<SapQueryProbeResult> ProbeAsync(string documentKind, string sql, long sampleFolio, string? sampleText = null);
 
     /// <summary>
     /// Líneas del documento SAP <paramref name="docEntry"/> con la consulta <paramref name="queryKind"/>
-    /// (hoy solo <see cref="SapQueryKinds.InvoiceLines"/>, parámetro :doc_entry). Lanza InvalidOperationException
-    /// si la consulta no está configurada o no cumple el contrato de columnas.
+    /// (<see cref="SapQueryKinds.InvoiceLines"/> o <see cref="SapQueryKinds.TransferLines"/>, parámetro :doc_entry).
+    /// Lanza InvalidOperationException si la consulta no está configurada o no cumple el contrato de columnas.
     /// </summary>
     Task<SapDocumentLines> GetLinesAsync(string queryKind, int docEntry, CancellationToken ct = default);
+
+    /// <summary>Transferencia por LPN (:lpn). Null si no existe; lanza si el LPN está en más de una transferencia.</summary>
+    Task<SapTransferInfo?> FindTransferByLpnAsync(string lpn, CancellationToken ct = default);
+
+    /// <summary>Transferencias no anuladas a la bodega desde la fecha (:warehouse, :from_date).</summary>
+    Task<IReadOnlyList<SapTransferInfo>> ListPendingTransfersAsync(string warehouseCode, DateOnly fromDate, CancellationToken ct = default);
+
+    /// <summary>Bodegas de SAP (sin parámetros).</summary>
+    Task<IReadOnlyList<SapWarehouse>> ListSapWarehousesAsync(CancellationToken ct = default);
 
     /// <summary>Consultas de la compañía (siembra las de HANA si faltan).</summary>
     Task<IReadOnlyList<SapDocumentQuery>> ListQueriesAsync();
 
     /// <summary>Guarda la consulta del tipo solo si valida con el folio de prueba (fija validated_at).</summary>
-    Task SaveQueryAsync(string documentKind, string sql, bool isActive, long sampleFolio);
+    Task SaveQueryAsync(string documentKind, string sql, bool isActive, long sampleFolio, string? sampleText = null);
 }

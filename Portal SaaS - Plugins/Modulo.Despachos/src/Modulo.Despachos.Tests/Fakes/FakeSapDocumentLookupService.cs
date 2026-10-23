@@ -28,8 +28,27 @@ public sealed class FakeSapDocumentLookupService : ISapDocumentLookupService
             ? Task.FromResult(l)
             : throw new InvalidOperationException("Configure la consulta SAP de líneas de factura en Despachos > Configuración > Consultas SAP.");
 
+    /// <summary>Transferencias de SAP (Fase B): por LPN y pendientes por bodega desde una fecha.</summary>
+    public List<SapTransferInfo> Transfers { get; } = new();
+
+    /// <summary>Bodegas de SAP; si <see cref="WarehousesError"/> está asignado, la consulta lanza.</summary>
+    public List<SapWarehouse> Warehouses { get; } = new();
+    public string? WarehousesError { get; set; }
+
+    public Task<SapTransferInfo?> FindTransferByLpnAsync(string lpn, CancellationToken ct = default) =>
+        Task.FromResult(Transfers.FirstOrDefault(t => string.Equals(t.Lpn, lpn, StringComparison.OrdinalIgnoreCase)));
+
+    public Task<IReadOnlyList<SapTransferInfo>> ListPendingTransfersAsync(string warehouseCode, DateOnly fromDate, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<SapTransferInfo>>(Transfers
+            .Where(t => t.WarehouseCode == warehouseCode && t.DocumentDate >= fromDate && !t.IsCanceled).ToList());
+
+    public Task<IReadOnlyList<SapWarehouse>> ListSapWarehousesAsync(CancellationToken ct = default) =>
+        WarehousesError is null
+            ? Task.FromResult<IReadOnlyList<SapWarehouse>>(Warehouses)
+            : throw new InvalidOperationException(WarehousesError);
+
     public Task<QueryValidationResult> ValidateQueryAsync(string sql, long sampleFolio) => throw new NotSupportedException();
-    public Task<SapQueryProbeResult> ProbeAsync(string documentKind, string sql, long sampleFolio) => throw new NotSupportedException();
+    public Task<SapQueryProbeResult> ProbeAsync(string documentKind, string sql, long sampleFolio, string? sampleText = null) => throw new NotSupportedException();
     public Task<IReadOnlyList<SapDocumentQuery>> ListQueriesAsync() => throw new NotSupportedException();
-    public Task SaveQueryAsync(string documentKind, string sql, bool isActive, long sampleFolio) => throw new NotSupportedException();
+    public Task SaveQueryAsync(string documentKind, string sql, bool isActive, long sampleFolio, string? sampleText = null) => throw new NotSupportedException();
 }

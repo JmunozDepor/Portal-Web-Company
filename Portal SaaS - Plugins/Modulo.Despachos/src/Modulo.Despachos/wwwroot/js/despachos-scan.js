@@ -106,7 +106,12 @@
         ambiguous.hidden = true;
         pendingAmbiguous = null;
         var warnings = (data.warnings && data.warnings.length) ? ' — ' + data.warnings.join(' ') : '';
-        if (data.outcome === 'added') {
+        if (data.reload) {
+            // Hoja de pre-guía: entraron varias transferencias; se recarga para mostrarlas.
+            // warnings[0] es el resumen ("PG-...: N transferencias agregadas"); el resto, lo omitido y avisos.
+            show(data.warnings.length > 1 ? 'warn' : 'ok', data.warnings.join(' '));
+            setTimeout(function () { window.location.reload(); }, 900);
+        } else if (data.outcome === 'added') {
             addRow(data.document);
             setCounters(data);
             show(warnings ? 'warn' : 'ok', data.message + warnings);

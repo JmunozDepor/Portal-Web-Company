@@ -1,0 +1,91 @@
+@page "/despachos/pre-guias/generar"
+@model Modulo.Despachos.Pages.Despachos.PreGuias.GenerarModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
+@using System.Globalization
+@{
+    ViewData["Title"] = "Generar pre-guías";
+    var es = new CultureInfo("es-CL");
+}
+@* Transferencias SAP libres a las sucursales, agrupadas por sucursal; cada "Generar" es un corte: lo que se
+   transfiera después sale en el grupo siguiente de la sucursal. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Generar pre-guías</h2>
+        <a class="btn btn-secondary" href="~/despachos/pre-guias?DispatchDate=@Model.DispatchDate">Volver</a>
+    </div>
+
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label" for="f-dispatch">Fecha de despacho</label>
+            <input type="date" id="f-dispatch" name="DispatchDate" value="@Model.DispatchDate" class="form-control" required />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-from">Transferencias desde</label>
+            <input type="date" id="f-from" name="FromDate" value="@Model.FromDate" class="form-control" required />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-branch">Sucursal</label>
+            <select id="f-branch" name="WarehouseCode" class="form-select">
+                <option value="">Todas</option>
+                @foreach (var b in Model.Branches)
+                {
+                    <option value="@b.WarehouseCode" selected="@(Model.WarehouseCode == b.WarehouseCode)">@b.WarehouseCode - @b.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </div>
+    </form>
+
+    @if (Model.Candidates.Count == 0)
+    {
+        <p class="text-muted">No hay transferencias libres hacia las sucursales desde la fecha indicada.</p>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Generar" asp-antiforgery="true">
+            <input type="hidden" name="dispatchDate" value="@Model.DispatchDate" />
+            <input type="hidden" name="fromDate" value="@Model.FromDate" />
+
+            @foreach (var c in Model.Candidates)
+            {
+                <div class="card-surface mb-3">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                        <h3 class="h6 mb-0">@c.Branch.WarehouseCode - @c.Branch.Name</h3>
+                        <span class="text-muted">@c.Transfers.Count LPN · @c.Transfers.Sum(t => t.Units).ToString("N0", es) unidades</span>
+                    </div>
+                    <div class="table-responsive-lg">
+                        <table class="table-ps">
+                            <thead><tr><th></th><th>LPN</th><th>Transferencia</th><th>Fecha</th><th class="text-end">Unidades</th></tr></thead>
+                            <tbody>
+                                @foreach (var t in c.Transfers)
+                                {
+                                    <tr>
+                                        <td><input type="checkbox" class="form-check-input" name="docEntries" value="@t.DocEntry" checked aria-label="Incluir @(t.Lpn ?? t.DocNum.ToString())" /></td>
+                                        <td>@(t.Lpn ?? "—")</td>
+                                        <td>@t.DocNum</td>
+                                        <td class="text-nowrap">@t.DocumentDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
+                                        <td class="text-end">@t.Units.ToString("N0", es)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <div class="d-flex gap-2 flex-wrap">
+                <button type="submit" class="btn btn-primary">Generar pre-guías</button>
+            </div>
+        </form>
+    }
+</div>

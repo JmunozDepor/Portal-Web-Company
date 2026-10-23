@@ -1,0 +1,101 @@
+@page "/despachos/pre-guias/{id:long}"
+@model Modulo.Despachos.Pages.Despachos.PreGuias.DetalleModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
+@using System.Globalization
+@{
+    ViewData["Title"] = Model.Code;
+    var g = Model.G;
+    var es = new CultureInfo("es-CL");
+    var canEdit = Model.CanEdit && Model.IsArmed;
+}
+@* Detalle de la pre-guía: mientras está armada se pueden agregar LPN escaneando, quitar transferencias o anularla. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Pre-guía @Model.Code <span class="dsp-badge @DespachosUi.DispatchGroupBadgeClass(g.Status)">@DispatchGroupStatuses.Label(g.Status)</span></h2>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-secondary" href="~/despachos/pre-guias?DispatchDate=@g.DispatchDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">Volver</a>
+            <a class="btn btn-primary" target="_blank" rel="noopener" href="~/despachos/pre-guias/@g.Id?handler=Pdf"><i class="bi bi-printer"></i> Imprimir hoja</a>
+        </div>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="d-flex gap-4 mb-3 text-muted flex-wrap">
+        <span>Sucursal: <strong>@g.WarehouseCode - @g.BranchName</strong></span>
+        <span>Despacho: <strong>@g.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</strong></span>
+        <span>Grupo: <strong>@g.Sequence</strong></span>
+        <span>LPN: <strong>@g.Transfers.Count</strong></span>
+        <span>Unidades: <strong>@g.Transfers.Sum(t => t.Units).ToString("N0", es)</strong></span>
+        @if (g.AnnulReason is not null)
+        {
+            <span>Motivo de anulación: <strong>@g.AnnulReason</strong></span>
+        }
+    </div>
+
+    @if (canEdit)
+    {
+        <form method="post" asp-page-handler="AgregarLpn" asp-route-id="@g.Id" asp-antiforgery="true" class="d-flex gap-2 align-items-end flex-wrap mb-3">
+            <div>
+                <label class="form-label" for="lpn">Escanear LPN</label>
+                <input type="text" id="lpn" name="lpn" class="form-control" autocomplete="off" autofocus required maxlength="30" />
+            </div>
+            <button type="submit" class="btn btn-primary">Agregar</button>
+        </form>
+    }
+
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead><tr><th>LPN</th><th>Transferencia</th><th>Fecha</th><th class="text-end">Unidades</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var t in g.Transfers.OrderBy(x => x.SapDocNum))
+                {
+                    <tr>
+                        <td>@(t.Lpn ?? "—")</td>
+                        <td>@t.SapDocNum</td>
+                        <td class="text-nowrap">@t.DocumentDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
+                        <td class="text-end">@t.Units.ToString("N0", es)</td>
+                        <td class="col-actions">
+                            @if (canEdit)
+                            {
+                                <form method="post" asp-page-handler="Quitar" asp-route-id="@g.Id" asp-route-transferId="@t.Id" asp-antiforgery="true" class="d-inline-block"
+                                      data-confirm="@($"¿Quitar la transferencia {t.SapDocNum}?")">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (g.Transfers.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-muted">La pre-guía no tiene transferencias.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.CanDelete && Model.IsArmed)
+    {
+        <form method="post" asp-page-handler="Anular" asp-route-id="@g.Id" asp-antiforgery="true" class="d-flex gap-2 align-items-end flex-wrap mt-3"
+              data-confirm="@($"¿Anular la pre-guía {Model.Code}? Sus transferencias quedarán libres.")">
+            <div>
+                <label class="form-label" for="reason">Motivo de anulación</label>
+                <input type="text" id="reason" name="reason" class="form-control" required maxlength="200" />
+            </div>
+            <button type="submit" class="btn btn-danger">Anular pre-guía</button>
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+}

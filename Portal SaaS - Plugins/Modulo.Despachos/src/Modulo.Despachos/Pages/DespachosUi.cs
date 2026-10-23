@@ -51,6 +51,15 @@ public static class DespachosUi
         _ => status,
     };
 
+    /// <summary>Clase del badge de una pre-guía (despachos_dispatch_groups.status).</summary>
+    public static string DispatchGroupBadgeClass(string status) => status switch
+    {
+        Models.DispatchGroupStatuses.InManifest => "dsp-badge--warning",
+        Models.DispatchGroupStatuses.Dispatched => "dsp-badge--success",
+        Models.DispatchGroupStatuses.Annulled => "dsp-badge--danger",
+        _ => "dsp-badge--neutral",
+    };
+
     /// <summary>Etiqueta del estado de una guía de despacho (transport_guides.status).</summary>
     public static string GuideStatusLabel(string status) => status switch
     {

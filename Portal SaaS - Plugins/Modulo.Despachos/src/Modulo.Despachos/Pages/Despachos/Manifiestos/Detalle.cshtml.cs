@@ -23,12 +23,14 @@ public sealed class DetalleModel : DespachosPageModelBase
     private readonly IUserContactLookupService _users;
     private readonly IManifestCostService _cost;
     private readonly ITransportGuideService _guides;
+    private readonly IDispatchGroupService? _dispatchGroups;
 
     public DetalleModel(
         IManifestService manifests, IManifestPdfService pdf, IMasterDataService data,
         ICurrentUserContext currentUser, IUserContactLookupService users, IManifestCostService cost,
-        ITransportGuideService guides) : base(currentUser)
+        ITransportGuideService guides, IDispatchGroupService? dispatchGroups = null) : base(currentUser)
     {
+        _dispatchGroups = dispatchGroups;
         _cost = cost;
         _guides = guides;
         _manifests = manifests;
@@ -44,6 +46,9 @@ public sealed class DetalleModel : DespachosPageModelBase
     public IReadOnlyList<RejectionReason> Reasons { get; private set; } = Array.Empty<RejectionReason>();
     public IReadOnlyDictionary<Guid, string> UserLabels { get; private set; } = new Dictionary<Guid, string>();
     public IReadOnlyList<Commune> Communes { get; private set; } = Array.Empty<Commune>();
+
+    /// <summary>Código PG de cada pre-guía presente en el manifiesto (por id), para la tabla y "Quitar pre-guía".</summary>
+    public IReadOnlyDictionary<long, string> GroupCodes { get; private set; } = new Dictionary<long, string>();
 
     /// <summary>Bodegas sucursal activas (formulario "Agregar pendientes" del borrador).</summary>
     public IReadOnlyList<BranchWarehouse> BranchWarehouses { get; private set; } = Array.Empty<BranchWarehouse>();
@@ -146,6 +151,13 @@ public sealed class DetalleModel : DespachosPageModelBase
         catch (Exception ex) { GuidesError = GetErrorMessage(ex); }
         Communes = await _data.ListCommunesAsync();
         if (m.Status == ManifestStatuses.Draft) BranchWarehouses = await _data.ListBranchWarehousesAsync();
+        if (_dispatchGroups is not null)
+        {
+            var codes = new Dictionary<long, string>();
+            foreach (var gid in m.Documents.Where(d => d.DispatchGroupId != null).Select(d => d.DispatchGroupId!.Value).Distinct())
+                if (await _dispatchGroups.GetAsync(gid) is { } g) codes[gid] = Dominio.DispatchGroupCode.Format(g.Number);
+            GroupCodes = codes;
+        }
         UserLabels = await ResolveUsersAsync(m);
         if (Header.DispatchDate is null) Header = ManifestForm.From(m);
         if (Change.VehicleId == 0)
@@ -221,6 +233,8 @@ public sealed class DetalleModel : DespachosPageModelBase
                 message = OutcomeMessage(result, doc),
                 warnings = result.Warnings,
                 otherManifestNumber = result.OtherManifestNumber,
+                // Hoja de pre-guía: entraron varias filas de una vez; la página se recarga para mostrarlas.
+                reload = result.Outcome == AddDocumentOutcomes.GroupAdded,
                 document = doc is null ? null : new
                 {
                     id = doc.Id,
@@ -247,6 +261,7 @@ public sealed class DetalleModel : DespachosPageModelBase
                 message = GetErrorMessage(ex),
                 warnings = Array.Empty<string>(),
                 otherManifestNumber = (int?)null,
+                reload = false,
                 document = (object?)null,
                 totalDocuments = 0,
                 totalUnits = 0m,
@@ -316,6 +331,19 @@ public sealed class DetalleModel : DespachosPageModelBase
         {
             await _manifests.RemoveDocumentAsync(id, documentId);
             SuccessMessage = "Documento quitado.";
+        }
+        catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
+        return RedirectToPage(new { id, tab = "documentos" });
+    }
+
+    /// <summary>Quita del borrador todas las transferencias de una pre-guía (vuelve a "armada"). Exige EDIT.</summary>
+    public async Task<IActionResult> OnPostQuitarPreGuiaAsync(Guid id, long groupId)
+    {
+        if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
+        try
+        {
+            await _manifests.RemoveDispatchGroupAsync(id, groupId);
+            SuccessMessage = "Pre-guía quitada del manifiesto.";
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
         return RedirectToPage(new { id, tab = "documentos" });

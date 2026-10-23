@@ -1,0 +1,109 @@
+@page "/despachos/pre-guias"
+@model Modulo.Despachos.Pages.Despachos.PreGuias.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
+@using System.Globalization
+@{
+    ViewData["Title"] = "Pre-guías";
+    var es = new CultureInfo("es-CL");
+}
+@* Pre-guías: transferencias agrupadas por sucursal y día de despacho; la hoja se escanea en el manifiesto. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Pre-guías</h2>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-secondary" target="_blank" rel="noopener"
+               href="~/despachos/pre-guias?handler=Pdf&DispatchDate=@Model.DispatchDate&WarehouseCode=@Model.WarehouseCode&Status=@Model.Status">
+                <i class="bi bi-printer"></i> Imprimir todas
+            </a>
+            @if (Model.CanCreate)
+            {
+                <a class="btn btn-primary" href="~/despachos/pre-guias/generar?DispatchDate=@Model.DispatchDate">+ Generar pre-guías</a>
+            }
+        </div>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.WarningMessage is not null)
+    {
+        <div class="alert alert-warning">@Model.WarningMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label" for="f-date">Fecha de despacho</label>
+            <input type="date" id="f-date" name="DispatchDate" value="@Model.DispatchDate" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-branch">Sucursal</label>
+            <select id="f-branch" name="WarehouseCode" class="form-select">
+                <option value="">Todas</option>
+                @foreach (var b in Model.Branches)
+                {
+                    <option value="@b.WarehouseCode" selected="@(Model.WarehouseCode == b.WarehouseCode)">@b.WarehouseCode - @b.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-status">Estado</label>
+            <select id="f-status" name="Status" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var s in new[] { DispatchGroupStatuses.Armed, DispatchGroupStatuses.InManifest, DispatchGroupStatuses.Dispatched, DispatchGroupStatuses.Annulled })
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@DispatchGroupStatuses.Label(s)</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a class="btn btn-secondary" href="~/despachos/pre-guias">Limpiar</a>
+        </div>
+    </form>
+
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead><tr><th>Código</th><th>Sucursal</th><th>Grupo</th><th>Despacho</th><th class="text-end">LPN</th><th class="text-end">Unidades</th><th>Estado</th><th>Manifiesto</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var x in Model.Items)
+                {
+                    <tr>
+                        <td><a href="~/despachos/pre-guias/@x.Id">@x.Code</a></td>
+                        <td>@x.WarehouseCode - @x.BranchName</td>
+                        <td>@x.Sequence</td>
+                        <td class="text-nowrap">@x.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
+                        <td class="text-end">@x.Transfers</td>
+                        <td class="text-end">@x.Units.ToString("N0", es)</td>
+                        <td><span class="dsp-badge @DespachosUi.DispatchGroupBadgeClass(x.Status)">@DispatchGroupStatuses.Label(x.Status)</span></td>
+                        <td>
+                            @if (x.ManifestId is { } mid)
+                            {
+                                <a href="~/despachos/manifiestos/@mid">N° @x.ManifestNumber</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td class="col-actions">
+                            <a class="btn-ghost" title="Imprimir hoja" target="_blank" rel="noopener" href="~/despachos/pre-guias/@x.Id?handler=Pdf"><i class="bi bi-printer"></i></a>
+                            <a class="btn-ghost" title="Abrir" href="~/despachos/pre-guias/@x.Id"><i class="bi bi-box-arrow-up-right"></i></a>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-muted">Sin pre-guías para el filtro indicado.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

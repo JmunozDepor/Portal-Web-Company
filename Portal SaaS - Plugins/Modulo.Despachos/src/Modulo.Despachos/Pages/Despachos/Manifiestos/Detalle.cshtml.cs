@@ -437,12 +437,12 @@ public sealed class DetalleModel : DespachosPageModelBase
         return RedirectToPage(new { id, tab = "costo" });
     }
 
-    public async Task<IActionResult> OnPostCorregirComunaAsync(Guid id, Guid documentId, long communeId)
+    public async Task<IActionResult> OnPostCorregirComunaAsync(Guid id, Guid documentId, string? communeName)
     {
         if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
         try
         {
-            await _manifests.SetDocumentCommuneAsync(id, documentId, communeId);
+            await _manifests.SetDocumentCommuneByNameAsync(id, documentId, communeName ?? "");
             SuccessMessage = "Comuna corregida.";
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }

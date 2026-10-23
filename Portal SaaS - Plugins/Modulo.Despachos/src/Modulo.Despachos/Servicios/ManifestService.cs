@@ -681,6 +681,14 @@ public class ManifestService : IManifestService
         return await RecalculateWithEventAsync(m);
     }
 
+    public async Task SetDocumentCommuneByNameAsync(Guid manifestId, Guid manifestDocumentId, string communeName)
+    {
+        var commune = string.IsNullOrWhiteSpace(communeName) ? null : await _master.FindCommuneByNameAsync(communeName)
+            ?? throw new InvalidOperationException($"La comuna '{communeName.Trim()}' no existe en el catálogo. Elija una comuna de la lista.");
+        if (commune is null) throw new InvalidOperationException("Escriba la comuna. Elija una comuna de la lista.");
+        await SetDocumentCommuneAsync(manifestId, manifestDocumentId, commune.Id);
+    }
+
     public async Task SetDocumentCommuneAsync(Guid manifestId, Guid manifestDocumentId, long communeId)
     {
         var m = await LoadAsync(manifestId);

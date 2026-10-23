@@ -35,12 +35,12 @@ public sealed class IndexModel : MaestroPageModelBase
     });
 
     public Task<IActionResult> OnPostSaveAsync() => SaveCoreAsync(Input.Id, async () =>
-        await _data.SaveCommuneAliasAsync(new CommuneAlias
-        {
-            Id = Input.Id,
-            Text = Input.Text ?? "",
-            CommuneId = Input.CommuneId ?? 0,
-        }),
+    {
+        var commune = string.IsNullOrWhiteSpace(Input.CommuneName) ? null : await _data.FindCommuneByNameAsync(Input.CommuneName);
+        if (commune is null)
+            throw new InvalidOperationException($"La comuna '{Input.CommuneName?.Trim()}' no existe en el catálogo. Elija una comuna de la lista.");
+        await _data.SaveCommuneAliasAsync(new CommuneAlias { Id = Input.Id, Text = Input.Text ?? "", CommuneId = commune.Id });
+    },
         Input.Id == 0 ? "Equivalencia creada." : "Equivalencia actualizada.");
 
     public Task<IActionResult> OnPostDeleteAsync(long id) => DeleteCoreAsync(() => _data.DeleteCommuneAliasAsync(id), "Equivalencia eliminada.");
@@ -49,6 +49,6 @@ public sealed class IndexModel : MaestroPageModelBase
     {
         public long Id { get; set; }
         public string? Text { get; set; }
-        public long? CommuneId { get; set; }
+        public string? CommuneName { get; set; }
     }
 }

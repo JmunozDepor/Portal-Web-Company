@@ -200,10 +200,10 @@ public class ManifiestosPermisosTests
         var id = await env.DraftWithDocsAsync(300);
         await env.Svc.DispatchAsync(id);
         var docId = (await env.Svc.GetAsync(id))!.Documents.Single().Id;
-        Assert.IsType<ForbidResult>(await page.OnPostCorregirComunaAsync(id, docId, env.CuricoId));
+        Assert.IsType<ForbidResult>(await page.OnPostCorregirComunaAsync(id, docId, "Curicó"));
 
         env.User.Grant("Despachos.manifiestos", PortalActions.Edit);
-        Assert.IsType<RedirectToPageResult>(await page.OnPostCorregirComunaAsync(id, docId, env.CuricoId));
+        Assert.IsType<RedirectToPageResult>(await page.OnPostCorregirComunaAsync(id, docId, "Curicó"));
         Assert.Equal(env.CuricoId, (await env.Svc.GetAsync(id))!.Documents.Single().DestinationCommuneId);
     }
 

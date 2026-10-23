@@ -54,7 +54,7 @@
                             <div class="admin-row-actions">
                                 @if (Model.CanEdit)
                                 {
-                                    <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-equivalencias" data-maestro-edit data-row="@Model.RowJson(new { x.Id, x.Text, x.CommuneId })"><i class="bi bi-pencil"></i></button>
+                                    <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-equivalencias" data-maestro-edit data-row="@Model.RowJson(new { x.Id, x.Text, CommuneName = commune })"><i class="bi bi-pencil"></i></button>
                                 }
                                 @if (Model.CanDelete)
                                 {
@@ -92,19 +92,14 @@
                         <input type="text" id="f-Text" name="Input.Text" class="form-control" placeholder="Ej. CIUDAD SATELITE" maxlength="60" autocomplete="off" required />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="f-CommuneId">Comuna del catálogo</label>
-                        <select id="f-CommuneId" name="Input.CommuneId" class="form-select" required>
-                            <option value="">Elegir...</option>
-                            @foreach (var g in Model.Communes.GroupBy(c => c.RegionName))
+                        <label class="form-label" for="f-CommuneName">Comuna del catálogo</label>
+                        <input type="text" id="f-CommuneName" name="Input.CommuneName" class="form-control" list="comunas-catalogo" placeholder="Escriba para buscar..." autocomplete="off" required />
+                        <datalist id="comunas-catalogo">
+                            @foreach (var c in Model.Communes.OrderBy(c => c.Name))
                             {
-                                <optgroup label="@g.Key">
-                                    @foreach (var c in g.OrderBy(c => c.Name))
-                                    {
-                                        <option value="@c.Id">@c.Name</option>
-                                    }
-                                </optgroup>
+                                <option value="@c.Name">@c.RegionName</option>
                             }
-                        </select>
+                        </datalist>
                     </div>
                     </div>
                 <p class="text-muted">La comparación ignora mayúsculas, tildes, puntos y espacios repetidos.</p>

@@ -129,6 +129,25 @@ public class CommuneAliasTests
     }
 
     [Fact]
+    public async Task CorregirComunaPorNombre_AutocompletadoResuelveElCatalogo_YRechazaTextoDesconocido()
+    {
+        var env = ManifestTestEnv.Build();
+        env.AddSap(7, commune: "VILLA NOWHERE");
+        var id = await env.Svc.CreateDraftAsync(env.Header());
+        await env.Svc.AddDocumentAsync(id, new DocumentCapture(null, DocumentKinds.Invoice, 7));
+        var docId = (await env.Svc.GetAsync(id))!.Documents.Single().Id;
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            env.Svc.SetDocumentCommuneByNameAsync(id, docId, "Comuna Inventada"));
+        Assert.Contains("Elija una comuna de la lista", ex.Message);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => env.Svc.SetDocumentCommuneByNameAsync(id, docId, " "));
+
+        await env.Svc.SetDocumentCommuneByNameAsync(id, docId, "curico");
+
+        Assert.Equal(env.CuricoId, (await env.Svc.GetAsync(id))!.Documents.Single().DestinationCommuneId);
+    }
+
+    [Fact]
     public async Task CorregirComuna_SinTextoDeSap_NoGuardaEquivalencia()
     {
         var env = ManifestTestEnv.Build();

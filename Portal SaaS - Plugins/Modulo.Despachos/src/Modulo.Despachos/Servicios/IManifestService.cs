@@ -105,6 +105,9 @@ public interface IManifestService
     /// </summary>
     Task SetDocumentCommuneAsync(Guid manifestId, Guid manifestDocumentId, long communeId);
 
+    /// <summary>Igual que <see cref="SetDocumentCommuneAsync"/>, con la comuna escrita en el autocompletado.</summary>
+    Task SetDocumentCommuneByNameAsync(Guid manifestId, Guid manifestDocumentId, string communeName);
+
     /// <summary>
     /// Adicionales con cantidad que se pueden ingresar en el manifiesto: recargos manual_quantity activos, vigentes a la
     /// fecha de despacho y del transportista del manifiesto (o de todos), más los que ya tienen cantidad guardada.

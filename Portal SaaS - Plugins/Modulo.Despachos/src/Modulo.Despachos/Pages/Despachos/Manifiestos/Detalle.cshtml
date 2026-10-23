@@ -239,13 +239,7 @@
                                 @if (d.DestinationCommuneId is null && canFixCommune)
                                 {
                                     <form method="post" asp-page-handler="CorregirComuna" asp-route-id="@m.Id" asp-route-documentId="@d.Id" asp-antiforgery="true" class="d-flex gap-1 mt-1">
-                                        <select name="communeId" class="form-select" required aria-label="Comuna del catálogo" style="min-width:160px;">
-                                            <option value="">Comuna no resuelta: elegir...</option>
-                                            @foreach (var c in Model.Communes)
-                                            {
-                                                <option value="@c.Id">@c.Name</option>
-                                            }
-                                        </select>
+                                        <input type="text" name="communeName" class="form-control" list="comunas-catalogo" required autocomplete="off" placeholder="Comuna no resuelta: escriba..." aria-label="Comuna del catálogo" style="min-width:180px;" />
                                         <button type="submit" class="btn btn-secondary">Corregir</button>
                                     </form>
                                 }
@@ -280,6 +274,17 @@
             </table>
         </div>
 
+        @if (canFixCommune)
+        {
+            @* Autocompletado de comunas (lo comparten las filas sin resolver y las agregadas por escaneo). *@
+            <datalist id="comunas-catalogo">
+                @foreach (var c in Model.Communes.OrderBy(c => c.Name))
+                {
+                    <option value="@c.Name">@c.RegionName</option>
+                }
+            </datalist>
+        }
+
         @if (canScan)
         {
             @* Plantilla de fila para los documentos agregados por escaneo (JS reemplaza el GUID nulo). *@
@@ -290,13 +295,7 @@
                         <span data-f="commune"></span>
                         @* Solo se muestra si la comuna llegó sin resolver (despachos-scan.js lo quita si no). *@
                         <form method="post" asp-page-handler="CorregirComuna" asp-route-id="@m.Id" asp-route-documentId="00000000-0000-0000-0000-000000000000" asp-antiforgery="true" class="d-flex gap-1 mt-1" data-commune-fix>
-                            <select name="communeId" class="form-select" required aria-label="Comuna del catálogo" style="min-width:160px;">
-                                <option value="">Comuna no resuelta: elegir...</option>
-                                @foreach (var c in Model.Communes)
-                                {
-                                    <option value="@c.Id">@c.Name</option>
-                                }
-                            </select>
+                            <input type="text" name="communeName" class="form-control" list="comunas-catalogo" required autocomplete="off" placeholder="Comuna no resuelta: escriba..." aria-label="Comuna del catálogo" style="min-width:180px;" />
                             <button type="submit" class="btn btn-secondary">Corregir</button>
                         </form>
                     </td>

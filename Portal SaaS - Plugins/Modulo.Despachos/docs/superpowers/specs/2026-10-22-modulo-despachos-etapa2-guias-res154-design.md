@@ -113,9 +113,36 @@ La emisión es en **dos pasos**, y el adaptador debe tratarlos como una sola emi
 - Mapeo de estados: `generaDTE` ok → `enviada` (con folio); `obtieneDTE` ok → `aceptada` (emitida); `Consultar` RLV/RPR → `aceptada_con_reparos`, RCH → `rechazada`.
 - Campos libres (`A0..A10`, formato `XML_OBS`): disponibles para datos no normados (ej. N° de manifiesto, transportista); requieren habilitación por FACELE en el PDF.
 
-**XML a enviar:** es el DTE en el formato estándar del SII (`<DTE><Documento>` con `Encabezado` /
-`Detalle` / `Referencia`). Pendiente de confirmar con FACELE (§13): qué parte agrega FACELE (folio, timbre
-TED, firma) y la versión del formato que acepta con los campos de transporte de la Res. 154.
+**XML a enviar:** el DTE en el formato estándar del SII (`<DTE version="1.0"><Documento>` con `Encabezado` /
+`Detalle` / `Referencia`), **sin** `Folio` (se puede omitir o enviar 0), **sin** `TED`, `TmstFirma` ni firma:
+FACELE los agrega. FACELE devuelve y guarda el XML en **ISO-8859-1**. Ejemplos probados en
+`docs/facele/ejemplo-guia52-venta-res154.xml` y `docs/facele/ejemplo-guia52-traslado-interno-res154.xml`.
+
+#### Resultados de pruebas en ambiente caoba (2026-10-22, RUT 76030680-0)
+
+| # | Prueba | Resultado |
+|---|---|---|
+| 1 | Autenticación | Headers **HTTP** `facele.user` / `facele.pass`. Sin ellos → HTTP 405 "Autenticacion ha fallado" |
+| 2 | `obtieneBorrador` guía 52 venta y traslado interno | OK: PDF con marca "Borrador", sin folio. **No valida esquema** (acepta tags inválidos y guía sin transporte): sirve para vista previa, no para validar |
+| 3 | `generaDTE` → `obtieneDTE` (PDF / XML / URL_PDF) | OK: folios 103, 104, 105 emitidos con timbre PDF417 ("Ambiente Certificación") |
+| 4 | Repetir `uuid` | Rechazado: "UUID [...] ya utilizado para DTE: [... Folio: 103 ...]" → **idempotencia confirmada**; el mensaje trae el folio original |
+| 5 | Folio generado sin confirmar | Aparece en `sinConfirmar` hasta `obtieneDTE` |
+| 6 | `controversia libera` | OK; el folio se **reutiliza** (el 104 liberado volvió a asignarse) |
+| 7 | `controversia anula` sobre folio no confirmado | OK. **Ojo:** después, `obtieneDTE` sobre ese folio igual responde OK → el adaptador nunca debe llamar `obtieneDTE` sobre un folio anulado/liberado |
+| 8 | `controversia anula` sobre folio **ya confirmado** | Falla ("Problemas liberando folio") → **no hay anulación por WS de una guía emitida** [validar mecanismo con FACELE/asesor] |
+| 9 | Validación de esquema en `generaDTE` | Sí valida contra el XSD del SII y el error lista los elementos esperados |
+| 10 | Campos Res. 154 en `Transporte` | Soportados, en este orden: `Patente`, `PatenteCarro`, `RUTTrans`, `Chofer(RUTChofer, NombreChofer)`, `DirDest`, `CmnaDest`, `CiudadDest`, `Aduana`, `FchSalida`, `HraSalida`, `FchLlegada`. **No existe `HraLlegada`** |
+| 11 | Guía **sin** bloque `Transporte` | **Aceptada** → FACELE no exige la Res. 154; la validación la hace el planificador del portal |
+| 12 | Peso / bultos | No hay campos de peso en `Detalle`; existen a nivel documento en `Transporte/Aduana` (`PesoBruto`, `CodUnidPesoBruto`, `TotBultos`, `TipoBultos`…) [validar si aplican a guías nacionales Res. 154] |
+| 13 | Traslado interno con montos 0 | Exige `TasaIVA` válida aunque todo sea 0 (`MntNeto 0`, `TasaIVA 19`, `IVA 0`, `MntTotal 0`) |
+| 14 | Tildes y Ñ | OK en el PDF |
+| 15 | `obtieneDTE` cedible + cantidad 2 | OK: PDF de 2 páginas |
+| 16 | `reimprimeDTE` | No aplica: "Impresión Automática no seteada" (usar `obtieneDTE` / `Obtener`) |
+| 17 | `Consultar` estado de las guías emitidas | En caoba las guías del día **no aparecieron** en `DocumentosEmitidosService` (los 33/61 antiguos sí, con `estadoSII` ING "Por Aprobar SII") → estado SII no verificable en pruebas |
+| 18 | **Plantilla PDF de la guía 52** | **No imprime ningún dato de transporte** (patente, carro, transportista, chofer, fechas/hora de salida y llegada) aunque van en el XML → **FACELE debe actualizar la plantilla** |
+
+Detalles de protocolo: la respuesta de `ConsultarResponse` usa el elemento mal escrito `respuestaOperacon`
+(sin "i"); `obtieneDTE` devuelve `<XML>` y `Obtener` devuelve `<xml>` (mayúsculas distintas).
 
 ### 5.4 Aislamiento por compañía
 
@@ -234,10 +261,14 @@ Anulación/reemplazo ante cambios, conciliación de estado SII, reportes de guí
 
 ## 13. Pendiente con FACELE
 
-1. **Un XML de ejemplo de guía de despacho (52)** aceptado por DoceleOL, idealmente con los campos de transporte de la Res. 154.
-2. Qué nodos **no** debe enviar el ERP (folio, TED, firma, `TmstFirma`) o con qué valor.
-3. Versión del formato SII que acepta y soporte de los campos nuevos de la Res. 154.
-4. RUT emisor de DEPOR habilitado en el ambiente de pruebas (caoba) para `obtieneBorrador` / `generaDTE`.
+Resuelto con las pruebas del 2026-10-22: estructura del XML, nodos que agrega FACELE, campos Res. 154 del
+esquema, RUT de DEPOR habilitado en caoba.
+
+1. **Actualizar la plantilla PDF de la guía 52** para imprimir el bloque de transporte (patente, patente
+   carro, RUT transportista, chofer RUT y nombre, fecha/hora de salida, fecha de llegada). **Bloqueante.**
+2. Cómo se anula una guía 52 **ya emitida** (no se puede por `controversia`).
+3. Si para Res. 154 en guías nacionales corresponde informar peso/bultos en `Transporte/Aduana` y si su PDF lo imprime.
+4. Por qué las guías emitidas en caoba no aparecen en `Consultar` (para probar el seguimiento de estado SII).
 5. Habilitación de campos libres en el PDF de la guía (N° de manifiesto).
 6. URL y credenciales de producción (por canal seguro, no por correo ni chat).
 

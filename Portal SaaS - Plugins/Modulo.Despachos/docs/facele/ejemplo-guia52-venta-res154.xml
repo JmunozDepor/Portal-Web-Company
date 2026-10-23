@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<DTE version="1.0">
+<Documento ID="GUIA-EJEMPLO">
+<Encabezado>
+<IdDoc>
+<TipoDTE>52</TipoDTE>
+<Folio>0</Folio>
+<FchEmis>2026-10-22</FchEmis>
+<TipoDespacho>2</TipoDespacho>
+<IndTraslado>1</IndTraslado>
+</IdDoc>
+<Emisor>
+<RUTEmisor>76030680-0</RUTEmisor>
+<RznSoc>COMERCIAL DEPOR LIMITADA</RznSoc>
+<GiroEmis>IMPORTACION, EXPORTACION, COMERCIALIZACION</GiroEmis>
+<Acteco>464100</Acteco>
+<DirOrigen>CAMINO SAN ESTEBAN 1361</DirOrigen>
+<CmnaOrigen>SAN BERNARDO</CmnaOrigen>
+<CiudadOrigen>SANTIAGO</CiudadOrigen>
+</Emisor>
+<Receptor>
+<RUTRecep>78454830-9</RUTRecep>
+<RznSocRecep>SOC. DE INVERSIONES Y FINANCIAMIENTO LTDA.</RznSocRecep>
+<GiroRecep>Compra al mayor</GiroRecep>
+<DirRecep>Lira 200</DirRecep>
+<CmnaRecep>Santiago</CmnaRecep>
+<CiudadRecep>Santiago</CiudadRecep>
+</Receptor>
+<Transporte>
+<Patente>PJFX11</Patente>
+<PatenteCarro>JJKL22</PatenteCarro>
+<RUTTrans>74564934-3</RUTTrans>
+<Chofer>
+<RUTChofer>17786044-1</RUTChofer>
+<NombreChofer>JOSE PEREZ PEREZ</NombreChofer>
+</Chofer>
+<DirDest>Lira 200</DirDest>
+<CmnaDest>Santiago</CmnaDest>
+<CiudadDest>Santiago</CiudadDest>
+<FchSalida>2026-10-22</FchSalida>
+<HraSalida>08:30:00</HraSalida>
+<FchLlegada>2026-10-22</FchLlegada>
+</Transporte>
+<Totales>
+<MntNeto>41160</MntNeto>
+<TasaIVA>19</TasaIVA>
+<IVA>7820</IVA>
+<MntTotal>48980</MntTotal>
+</Totales>
+</Encabezado>
+<Detalle>
+<NroLinDet>1</NroLinDet>
+<CdgItem>
+<TpoCodigo>INT1</TpoCodigo>
+<VlrCodigo>11791C-003-M</VlrCodigo>
+</CdgItem>
+<NmbItem>Poler n Core Full Zipper</NmbItem>
+<QtyItem>1</QtyItem>
+<UnmdItem>UN</UnmdItem>
+<PrcItem>41160</PrcItem>
+<MontoItem>41160</MontoItem>
+</Detalle>
+<Referencia>
+<NroLinRef>1</NroLinRef>
+<TpoDocRef>33</TpoDocRef>
+<FolioRef>1000412</FolioRef>
+<FchRef>2026-02-24</FchRef>
+<RazonRef>Traslado de mercaderia facturada (manifiesto 1)</RazonRef>
+</Referencia>
+</Documento>
+</DTE>

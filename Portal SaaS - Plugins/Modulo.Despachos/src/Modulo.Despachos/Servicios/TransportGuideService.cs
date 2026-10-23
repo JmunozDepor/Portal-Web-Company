@@ -67,7 +67,7 @@ public sealed class TransportGuideService : ITransportGuideService
             return new GuidePreview(false, Array.Empty<PlannedGuideView>(), Array.Empty<string>(), Array.Empty<string>());
 
         var (plan, errors) = await PlanAsync(m, settings, previewSnapshot: m.Status == ManifestStatuses.Draft);
-        var views = plan?.Guides.Select(View).ToList() ?? new List<PlannedGuideView>();
+        var views = plan?.Guides.Select(g => View(g, m)).ToList() ?? new List<PlannedGuideView>();
         return new GuidePreview(true, views, errors, plan?.Warnings ?? Array.Empty<string>());
     }
 
@@ -343,11 +343,16 @@ public sealed class TransportGuideService : ITransportGuideService
         }
     }
 
-    private static PlannedGuideView View(PlannedGuide g) => new(
-        g.Sequence, g.Document.Receiver.Name,
+    private static PlannedGuideView View(PlannedGuide g, Manifest m) => new(
+        g.Sequence, g.Document.Receiver.TaxId, g.Document.Receiver.Name,
+        CustomerCodes(m.Documents.Where(d => g.ManifestDocumentIds.Contains(d.Id))),
         $"{g.Document.Receiver.Address}, {g.Document.Receiver.Commune}",
         g.ManifestDocumentIds.Count, g.Document.Lines.Count, g.Document.Lines.Sum(l => l.Quantity),
         g.Document.Transport?.Customs?.NetWeightKg);
+
+    /// <summary>Códigos de socio de negocio SAP (CardCode) distintos de los documentos, separados por coma.</summary>
+    public static string CustomerCodes(IEnumerable<ManifestDocument> docs) =>
+        string.Join(", ", docs.Select(d => d.CustomerCode).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct());
 
     // ---------------------------------------------------------------- Helpers
 

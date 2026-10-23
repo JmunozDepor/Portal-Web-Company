@@ -33,6 +33,9 @@ public class TransportGuideServiceTests
         Assert.Empty(p.Errors);
         Assert.Equal(2, p.Guides.Count);
         Assert.Contains("Curicó", p.Guides[1].Destination);
+        // RUT y código de socio de negocio para buscar al receptor en SAP.
+        Assert.All(p.Guides, g => Assert.Equal("11111111-1", g.ReceiverTaxId));
+        Assert.All(p.Guides, g => Assert.Equal("C001", g.CustomerCodes));
         Assert.Empty(await GuidesOf(env, id)); // la vista previa no persiste nada
     }
 

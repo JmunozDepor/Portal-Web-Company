@@ -1,8 +1,12 @@
 namespace Modulo.Despachos.Servicios;
 
-/// <summary>Resumen de una guía planificada (vista previa en borrador).</summary>
+/// <summary>
+/// Resumen de una guía planificada (vista previa en borrador). ReceiverTaxId y CustomerCodes (códigos de socio
+/// de negocio SAP de sus documentos, separados por coma) sirven para buscar al receptor en SAP.
+/// </summary>
 public sealed record PlannedGuideView(
-    int Sequence, string ReceiverName, string Destination, int Documents, int Lines, decimal Quantity, decimal? WeightKg);
+    int Sequence, string ReceiverTaxId, string ReceiverName, string CustomerCodes, string Destination,
+    int Documents, int Lines, decimal Quantity, decimal? WeightKg);
 
 /// <summary>Vista previa de las guías. Enabled = la compañía emite guías al despachar.</summary>
 public sealed record GuidePreview(

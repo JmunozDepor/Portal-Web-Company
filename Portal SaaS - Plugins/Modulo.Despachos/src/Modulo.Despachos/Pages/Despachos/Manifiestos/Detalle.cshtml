@@ -335,12 +335,14 @@
                 }
                 <div class="table-responsive-lg">
                     <table class="table-ps">
-                        <thead><tr><th>N°</th><th>Receptor</th><th>Destino</th><th class="text-end">Documentos</th><th class="text-end">Líneas</th><th class="text-end">Unidades</th><th class="text-end">Peso (kg)</th><th class="col-actions"></th></tr></thead>
+                        <thead><tr><th>N°</th><th>RUT</th><th>Cód. SAP</th><th>Receptor</th><th>Destino</th><th class="text-end">Documentos</th><th class="text-end">Líneas</th><th class="text-end">Unidades</th><th class="text-end">Peso (kg)</th><th class="col-actions"></th></tr></thead>
                         <tbody>
                             @foreach (var g in gp.Guides)
                             {
                                 <tr>
                                     <td>@g.Sequence</td>
+                                    <td class="text-nowrap">@g.ReceiverTaxId</td>
+                                    <td>@g.CustomerCodes</td>
                                     <td>@g.ReceiverName</td>
                                     <td>@g.Destination</td>
                                     <td class="text-end">@g.Documents</td>
@@ -358,7 +360,7 @@
                             }
                             @if (gp.Guides.Count == 0)
                             {
-                                <tr><td colspan="8" class="text-muted">Sin guías: agregue facturas al manifiesto.</td></tr>
+                                <tr><td colspan="10" class="text-muted">Sin guías: agregue facturas al manifiesto.</td></tr>
                             }
                         </tbody>
                     </table>
@@ -377,12 +379,14 @@
                 </div>
                 <div class="table-responsive-lg">
                     <table class="table-ps">
-                        <thead><tr><th>N°</th><th>Receptor</th><th>Destino</th><th>Folio</th><th>Estado</th><th>Detalle</th><th class="col-actions"></th></tr></thead>
+                        <thead><tr><th>N°</th><th>RUT</th><th>Cód. SAP</th><th>Receptor</th><th>Destino</th><th>Folio</th><th>Estado</th><th>Detalle</th><th class="col-actions"></th></tr></thead>
                         <tbody>
                             @foreach (var g in Model.Guides)
                             {
                                 <tr>
                                     <td>@g.Sequence</td>
+                                    <td class="text-nowrap">@g.ReceiverTaxId</td>
+                                    <td>@TransportGuideService.CustomerCodes(m.Documents.Where(d => g.Documents.Any(x => x.ManifestDocumentId == d.Id)))</td>
                                     <td>@g.ReceiverName</td>
                                     <td>@g.DestinationAddress, @g.DestinationCommune</td>
                                     <td>@(g.Folio?.ToString(CultureInfo.InvariantCulture) ?? "—")</td>
@@ -399,7 +403,7 @@
                             }
                             @if (Model.Guides.Count == 0)
                             {
-                                <tr><td colspan="7" class="text-muted">Este manifiesto no tiene guías de despacho.</td></tr>
+                                <tr><td colspan="9" class="text-muted">Este manifiesto no tiene guías de despacho.</td></tr>
                             }
                         </tbody>
                     </table>

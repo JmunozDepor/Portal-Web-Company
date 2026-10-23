@@ -38,6 +38,9 @@ public sealed class IndexModel : MaestroPageModelBase
     [BindProperty]
     public GuideSettingsInput GuidesInput { get; set; } = new();
 
+    [BindProperty]
+    public TransferSettingsInput TransfersInput { get; set; } = new();
+
     /// <summary>Estado de la configuración DTE de la compañía (proveedor, ambiente, RUT emisor), de solo lectura.</summary>
     public DteConfigurationStatus? DteStatus { get; private set; }
 
@@ -73,6 +76,12 @@ public sealed class IndexModel : MaestroPageModelBase
             MaxLines = s?.GuideMaxLines ?? 60,
             Valued = s?.GuideValued ?? false,
         };
+        TransfersInput = new TransferSettingsInput
+        {
+            LpnPattern = s?.LpnPattern, FolioPrefix = s is null ? "52" : s.TransferFolioPrefix,
+            ManifestField = s?.TransferManifestField, DispatchDateField = s?.TransferDispatchDateField,
+            InternalTransferIndicator = s?.InternalTransferIndicator ?? 5, InternalDispatchType = s is null ? 3 : s.InternalDispatchType,
+        };
         try { DteStatus = await _dte.GetConfigurationAsync(); }
         catch (Exception ex)
         {
@@ -86,6 +95,12 @@ public sealed class IndexModel : MaestroPageModelBase
             GuidesInput.LineGrouping ?? GuideLineGroupings.Sku, GuidesInput.ItemCodePlacement ?? GuideItemCodePlacements.Column,
             GuidesInput.MaxLines, GuidesInput.Valued),
         "Ajustes de guías de despacho actualizados.");
+
+    /// <summary>Guarda los ajustes de las guías de traslado a sucursales (Fase B). Exige EDIT sobre "origenes".</summary>
+    public Task<IActionResult> OnPostSaveTransfersAsync() => SaveCoreAsync(1,
+        () => _data.SaveTransferSettingsAsync(TransfersInput.LpnPattern, TransfersInput.FolioPrefix, TransfersInput.ManifestField,
+            TransfersInput.DispatchDateField, TransfersInput.InternalTransferIndicator, TransfersInput.InternalDispatchType),
+        "Ajustes de guías de traslado actualizados.");
 
     /// <summary>Guarda el RUT emisor de la compañía. Exige EDIT sobre "origenes".</summary>
     public Task<IActionResult> OnPostSaveIssuerAsync() => SaveCoreAsync(1, () => _data.SaveIssuerTaxIdAsync(IssuerInput),
@@ -105,6 +120,16 @@ public sealed class IndexModel : MaestroPageModelBase
         Input.Id == 0 ? "Origen creado." : "Origen actualizado.");
 
     public Task<IActionResult> OnPostDeleteAsync(long id) => DeleteCoreAsync(() => _data.DeleteOriginAsync(id), "Origen eliminado.");
+
+    public sealed record TransferSettingsInput
+    {
+        public string? LpnPattern { get; set; }
+        public string? FolioPrefix { get; set; } = "52";
+        public string? ManifestField { get; set; }
+        public string? DispatchDateField { get; set; }
+        public int InternalTransferIndicator { get; set; } = 5;
+        public int? InternalDispatchType { get; set; } = 3;
+    }
 
     public sealed class GuideSettingsInput
     {

@@ -15,6 +15,67 @@ public class OrigenesEmisorPageTests
         return (new Origenes.IndexModel(svc, user, new FakeDteEmissionService()), svc);
     }
 
+    private static Origenes.IndexModel.TransferSettingsInput Traslados(string? field = "U_NX_Manifiesto", string? pattern = @"^(CTBO|ICBO)\d+$") => new()
+    {
+        LpnPattern = pattern, FolioPrefix = "52", ManifestField = field, DispatchDateField = "U_NX_FechaDesp",
+        InternalTransferIndicator = 5, InternalDispatchType = 3,
+    };
+
+    [Fact]
+    public async Task SaveTransfers_ConEdit_Guarda()
+    {
+        var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View, PortalActions.Edit));
+        page.TransfersInput = Traslados();
+
+        await page.OnPostSaveTransfersAsync();
+
+        var s = (await svc.GetSettingsAsync())!;
+        Assert.Null(page.ErrorMessage);
+        Assert.Equal((@"^(CTBO|ICBO)\d+$", "52", "U_NX_Manifiesto", "U_NX_FechaDesp", 5, (int?)3),
+            (s.LpnPattern, s.TransferFolioPrefix, s.TransferManifestField, s.TransferDispatchDateField, s.InternalTransferIndicator, s.InternalDispatchType));
+    }
+
+    [Theory]
+    [InlineData("U_X; DROP")]
+    [InlineData("Manifiesto")]
+    public async Task SaveTransfers_CampoInvalido_Rechaza(string field)
+    {
+        var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View, PortalActions.Edit));
+        page.TransfersInput = Traslados(field: field);
+
+        await page.OnPostSaveTransfersAsync();
+
+        Assert.Contains("no es válido", page.ErrorMessage);
+        Assert.Null((await svc.GetSettingsAsync())?.TransferManifestField);
+    }
+
+    [Fact]
+    public async Task SaveTransfers_PatronInvalido_Rechaza()
+    {
+        var (page, _) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View, PortalActions.Edit));
+        page.TransfersInput = Traslados(pattern: "((");
+        await page.OnPostSaveTransfersAsync();
+        Assert.Contains("patrón", page.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task SaveTransfers_PrefijoVacio_SeGuardaVacio()
+    {
+        var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View, PortalActions.Edit));
+        page.TransfersInput = Traslados() with { FolioPrefix = "  " };
+        await page.OnPostSaveTransfersAsync();
+        Assert.Equal("", (await svc.GetSettingsAsync())!.TransferFolioPrefix);
+    }
+
+    [Fact]
+    public async Task SaveTransfers_SinPermisoEdit_Forbid()
+    {
+        var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View));
+        page.TransfersInput = Traslados();
+        Assert.IsType<ForbidResult>(await page.OnPostSaveTransfersAsync());
+        Assert.Null((await svc.GetSettingsAsync())?.LpnPattern);
+    }
+
     [Fact]
     public async Task SaveIssuer_SinPermisoEdit_Forbid_YNoGuarda()
     {

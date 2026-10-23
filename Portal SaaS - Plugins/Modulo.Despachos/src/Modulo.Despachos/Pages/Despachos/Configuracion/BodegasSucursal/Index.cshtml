@@ -1,0 +1,130 @@
+@page "/despachos/configuracion/bodegas-sucursal"
+@model Modulo.Despachos.Pages.Despachos.Configuracion.BodegasSucursal.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
+@{
+    ViewData["Title"] = "Bodegas sucursal";
+}
+@* Mantenedor: grilla compacta con búsqueda y orden por columna; alta/edición en drawer
+   (data-drawer-open + despachos-maestros.js); eliminar con confirmación. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Bodegas sucursal</h2>
+        @if (Model.CanCreate)
+        {
+            <button type="button" class="btn btn-primary" data-drawer-open="drawer-bodegas" data-maestro-new="form-bodegas">+ Nueva bodega sucursal</button>
+        }
+    </div>
+
+    <p class="text-muted">
+        Solo las transferencias a estas bodegas llevan guía de traslado; las demás bodegas (virtuales o de uso interno)
+        no entran al manifiesto. La dirección y la comuna se usan como destino de la guía.
+    </p>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="filter-card mb-3">
+        <div class="col-auto flex-grow-1" style="max-width:360px;">
+            <label for="buscar-bodegas" class="form-label">Buscar</label>
+            <input type="search" id="buscar-bodegas" class="form-control" placeholder="Escriba para filtrar..." autocomplete="off" data-maestro-search="tabla-bodegas" />
+        </div>
+    </div>
+
+    <div class="table-responsive-lg">
+        <table class="table-ps" id="tabla-bodegas" data-maestro-table>
+            <thead><tr><th data-sort="text">Código</th><th data-sort="text">Nombre</th><th data-sort="text">Dirección</th><th data-sort="text">Comuna</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var x in Model.Items)
+                {
+                    <tr data-buscable="@(($"{x.WarehouseCode} {x.Name} {x.Address} {x.CommuneName}").ToLowerInvariant())">
+                        <td>@x.WarehouseCode</td>
+                        <td>@x.Name</td>
+                        <td>@(x.Address ?? "—")</td>
+                        <td>@(x.CommuneName ?? "—")</td>
+                        <td>@(x.IsActive ? "Activa" : "Inactiva")</td>
+                        <td class="col-actions">
+                            <div class="admin-row-actions">
+                                @if (Model.CanEdit)
+                                {
+                                    <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-bodegas" data-maestro-edit data-row="@Model.RowJson(new { x.Id, x.WarehouseCode, x.Name, x.Address, x.CommuneName, x.IsActive })"><i class="bi bi-pencil"></i></button>
+                                }
+                                @if (Model.CanDelete)
+                                {
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar la bodega {x.WarehouseCode}?")">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr data-table-empty><td colspan="6" class="text-muted">Sin bodegas sucursal todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.CanCreate || Model.CanEdit)
+{
+    <div id="drawer-bodegas" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3 data-drawer-title data-title-new="Nueva bodega sucursal" data-title-edit="Editar bodega sucursal">Nueva bodega sucursal</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="Save" asp-antiforgery="true" id="form-bodegas">
+                <div class="drawer-body">
+                    <input type="hidden" name="Input.Id" value="0" />
+                    <div class="drawer-grid">
+                    <div class="mb-3">
+                        <label class="form-label" for="f-WarehouseCode">Código de bodega SAP</label>
+                        <input type="text" id="f-WarehouseCode" name="Input.WarehouseCode" class="form-control" list="bodegas-sap" maxlength="20" autocomplete="off" required />
+                        <datalist id="bodegas-sap">
+                            @foreach (var w in Model.SapWarehouses)
+                            {
+                                <option value="@w.Code">@w.Name</option>
+                            }
+                        </datalist>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-Name">Nombre</label>
+                        <input type="text" id="f-Name" name="Input.Name" class="form-control" maxlength="100" autocomplete="off" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-Address">Dirección (vacía = la de SAP)</label>
+                        <input type="text" id="f-Address" name="Input.Address" class="form-control" maxlength="70" autocomplete="off" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-CommuneName">Comuna (vacía = la de SAP)</label>
+                        <input type="text" id="f-CommuneName" name="Input.CommuneName" class="form-control" maxlength="60" autocomplete="off" />
+                    </div>
+                    <div class="mb-3 d-flex align-items-end">
+                        <label class="d-flex align-items-center gap-2"><input type="checkbox" name="Input.IsActive" value="true" checked /> Activa</label>
+                    </div>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/table-tools.js"></script>
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+}

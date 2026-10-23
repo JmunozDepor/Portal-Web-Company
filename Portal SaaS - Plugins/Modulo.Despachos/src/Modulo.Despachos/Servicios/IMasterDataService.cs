@@ -78,6 +78,14 @@ public interface IMasterDataService
     /// </summary>
     Task<Commune?> FindCommuneByNameAsync(string name);
 
+    /// <summary>
+    /// Ajustes de las guías de traslado a sucursales (Fase B): patrón LPN (expresión regular), prefijo FolioPref
+    /// (vacío = no se graba el folio en SAP), campos de usuario opcionales de OWTR (U_...), IndTraslado 1..9 y
+    /// TipoDespacho 1..3 o null.
+    /// </summary>
+    Task SaveTransferSettingsAsync(string? lpnPattern, string? folioPrefix, string? manifestField, string? dispatchDateField,
+        int internalTransferIndicator, int? internalDispatchType);
+
     /// <summary>Bodegas sucursal (Fase B); por defecto solo las activas, por código.</summary>
     Task<IReadOnlyList<BranchWarehouse>> ListBranchWarehousesAsync(bool includeInactive = false);
     Task<long> SaveBranchWarehouseAsync(BranchWarehouse entity);

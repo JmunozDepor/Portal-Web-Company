@@ -94,6 +94,63 @@ public sealed class MasterDataService : IMasterDataService
         await _db.SaveChangesAsync();
     }
 
+    private static readonly System.Text.RegularExpressions.Regex UserFieldRegex = new(@"^U_[A-Za-z0-9_]{1,50}$");
+
+    public async Task SaveTransferSettingsAsync(string? lpnPattern, string? folioPrefix, string? manifestField, string? dispatchDateField,
+        int internalTransferIndicator, int? internalDispatchType)
+    {
+        var pattern = string.IsNullOrWhiteSpace(lpnPattern) ? null : lpnPattern.Trim();
+        if (pattern != null)
+        {
+            if (pattern.Length > 100) throw new InvalidOperationException("El patrón LPN admite hasta 100 caracteres.");
+            try { _ = new System.Text.RegularExpressions.Regex(pattern); }
+            catch (ArgumentException) { throw new InvalidOperationException($"El patrón LPN '{pattern}' no es una expresión regular válida."); }
+        }
+        var prefix = (folioPrefix ?? "").Trim();
+        if (prefix.Length > 10) throw new InvalidOperationException("El prefijo de folio admite hasta 10 caracteres.");
+        var manifest = UserField(manifestField);
+        var dispatchDate = UserField(dispatchDateField);
+        if (internalTransferIndicator is < 1 or > 9)
+            throw new InvalidOperationException("El indicador de traslado debe estar entre 1 y 9.");
+        if (internalDispatchType is not null and (< 1 or > 3))
+            throw new InvalidOperationException("El tipo de despacho debe ser 1, 2 o 3.");
+
+        var row = await SettingsRowAsync();
+        row.LpnPattern = pattern;
+        row.TransferFolioPrefix = prefix;
+        row.TransferManifestField = manifest;
+        row.TransferDispatchDateField = dispatchDate;
+        row.InternalTransferIndicator = internalTransferIndicator;
+        row.InternalDispatchType = internalDispatchType;
+        await _db.SaveChangesAsync();
+
+        static string? UserField(string? value)
+        {
+            var v = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            if (v != null && !UserFieldRegex.IsMatch(v))
+                throw new InvalidOperationException($"El campo de usuario '{v}' no es válido (debe empezar con U_ y tener solo letras, números o _).");
+            return v;
+        }
+    }
+
+    /// <summary>Fila de ajustes de la compañía (la crea si no existe) con la auditoría de actualización fijada.</summary>
+    private async Task<DespachosSetting> SettingsRowAsync()
+    {
+        var row = await _db.Settings.FirstOrDefaultAsync(x => x.CompanyId == CompanyId);
+        var now = DateTime.UtcNow;
+        if (row is null)
+        {
+            row = new DespachosSetting { CompanyId = CompanyId, CreatedAt = now, CreatedBy = _user.UserId };
+            _db.Settings.Add(row);
+        }
+        else
+        {
+            row.UpdatedAt = now;
+            row.UpdatedBy = _user.UserId;
+        }
+        return row;
+    }
+
     // ---------------------------------------------------------------- Transportistas
 
     public async Task<IReadOnlyList<Carrier>> ListCarriersAsync(bool includeInactive = false) =>

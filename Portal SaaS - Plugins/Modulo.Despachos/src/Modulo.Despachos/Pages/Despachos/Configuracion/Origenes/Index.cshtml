@@ -41,6 +41,59 @@
         </form>
     </div>
 
+    @* Guías de traslado a sucursales (Fase B): transferencias por LPN o en bloque; el folio de la guía se graba en
+       la transferencia SAP (FolioNum/FolioPref) y, si se configuran, el manifiesto y la fecha en campos de usuario. *@
+    <div class="filter-card mb-3">
+        <form method="post" asp-page-handler="SaveTransfers" asp-antiforgery="true" class="d-flex flex-wrap align-items-end gap-3">
+            <div class="col-auto">
+                <label for="tr-lpn" class="form-label">Patrón LPN (expresión regular)</label>
+                <input type="text" id="tr-lpn" name="TransfersInput.LpnPattern" class="form-control" maxlength="100" placeholder="^(CTBO|ICBO)\d+$"
+                       value="@Model.TransfersInput.LpnPattern" disabled="@(!Model.CanEdit)" autocomplete="off" />
+            </div>
+            <div class="col-auto">
+                <label for="tr-prefix" class="form-label">Prefijo de folio (FolioPref)</label>
+                <input type="text" id="tr-prefix" name="TransfersInput.FolioPrefix" class="form-control" maxlength="10" style="max-width:110px;"
+                       value="@Model.TransfersInput.FolioPrefix" disabled="@(!Model.CanEdit)" autocomplete="off" />
+            </div>
+            <div class="col-auto">
+                <label for="tr-manifest" class="form-label">Campo N° de manifiesto</label>
+                <input type="text" id="tr-manifest" name="TransfersInput.ManifestField" class="form-control" maxlength="50" placeholder="U_NX_Manifiesto"
+                       value="@Model.TransfersInput.ManifestField" disabled="@(!Model.CanEdit)" autocomplete="off" />
+            </div>
+            <div class="col-auto">
+                <label for="tr-date" class="form-label">Campo fecha de despacho</label>
+                <input type="text" id="tr-date" name="TransfersInput.DispatchDateField" class="form-control" maxlength="50" placeholder="U_NX_FechaDesp"
+                       value="@Model.TransfersInput.DispatchDateField" disabled="@(!Model.CanEdit)" autocomplete="off" />
+            </div>
+            <div class="col-auto">
+                <label for="tr-indicator" class="form-label">Indicador de traslado</label>
+                <select id="tr-indicator" name="TransfersInput.InternalTransferIndicator" class="form-select" disabled="@(!Model.CanEdit)">
+                    @foreach (var (value, label) in Modulo.Despachos.Pages.Despachos.Configuracion.Origenes.IndexModel.TransferIndicators)
+                    {
+                        <option value="@value" selected="@(Model.TransfersInput.InternalTransferIndicator == value)">@label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <label for="tr-dispatch" class="form-label">Tipo de despacho</label>
+                <select id="tr-dispatch" name="TransfersInput.InternalDispatchType" class="form-select" disabled="@(!Model.CanEdit)">
+                    <option value="" selected="@(Model.TransfersInput.InternalDispatchType is null)">No informar</option>
+                    @foreach (var (value, label) in Modulo.Despachos.Pages.Despachos.Configuracion.Origenes.IndexModel.DispatchTypes)
+                    {
+                        <option value="@value" selected="@(Model.TransfersInput.InternalDispatchType == value)">@label</option>
+                    }
+                </select>
+            </div>
+            @if (Model.CanEdit)
+            {
+                <button type="submit" class="btn btn-primary">Guardar ajustes de traslados</button>
+            }
+        </form>
+        <div class="form-text mt-2">
+            Guías de traslado a sucursales: los campos vacíos no se escriben en SAP; sin prefijo no se graba el folio en la transferencia.
+        </div>
+    </div>
+
     @* Guías de despacho electrónicas (Res. 154): el proveedor DTE (FACELE, BES...) y sus credenciales se configuran
        en Administración por compañía; aquí solo se activa la emisión al despachar y sus indicadores. *@
     <div class="filter-card mb-3">

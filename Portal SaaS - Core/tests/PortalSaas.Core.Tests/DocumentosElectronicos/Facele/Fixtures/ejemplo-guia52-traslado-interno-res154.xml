@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<DTE version="1.0">
+<Documento ID="GUIA-EJEMPLO">
+<Encabezado>
+<IdDoc>
+<TipoDTE>52</TipoDTE>
+<Folio>0</Folio>
+<FchEmis>2026-10-22</FchEmis>
+<TipoDespacho>3</TipoDespacho>
+<IndTraslado>5</IndTraslado>
+</IdDoc>
+<Emisor>
+<RUTEmisor>76030680-0</RUTEmisor>
+<RznSoc>COMERCIAL DEPOR LIMITADA</RznSoc>
+<GiroEmis>IMPORTACION, EXPORTACION, COMERCIALIZACION</GiroEmis>
+<Acteco>464100</Acteco>
+<DirOrigen>CAMINO SAN ESTEBAN 1361</DirOrigen>
+<CmnaOrigen>SAN BERNARDO</CmnaOrigen>
+<CiudadOrigen>SANTIAGO</CiudadOrigen>
+</Emisor>
+<Receptor>
+<RUTRecep>76030680-0</RUTRecep>
+<RznSocRecep>COMERCIAL DEPOR LIMITADA</RznSocRecep>
+<GiroRecep>IMPORTACION, EXPORTACION, COMERCIALIZACION</GiroRecep>
+<DirRecep>AV.PTE EDUARDO FREI MONTALVA 9709, LOC.108</DirRecep>
+<CmnaRecep>Quilicura</CmnaRecep>
+<CiudadRecep>Santiago</CiudadRecep>
+</Receptor>
+<Transporte>
+<Patente>PJFX11</Patente>
+<PatenteCarro>JJKL22</PatenteCarro>
+<RUTTrans>74564934-3</RUTTrans>
+<Chofer>
+<RUTChofer>17786044-1</RUTChofer>
+<NombreChofer>JOSE PEREZ PEREZ</NombreChofer>
+</Chofer>
+<DirDest>0601 TIENDA CFS EASTON AV.PTE EDUARDO FREI MONTALVA 9709</DirDest>
+<CmnaDest>Quilicura</CmnaDest>
+<CiudadDest>Santiago</CiudadDest>
+<FchSalida>2026-10-22</FchSalida>
+<HraSalida>08:30:00</HraSalida>
+<FchLlegada>2026-10-23</FchLlegada>
+</Transporte>
+<Totales>
+<MntNeto>0</MntNeto>
+<TasaIVA>19</TasaIVA>
+<IVA>0</IVA>
+<MntTotal>0</MntTotal>
+</Totales>
+</Encabezado>
+<Detalle>
+<NroLinDet>1</NroLinDet>
+<CdgItem><TpoCodigo>INT1</TpoCodigo><VlrCodigo>CT-CONV-001</VlrCodigo></CdgItem>
+<NmbItem>Zapatilla Converse Chuck 70 Negro 40</NmbItem>
+<QtyItem>3</QtyItem>
+<UnmdItem>UN</UnmdItem>
+<MontoItem>0</MontoItem>
+</Detalle>
+<Detalle>
+<NroLinDet>2</NroLinDet>
+<CdgItem><TpoCodigo>INT1</TpoCodigo><VlrCodigo>CT-CONV-002</VlrCodigo></CdgItem>
+<NmbItem>Zapatilla Converse Run Star Blanco 38</NmbItem>
+<QtyItem>6</QtyItem>
+<UnmdItem>UN</UnmdItem>
+<MontoItem>0</MontoItem>
+</Detalle>
+</Documento>
+</DTE>

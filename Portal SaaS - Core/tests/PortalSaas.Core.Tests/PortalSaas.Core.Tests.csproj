@@ -27,6 +27,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- XML y respuestas SOAP reales del ambiente de certificación de FACELE (sin credenciales). -->
+    <None Update="DocumentosElectronicos\Facele\Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\PortalSaas.Core\PortalSaas.Core.csproj" />
     <ProjectReference Include="..\..\src\PortalSaas.Data\PortalSaas.Data.csproj" />
     <ProjectReference Include="..\..\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />

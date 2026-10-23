@@ -28,6 +28,7 @@ public class DespachosDbContext : DbContext
     public DbSet<Driver> Drivers => Set<Driver>();
     public DbSet<Shift> Shifts => Set<Shift>();
     public DbSet<Commune> Communes => Set<Commune>();
+    public DbSet<CommuneAlias> CommuneAliases => Set<CommuneAlias>();
     public DbSet<Zone> Zones => Set<Zone>();
     public DbSet<ZoneCommune> ZoneCommunes => Set<ZoneCommune>();
     public DbSet<Origin> Origins => Set<Origin>();
@@ -121,6 +122,18 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.RegionCode).HasColumnName("region_code").HasMaxLength(2).IsRequired();
             e.Property(x => x.RegionName).HasColumnName("region_name").HasMaxLength(100).IsRequired();
             e.HasIndex(x => new { x.CompanyId, x.CutCode }).IsUnique().HasDatabaseName("uq_communes_company_id_cut_code");
+        });
+
+        modelBuilder.Entity<CommuneAlias>(e =>
+        {
+            Base(e, "commune_aliases");
+            e.Property(x => x.Text).HasColumnName("text").HasMaxLength(60).IsRequired();
+            e.Property(x => x.NormalizedText).HasColumnName("normalized_text").HasMaxLength(60).IsRequired();
+            e.Property(x => x.CommuneId).HasColumnName("commune_id");
+            e.HasIndex(x => new { x.CompanyId, x.NormalizedText }).IsUnique().HasDatabaseName("uq_commune_aliases_company_id_normalized_text");
+            e.HasIndex(x => x.CommuneId).HasDatabaseName("ix_commune_aliases_commune_id");
+            e.HasOne<Commune>().WithMany().HasForeignKey(x => x.CommuneId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_commune_aliases_communes");
         });
 
         modelBuilder.Entity<Zone>(e =>

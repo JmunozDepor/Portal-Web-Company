@@ -51,6 +51,7 @@ public sealed class ModuloDespachos : IModuloPortal
         yield return Config("feriados", "Feriados", "bi-calendar-x", 9);
         yield return Config("destinatarios-avisos", "Destinatarios de avisos", "bi-bell", 10);
         yield return Config("consultas-sap", "Consultas SAP", "bi-database-gear", 11);
+        yield return Config("equivalencias-comuna", "Equivalencias de comuna", "bi-signpost-split", 12);
     }
 
     private static MenuItemDefinition Group(string code, string? parent, string name, string icon, int order) =>

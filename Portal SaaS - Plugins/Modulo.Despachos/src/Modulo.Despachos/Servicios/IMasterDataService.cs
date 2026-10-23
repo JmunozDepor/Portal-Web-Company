@@ -71,6 +71,20 @@ public interface IMasterDataService
     /// <summary>Catálogo de comunas de la compañía (sembrado por CommuneSeeder), ordenado por región y nombre.</summary>
     Task<IReadOnlyList<Commune>> ListCommunesAsync();
 
-    /// <summary>Busca una comuna por nombre ignorando tildes, mayúsculas y espacios en los bordes.</summary>
+    /// <summary>
+    /// Busca una comuna por nombre: ignora tildes, mayúsculas, puntuación y abreviaturas típicas (ver
+    /// CommuneNames) y usa las equivalencias de la compañía para los textos que SAP trae mal digitados.
+    /// </summary>
     Task<Commune?> FindCommuneByNameAsync(string name);
+
+    /// <summary>Equivalencias de comuna de la compañía (texto de SAP → comuna del catálogo).</summary>
+    Task<IReadOnlyList<CommuneAlias>> ListCommuneAliasesAsync();
+    Task<long> SaveCommuneAliasAsync(CommuneAlias entity);
+    Task<DeleteResult> DeleteCommuneAliasAsync(long id);
+
+    /// <summary>
+    /// Recuerda que <paramref name="sourceText"/> (texto de SAP) es la comuna <paramref name="communeId"/>: crea o
+    /// actualiza la equivalencia. No hace nada si el texto está vacío o ya se reconoce solo.
+    /// </summary>
+    Task RememberCommuneAliasAsync(string? sourceText, long communeId);
 }

@@ -339,25 +339,71 @@ public sealed class MasterDataService : IMasterDataService
 
     public async Task<Commune?> FindCommuneByNameAsync(string name)
     {
-        var wanted = Fold(name);
+        var wanted = CommuneNames.Normalize(name);
         if (wanted.Length == 0) return null;
+        var communes = await LoadCommunesAsync();
+        var official = communes.FirstOrDefault(c => CommuneNames.Normalize(c.Name) == wanted);
+        if (official is not null) return official;
+
+        var alias = await _db.CommuneAliases.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.CompanyId == CompanyId && a.NormalizedText == wanted);
+        return alias is null ? null : communes.FirstOrDefault(c => c.Id == alias.CommuneId);
+    }
+
+    public async Task<IReadOnlyList<CommuneAlias>> ListCommuneAliasesAsync() =>
+        await _db.CommuneAliases.Where(a => a.CompanyId == CompanyId).OrderBy(a => a.NormalizedText).ToListAsync();
+
+    public async Task<long> SaveCommuneAliasAsync(CommuneAlias e)
+    {
+        e.Text = Required(e.Text, "El texto");
+        if (e.Text.Length > 60) throw new InvalidOperationException("El texto admite hasta 60 caracteres.");
+        e.NormalizedText = CommuneNames.Normalize(e.Text);
+        if (e.NormalizedText.Length == 0) throw new InvalidOperationException("El texto es obligatorio.");
+        if (e.CommuneId == 0) throw new InvalidOperationException("La comuna es obligatoria.");
+        await EnsureExistsAsync<Commune>(e.CommuneId, "La comuna");
+        var key = e.NormalizedText;
+        var official = (await LoadCommunesAsync()).FirstOrDefault(c => CommuneNames.Normalize(c.Name) == key);
+        if (official is not null)
+            throw new InvalidOperationException($"'{e.Text}' ya se reconoce como la comuna {official.Name}; no necesita equivalencia.");
+        return await SaveAsync(e, x => x.NormalizedText == key, $"Ya existe una equivalencia para '{e.Text}'.");
+    }
+
+    public Task<DeleteResult> DeleteCommuneAliasAsync(long id) => DeleteAsync(_db.CommuneAliases, id, null);
+
+    public async Task RememberCommuneAliasAsync(string? sourceText, long communeId)
+    {
+        var key = CommuneNames.Normalize(sourceText);
+        if (key.Length == 0) return;
+        // Un nombre oficial (o variante de fábrica) no se convierte en equivalencia: se reconoce solo.
+        if ((await LoadCommunesAsync()).Any(c => CommuneNames.Normalize(c.Name) == key)) return;
+
+        var now = DateTime.UtcNow;
+        var existing = await _db.CommuneAliases.FirstOrDefaultAsync(a => a.CompanyId == CompanyId && a.NormalizedText == key);
+        if (existing is null)
+        {
+            var text = sourceText!.Trim();
+            _db.CommuneAliases.Add(new CommuneAlias
+            {
+                CompanyId = CompanyId, Text = text.Length > 60 ? text[..60] : text, NormalizedText = key,
+                CommuneId = communeId, CreatedAt = now, CreatedBy = _user.UserId,
+            });
+        }
+        else if (existing.CommuneId != communeId)
+        {
+            existing.CommuneId = communeId;
+            existing.UpdatedAt = now;
+            existing.UpdatedBy = _user.UserId;
+        }
+        else return;
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task<List<Commune>> LoadCommunesAsync()
+    {
         await CommuneSeeder.EnsureSeededAsync(_db, CompanyId);
         // El catálogo son ~346 filas: se compara en memoria porque la intercalación de la base
         // (Postgres vs SQL Server) no garantiza ignorar tildes.
-        var communes = await _db.Communes.Where(c => c.CompanyId == CompanyId).ToListAsync();
-        return communes.FirstOrDefault(c => Fold(c.Name) == wanted);
-    }
-
-    /// <summary>Minúsculas/mayúsculas y tildes fuera (Ñ cuenta como N); espacios de los bordes fuera.</summary>
-    private static string Fold(string s)
-    {
-        var sb = new StringBuilder(s.Length);
-        foreach (var ch in s.Trim().Normalize(NormalizationForm.FormD))
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
-                sb.Append(char.ToUpperInvariant(ch));
-        }
-        return sb.ToString().Normalize(NormalizationForm.FormC);
+        return await _db.Communes.Where(c => c.CompanyId == CompanyId).ToListAsync();
     }
 
     // ---------------------------------------------------------------- Helpers

@@ -155,6 +155,66 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                     b.ToTable("communes", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Despachos.Models.CommuneAlias", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("CommuneId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("commune_id");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("NormalizedText")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("normalized_text");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CommuneId")
+                        .HasDatabaseName("ix_commune_aliases_commune_id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_commune_aliases_company_id");
+
+                    b.HasIndex("CompanyId", "NormalizedText")
+                        .IsUnique()
+                        .HasDatabaseName("uq_commune_aliases_company_id_normalized_text");
+
+                    b.ToTable("commune_aliases", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Despachos.Models.DespachosSetting", b =>
                 {
                     b.Property<long>("Id")
@@ -1849,6 +1909,16 @@ namespace Modulo.Despachos.Migrations.Postgres.Migrations
                         .HasDatabaseName("uq_zone_communes_zone_id_commune_id");
 
                     b.ToTable("zone_communes", (string)null);
+                });
+
+            modelBuilder.Entity("Modulo.Despachos.Models.CommuneAlias", b =>
+                {
+                    b.HasOne("Modulo.Despachos.Models.Commune", null)
+                        .WithMany()
+                        .HasForeignKey("CommuneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_commune_aliases_communes");
                 });
 
             modelBuilder.Entity("Modulo.Despachos.Models.Driver", b =>

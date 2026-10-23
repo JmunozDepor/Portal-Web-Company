@@ -1,0 +1,124 @@
+@page "/despachos/configuracion/equivalencias-comuna"
+@model Modulo.Despachos.Pages.Despachos.Configuracion.EquivalenciasComuna.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
+@{
+    ViewData["Title"] = "Equivalencias de comuna";
+}
+@* Mantenedor: grilla compacta con búsqueda y orden por columna; alta/edición en drawer
+   (data-drawer-open + despachos-maestros.js); eliminar con confirmación. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Equivalencias de comuna</h2>
+        @if (Model.CanCreate)
+        {
+            <button type="button" class="btn btn-primary" data-drawer-open="drawer-equivalencias" data-maestro-new="form-equivalencias">+ Nueva equivalencia</button>
+        }
+    </div>
+
+    <p class="text-muted">
+        Textos de comuna que SAP trae mal digitados o no oficiales y la comuna del catálogo a la que corresponden.
+        Se agregan solas al corregir la comuna de un documento en el manifiesto. Las variantes típicas
+        (tildes, puntos, "STGO", "SANTIAGO CENTRO", "PTE. ALTO"...) ya se reconocen sin equivalencia.
+    </p>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="filter-card mb-3">
+        <div class="col-auto flex-grow-1" style="max-width:360px;">
+            <label for="buscar-equivalencias" class="form-label">Buscar</label>
+            <input type="search" id="buscar-equivalencias" class="form-control" placeholder="Escriba para filtrar..." autocomplete="off" data-maestro-search="tabla-equivalencias" />
+        </div>
+    </div>
+
+    <div class="table-responsive-lg">
+        <table class="table-ps" id="tabla-equivalencias" data-maestro-table>
+            <thead><tr><th data-sort="text">Texto en SAP</th><th data-sort="text">Comuna</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var x in Model.Items)
+                {
+                    var commune = Model.CommuneName(x.CommuneId);
+                    <tr data-buscable="@(($"{x.Text} {commune}").ToLowerInvariant())">
+                        <td>@x.Text</td>
+                        <td>@commune</td>
+                        <td class="col-actions">
+                            <div class="admin-row-actions">
+                                @if (Model.CanEdit)
+                                {
+                                    <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-equivalencias" data-maestro-edit data-row="@Model.RowJson(new { x.Id, x.Text, x.CommuneId })"><i class="bi bi-pencil"></i></button>
+                                }
+                                @if (Model.CanDelete)
+                                {
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar la equivalencia {x.Text}?")">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr data-table-empty><td colspan="3" class="text-muted">Sin equivalencias todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.CanCreate || Model.CanEdit)
+{
+    <div id="drawer-equivalencias" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3 data-drawer-title data-title-new="Nueva equivalencia" data-title-edit="Editar equivalencia">Nueva equivalencia</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="Save" asp-antiforgery="true" id="form-equivalencias">
+                <div class="drawer-body">
+                    <input type="hidden" name="Input.Id" value="0" />
+                    <div class="drawer-grid">
+                    <div class="mb-3">
+                        <label class="form-label" for="f-Text">Texto en SAP</label>
+                        <input type="text" id="f-Text" name="Input.Text" class="form-control" placeholder="Ej. CIUDAD SATELITE" maxlength="60" autocomplete="off" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="f-CommuneId">Comuna del catálogo</label>
+                        <select id="f-CommuneId" name="Input.CommuneId" class="form-select" required>
+                            <option value="">Elegir...</option>
+                            @foreach (var g in Model.Communes.GroupBy(c => c.RegionName))
+                            {
+                                <optgroup label="@g.Key">
+                                    @foreach (var c in g.OrderBy(c => c.Name))
+                                    {
+                                        <option value="@c.Id">@c.Name</option>
+                                    }
+                                </optgroup>
+                            }
+                        </select>
+                    </div>
+                    </div>
+                <p class="text-muted">La comparación ignora mayúsculas, tildes, puntos y espacios repetidos.</p>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/table-tools.js"></script>
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+}

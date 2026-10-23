@@ -212,7 +212,7 @@ public class ManifestService : IManifestService
         Commune? commune = string.IsNullOrWhiteSpace(info.DestinationCommune)
             ? null : await _master.FindCommuneByNameAsync(info.DestinationCommune);
         if (commune is null)
-            warnings.Add($"La comuna de destino '{info.DestinationCommune}' no se pudo resolver; corríjala antes de la guía de transporte (el costo queda sin tarifa).");
+            warnings.Add($"La comuna de destino '{info.DestinationCommune}' no se pudo resolver; elíjala en la tabla de documentos (se recordará para las próximas facturas). Mientras tanto el costo queda sin tarifa y no se puede emitir la guía.");
 
         var doc = new ManifestDocument
         {
@@ -692,12 +692,21 @@ public class ManifestService : IManifestService
         var commune = await _db.Communes.FirstOrDefaultAsync(c => c.CompanyId == CompanyId && c.Id == communeId)
             ?? throw new InvalidOperationException("La comuna seleccionada no existe.");
 
-        var before = doc.DestinationCommuneId;
-        doc.DestinationCommuneId = commune.Id;
+        // La corrección se recuerda como equivalencia del texto de SAP: las próximas facturas con ese texto entran
+        // resueltas, y las de este manifiesto que siguen sin resolver con el mismo texto se corrigen ahora.
+        await _master.RememberCommuneAliasAsync(doc.DestinationCommuneName, commune.Id);
+        var sameText = CommuneNames.Normalize(doc.DestinationCommuneName);
+        var targets = m.Documents.Where(d => d.Id == doc.Id
+            || (sameText.Length > 0 && d.DestinationCommuneId == null && CommuneNames.Normalize(d.DestinationCommuneName) == sameText));
+        foreach (var d in targets.ToList())
+        {
+            var before = d.DestinationCommuneId;
+            d.DestinationCommuneId = commune.Id;
+            AddEvent(m.Id, ManifestEventTypes.DocumentCommuneChanged, d.Id, null, null,
+                new { folio = d.Folio, sapCommune = d.DestinationCommuneName, beforeCommuneId = before, afterCommuneId = commune.Id, commune = commune.Name });
+        }
         m.UpdatedAt = UtcNow;
         m.UpdatedBy = _user.UserId;
-        AddEvent(m.Id, ManifestEventTypes.DocumentCommuneChanged, doc.Id, null, null,
-            new { folio = doc.Folio, sapCommune = doc.DestinationCommuneName, beforeCommuneId = before, afterCommuneId = commune.Id, commune = commune.Name });
         if (m.Status == ManifestStatuses.Draft) await _db.SaveChangesAsync();
         else await RecalculateWithEventAsync(m);
     }

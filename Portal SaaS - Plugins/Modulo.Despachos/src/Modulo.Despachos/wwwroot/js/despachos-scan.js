@@ -57,9 +57,12 @@
         var row = template.content.firstElementChild.cloneNode(true);
         var fields = { kind: doc.kind, folio: doc.folio, customer: doc.customer, commune: doc.commune || '—', units: nf.format(doc.units), packages: doc.packages, amount: '$' + nf.format(doc.amount || 0) };
         Object.keys(fields).forEach(function (k) { row.querySelector('[data-f="' + k + '"]').textContent = fields[k]; });
-        var form = row.querySelector('form');
-        form.setAttribute('action', form.getAttribute('action').replace('00000000-0000-0000-0000-000000000000', doc.id));
-        // El token de la plantilla ya viene dentro del formulario clonado.
+        var fix = row.querySelector('[data-commune-fix]');
+        if (fix && doc.communeResolved) { fix.remove(); }
+        row.querySelectorAll('form').forEach(function (form) {
+            form.setAttribute('action', form.getAttribute('action').replace('00000000-0000-0000-0000-000000000000', doc.id));
+        });
+        // El token de la plantilla ya viene dentro de cada formulario clonado.
         tbody.appendChild(row);
     }
 

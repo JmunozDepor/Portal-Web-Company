@@ -224,6 +224,7 @@ public sealed class DetalleModel : DespachosPageModelBase
                     folio = doc.Folio,
                     customer = doc.CustomerName,
                     commune = doc.DestinationCommuneName,
+                    communeResolved = doc.DestinationCommuneId != null,
                     units = doc.Units,
                     packages = doc.Packages,
                     amount = doc.TotalAmount,

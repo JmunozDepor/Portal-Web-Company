@@ -229,6 +229,9 @@ Esto se diseña en su propio spec. Aquí solo se fija que la bandeja y el contra
 | P3 | Módulo Compras: calce y factura de proveedor en SAP (spec propio) | Compras |
 | P4 | Adaptador BES (emisión y recepción) para Block | Block |
 
+**Prioridad decidida por el usuario (2026-10-22):** se construye **solo P0** (guías desde el manifiesto) y,
+cuando se tenga la información de cómo opera BES, **P4**. P1, P2 y P3 quedan **solo documentados** hasta nuevo aviso.
+
 P0 solo implementa lo que usa la guía 52, pero con los contratos completos de §5. Así P1 no cambia firmas.
 
 ## 9. Preguntas abiertas

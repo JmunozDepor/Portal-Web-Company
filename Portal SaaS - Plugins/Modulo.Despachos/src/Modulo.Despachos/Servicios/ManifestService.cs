@@ -157,6 +157,9 @@ public class ManifestService : IManifestService
         {
             if (!TedParser.TryParse(capture.RawScan, out var parsed))
             {
+                // Hoja de pre-guía (PG-000123): entran todas sus transferencias.
+                if (DispatchGroupCode.TryParse(capture.RawScan, out var groupNumber))
+                    return await AddDispatchGroupAsync(m, groupNumber);
                 // No es un timbre: puede ser el LPN de una transferencia a sucursal (Fase B).
                 var lpn = await LpnFromScanAsync(capture.RawScan);
                 if (lpn is null)
@@ -288,7 +291,7 @@ public class ManifestService : IManifestService
     /// Agrega una transferencia (objeto 67, controlada por DocEntry): anulada, a bodega no sucursal, ya en este
     /// manifiesto o en otro manifiesto no anulado se rechaza con su motivo.
     /// </summary>
-    private async Task<AddDocumentResult> AddTransferAsync(Manifest m, SapTransferInfo t, string captureMethod)
+    private async Task<AddDocumentResult> AddTransferAsync(Manifest m, SapTransferInfo t, string captureMethod, long? dispatchGroupId = null)
     {
         if (t.IsCanceled)
             return Result(AddDocumentOutcomes.Canceled, $"La transferencia {t.DocNum} está anulada en SAP.");
@@ -302,6 +305,9 @@ public class ManifestService : IManifestService
         if (other != null)
             return new AddDocumentResult(AddDocumentOutcomes.InOtherManifest, null, other,
                 new[] { $"La transferencia {t.DocNum} ya está en el manifiesto N° {other}." });
+        if (dispatchGroupId is null && await ActiveGroupNumberOfAsync(t.DocEntry) is { } groupNumber)
+            return Result(AddDocumentOutcomes.InDispatchGroup,
+                $"El LPN {t.Lpn ?? t.DocNum.ToString()} pertenece a la pre-guía {DispatchGroupCode.Format(groupNumber)}; escanee la hoja.");
 
         var warnings = new List<string>();
         var communeName = branch.CommuneName ?? t.DestinationCommune;
@@ -318,7 +324,7 @@ public class ManifestService : IManifestService
             CustomerCode = branch.WarehouseCode, CustomerName = branch.Name, CustomerTaxId = await _master.GetIssuerTaxIdAsync(),
             DestinationAddress = branch.Address ?? t.DestinationAddress, DestinationCommuneName = communeName,
             DestinationCommuneId = commune?.Id,
-            Units = t.Units, Packages = 1,
+            Units = t.Units, Packages = 1, DispatchGroupId = dispatchGroupId,
             DeliveryStatus = DeliveryStatuses.Pending, CaptureMethod = captureMethod,
             AddedAt = UtcNow, AddedBy = _user.UserId,
         };
@@ -331,6 +337,132 @@ public class ManifestService : IManifestService
 
     private static AddDocumentResult Result(string outcome, string message) => new(outcome, null, null, new[] { message });
 
+    // ---------------------------------------------------------------- Pre-guías
+
+    /// <summary>
+    /// Hoja de pre-guía: revalida sus transferencias contra SAP con una sola consulta (pendientes de su sucursal) y
+    /// agrega las vigentes con las reglas de siempre; las demás se informan y el resto entra igual.
+    /// </summary>
+    private async Task<AddDocumentResult> AddDispatchGroupAsync(Manifest m, int number)
+    {
+        var code = DispatchGroupCode.Format(number);
+        var g = await _db.DispatchGroups.Include(x => x.Transfers)
+            .FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Number == number);
+        if (g is null) return Result(AddDocumentOutcomes.NotFound, $"No existe la pre-guía {code}.");
+        if (g.Status == DispatchGroupStatuses.Annulled) return Result(AddDocumentOutcomes.Canceled, $"La pre-guía {code} está anulada.");
+        var holder = await ManifestOfGroupAsync(g.Id);
+        if (holder is { } h && h.Id != m.Id)
+            return new AddDocumentResult(AddDocumentOutcomes.InOtherManifest, null, h.Number, new[]
+            {
+                g.Status == DispatchGroupStatuses.Dispatched
+                    ? $"La pre-guía {code} ya fue despachada en el manifiesto N° {h.Number}."
+                    : $"La pre-guía {code} ya está en el manifiesto N° {h.Number}.",
+            });
+        if (g.Transfers.Count == 0) return Result(AddDocumentOutcomes.NotFound, $"La pre-guía {code} no tiene transferencias.");
+
+        var current = (await _sap.ListPendingTransfersAsync(g.WarehouseCode, g.Transfers.Min(t => t.DocumentDate)))
+            .GroupBy(t => t.DocEntry).ToDictionary(x => x.Key, x => x.First());
+        var added = 0;
+        var notes = new List<string>();
+        foreach (var line in g.Transfers.OrderBy(t => t.SapDocNum))
+        {
+            if (!current.TryGetValue(line.SapDocEntry, out var t))
+            {
+                notes.Add($"La transferencia {line.SapDocNum} ya no está vigente en SAP.");
+                continue;
+            }
+            var r = await AddTransferAsync(m, t, CaptureMethods.Pdf417, g.Id);
+            if (r.Outcome == AddDocumentOutcomes.Added) added++;
+            else if (r.Outcome != AddDocumentOutcomes.DuplicateInThis) notes.AddRange(r.Warnings.Take(1));
+        }
+
+        if (added == 0)
+            return holder is not null && notes.Count == 0
+                ? Result(AddDocumentOutcomes.DuplicateInThis, $"La pre-guía {code} ya está en este manifiesto.")
+                : new AddDocumentResult(AddDocumentOutcomes.NotFound, null, null,
+                    new[] { $"{code}: no se agregó ninguna transferencia." }.Concat(notes).ToList());
+
+        if (g.DispatchDate != m.DispatchDate)
+            notes.Add($"La pre-guía es para el {g.DispatchDate:dd-MM-yyyy} y el manifiesto sale el {m.DispatchDate:dd-MM-yyyy}.");
+        await SyncDispatchGroupsAsync(new[] { g.Id });
+        return new AddDocumentResult(AddDocumentOutcomes.GroupAdded, null, null,
+            new[] { $"{code}: {added} transferencias agregadas." }.Concat(notes).ToList());
+    }
+
+    public async Task RemoveDispatchGroupAsync(Guid manifestId, long dispatchGroupId)
+    {
+        var m = await LoadAsync(manifestId);
+        RequireStatus(m, ManifestStatuses.Draft, "Solo se pueden quitar documentos de un manifiesto en borrador.");
+        var docs = m.Documents.Where(d => d.DispatchGroupId == dispatchGroupId).ToList();
+        if (docs.Count == 0) throw new InvalidOperationException("La pre-guía no está en este manifiesto.");
+        foreach (var doc in docs)
+        {
+            _db.ManifestDocuments.Remove(doc);
+            AddEvent(m.Id, ManifestEventTypes.DocumentRemoved, doc.Id, null, null,
+                new { kind = doc.DocumentKind, folio = doc.Folio, group = dispatchGroupId });
+        }
+        await _db.SaveChangesAsync();
+        await SyncDispatchGroupsAsync(new[] { dispatchGroupId });
+    }
+
+    /// <summary>Número de la pre-guía activa que contiene la transferencia, o null.</summary>
+    private async Task<int?> ActiveGroupNumberOfAsync(int docEntry)
+    {
+        var active = DispatchGroupStatuses.Active.ToArray();
+        return await (from t in _db.DispatchGroupTransfers
+                      join g in _db.DispatchGroups on t.DispatchGroupId equals g.Id
+                      where t.CompanyId == CompanyId && g.CompanyId == CompanyId && t.SapDocEntry == docEntry
+                            && active.Contains(g.Status)
+                      orderby g.Number
+                      select (int?)g.Number).FirstOrDefaultAsync();
+    }
+
+    /// <summary>Manifiesto no anulado que tiene documentos de la pre-guía, o null.</summary>
+    private async Task<(Guid Id, int Number)?> ManifestOfGroupAsync(long groupId)
+    {
+        var row = await (from d in _db.ManifestDocuments
+                         join o in _db.Manifests on d.ManifestId equals o.Id
+                         where d.CompanyId == CompanyId && d.DispatchGroupId == groupId && o.Status != ManifestStatuses.Annulled
+                         orderby o.Number
+                         select new { o.Id, o.Number }).FirstOrDefaultAsync();
+        return row is null ? null : (row.Id, row.Number);
+    }
+
+    /// <summary>
+    /// Estado de cada pre-guía no anulada según sus documentos (ya guardados) en manifiestos no anulados: despachada si
+    /// alguno salió, en manifiesto si hay alguno, armada si no queda ninguno.
+    /// </summary>
+    private async Task SyncDispatchGroupsAsync(IEnumerable<long> groupIds)
+    {
+        var ids = groupIds.Distinct().ToList();
+        if (ids.Count == 0) return;
+        var groups = await _db.DispatchGroups
+            .Where(g => g.CompanyId == CompanyId && ids.Contains(g.Id) && g.Status != DispatchGroupStatuses.Annulled)
+            .ToListAsync();
+        if (groups.Count == 0) return;
+        var usage = await (from d in _db.ManifestDocuments
+                           join o in _db.Manifests on d.ManifestId equals o.Id
+                           where d.CompanyId == CompanyId && d.DispatchGroupId != null && ids.Contains(d.DispatchGroupId.Value)
+                                 && o.Status != ManifestStatuses.Annulled
+                           select new { GroupId = d.DispatchGroupId!.Value, o.Status }).ToListAsync();
+        var departed = new[] { ManifestStatuses.Dispatched, ManifestStatuses.Returned, ManifestStatuses.Closed };
+        foreach (var g in groups)
+        {
+            var statuses = usage.Where(u => u.GroupId == g.Id).Select(u => u.Status).ToList();
+            var target = statuses.Any(s => departed.Contains(s)) ? DispatchGroupStatuses.Dispatched
+                : statuses.Count > 0 ? DispatchGroupStatuses.InManifest
+                : DispatchGroupStatuses.Armed;
+            if (g.Status == target) continue;
+            g.Status = target;
+            g.UpdatedAt = UtcNow;
+            g.UpdatedBy = _user.UserId;
+        }
+        await _db.SaveChangesAsync();
+    }
+
+    private static List<long> GroupIdsOf(Manifest m) =>
+        m.Documents.Where(d => d.DispatchGroupId != null).Select(d => d.DispatchGroupId!.Value).Distinct().ToList();
+
     public async Task RemoveDocumentAsync(Guid manifestId, Guid manifestDocumentId)
     {
         var m = await LoadAsync(manifestId);
@@ -341,6 +473,7 @@ public class ManifestService : IManifestService
         AddEvent(m.Id, ManifestEventTypes.DocumentRemoved, doc.Id, null, null,
             new { kind = doc.DocumentKind, sii = doc.SiiDocumentType, folio = doc.Folio });
         await _db.SaveChangesAsync();
+        if (doc.DispatchGroupId is { } groupId) await SyncDispatchGroupsAsync(new[] { groupId });
     }
 
     /// <summary>
@@ -459,6 +592,7 @@ public class ManifestService : IManifestService
         {
             throw new InvalidOperationException(ConcurrentChangeMessage);
         }
+        await SyncDispatchGroupsAsync(GroupIdsOf(m));
         if (cost.Status == CostStatuses.NoRate)
             warnings.Add("Sin tarifa para este viaje: se despacha igual, pero deberá corregir las comunas/tarifas o ingresar un costo manual con motivo antes del cierre mensual.");
         else if (cost.Status == CostStatuses.Ambiguous)
@@ -512,6 +646,7 @@ public class ManifestService : IManifestService
         {
             throw new InvalidOperationException(ConcurrentChangeMessage);
         }
+        await SyncDispatchGroupsAsync(GroupIdsOf(m));
         return new DispatchResult(true, Array.Empty<string>(), warnings);
     }
 
@@ -737,6 +872,8 @@ public class ManifestService : IManifestService
         // Los documentos se conservan como historial; quedan libres porque el manifiesto está anulado.
         AddEvent(m.Id, ManifestEventTypes.Annulled, null, from, ManifestStatuses.Annulled, new { reason = reason.Trim() });
         await _db.SaveChangesAsync();
+        // Sus pre-guías vuelven a "armada" (o siguen despachadas si otro manifiesto vigente las lleva).
+        await SyncDispatchGroupsAsync(GroupIdsOf(m));
     }
 
     public async Task OverrideCostAsync(Guid manifestId, decimal amount, string reason)

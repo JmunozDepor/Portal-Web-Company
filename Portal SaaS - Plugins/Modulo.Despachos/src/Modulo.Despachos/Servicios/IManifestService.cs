@@ -29,6 +29,10 @@ public static class AddDocumentOutcomes
     public const string Ambiguous = "ambiguous";
     /// <summary>La transferencia va a una bodega que no es sucursal activa (Fase B).</summary>
     public const string NotBranch = "not_branch";
+    /// <summary>La transferencia pertenece a una pre-guía activa: debe entrar escaneando la hoja.</summary>
+    public const string InDispatchGroup = "in_dispatch_group";
+    /// <summary>Se escaneó la hoja de una pre-guía: Warnings[0] resume cuántas transferencias entraron.</summary>
+    public const string GroupAdded = "group_added";
 }
 
 public sealed record AddDocumentResult(
@@ -69,6 +73,9 @@ public interface IManifestService
     /// </summary>
     Task<AddPendingTransfersResult> AddPendingTransfersAsync(Guid manifestId, string warehouseCode, DateOnly fromDate);
     Task RemoveDocumentAsync(Guid manifestId, Guid manifestDocumentId);
+
+    /// <summary>Quita del borrador todas las transferencias que entraron con la pre-guía; ésta vuelve a "armada".</summary>
+    Task RemoveDispatchGroupAsync(Guid manifestId, long dispatchGroupId);
 
     /// <summary>
     /// Valida, sella la salida (UTC), toma el snapshot Res.154, calcula el costo y pasa los documentos a despachado.

@@ -73,7 +73,7 @@
                           onsubmit="return confirm(this.dataset.confirm);" data-confirm="@confirmacion">
                         <input type="hidden" name="anioMes" value="@Model.Datos.AnioMes" />
                         <input type="hidden" name="confirmarPendientes" value="@(conPendientes ? "true" : "false")" />
-                        <button type="submit" class="btn-primary" disabled="@bloqueado" title="@(bloqueado ? motivo : "")"><i class="bi bi-lock"></i> Cerrar período</button>
+                        <button type="submit" class="btn btn-primary" disabled="@bloqueado" title="@(bloqueado ? motivo : "")"><i class="bi bi-lock"></i> Cerrar período</button>
                     </form>
                     @if (bloqueado)
                     {
@@ -127,7 +127,7 @@
               onsubmit="return confirm('¿Cargar / recargar el mes indicado? Si ese mes ya existía, se REEMPLAZA por completo (se pierde cualquier resolución manual ya digitada). ¿Continuar?');">
             <input type="number" name="anio" placeholder="Año" value="@anioActual" min="2000" max="2100" style="width:90px" required />
             <input type="number" name="mes" placeholder="Mes" value="@mesActual" min="1" max="12" style="width:70px" required />
-            <button type="submit" class="btn-primary">Cargar / recargar mes</button>
+            <button type="submit" class="btn btn-primary">Cargar / recargar mes</button>
         </form>
     </div>
 

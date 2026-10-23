@@ -10,11 +10,11 @@
 }
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Sucursales</h2>
         @if (Model.PuedeVer && Model.PuedeCrear)
         {
-            <button type="button" class="btn-primary" data-drawer-open="drawer-sucursal">+ Nueva sucursal</button>
+            <button type="button" class="btn btn-primary" data-drawer-open="drawer-sucursal">+ Nueva sucursal</button>
         }
     </div>
 
@@ -46,52 +46,54 @@
                     }
                 </select>
             </div>
-            <button type="submit" class="btn-secondary">Buscar</button>
+            <button type="submit" class="btn btn-secondary">Buscar</button>
             <a href="~/sellout/sucursales" class="btn-ghost">Limpiar</a>
         </form>
 
         <p class="text-muted mb-2">@Model.TotalRegistros registro(s) · página @Model.Pagina de @Model.TotalPaginas</p>
 
-        <table class="table-ps">
-            <thead><tr><th>Cliente</th><th>ID Suc.</th><th>Sucursal</th><th>Nombre en cliente</th><th>Canal</th><th>Cadena</th><th>Activo</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @foreach (var s in Model.Sucursales)
-                {
-                    <tr class="@((s.Activo ?? true) ? "" : "row-inactive")">
-                        <td>@s.NomCliente</td>
-                        <td>@s.IdSucursal</td>
-                        <td>@s.NomSucursal</td>
-                        <td>@s.NomSucursalCliente</td>
-                        <td>@s.Canal</td>
-                        <td>@s.Cadena</td>
-                        <td>@((s.Activo ?? true) ? "Sí" : "No")</td>
-                        <td class="col-actions">
-                            @if (Model.PuedeEditar)
-                            {
-                                <a href="~/sellout/sucursales?editandoCliente=@s.IdCliente&editandoSucursal=@s.IdSucursal&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto&pagina=@Model.Pagina&tamanoPagina=@Model.TamanoPagina" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-                            }
-                            @if (Model.PuedeEliminar)
-                            {
-                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@s.IdCliente" asp-route-idSucursal="@s.IdSucursal" method="post" class="d-inline-block"
-                                      onsubmit="return confirm('¿Eliminar la sucursal &quot;@s.NomSucursal&quot;?');">
-                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-                @if (Model.Sucursales.Count == 0)
-                {
-                    <tr><td colspan="8" class="text-muted">Sin sucursales todavía.</td></tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead><tr><th>Cliente</th><th>ID Suc.</th><th>Sucursal</th><th>Nombre en cliente</th><th>Canal</th><th>Cadena</th><th>Activo</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @foreach (var s in Model.Sucursales)
+                    {
+                        <tr class="@((s.Activo ?? true) ? "" : "row-inactive")">
+                            <td>@s.NomCliente</td>
+                            <td>@s.IdSucursal</td>
+                            <td>@s.NomSucursal</td>
+                            <td>@s.NomSucursalCliente</td>
+                            <td>@s.Canal</td>
+                            <td>@s.Cadena</td>
+                            <td>@((s.Activo ?? true) ? "Sí" : "No")</td>
+                            <td class="col-actions">
+                                @if (Model.PuedeEditar)
+                                {
+                                    <a href="~/sellout/sucursales?editandoCliente=@s.IdCliente&editandoSucursal=@s.IdSucursal&filtroIdCliente=@Model.FiltroIdCliente&filtroTexto=@Model.FiltroTexto&pagina=@Model.Pagina&tamanoPagina=@Model.TamanoPagina" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (Model.PuedeEliminar)
+                                {
+                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-idCliente="@s.IdCliente" asp-route-idSucursal="@s.IdSucursal" method="post" class="d-inline-block"
+                                          onsubmit="return confirm('¿Eliminar la sucursal &quot;@s.NomSucursal&quot;?');">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Sucursales.Count == 0)
+                    {
+                        <tr><td colspan="8" class="text-muted">Sin sucursales todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         <div class="d-flex align-items-center justify-content-center gap-3 mt-3">
-            <a class="btn-secondary @(Model.Pagina <= 1 ? "disabled" : "")"
+            <a class="btn btn-secondary @(Model.Pagina <= 1 ? "disabled" : "")"
                href="@(Model.Pagina <= 1 ? "#" : ConstruirUrlPagina(Model.Pagina - 1))">« Anterior</a>
             <span class="text-muted">Página @Model.Pagina de @Model.TotalPaginas</span>
-            <a class="btn-secondary @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")"
+            <a class="btn btn-secondary @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")"
                href="@(Model.Pagina >= Model.TotalPaginas ? "#" : ConstruirUrlPagina(Model.Pagina + 1))">Siguiente »</a>
         </div>
     }
@@ -186,8 +188,8 @@
                         </div>
                     </div>
                     <div class="drawer-footer">
-                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                        <button type="submit" class="btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
+                        <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn btn-primary">@(Model.Editando is null ? "Crear" : "Guardar")</button>
                     </div>
                 </form>
             </aside>

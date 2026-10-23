@@ -64,37 +64,39 @@
         <input type="hidden" name="anioMes" value="@Model.AnioMes" />
         <div class="toolbar" style="margin-bottom:8px;">
             <span style="color:var(--text-muted); font-size:13px;">Marcá las cuentas que necesitás y exportá solo su detalle transaccional (más rápido que traer el mes completo)</span>
-            <button type="submit" class="btn-primary toolbar-right">Exportar detalle de seleccionadas</button>
+            <button type="submit" class="btn btn-primary toolbar-right">Exportar detalle de seleccionadas</button>
         </div>
-        <table class="grid">
-            <thead>
-                <tr>
-                    <th><input type="checkbox" id="chkTodasCuentas" /></th>
-                    <th>Cuenta</th>
-                    <th>Canal</th>
-                    <th>Sucursal</th>
-                    <th>Centro costo</th>
-                    <th>Monto original</th>
-                    <th>Monto ajustado</th>
-                    <th>Origen</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var f in Model.Filas)
-                {
+        <div class="table-responsive-lg">
+            <table class="grid">
+                <thead>
                     <tr>
-                        <td><input type="checkbox" name="nroCuentas" value="@f.NroCuenta" class="chk-cuenta" /></td>
-                        <td>@f.NroCuenta @f.NombreCuenta</td>
-                        <td>@f.CanalDestino</td>
-                        <td>@f.SucursalDestino</td>
-                        <td>@f.CentroCostoDestino</td>
-                        <td>@f.MontoOriginal.ToString("N0")</td>
-                        <td>@f.MontoDistribuido.ToString("N0")</td>
-                        <td>@f.TipoOrigen</td>
+                        <th><input type="checkbox" id="chkTodasCuentas" /></th>
+                        <th>Cuenta</th>
+                        <th>Canal</th>
+                        <th>Sucursal</th>
+                        <th>Centro costo</th>
+                        <th>Monto original</th>
+                        <th>Monto ajustado</th>
+                        <th>Origen</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Filas)
+                    {
+                        <tr>
+                            <td><input type="checkbox" name="nroCuentas" value="@f.NroCuenta" class="chk-cuenta" /></td>
+                            <td>@f.NroCuenta @f.NombreCuenta</td>
+                            <td>@f.CanalDestino</td>
+                            <td>@f.SucursalDestino</td>
+                            <td>@f.CentroCostoDestino</td>
+                            <td>@f.MontoOriginal.ToString("N0")</td>
+                            <td>@f.MontoDistribuido.ToString("N0")</td>
+                            <td>@f.TipoOrigen</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </form>
 </div>
 

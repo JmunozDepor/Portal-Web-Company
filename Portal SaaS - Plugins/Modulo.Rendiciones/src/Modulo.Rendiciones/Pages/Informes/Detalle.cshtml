@@ -216,21 +216,23 @@
             @if (Model.LooseExpensesToAdd.Count > 0)
             {
                 <form method="post" asp-page-handler="AgregarGastos" asp-route-id="@Model.Report.Id">
-                    <table class="admin-table">
-                        <thead><tr><th></th><th>Fecha</th><th>Categoría</th><th>Proveedor</th><th>Monto</th></tr></thead>
-                        <tbody>
-                            @foreach (var g in Model.LooseExpensesToAdd)
-                            {
-                                <tr>
-                                    <td><input type="checkbox" name="ExpenseIdsToAdd" value="@g.Id" /></td>
-                                    <td>@g.Date.ToString("dd-MM-yyyy")</td>
-                                    <td>@(g.ExpenseType?.Name ?? "—")</td>
-                                    <td>@g.SupplierName</td>
-                                    <td><rnd-amount value="@g.Amount" currency="@g.Currency" /></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <div class="table-responsive-lg">
+                        <table class="admin-table">
+                            <thead><tr><th></th><th>Fecha</th><th>Categoría</th><th>Proveedor</th><th>Monto</th></tr></thead>
+                            <tbody>
+                                @foreach (var g in Model.LooseExpensesToAdd)
+                                {
+                                    <tr>
+                                        <td><input type="checkbox" name="ExpenseIdsToAdd" value="@g.Id" /></td>
+                                        <td>@g.Date.ToString("dd-MM-yyyy")</td>
+                                        <td>@(g.ExpenseType?.Name ?? "—")</td>
+                                        <td>@g.SupplierName</td>
+                                        <td><rnd-amount value="@g.Amount" currency="@g.Currency" /></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                     <button type="submit" class="btn-module-action">+ Agregar seleccionados</button>
                 </form>
             }
@@ -294,20 +296,22 @@
 {
     <div class="admin-subcard">
         <h3>Historial de aprobación</h3>
-        <table class="admin-table">
-            <thead><tr><th>Fecha</th><th>Nivel</th><th>Decisión</th><th>Comentario</th></tr></thead>
-            <tbody>
-                @foreach (var a in Model.History)
-                {
-                    <tr>
-                        <td>@a.OccurredAt.ToString("dd-MM-yyyy HH:mm")</td>
-                        <td>@a.Level</td>
-                        <td>@a.Decision</td>
-                        <td>@a.Comment</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="admin-table">
+                <thead><tr><th>Fecha</th><th>Nivel</th><th>Decisión</th><th>Comentario</th></tr></thead>
+                <tbody>
+                    @foreach (var a in Model.History)
+                    {
+                        <tr>
+                            <td>@a.OccurredAt.ToString("dd-MM-yyyy HH:mm")</td>
+                            <td>@a.Level</td>
+                            <td>@a.Decision</td>
+                            <td>@a.Comment</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 }
 </div>

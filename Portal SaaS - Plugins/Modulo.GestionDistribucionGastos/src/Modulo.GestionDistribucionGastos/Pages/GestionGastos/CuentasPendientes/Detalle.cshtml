@@ -149,7 +149,7 @@
                     <span id="resumenCambios" style="color:var(--text-muted); font-size:13px;">Sin cambios pendientes</span>
                     <div style="display:flex; gap:8px;">
                         <a asp-page="/GestionGastos/CuentasPendientes/Index" asp-route-anioMes="@anioMes" class="btn">Cancelar</a>
-                        <button type="submit" class="btn-primary">Guardar cambios</button>
+                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
                     </div>
                 </div>
             </div>
@@ -170,182 +170,184 @@
         <p id="sinResultadosLineas" style="display:none; color:var(--text-muted); font-size:13px;">Ninguna línea coincide con la búsqueda.</p>
 
         <div id="contenedorTablaLineas">
-        <table class="grid" id="tablaLineas">
-            <colgroup>
-                <col class="col-chk" />
-                <col class="col-asiento" />
-                <col class="col-glosa" />
-                <col class="col-monto" />
-                <col class="col-monto" />
-                <col class="col-actual" />
-                <col class="col-actual" />
-                <col class="col-actual" />
-                <col class="col-destino" />
-                <col class="col-destino" />
-                <col class="col-destino" />
-                <col class="col-indirecto" />
-                <col class="col-actual" />
-            </colgroup>
-            <thead>
-                <tr>
-                    <th rowspan="2"><input type="checkbox" id="chkTodos" disabled="@soloLectura" /></th>
-                    <th rowspan="2">Asiento</th>
-                    <th rowspan="2">Glosa / proveedor</th>
-                    <th rowspan="2">Monto</th>
-                    <th rowspan="2" title="Monto que efectivamente quedó asignado a este destino -- para una línea dividida, cada partida muestra su porción.">Asignado</th>
-                    <th colspan="3" class="bloque-sap divisor-izq" style="text-align:center; font-size:13px;">Actual (en SAP)</th>
-                    <th colspan="3" class="bloque-destino divisor-izq" style="text-align:center; font-size:13px; color:var(--accent); font-weight:600;">Nuevo destino (lo que se modifica)</th>
-                    <th rowspan="2" title="Gasto no directo del canal (ej. costos compartidos/corporativos): se excluye del Resultado Operacional 1 del EERR y recién se resta en el Resultado Operacional 2.">Indirecto ⓘ</th>
-                    <th rowspan="2">División</th>
-                </tr>
-                <tr>
-                    <th class="bloque-sap divisor-izq">Centro costo</th>
-                    <th class="bloque-sap">Canal</th>
-                    <th class="bloque-sap">Sucursal</th>
-                    <th class="bloque-destino divisor-izq">Centro costo</th>
-                    <th class="bloque-destino">Canal</th>
-                    <th class="bloque-destino" title="Al elegir la sucursal se autocompletan canal y centro de costo (siguen siendo editables)">Sucursal ⓘ</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{ int idx = 0; int? grupoAnteriorStagingId = null; }
-                @foreach (var d in Model.Lineas)
-                {
-                    var st = staging.GetValueOrDefault(d.StagingId);
-                    var glosa = $"{st?.Comentarios} {st?.SocioNegocio}".Trim();
-                    var etqCC = Etiqueta(d.CodCentroCostoOriginal, d.CentroCostoOriginal);
-                    var etqCanal = Etiqueta(d.CodCanalOriginal, d.CanalOriginal);
-                    var etqSuc = Etiqueta(d.CodSucursalOriginal, d.SucursalOriginal);
-                    bool resuelta = d.Estado != "PENDIENTE";
-                    string valCC = d.CodCentroCostoDestino ?? "";
-                    string valCanal = d.CodCanalDestino ?? "";
-                    string valSuc = d.CodSucursalDestino ?? "";
-                    int totalEnGrupo = Model.ConteoPorStaging.GetValueOrDefault(d.StagingId, 1);
-                    bool esInicioDeGrupo = grupoAnteriorStagingId != d.StagingId;
-                    grupoAnteriorStagingId = d.StagingId;
-                    // Una división puede terminar en UNA sola fila (repartida 100% a un solo destino
-                    // nuevo, sin remanente pendiente en origen) -- totalEnGrupo==1 no alcanza para
-                    // distinguir "nunca se tocó" de "se dividió y quedó en 1 partida", así que hace
-                    // falta mirar TipoOrigen para que "Editar/Deshacer división" siga disponible en
-                    // ese caso (si no, esa línea queda sin forma de volver al original).
-                    bool grupoDividido = totalEnGrupo > 1 || d.TipoOrigen == "MANUAL";
-                    string montoOriginalInvariante = d.MontoOriginal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-                    string busqueda = $"{d.NroAsiento} {d.LineaId} {glosa} {etqCC} {etqCanal} {etqSuc}".ToLowerInvariant();
-                    <tr data-id="@d.Id" data-busqueda="@busqueda"
-                        data-staging-id="@d.StagingId" data-tipo-origen="@d.TipoOrigen"
-                        data-monto-original="@montoOriginalInvariante"
-                        data-monto-distribuido="@d.MontoDistribuido.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
-                        class="fila-linea@(resuelta ? " fila-guardada" : "")@(totalEnGrupo > 1 && !esInicioDeGrupo ? " fila-partida-secundaria" : "")">
-                        <td>
-                            <input type="checkbox" class="chkLinea" disabled="@soloLectura" />
-                            @if (resuelta)
-                            {
-                                <span class="badge badge-success" style="margin-left:4px; padding:1px 5px;" title="Guardado por @d.UsuarioResponsable el @d.FechaAsignacion?.ToString("dd/MM HH:mm")">✓</span>
-                            }
-                        </td>
-                        <td title="@d.NroAsiento / @d.LineaId">
-                            @d.NroAsiento / @d.LineaId
-                            @if (totalEnGrupo > 1 && esInicioDeGrupo)
-                            {
-                                <span class="badge-dividida">Dividida en @totalEnGrupo</span>
-                            }
-                        </td>
-                        <td title="@glosa">@glosa</td>
-                        <td title="@d.MontoOriginal.ToString("N0")">@d.MontoOriginal.ToString("N0")</td>
-                        <td title="@d.MontoDistribuido.ToString("N0")">@d.MontoDistribuido.ToString("N0")</td>
-                        <td class="bloque-sap divisor-izq" title="@etqCC">@etqCC</td>
-                        <td class="bloque-sap" title="@etqCanal">@etqCanal</td>
-                        <td class="bloque-sap" title="@etqSuc">@etqSuc</td>
-                        <td class="bloque-destino divisor-izq">
-                            <input type="hidden" name="Lineas[@idx].Id" value="@d.Id" />
-                            <select name="Lineas[@idx].CodCentroCosto" class="sel-destino sel-cc" disabled="@soloLectura">
-                                <option value="">(sin cambio)</option>
-                                @foreach (var c in centros)
-                                {
-                                    <option value="@c.Codigo" selected="@(c.Codigo == valCC)">@Etiqueta(c.Codigo, c.Nombre)</option>
-                                }
-                            </select>
-                        </td>
-                        <td class="bloque-destino">
-                            <select name="Lineas[@idx].CodCanal" class="sel-destino sel-canal" disabled="@soloLectura">
-                                <option value="">(sin cambio)</option>
-                                @foreach (var c in canales)
-                                {
-                                    <option value="@c.Codigo" selected="@(c.Codigo == valCanal)">@Etiqueta(c.Codigo, c.Nombre)</option>
-                                }
-                            </select>
-                        </td>
-                        <td class="bloque-destino">
-                            <select name="Lineas[@idx].CodSucursal" class="sel-destino sel-sucursal" disabled="@soloLectura">
-                                <option value="">(sin cambio)</option>
-                                @foreach (var s in sucursales)
-                                {
-                                    <option value="@s.Codigo" selected="@(s.Codigo == valSuc)">@Etiqueta(s.Codigo, s.Nombre)</option>
-                                }
-                            </select>
-                        </td>
-                        <td class="col-indirecto-celda">
-                            <input type="checkbox" name="Lineas[@idx].EsGastoIndirecto" value="true" class="chk-indirecto" disabled="@soloLectura" checked="@d.EsGastoIndirecto" data-original="@(d.EsGastoIndirecto ? "true" : "false")" />
-                            <input type="hidden" name="Lineas[@idx].EsGastoIndirecto" value="false" />
-                        </td>
-                        <td>
-                            @if (!soloLectura)
-                            {
-                                if (!grupoDividido)
-                                {
-                                    <button type="button" class="btn-dividir"
-                                            data-staging-id="@d.StagingId"
-                                            data-monto="@montoOriginalInvariante"
-                                            data-cc="@valCC" data-canal="@valCanal" data-suc="@valSuc"
-                                            data-indirecto="@(d.EsGastoIndirecto ? "true" : "false")">
-                                        Dividir
-                                    </button>
-                                }
-                                else if (esInicioDeGrupo)
-                                {
-                                    <!--
-                                        No puede ser un <form> propio acá: esta fila ya está dentro de
-                                        #formAsignacion (abre en la línea 115), y un <form> anidado dentro de
-                                        otro <form> es HTML inválido -- el parser del navegador descarta la
-                                        apertura del <form> interno y sus campos/botón terminan asociados al
-                                        <form> exterior (#formAsignacion, handler AplicarAsignacion), así que
-                                        al enviar terminaba ejecutando el handler equivocado con los campos
-                                        equivocados (bug real, 2026-07-30). Mismo criterio que ya usa "Dividir"
-                                        en esta misma tabla: un botón simple que dispara, por JS, el submit de
-                                        #formDeshacerDivision -- un <form> real y separado, definido fuera de
-                                        #formAsignacion (ver más abajo, junto a #formDivision).
-                                    -->
-                                    <!--
-                                        "Editar división" reabre el modal precargado con las partidas ya
-                                        guardadas (lee los data-* de las filas del propio grupo, ya presentes
-                                        en el DOM -- no hace falta ningún endpoint nuevo) para seguir
-                                        repartiendo el saldo que quedó en origen sin perder lo ya guardado.
-                                        Distinto de "Deshacer división", que resetea todo a una sola línea.
-                                    -->
-                                    <button type="button" class="btn-editar-division" data-staging-id="@d.StagingId">
-                                        Editar división
-                                    </button>
-                                    <button type="button" class="btn-deshacer-division" data-staging-id="@d.StagingId">
-                                        Deshacer división
-                                    </button>
-                                }
-                            }
-                        </td>
+        <div class="table-responsive-lg">
+            <table class="grid" id="tablaLineas">
+                <colgroup>
+                    <col class="col-chk" />
+                    <col class="col-asiento" />
+                    <col class="col-glosa" />
+                    <col class="col-monto" />
+                    <col class="col-monto" />
+                    <col class="col-actual" />
+                    <col class="col-actual" />
+                    <col class="col-actual" />
+                    <col class="col-destino" />
+                    <col class="col-destino" />
+                    <col class="col-destino" />
+                    <col class="col-indirecto" />
+                    <col class="col-actual" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th rowspan="2"><input type="checkbox" id="chkTodos" disabled="@soloLectura" /></th>
+                        <th rowspan="2">Asiento</th>
+                        <th rowspan="2">Glosa / proveedor</th>
+                        <th rowspan="2">Monto</th>
+                        <th rowspan="2" title="Monto que efectivamente quedó asignado a este destino -- para una línea dividida, cada partida muestra su porción.">Asignado</th>
+                        <th colspan="3" class="bloque-sap divisor-izq" style="text-align:center; font-size:13px;">Actual (en SAP)</th>
+                        <th colspan="3" class="bloque-destino divisor-izq" style="text-align:center; font-size:13px; color:var(--accent); font-weight:600;">Nuevo destino (lo que se modifica)</th>
+                        <th rowspan="2" title="Gasto no directo del canal (ej. costos compartidos/corporativos): se excluye del Resultado Operacional 1 del EERR y recién se resta en el Resultado Operacional 2.">Indirecto ⓘ</th>
+                        <th rowspan="2">División</th>
                     </tr>
-                    idx++;
-                }
-                @if (!Model.Lineas.Any())
-                {
-                    <tr><td colspan="13">No hay líneas para esta cuenta.</td></tr>
-                }
-            </tbody>
-        </table>
+                    <tr>
+                        <th class="bloque-sap divisor-izq">Centro costo</th>
+                        <th class="bloque-sap">Canal</th>
+                        <th class="bloque-sap">Sucursal</th>
+                        <th class="bloque-destino divisor-izq">Centro costo</th>
+                        <th class="bloque-destino">Canal</th>
+                        <th class="bloque-destino" title="Al elegir la sucursal se autocompletan canal y centro de costo (siguen siendo editables)">Sucursal ⓘ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int idx = 0; int? grupoAnteriorStagingId = null; }
+                    @foreach (var d in Model.Lineas)
+                    {
+                        var st = staging.GetValueOrDefault(d.StagingId);
+                        var glosa = $"{st?.Comentarios} {st?.SocioNegocio}".Trim();
+                        var etqCC = Etiqueta(d.CodCentroCostoOriginal, d.CentroCostoOriginal);
+                        var etqCanal = Etiqueta(d.CodCanalOriginal, d.CanalOriginal);
+                        var etqSuc = Etiqueta(d.CodSucursalOriginal, d.SucursalOriginal);
+                        bool resuelta = d.Estado != "PENDIENTE";
+                        string valCC = d.CodCentroCostoDestino ?? "";
+                        string valCanal = d.CodCanalDestino ?? "";
+                        string valSuc = d.CodSucursalDestino ?? "";
+                        int totalEnGrupo = Model.ConteoPorStaging.GetValueOrDefault(d.StagingId, 1);
+                        bool esInicioDeGrupo = grupoAnteriorStagingId != d.StagingId;
+                        grupoAnteriorStagingId = d.StagingId;
+                        // Una división puede terminar en UNA sola fila (repartida 100% a un solo destino
+                        // nuevo, sin remanente pendiente en origen) -- totalEnGrupo==1 no alcanza para
+                        // distinguir "nunca se tocó" de "se dividió y quedó en 1 partida", así que hace
+                        // falta mirar TipoOrigen para que "Editar/Deshacer división" siga disponible en
+                        // ese caso (si no, esa línea queda sin forma de volver al original).
+                        bool grupoDividido = totalEnGrupo > 1 || d.TipoOrigen == "MANUAL";
+                        string montoOriginalInvariante = d.MontoOriginal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                        string busqueda = $"{d.NroAsiento} {d.LineaId} {glosa} {etqCC} {etqCanal} {etqSuc}".ToLowerInvariant();
+                        <tr data-id="@d.Id" data-busqueda="@busqueda"
+                            data-staging-id="@d.StagingId" data-tipo-origen="@d.TipoOrigen"
+                            data-monto-original="@montoOriginalInvariante"
+                            data-monto-distribuido="@d.MontoDistribuido.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+                            class="fila-linea@(resuelta ? " fila-guardada" : "")@(totalEnGrupo > 1 && !esInicioDeGrupo ? " fila-partida-secundaria" : "")">
+                            <td>
+                                <input type="checkbox" class="chkLinea" disabled="@soloLectura" />
+                                @if (resuelta)
+                                {
+                                    <span class="badge badge-success" style="margin-left:4px; padding:1px 5px;" title="Guardado por @d.UsuarioResponsable el @d.FechaAsignacion?.ToString("dd/MM HH:mm")">✓</span>
+                                }
+                            </td>
+                            <td title="@d.NroAsiento / @d.LineaId">
+                                @d.NroAsiento / @d.LineaId
+                                @if (totalEnGrupo > 1 && esInicioDeGrupo)
+                                {
+                                    <span class="badge-dividida">Dividida en @totalEnGrupo</span>
+                                }
+                            </td>
+                            <td title="@glosa">@glosa</td>
+                            <td title="@d.MontoOriginal.ToString("N0")">@d.MontoOriginal.ToString("N0")</td>
+                            <td title="@d.MontoDistribuido.ToString("N0")">@d.MontoDistribuido.ToString("N0")</td>
+                            <td class="bloque-sap divisor-izq" title="@etqCC">@etqCC</td>
+                            <td class="bloque-sap" title="@etqCanal">@etqCanal</td>
+                            <td class="bloque-sap" title="@etqSuc">@etqSuc</td>
+                            <td class="bloque-destino divisor-izq">
+                                <input type="hidden" name="Lineas[@idx].Id" value="@d.Id" />
+                                <select name="Lineas[@idx].CodCentroCosto" class="sel-destino sel-cc" disabled="@soloLectura">
+                                    <option value="">(sin cambio)</option>
+                                    @foreach (var c in centros)
+                                    {
+                                        <option value="@c.Codigo" selected="@(c.Codigo == valCC)">@Etiqueta(c.Codigo, c.Nombre)</option>
+                                    }
+                                </select>
+                            </td>
+                            <td class="bloque-destino">
+                                <select name="Lineas[@idx].CodCanal" class="sel-destino sel-canal" disabled="@soloLectura">
+                                    <option value="">(sin cambio)</option>
+                                    @foreach (var c in canales)
+                                    {
+                                        <option value="@c.Codigo" selected="@(c.Codigo == valCanal)">@Etiqueta(c.Codigo, c.Nombre)</option>
+                                    }
+                                </select>
+                            </td>
+                            <td class="bloque-destino">
+                                <select name="Lineas[@idx].CodSucursal" class="sel-destino sel-sucursal" disabled="@soloLectura">
+                                    <option value="">(sin cambio)</option>
+                                    @foreach (var s in sucursales)
+                                    {
+                                        <option value="@s.Codigo" selected="@(s.Codigo == valSuc)">@Etiqueta(s.Codigo, s.Nombre)</option>
+                                    }
+                                </select>
+                            </td>
+                            <td class="col-indirecto-celda">
+                                <input type="checkbox" name="Lineas[@idx].EsGastoIndirecto" value="true" class="chk-indirecto" disabled="@soloLectura" checked="@d.EsGastoIndirecto" data-original="@(d.EsGastoIndirecto ? "true" : "false")" />
+                                <input type="hidden" name="Lineas[@idx].EsGastoIndirecto" value="false" />
+                            </td>
+                            <td>
+                                @if (!soloLectura)
+                                {
+                                    if (!grupoDividido)
+                                    {
+                                        <button type="button" class="btn-dividir"
+                                                data-staging-id="@d.StagingId"
+                                                data-monto="@montoOriginalInvariante"
+                                                data-cc="@valCC" data-canal="@valCanal" data-suc="@valSuc"
+                                                data-indirecto="@(d.EsGastoIndirecto ? "true" : "false")">
+                                            Dividir
+                                        </button>
+                                    }
+                                    else if (esInicioDeGrupo)
+                                    {
+                                        <!--
+                                            No puede ser un <form> propio acá: esta fila ya está dentro de
+                                            #formAsignacion (abre en la línea 115), y un <form> anidado dentro de
+                                            otro <form> es HTML inválido -- el parser del navegador descarta la
+                                            apertura del <form> interno y sus campos/botón terminan asociados al
+                                            <form> exterior (#formAsignacion, handler AplicarAsignacion), así que
+                                            al enviar terminaba ejecutando el handler equivocado con los campos
+                                            equivocados (bug real, 2026-07-30). Mismo criterio que ya usa "Dividir"
+                                            en esta misma tabla: un botón simple que dispara, por JS, el submit de
+                                            #formDeshacerDivision -- un <form> real y separado, definido fuera de
+                                            #formAsignacion (ver más abajo, junto a #formDivision).
+                                        -->
+                                        <!--
+                                            "Editar división" reabre el modal precargado con las partidas ya
+                                            guardadas (lee los data-* de las filas del propio grupo, ya presentes
+                                            en el DOM -- no hace falta ningún endpoint nuevo) para seguir
+                                            repartiendo el saldo que quedó en origen sin perder lo ya guardado.
+                                            Distinto de "Deshacer división", que resetea todo a una sola línea.
+                                        -->
+                                        <button type="button" class="btn-editar-division" data-staging-id="@d.StagingId">
+                                            Editar división
+                                        </button>
+                                        <button type="button" class="btn-deshacer-division" data-staging-id="@d.StagingId">
+                                            Deshacer división
+                                        </button>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                        idx++;
+                    }
+                    @if (!Model.Lineas.Any())
+                    {
+                        <tr><td colspan="13">No hay líneas para esta cuenta.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
         </div>
     </form>
 
     @if (!soloLectura)
     {
-        <button type="submit" form="formAsignacion" id="btnGuardarFlotante" class="btn-primary">Guardar cambios</button>
+        <button type="submit" form="formAsignacion" id="btnGuardarFlotante" class="btn btn-primary">Guardar cambios</button>
     }
 
     @if (!soloLectura)
@@ -414,7 +416,7 @@
                     <button type="button" id="btnEliminarDivisionDesdeModal" style="display:none; color:var(--danger, #c0392b);">Eliminar división</button>
                     <div style="display:flex; gap:8px; margin-left:auto;">
                         <button type="button" id="btnCancelarDivision">Cancelar</button>
-                        <button type="submit" id="btnGuardarDivision" class="btn-primary" disabled>Guardar división</button>
+                        <button type="submit" id="btnGuardarDivision" class="btn btn-primary" disabled>Guardar división</button>
                     </div>
                 </div>
             </form>

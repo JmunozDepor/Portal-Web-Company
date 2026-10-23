@@ -15,12 +15,12 @@
             @if (d.Sesion.Status == "CLOSED")
             {
                 <form method="post" asp-page-handler="ProponerAjustes" asp-route-sessionId="@d.Sesion.Id" class="d-inline">
-                    <button type="submit" class="btn-primary" title="Crea un ajuste pendiente de aprobar por cada código con diferencia">
+                    <button type="submit" class="btn btn-primary" title="Crea un ajuste pendiente de aprobar por cada código con diferencia">
                         <i class="bi bi-clipboard-check"></i> Proponer ajustes
                     </button>
                 </form>
             }
-            <a class="btn-secondary" asp-page="./Index" asp-page-handler="ExportarDetalle" asp-route-sessionId="@d.Sesion.Id">
+            <a class="btn btn-secondary" asp-page="./Index" asp-page-handler="ExportarDetalle" asp-route-sessionId="@d.Sesion.Id">
                 <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
             </a>
             <a class="btn-ghost" asp-page="./Index"><i class="bi bi-arrow-left"></i> Volver</a>

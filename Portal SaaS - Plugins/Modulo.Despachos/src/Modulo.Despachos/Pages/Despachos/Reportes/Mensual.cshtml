@@ -11,11 +11,11 @@
 @* Reporte mensual de despachos: 4 KPIs y tabla por día, expandible a turno x transportista. *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Reporte mensual de despachos</h2>
         @if (Model.CanExport)
         {
-            <a class="btn-secondary" href="/despachos/reportes/mensual?handler=Exportar&period=@Model.PeriodText">
+            <a class="btn btn-secondary" href="~/despachos/reportes/mensual?handler=Exportar&period=@Model.PeriodText">
                 <i class="bi bi-file-earmark-excel"></i> Exportar Excel
             </a>
         }
@@ -32,7 +32,7 @@
             <input type="month" id="rp-period" name="period" value="@Model.PeriodText" class="form-control" />
         </div>
         <div class="col-auto align-self-end">
-            <button type="submit" class="btn-primary">Ver</button>
+            <button type="submit" class="btn btn-primary">Ver</button>
         </div>
     </form>
 
@@ -51,68 +51,70 @@
             </div>
         }
 
-        <table class="table-ps" id="rp-table">
-            <thead>
-                <tr><th>Fecha</th><th>Turno / transportista</th><th class="text-end">Costo</th><th class="text-end">Unidades</th><th class="text-end">Documentos</th><th class="text-end">Bultos</th></tr>
-            </thead>
-            @foreach (var d in r.Days)
-            {
-                var key = d.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-                <tbody>
-                    <tr class="dsp-day-row">
-                        <td>
-                            <button type="button" class="btn-ghost" data-day-toggle="@key" aria-expanded="false" title="Ver detalle">
-                                <i class="bi bi-chevron-right"></i>
-                            </button>
-                            <strong>@d.Date.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</strong>
-                        </td>
-                        <td class="text-muted">@d.Details.Count línea(s)</td>
-                        <td class="text-end"><strong>$@d.Cost.ToString("N0", es)</strong></td>
-                        <td class="text-end">@d.Units.ToString("N0", es)</td>
-                        <td class="text-end">@d.Documents.ToString("N0", es)</td>
-                        <td class="text-end">@d.Packages.ToString("N0", es)</td>
-                    </tr>
-                    @foreach (var x in d.Details)
-                    {
-                        <tr data-day-detail="@key" hidden>
-                            <td></td>
+        <div class="table-responsive-lg">
+            <table class="table-ps" id="rp-table">
+                <thead>
+                    <tr><th>Fecha</th><th>Turno / transportista</th><th class="text-end">Costo</th><th class="text-end">Unidades</th><th class="text-end">Documentos</th><th class="text-end">Bultos</th></tr>
+                </thead>
+                @foreach (var d in r.Days)
+                {
+                    var key = d.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+                    <tbody>
+                        <tr class="dsp-day-row">
                             <td>
-                                <span class="dsp-badge dsp-badge--accent">@x.ShiftName</span>
-                                <span class="dsp-badge dsp-badge--neutral">@x.CarrierName</span>
+                                <button type="button" class="btn-ghost" data-day-toggle="@key" aria-expanded="false" title="Ver detalle">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                                <strong>@d.Date.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</strong>
                             </td>
-                            <td class="text-end">$@x.Cost.ToString("N0", es)</td>
-                            <td class="text-end">@x.Units.ToString("N0", es)</td>
-                            <td class="text-end">@x.Documents.ToString("N0", es)</td>
-                            <td class="text-end">@x.Packages.ToString("N0", es)</td>
+                            <td class="text-muted">@d.Details.Count línea(s)</td>
+                            <td class="text-end"><strong>$@d.Cost.ToString("N0", es)</strong></td>
+                            <td class="text-end">@d.Units.ToString("N0", es)</td>
+                            <td class="text-end">@d.Documents.ToString("N0", es)</td>
+                            <td class="text-end">@d.Packages.ToString("N0", es)</td>
                         </tr>
-                    }
-                    <tr data-day-detail="@key" hidden class="dsp-day-subtotal">
-                        <td></td>
-                        <td><em>Subtotal del día</em></td>
-                        <td class="text-end"><em>$@d.Cost.ToString("N0", es)</em></td>
-                        <td class="text-end"><em>@d.Units.ToString("N0", es)</em></td>
-                        <td class="text-end"><em>@d.Documents.ToString("N0", es)</em></td>
-                        <td class="text-end"><em>@d.Packages.ToString("N0", es)</em></td>
-                    </tr>
-                </tbody>
-            }
-            @if (r.Days.Count == 0)
-            {
-                <tbody><tr><td colspan="6" class="text-muted">Sin despachos en el período.</td></tr></tbody>
-            }
-            else
-            {
-                <tfoot>
-                    <tr>
-                        <th colspan="2">Total</th>
-                        <th class="text-end">$@r.TotalCost.ToString("N0", es)</th>
-                        <th class="text-end">@r.TotalUnits.ToString("N0", es)</th>
-                        <th class="text-end">@r.TotalDocuments.ToString("N0", es)</th>
-                        <th class="text-end">@r.TotalPackages.ToString("N0", es)</th>
-                    </tr>
-                </tfoot>
-            }
-        </table>
+                        @foreach (var x in d.Details)
+                        {
+                            <tr data-day-detail="@key" hidden>
+                                <td></td>
+                                <td>
+                                    <span class="dsp-badge dsp-badge--accent">@x.ShiftName</span>
+                                    <span class="dsp-badge dsp-badge--neutral">@x.CarrierName</span>
+                                </td>
+                                <td class="text-end">$@x.Cost.ToString("N0", es)</td>
+                                <td class="text-end">@x.Units.ToString("N0", es)</td>
+                                <td class="text-end">@x.Documents.ToString("N0", es)</td>
+                                <td class="text-end">@x.Packages.ToString("N0", es)</td>
+                            </tr>
+                        }
+                        <tr data-day-detail="@key" hidden class="dsp-day-subtotal">
+                            <td></td>
+                            <td><em>Subtotal del día</em></td>
+                            <td class="text-end"><em>$@d.Cost.ToString("N0", es)</em></td>
+                            <td class="text-end"><em>@d.Units.ToString("N0", es)</em></td>
+                            <td class="text-end"><em>@d.Documents.ToString("N0", es)</em></td>
+                            <td class="text-end"><em>@d.Packages.ToString("N0", es)</em></td>
+                        </tr>
+                    </tbody>
+                }
+                @if (r.Days.Count == 0)
+                {
+                    <tbody><tr><td colspan="6" class="text-muted">Sin despachos en el período.</td></tr></tbody>
+                }
+                else
+                {
+                    <tfoot>
+                        <tr>
+                            <th colspan="2">Total</th>
+                            <th class="text-end">$@r.TotalCost.ToString("N0", es)</th>
+                            <th class="text-end">@r.TotalUnits.ToString("N0", es)</th>
+                            <th class="text-end">@r.TotalDocuments.ToString("N0", es)</th>
+                            <th class="text-end">@r.TotalPackages.ToString("N0", es)</th>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
     }
 </div>
 

@@ -12,11 +12,11 @@
    recién "Guardar cambios" persiste el diff (OnPostGuardarAsync). *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-1">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1 flex-wrap">
         <h2 class="mb-0">Usuarios y roles del proceso</h2>
         <div class="d-flex gap-2">
-            <button type="button" class="btn-secondary" data-drawer-open="drawer-agregar-usuario">+ Agregar usuario</button>
-            <button type="submit" form="form-roles" class="btn-primary">Guardar cambios</button>
+            <button type="button" class="btn btn-secondary" data-drawer-open="drawer-agregar-usuario">+ Agregar usuario</button>
+            <button type="submit" form="form-roles" class="btn btn-primary">Guardar cambios</button>
         </div>
     </div>
     <p class="text-muted mb-3">
@@ -45,80 +45,82 @@
     </div>
 
     <form method="post" asp-page-handler="Guardar" id="form-roles">
-        <table class="table-ps">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Email</th>
-                    <th>Estado</th>
-                    <th>Rendidor</th>
-                    <th>Aprobador</th>
-                    <th>Administrador</th>
-                    <th class="col-actions"></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in Model.Rows)
-                {
-                    <tr data-buscable="@($"{row.Username} {row.Email}".ToLowerInvariant())">
-                        <td>
-                            @row.Username
-                            @if (row.IsPlatformAdmin)
-                            {
-                                <span class="badge-status badge-status--neutral" title="Administrador de la organización">admin org</span>
-                            }
-                        </td>
-                        <td>@row.Email</td>
-                        <td>
-                            @if (!row.IsActive)
-                            {
-                                <span class="badge-status badge-status--neutral">Inactivo</span>
-                            }
-                            else if (row.IsLocked)
-                            {
-                                <span class="badge-status badge-status--danger">Bloqueado</span>
-                            }
-                            else
-                            {
-                                <span class="badge-status badge-status--success">Activo</span>
-                            }
-                        </td>
-                        <td>
-                            <input type="checkbox" name="seleccion" value="@(row.Id + "|Rendidor")" checked="@row.IsRendidor" />
-                        </td>
-                        <td>
-                            <input type="checkbox" name="seleccion" value="@(row.Id + "|Aprobador")" checked="@row.IsAprobador" />
-                        </td>
-                        <td>
-                            <input type="checkbox" name="seleccion" value="@(row.Id + "|Administrador")" checked="@row.IsAdministrador" />
-                        </td>
-                        <td class="col-actions">
-                            <div class="admin-row-actions">
-                                @if (row.IsActive)
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Estado</th>
+                        <th>Rendidor</th>
+                        <th>Aprobador</th>
+                        <th>Administrador</th>
+                        <th class="col-actions"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr data-buscable="@($"{row.Username} {row.Email}".ToLowerInvariant())">
+                            <td>
+                                @row.Username
+                                @if (row.IsPlatformAdmin)
                                 {
-                                    <button type="submit" form="form-activo-@row.Id" class="btn-ghost btn-ghost--danger" title="Desactivar usuario">
-                                        <i class="bi bi-person-x"></i>
-                                    </button>
+                                    <span class="badge-status badge-status--neutral" title="Administrador de la organización">admin org</span>
+                                }
+                            </td>
+                            <td>@row.Email</td>
+                            <td>
+                                @if (!row.IsActive)
+                                {
+                                    <span class="badge-status badge-status--neutral">Inactivo</span>
+                                }
+                                else if (row.IsLocked)
+                                {
+                                    <span class="badge-status badge-status--danger">Bloqueado</span>
                                 }
                                 else
                                 {
-                                    <button type="submit" form="form-activo-@row.Id" class="btn-ghost" title="Activar usuario">
-                                        <i class="bi bi-person-check"></i>
-                                    </button>
+                                    <span class="badge-status badge-status--success">Activo</span>
                                 }
-                            </div>
-                        </td>
-                    </tr>
-                }
-                @if (Model.Rows.Count == 0)
-                {
-                    <tr><td colspan="7" class="text-muted">Todavía no hay usuarios en el proceso de Rendiciones. Agregá el primero con <strong>+ Agregar usuario</strong>.</td></tr>
-                }
-            </tbody>
-        </table>
+                            </td>
+                            <td>
+                                <input type="checkbox" name="seleccion" value="@(row.Id + "|Rendidor")" checked="@row.IsRendidor" />
+                            </td>
+                            <td>
+                                <input type="checkbox" name="seleccion" value="@(row.Id + "|Aprobador")" checked="@row.IsAprobador" />
+                            </td>
+                            <td>
+                                <input type="checkbox" name="seleccion" value="@(row.Id + "|Administrador")" checked="@row.IsAdministrador" />
+                            </td>
+                            <td class="col-actions">
+                                <div class="admin-row-actions">
+                                    @if (row.IsActive)
+                                    {
+                                        <button type="submit" form="form-activo-@row.Id" class="btn-ghost btn-ghost--danger" title="Desactivar usuario">
+                                            <i class="bi bi-person-x"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" form="form-activo-@row.Id" class="btn-ghost" title="Activar usuario">
+                                            <i class="bi bi-person-check"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Rows.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-muted">Todavía no hay usuarios en el proceso de Rendiciones. Agregá el primero con <strong>+ Agregar usuario</strong>.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         <div class="mt-3">
-            <button type="submit" class="btn-primary">Guardar cambios</button>
+            <button type="submit" class="btn btn-primary">Guardar cambios</button>
         </div>
     </form>
 </div>
@@ -169,10 +171,10 @@
                 }
             </div>
             <div class="drawer-footer">
-                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
                 @if (Model.UsuariosDisponibles.Count > 0)
                 {
-                    <button type="submit" class="btn-primary">Agregar al proceso</button>
+                    <button type="submit" class="btn btn-primary">Agregar al proceso</button>
                 }
             </div>
         </form>

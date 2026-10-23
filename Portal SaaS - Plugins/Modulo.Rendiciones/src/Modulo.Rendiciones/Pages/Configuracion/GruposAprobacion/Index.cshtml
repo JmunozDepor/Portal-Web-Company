@@ -10,9 +10,9 @@
    pestañas de Usuarios/Editar (reservado para formularios largos). *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Grupos de aprobación</h2>
-        <button type="button" class="btn-primary" data-drawer-open="drawer-nuevo-grupo">+ Nuevo grupo</button>
+        <button type="button" class="btn btn-primary" data-drawer-open="drawer-nuevo-grupo">+ Nuevo grupo</button>
     </div>
 
 @if (Model.SuccessMessage is not null)
@@ -24,26 +24,28 @@
     <div class="alert alert-danger">@Model.ErrorMessage</div>
 }
 
-<table class="table-ps">
-    <thead><tr><th>Nombre</th><th>Miembros</th><th>Niveles asignados</th><th class="col-actions"></th></tr></thead>
-    <tbody>
-        @foreach (var g in Model.Groups)
-        {
-            <tr class="@(Model.GroupId == g.Id ? "row-inactive" : "")" style="@(Model.GroupId == g.Id ? "background:color-mix(in srgb, var(--bs-primary) 6%, transparent);opacity:1;" : "")">
-                <td>@g.Name</td>
-                <td>@Model.MemberCountByGroupId.GetValueOrDefault(g.Id, 0)</td>
-                <td>@Model.LevelCountByGroupId.GetValueOrDefault(g.Id, 0)/2</td>
-                <td class="col-actions">
-                    <a asp-page="./Index" asp-route-groupId="@g.Id" class="btn-ghost" title="Ver / Editar"><i class="bi bi-pencil"></i></a>
-                </td>
-            </tr>
-        }
-        @if (Model.Groups.Count == 0)
-        {
-            <tr><td colspan="4" class="text-muted">Sin grupos de aprobación todavía.</td></tr>
-        }
-    </tbody>
-</table>
+<div class="table-responsive-lg">
+    <table class="table-ps">
+        <thead><tr><th>Nombre</th><th>Miembros</th><th>Niveles asignados</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var g in Model.Groups)
+            {
+                <tr class="@(Model.GroupId == g.Id ? "row-inactive" : "")" style="@(Model.GroupId == g.Id ? "background:color-mix(in srgb, var(--bs-primary) 6%, transparent);opacity:1;" : "")">
+                    <td>@g.Name</td>
+                    <td>@Model.MemberCountByGroupId.GetValueOrDefault(g.Id, 0)</td>
+                    <td>@Model.LevelCountByGroupId.GetValueOrDefault(g.Id, 0)/2</td>
+                    <td class="col-actions">
+                        <a asp-page="./Index" asp-route-groupId="@g.Id" class="btn-ghost" title="Ver / Editar"><i class="bi bi-pencil"></i></a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Groups.Count == 0)
+            {
+                <tr><td colspan="4" class="text-muted">Sin grupos de aprobación todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
 </div>
 
 @if (Model.GroupId is { } groupId)
@@ -53,26 +55,28 @@
     <div class="card-surface mb-3">
         <h3 class="h6 mb-1">Equipo</h3>
         <p class="text-muted mb-3">Quiénes solicitan rendiciones bajo este grupo (se asume 1 grupo por colaborador).</p>
-        <table class="table-ps mb-3">
-            <thead><tr><th>Colaborador</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @foreach (var userId in Model.GroupMembers)
-                {
-                    <tr>
-                        <td>@(Model.NameByUserId.GetValueOrDefault(userId, userId.ToString()))</td>
-                        <td class="col-actions">
-                            <form asp-page="./Index" asp-page-handler="QuitarMiembro" asp-route-groupId="@groupId" asp-route-userId="@userId" method="post">
-                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-x-lg"></i></button>
-                            </form>
-                        </td>
-                    </tr>
-                }
-                @if (Model.GroupMembers.Count == 0)
-                {
-                    <tr><td colspan="2" class="text-muted">Sin colaboradores asignados todavía.</td></tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps mb-3">
+                <thead><tr><th>Colaborador</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @foreach (var userId in Model.GroupMembers)
+                    {
+                        <tr>
+                            <td>@(Model.NameByUserId.GetValueOrDefault(userId, userId.ToString()))</td>
+                            <td class="col-actions">
+                                <form asp-page="./Index" asp-page-handler="QuitarMiembro" asp-route-groupId="@groupId" asp-route-userId="@userId" method="post">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.GroupMembers.Count == 0)
+                    {
+                        <tr><td colspan="2" class="text-muted">Sin colaboradores asignados todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         <form asp-page="./Index" asp-page-handler="AgregarMiembro" asp-route-groupId="@groupId" method="post" class="d-flex align-items-end gap-3">
             <div class="mb-0 flex-grow-1" style="max-width:320px;">
@@ -81,42 +85,44 @@
                     <option value="">-- Seleccionar --</option>
                 </select>
             </div>
-            <button type="submit" class="btn-secondary">+ Agregar al equipo</button>
+            <button type="submit" class="btn btn-secondary">+ Agregar al equipo</button>
         </form>
     </div>
 
     <div class="card-surface">
         <h3 class="h6 mb-1">Cadena de aprobación</h3>
         <p class="text-muted mb-3">2 niveles fijos, nunca en paralelo. Nivel 1 = jefe, Nivel 2 = gerente final.</p>
-        <table class="table-ps mb-3">
-            <thead><tr><th>Nivel</th><th>Aprobador</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @for (var nivel = 1; nivel <= 2; nivel++)
-                {
-                    <tr>
-                        <td>@nivel</td>
-                        <td>
-                            @if (Model.GroupLevels.TryGetValue(nivel, out var approverId))
-                            {
-                                @Model.NameByUserId.GetValueOrDefault(approverId, approverId.ToString())
-                            }
-                            else
-                            {
-                                <span class="text-muted">Sin asignar</span>
-                            }
-                        </td>
-                        <td class="col-actions">
-                            @if (Model.GroupLevels.ContainsKey(nivel))
-                            {
-                                <form asp-page="./Index" asp-page-handler="QuitarNivel" asp-route-groupId="@groupId" asp-route-nivel="@nivel" method="post" class="d-inline-block">
-                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-x-lg"></i></button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps mb-3">
+                <thead><tr><th>Nivel</th><th>Aprobador</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @for (var nivel = 1; nivel <= 2; nivel++)
+                    {
+                        <tr>
+                            <td>@nivel</td>
+                            <td>
+                                @if (Model.GroupLevels.TryGetValue(nivel, out var approverId))
+                                {
+                                    @Model.NameByUserId.GetValueOrDefault(approverId, approverId.ToString())
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin asignar</span>
+                                }
+                            </td>
+                            <td class="col-actions">
+                                @if (Model.GroupLevels.ContainsKey(nivel))
+                                {
+                                    <form asp-page="./Index" asp-page-handler="QuitarNivel" asp-route-groupId="@groupId" asp-route-nivel="@nivel" method="post" class="d-inline-block">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-x-lg"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         <form asp-page="./Index" asp-page-handler="AsignarNivel" asp-route-groupId="@groupId" method="post" class="d-flex align-items-end gap-3">
             <div class="mb-0">
@@ -132,7 +138,7 @@
                     <option value="">-- Seleccionar --</option>
                 </select>
             </div>
-            <button type="submit" class="btn-secondary">Asignar nivel</button>
+            <button type="submit" class="btn btn-secondary">Asignar nivel</button>
         </form>
     </div>
 }
@@ -152,8 +158,8 @@
                 </div>
             </div>
             <div class="drawer-footer">
-                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                <button type="submit" class="btn-primary">Crear grupo</button>
+                <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear grupo</button>
             </div>
         </form>
     </aside>

@@ -7,11 +7,11 @@
 }
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Grupos retail</h2>
         @if (Model.PuedeVer && Model.PuedeCrear)
         {
-            <button type="button" class="btn-primary" data-drawer-open="drawer-grupo-retail">+ Nuevo grupo retail</button>
+            <button type="button" class="btn btn-primary" data-drawer-open="drawer-grupo-retail">+ Nuevo grupo retail</button>
         }
     </div>
 
@@ -34,41 +34,43 @@
                     <option value="">Todas</option>
                 </select>
             </div>
-            <button type="submit" class="btn-secondary">Buscar</button>
+            <button type="submit" class="btn btn-secondary">Buscar</button>
             <a href="~/sellout/gruposretail" class="btn-ghost">Limpiar</a>
         </form>
 
-        <table class="table-ps">
-            <thead><tr><th>ID</th><th>Nombre</th><th>Propietario</th><th>Localización</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @foreach (var g in Model.Grupos)
-                {
-                    <tr>
-                        <td>@g.IDGrupoRetail</td>
-                        <td>@g.NombreGrupoRetail</td>
-                        <td>@g.Propietario</td>
-                        <td>@g.Ciudad</td>
-                        <td class="col-actions">
-                            @if (Model.PuedeEditar)
-                            {
-                                <a href="~/sellout/gruposretail?editando=@g.IDGrupoRetail&filtroTexto=@Model.FiltroTexto&filtroIdLocalizacion=@Model.FiltroIdLocalizacion" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-                            }
-                            @if (Model.PuedeEliminar)
-                            {
-                                <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@g.IDGrupoRetail" method="post" class="d-inline-block"
-                                      onsubmit="return confirm('¿Eliminar el grupo retail &quot;@g.NombreGrupoRetail&quot;?');">
-                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-                @if (Model.Grupos.Count == 0)
-                {
-                    <tr><td colspan="5" class="text-muted">Sin grupos retail todavía.</td></tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead><tr><th>ID</th><th>Nombre</th><th>Propietario</th><th>Localización</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @foreach (var g in Model.Grupos)
+                    {
+                        <tr>
+                            <td>@g.IDGrupoRetail</td>
+                            <td>@g.NombreGrupoRetail</td>
+                            <td>@g.Propietario</td>
+                            <td>@g.Ciudad</td>
+                            <td class="col-actions">
+                                @if (Model.PuedeEditar)
+                                {
+                                    <a href="~/sellout/gruposretail?editando=@g.IDGrupoRetail&filtroTexto=@Model.FiltroTexto&filtroIdLocalizacion=@Model.FiltroIdLocalizacion" class="btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (Model.PuedeEliminar)
+                                {
+                                    <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@g.IDGrupoRetail" method="post" class="d-inline-block"
+                                          onsubmit="return confirm('¿Eliminar el grupo retail &quot;@g.NombreGrupoRetail&quot;?');">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Grupos.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-muted">Sin grupos retail todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     }
 
     @if (puedeAbrirFormulario)
@@ -106,8 +108,8 @@
                         </div>
                     </div>
                     <div class="drawer-footer">
-                        <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                        <button type="submit" class="btn-primary">@(Model.EditandoId is null ? "Crear" : "Guardar")</button>
+                        <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                        <button type="submit" class="btn btn-primary">@(Model.EditandoId is null ? "Crear" : "Guardar")</button>
                     </div>
                 </form>
             </aside>

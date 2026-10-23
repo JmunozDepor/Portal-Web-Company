@@ -14,7 +14,7 @@
    (despachos-tarifario.js muestra solo los que corresponden). *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Tarifario</h2>
     </div>
 
@@ -27,7 +27,7 @@
         <div class="alert alert-danger">@Model.ErrorMessage</div>
     }
 
-    <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;">
+    <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;max-width:100%;">
         <button type="button" class="doc-tab-btn @(active == "valores" ? "active" : "")" data-tab-btn="valores">Valores base</button>
         <button type="button" class="doc-tab-btn @(active == "recargos" ? "active" : "")" data-tab-btn="recargos">Recargos</button>
         <button type="button" class="doc-tab-btn @(active == "simulador" ? "active" : "")" data-tab-btn="simulador">Simulador</button>
@@ -35,7 +35,7 @@
 
     @* ------------------------------------------------------------ Valores base *@
     <div data-tab-panel="valores" style="@(active == "valores" ? "" : "display:none;")">
-        <div class="d-flex align-items-end justify-content-between gap-3 mb-3">
+        <div class="d-flex align-items-end justify-content-between gap-3 mb-3 flex-wrap">
             <div class="filter-card">
                 <div class="col-auto flex-grow-1" style="min-width:280px;">
                     <label for="buscar-valores" class="form-label">Buscar</label>
@@ -44,56 +44,58 @@
             </div>
             @if (Model.CanCreate)
             {
-                <button type="button" class="btn-primary" data-drawer-open="drawer-valores" data-maestro-new="form-valores">+ Nuevo valor base</button>
+                <button type="button" class="btn btn-primary" data-drawer-open="drawer-valores" data-maestro-new="form-valores">+ Nuevo valor base</button>
             }
         </div>
 
         <p class="text-muted">Gana la tarifa más específica (comuna sobre zona sobre región); a igual especificidad, la de mayor prioridad. Una condición vacía significa "cualquiera".</p>
 
-        <table class="table-ps" id="tabla-valores" data-maestro-table>
-            <thead><tr><th data-sort="text">Transportista</th><th data-sort="text">Destino</th><th data-sort="text">Turno</th><th data-sort="text">Tipo vehículo</th><th data-sort="text">m³</th><th data-sort="text">Modalidad</th><th data-sort="number">Monto</th><th data-sort="number">Mínimo</th><th data-sort="text">Vigencia</th><th data-sort="number">Prior.</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @foreach (var x in Model.Cards)
-                {
-                    <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{Model.CarrierName(x.CarrierId)} {Model.Geography(x)} {Model.ShiftName(x.ShiftId)} {Model.VehicleTypeName(x.VehicleTypeId)} {IndexModel.MethodLabel(x.CalculationMethod)}").ToLowerInvariant())">
-                        <td>@Model.CarrierName(x.CarrierId)</td>
-                        <td>@Model.Geography(x)</td>
-                        <td>@Model.ShiftName(x.ShiftId)</td>
-                        <td>@Model.VehicleTypeName(x.VehicleTypeId)</td>
-                        <td>@Model.M3Range(x)</td>
-                        <td>@IndexModel.MethodLabel(x.CalculationMethod)</td>
-                        <td data-value="@IndexModel.Inv(x.Amount)">@(x.CalculationMethod == "no_charge" ? "—" : "$" + IndexModel.Money(x.Amount))</td>
-                        <td data-value="@IndexModel.Inv(x.MinAmount ?? 0m)">@(x.MinAmount is null ? "—" : "$" + IndexModel.Money(x.MinAmount.Value))</td>
-                        <td>@Model.Validity(x.ValidFrom, x.ValidTo)</td>
-                        <td data-value="@x.Priority">@x.Priority</td>
-                        <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
-                        <td class="col-actions">
-                            <div class="admin-row-actions">
-                                @if (Model.CanEdit)
-                                {
-                                    <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-valores" data-maestro-edit data-row="@Model.RowJson(Model.CardRow(x))"><i class="bi bi-pencil"></i></button>
-                                }
-                                @if (Model.CanDelete)
-                                {
-                                    <form method="post" asp-page-handler="DeleteCard" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="¿Eliminar este valor base?">
-                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                }
-                            </div>
-                        </td>
-                    </tr>
-                }
-                @if (Model.Cards.Count == 0)
-                {
-                    <tr data-table-empty><td colspan="12" class="text-muted">Sin valores base todavía.</td></tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps" id="tabla-valores" data-maestro-table>
+                <thead><tr><th data-sort="text">Transportista</th><th data-sort="text">Destino</th><th data-sort="text">Turno</th><th data-sort="text">Tipo vehículo</th><th data-sort="text">m³</th><th data-sort="text">Modalidad</th><th data-sort="number">Monto</th><th data-sort="number">Mínimo</th><th data-sort="text">Vigencia</th><th data-sort="number">Prior.</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @foreach (var x in Model.Cards)
+                    {
+                        <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{Model.CarrierName(x.CarrierId)} {Model.Geography(x)} {Model.ShiftName(x.ShiftId)} {Model.VehicleTypeName(x.VehicleTypeId)} {IndexModel.MethodLabel(x.CalculationMethod)}").ToLowerInvariant())">
+                            <td>@Model.CarrierName(x.CarrierId)</td>
+                            <td>@Model.Geography(x)</td>
+                            <td>@Model.ShiftName(x.ShiftId)</td>
+                            <td>@Model.VehicleTypeName(x.VehicleTypeId)</td>
+                            <td>@Model.M3Range(x)</td>
+                            <td>@IndexModel.MethodLabel(x.CalculationMethod)</td>
+                            <td data-value="@IndexModel.Inv(x.Amount)">@(x.CalculationMethod == "no_charge" ? "—" : "$" + IndexModel.Money(x.Amount))</td>
+                            <td data-value="@IndexModel.Inv(x.MinAmount ?? 0m)">@(x.MinAmount is null ? "—" : "$" + IndexModel.Money(x.MinAmount.Value))</td>
+                            <td>@Model.Validity(x.ValidFrom, x.ValidTo)</td>
+                            <td data-value="@x.Priority">@x.Priority</td>
+                            <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
+                            <td class="col-actions">
+                                <div class="admin-row-actions">
+                                    @if (Model.CanEdit)
+                                    {
+                                        <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-valores" data-maestro-edit data-row="@Model.RowJson(Model.CardRow(x))"><i class="bi bi-pencil"></i></button>
+                                    }
+                                    @if (Model.CanDelete)
+                                    {
+                                        <form method="post" asp-page-handler="DeleteCard" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="¿Eliminar este valor base?">
+                                            <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Cards.Count == 0)
+                    {
+                        <tr data-table-empty><td colspan="12" class="text-muted">Sin valores base todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 
     @* ------------------------------------------------------------ Recargos *@
     <div data-tab-panel="recargos" style="@(active == "recargos" ? "" : "display:none;")">
-        <div class="d-flex align-items-end justify-content-between gap-3 mb-3">
+        <div class="d-flex align-items-end justify-content-between gap-3 mb-3 flex-wrap">
             <div class="filter-card">
                 <div class="col-auto flex-grow-1" style="min-width:280px;">
                     <label for="buscar-recargos" class="form-label">Buscar</label>
@@ -102,47 +104,49 @@
             </div>
             @if (Model.CanCreate)
             {
-                <button type="button" class="btn-primary" data-drawer-open="drawer-recargos" data-maestro-new="form-recargos">+ Nuevo recargo</button>
+                <button type="button" class="btn btn-primary" data-drawer-open="drawer-recargos" data-maestro-new="form-recargos">+ Nuevo recargo</button>
             }
         </div>
 
         <p class="text-muted">Todos los recargos cuya condición se cumple se aplican y se suman; los porcentajes se calculan siempre sobre el valor base.</p>
 
-        <table class="table-ps" id="tabla-recargos" data-maestro-table>
-            <thead><tr><th data-sort="text">Nombre</th><th data-sort="text">Transportista</th><th data-sort="text">Condición</th><th data-sort="text">Efecto</th><th data-sort="text">Vigencia</th><th data-sort="number">Prior.</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
-            <tbody>
-                @foreach (var x in Model.Surcharges)
-                {
-                    <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{x.Name} {Model.CarrierName(x.CarrierId)} {Model.ConditionText(x)}").ToLowerInvariant())">
-                        <td>@x.Name</td>
-                        <td>@Model.CarrierName(x.CarrierId)</td>
-                        <td>@Model.ConditionText(x)</td>
-                        <td>@Model.EffectText(x)</td>
-                        <td>@Model.Validity(x.ValidFrom, x.ValidTo)</td>
-                        <td data-value="@x.Priority">@x.Priority</td>
-                        <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
-                        <td class="col-actions">
-                            <div class="admin-row-actions">
-                                @if (Model.CanEdit)
-                                {
-                                    <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-recargos" data-maestro-edit data-row="@Model.RowJson(Model.SurchargeRow(x))"><i class="bi bi-pencil"></i></button>
-                                }
-                                @if (Model.CanDelete)
-                                {
-                                    <form method="post" asp-page-handler="DeleteSurcharge" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar el recargo {x.Name}?")">
-                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                }
-                            </div>
-                        </td>
-                    </tr>
-                }
-                @if (Model.Surcharges.Count == 0)
-                {
-                    <tr data-table-empty><td colspan="8" class="text-muted">Sin recargos todavía.</td></tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps" id="tabla-recargos" data-maestro-table>
+                <thead><tr><th data-sort="text">Nombre</th><th data-sort="text">Transportista</th><th data-sort="text">Condición</th><th data-sort="text">Efecto</th><th data-sort="text">Vigencia</th><th data-sort="number">Prior.</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @foreach (var x in Model.Surcharges)
+                    {
+                        <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{x.Name} {Model.CarrierName(x.CarrierId)} {Model.ConditionText(x)}").ToLowerInvariant())">
+                            <td>@x.Name</td>
+                            <td>@Model.CarrierName(x.CarrierId)</td>
+                            <td>@Model.ConditionText(x)</td>
+                            <td>@Model.EffectText(x)</td>
+                            <td>@Model.Validity(x.ValidFrom, x.ValidTo)</td>
+                            <td data-value="@x.Priority">@x.Priority</td>
+                            <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
+                            <td class="col-actions">
+                                <div class="admin-row-actions">
+                                    @if (Model.CanEdit)
+                                    {
+                                        <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-recargos" data-maestro-edit data-row="@Model.RowJson(Model.SurchargeRow(x))"><i class="bi bi-pencil"></i></button>
+                                    }
+                                    @if (Model.CanDelete)
+                                    {
+                                        <form method="post" asp-page-handler="DeleteSurcharge" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar el recargo {x.Name}?")">
+                                            <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Surcharges.Count == 0)
+                    {
+                        <tr data-table-empty><td colspan="8" class="text-muted">Sin recargos todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 
     @* ------------------------------------------------------------ Simulador *@
@@ -227,7 +231,7 @@
                     <div class="text-muted">Ctrl/Cmd + clic para marcar varias.</div>
                 </div>
             </div>
-            <button type="submit" class="btn-primary">Simular</button>
+            <button type="submit" class="btn btn-primary">Simular</button>
         </form>
 
         @if (Model.Result is { } r)
@@ -250,25 +254,27 @@
                 {
                     <p class="text-muted">No hay valor base vigente para alguna comuna del viaje: el manifiesto quedaría "sin tarifa".</p>
                 }
-                <table class="table-ps" style="max-width:900px;">
-                    <thead><tr><th>Concepto</th><th>Detalle</th><th class="text-end">Monto</th></tr></thead>
-                    <tbody>
-                        @foreach (var line in r.Lines)
+                <div class="table-responsive-lg">
+                    <table class="table-ps" style="max-width:900px;">
+                        <thead><tr><th>Concepto</th><th>Detalle</th><th class="text-end">Monto</th></tr></thead>
+                        <tbody>
+                            @foreach (var line in r.Lines)
+                            {
+                                <tr>
+                                    <td>@(line.Kind == "base" ? "Valor base" : "Recargo")</td>
+                                    <td>@line.Explanation</td>
+                                    <td class="text-end">$@IndexModel.Money(line.Amount)</td>
+                                </tr>
+                            }
+                        </tbody>
+                        @if (r.Total is not null)
                         {
-                            <tr>
-                                <td>@(line.Kind == "base" ? "Valor base" : "Recargo")</td>
-                                <td>@line.Explanation</td>
-                                <td class="text-end">$@IndexModel.Money(line.Amount)</td>
-                            </tr>
+                            <tfoot>
+                                <tr><th colspan="2">Total del viaje</th><th class="text-end">$@IndexModel.Money(r.Total.Value)</th></tr>
+                            </tfoot>
                         }
-                    </tbody>
-                    @if (r.Total is not null)
-                    {
-                        <tfoot>
-                            <tr><th colspan="2">Total del viaje</th><th class="text-end">$@IndexModel.Money(r.Total.Value)</th></tr>
-                        </tfoot>
-                    }
-                </table>
+                    </table>
+                </div>
             </div>
         }
     </div>
@@ -396,8 +402,8 @@
                     <p class="text-muted">Una condición vacía significa "cualquiera". La región se elige del catálogo de comunas. La modalidad "por m³" cobra sobre la capacidad del camión, no sobre lo cargado.</p>
                 </div>
                 <div class="drawer-footer">
-                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
                 </div>
             </form>
         </aside>
@@ -514,8 +520,8 @@
                     <p class="text-muted">El porcentaje (máx. 1000) se calcula sobre el valor base del viaje, nunca en cascada. "$ por unidad extra" multiplica el valor por lo que exceda el umbral.</p>
                 </div>
                 <div class="drawer-footer">
-                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
                 </div>
             </form>
         </aside>

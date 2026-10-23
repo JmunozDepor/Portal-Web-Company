@@ -15,7 +15,7 @@
    rendiciones.css). *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2>Políticas de gasto</h2>
     </div>
 
@@ -35,41 +35,43 @@
     siempre, para cualquier categoría, y no se configura acá.
 </p>
 
-<table class="table-ps">
-    <thead><tr><th>Tipo de gasto</th><th>Monto máximo</th><th>Bloqueante</th><th>Activo</th><th class="col-actions"></th></tr></thead>
-    <tbody>
-        @foreach (var p in Model.Policies)
-        {
-            <tr class="@(p.IsActive ? "" : "row-inactive")">
-                <td>@(p.ExpenseType?.Name ?? "—")</td>
-                @* El Host fija es-CL como cultura por defecto (coma decimal) -- un <input
-                   type="number"> exige PUNTO como separador; con la interpolación directa
-                   (sin asp-for, que sí formatea invariant) el navegador descartaba el valor
-                   y mostraba el campo vacío aunque el tope SÍ estuviera guardado (bug real,
-                   reportado: "7.000" en la base, campo vacío en pantalla). *@
-                <td><input type="number" step="0.01" name="montoMaximo" value="@(p.MaxAmount?.ToString(System.Globalization.CultureInfo.InvariantCulture))" class="form-control" placeholder="Sin tope" form="pol-@p.Id" /></td>
-                <td><input type="checkbox" name="esBloqueante" value="true" checked="@p.IsBlocking" form="pol-@p.Id" /></td>
-                <td>
-                    <input type="hidden" name="activo" value="@p.IsActive" form="pol-@p.Id" />
-                    @(p.IsActive ? "Sí" : "No")
-                </td>
-                <td class="col-actions">
-                    <div class="admin-row-actions">
-                        <button type="submit" class="btn-secondary" form="pol-@p.Id">Guardar</button>
-                        <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@p.Id" method="post" class="d-inline-block"
-                              onsubmit="return confirm('¿Eliminar esta política?');">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
-        }
-        @if (Model.Policies.Count == 0)
-        {
-            <tr><td colspan="5" class="text-muted">Sin políticas configuradas todavía.</td></tr>
-        }
-    </tbody>
-</table>
+<div class="table-responsive-lg">
+    <table class="table-ps">
+        <thead><tr><th>Tipo de gasto</th><th>Monto máximo</th><th>Bloqueante</th><th>Activo</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var p in Model.Policies)
+            {
+                <tr class="@(p.IsActive ? "" : "row-inactive")">
+                    <td>@(p.ExpenseType?.Name ?? "—")</td>
+                    @* El Host fija es-CL como cultura por defecto (coma decimal) -- un <input
+                       type="number"> exige PUNTO como separador; con la interpolación directa
+                       (sin asp-for, que sí formatea invariant) el navegador descartaba el valor
+                       y mostraba el campo vacío aunque el tope SÍ estuviera guardado (bug real,
+                       reportado: "7.000" en la base, campo vacío en pantalla). *@
+                    <td><input type="number" step="0.01" name="montoMaximo" value="@(p.MaxAmount?.ToString(System.Globalization.CultureInfo.InvariantCulture))" class="form-control" placeholder="Sin tope" form="pol-@p.Id" /></td>
+                    <td><input type="checkbox" name="esBloqueante" value="true" checked="@p.IsBlocking" form="pol-@p.Id" /></td>
+                    <td>
+                        <input type="hidden" name="activo" value="@p.IsActive" form="pol-@p.Id" />
+                        @(p.IsActive ? "Sí" : "No")
+                    </td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            <button type="submit" class="btn btn-secondary" form="pol-@p.Id">Guardar</button>
+                            <form asp-page="./Index" asp-page-handler="Eliminar" asp-route-id="@p.Id" method="post" class="d-inline-block"
+                                  onsubmit="return confirm('¿Eliminar esta política?');">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Policies.Count == 0)
+            {
+                <tr><td colspan="5" class="text-muted">Sin políticas configuradas todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 @foreach (var p in Model.Policies)
 {
@@ -102,7 +104,7 @@ else
         <div class="mb-3 d-flex align-items-center gap-2">
             <label class="d-flex align-items-center gap-2"><input asp-for="New.IsBlocking" type="checkbox" /> Bloqueante</label>
         </div>
-        <button type="submit" class="btn-primary">Crear</button>
+        <button type="submit" class="btn btn-primary">Crear</button>
     </form>
 }
 </div>

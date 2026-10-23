@@ -10,11 +10,11 @@
    (data-drawer-open + despachos-maestros.js); eliminar con confirmación. *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Orígenes</h2>
         @if (Model.CanCreate)
         {
-            <button type="button" class="btn-primary" data-drawer-open="drawer-origenes" data-maestro-new="form-origenes">+ Nuevo origen</button>
+            <button type="button" class="btn btn-primary" data-drawer-open="drawer-origenes" data-maestro-new="form-origenes">+ Nuevo origen</button>
         }
     </div>
 
@@ -36,7 +36,7 @@
             </div>
             @if (Model.CanEdit)
             {
-                <button type="submit" class="btn-primary">Guardar RUT</button>
+                <button type="submit" class="btn btn-primary">Guardar RUT</button>
             }
         </form>
     </div>
@@ -72,7 +72,7 @@
             </div>
             @if (Model.CanEdit)
             {
-                <button type="submit" class="btn-primary">Guardar ajustes de guías</button>
+                <button type="submit" class="btn btn-primary">Guardar ajustes de guías</button>
             }
         </form>
         <div class="form-text mt-2">
@@ -94,40 +94,42 @@
         </div>
     </div>
 
-    <table class="table-ps" id="tabla-origenes" data-maestro-table>
-        <thead><tr><th data-sort="text">Código</th><th data-sort="text">Nombre</th><th data-sort="text">Dirección</th><th data-sort="text">Comuna</th><th data-sort="text">Bodega SAP</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
-        <tbody>
-            @foreach (var x in Model.Items)
-            {
-                <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{x.Code} {x.Name} {x.Address} {Model.CommuneName(x.CommuneId)} {x.SapWarehouseCode}").ToLowerInvariant())">
-                    <td>@x.Code</td>
-                    <td>@x.Name</td>
-                    <td>@(x.Address ?? "—")</td>
-                    <td>@Model.CommuneName(x.CommuneId)</td>
-                    <td>@(x.SapWarehouseCode ?? "—")</td>
-                    <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
-                    <td class="col-actions">
-                        <div class="admin-row-actions">
-                            @if (Model.CanEdit)
-                            {
-                                <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-origenes" data-maestro-edit data-row="@Model.RowJson(new { x.Id, x.Code, x.Name, x.Address, x.CommuneId, x.SapWarehouseCode, x.IsActive })"><i class="bi bi-pencil"></i></button>
-                            }
-                            @if (Model.CanDelete)
-                            {
-                                <form method="post" asp-page-handler="Delete" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar {x.Name}?")">
-                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                                </form>
-                            }
-                        </div>
-                    </td>
-                </tr>
-            }
-            @if (Model.Items.Count == 0)
-            {
-                <tr data-table-empty><td colspan="7" class="text-muted">Sin orígenes todavía.</td></tr>
-            }
-        </tbody>
-    </table>
+    <div class="table-responsive-lg">
+        <table class="table-ps" id="tabla-origenes" data-maestro-table>
+            <thead><tr><th data-sort="text">Código</th><th data-sort="text">Nombre</th><th data-sort="text">Dirección</th><th data-sort="text">Comuna</th><th data-sort="text">Bodega SAP</th><th data-sort="text">Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var x in Model.Items)
+                {
+                    <tr class="@(x.IsActive ? "" : "row-inactive")" data-buscable="@(($"{x.Code} {x.Name} {x.Address} {Model.CommuneName(x.CommuneId)} {x.SapWarehouseCode}").ToLowerInvariant())">
+                        <td>@x.Code</td>
+                        <td>@x.Name</td>
+                        <td>@(x.Address ?? "—")</td>
+                        <td>@Model.CommuneName(x.CommuneId)</td>
+                        <td>@(x.SapWarehouseCode ?? "—")</td>
+                        <td>@if (x.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
+                        <td class="col-actions">
+                            <div class="admin-row-actions">
+                                @if (Model.CanEdit)
+                                {
+                                    <button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-origenes" data-maestro-edit data-row="@Model.RowJson(new { x.Id, x.Code, x.Name, x.Address, x.CommuneId, x.SapWarehouseCode, x.IsActive })"><i class="bi bi-pencil"></i></button>
+                                }
+                                @if (Model.CanDelete)
+                                {
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@x.Id" asp-antiforgery="true" class="d-inline-block" data-confirm="@($"¿Eliminar {x.Name}?")">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr data-table-empty><td colspan="7" class="text-muted">Sin orígenes todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>
 
 @if (Model.CanCreate || Model.CanEdit)
@@ -180,8 +182,8 @@
                 <p class="text-muted">Dirección y comuna salen como origen del traslado en la Res. 154.</p>
                 </div>
                 <div class="drawer-footer">
-                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary" data-submit-label data-label-new="Crear" data-label-edit="Guardar">Crear</button>
                 </div>
             </form>
         </aside>

@@ -40,7 +40,7 @@
    copia (MostrarFormulario), con "Volver al listado" -- antes se veían los dos juntos. *@
 @if (!Model.MostrarFormulario)
 {
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
         <span class="text-muted">@Model.Configs.Count de @Model.TotalConfigs formato(s)</span>
         <a asp-page="/Configuracion/Index" asp-route-nuevo="true" class="btn btn-primary">Nueva configuración</a>
     </div>
@@ -251,142 +251,148 @@
         </div>
 
         <h5 class="mt-4">Campos núcleo</h5>
-        <table class="table table-sm">
-            <thead>
-                <tr>
-                    <th>Campo</th>
-                    <th>Columna Excel</th>
-                    <th>Obligatorio</th>
-                    <th>Valor fijo</th>
-                </tr>
-            </thead>
-            <tbody>
-                @for (var i = 0; i < Model.Input.Fields.Count; i++)
-                {
-                    var field = Model.Input.Fields[i];
-                    var screenSource = Modulo.ImportacionGenerica.Pages.Configuracion.IndexModel.ScreenSourceOf(field.LogicalField);
-                    var asked = Model.IsAskedOnScreen(field.LogicalField);
-                    <tr data-screen-source="@screenSource" class="@(asked ? "text-muted" : null)">
-                        <td>
-                            @ImportDisplayNames.Field(field.LogicalField)
-                            <span class="text-muted small d-block" title="Propiedad de Service Layer">@ImportDisplayNames.FieldSapName(field.LogicalField)</span>
-                            <span class="small d-block config-pedido-en-pantalla" style="@(asked ? "" : "display:none")">Se pide en pantalla</span>
-                            <input type="hidden" name="Input.Fields[@i].LogicalField" value="@field.LogicalField" />
-                        </td>
-                        @* disabled = no viaja en el POST: al guardar, el mapeo de un dato pedido en pantalla se descarta. *@
-                        <td><input name="Input.Fields[@i].ExcelColumn" value="@field.ExcelColumn" class="form-control form-control-sm" style="max-width:80px" disabled="@asked" /></td>
-                        <td><input type="checkbox" name="Input.Fields[@i].IsRequired" value="true" class="form-check-input" checked="@field.IsRequired" disabled="@asked" /><input type="hidden" name="Input.Fields[@i].IsRequired" value="false" /></td>
-                        <td><input name="Input.Fields[@i].FixedValue" value="@field.FixedValue" class="form-control form-control-sm" disabled="@asked" /></td>
+        <div class="table-responsive-lg">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Columna Excel</th>
+                        <th>Obligatorio</th>
+                        <th>Valor fijo</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Input.Fields.Count; i++)
+                    {
+                        var field = Model.Input.Fields[i];
+                        var screenSource = Modulo.ImportacionGenerica.Pages.Configuracion.IndexModel.ScreenSourceOf(field.LogicalField);
+                        var asked = Model.IsAskedOnScreen(field.LogicalField);
+                        <tr data-screen-source="@screenSource" class="@(asked ? "text-muted" : null)">
+                            <td>
+                                @ImportDisplayNames.Field(field.LogicalField)
+                                <span class="text-muted small d-block" title="Propiedad de Service Layer">@ImportDisplayNames.FieldSapName(field.LogicalField)</span>
+                                <span class="small d-block config-pedido-en-pantalla" style="@(asked ? "" : "display:none")">Se pide en pantalla</span>
+                                <input type="hidden" name="Input.Fields[@i].LogicalField" value="@field.LogicalField" />
+                            </td>
+                            @* disabled = no viaja en el POST: al guardar, el mapeo de un dato pedido en pantalla se descarta. *@
+                            <td><input name="Input.Fields[@i].ExcelColumn" value="@field.ExcelColumn" class="form-control form-control-sm" style="max-width:80px" disabled="@asked" /></td>
+                            <td><input type="checkbox" name="Input.Fields[@i].IsRequired" value="true" class="form-check-input" checked="@field.IsRequired" disabled="@asked" /><input type="hidden" name="Input.Fields[@i].IsRequired" value="false" /></td>
+                            <td><input name="Input.Fields[@i].FixedValue" value="@field.FixedValue" class="form-control form-control-sm" disabled="@asked" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         <h5 class="mt-4">Campos de usuario</h5>
         <p class="text-muted small">Sin límite de filas -- "Agregar campo" suma otra, "Quitar" saca esa puntual.</p>
-        <table class="table table-sm">
-            <thead>
-                <tr>
-                    <th>Campo de usuario</th>
-                    <th>Columna Excel</th>
-                    <th>Obligatorio</th>
-                    <th>Valor fijo</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @for (var i = 0; i < Model.Input.UserFieldMappings.Count; i++)
-                {
-                    var mapping = Model.Input.UserFieldMappings[i];
+        <div class="table-responsive-lg">
+            <table class="table table-sm">
+                <thead>
                     <tr>
-                        <td>
-                            <select name="Input.UserFieldMappings[@i].UserFieldId" class="form-select form-select-sm">
-                                <option value="">Sin asignar</option>
-                                @foreach (var option in Model.UserFieldOptions)
-                                {
-                                    <option value="@option.Value" selected="@(option.Value == mapping.UserFieldId?.ToString())">@option.Text</option>
-                                }
-                            </select>
-                        </td>
-                        <td><input name="Input.UserFieldMappings[@i].ExcelColumn" value="@mapping.ExcelColumn" class="form-control form-control-sm" style="max-width:80px" /></td>
-                        <td><input type="checkbox" name="Input.UserFieldMappings[@i].IsRequired" value="true" class="form-check-input" checked="@mapping.IsRequired" /><input type="hidden" name="Input.UserFieldMappings[@i].IsRequired" value="false" /></td>
-                        <td><input name="Input.UserFieldMappings[@i].FixedValue" value="@mapping.FixedValue" class="form-control form-control-sm" placeholder="(opcional)" /></td>
-                        <td>
-                            @* asp-page-handler puesto directo en el <button>, no en el <form> -- FormActionTagHelper
-                               genera un formaction que pisa la acción de ESTE submit puntual sin tocar el resto
-                               del formulario (mismo criterio que el original, ver el doc-comment de la clase). *@
-                            <button type="submit" asp-page-handler="QuitarCampoUsuario" asp-route-index="@i" class="btn btn-sm btn-outline-danger">Quitar</button>
-                        </td>
+                        <th>Campo de usuario</th>
+                        <th>Columna Excel</th>
+                        <th>Obligatorio</th>
+                        <th>Valor fijo</th>
+                        <th></th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Input.UserFieldMappings.Count; i++)
+                    {
+                        var mapping = Model.Input.UserFieldMappings[i];
+                        <tr>
+                            <td>
+                                <select name="Input.UserFieldMappings[@i].UserFieldId" class="form-select form-select-sm">
+                                    <option value="">Sin asignar</option>
+                                    @foreach (var option in Model.UserFieldOptions)
+                                    {
+                                        <option value="@option.Value" selected="@(option.Value == mapping.UserFieldId?.ToString())">@option.Text</option>
+                                    }
+                                </select>
+                            </td>
+                            <td><input name="Input.UserFieldMappings[@i].ExcelColumn" value="@mapping.ExcelColumn" class="form-control form-control-sm" style="max-width:80px" /></td>
+                            <td><input type="checkbox" name="Input.UserFieldMappings[@i].IsRequired" value="true" class="form-check-input" checked="@mapping.IsRequired" /><input type="hidden" name="Input.UserFieldMappings[@i].IsRequired" value="false" /></td>
+                            <td><input name="Input.UserFieldMappings[@i].FixedValue" value="@mapping.FixedValue" class="form-control form-control-sm" placeholder="(opcional)" /></td>
+                            <td>
+                                @* asp-page-handler puesto directo en el <button>, no en el <form> -- FormActionTagHelper
+                                   genera un formaction que pisa la acción de ESTE submit puntual sin tocar el resto
+                                   del formulario (mismo criterio que el original, ver el doc-comment de la clase). *@
+                                <button type="submit" asp-page-handler="QuitarCampoUsuario" asp-route-index="@i" class="btn btn-sm btn-outline-danger">Quitar</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
         <button type="submit" asp-page-handler="AgregarCampoUsuario" class="btn btn-sm btn-outline-secondary mb-3">Agregar campo</button>
 
         <h5 class="mt-4">Reglas de validación</h5>
         <p class="text-muted small">Corren sobre la vista previa antes de confirmar la carga a SAP. En modo Alerta nunca bloquean; en modo Bloqueante mandan la fila a Errores. "Cantidad &gt; 0" y "Descuento 0-100" son estructurales -- siempre activas, no se configuran acá.</p>
-        <table class="table table-sm tabla-reglas-validacion">
-            <thead>
-                <tr>
-                    <th>Regla</th>
-                    <th>Activa</th>
-                    <th>Severidad</th>
-                    <th>Parámetros</th>
-                </tr>
-            </thead>
-            <tbody>
-                @for (var i = 0; i < Model.Input.ValidationRules.Count; i++)
-                {
-                    var rule = Model.Input.ValidationRules[i];
-                    var hasParams = rule.RuleType is GenericImportValidationRuleType.PriceVsFixedList
-                        or GenericImportValidationRuleType.PriceVsCustomerList
-                        or GenericImportValidationRuleType.StockAvailable
-                        or GenericImportValidationRuleType.OrderTotalDiscount;
+        <div class="table-responsive-lg">
+            <table class="table table-sm tabla-reglas-validacion">
+                <thead>
                     <tr>
-                        <td>
-                            @RuleLabel(rule.RuleType)
-                            <input type="hidden" name="Input.ValidationRules[@i].RuleType" value="@rule.RuleType" />
-                        </td>
-                        <td>
-                            <input type="checkbox" name="Input.ValidationRules[@i].IsActive" value="true" class="form-check-input" checked="@rule.IsActive" data-toggle-params="params-@i" />
-                            <input type="hidden" name="Input.ValidationRules[@i].IsActive" value="false" />
-                        </td>
-                        <td>
-                            <select name="Input.ValidationRules[@i].Severity" class="form-select form-select-sm">
-                                <option value="@GenericImportValidationSeverity.Warning" selected="@(rule.Severity == GenericImportValidationSeverity.Warning)">Alerta</option>
-                                <option value="@GenericImportValidationSeverity.Block" selected="@(rule.Severity == GenericImportValidationSeverity.Block)">Bloqueante</option>
-                            </select>
-                        </td>
-                        @* La celda SIEMPRE se renderiza -- antes se ocultaba el <td> completo
-                           (display:none) en las reglas sin parámetros o inactivas, y esas filas
-                           quedaban con una celda menos (bordes cortados, columnas corridas).
-                           Ahora se oculta solo el contenido; etiqueta y campo en la misma
-                           línea para que todas las filas tengan la misma altura. *@
-                        <td>
-                            <div id="params-@i" class="regla-parametros" style="@(rule.IsActive && hasParams ? "" : "display:none")">
-                                @if (rule.RuleType == GenericImportValidationRuleType.PriceVsFixedList)
-                                {
-                                    <label class="regla-parametro">
-                                        <span>N° lista</span>
-                                        <input type="number" name="Input.ValidationRules[@i].PriceListNum" value="@rule.PriceListNum" class="form-control form-control-sm" />
-                                    </label>
-                                }
-                                @if (hasParams)
-                                {
-                                    <label class="regla-parametro">
-                                        <span>@(rule.RuleType == GenericImportValidationRuleType.OrderTotalDiscount ? "Descuento máx." : "Tolerancia")</span>
-                                        <span class="regla-parametro-input">
-                                            <input type="number" step="0.01" name="Input.ValidationRules[@i].TolerancePercent" value="@rule.TolerancePercent" class="form-control form-control-sm" />
-                                            <span>%</span>
-                                        </span>
-                                    </label>
-                                }
-                            </div>
-                        </td>
+                        <th>Regla</th>
+                        <th>Activa</th>
+                        <th>Severidad</th>
+                        <th>Parámetros</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Input.ValidationRules.Count; i++)
+                    {
+                        var rule = Model.Input.ValidationRules[i];
+                        var hasParams = rule.RuleType is GenericImportValidationRuleType.PriceVsFixedList
+                            or GenericImportValidationRuleType.PriceVsCustomerList
+                            or GenericImportValidationRuleType.StockAvailable
+                            or GenericImportValidationRuleType.OrderTotalDiscount;
+                        <tr>
+                            <td>
+                                @RuleLabel(rule.RuleType)
+                                <input type="hidden" name="Input.ValidationRules[@i].RuleType" value="@rule.RuleType" />
+                            </td>
+                            <td>
+                                <input type="checkbox" name="Input.ValidationRules[@i].IsActive" value="true" class="form-check-input" checked="@rule.IsActive" data-toggle-params="params-@i" />
+                                <input type="hidden" name="Input.ValidationRules[@i].IsActive" value="false" />
+                            </td>
+                            <td>
+                                <select name="Input.ValidationRules[@i].Severity" class="form-select form-select-sm">
+                                    <option value="@GenericImportValidationSeverity.Warning" selected="@(rule.Severity == GenericImportValidationSeverity.Warning)">Alerta</option>
+                                    <option value="@GenericImportValidationSeverity.Block" selected="@(rule.Severity == GenericImportValidationSeverity.Block)">Bloqueante</option>
+                                </select>
+                            </td>
+                            @* La celda SIEMPRE se renderiza -- antes se ocultaba el <td> completo
+                               (display:none) en las reglas sin parámetros o inactivas, y esas filas
+                               quedaban con una celda menos (bordes cortados, columnas corridas).
+                               Ahora se oculta solo el contenido; etiqueta y campo en la misma
+                               línea para que todas las filas tengan la misma altura. *@
+                            <td>
+                                <div id="params-@i" class="regla-parametros" style="@(rule.IsActive && hasParams ? "" : "display:none")">
+                                    @if (rule.RuleType == GenericImportValidationRuleType.PriceVsFixedList)
+                                    {
+                                        <label class="regla-parametro">
+                                            <span>N° lista</span>
+                                            <input type="number" name="Input.ValidationRules[@i].PriceListNum" value="@rule.PriceListNum" class="form-control form-control-sm" />
+                                        </label>
+                                    }
+                                    @if (hasParams)
+                                    {
+                                        <label class="regla-parametro">
+                                            <span>@(rule.RuleType == GenericImportValidationRuleType.OrderTotalDiscount ? "Descuento máx." : "Tolerancia")</span>
+                                            <span class="regla-parametro-input">
+                                                <input type="number" step="0.01" name="Input.ValidationRules[@i].TolerancePercent" value="@rule.TolerancePercent" class="form-control form-control-sm" />
+                                                <span>%</span>
+                                            </span>
+                                        </label>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         <button type="submit" class="btn btn-primary">@(Model.EditId is null ? "Crear" : "Guardar")</button>
         <a asp-page="/Configuracion/Index" class="btn btn-outline-secondary">Cancelar</a>

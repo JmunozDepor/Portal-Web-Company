@@ -14,7 +14,7 @@
    escribe el número y envía Enter. Todos los documentos parten "Entregado"; al cambiar el estado se exige motivo. *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Retorno de manifiesto</h2>
     </div>
 
@@ -38,7 +38,7 @@
                    value="@Model.Number" autocomplete="off" autofocus />
         </div>
         <div class="col-auto align-self-end">
-            <button type="submit" class="btn-primary">Buscar</button>
+            <button type="submit" class="btn btn-primary">Buscar</button>
         </div>
     </form>
 
@@ -50,7 +50,7 @@
             <span class="text-muted">
                 @m.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture) — @(m.Plate ?? "—") — @(m.DriverName ?? "—")
             </span>
-            <a class="btn-ghost" href="/despachos/manifiestos/@m.Id" title="Ver detalle"><i class="bi bi-box-arrow-up-right"></i></a>
+            <a class="btn-ghost" href="~/despachos/manifiestos/@m.Id" title="Ver detalle"><i class="bi bi-box-arrow-up-right"></i></a>
         </div>
 
         @if (!Model.CanEdit)
@@ -59,44 +59,46 @@
         }
 
         <form method="post" asp-page-handler="Registrar" asp-route-id="@m.Id" asp-antiforgery="true" id="ret-form">
-            <table class="table-ps">
-                <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Comuna</th><th>Resultado</th><th>Motivo</th><th>Comentarios</th></tr></thead>
-                <tbody>
-                    @{ var i = 0; }
-                    @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
-                    {
-                        var row = Model.Rows[i];
-                        <tr data-ret-row>
-                            <td>
-                                @DocumentKinds.Label(d.DocumentKind)
-                                <input type="hidden" name="rows[@i].DocumentId" value="@d.Id" />
-                            </td>
-                            <td>@d.Folio</td>
-                            <td>@d.CustomerName</td>
-                            <td>@(d.DestinationCommuneName ?? "—")</td>
-                            <td>
-                                <select name="rows[@i].Status" class="form-select" data-ret-status disabled="@(!Model.CanEdit)">
-                                    @foreach (var (value, label) in IndexModel.StatusChoices)
-                                    {
-                                        <option value="@value" selected="@(row.Status == value)">@label</option>
-                                    }
-                                </select>
-                            </td>
-                            <td>
-                                <select name="rows[@i].ReasonId" class="form-select" data-ret-reason disabled="@(!Model.CanEdit)">
-                                    <option value="">— Motivo —</option>
-                                    @foreach (var r in Model.Reasons)
-                                    {
-                                        <option value="@r.Id" data-applies="@r.AppliesTo" selected="@(row.ReasonId == r.Id)">@r.Name</option>
-                                    }
-                                </select>
-                            </td>
-                            <td><input type="text" name="rows[@i].Comments" value="@row.Comments" class="form-control" maxlength="300" autocomplete="off" disabled="@(!Model.CanEdit)" /></td>
-                        </tr>
-                        i++;
-                    }
-                </tbody>
-            </table>
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Comuna</th><th>Resultado</th><th>Motivo</th><th>Comentarios</th></tr></thead>
+                    <tbody>
+                        @{ var i = 0; }
+                        @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
+                        {
+                            var row = Model.Rows[i];
+                            <tr data-ret-row>
+                                <td>
+                                    @DocumentKinds.Label(d.DocumentKind)
+                                    <input type="hidden" name="rows[@i].DocumentId" value="@d.Id" />
+                                </td>
+                                <td>@d.Folio</td>
+                                <td>@d.CustomerName</td>
+                                <td>@(d.DestinationCommuneName ?? "—")</td>
+                                <td>
+                                    <select name="rows[@i].Status" class="form-select" data-ret-status disabled="@(!Model.CanEdit)">
+                                        @foreach (var (value, label) in IndexModel.StatusChoices)
+                                        {
+                                            <option value="@value" selected="@(row.Status == value)">@label</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="rows[@i].ReasonId" class="form-select" data-ret-reason disabled="@(!Model.CanEdit)">
+                                        <option value="">— Motivo —</option>
+                                        @foreach (var r in Model.Reasons)
+                                        {
+                                            <option value="@r.Id" data-applies="@r.AppliesTo" selected="@(row.ReasonId == r.Id)">@r.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td><input type="text" name="rows[@i].Comments" value="@row.Comments" class="form-control" maxlength="300" autocomplete="off" disabled="@(!Model.CanEdit)" /></td>
+                            </tr>
+                            i++;
+                        }
+                    </tbody>
+                </table>
+            </div>
 
             <div class="d-flex align-items-end gap-3 mt-3 flex-wrap">
                 <div>
@@ -110,7 +112,7 @@
                 </div>
                 @if (Model.CanEdit)
                 {
-                    <button type="submit" class="btn-primary"><i class="bi bi-check2-square"></i> Registrar retorno</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2-square"></i> Registrar retorno</button>
                 }
             </div>
         </form>

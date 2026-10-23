@@ -39,12 +39,12 @@
 
     <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
         <form method="post" asp-page-handler="SincronizarSap">
-            <button type="submit" class="btn-primary d-inline-flex align-items-center gap-2" disabled="@(Model.SyncStatus?.EnCurso == true)">
+            <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2" disabled="@(Model.SyncStatus?.EnCurso == true)">
                 <i class="bi bi-cloud-arrow-down"></i>
                 @(Model.SyncStatus?.EnCurso == true ? "Sincronizando…" : "Sincronizar desde SAP")
             </button>
         </form>
-        <a class="btn-secondary d-inline-flex align-items-center gap-2" asp-page-handler="DescargarJson">
+        <a class="btn btn-secondary d-inline-flex align-items-center gap-2" asp-page-handler="DescargarJson">
             <i class="bi bi-filetype-json"></i>
             Descargar maestro (JSON)
         </a>
@@ -69,7 +69,7 @@
                 }
             </select>
         </div>
-        <button type="submit" class="btn-secondary">Buscar</button>
+        <button type="submit" class="btn btn-secondary">Buscar</button>
         @if (!string.IsNullOrWhiteSpace(Model.Buscar))
         {
             <a href="~/auditoria-inventario/productos" class="btn-ghost">Limpiar</a>
@@ -115,10 +115,10 @@
         </div>
 
         <div class="d-flex align-items-center justify-content-center gap-3 mt-3">
-            <a class="btn-secondary @(Model.Pagina <= 1 ? "disabled" : "")"
+            <a class="btn btn-secondary @(Model.Pagina <= 1 ? "disabled" : "")"
                href="@(Model.Pagina <= 1 ? "#" : ConstruirUrlPagina(Model.Pagina - 1))">« Anterior</a>
             <span class="text-muted">Página @Model.Pagina de @Model.TotalPaginas</span>
-            <a class="btn-secondary @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")"
+            <a class="btn btn-secondary @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")"
                href="@(Model.Pagina >= Model.TotalPaginas ? "#" : ConstruirUrlPagina(Model.Pagina + 1))">Siguiente »</a>
         </div>
     }

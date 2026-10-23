@@ -117,6 +117,44 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
   sin comillas, `id` surrogate siempre, FK `<entidad>_id`, timestamps `_at`,
   booleanos `is_`/`has_`, estados en columna `status`. Aplica igual en los dos
   motores (§ Decisiones ya tomadas).
+- **REGLA DURA (2026-10-22): ninguna URL interna se escribe como literal absoluto.**
+  En producción el portal corre bajo un PathBase (`https://portal.grupodepor.cl/Depor/...`);
+  `href="/despachos/..."`, `fetch('/api/...')` o `Redirect("/Home")` se saltan el
+  prefijo y IIS responde "404 - File or directory not found" (en local no se nota:
+  no hay prefijo). Pasó en el login (2026-08-02), el login de admin y en
+  `Modulo.Despachos` (12 enlaces, 2026-10-22). Siempre: `href="~/modulo/..."`,
+  `asp-page`/`asp-route-*`, `Url.Content("~/...")`/`Url.Page(...)` en C# y para pasar
+  URLs a JS. Excepción: la URL de la campana (`TryEnqueueAsync`) va `"/modulo/..."`,
+  la resuelve el Host. Lo hace cumplir
+  `tests/PortalSaas.Core.Tests/Infraestructura/UrlsRelativasAlPathBaseTests.cs`, que
+  recorre Core y todos los plugins: si falla, se corrige la URL, no el test.
+- **REGLA DURA (2026-10-22, ampliada 2026-10-23): TODO el portal es responsive para
+  móviles** -- Host, shell (topbar, menú, paneles flotantes) y todos los plugins. Una
+  pantalla o componente no está terminado hasta verse completo a **375 px** (iPhone SE)
+  sin desplazamiento horizontal de la página. Problemas reales encontrados en celular
+  (Despachos, campana de notificaciones, casi todos los módulos), cada uno con su regla:
+  1. **Tablas**: nunca sueltas -- dentro de `<div class="table-responsive-lg">` (scroll
+     solo bajo 992 px; en escritorio conserva el thead sticky de `.table-ps`, que un
+     `table-responsive` a secas rompe) o de un wrapper de plataforma con overflow
+     (`document-list-table-wrapper`, `line-items-wrapper`). Nunca dos contenedores con
+     scroll anidados. Tabla con dropdown en las filas: wrapper propio (el overflow lo
+     recorta).
+  2. **Botones**: siempre `class="btn btn-primary"` / `btn btn-secondary`. Sin `btn`
+     solo hay color: `<a>` subrayado, `<button>` con el borde en relieve del navegador.
+  3. **Fila título + acción** (`d-flex justify-content-between`): con `flex-wrap`.
+  4. **Paneles flotantes** (dropdown/popover/`<details>` del topbar): anclados al lado
+     que da hacia el centro de la pantalla (`right:0` si viven en el grupo derecho) y,
+     bajo 576 px, `position:fixed` de borde a borde bajo el topbar. Un panel anclado a
+     su botón con ancho fijo se corta contra el borde (bug real de la campana).
+  5. **Anchos fijos**: nada de `width`/`min-width` en px que supere ~320 px sin
+     `max-width:100%`; filas flex con hijos de `min-width` llevan `flex-wrap`.
+  6. **Grillas de formulario**: `.form-row`/`.filter-card` de plataforma (ya colapsan a
+     una columna); no inventar grillas propias.
+  `tests/PortalSaas.Core.Tests/Infraestructura/VistasResponsivasTests.cs` hace cumplir
+  1 y 2 sobre Host + todos los plugins: si falla, se corrige la vista, no el test. El
+  resto se verifica a ojo a 375 px: maqueta HTML con el CSS real del Host dentro de un
+  `<iframe width="375">` + `chrome --headless=new --screenshot` (Chrome headless no
+  achica la ventana bajo ~500 px, por eso el iframe), o DevTools en modo dispositivo.
 - **Toda pantalla de administración de un catálogo/documento maestro (registro que el
   usuario crea explícitamente desde una UI del portal — planes, perfiles, grupos de
   menú, módulos, instancias, compañías, proveedores externos, tipos de gasto,

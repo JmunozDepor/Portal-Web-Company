@@ -6,9 +6,9 @@
 @* Migrado al Design System unificado (2026-08-19). *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Mapeo de Campos</h2>
-        <button type="button" class="btn-primary" data-drawer-open="drawer-nuevo-mapeo">+ Nuevo mapeo</button>
+        <button type="button" class="btn btn-primary" data-drawer-open="drawer-nuevo-mapeo">+ Nuevo mapeo</button>
     </div>
 
 @if (Model.SuccessMessage is not null)
@@ -20,53 +20,55 @@
     <div class="alert alert-danger">@Model.ErrorMessage</div>
 }
 
-<table class="table-ps">
-    <thead><tr><th>Documento</th><th>Campo UDF</th><th>Valor / Plantilla</th><th>Estado</th><th>Actualizado</th><th class="col-actions"></th></tr></thead>
-    <tbody>
-        @foreach (var m in Model.Mappings)
-        {
-            var formId = $"mapeo-{m.Id}";
-            <tr class="@(m.IsActive ? "" : "row-inactive")">
-                <td>@(Model.MapperKeyLabels.GetValueOrDefault(m.MapperKey, m.MapperKey))</td>
-                <td><code>@m.FieldName</code></td>
-                <td><input type="text" name="valueTemplate" value="@m.ValueTemplate" class="form-control" form="@formId" /></td>
-                <td>
-                    <input type="hidden" name="activo" value="@(m.IsActive ? "true" : "false")" form="@formId" />
-                    @if (m.IsActive)
-                    {
-                        <span class="badge-status badge-status--success">Activo</span>
-                    }
-                    else
-                    {
-                        <span class="badge-status badge-status--neutral">Inactivo</span>
-                    }
-                </td>
-                <td>@m.UpdatedAt.ToString("yyyy-MM-dd HH:mm") @(m.UpdatedBy is not null ? $"({m.UpdatedBy})" : "")</td>
-                <td class="col-actions">
-                    <div class="admin-row-actions">
-                        <button type="submit" class="btn-ghost" title="Guardar" form="@formId"><i class="bi bi-check-lg"></i></button>
+<div class="table-responsive-lg">
+    <table class="table-ps">
+        <thead><tr><th>Documento</th><th>Campo UDF</th><th>Valor / Plantilla</th><th>Estado</th><th>Actualizado</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var m in Model.Mappings)
+            {
+                var formId = $"mapeo-{m.Id}";
+                <tr class="@(m.IsActive ? "" : "row-inactive")">
+                    <td>@(Model.MapperKeyLabels.GetValueOrDefault(m.MapperKey, m.MapperKey))</td>
+                    <td><code>@m.FieldName</code></td>
+                    <td><input type="text" name="valueTemplate" value="@m.ValueTemplate" class="form-control" form="@formId" /></td>
+                    <td>
+                        <input type="hidden" name="activo" value="@(m.IsActive ? "true" : "false")" form="@formId" />
                         @if (m.IsActive)
                         {
-                            <form asp-page="./Index" asp-page-handler="Desactivar" asp-route-id="@m.Id" asp-route-valueTemplate="@m.ValueTemplate" method="post" class="d-inline-block">
-                                <button type="submit" class="btn-ghost btn-ghost--danger" title="Desactivar"><i class="bi bi-slash-circle"></i></button>
-                            </form>
+                            <span class="badge-status badge-status--success">Activo</span>
                         }
                         else
                         {
-                            <form asp-page="./Index" asp-page-handler="Activar" asp-route-id="@m.Id" asp-route-valueTemplate="@m.ValueTemplate" method="post" class="d-inline-block">
-                                <button type="submit" class="btn-ghost" title="Activar"><i class="bi bi-check-circle"></i></button>
-                            </form>
+                            <span class="badge-status badge-status--neutral">Inactivo</span>
                         }
-                    </div>
-                </td>
-            </tr>
-        }
-        @if (Model.Mappings.Count == 0)
-        {
-            <tr><td colspan="6" class="text-muted">Sin mapeos todavía.</td></tr>
-        }
-    </tbody>
-</table>
+                    </td>
+                    <td>@m.UpdatedAt.ToString("yyyy-MM-dd HH:mm") @(m.UpdatedBy is not null ? $"({m.UpdatedBy})" : "")</td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            <button type="submit" class="btn-ghost" title="Guardar" form="@formId"><i class="bi bi-check-lg"></i></button>
+                            @if (m.IsActive)
+                            {
+                                <form asp-page="./Index" asp-page-handler="Desactivar" asp-route-id="@m.Id" asp-route-valueTemplate="@m.ValueTemplate" method="post" class="d-inline-block">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Desactivar"><i class="bi bi-slash-circle"></i></button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-page="./Index" asp-page-handler="Activar" asp-route-id="@m.Id" asp-route-valueTemplate="@m.ValueTemplate" method="post" class="d-inline-block">
+                                    <button type="submit" class="btn-ghost" title="Activar"><i class="bi bi-check-circle"></i></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Mappings.Count == 0)
+            {
+                <tr><td colspan="6" class="text-muted">Sin mapeos todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 @foreach (var m in Model.Mappings)
 {
@@ -112,8 +114,8 @@
                 </p>
             </div>
             <div class="drawer-footer">
-                <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                <button type="submit" class="btn-primary">Crear</button>
+                <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear</button>
             </div>
         </form>
     </aside>

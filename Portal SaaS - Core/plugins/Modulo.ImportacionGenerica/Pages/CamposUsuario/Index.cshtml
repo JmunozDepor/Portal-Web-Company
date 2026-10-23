@@ -73,39 +73,41 @@
     </form>
 </div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Módulo</th>
-            <th>Nivel</th>
-            <th>Etiqueta</th>
-            <th>Nombre (Service Layer)</th>
-            <th>Tipo de dato</th>
-            <th>Activo</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var field in Model.Fields)
-        {
+<div class="table-responsive-lg">
+    <table class="table table-striped">
+        <thead>
             <tr>
-                <td>@ImportDisplayNames.Of(field.Module)</td>
-                <td>@field.Level</td>
-                <td>@field.Label</td>
-                <td>@field.SapFieldName</td>
-                <td>@field.DataType</td>
-                <td>@(field.IsActive ? "Sí" : "No")</td>
-                <td>
-                    <a asp-page="/CamposUsuario/Index" asp-route-editId="@field.Id">Editar</a>
-                    <form method="post" asp-page-handler="Delete" asp-antiforgery="true" style="display:inline" onsubmit="return confirm('¿Eliminar este campo de usuario?');">
-                        <input type="hidden" name="id" value="@field.Id" />
-                        <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2">Eliminar</button>
-                    </form>
-                </td>
+                <th>Módulo</th>
+                <th>Nivel</th>
+                <th>Etiqueta</th>
+                <th>Nombre (Service Layer)</th>
+                <th>Tipo de dato</th>
+                <th>Activo</th>
+                <th></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var field in Model.Fields)
+            {
+                <tr>
+                    <td>@ImportDisplayNames.Of(field.Module)</td>
+                    <td>@field.Level</td>
+                    <td>@field.Label</td>
+                    <td>@field.SapFieldName</td>
+                    <td>@field.DataType</td>
+                    <td>@(field.IsActive ? "Sí" : "No")</td>
+                    <td>
+                        <a asp-page="/CamposUsuario/Index" asp-route-editId="@field.Id">Editar</a>
+                        <form method="post" asp-page-handler="Delete" asp-antiforgery="true" style="display:inline" onsubmit="return confirm('¿Eliminar este campo de usuario?');">
+                            <input type="hidden" name="id" value="@field.Id" />
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 @if (Model.Fields.Count == 0)
 {

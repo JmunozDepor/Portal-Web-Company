@@ -110,7 +110,7 @@
             }
         </div>
 
-        <button type="submit" class="btn-primary mt-3">@(Model.EsNuevo ? "Crear usuario" : "Guardar cambios")</button>
+        <button type="submit" class="btn btn-primary mt-3">@(Model.EsNuevo ? "Crear usuario" : "Guardar cambios")</button>
     </form>
 
     @if (!Model.EsNuevo)
@@ -121,11 +121,11 @@
         <div class="d-flex flex-wrap gap-2">
             <form method="post" asp-page-handler="GenerarPassword" asp-route-id="@Model.Detalle!.Id">
                 <input type="hidden" name="enviarPorCorreo" value="true" />
-                <button type="submit" class="btn-secondary">Enviar contraseña nueva por correo</button>
+                <button type="submit" class="btn btn-secondary">Enviar contraseña nueva por correo</button>
             </form>
             <form method="post" asp-page-handler="GenerarPassword" asp-route-id="@Model.Detalle!.Id">
                 <input type="hidden" name="enviarPorCorreo" value="false" />
-                <button type="submit" class="btn-secondary">Generar y mostrar contraseña</button>
+                <button type="submit" class="btn btn-secondary">Generar y mostrar contraseña</button>
             </form>
         </div>
 
@@ -136,7 +136,7 @@
                 <input id="nuevaPassword" name="nuevaPassword" type="password" class="form-control" autocomplete="new-password" />
             </div>
             <label class="d-flex align-items-center gap-2 mb-2"><input name="enviarPorCorreo" type="checkbox" value="true" /> Enviar por correo</label>
-            <button type="submit" class="btn-secondary">Guardar contraseña</button>
+            <button type="submit" class="btn btn-secondary">Guardar contraseña</button>
         </form>
 
         @if (Model.Detalle!.LastLoginAt is null)
@@ -145,7 +145,7 @@
             <h2 class="h5 mb-1">Invitación</h2>
             <p class="text-muted mb-3">Este usuario nunca inició sesión. Reenvíale el correo de invitación (el enlace vence en 72 horas) para que elija su contraseña.</p>
             <form method="post" asp-page-handler="ReenviarInvitacion" asp-route-id="@Model.Detalle.Id">
-                <button type="submit" class="btn-secondary"><i class="bi bi-envelope"></i> Reenviar invitación</button>
+                <button type="submit" class="btn btn-secondary"><i class="bi bi-envelope"></i> Reenviar invitación</button>
             </form>
         }
     }
@@ -174,7 +174,7 @@
                         }
                     </select>
                 </div>
-                <button type="submit" class="btn-primary">Guardar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
             </form>
         }
     </div>
@@ -258,54 +258,56 @@
                             <option value="">Sin asignar (limpiar todo)</option>
                         </select>
                     </div>
-                    <table class="table-ps" id="tabla-permisos-arbol">
-                        <thead><tr><th>Pantalla</th><th style="width:240px;">Perfil</th></tr></thead>
-                        <tbody>
-                            @foreach (var nodo in Model.MenuTree)
-                            {
-                                var esCarpeta = nodo.PagePath is null;
-                                var actual = Model.Permissions.ProfileByMenu.GetValueOrDefault(nodo.Id);
-                                <tr data-menu-id="@nodo.Id" data-parent-id="@(nodo.Level == 0 ? "" : nodo.ParentMenuId?.ToString())" data-carpeta="@(esCarpeta ? "1" : "0")"
-                                    style="@(esCarpeta ? "background:color-mix(in srgb, var(--bs-primary) 4%, transparent);" : "")">
-                                    <td>
-                                        <span style="display:inline-block;width:@(nodo.Level * 20)px;"></span>
-                                        <i class="bi @(nodo.Icon ?? (esCarpeta ? "bi-folder2" : "bi-dot"))"></i>
-                                        <span class="@(esCarpeta ? "fw-semibold" : "")">@nodo.Name</span>
-                                        @if (!esCarpeta)
-                                        {
-                                            <span class="text-muted" style="font-size:11px;">(@($"{nodo.OriginModule}.{nodo.Code}"))</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (esCarpeta)
-                                        {
-                                            <select class="form-select form-select-sm perfil-cascada" data-menu-id="@nodo.Id" title="Aplica el perfil a todas las pantallas de esta carpeta">
-                                                <option value="__skip__" selected>— heredar en pantallas —</option>
-                                                @foreach (var profile in Model.ProfileOptions)
-                                                {
-                                                    <option value="@profile.Value">@profile.Text</option>
-                                                }
-                                                <option value="">Sin asignar (limpiar)</option>
-                                            </select>
-                                        }
-                                        else
-                                        {
-                                            <select name="Permissions.ProfileByMenu[@nodo.Id]" class="form-select form-select-sm perfil-hoja">
-                                                <option value="" selected="@(actual is null or 0)">Sin asignar</option>
-                                                @foreach (var profile in Model.ProfileOptions)
-                                                {
-                                                    <option value="@profile.Value" selected="@(profile.Value == actual?.ToString())">@profile.Text</option>
-                                                }
-                                            </select>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <div class="table-responsive-lg">
+                        <table class="table-ps" id="tabla-permisos-arbol">
+                            <thead><tr><th>Pantalla</th><th style="width:240px;">Perfil</th></tr></thead>
+                            <tbody>
+                                @foreach (var nodo in Model.MenuTree)
+                                {
+                                    var esCarpeta = nodo.PagePath is null;
+                                    var actual = Model.Permissions.ProfileByMenu.GetValueOrDefault(nodo.Id);
+                                    <tr data-menu-id="@nodo.Id" data-parent-id="@(nodo.Level == 0 ? "" : nodo.ParentMenuId?.ToString())" data-carpeta="@(esCarpeta ? "1" : "0")"
+                                        style="@(esCarpeta ? "background:color-mix(in srgb, var(--bs-primary) 4%, transparent);" : "")">
+                                        <td>
+                                            <span style="display:inline-block;width:@(nodo.Level * 20)px;"></span>
+                                            <i class="bi @(nodo.Icon ?? (esCarpeta ? "bi-folder2" : "bi-dot"))"></i>
+                                            <span class="@(esCarpeta ? "fw-semibold" : "")">@nodo.Name</span>
+                                            @if (!esCarpeta)
+                                            {
+                                                <span class="text-muted" style="font-size:11px;">(@($"{nodo.OriginModule}.{nodo.Code}"))</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (esCarpeta)
+                                            {
+                                                <select class="form-select form-select-sm perfil-cascada" data-menu-id="@nodo.Id" title="Aplica el perfil a todas las pantallas de esta carpeta">
+                                                    <option value="__skip__" selected>— heredar en pantallas —</option>
+                                                    @foreach (var profile in Model.ProfileOptions)
+                                                    {
+                                                        <option value="@profile.Value">@profile.Text</option>
+                                                    }
+                                                    <option value="">Sin asignar (limpiar)</option>
+                                                </select>
+                                            }
+                                            else
+                                            {
+                                                <select name="Permissions.ProfileByMenu[@nodo.Id]" class="form-select form-select-sm perfil-hoja">
+                                                    <option value="" selected="@(actual is null or 0)">Sin asignar</option>
+                                                    @foreach (var profile in Model.ProfileOptions)
+                                                    {
+                                                        <option value="@profile.Value" selected="@(profile.Value == actual?.ToString())">@profile.Text</option>
+                                                    }
+                                                </select>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
 
-                <button type="submit" class="btn-primary mt-3">Guardar permisos</button>
+                <button type="submit" class="btn btn-primary mt-3">Guardar permisos</button>
             </form>
         }
     </div>
@@ -319,9 +321,9 @@
             <p class="text-muted mb-3">Cópiala ahora: por seguridad, no se volverá a mostrar.</p>
             <div class="d-flex align-items-center gap-2 mb-3">
                 <input id="input-nueva-password" type="text" class="form-control" value="@Model.NuevaPasswordGenerada" readonly />
-                <button type="button" class="btn-secondary" onclick="copiarPassword()">Copiar</button>
+                <button type="button" class="btn btn-secondary" onclick="copiarPassword()">Copiar</button>
             </div>
-            <button type="button" class="btn-primary" onclick="document.getElementById('modal-nueva-password').remove()">Cerrar</button>
+            <button type="button" class="btn btn-primary" onclick="document.getElementById('modal-nueva-password').remove()">Cerrar</button>
         </div>
     </div>
 }

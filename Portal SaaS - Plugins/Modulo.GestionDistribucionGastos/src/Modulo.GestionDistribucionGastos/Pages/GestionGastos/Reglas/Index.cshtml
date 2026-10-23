@@ -29,55 +29,57 @@
 <div class="card">
     <div class="toolbar">
         <strong>Reglas de distribución automática</strong>
-        <a asp-page="/GestionGastos/Reglas/Form" class="btn-primary toolbar-right">Nueva regla</a>
+        <a asp-page="/GestionGastos/Reglas/Form" class="btn btn-primary toolbar-right">Nueva regla</a>
     </div>
 
-    <table class="grid">
-        <thead>
-            <tr>
-                <th>Cuenta</th>
-                <th>Centro de costo</th>
-                <th>Base</th>
-                <th title="Cuentas reales (de todo lo cargado alguna vez) que matchean este patrón">Cuentas que matchea</th>
-                <th>Estado</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model.Datos.Reglas)
-            {
-                var r = item.Regla;
+    <div class="table-responsive-lg">
+        <table class="grid">
+            <thead>
                 <tr>
-                    <td>@r.NroCuenta</td>
-                    <td>@(r.CodCentroCosto ?? "Toda la cuenta")</td>
-                    <td>@r.BaseDistribucion</td>
-                    <td>@item.CuentasQueMatchea</td>
-                    <td>
-                        @if (r.Activo)
-                        {
-                            <span class="badge badge-success">Activa</span>
-                        }
-                        else
-                        {
-                            <span class="badge badge-danger">Inactiva</span>
-                        }
-                    </td>
-                    <td style="display:flex; gap:6px;">
-                        <a asp-page="/GestionGastos/Reglas/Form" asp-route-id="@r.Id">Editar</a>
-                        <form asp-page-handler="ToggleActivo" asp-route-id="@r.Id" method="post">
-                            <button type="submit">@(r.Activo ? "Desactivar" : "Activar")</button>
-                        </form>
-                        <form asp-page-handler="Eliminar" asp-route-id="@r.Id" method="post"
-                              onsubmit="return confirm('¿Eliminar la regla de @r.NroCuenta? No se puede deshacer.');">
-                            <button type="submit" style="color:var(--danger); border-color:var(--danger);">Eliminar</button>
-                        </form>
-                    </td>
+                    <th>Cuenta</th>
+                    <th>Centro de costo</th>
+                    <th>Base</th>
+                    <th title="Cuentas reales (de todo lo cargado alguna vez) que matchean este patrón">Cuentas que matchea</th>
+                    <th>Estado</th>
+                    <th></th>
                 </tr>
-            }
-            @if (!Model.Datos.Reglas.Any())
-            {
-                <tr><td colspan="6">No hay reglas creadas todavía.</td></tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Datos.Reglas)
+                {
+                    var r = item.Regla;
+                    <tr>
+                        <td>@r.NroCuenta</td>
+                        <td>@(r.CodCentroCosto ?? "Toda la cuenta")</td>
+                        <td>@r.BaseDistribucion</td>
+                        <td>@item.CuentasQueMatchea</td>
+                        <td>
+                            @if (r.Activo)
+                            {
+                                <span class="badge badge-success">Activa</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-danger">Inactiva</span>
+                            }
+                        </td>
+                        <td style="display:flex; gap:6px;">
+                            <a asp-page="/GestionGastos/Reglas/Form" asp-route-id="@r.Id">Editar</a>
+                            <form asp-page-handler="ToggleActivo" asp-route-id="@r.Id" method="post">
+                                <button type="submit">@(r.Activo ? "Desactivar" : "Activar")</button>
+                            </form>
+                            <form asp-page-handler="Eliminar" asp-route-id="@r.Id" method="post"
+                                  onsubmit="return confirm('¿Eliminar la regla de @r.NroCuenta? No se puede deshacer.');">
+                                <button type="submit" style="color:var(--danger); border-color:var(--danger);">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Datos.Reglas.Any())
+                {
+                    <tr><td colspan="6">No hay reglas creadas todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>

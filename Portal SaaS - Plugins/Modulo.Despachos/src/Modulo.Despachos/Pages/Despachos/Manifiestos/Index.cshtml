@@ -10,11 +10,11 @@
 @* Listado de manifiestos: filtros por fecha, estado, transportista y folio de documento. *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Manifiestos</h2>
         @if (Model.CanCreate)
         {
-            <a class="btn-primary" href="/despachos/manifiestos/nuevo">+ Nuevo manifiesto</a>
+            <a class="btn btn-primary" href="~/despachos/manifiestos/nuevo">+ Nuevo manifiesto</a>
         }
     </div>
 
@@ -65,32 +65,34 @@
             <input type="search" id="f-folio" name="Folio" value="@Model.Folio" class="form-control" autocomplete="off" />
         </div>
         <div class="col-auto align-self-end">
-            <button type="submit" class="btn-primary">Filtrar</button>
-            <a class="btn-secondary" href="/despachos/manifiestos">Limpiar</a>
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a class="btn btn-secondary" href="~/despachos/manifiestos">Limpiar</a>
         </div>
     </form>
 
-    <table class="table-ps">
-        <thead><tr><th>N°</th><th>Fecha</th><th>Estado</th><th>Transportista</th><th>Patente</th><th>Docs</th><th>Costo</th><th>Costo estado</th><th class="col-actions"></th></tr></thead>
-        <tbody>
-            @foreach (var x in Model.Items)
-            {
-                <tr>
-                    <td><a href="/despachos/manifiestos/@x.Id">@x.Number</a></td>
-                    <td>@x.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
-                    <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="x.Status" /></td>
-                    <td>@x.CarrierName</td>
-                    <td>@(x.Plate ?? "—")</td>
-                    <td>@x.TotalDocuments</td>
-                    <td>@(x.CostFinal is null ? "—" : x.CostFinal.Value.ToString("N0", new CultureInfo("es-CL")))</td>
-                    <td>@DespachosUi.CostStatusLabel(x.CostStatus)</td>
-                    <td class="col-actions"><a class="btn-ghost" title="Abrir" href="/despachos/manifiestos/@x.Id"><i class="bi bi-box-arrow-up-right"></i></a></td>
-                </tr>
-            }
-            @if (Model.Items.Count == 0)
-            {
-                <tr><td colspan="9" class="text-muted">Sin manifiestos para el filtro indicado.</td></tr>
-            }
-        </tbody>
-    </table>
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead><tr><th>N°</th><th>Fecha</th><th>Estado</th><th>Transportista</th><th>Patente</th><th>Docs</th><th>Costo</th><th>Costo estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var x in Model.Items)
+                {
+                    <tr>
+                        <td><a href="~/despachos/manifiestos/@x.Id">@x.Number</a></td>
+                        <td class="text-nowrap">@x.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
+                        <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="x.Status" /></td>
+                        <td>@x.CarrierName</td>
+                        <td>@(x.Plate ?? "—")</td>
+                        <td>@x.TotalDocuments</td>
+                        <td>@(x.CostFinal is null ? "—" : x.CostFinal.Value.ToString("N0", new CultureInfo("es-CL")))</td>
+                        <td>@DespachosUi.CostStatusLabel(x.CostStatus)</td>
+                        <td class="col-actions"><a class="btn-ghost" title="Abrir" href="~/despachos/manifiestos/@x.Id"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-muted">Sin manifiestos para el filtro indicado.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>

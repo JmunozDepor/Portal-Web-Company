@@ -4,7 +4,7 @@
     ViewData["Title"] = $"Conexiones externas · {Model.Company.Code}";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
     <div>
         <h1 class="h3 mb-0">Conexiones externas de @Model.Company.Code &mdash; @Model.Company.Name</h1>
         <a asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@Model.Company.OrganizationId">Volver a compañías</a>

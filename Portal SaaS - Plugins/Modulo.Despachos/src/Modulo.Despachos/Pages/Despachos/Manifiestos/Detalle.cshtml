@@ -31,15 +31,15 @@
             <span class="text-muted">@m.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</span>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <a class="btn-secondary" href="/despachos/manifiestos">Volver al listado</a>
+            <a class="btn btn-secondary" href="~/despachos/manifiestos">Volver al listado</a>
             @if (Model.IsDraft && Model.CanEdit)
             {
                 @* Guarda el borrador desde cualquier pestaña: envía el formulario de la cabecera (aunque esté oculto). *@
-                <button type="submit" form="form-cabecera" class="btn-secondary"><i class="bi bi-floppy"></i> Guardar</button>
+                <button type="submit" form="form-cabecera" class="btn btn-secondary"><i class="bi bi-floppy"></i> Guardar</button>
             }
             @if (canPrint)
             {
-                <a class="btn-secondary" target="_blank" rel="noopener" asp-page-handler="Pdf" asp-route-id="@m.Id">
+                <a class="btn btn-secondary" target="_blank" rel="noopener" asp-page-handler="Pdf" asp-route-id="@m.Id">
                     <i class="bi bi-printer"></i> @(wasPrinted ? "Reimprimir (copia)" : "Imprimir PDF")
                 </a>
             }
@@ -47,14 +47,14 @@
             {
                 <form method="post" asp-page-handler="Despachar" asp-route-id="@m.Id" asp-antiforgery="true" class="d-inline-block"
                       data-confirm="@($"¿Despachar el manifiesto N° {m.Number} con {Model.DocCount} documentos? Se toma la foto del vehículo y el chofer y se calcula el costo." + (Model.GuidesEnabled ? $" Se emitirán {Model.GuidePreview?.Guides.Count ?? 0} guía(s) de despacho electrónicas." : ""))">
-                    <button type="submit" class="btn-primary" disabled="@(Model.DocCount == 0)"><i class="bi bi-truck"></i> Despachar</button>
+                    <button type="submit" class="btn btn-primary" disabled="@(Model.DocCount == 0)"><i class="bi bi-truck"></i> Despachar</button>
                 </form>
             }
             @if (m.Status == ManifestStatuses.Returned && Model.CanApprove)
             {
                 <form method="post" asp-page-handler="Cerrar" asp-route-id="@m.Id" asp-antiforgery="true" class="d-inline-block"
                       data-confirm="@($"¿Cerrar el manifiesto N° {m.Number}? Ya no podrá modificarse el retorno.")">
-                    <button type="submit" class="btn-primary"><i class="bi bi-lock"></i> Cerrar</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-lock"></i> Cerrar</button>
                 </form>
             }
             @if (Model.CanAnnulNow)
@@ -84,13 +84,13 @@
             @if (Model.CanApprove)
             {
                 <form method="post" asp-page-handler="ReintentarGuias" asp-route-id="@m.Id" asp-antiforgery="true" class="d-inline-block">
-                    <button type="submit" class="btn-primary"><i class="bi bi-arrow-repeat"></i> Reintentar guías</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-arrow-repeat"></i> Reintentar guías</button>
                 </form>
             }
         </div>
     }
 
-    <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;">
+    <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;max-width:100%;">
         <button type="button" class="doc-tab-btn @(active == "cabecera" ? "active" : "")" data-tab-btn="cabecera">Cabecera</button>
         <button type="button" class="doc-tab-btn @(active == "documentos" ? "active" : "")" data-tab-btn="documentos">Documentos (<span data-doc-count>@Model.DocCount</span>)</button>
         @if (Model.ShowGuides)
@@ -108,7 +108,7 @@
         {
             <form method="post" id="form-cabecera" asp-page-handler="GuardarCabecera" asp-route-id="@m.Id" asp-antiforgery="true">
                 <partial name="_CabeceraCamposDespachos" model='new ManifestFormView(Model.Header, Model.Lookups, "Header")' />
-                <button type="submit" class="btn-primary">Guardar cabecera</button>
+                <button type="submit" class="btn btn-primary">Guardar cabecera</button>
             </form>
         }
         else
@@ -166,7 +166,7 @@
                             <input type="text" id="Change_Reason" name="Change.Reason" class="form-control" maxlength="300" required autocomplete="off" />
                         </div>
                     </div>
-                    <button type="submit" class="btn-primary">Cambiar</button>
+                    <button type="submit" class="btn btn-primary">Cambiar</button>
                 </form>
             }
         }
@@ -185,13 +185,13 @@
                         <input type="text" id="scan-input" class="form-control" autocomplete="off" autocapitalize="off" spellcheck="false"
                                placeholder="Apunte el lector al timbre y dispare..." autofocus />
                     </div>
-                    <button type="button" class="btn-secondary" id="scan-camera" hidden><i class="bi bi-camera"></i> Cámara</button>
+                    <button type="button" class="btn btn-secondary" id="scan-camera" hidden><i class="bi bi-camera"></i> Cámara</button>
                 </div>
                 <div id="scan-feedback" class="scan-feedback" role="status" aria-live="polite">Listo para escanear.</div>
                 <div id="scan-ambiguous" class="d-flex gap-2 align-items-center mb-2" hidden>
                     <span>El folio existe con más de un tipo de documento:</span>
-                    <button type="button" class="btn-secondary" data-sii="33">Factura (33)</button>
-                    <button type="button" class="btn-secondary" data-sii="34">Factura exenta (34)</button>
+                    <button type="button" class="btn btn-secondary" data-sii="33">Factura (33)</button>
+                    <button type="button" class="btn btn-secondary" data-sii="34">Factura exenta (34)</button>
                 </div>
                 <details class="mb-2">
                     <summary>Ingreso manual (tipo + folio)</summary>
@@ -207,76 +207,78 @@
                             <label class="form-label" for="manual-folio">Folio</label>
                             <input type="text" inputmode="numeric" id="manual-folio" class="form-control" autocomplete="off" />
                         </div>
-                        <button type="button" class="btn-primary" id="manual-add">Agregar</button>
+                        <button type="button" class="btn btn-primary" id="manual-add">Agregar</button>
                     </div>
                 </details>
                 <div id="scan-camera-panel" hidden class="mb-2">
                     <video id="scan-video" playsinline muted style="width:100%;max-width:420px;border-radius:8px;"></video>
-                    <div><button type="button" class="btn-secondary mt-1" id="scan-camera-close">Cerrar cámara</button></div>
+                    <div><button type="button" class="btn btn-secondary mt-1" id="scan-camera-close">Cerrar cámara</button></div>
                 </div>
             </div>
         }
 
-        <div class="d-flex gap-4 mb-2 text-muted">
+        <div class="d-flex gap-4 mb-2 text-muted flex-wrap">
             <span>Documentos: <strong data-doc-count>@Model.DocCount</strong></span>
             <span>Unidades: <strong data-doc-units>@Model.DocUnits.ToString("N0", es)</strong></span>
             <span>Bultos: <strong data-doc-packages>@Model.DocPackages</strong></span>
             <span>Monto total: <strong data-doc-amount>$@Model.DocAmount.ToString("N0", es)</strong></span>
         </div>
 
-        <table class="table-ps" id="docs-table">
-            <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Comuna</th><th>Unidades</th><th>Bultos</th><th class="text-end">Monto</th>@if (!Model.IsDraft) { <th>Estado</th> }<th class="col-actions"></th></tr></thead>
-            <tbody id="docs-body">
-                @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
-                {
-                    <tr>
-                        <td>@DocumentKinds.Label(d.DocumentKind)</td>
-                        <td>@d.Folio</td>
-                        <td>@d.CustomerName</td>
-                        <td>
-                            @(d.DestinationCommuneName ?? "—")
-                            @if (d.DestinationCommuneId is null && canFixCommune)
+        <div class="table-responsive-lg">
+            <table class="table-ps" id="docs-table">
+                <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Comuna</th><th>Unidades</th><th>Bultos</th><th class="text-end">Monto</th>@if (!Model.IsDraft) { <th>Estado</th> }<th class="col-actions"></th></tr></thead>
+                <tbody id="docs-body">
+                    @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
+                    {
+                        <tr>
+                            <td>@DocumentKinds.Label(d.DocumentKind)</td>
+                            <td>@d.Folio</td>
+                            <td>@d.CustomerName</td>
+                            <td>
+                                @(d.DestinationCommuneName ?? "—")
+                                @if (d.DestinationCommuneId is null && canFixCommune)
+                                {
+                                    <form method="post" asp-page-handler="CorregirComuna" asp-route-id="@m.Id" asp-route-documentId="@d.Id" asp-antiforgery="true" class="d-flex gap-1 mt-1">
+                                        <select name="communeId" class="form-select" required aria-label="Comuna del catálogo" style="min-width:160px;">
+                                            <option value="">Comuna no resuelta: elegir...</option>
+                                            @foreach (var c in Model.Communes)
+                                            {
+                                                <option value="@c.Id">@c.Name</option>
+                                            }
+                                        </select>
+                                        <button type="submit" class="btn btn-secondary">Corregir</button>
+                                    </form>
+                                }
+                                else if (d.DestinationCommuneId is null)
+                                {
+                                    <span class="badge text-bg-warning">sin resolver</span>
+                                }
+                            </td>
+                            <td>@d.Units.ToString("N0", es)</td>
+                            <td>@d.Packages</td>
+                            <td class="text-end">$@d.TotalAmount.ToString("N0", es)</td>
+                            @if (!Model.IsDraft)
                             {
-                                <form method="post" asp-page-handler="CorregirComuna" asp-route-id="@m.Id" asp-route-documentId="@d.Id" asp-antiforgery="true" class="d-flex gap-1 mt-1">
-                                    <select name="communeId" class="form-select" required aria-label="Comuna del catálogo" style="min-width:160px;">
-                                        <option value="">Comuna no resuelta: elegir...</option>
-                                        @foreach (var c in Model.Communes)
-                                        {
-                                            <option value="@c.Id">@c.Name</option>
-                                        }
-                                    </select>
-                                    <button type="submit" class="btn-secondary">Corregir</button>
-                                </form>
+                                <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="d.DeliveryStatus" /></td>
                             }
-                            else if (d.DestinationCommuneId is null)
-                            {
-                                <span class="badge text-bg-warning">sin resolver</span>
-                            }
-                        </td>
-                        <td>@d.Units.ToString("N0", es)</td>
-                        <td>@d.Packages</td>
-                        <td class="text-end">$@d.TotalAmount.ToString("N0", es)</td>
-                        @if (!Model.IsDraft)
-                        {
-                            <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="d.DeliveryStatus" /></td>
-                        }
-                        <td class="col-actions">
-                            @if (canScan)
-                            {
-                                <form method="post" asp-page-handler="QuitarDocumento" asp-route-id="@m.Id" asp-route-documentId="@d.Id" asp-antiforgery="true" class="d-inline-block"
-                                      data-confirm="@($"¿Quitar {DocumentKinds.Label(d.DocumentKind)} {d.Folio}?")">
-                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-trash"></i></button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-                @if (m.Documents.Count == 0)
-                {
-                    <tr data-table-empty><td colspan="9" class="text-muted">Sin documentos todavía.</td></tr>
-                }
-            </tbody>
-        </table>
+                            <td class="col-actions">
+                                @if (canScan)
+                                {
+                                    <form method="post" asp-page-handler="QuitarDocumento" asp-route-id="@m.Id" asp-route-documentId="@d.Id" asp-antiforgery="true" class="d-inline-block"
+                                          data-confirm="@($"¿Quitar {DocumentKinds.Label(d.DocumentKind)} {d.Folio}?")">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (m.Documents.Count == 0)
+                    {
+                        <tr data-table-empty><td colspan="9" class="text-muted">Sin documentos todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         @if (canScan)
         {
@@ -318,34 +320,36 @@
                 {
                     <div class="alert alert-warning"><ul class="mb-0">@foreach (var w in gp.Warnings) { <li>@w</li> }</ul></div>
                 }
-                <table class="table-ps">
-                    <thead><tr><th>N°</th><th>Receptor</th><th>Destino</th><th class="text-end">Documentos</th><th class="text-end">Líneas</th><th class="text-end">Unidades</th><th class="text-end">Peso (kg)</th><th class="col-actions"></th></tr></thead>
-                    <tbody>
-                        @foreach (var g in gp.Guides)
-                        {
-                            <tr>
-                                <td>@g.Sequence</td>
-                                <td>@g.ReceiverName</td>
-                                <td>@g.Destination</td>
-                                <td class="text-end">@g.Documents</td>
-                                <td class="text-end">@g.Lines</td>
-                                <td class="text-end">@g.Quantity.ToString("N0", es)</td>
-                                <td class="text-end">@(g.WeightKg?.ToString("N1", es) ?? "—")</td>
-                                <td class="col-actions">
-                                    @if (gp.Errors.Count == 0)
-                                    {
-                                        <a class="btn-ghost" target="_blank" rel="noopener" title="Ver borrador (sin folio)"
-                                           asp-page-handler="GuiaBorrador" asp-route-id="@m.Id" asp-route-sequence="@g.Sequence"><i class="bi bi-eye"></i></a>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                        @if (gp.Guides.Count == 0)
-                        {
-                            <tr><td colspan="8" class="text-muted">Sin guías: agregue facturas al manifiesto.</td></tr>
-                        }
-                    </tbody>
-                </table>
+                <div class="table-responsive-lg">
+                    <table class="table-ps">
+                        <thead><tr><th>N°</th><th>Receptor</th><th>Destino</th><th class="text-end">Documentos</th><th class="text-end">Líneas</th><th class="text-end">Unidades</th><th class="text-end">Peso (kg)</th><th class="col-actions"></th></tr></thead>
+                        <tbody>
+                            @foreach (var g in gp.Guides)
+                            {
+                                <tr>
+                                    <td>@g.Sequence</td>
+                                    <td>@g.ReceiverName</td>
+                                    <td>@g.Destination</td>
+                                    <td class="text-end">@g.Documents</td>
+                                    <td class="text-end">@g.Lines</td>
+                                    <td class="text-end">@g.Quantity.ToString("N0", es)</td>
+                                    <td class="text-end">@(g.WeightKg?.ToString("N1", es) ?? "—")</td>
+                                    <td class="col-actions">
+                                        @if (gp.Errors.Count == 0)
+                                        {
+                                            <a class="btn-ghost" target="_blank" rel="noopener" title="Ver borrador (sin folio)"
+                                               asp-page-handler="GuiaBorrador" asp-route-id="@m.Id" asp-route-sequence="@g.Sequence"><i class="bi bi-eye"></i></a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (gp.Guides.Count == 0)
+                            {
+                                <tr><td colspan="8" class="text-muted">Sin guías: agregue facturas al manifiesto.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             }
             else if (!Model.IsDraft)
             {
@@ -353,38 +357,40 @@
                     <span>@Model.Guides.Count(g => g.Status == TransportGuideStatuses.Issued) de @Model.Guides.Count guía(s) emitida(s).</span>
                     @if (Model.Guides.Any(g => g.Status == TransportGuideStatuses.Issued))
                     {
-                        <a class="btn-secondary" target="_blank" rel="noopener" asp-page-handler="GuiasPdf" asp-route-id="@m.Id">
+                        <a class="btn btn-secondary" target="_blank" rel="noopener" asp-page-handler="GuiasPdf" asp-route-id="@m.Id">
                             <i class="bi bi-printer"></i> Imprimir todas
                         </a>
                     }
                 </div>
-                <table class="table-ps">
-                    <thead><tr><th>N°</th><th>Receptor</th><th>Destino</th><th>Folio</th><th>Estado</th><th>Detalle</th><th class="col-actions"></th></tr></thead>
-                    <tbody>
-                        @foreach (var g in Model.Guides)
-                        {
-                            <tr>
-                                <td>@g.Sequence</td>
-                                <td>@g.ReceiverName</td>
-                                <td>@g.DestinationAddress, @g.DestinationCommune</td>
-                                <td>@(g.Folio?.ToString(CultureInfo.InvariantCulture) ?? "—")</td>
-                                <td><partial name="/Pages/Despachos/Shared/_EstadoGuia.cshtml" model="g.Status" /></td>
-                                <td class="text-muted">@(g.LastError ?? (g.IssuedAt is { } at ? "Emitida " + DetalleModel.ChileTime(at) : ""))</td>
-                                <td class="col-actions">
-                                    @if (g.Status == TransportGuideStatuses.Issued)
-                                    {
-                                        <a class="btn-ghost" target="_blank" rel="noopener" title="PDF de la guía"
-                                           asp-page-handler="GuiasPdf" asp-route-id="@m.Id" asp-route-sequence="@g.Sequence"><i class="bi bi-file-earmark-pdf"></i></a>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                        @if (Model.Guides.Count == 0)
-                        {
-                            <tr><td colspan="7" class="text-muted">Este manifiesto no tiene guías de despacho.</td></tr>
-                        }
-                    </tbody>
-                </table>
+                <div class="table-responsive-lg">
+                    <table class="table-ps">
+                        <thead><tr><th>N°</th><th>Receptor</th><th>Destino</th><th>Folio</th><th>Estado</th><th>Detalle</th><th class="col-actions"></th></tr></thead>
+                        <tbody>
+                            @foreach (var g in Model.Guides)
+                            {
+                                <tr>
+                                    <td>@g.Sequence</td>
+                                    <td>@g.ReceiverName</td>
+                                    <td>@g.DestinationAddress, @g.DestinationCommune</td>
+                                    <td>@(g.Folio?.ToString(CultureInfo.InvariantCulture) ?? "—")</td>
+                                    <td><partial name="/Pages/Despachos/Shared/_EstadoGuia.cshtml" model="g.Status" /></td>
+                                    <td class="text-muted">@(g.LastError ?? (g.IssuedAt is { } at ? "Emitida " + DetalleModel.ChileTime(at) : ""))</td>
+                                    <td class="col-actions">
+                                        @if (g.Status == TransportGuideStatuses.Issued)
+                                        {
+                                            <a class="btn-ghost" target="_blank" rel="noopener" title="PDF de la guía"
+                                               asp-page-handler="GuiasPdf" asp-route-id="@m.Id" asp-route-sequence="@g.Sequence"><i class="bi bi-file-earmark-pdf"></i></a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (Model.Guides.Count == 0)
+                            {
+                                <tr><td colspan="7" class="text-muted">Este manifiesto no tiene guías de despacho.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             }
         </div>
     }
@@ -397,26 +403,28 @@
         }
         else
         {
-            <table class="table-ps">
-                <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Resultado</th><th>Motivo</th><th>Comentarios</th><th>Registrado</th></tr></thead>
-                <tbody>
-                    @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
-                    {
-                        <tr>
-                            <td>@DocumentKinds.Label(d.DocumentKind)</td>
-                            <td>@d.Folio</td>
-                            <td>@d.CustomerName</td>
-                            <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="d.DeliveryStatus" /></td>
-                            <td>@Model.ReasonName(d.RejectionReasonId)</td>
-                            <td>@(d.Comments ?? "")</td>
-                            <td>@(d.ReturnedAt is null ? "—" : DetalleModel.ChileTime(d.ReturnedAt.Value))</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Resultado</th><th>Motivo</th><th>Comentarios</th><th>Registrado</th></tr></thead>
+                    <tbody>
+                        @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
+                        {
+                            <tr>
+                                <td>@DocumentKinds.Label(d.DocumentKind)</td>
+                                <td>@d.Folio</td>
+                                <td>@d.CustomerName</td>
+                                <td><partial name="/Pages/Despachos/Shared/_EstadoDespachos.cshtml" model="d.DeliveryStatus" /></td>
+                                <td>@Model.ReasonName(d.RejectionReasonId)</td>
+                                <td>@(d.Comments ?? "")</td>
+                                <td>@(d.ReturnedAt is null ? "—" : DetalleModel.ChileTime(d.ReturnedAt.Value))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
             @if (Model.CanReturn && (m.Status == ManifestStatuses.Dispatched || m.Status == ManifestStatuses.Returned))
             {
-                <a class="btn-primary mt-2" href="/despachos/retorno?number=@m.Number"><i class="bi bi-arrow-return-left"></i> Registrar / corregir retorno</a>
+                <a class="btn btn-primary mt-2" href="~/despachos/retorno?number=@m.Number"><i class="bi bi-arrow-return-left"></i> Registrar / corregir retorno</a>
             }
         }
     </div>
@@ -466,44 +474,62 @@
         {
             var canEditExtras = Model.CanEdit && m.Status != ManifestStatuses.Annulled;
             <form method="post" asp-page-handler="GuardarAdicionales" asp-route-id="@m.Id" asp-antiforgery="true" class="mb-3">
-                <table class="table-ps">
-                    <thead><tr><th>Adicional</th><th class="text-end">Valor unitario</th><th style="width:9rem;">Cantidad</th></tr></thead>
-                    <tbody>
-                        @foreach (var x in Model.ExtraCharges)
-                        {
-                            <tr>
-                                <td><label for="extra-@x.RateSurchargeId">@x.Name</label></td>
-                                <td class="text-end">@(x.EffectType == "percent_of_base" ? $"{x.Value.ToString("0.##", es)}% del base" : x.Value.ToString("N0", es))</td>
-                                <td>
-                                    @if (canEditExtras)
-                                    {
-                                        <input type="number" step="1" min="0" max="@ManifestService.MaxExtraChargeQuantity" id="extra-@x.RateSurchargeId"
-                                               name="cantidades[@x.RateSurchargeId]" class="form-control" autocomplete="off"
-                                               value="@x.Quantity.ToString(CultureInfo.InvariantCulture)" />
-                                    }
-                                    else
-                                    {
-                                        @x.Quantity
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                <div class="table-responsive-lg">
+                    <table class="table-ps">
+                        <thead><tr><th>Adicional</th><th class="text-end">Valor unitario</th><th style="width:9rem;">Cantidad</th></tr></thead>
+                        <tbody>
+                            @foreach (var x in Model.ExtraCharges)
+                            {
+                                <tr>
+                                    <td><label for="extra-@x.RateSurchargeId">@x.Name</label></td>
+                                    <td class="text-end">@(x.EffectType == "percent_of_base" ? $"{x.Value.ToString("0.##", es)}% del base" : x.Value.ToString("N0", es))</td>
+                                    <td>
+                                        @if (canEditExtras)
+                                        {
+                                            <input type="number" step="1" min="0" max="@ManifestService.MaxExtraChargeQuantity" id="extra-@x.RateSurchargeId"
+                                                   name="cantidades[@x.RateSurchargeId]" class="form-control" autocomplete="off"
+                                                   value="@x.Quantity.ToString(CultureInfo.InvariantCulture)" />
+                                        }
+                                        else
+                                        {
+                                            @x.Quantity
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
                 @if (canEditExtras)
                 {
-                    <button type="submit" class="btn-secondary"><i class="bi bi-check2"></i> Guardar adicionales</button>
+                    <button type="submit" class="btn btn-secondary"><i class="bi bi-check2"></i> Guardar adicionales</button>
                     <span class="text-muted ms-2">@(m.Status == ManifestStatuses.Draft ? "Al guardar se actualiza el costo estimado; se cobran al despachar." : "Al guardar se recalcula el costo.")</span>
                 }
             </form>
         }
 
-        <table class="table-ps">
-            <thead><tr><th>Concepto</th><th>Detalle</th><th class="text-end">Monto</th></tr></thead>
-            <tbody>
-                @if (Model.IsDraft)
-                {
-                    foreach (var l in (Model.Estimate?.Lines ?? Array.Empty<CostLine>()).OrderBy(x => x.Kind == "base" ? 0 : 1))
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead><tr><th>Concepto</th><th>Detalle</th><th class="text-end">Monto</th></tr></thead>
+                <tbody>
+                    @if (Model.IsDraft)
+                    {
+                        foreach (var l in (Model.Estimate?.Lines ?? Array.Empty<CostLine>()).OrderBy(x => x.Kind == "base" ? 0 : 1))
+                        {
+                            <tr>
+                                <td>@(l.Kind == "base" ? "Valor base" : "Recargo")</td>
+                                <td>@l.Explanation</td>
+                                <td class="text-end">@l.Amount.ToString("N0", es)</td>
+                            </tr>
+                        }
+                        if ((Model.Estimate?.Lines.Count ?? 0) == 0)
+                        {
+                            <tr><td colspan="3" class="text-muted">Sin líneas de costo estimado.</td></tr>
+                        }
+                    }
+                    else
+                    {
+                    @foreach (var l in m.CostLines.OrderBy(x => x.Kind == "base" ? 0 : 1).ThenBy(x => x.Id))
                     {
                         <tr>
                             <td>@(l.Kind == "base" ? "Valor base" : "Recargo")</td>
@@ -511,34 +537,20 @@
                             <td class="text-end">@l.Amount.ToString("N0", es)</td>
                         </tr>
                     }
-                    if ((Model.Estimate?.Lines.Count ?? 0) == 0)
+                    @if (m.CostLines.Count == 0)
                     {
-                        <tr><td colspan="3" class="text-muted">Sin líneas de costo estimado.</td></tr>
+                        <tr><td colspan="3" class="text-muted">Sin líneas de costo (el costo se calcula al despachar).</td></tr>
                     }
-                }
-                else
-                {
-                @foreach (var l in m.CostLines.OrderBy(x => x.Kind == "base" ? 0 : 1).ThenBy(x => x.Id))
-                {
-                    <tr>
-                        <td>@(l.Kind == "base" ? "Valor base" : "Recargo")</td>
-                        <td>@l.Explanation</td>
-                        <td class="text-end">@l.Amount.ToString("N0", es)</td>
-                    </tr>
-                }
-                @if (m.CostLines.Count == 0)
-                {
-                    <tr><td colspan="3" class="text-muted">Sin líneas de costo (el costo se calcula al despachar).</td></tr>
-                }
-                }
-            </tbody>
-        </table>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         @if (canRecalc)
         {
             <form method="post" asp-page-handler="RecalcularCosto" asp-route-id="@m.Id" asp-antiforgery="true" class="mt-2"
                   data-confirm="Se vuelve a calcular el costo con las tarifas y comunas vigentes. Un ajuste manual no se pierde.">
-                <button type="submit" class="btn-secondary"><i class="bi bi-arrow-repeat"></i> Recalcular costo</button>
+                <button type="submit" class="btn btn-secondary"><i class="bi bi-arrow-repeat"></i> Recalcular costo</button>
             </form>
         }
 
@@ -557,28 +569,30 @@
                         <input type="text" id="cost-reason" name="reason" class="form-control" required maxlength="300" autocomplete="off" />
                     </div>
                 </div>
-                <button type="submit" class="btn-primary">Ajustar costo</button>
+                <button type="submit" class="btn btn-primary">Ajustar costo</button>
             </form>
         }
     </div>
 
     @* ------------------------------------------------------------ Historial *@
     <div data-tab-panel="historial" style="@(active == "historial" ? "" : "display:none;")">
-        <table class="table-ps">
-            <thead><tr><th>Fecha (Chile)</th><th>Evento</th><th>Estado</th><th>Usuario</th><th>Detalle</th></tr></thead>
-            <tbody>
-                @foreach (var e in m.Events.OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id))
-                {
-                    <tr>
-                        <td>@DetalleModel.ChileTime(e.OccurredAt)</td>
-                        <td>@DetalleModel.EventLabel(e.EventType)</td>
-                        <td>@(e.FromStatus is null && e.ToStatus is null ? "" : $"{e.FromStatus} → {e.ToStatus}")</td>
-                        <td>@Model.UserLabel(e.UserId)</td>
-                        <td class="text-muted" style="max-width:380px;word-break:break-word;">@e.PayloadJson</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead><tr><th>Fecha (Chile)</th><th>Evento</th><th>Estado</th><th>Usuario</th><th>Detalle</th></tr></thead>
+                <tbody>
+                    @foreach (var e in m.Events.OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id))
+                    {
+                        <tr>
+                            <td>@DetalleModel.ChileTime(e.OccurredAt)</td>
+                            <td>@DetalleModel.EventLabel(e.EventType)</td>
+                            <td>@(e.FromStatus is null && e.ToStatus is null ? "" : $"{e.FromStatus} → {e.ToStatus}")</td>
+                            <td>@Model.UserLabel(e.UserId)</td>
+                            <td class="text-muted" style="max-width:380px;word-break:break-word;">@e.PayloadJson</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -599,8 +613,8 @@
                     </div>
                 </div>
                 <div class="drawer-footer">
-                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                    <button type="submit" class="btn-primary">Anular manifiesto</button>
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Anular manifiesto</button>
                 </div>
             </form>
         </aside>

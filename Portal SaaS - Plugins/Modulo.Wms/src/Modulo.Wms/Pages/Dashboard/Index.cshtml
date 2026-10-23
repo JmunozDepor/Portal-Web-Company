@@ -180,7 +180,7 @@
             var badgeTexto = proc.SinEjecutar ? "sin ejecutar" : sinConfig ? "sin config" : (proc.Status ?? "—");
             <div class="col-md-6 col-lg-3">
                 <div class="kpi-tile h-100" style="--kpi-accent: @accent;">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
                         <span class="small fw-semibold">@proc.Nombre</span>
                         <span class="badge-status @badgeClase">@badgeTexto</span>
                     </div>

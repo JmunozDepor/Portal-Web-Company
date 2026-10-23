@@ -24,45 +24,47 @@
             <input type="checkbox" name="soloSinClasificar" value="true" checked="@Model.SoloSinClasificar" />
             Solo sin clasificar
         </label>
-        <button type="submit" class="btn-primary">Buscar</button>
+        <button type="submit" class="btn btn-primary">Buscar</button>
     </form>
 
-    <table class="grid">
-        <thead>
-            <tr>
-                <th>Cuenta</th>
-                <th>Nombre</th>
-                <th>Clasificación</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var c in Model.Cuentas)
-            {
+    <div class="table-responsive-lg">
+        <table class="grid">
+            <thead>
                 <tr>
-                    <td>@c.NroCuenta</td>
-                    <td>@c.NombreCuenta</td>
-                    <td colspan="2">
-                        <form asp-page-handler="Asignar" method="post" style="display:flex; gap:6px;">
-                            <input type="hidden" name="nroCuenta" value="@c.NroCuenta" />
-                            <input type="hidden" name="filtro" value="@Model.Filtro" />
-                            <input type="hidden" name="soloSinClasificar" value="@Model.SoloSinClasificar" />
-                            <select name="clasificacionId" style="min-width:220px;">
-                                <option value="">(sin clasificar)</option>
-                                @foreach (var cl in Model.ClasificacionesDisponibles)
-                                {
-                                    <option value="@cl.Id" selected="@(cl.Id == c.ClasificacionId)">@cl.Nombre@(cl.Activo ? "" : " (inactiva)")</option>
-                                }
-                            </select>
-                            <button type="submit">Guardar</button>
-                        </form>
-                    </td>
+                    <th>Cuenta</th>
+                    <th>Nombre</th>
+                    <th>Clasificación</th>
+                    <th></th>
                 </tr>
-            }
-            @if (!Model.Cuentas.Any())
-            {
-                <tr><td colspan="4">No hay cuentas para mostrar.</td></tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.Cuentas)
+                {
+                    <tr>
+                        <td>@c.NroCuenta</td>
+                        <td>@c.NombreCuenta</td>
+                        <td colspan="2">
+                            <form asp-page-handler="Asignar" method="post" style="display:flex; gap:6px;">
+                                <input type="hidden" name="nroCuenta" value="@c.NroCuenta" />
+                                <input type="hidden" name="filtro" value="@Model.Filtro" />
+                                <input type="hidden" name="soloSinClasificar" value="@Model.SoloSinClasificar" />
+                                <select name="clasificacionId" style="min-width:220px;">
+                                    <option value="">(sin clasificar)</option>
+                                    @foreach (var cl in Model.ClasificacionesDisponibles)
+                                    {
+                                        <option value="@cl.Id" selected="@(cl.Id == c.ClasificacionId)">@cl.Nombre@(cl.Activo ? "" : " (inactiva)")</option>
+                                    }
+                                </select>
+                                <button type="submit">Guardar</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Cuentas.Any())
+                {
+                    <tr><td colspan="4">No hay cuentas para mostrar.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>

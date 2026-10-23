@@ -10,9 +10,9 @@
 @* Paso 1: cabecera. Al guardar se crea el borrador y se sigue en el detalle (pestaña Documentos) para escanear. *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Nuevo manifiesto</h2>
-        <a class="btn-secondary" href="/despachos/manifiestos">Volver al listado</a>
+        <a class="btn btn-secondary" href="~/despachos/manifiestos">Volver al listado</a>
     </div>
 
     @if (Model.ErrorMessage is not null)
@@ -23,7 +23,7 @@
     <form method="post" asp-antiforgery="true">
         <partial name="_CabeceraCamposDespachos" model='new ManifestFormView(Model.Input, Model.Lookups, "Input")' />
         <p class="text-muted">Después de guardar el borrador podrá escanear las facturas y guías (lector de mano o cámara).</p>
-        <button type="submit" class="btn-primary">Crear borrador y escanear</button>
+        <button type="submit" class="btn btn-primary">Crear borrador y escanear</button>
     </form>
 </div>
 

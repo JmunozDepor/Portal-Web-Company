@@ -13,7 +13,7 @@
    "Guardar" solo guarda si la prueba pasa. *@
 
 <div class="card-surface">
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <h2 class="mb-0">Consultas SAP</h2>
     </div>
 
@@ -39,32 +39,34 @@
         customer_activity, destination_city</code> (giro y ciudad del cliente se repiten en cada fila).
     </p>
 
-    <table class="table-ps" id="tabla-consultas-sap">
-        <thead><tr><th>Documento</th><th>Estado</th><th>Última validación</th><th class="col-actions"></th></tr></thead>
-        <tbody>
-            @foreach (var (kind, q) in Model.Rows)
-            {
-                <tr class="@(q is { IsActive: false } ? "row-inactive" : "")">
-                    <td>@SapQueryKinds.Label(kind)</td>
-                    <td>
-                        @if (q is null) { <span class="badge-status badge-status--warning">Sin configurar</span> }
-                        else if (!q.IsActive) { <span class="badge-status badge-status--neutral">Inactiva</span> }
-                        else { <span class="badge-status badge-status--success">Activa</span> }
-                    </td>
-                    <td>@(q?.ValidatedAt is { } v ? v.ToString("yyyy-MM-dd HH:mm") + " UTC" : "Nunca (consulta de ejemplo sin probar)")</td>
-                    <td class="col-actions">
-                        <div class="admin-row-actions">
-                            @if (q is null ? Model.CanCreate : Model.CanEdit)
-                            {
-                                <button type="button" class="btn-ghost" title="Editar SQL" data-drawer-open="drawer-consultas" data-maestro-edit
-                                        data-row="@Model.RowJson(new { Id = q?.Id ?? 0L, DocumentKind = kind, DocumentKindLabel = SapQueryKinds.Label(kind), SqlText = q?.SqlText ?? "", IsActive = q?.IsActive ?? true })"><i class="bi bi-pencil"></i></button>
-                            }
-                        </div>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="table-responsive-lg">
+        <table class="table-ps" id="tabla-consultas-sap">
+            <thead><tr><th>Documento</th><th>Estado</th><th>Última validación</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var (kind, q) in Model.Rows)
+                {
+                    <tr class="@(q is { IsActive: false } ? "row-inactive" : "")">
+                        <td>@SapQueryKinds.Label(kind)</td>
+                        <td>
+                            @if (q is null) { <span class="badge-status badge-status--warning">Sin configurar</span> }
+                            else if (!q.IsActive) { <span class="badge-status badge-status--neutral">Inactiva</span> }
+                            else { <span class="badge-status badge-status--success">Activa</span> }
+                        </td>
+                        <td>@(q?.ValidatedAt is { } v ? v.ToString("yyyy-MM-dd HH:mm") + " UTC" : "Nunca (consulta de ejemplo sin probar)")</td>
+                        <td class="col-actions">
+                            <div class="admin-row-actions">
+                                @if (q is null ? Model.CanCreate : Model.CanEdit)
+                                {
+                                    <button type="button" class="btn-ghost" title="Editar SQL" data-drawer-open="drawer-consultas" data-maestro-edit
+                                            data-row="@Model.RowJson(new { Id = q?.Id ?? 0L, DocumentKind = kind, DocumentKindLabel = SapQueryKinds.Label(kind), SqlText = q?.SqlText ?? "", IsActive = q?.IsActive ?? true })"><i class="bi bi-pencil"></i></button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>
 
 @if (probed)
@@ -76,36 +78,40 @@
         {
             <div class="alert alert-success">La consulta cumple el contrato: @ls.Lines.Count línea(s).</div>
             <p>Giro del cliente: <strong>@(ls.CustomerActivity ?? "—")</strong> · Ciudad de despacho: <strong>@(ls.DestinationCity ?? "—")</strong></p>
-            <table class="table-ps">
-                <thead><tr><th>Línea</th><th>Artículo</th><th>Descripción</th><th class="text-end">Cantidad</th><th>Unidad</th><th class="text-end">Peso (kg)</th></tr></thead>
-                <tbody>
-                    @foreach (var l in ls.Lines)
-                    {
-                        <tr>
-                            <td>@l.LineNum</td><td>@l.ItemCode</td><td>@l.ItemName</td>
-                            <td class="text-end">@l.Quantity.ToString("0.##")</td><td>@(l.Unit ?? "—")</td>
-                            <td class="text-end">@(l.WeightKg?.ToString("0.###") ?? "—")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead><tr><th>Línea</th><th>Artículo</th><th>Descripción</th><th class="text-end">Cantidad</th><th>Unidad</th><th class="text-end">Peso (kg)</th></tr></thead>
+                    <tbody>
+                        @foreach (var l in ls.Lines)
+                        {
+                            <tr>
+                                <td>@l.LineNum</td><td>@l.ItemCode</td><td>@l.ItemName</td>
+                                <td class="text-end">@l.Quantity.ToString("0.##")</td><td>@(l.Unit ?? "—")</td>
+                                <td class="text-end">@(l.WeightKg?.ToString("0.###") ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
             <p class="text-muted mt-2 mb-0">Compare artículos, cantidades y pesos con la factura en SAP antes de guardar.</p>
         }
         else if (v.IsValid && Model.Probe.Document is { } d)
         {
             <div class="alert alert-success">La consulta cumple el contrato.</div>
-            <table class="table-ps">
-                <tbody>
-                    <tr><th>Tipo</th><td>@DocumentKinds.Label(d.DocumentKind) (SII @d.SiiDocumentType)</td><th>Folio</th><td>@d.Folio</td></tr>
-                    <tr><th>DocEntry / DocNum</th><td>@d.DocEntry / @d.DocNum</td><th>Fecha</th><td>@d.DocumentDate.ToString("yyyy-MM-dd")</td></tr>
-                    <tr><th>Cliente / destino</th><td>@d.CustomerCode - @d.CustomerName</td><th>RUT</th><td>@d.CustomerTaxId</td></tr>
-                    <tr><th>Dirección</th><td>@d.DestinationAddress</td><th>Comuna</th><td>@d.DestinationCommune</td></tr>
-                    <tr><th>Orden de compra</th><td>@d.CustomerPo</td><th>Pedido base</th><td>@(d.BaseOrderEntry?.ToString() ?? "-")</td></tr>
-                    <tr><th>Unidades</th><td>@d.Units.ToString("0.##")</td><th>Bultos</th><td>@d.Packages</td></tr>
-                    <tr><th>Monto</th><td>@d.TotalAmount.ToString("N0")</td><th>Anulado</th><td>@(d.IsCanceled ? "Sí" : "No")</td></tr>
-                    <tr><th>Peso (kg)</th><td>@(d.WeightKg?.ToString("0.##") ?? "-")</td><th>Volumen (m3)</th><td>@(d.VolumeM3?.ToString("0.##") ?? "-")</td></tr>
-                </tbody>
-            </table>
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <tbody>
+                        <tr><th>Tipo</th><td>@DocumentKinds.Label(d.DocumentKind) (SII @d.SiiDocumentType)</td><th>Folio</th><td>@d.Folio</td></tr>
+                        <tr><th>DocEntry / DocNum</th><td>@d.DocEntry / @d.DocNum</td><th>Fecha</th><td>@d.DocumentDate.ToString("yyyy-MM-dd")</td></tr>
+                        <tr><th>Cliente / destino</th><td>@d.CustomerCode - @d.CustomerName</td><th>RUT</th><td>@d.CustomerTaxId</td></tr>
+                        <tr><th>Dirección</th><td>@d.DestinationAddress</td><th>Comuna</th><td>@d.DestinationCommune</td></tr>
+                        <tr><th>Orden de compra</th><td>@d.CustomerPo</td><th>Pedido base</th><td>@(d.BaseOrderEntry?.ToString() ?? "-")</td></tr>
+                        <tr><th>Unidades</th><td>@d.Units.ToString("0.##")</td><th>Bultos</th><td>@d.Packages</td></tr>
+                        <tr><th>Monto</th><td>@d.TotalAmount.ToString("N0")</td><th>Anulado</th><td>@(d.IsCanceled ? "Sí" : "No")</td></tr>
+                        <tr><th>Peso (kg)</th><td>@(d.WeightKg?.ToString("0.##") ?? "-")</td><th>Volumen (m3)</th><td>@(d.VolumeM3?.ToString("0.##") ?? "-")</td></tr>
+                    </tbody>
+                </table>
+            </div>
             <p class="text-muted mt-2 mb-0">Compare cliente, unidades y bultos con el documento en SAP antes de guardar.</p>
         }
         else
@@ -152,9 +158,9 @@
                     </div>
                 </div>
                 <div class="drawer-footer">
-                    <button type="button" class="btn-secondary" data-drawer-close>Cancelar</button>
-                    <button type="submit" class="btn-secondary" asp-page-handler="Probe" formmethod="post">Probar</button>
-                    <button type="submit" class="btn-primary" data-submit-label data-label-new="Guardar" data-label-edit="Guardar">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-secondary" asp-page-handler="Probe" formmethod="post">Probar</button>
+                    <button type="submit" class="btn btn-primary" data-submit-label data-label-new="Guardar" data-label-edit="Guardar">Guardar</button>
                 </div>
             </form>
         </aside>

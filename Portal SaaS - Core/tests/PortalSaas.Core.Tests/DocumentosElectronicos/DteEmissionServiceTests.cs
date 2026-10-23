@@ -237,6 +237,14 @@ public class DteEmissionServiceTests
     }
 
     [Fact]
+    public async Task GetConfiguration_Configurada_TraeRazonSocialYGiroDelEmisor()
+    {
+        var c = await (await BuildAsync()).Svc.GetConfigurationAsync();
+        Assert.Equal("Comercial Depor Ltda.", c.IssuerName);
+        Assert.Equal("Venta al por mayor de vestuario", c.IssuerActivity);
+    }
+
+    [Fact]
     public async Task GetConfiguration_InformaProveedorYEmisor()
     {
         var env = await BuildAsync();

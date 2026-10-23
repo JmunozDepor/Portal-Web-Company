@@ -42,7 +42,8 @@ public sealed class DteEmissionService : IDteEmissionService
         var resolved = await _settings.ResolveAsync(_company.CompanyId);
         if (resolved is not { } r)
             return new DteConfigurationStatus(false, null, null, null, Array.Empty<int>(), NotConfiguredMessage);
-        return new DteConfigurationStatus(true, r.Provider.Code, r.Ctx.Environment, r.Issuer.TaxId, r.Provider.Capabilities.SupportedTypes, null);
+        return new DteConfigurationStatus(true, r.Provider.Code, r.Ctx.Environment, r.Issuer.TaxId, r.Provider.Capabilities.SupportedTypes, null,
+            r.Issuer.Name, r.Issuer.Activity);
     }
 
     public Task<IReadOnlyList<DteValidationError>> ValidateAsync(DteDocument doc, CancellationToken ct = default) =>

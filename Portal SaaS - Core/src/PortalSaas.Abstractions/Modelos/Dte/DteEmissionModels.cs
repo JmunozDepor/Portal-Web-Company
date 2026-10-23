@@ -28,4 +28,4 @@ public sealed record DtePreviewResult(IReadOnlyList<DteValidationError> Errors, 
 
 public sealed record DteConfigurationStatus(
     bool IsConfigured, string? ProviderCode, string? Environment, string? IssuerTaxId,
-    IReadOnlyList<int> SupportedTypes, string? Error);
+    IReadOnlyList<int> SupportedTypes, string? Error, string? IssuerName = null, string? IssuerActivity = null);

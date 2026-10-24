@@ -240,6 +240,7 @@ public sealed class DetalleModel : DespachosPageModelBase
                     id = doc.Id,
                     kind = DocumentKinds.Label(doc.DocumentKind),
                     folio = doc.Folio,
+                    date = doc.DocumentDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture),
                     customer = doc.CustomerName,
                     commune = doc.DestinationCommuneName,
                     communeResolved = doc.DestinationCommuneId != null,

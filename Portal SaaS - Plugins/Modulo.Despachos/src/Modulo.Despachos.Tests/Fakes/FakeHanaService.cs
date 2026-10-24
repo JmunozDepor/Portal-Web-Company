@@ -25,10 +25,18 @@ public sealed class FakeHanaService : IHanaService
         ExecutedSql.Add(sqlParametrizado);
         LastParameters = parametros;
         if (ThrowOnQuery is not null) throw ThrowOnQuery;
+        // El servicio ejecuta las consultas sin comentarios: los resultados se buscan ignorándolos.
         IReadOnlyList<IReadOnlyDictionary<string, object?>> rows =
-            Results.TryGetValue(sqlParametrizado, out var r) ? r : Array.Empty<IReadOnlyDictionary<string, object?>>();
+            Results.TryGetValue(sqlParametrizado, out var r) ? r
+            : Results.FirstOrDefault(x => WithoutComments(x.Key) == WithoutComments(sqlParametrizado)).Value
+              ?? Array.Empty<IReadOnlyDictionary<string, object?>>();
         return Task.FromResult(rows);
     }
+
+    private static string WithoutComments(string sql) =>
+        System.Text.RegularExpressions.Regex.Replace(
+            System.Text.RegularExpressions.Regex.Replace(sql, @"--[^\n]*|/\*.*?\*/", " ", System.Text.RegularExpressions.RegexOptions.Singleline),
+            @"\s+", " ").Trim().TrimEnd(';').Trim();
 
     public Task<IReadOnlyList<T>> QueryAsync<T>(string sqlParametrizado, object? parametros = null, CancellationToken ct = default)
     {

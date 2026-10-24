@@ -1,5 +1,5 @@
 -- DEPOR (modelo con almacen de transito). Transferencias pendientes de despacho a UNA sucursal ("Agregar pendientes").
--- Despacho = C_RETAIL -> 9999 con U_GSP_WHSDEST = :warehouse y U_GSP_SENDTPV = 'Y'.
+-- Despacho = C_RETAIL -> 9999 con U_GSP_WHSDEST = sucursal elegida y U_GSP_SENDTPV = 'Y'.
 -- Pendiente = la tienda aun no la recibe: no existe la transferencia de recepcion (sale del almacen de transito
 -- hacia la sucursal con el mismo LPN; OWTR."Filler" = almacen de origen de la cabecera). Las ya despachadas por el portal las descarta el portal.
 SELECT

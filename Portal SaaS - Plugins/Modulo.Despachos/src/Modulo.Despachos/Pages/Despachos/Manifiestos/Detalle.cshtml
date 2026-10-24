@@ -271,7 +271,7 @@
 
         <div class="table-responsive-lg">
             <table class="table-ps" id="docs-table">
-                <thead><tr><th>Tipo</th><th>Folio</th><th>Cliente</th><th>Comuna</th><th>Unidades</th><th>Bultos</th><th class="text-end">Monto</th>@if (!Model.IsDraft) { <th>Estado</th> }<th class="col-actions"></th></tr></thead>
+                <thead><tr><th>Tipo</th><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Comuna</th><th>Unidades</th><th>Bultos</th><th class="text-end">Monto</th>@if (!Model.IsDraft) { <th>Estado</th> }<th class="col-actions"></th></tr></thead>
                 <tbody id="docs-body">
                     @foreach (var d in m.Documents.OrderBy(x => x.AddedAt))
                     {
@@ -284,6 +284,7 @@
                                     <div><a class="text-muted" href="~/despachos/agrupar-traslados/@gid">@gcode</a></div>
                                 }
                             </td>
+                            <td class="text-nowrap">@d.DocumentDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
                             <td>@d.CustomerName</td>
                             <td>
                                 @(d.DestinationCommuneName ?? "—")
@@ -323,7 +324,7 @@
                     }
                     @if (m.Documents.Count == 0)
                     {
-                        <tr data-table-empty><td colspan="9" class="text-muted">Sin documentos todavía.</td></tr>
+                        <tr data-table-empty><td colspan="10" class="text-muted">Sin documentos todavía.</td></tr>
                     }
                 </tbody>
             </table>
@@ -345,7 +346,7 @@
             @* Plantilla de fila para los documentos agregados por escaneo (JS reemplaza el GUID nulo). *@
             <template id="doc-row-template">
                 <tr>
-                    <td data-f="kind"></td><td data-f="folio"></td><td data-f="customer"></td>
+                    <td data-f="kind"></td><td data-f="folio"></td><td class="text-nowrap" data-f="date"></td><td data-f="customer"></td>
                     <td>
                         <span data-f="commune"></span>
                         @* Solo se muestra si la comuna llegó sin resolver (despachos-scan.js lo quita si no). *@

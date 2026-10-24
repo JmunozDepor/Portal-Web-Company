@@ -112,6 +112,29 @@ public class SapTransferQueriesTests
         Assert.Equal(new DateTime(2026, 10, 1), Param(hana, "from_date"));
     }
 
+    /// <summary>
+    /// HANA enlaza los parámetros por posición de cada ":nombre" en el texto, también dentro de comentarios: un
+    /// ":warehouse" comentado corría los valores y el filtro de fecha recibía el código de bodega.
+    /// </summary>
+    [Fact]
+    public async Task Consulta_ConParametrosEnComentarios_SeEjecutaSinComentarios()
+    {
+        var (svc, db, hana, company) = Build();
+        const string commented = "-- despacho a :warehouse desde :from_date\n" +
+                                 "SELECT 1 AS \"doc_entry\" /* :warehouse */ FROM DUMMY WHERE ':x -- no' = ':x -- no' AND :warehouse = :warehouse AND :from_date IS NOT NULL";
+        await Configure(db, company.CompanyId, SapQueryKinds.TransferPending, commented);
+
+        await svc.ListPendingTransfersAsync("TDA01", new DateOnly(2026, 10, 1));
+
+        var executed = hana.ExecutedSql.Last();
+        Assert.DoesNotContain("--  despacho", executed);
+        Assert.DoesNotContain("despacho a", executed);
+        Assert.DoesNotContain("/*", executed);
+        Assert.Contains("':x -- no' = ':x -- no'", executed);
+        Assert.Equal(new[] { ":warehouse", ":warehouse", ":from_date" },
+            System.Text.RegularExpressions.Regex.Matches(executed, @":(?!x)\w+").Select(m => m.Value));
+    }
+
     [Fact]
     public async Task ListPendingTransfersAll_EnlazaSoloFecha()
     {

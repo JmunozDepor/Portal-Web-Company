@@ -55,7 +55,7 @@
         var empty = tbody.querySelector('[data-table-empty]');
         if (empty) { empty.remove(); }
         var row = template.content.firstElementChild.cloneNode(true);
-        var fields = { kind: doc.kind, folio: doc.folio, customer: doc.customer, commune: doc.commune || '—', units: nf.format(doc.units), packages: doc.packages, amount: '$' + nf.format(doc.amount || 0) };
+        var fields = { kind: doc.kind, folio: doc.folio, date: doc.date || '', customer: doc.customer, commune: doc.commune || '—', units: nf.format(doc.units), packages: doc.packages, amount: '$' + nf.format(doc.amount || 0) };
         Object.keys(fields).forEach(function (k) { row.querySelector('[data-f="' + k + '"]').textContent = fields[k]; });
         var fix = row.querySelector('[data-commune-fix]');
         if (fix && doc.communeResolved) { fix.remove(); }

@@ -91,6 +91,21 @@ public class AgruparTrasladosPermisosTests
     }
 
     [Fact]
+    public async Task Manifiesto_EscanearLpn_DevuelveLaFechaDelDocumento()
+    {
+        var env = await DispatchGroupServiceTests.EnvAsync();
+        env.User.Grant("Despachos.manifiestos", PortalActions.View, PortalActions.Edit);
+        var pdf = new ManifestPdfService(env.Db, env.Company, env.User, env.Svc, env.Clock);
+        var page = new Manifiestos.DetalleModel(env.Svc, pdf, env.Master, env.User, new FakeContactLookup(), env.Cost, env.Guides) { TempData = Temp() };
+        var id = await env.Svc.CreateDraftAsync(env.Header());
+
+        var json = Assert.IsType<JsonResult>(await page.OnPostAgregarDocumentoAsync(id, new Manifiestos.DetalleModel.ScanInput { RawScan = "CTBO501" }));
+
+        var doc = json.Value!.GetType().GetProperty("document")!.GetValue(json.Value)!;
+        Assert.Equal("09-11-2026", doc.GetType().GetProperty("date")!.GetValue(doc));
+    }
+
+    [Fact]
     public async Task Manifiesto_QuitarTodos_RequiereEditar()
     {
         var env = await DispatchGroupServiceTests.EnvAsync();

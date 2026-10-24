@@ -434,11 +434,50 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
     }
 
     /// <summary>SQL a ejecutar: el original sin el ';' final (si lo hay).</summary>
+    /// <remarks>
+    /// Se ejecuta sin comentarios: el servicio HANA enlaza los parámetros por posición de cada ":nombre" en el
+    /// texto, incluidos los de un comentario ("-- filtra por :warehouse"), lo que corría los valores (el filtro de
+    /// fecha recibía el código de bodega).
+    /// </remarks>
     private static string Executable(string sql)
     {
-        var text = sql.TrimEnd();
+        var text = StripComments(sql).TrimEnd();
         var clean = Sanitize(text);
         return clean.EndsWith(';') ? text[..^1].TrimEnd() : text.Trim();
+    }
+
+    /// <summary>Quita los comentarios -- y /* */ conservando intacto el texto entre comillas simples o dobles.</summary>
+    private static string StripComments(string sql)
+    {
+        var sb = new StringBuilder(sql.Length);
+        for (var i = 0; i < sql.Length; i++)
+        {
+            var c = sql[i];
+            if (c == '-' && i + 1 < sql.Length && sql[i + 1] == '-')
+            {
+                while (i < sql.Length && sql[i] != '\n') i++;
+                if (i < sql.Length) sb.Append('\n');
+            }
+            else if (c == '/' && i + 1 < sql.Length && sql[i + 1] == '*')
+            {
+                var end = sql.IndexOf("*/", i + 2, StringComparison.Ordinal);
+                i = end < 0 ? sql.Length : end + 1;
+                sb.Append(' ');
+            }
+            else if (c is '\'' or '"')
+            {
+                sb.Append(c);
+                for (i++; i < sql.Length; i++)
+                {
+                    sb.Append(sql[i]);
+                    if (sql[i] != c) continue;
+                    if (i + 1 < sql.Length && sql[i + 1] == c) { sb.Append(c); i++; continue; }
+                    break;
+                }
+            }
+            else sb.Append(c);
+        }
+        return sb.ToString();
     }
 
     // ------------------------------------------------------------------ Mantención

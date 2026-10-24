@@ -20,7 +20,7 @@ WHERE IFNULL(T0."U_GSP_WHSDEST", '') <> ''
   AND NOT EXISTS (
     SELECT 1 FROM OWTR R
     WHERE R."U_NX_LPN" = T0."U_NX_LPN"
-      AND R."FromWhsCode" = T0."ToWhsCode"
+      AND R."Filler" = T0."ToWhsCode"
       AND R."ToWhsCode" = T0."U_GSP_WHSDEST"
       AND R."CANCELED" = 'N')
 ORDER BY T0."U_GSP_WHSDEST", T0."DocDate", T0."DocNum"

@@ -65,8 +65,7 @@ public sealed class DteSettingsService
             throw new InvalidOperationException($"El proveedor «{input.ProviderCode}» no está disponible en esta instalación.");
         if (!DteEnvironments.All.Contains(input.Environment))
             throw new InvalidOperationException("Ambiente inválido: use certificación o producción.");
-        if (!Uri.TryCreate(input.BaseUrl?.Trim(), UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps)
-            throw new InvalidOperationException("La URL del proveedor debe ser una dirección https completa.");
+        var url = ValidateBaseUrl(input.BaseUrl);
         if (string.IsNullOrWhiteSpace(input.Username))
             throw new InvalidOperationException("Ingrese el usuario del proveedor.");
         if (!Rut.TryNormalize(input.IssuerTaxId, out var issuerRut))
@@ -145,6 +144,38 @@ public sealed class DteSettingsService
         {
             throw new InvalidOperationException($"No se pudo conectar con {resolved.Provider.Code}: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// URL base del proveedor (el adaptador le agrega "/{servicio}"). Exige https, salvo un servidor de la red interna
+    /// (loopback / localhost o IP privada 10/8, 172.16/12, 192.168/16), como el FACELE instalado en el servidor de la
+    /// empresa: ahí las credenciales no salen de la red local. Rechaza la URL del WSDL o de un servicio indicando la base.
+    /// </summary>
+    internal static Uri ValidateBaseUrl(string? baseUrl)
+    {
+        if (!Uri.TryCreate(baseUrl?.Trim(), UriKind.Absolute, out var url) || (url.Scheme != Uri.UriSchemeHttps && url.Scheme != Uri.UriSchemeHttp))
+            throw new InvalidOperationException("La URL del proveedor debe ser una dirección https completa.");
+        var path = url.AbsolutePath.TrimEnd('/');
+        var lastSegment = path[(path.LastIndexOf('/') + 1)..];
+        if (url.Query.Length > 0 || lastSegment.EndsWith("Service", StringComparison.OrdinalIgnoreCase))
+        {
+            var basePath = lastSegment.EndsWith("Service", StringComparison.OrdinalIgnoreCase) ? path[..path.LastIndexOf('/')] : path;
+            throw new InvalidOperationException(
+                $"Ingrese la URL base del servicio, sin el nombre del servicio ni \"?wsdl\": {url.GetLeftPart(UriPartial.Authority)}{basePath}");
+        }
+        if (url.Scheme == Uri.UriSchemeHttp && !IsInternalHost(url))
+            throw new InvalidOperationException(
+                "La URL del proveedor debe ser una dirección https completa (http solo se acepta para un servidor de la red interna).");
+        return url;
+    }
+
+    private static bool IsInternalHost(Uri url)
+    {
+        if (url.IsLoopback) return true;
+        if (!System.Net.IPAddress.TryParse(url.Host, out var ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+            return false;
+        var b = ip.GetAddressBytes();
+        return b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168);
     }
 
     /// <summary>Proveedor, credenciales descifradas y emisor de la compañía; null si no hay configuración habilitada.</summary>

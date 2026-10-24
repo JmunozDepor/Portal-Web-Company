@@ -64,6 +64,7 @@
             <div class="col-12">
                 <label asp-for="Input.BaseUrl" class="form-label">URL base del servicio</label>
                 <input asp-for="Input.BaseUrl" class="form-control" placeholder="https://caoba.docele.cl/cl-dol-auth" />
+                <div class="form-text">Solo la base, sin el servicio ni ?wsdl. Se exige https, salvo un servidor de la red interna (ej. http://172.16.122.186:8090/DoceleOL).</div>
             </div>
             <div class="col-md-6">
                 <label asp-for="Input.Username" class="form-label">Usuario</label>

@@ -58,6 +58,45 @@ public class DteSettingsServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => svc.SaveAsync(CompanyId, DteTestSupport.ValidInput(password: null)));
     }
 
+    [Theory]
+    [InlineData("http://172.16.122.186:8090/DoceleOL")]
+    [InlineData("http://10.0.0.5/DoceleOL")]
+    [InlineData("http://192.168.1.20:8090/DoceleOL")]
+    [InlineData("http://localhost:8090/DoceleOL")]
+    public async Task Save_HttpEnRedInterna_SeAcepta(string url)
+    {
+        var (svc, db, _) = Build();
+        var input = DteTestSupport.ValidInput();
+        input.BaseUrl = url;
+
+        await svc.SaveAsync(CompanyId, input);
+
+        Assert.Equal(url, (await db.CompanyDteSettings.SingleAsync()).BaseUrl);
+    }
+
+    [Theory]
+    [InlineData("http://facele.example.com/DoceleOL")]
+    [InlineData("http://200.1.2.3/DoceleOL")]
+    [InlineData("http://172.32.0.1/DoceleOL")]
+    public async Task Save_HttpFueraDeLaRedInterna_Falla(string url)
+    {
+        var (svc, _, _) = Build();
+        var input = DteTestSupport.ValidInput();
+        input.BaseUrl = url;
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.SaveAsync(CompanyId, input));
+        Assert.Contains("https", ex.Message);
+    }
+
+    [Fact]
+    public async Task Save_UrlConWsdl_PideLaUrlBase()
+    {
+        var (svc, _, _) = Build();
+        var input = DteTestSupport.ValidInput();
+        input.BaseUrl = "http://172.16.122.186:8090/DoceleOL/DoceleOLService?wsdl";
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.SaveAsync(CompanyId, input));
+        Assert.Contains("http://172.16.122.186:8090/DoceleOL", ex.Message);
+    }
+
     [Fact]
     public async Task Save_RutEmisorInvalido_Falla()
     {

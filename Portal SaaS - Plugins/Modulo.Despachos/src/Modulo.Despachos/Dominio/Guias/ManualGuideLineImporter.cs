@@ -54,9 +54,13 @@ public static partial class ManualGuideLineImporter
         return ms.ToArray();
     }
 
+    /// <summary>
+    /// Una celda numérica se escribe con coma decimal (es-CL, sin separador de miles): así "0,125" no pasa por la regla del
+    /// punto de miles del texto pegado (0.125 se leería 125).
+    /// </summary>
     private static string CellText(IXLCell cell) =>
         cell.DataType == XLDataType.Number
-            ? cell.GetDouble().ToString(CultureInfo.InvariantCulture)
+            ? ((decimal)cell.GetDouble()).ToString("0.##########", CultureInfo.GetCultureInfo("es-CL"))
             : cell.GetString();
 
     private static ImportedLinesResult Parse(IReadOnlyList<IReadOnlyList<string>> rows)

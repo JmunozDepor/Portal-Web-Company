@@ -35,11 +35,14 @@ public sealed class ManualGuideService : IManualGuideService
     private readonly TimeProvider _time;
     private readonly INotificationService _notifications;
     private readonly ILogger<ManualGuideService>? _logger;
+    private readonly IMasterDataService? _master;
 
     public ManualGuideService(
         DespachosDbContext db, ICurrentCompanyAccessor company, ICurrentUserContext user, ISapDocumentLookupService sap,
-        IDteEmissionService dte, TimeProvider time, INotificationService notifications, ILogger<ManualGuideService>? logger = null)
+        IDteEmissionService dte, TimeProvider time, INotificationService notifications, ILogger<ManualGuideService>? logger = null,
+        IMasterDataService? master = null)
     {
+        _master = master;
         _db = db;
         _company = company;
         _user = user;
@@ -150,6 +153,7 @@ public sealed class ManualGuideService : IManualGuideService
         var inManifest = await ManifestNumberOfAsync(g.Id) is not null;
         if (inManifest) input = input with { TransportMode = ManualTransportModes.Manifest };
         await ApplyAsync(g, input);
+        if (inManifest) await SyncManifestDocumentsAsync(g);
         if (g.Status == TransportGuideStatuses.Failed)
         {
             // Corregida: se reemite con la misma llave (la pasarela acepta otro contenido si falló sin folio), sola o
@@ -193,6 +197,33 @@ public sealed class ManualGuideService : IManualGuideService
         g.Notes = string.IsNullOrWhiteSpace(input.Notes) ? null : input.Notes.Trim();
         g.TransportMode = input.TransportMode;
         g.DocumentJson = JsonSerializer.Serialize(doc, Json);
+    }
+
+    /// <summary>
+    /// La fila del manifiesto en borrador que lleva la guía refleja la guía editada (receptor, destino, comuna, total y
+    /// unidades alimentan la hoja de ruta y la tarifa).
+    /// </summary>
+    private async Task SyncManifestDocumentsAsync(TransportGuide g)
+    {
+        var docs = await (from d in _db.ManifestDocuments
+                          join m in _db.Manifests on d.ManifestId equals m.Id
+                          where d.CompanyId == CompanyId && d.TransportGuideId == g.Id && m.Status == ManifestStatuses.Draft
+                          select d).ToListAsync();
+        if (docs.Count == 0) return;
+        var commune = _master is null || string.IsNullOrWhiteSpace(g.DestinationCommune)
+            ? null : await _master.FindCommuneByNameAsync(g.DestinationCommune);
+        foreach (var d in docs)
+        {
+            d.CustomerCode = g.ReceiverCardCode ?? "";
+            d.CustomerName = g.ReceiverName;
+            d.CustomerTaxId = g.ReceiverTaxId;
+            d.DestinationAddress = g.DestinationAddress;
+            d.DestinationCommuneName = g.DestinationCommune;
+            d.DestinationCommuneId = commune?.Id;
+            d.DocumentDate = g.IssueDate ?? d.DocumentDate;
+            d.TotalAmount = g.TotalAmount ?? 0;
+            d.Units = g.TotalQuantity;
+        }
     }
 
     private async Task<ManualGuideOrigin?> OriginAsync(long originId)
@@ -272,17 +303,23 @@ public sealed class ManualGuideService : IManualGuideService
             errors = errors.Append("Elija el transporte de la guía (de los maestros o particular) antes de emitirla sola.").ToList();
         if (errors.Count > 0) throw new InvalidOperationException(string.Join(" ", errors));
 
-        // La fecha efectiva queda guardada: un reintento (proveedor caído) reenvía exactamente el mismo contenido.
-        g.IssueDate = Max(g.IssueDate ?? TodayChile, TodayChile);
-        var doc = ManualGuideBuilder.ForEmission(Document(g), g.Notes, null, g.IssueDate.Value);
+        // Primer envío: la fecha efectiva (no al pasado) queda guardada. Una emisión en curso (proveedor caído) se
+        // reenvía con su fecha ya guardada: la pasarela rechaza la misma llave con otro contenido.
+        if (current is null || current.Status != DteEmissionStatuses.Pending)
+            g.IssueDate = Max(g.IssueDate ?? TodayChile, TodayChile);
+        var doc = ManualGuideBuilder.ForEmission(Document(g), g.Notes, null, g.IssueDate ?? TodayChile);
         DteEmissionResult r;
         try
         {
             r = await _dte.EmitAsync(new DteEmissionRequest(g.EmissionKey, TransportGuideService.SourceModule, $"manual:{Code(g)}", doc));
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
         {
-            r = new DteEmissionResult(g.EmissionKey, DteEmissionStatuses.Failed, null, ex.Message, "", "");
+            // Si la pasarela tiene una emisión vigente para la llave, manda su estado (no se marca rechazada una guía
+            // que el proveedor todavía puede emitir).
+            r = await _dte.GetAsync(g.EmissionKey) is { } live && !(live.Status == DteEmissionStatuses.Failed && live.Folio is null)
+                ? live
+                : new DteEmissionResult(g.EmissionKey, DteEmissionStatuses.Failed, null, ex.Message, "", "");
         }
         await ApplyAndSaveAsync(g, r);
         if (g.Status == TransportGuideStatuses.Failed) await NotifyFailureAsync(g);
@@ -340,6 +377,18 @@ public sealed class ManualGuideService : IManualGuideService
         {
             var text = filter.Receiver.Trim().ToLower();
             q = q.Where(g => g.ReceiverName.ToLower().Contains(text) || g.ReceiverTaxId.Contains(text));
+        }
+        // Fechas en la consulta (antes del tope de filas): la del borrador manual, o la de creación para las del
+        // manifiesto (se afina abajo con la fecha de emisión).
+        if (filter.From is { } from)
+        {
+            var fromUtc = ChileClock.ToUtc(from.AddDays(-1).ToDateTime(TimeOnly.MinValue));
+            q = q.Where(g => g.IssueDate != null ? g.IssueDate >= from : g.CreatedAt >= fromUtc);
+        }
+        if (filter.To is { } to)
+        {
+            var toUtc = ChileClock.ToUtc(to.AddDays(2).ToDateTime(TimeOnly.MinValue));
+            q = q.Where(g => g.IssueDate != null ? g.IssueDate <= to : g.CreatedAt < toUtc);
         }
         var rows = await q.OrderByDescending(g => g.CreatedAt).Take(1000).ToListAsync();
         var manifestIds = rows.Where(g => g.ManifestId != null).Select(g => g.ManifestId!.Value).Distinct().ToList();

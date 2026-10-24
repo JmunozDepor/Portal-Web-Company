@@ -80,7 +80,7 @@ internal sealed class ManifestTestEnv
             Db = db, Company = company, User = user, Master = master, Tariff = tariff, Sap = sap,
             Clock = clock, Cost = cost, Svc = svc, Notifications = notifications, Closure = closure, Dte = dte, Guides = guides, Writer = writer,
             Groups = new DispatchGroupService(db, company, user, sap, master, clock, notifications),
-            ManualGuides = new ManualGuideService(db, company, user, sap, dte, clock, notifications),
+            ManualGuides = new ManualGuideService(db, company, user, sap, dte, clock, notifications, master: master),
         };
         env.SeedAsync(seedRates).GetAwaiter().GetResult();
         return env;

@@ -81,6 +81,12 @@ public interface IManifestService
     Task RemoveDispatchGroupAsync(Guid manifestId, long dispatchGroupId);
 
     /// <summary>
+    /// Agrega una guía manual (borrador) como documento del manifiesto, elegida en el selector. Escanear o digitar su
+    /// código GM- en <see cref="AddDocumentAsync"/> hace lo mismo.
+    /// </summary>
+    Task<AddDocumentResult> AddManualGuideByIdAsync(Guid manifestId, Guid guideId);
+
+    /// <summary>
     /// Valida, sella la salida (UTC), toma el snapshot Res.154, calcula el costo y pasa los documentos a despachado.
     /// Con guías habilitadas valida antes el plan de guías y emite: si alguna no se emite el manifiesto queda en
     /// "guías pendientes" (Success false, con los errores) y se reintenta con <see cref="RetryGuidesAsync"/>.

@@ -157,6 +157,11 @@ public class ManifestService : IManifestService
         {
             if (!TedParser.TryParse(capture.RawScan, out var parsed))
             {
+                // Guía manual (GM-000123): entra como un documento más.
+                if (ManualGuideCode.TryParse(capture.RawScan, out var guideNumber))
+                    return await AddManualGuideAsync(m, await _db.TransportGuides.FirstOrDefaultAsync(g =>
+                        g.CompanyId == CompanyId && g.Source == TransportGuideSources.Manual && g.Number == guideNumber),
+                        ManualGuideCode.Format(guideNumber), CaptureMethods.Pdf417);
                 // Hoja de agrupación (AT-000123): entran todas sus transferencias.
                 if (DispatchGroupCode.TryParse(capture.RawScan, out var groupNumber))
                     return await AddDispatchGroupAsync(m, groupNumber);
@@ -389,6 +394,90 @@ public class ManifestService : IManifestService
             new[] { $"{code}: {added} transferencias agregadas." }.Concat(notes).ToList());
     }
 
+    // ---------------------------------------------------------------- Guías manuales
+
+    public async Task<AddDocumentResult> AddManualGuideByIdAsync(Guid manifestId, Guid guideId)
+    {
+        var m = await LoadAsync(manifestId);
+        RequireStatus(m, ManifestStatuses.Draft, "Solo se pueden agregar documentos a un manifiesto en borrador.");
+        var g = await _db.TransportGuides.FirstOrDefaultAsync(x =>
+            x.CompanyId == CompanyId && x.Id == guideId && x.Source == TransportGuideSources.Manual);
+        return await AddManualGuideAsync(m, g, g is null ? "solicitada" : ManualGuideCode.Format(g.Number ?? 0), CaptureMethods.Manual);
+    }
+
+    /// <summary>
+    /// La guía manual entra como documento (folio 0 hasta que se emite al despachar) y queda "en manifiesto", con el
+    /// transporte del manifiesto. Solo un borrador (o una rechazada sin folio) que no esté en otro manifiesto vigente.
+    /// </summary>
+    private async Task<AddDocumentResult> AddManualGuideAsync(Manifest m, TransportGuide? g, string code, string captureMethod)
+    {
+        if (g is null) return Result(AddDocumentOutcomes.NotFound, $"No existe la guía manual {code}.");
+        if (g.Status == TransportGuideStatuses.Annulled) return Result(AddDocumentOutcomes.Canceled, $"La guía {code} está anulada.");
+        if (g.Status is TransportGuideStatuses.Issued or TransportGuideStatuses.Pending)
+            return Result(AddDocumentOutcomes.NotFound, g.Status == TransportGuideStatuses.Issued
+                ? $"La guía {code} ya fue emitida: no se agrega a un manifiesto."
+                : $"La guía {code} tiene una emisión en curso: no se agrega a un manifiesto.");
+
+        var holder = await ManifestOfManualGuideAsync(g.Id);
+        if (holder is { } h)
+            return h.Id == m.Id
+                ? Result(AddDocumentOutcomes.DuplicateInThis, $"La guía {code} ya está en este manifiesto.")
+                : new AddDocumentResult(AddDocumentOutcomes.InOtherManifest, null, h.Number,
+                    new[] { $"La guía {code} ya está en el manifiesto N° {h.Number}." });
+
+        var warnings = new List<string>();
+        var commune = string.IsNullOrWhiteSpace(g.DestinationCommune) ? null : await _master.FindCommuneByNameAsync(g.DestinationCommune);
+        if (commune is null)
+            warnings.Add($"La comuna de destino '{g.DestinationCommune}' no se pudo resolver; elíjala en la tabla de documentos.");
+        var doc = new ManifestDocument
+        {
+            Id = Guid.NewGuid(), CompanyId = CompanyId, ManifestId = m.Id,
+            DocumentKind = DocumentKinds.ManualGuide, SiiDocumentType = 52, Folio = g.Folio ?? 0, TransportGuideId = g.Id,
+            DocumentDate = g.IssueDate ?? m.DispatchDate, TotalAmount = g.TotalAmount ?? 0,
+            CustomerCode = g.ReceiverCardCode ?? "", CustomerName = g.ReceiverName, CustomerTaxId = g.ReceiverTaxId,
+            DestinationAddress = g.DestinationAddress, DestinationCommuneName = g.DestinationCommune, DestinationCommuneId = commune?.Id,
+            Units = g.TotalQuantity, Packages = 1,
+            DeliveryStatus = DeliveryStatuses.Pending, CaptureMethod = captureMethod, AddedAt = UtcNow, AddedBy = _user.UserId,
+        };
+        _db.ManifestDocuments.Add(doc);
+        g.Status = TransportGuideStatuses.InManifest;
+        g.TransportMode = ManualTransportModes.Manifest;
+        g.LastError = null;
+        AddEvent(m.Id, ManifestEventTypes.DocumentAdded, doc.Id, null, null,
+            new { kind = doc.DocumentKind, code, method = captureMethod });
+        await _db.SaveChangesAsync();
+        return new AddDocumentResult(AddDocumentOutcomes.Added, doc.Id, null, warnings);
+    }
+
+    /// <summary>Manifiesto no anulado que lleva la guía manual, o null.</summary>
+    private async Task<(Guid Id, int Number)?> ManifestOfManualGuideAsync(Guid guideId)
+    {
+        var row = await (from d in _db.ManifestDocuments
+                         join o in _db.Manifests on d.ManifestId equals o.Id
+                         where d.CompanyId == CompanyId && d.TransportGuideId == guideId && o.Status != ManifestStatuses.Annulled
+                         orderby o.Number
+                         select new { o.Id, o.Number }).FirstOrDefaultAsync();
+        return row is null ? null : (row.Id, row.Number);
+    }
+
+    /// <summary>
+    /// Guías manuales de documentos quitados (o de un manifiesto anulado en borrador): vuelven a borrador con transporte
+    /// particular (conservan lo que tenían digitado), listas para otro manifiesto o para emitirse solas.
+    /// </summary>
+    private async Task ReleaseManualGuidesAsync(IEnumerable<ManifestDocument> docs)
+    {
+        var ids = docs.Where(d => d.TransportGuideId != null).Select(d => d.TransportGuideId!.Value).Distinct().ToList();
+        if (ids.Count == 0) return;
+        var guides = await _db.TransportGuides
+            .Where(g => g.CompanyId == CompanyId && ids.Contains(g.Id) && g.Status == TransportGuideStatuses.InManifest).ToListAsync();
+        foreach (var g in guides)
+        {
+            g.Status = TransportGuideStatuses.Draft;
+            g.TransportMode = ManualTransportModes.Manual;
+        }
+        await _db.SaveChangesAsync();
+    }
+
     public async Task RemoveDispatchGroupAsync(Guid manifestId, long dispatchGroupId)
     {
         var m = await LoadAsync(manifestId);
@@ -489,6 +578,7 @@ public class ManifestService : IManifestService
         AddEvent(m.Id, ManifestEventTypes.DocumentRemoved, doc.Id, null, null,
             new { kind = doc.DocumentKind, sii = doc.SiiDocumentType, folio = doc.Folio });
         await _db.SaveChangesAsync();
+        await ReleaseManualGuidesAsync(new[] { doc });
         if (doc.DispatchGroupId is { } groupId) await SyncDispatchGroupsAsync(new[] { groupId });
     }
 
@@ -505,6 +595,7 @@ public class ManifestService : IManifestService
                 new { kind = doc.DocumentKind, sii = doc.SiiDocumentType, folio = doc.Folio, all = true });
         }
         await _db.SaveChangesAsync();
+        await ReleaseManualGuidesAsync(docs);
         await SyncDispatchGroupsAsync(groups);
         return docs.Count;
     }
@@ -576,6 +667,13 @@ public class ManifestService : IManifestService
         // Revalida contra otros manifiestos: el chequeo al agregar no cubre dos usuarios simultáneos.
         foreach (var d in m.Documents)
         {
+            // Guía manual: se controla por la guía (todas tienen folio 0 hasta emitirse).
+            if (d.DocumentKind == DocumentKinds.ManualGuide)
+            {
+                if (d.TransportGuideId is { } gid && await ManifestOfManualGuideAsync(gid) is { } h && h.Id != m.Id)
+                    errors.Add($"Una guía manual de este manifiesto ya está en el manifiesto N° {h.Number}; quítela de este manifiesto.");
+                continue;
+            }
             var other = await FindActiveElsewhereAsync(d.DocumentKind, d.SiiDocumentType, d.Folio, m.Id, includeDrafts: false, d.SapDocEntry);
             if (other != null)
                 errors.Add($"El folio {d.Folio} ya está despachado en el manifiesto N° {other}; quítelo de este manifiesto.");
@@ -905,6 +1003,8 @@ public class ManifestService : IManifestService
         // Los documentos se conservan como historial; quedan libres porque el manifiesto está anulado.
         AddEvent(m.Id, ManifestEventTypes.Annulled, null, from, ManifestStatuses.Annulled, new { reason = reason.Trim() });
         await _db.SaveChangesAsync();
+        // Sus guías manuales no emitidas vuelven a borrador (las emitidas siguen emitidas).
+        await ReleaseManualGuidesAsync(m.Documents);
         // Sus agrupaciones vuelven a "armada" (o siguen despachadas si otro manifiesto vigente las lleva).
         await SyncDispatchGroupsAsync(GroupIdsOf(m));
     }

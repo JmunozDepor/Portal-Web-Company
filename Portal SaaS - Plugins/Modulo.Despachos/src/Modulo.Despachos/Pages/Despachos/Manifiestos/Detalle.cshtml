@@ -224,6 +224,25 @@
                         }
                     </div>
                 }
+                @if (Model.DraftManualGuides.Count > 0)
+                {
+                    @* Guías manuales en borrador: también entran escaneando o digitando su código GM- arriba. *@
+                    <details class="mb-2">
+                        <summary>Agregar guía manual</summary>
+                        <form method="post" asp-page-handler="AgregarGuiaManual" asp-route-id="@m.Id" asp-antiforgery="true" class="d-flex gap-2 align-items-end flex-wrap mt-2">
+                            <div>
+                                <label class="form-label" for="manual-guide">Guía manual</label>
+                                <select id="manual-guide" name="guideId" class="form-select" required>
+                                    @foreach (var mg in Model.DraftManualGuides)
+                                    {
+                                        <option value="@mg.Id">@mg.Code - @mg.ReceiverName (@mg.DestinationCommune)</option>
+                                    }
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Agregar</button>
+                        </form>
+                    </details>
+                }
                 @if (Model.BranchWarehouses.Count > 0)
                 {
                     @* Transferencias a sucursales (Fase B): el LPN se escanea arriba; aquí se agregan en bloque. *@
@@ -282,6 +301,10 @@
                                 @if (d.DispatchGroupId is { } gid && Model.GroupCodes.TryGetValue(gid, out var gcode))
                                 {
                                     <div><a class="text-muted" href="~/despachos/agrupar-traslados/@gid">@gcode</a></div>
+                                }
+                                @if (d.TransportGuideId is { } mgid && Model.ManualGuideCodes.TryGetValue(mgid, out var mcode))
+                                {
+                                    <div><a class="text-muted" href="~/despachos/guias-manuales/detalle?id=@mgid">@mcode</a></div>
                                 }
                             </td>
                             <td class="text-nowrap">@d.DocumentDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>

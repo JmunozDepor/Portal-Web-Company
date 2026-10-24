@@ -24,13 +24,16 @@ public sealed class DetalleModel : DespachosPageModelBase
     private readonly IManifestCostService _cost;
     private readonly ITransportGuideService _guides;
     private readonly IDispatchGroupService? _dispatchGroups;
+    private readonly IManualGuideService? _manualGuides;
 
     public DetalleModel(
         IManifestService manifests, IManifestPdfService pdf, IMasterDataService data,
         ICurrentUserContext currentUser, IUserContactLookupService users, IManifestCostService cost,
-        ITransportGuideService guides, IDispatchGroupService? dispatchGroups = null) : base(currentUser)
+        ITransportGuideService guides, IDispatchGroupService? dispatchGroups = null, IManualGuideService? manualGuides = null)
+        : base(currentUser)
     {
         _dispatchGroups = dispatchGroups;
+        _manualGuides = manualGuides;
         _cost = cost;
         _guides = guides;
         _manifests = manifests;
@@ -49,6 +52,14 @@ public sealed class DetalleModel : DespachosPageModelBase
 
     /// <summary>Código AT de cada agrupación presente en el manifiesto (por id), para la tabla y "Quitar agrupación".</summary>
     public IReadOnlyDictionary<long, string> GroupCodes { get; private set; } = new Dictionary<long, string>();
+
+    /// <summary>Código GM- de cada guía manual del manifiesto (por id de guía), para la tabla de documentos.</summary>
+    public IReadOnlyDictionary<Guid, string> ManualGuideCodes { get; private set; } = new Dictionary<Guid, string>();
+
+    /// <summary>Guías manuales en borrador que se pueden agregar al manifiesto (selector).</summary>
+    public IReadOnlyList<GuideListItem> DraftManualGuides { get; private set; } = Array.Empty<GuideListItem>();
+
+    public bool HasManualGuides => M.Documents.Any(d => d.DocumentKind == DocumentKinds.ManualGuide);
 
     /// <summary>Bodegas sucursal activas (formulario "Agregar pendientes" del borrador).</summary>
     public IReadOnlyList<BranchWarehouse> BranchWarehouses { get; private set; } = Array.Empty<BranchWarehouse>();
@@ -85,7 +96,7 @@ public sealed class DetalleModel : DespachosPageModelBase
     public bool IsPendingGuides => M.Status == ManifestStatuses.PendingGuides;
 
     /// <summary>Pestaña Guías visible: la compañía emite guías o el manifiesto ya tiene guías (aunque luego se desactivaran).</summary>
-    public bool ShowGuides => GuidesEnabled || Guides.Count > 0;
+    public bool ShowGuides => GuidesEnabled || Guides.Count > 0 || HasManualGuides;
 
     /// <summary>Anular disponible (botón y drawer usan la misma condición).</summary>
     public bool CanAnnulNow => CanDelete && (M.Status == ManifestStatuses.Draft || M.Status == ManifestStatuses.PendingGuides
@@ -145,7 +156,11 @@ public sealed class DetalleModel : DespachosPageModelBase
         GuidesEnabled = await _guides.IsEnabledAsync();
         try
         {
-            if (m.Status == ManifestStatuses.Draft) { if (GuidesEnabled) GuidePreview = await _guides.PreviewAsync(m.Id); }
+            if (m.Status == ManifestStatuses.Draft)
+            {
+                if (GuidesEnabled || m.Documents.Any(d => d.DocumentKind == DocumentKinds.ManualGuide))
+                    GuidePreview = await _guides.PreviewAsync(m.Id);
+            }
             else Guides = await _guides.ListAsync(m.Id);
         }
         catch (Exception ex) { GuidesError = GetErrorMessage(ex); }
@@ -157,6 +172,16 @@ public sealed class DetalleModel : DespachosPageModelBase
             foreach (var gid in m.Documents.Where(d => d.DispatchGroupId != null).Select(d => d.DispatchGroupId!.Value).Distinct())
                 if (await _dispatchGroups.GetAsync(gid) is { } g) codes[gid] = Dominio.DispatchGroupCode.Format(g.Number);
             GroupCodes = codes;
+        }
+        if (_manualGuides is not null)
+        {
+            var codes = new Dictionary<Guid, string>();
+            foreach (var guideId in m.Documents.Where(d => d.TransportGuideId != null).Select(d => d.TransportGuideId!.Value).Distinct())
+                if (await _manualGuides.GetAsync(guideId) is { } g) codes[guideId] = Dominio.ManualGuideCode.Format(g.Number ?? 0);
+            ManualGuideCodes = codes;
+            if (m.Status == ManifestStatuses.Draft)
+                DraftManualGuides = await _manualGuides.ListAsync(
+                    new GuideFilter(TransportGuideSources.Manual, TransportGuideStatuses.Draft, null, null, null));
         }
         UserLabels = await ResolveUsersAsync(m);
         if (Header.DispatchDate is null) Header = ManifestForm.From(m);
@@ -351,6 +376,24 @@ public sealed class DetalleModel : DespachosPageModelBase
     }
 
     /// <summary>Quita del borrador todas las transferencias de una agrupación (vuelve a "armada"). Exige EDIT.</summary>
+    /// <summary>Agrega una guía manual en borrador elegida en el selector (también entra escaneando su código GM-).</summary>
+    public async Task<IActionResult> OnPostAgregarGuiaManualAsync(Guid id, Guid guideId)
+    {
+        if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
+        try
+        {
+            var r = await _manifests.AddManualGuideByIdAsync(id, guideId);
+            if (r.Outcome == AddDocumentOutcomes.Added)
+            {
+                SuccessMessage = "Guía manual agregada al manifiesto.";
+                if (r.Warnings.Count > 0) WarningMessage = string.Join(" ", r.Warnings);
+            }
+            else ErrorMessage = string.Join(" ", r.Warnings);
+        }
+        catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
+        return RedirectToPage(new { id, tab = "documentos" });
+    }
+
     public async Task<IActionResult> OnPostQuitarAgrupacionAsync(Guid id, long groupId)
     {
         if (!await HasActionAsync(PortalActions.Edit)) return Forbid();

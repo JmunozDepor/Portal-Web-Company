@@ -1,0 +1,109 @@
+@page "/despachos/guias-manuales"
+@model Modulo.Despachos.Pages.Despachos.GuiasManuales.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
+@using System.Globalization
+@{
+    ViewData["Title"] = "Guías";
+    var es = new CultureInfo("es-CL");
+}
+@* Todas las guías de despacho del módulo: las Res. 154 de los manifiestos y las manuales (GM-). *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Guías</h2>
+        @if (Model.CanCreate)
+        {
+            <a class="btn btn-primary" href="~/despachos/guias-manuales/editar">+ Nueva guía manual</a>
+        }
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label" for="f-source">Origen</label>
+            <select id="f-source" name="Source" class="form-select">
+                <option value="">Todas</option>
+                <option value="@TransportGuideSources.Manifest" selected="@(Model.Source == TransportGuideSources.Manifest)">Manifiesto</option>
+                <option value="@TransportGuideSources.Manual" selected="@(Model.Source == TransportGuideSources.Manual)">Manual</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-status">Estado</label>
+            <select id="f-status" name="Status" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var s in new[] { TransportGuideStatuses.Draft, TransportGuideStatuses.InManifest, TransportGuideStatuses.Pending,
+                                           TransportGuideStatuses.Issued, TransportGuideStatuses.Failed, TransportGuideStatuses.Annulled })
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@DespachosUi.GuideStatusLabel(s)</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-from">Desde</label>
+            <input type="date" id="f-from" name="From" value="@Model.From" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-to">Hasta</label>
+            <input type="date" id="f-to" name="To" value="@Model.To" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-receiver">Receptor</label>
+            <input type="search" id="f-receiver" name="Receiver" value="@Model.Receiver" class="form-control" placeholder="Nombre o RUT" />
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a class="btn btn-secondary" href="~/despachos/guias-manuales">Limpiar</a>
+        </div>
+    </form>
+
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead><tr><th>Guía</th><th>Folio</th><th>Fecha</th><th>Receptor</th><th>Comuna</th><th>Motivo</th><th class="text-end">Total</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var x in Model.Items)
+                {
+                    var manual = x.Source == TransportGuideSources.Manual;
+                    <tr>
+                        <td>
+                            @if (manual)
+                            {
+                                <a href="~/despachos/guias-manuales/detalle?id=@x.Id">@x.Code</a>
+                            }
+                            else if (x.ManifestId is { } mid)
+                            {
+                                <a href="~/despachos/manifiestos/@mid?tab=guias">@x.Code</a>
+                            }
+                        </td>
+                        <td>@(x.Folio?.ToString(CultureInfo.InvariantCulture) ?? "—")</td>
+                        <td class="text-nowrap">@x.Date.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
+                        <td>@x.ReceiverName<div class="text-muted">@x.ReceiverTaxId</div></td>
+                        <td>@x.DestinationCommune</td>
+                        <td>@x.TransferIndicator</td>
+                        <td class="text-end">@(x.TotalAmount is { } t ? "$" + t.ToString("N0", es) : "—")</td>
+                        <td><partial name="/Pages/Despachos/Shared/_EstadoGuia.cshtml" model="x.Status" /></td>
+                        <td class="col-actions">
+                            @if (manual)
+                            {
+                                <a class="btn-ghost" title="Abrir" href="~/despachos/guias-manuales/detalle?id=@x.Id"><i class="bi bi-box-arrow-up-right"></i></a>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-muted">Sin guías para el filtro indicado.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

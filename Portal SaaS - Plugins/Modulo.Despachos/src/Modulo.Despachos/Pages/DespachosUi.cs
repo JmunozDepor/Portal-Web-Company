@@ -68,6 +68,9 @@ public static class DespachosUi
         "issued" => "Emitida",
         "failed" => "Rechazada",
         "abandoned" => "Anulada",
+        "draft" => "Borrador",
+        "in_manifest" => "En manifiesto",
+        "annulled" => "Anulada",
         _ => status,
     };
 
@@ -76,6 +79,8 @@ public static class DespachosUi
         "issued" => "dsp-badge--success",
         "pending" => "dsp-badge--warning",
         "failed" => "dsp-badge--danger",
+        "in_manifest" => "dsp-badge--warning",
+        "annulled" => "dsp-badge--danger",
         _ => "dsp-badge--neutral",
     };
 

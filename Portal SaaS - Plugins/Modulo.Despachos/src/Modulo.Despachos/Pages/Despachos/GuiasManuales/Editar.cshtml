@@ -1,0 +1,335 @@
+@page "/despachos/guias-manuales/editar"
+@model Modulo.Despachos.Pages.Despachos.GuiasManuales.EditarModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
+@using System.Globalization
+@{
+    ViewData["Title"] = Model.Title;
+    var f = Model.Form;
+    var inv = CultureInfo.InvariantCulture;
+}
+@* Guía manual (DTE 52 sin documento SAP): receptor desde SAP o digitado, detalle libre o importado, IVA según el motivo
+   y transporte Res. 154 (maestros o particular; en un manifiesto, el del manifiesto). JS: despachos-guia-manual.js. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">@Model.Title</h2>
+        <a class="btn btn-secondary" href="@(f.Id is { } back ? Url.Content("~/despachos/guias-manuales/detalle?id=" + back) : Url.Content("~/despachos/guias-manuales"))">Volver</a>
+    </div>
+
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="post" asp-page-handler="Guardar" asp-antiforgery="true" id="guia-form"
+          data-receptor-url="@Url.Content("~/despachos/guias-manuales/editar?handler=Receptor")"
+          data-importar-url="@Url.Content("~/despachos/guias-manuales/editar?handler=Importar")"
+          data-issuer="@Model.IssuerTaxId"
+          data-vat="@string.Join(",", Model.Motives.Where(x => x.VatAffected).Select(x => x.Code))">
+        <input type="hidden" name="Form.Id" value="@f.Id" />
+
+        <h3 class="h6 mt-2">Receptor</h3>
+        <div class="drawer-grid">
+            <div class="mb-3">
+                <label class="form-label" for="g-rut">RUT</label>
+                <div class="d-flex gap-2">
+                    <input type="text" id="g-rut" name="Form.ReceiverTaxId" value="@f.ReceiverTaxId" class="form-control" required autocomplete="off" placeholder="76.030.680-0" />
+                    <button type="button" class="btn btn-secondary" id="g-buscar"><i class="bi bi-search"></i> Buscar en SAP</button>
+                </div>
+                <div class="form-text" id="g-rut-msg"></div>
+                <input type="hidden" id="g-cardcode" name="Form.ReceiverCardCode" value="@f.ReceiverCardCode" />
+            </div>
+            @if (Model.Branches.Count > 0 && !string.IsNullOrWhiteSpace(Model.IssuerTaxId))
+            {
+                <div class="mb-3">
+                    <label class="form-label" for="g-branch">Atajo: a sucursal propia</label>
+                    <select id="g-branch" class="form-select">
+                        <option value="">— Elegir sucursal —</option>
+                        @foreach (var b in Model.Branches)
+                        {
+                            <option value="@b.WarehouseCode" data-address="@b.Address" data-commune="@b.CommuneName">@b.WarehouseCode - @b.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="mb-3">
+                <label class="form-label" for="g-name">Razón social</label>
+                <input type="text" id="g-name" name="Form.ReceiverName" value="@f.ReceiverName" class="form-control" required maxlength="100" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="g-giro">Giro</label>
+                <input type="text" id="g-giro" name="Form.ReceiverActivity" value="@f.ReceiverActivity" class="form-control" required maxlength="40" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="g-address">Dirección</label>
+                <select id="g-address-list" class="form-select mb-1" hidden aria-label="Direcciones de despacho en SAP"></select>
+                <input type="text" id="g-address" name="Form.ReceiverAddress" value="@f.ReceiverAddress" class="form-control" required maxlength="70" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="g-commune">Comuna</label>
+                <input type="text" id="g-commune" name="Form.ReceiverCommune" value="@f.ReceiverCommune" class="form-control" list="comunas-catalogo" required autocomplete="off" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="g-city">Ciudad</label>
+                <input type="text" id="g-city" name="Form.ReceiverCity" value="@f.ReceiverCity" class="form-control" maxlength="20" />
+            </div>
+        </div>
+
+        <h3 class="h6 mt-2">Condiciones y origen</h3>
+        <div class="drawer-grid">
+            <div class="mb-3">
+                <label class="form-label" for="g-date">Fecha de emisión</label>
+                <input type="date" id="g-date" name="Form.IssueDate" value="@f.IssueDate" class="form-control" required />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="g-motive">Motivo de traslado</label>
+                <select id="g-motive" name="Form.TransferIndicator" class="form-select" required>
+                    @foreach (var x in Model.Motives)
+                    {
+                        <option value="@x.Code" selected="@(f.TransferIndicator == x.Code)">@x.Code - @x.Name (@(x.VatAffected ? "con IVA" : "sin IVA"))</option>
+                    }
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="g-dispatch">Tipo de despacho</label>
+                <select id="g-dispatch" name="Form.DispatchType" class="form-select" required>
+                    <option value="">— Seleccione —</option>
+                    <option value="1" selected="@(f.DispatchType == 1)">1 - Por cuenta del receptor</option>
+                    <option value="2" selected="@(f.DispatchType == 2)">2 - Emisor a instalaciones del cliente</option>
+                    <option value="3" selected="@(f.DispatchType == 3)">3 - Emisor a otras instalaciones</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="g-origin">Origen</label>
+                <select id="g-origin" name="Form.OriginId" class="form-select" required>
+                    @foreach (var o in Model.Origins)
+                    {
+                        <option value="@o.Id" selected="@(f.OriginId == o.Id)">@o.Name - @o.Address</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <h3 class="h6 mt-2">Destino</h3>
+        <div class="drawer-grid">
+            <div class="mb-3">
+                <label class="form-label" for="g-dest-address">Dirección de destino</label>
+                <input type="text" id="g-dest-address" name="Form.DestinationAddress" value="@f.DestinationAddress" class="form-control" required maxlength="70" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="g-dest-commune">Comuna de destino</label>
+                <input type="text" id="g-dest-commune" name="Form.DestinationCommune" value="@f.DestinationCommune" class="form-control" list="comunas-catalogo" required autocomplete="off" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="g-dest-city">Ciudad de destino</label>
+                <input type="text" id="g-dest-city" name="Form.DestinationCity" value="@f.DestinationCity" class="form-control" maxlength="20" />
+            </div>
+            <div class="mb-3 d-flex align-items-end">
+                <button type="button" class="btn btn-secondary" id="g-copy-dest">Copiar dirección del receptor</button>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between gap-2 mt-2 mb-2 flex-wrap">
+            <h3 class="h6 mb-0">Detalle</h3>
+            <div class="d-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-secondary" data-drawer-open="drawer-importar"><i class="bi bi-upload"></i> Importar</button>
+                <button type="button" class="btn btn-secondary" id="g-add-line">+ Línea</button>
+            </div>
+        </div>
+        <div class="table-responsive-lg">
+            <table class="table-ps" id="g-lines">
+                <thead><tr><th>Código</th><th>Descripción</th><th class="text-end">Cantidad</th><th>Unidad</th><th class="text-end">Precio unitario</th><th class="text-end">Monto</th><th class="col-actions"></th></tr></thead>
+                <tbody>
+                    @for (var i = 0; i < f.Lines.Count; i++)
+                    {
+                        var l = f.Lines[i];
+                        <tr data-line>
+                            <td><input type="text" name="Form.Lines[@i].ItemCode" value="@l.ItemCode" class="form-control" maxlength="35" aria-label="Código" /></td>
+                            <td><input type="text" name="Form.Lines[@i].Description" value="@l.Description" class="form-control" maxlength="80" aria-label="Descripción" /></td>
+                            <td><input type="number" step="any" min="0" name="Form.Lines[@i].Quantity" value="@l.Quantity" class="form-control text-end" data-qty aria-label="Cantidad" /></td>
+                            <td><input type="text" name="Form.Lines[@i].Unit" value="@l.Unit" class="form-control" maxlength="4" aria-label="Unidad" /></td>
+                            <td><input type="number" step="any" min="0" name="Form.Lines[@i].UnitPrice" value="@l.UnitPrice" class="form-control text-end" data-price aria-label="Precio unitario" /></td>
+                            <td class="text-end" data-amount></td>
+                            <td class="col-actions"><button type="button" class="btn-ghost btn-ghost--danger" title="Quitar línea" data-remove-line><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex gap-4 mt-2 mb-3 text-muted flex-wrap justify-content-end">
+            <span>Neto: <strong id="g-net">$0</strong></span>
+            <span>IVA: <strong id="g-vat">$0</strong></span>
+            <span>Total: <strong id="g-total">$0</strong></span>
+        </div>
+
+        <details class="mb-3" @(f.References.Count > 0 ? "open" : "")>
+            <summary>Referencias (opcional)</summary>
+            <div class="drawer-grid mt-2">
+                @{ var r0 = f.References.FirstOrDefault() ?? new Modulo.Despachos.Pages.Despachos.GuiasManuales.ReferenceForm(); }
+                <div class="mb-3">
+                    <label class="form-label" for="g-ref-type">Tipo de documento</label>
+                    <input type="text" id="g-ref-type" name="Form.References[0].DocumentType" value="@r0.DocumentType" class="form-control" maxlength="3" placeholder="52" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-ref-folio">Folio</label>
+                    <input type="number" id="g-ref-folio" name="Form.References[0].Folio" value="@r0.Folio" class="form-control" min="1" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-ref-date">Fecha</label>
+                    <input type="date" id="g-ref-date" name="Form.References[0].Date" value="@r0.Date" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-ref-reason">Razón</label>
+                    <input type="text" id="g-ref-reason" name="Form.References[0].Reason" value="@r0.Reason" class="form-control" maxlength="90" />
+                </div>
+            </div>
+        </details>
+
+        <div class="mb-3">
+            <label class="form-label" for="g-notes">Observaciones</label>
+            <textarea id="g-notes" name="Form.Notes" class="form-control" rows="2" maxlength="500" placeholder="Instrucciones o información adicional del cliente (sale como última línea del detalle)">@f.Notes</textarea>
+        </div>
+
+        <h3 class="h6 mt-2">Transporte (Res. 154)</h3>
+        @if (Model.InManifest)
+        {
+            <input type="hidden" name="Form.TransportMode" value="@ManualTransportModes.Manifest" />
+            <p class="text-muted">Esta guía viaja en un manifiesto: el transporte (patente, chofer y transportista) se toma del manifiesto al despacharlo.</p>
+        }
+        else
+        {
+            <div class="d-flex gap-3 mb-2 flex-wrap">
+                <label class="d-flex align-items-center gap-2"><input type="radio" name="Form.TransportMode" value="@ManualTransportModes.Master" checked="@(f.TransportMode == ManualTransportModes.Master)" data-transport-mode /> De los maestros</label>
+                <label class="d-flex align-items-center gap-2"><input type="radio" name="Form.TransportMode" value="@ManualTransportModes.Manual" checked="@(f.TransportMode == ManualTransportModes.Manual)" data-transport-mode /> Particular (digitar)</label>
+            </div>
+            <p class="form-text">Con despacho por cuenta del emisor (2 o 3) son obligatorios patente, chofer y RUT del transportista. Para que viaje en un manifiesto, guárdela y escanee su código GM- en el manifiesto.</p>
+            <div class="drawer-grid" data-transport="@ManualTransportModes.Master">
+                <div class="mb-3">
+                    <label class="form-label" for="g-vehicle">Vehículo</label>
+                    <select id="g-vehicle" name="Form.VehicleId" class="form-select">
+                        <option value="">—</option>
+                        @foreach (var v in Model.Vehicles.Where(x => !x.IsTrailer))
+                        {
+                            <option value="@v.Id" selected="@(f.VehicleId == v.Id)">@v.Plate</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-trailer">Carro</label>
+                    <select id="g-trailer" name="Form.TrailerId" class="form-select">
+                        <option value="">— Sin carro —</option>
+                        @foreach (var v in Model.Vehicles.Where(x => x.IsTrailer))
+                        {
+                            <option value="@v.Id" selected="@(f.TrailerId == v.Id)">@v.Plate</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-driver">Chofer</label>
+                    <select id="g-driver" name="Form.DriverId" class="form-select">
+                        <option value="">—</option>
+                        @foreach (var d in Model.Drivers)
+                        {
+                            <option value="@d.Id" selected="@(f.DriverId == d.Id)">@d.FullName (@d.TaxId)</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-carrier">Transportista</label>
+                    <select id="g-carrier" name="Form.CarrierId" class="form-select">
+                        <option value="">—</option>
+                        @foreach (var c in Model.Carriers)
+                        {
+                            <option value="@c.Id" selected="@(f.CarrierId == c.Id)">@c.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="drawer-grid" data-transport="@ManualTransportModes.Manual">
+                <div class="mb-3">
+                    <label class="form-label" for="g-plate">Patente</label>
+                    <input type="text" id="g-plate" name="Form.Plate" value="@f.Plate" class="form-control" maxlength="8" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-trailer-plate">Patente carro</label>
+                    <input type="text" id="g-trailer-plate" name="Form.TrailerPlate" value="@f.TrailerPlate" class="form-control" maxlength="8" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-driver-rut">RUT chofer</label>
+                    <input type="text" id="g-driver-rut" name="Form.DriverTaxId" value="@f.DriverTaxId" class="form-control" maxlength="12" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-driver-name">Nombre chofer</label>
+                    <input type="text" id="g-driver-name" name="Form.DriverName" value="@f.DriverName" class="form-control" maxlength="30" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-carrier-rut">RUT transportista</label>
+                    <input type="text" id="g-carrier-rut" name="Form.CarrierTaxId" value="@f.CarrierTaxId" class="form-control" maxlength="12" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="g-carrier-name">Nombre transportista</label>
+                    <input type="text" id="g-carrier-name" name="Form.CarrierName" value="@f.CarrierName" class="form-control" maxlength="40" />
+                </div>
+            </div>
+        }
+
+        <button type="submit" class="btn btn-primary mt-2">Guardar borrador</button>
+    </form>
+
+    <datalist id="comunas-catalogo">
+        @foreach (var c in Model.Communes)
+        {
+            <option value="@c.Name"></option>
+        }
+    </datalist>
+
+    <template id="g-line-template">
+        <tr data-line>
+            <td><input type="text" data-name="ItemCode" class="form-control" maxlength="35" aria-label="Código" /></td>
+            <td><input type="text" data-name="Description" class="form-control" maxlength="80" aria-label="Descripción" /></td>
+            <td><input type="number" step="any" min="0" data-name="Quantity" class="form-control text-end" data-qty aria-label="Cantidad" /></td>
+            <td><input type="text" data-name="Unit" class="form-control" maxlength="4" aria-label="Unidad" /></td>
+            <td><input type="number" step="any" min="0" data-name="UnitPrice" class="form-control text-end" data-price aria-label="Precio unitario" /></td>
+            <td class="text-end" data-amount></td>
+            <td class="col-actions"><button type="button" class="btn-ghost btn-ghost--danger" title="Quitar línea" data-remove-line><i class="bi bi-trash"></i></button></td>
+        </tr>
+    </template>
+</div>
+
+<div id="drawer-importar" class="drawer-overlay" data-drawer>
+    <aside class="drawer-panel">
+        <div class="drawer-header">
+            <h3>Importar detalle</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="drawer-body">
+            <p class="text-muted">Columnas en orden: Código, Descripción, Cantidad, Unidad, Precio unitario. Copie las filas desde Excel y péguelas, o suba la planilla.
+                <a href="~/despachos/guias-manuales/editar?handler=Plantilla">Descargar plantilla</a></p>
+            <div class="mb-3">
+                <label class="form-label" for="imp-text">Pegar filas</label>
+                <textarea id="imp-text" class="form-control" rows="8"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="imp-file">o subir planilla (.xlsx)</label>
+                <input type="file" id="imp-file" class="form-control" accept=".xlsx" />
+            </div>
+            <div class="d-flex gap-3 mb-3 flex-wrap">
+                <label class="d-flex align-items-center gap-2"><input type="radio" name="imp-mode" value="replace" checked /> Reemplazar líneas</label>
+                <label class="d-flex align-items-center gap-2"><input type="radio" name="imp-mode" value="append" /> Agregar al final</label>
+            </div>
+            <div id="imp-result"></div>
+        </div>
+        <div class="drawer-footer">
+            <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+            <button type="button" class="btn btn-secondary" id="imp-preview">Vista previa</button>
+            <button type="button" class="btn btn-primary" id="imp-apply" disabled>Aplicar</button>
+        </div>
+    </aside>
+</div>
+
+@section Scripts {
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+    <script src="~/js/despachos-guia-manual.js" asp-append-version="true"></script>
+}

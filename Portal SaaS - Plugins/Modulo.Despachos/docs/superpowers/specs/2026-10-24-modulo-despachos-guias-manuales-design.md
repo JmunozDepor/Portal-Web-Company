@@ -37,6 +37,8 @@ Todas las guías del módulo, de manifiesto y manuales, quedan en una sola tabla
    relación con los maestros) se digita a mano en la guía.
 6. **Momento de emisión:** al despachar el manifiesto, o con el botón **Emitir** si va sola. No se necesita el
    folio antes.
+6b. **Observaciones (glosa)** en la guía, para instrucciones o información adicional del cliente (§6.5).
+6c. **Importación masiva del detalle** para guías con muchas líneas (§6.6).
 
 **Del diseñador (revisar)**
 7. **Estados de la guía manual:**
@@ -95,6 +97,7 @@ Columnas nuevas:
 | `transport_mode` | varchar(20), null | `manifest`, `master` o `manual` (solo manual) |
 | `net_amount`, `vat_amount`, `total_amount` | numeric(18,2), null | totales calculados |
 | `annul_reason` | varchar(250), null | motivo al anular un borrador |
+| `notes` | varchar(500), null | observaciones (glosa), §6.5 |
 | `created_by`, `issued_by` | uuid, null | auditoría |
 
 Cambios en columnas existentes:
@@ -220,6 +223,48 @@ sola).
   - PDF de la emitida;
   - Nueva guía manual.
 
+### 6.5 Observaciones (glosa)
+
+- Campo **Observaciones** (texto libre, hasta 500 caracteres) en la guía manual. Se guarda en
+  `transport_guides.notes`.
+- **Dónde se imprime:** el formato SII de la guía no tiene un campo de observaciones general. Hay tres caminos:
+  1. **Campos libres de FACELE (`XML_OBS`, A0..A10).** Es lo correcto: sale en el PDF en un recuadro de
+     observaciones. Requiere que FACELE habilite el campo en la plantilla PDF de la compañía, y que la
+     plataforma envíe `DteDocument.Extras` en ese formato (hoy no se envía; ver `FaceleXmlBuilder`).
+  2. **Mientras FACELE no lo habilite:** se envía como una última línea de detalle sin código, con cantidad 1,
+     precio 0 y la glosa en la descripción extendida (`DscItem`, hasta 1000 caracteres). Sale impresa y no
+     altera los totales.
+  3. **Siempre:** queda en el portal (detalle de la guía, hoja de ruta del manifiesto, lista "Guías").
+- La compañía elige el modo en Configuración: "Observaciones como campo libre FACELE" o "como línea de
+  detalle". Por defecto, línea de detalle.
+- **[decisión del diseñador]** El mismo campo existe en las guías del manifiesto (Fase A/B). Se edita en la
+  pestaña Guías mientras el manifiesto está en borrador, por guía planificada.
+- **Instrucciones por cliente:** si el socio de negocio SAP trae un campo de instrucciones (ej. `OCRD.Free_Text`
+  o uno de usuario, configurable en la consulta del §7), se precarga en Observaciones y se puede editar.
+
+### 6.6 Importación masiva del detalle
+
+Dos formas en el detalle de la guía manual:
+1. **Pegar desde Excel:** un cuadro de texto donde se pegan filas copiadas (separadas por tabulador o punto y
+   coma).
+2. **Subir planilla .xlsx:** con plantilla descargable. ClosedXML, como el importador de Rendiciones.
+
+**Columnas:**
+- obligatorias: Descripción y Cantidad;
+- opcionales: Código, Unidad y Precio unitario (vacío = 0).
+
+La primera fila se ignora si es encabezado (no numérica en Cantidad).
+
+**Reglas:**
+- Vista previa antes de aceptar: filas válidas y filas con error (número de fila y motivo).
+- Mientras haya errores no se aplica nada.
+- El usuario elige **Reemplazar** o **Agregar** a las líneas existentes.
+- Números con coma o punto decimal (es-CL y formato invariante).
+- Si el total de líneas supera el máximo de la guía (`GuideMaxLines`), se rechaza con el número permitido.
+  No se divide en varias guías.
+- **[decisión del diseñador]** Si la fila trae código y la cantidad o el precio vienen vacíos, no se consulta
+  SAP. Precargar precio desde SAP queda fuera de esta fase.
+
 ## 7. SAP
 
 Nueva consulta editable por compañía `business_partner_by_tax_id` (parámetro `:tax_id`) en Consultas SAP, con
@@ -262,4 +307,6 @@ comentarios se eliminan antes de ejecutar (fix e4472ef).
 3. **Fecha futura:** el SII acepta guías con fecha posterior. Si el manifiesto se despacha otro día, la guía
    toma la fecha de despacho. **[decisión del diseñador: la emisión al despachar usa la fecha del
    despacho]**.
-4. **Producción emite guías reales:** las pruebas se hacen en DEPOR_TEST con FACELE en certificación.
+4. **Observaciones en el PDF:** pedir a FACELE que habilite un campo libre de observaciones en la plantilla de
+   la guía 52 (§6.5). Mientras tanto se usa la línea de detalle.
+5. **Producción emite guías reales:** las pruebas se hacen en DEPOR_TEST con FACELE en certificación.

@@ -336,6 +336,19 @@ public sealed class DetalleModel : DespachosPageModelBase
         return RedirectToPage(new { id, tab = "documentos" });
     }
 
+    /// <summary>Vacía el borrador para volver a cargarlo. Exige EDIT.</summary>
+    public async Task<IActionResult> OnPostQuitarTodosAsync(Guid id)
+    {
+        if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
+        try
+        {
+            var n = await _manifests.RemoveAllDocumentsAsync(id);
+            SuccessMessage = n == 1 ? "Se quitó 1 documento." : $"Se quitaron {n} documentos.";
+        }
+        catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
+        return RedirectToPage(new { id, tab = "documentos" });
+    }
+
     /// <summary>Quita del borrador todas las transferencias de una agrupación (vuelve a "armada"). Exige EDIT.</summary>
     public async Task<IActionResult> OnPostQuitarAgrupacionAsync(Guid id, long groupId)
     {

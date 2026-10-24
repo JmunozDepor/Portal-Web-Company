@@ -74,6 +74,9 @@ public interface IManifestService
     Task<AddPendingTransfersResult> AddPendingTransfersAsync(Guid manifestId, string warehouseCode, DateOnly fromDate);
     Task RemoveDocumentAsync(Guid manifestId, Guid manifestDocumentId);
 
+    /// <summary>Vacía el borrador (para volver a cargarlo); sus agrupaciones vuelven a "armada". Devuelve cuántos quitó.</summary>
+    Task<int> RemoveAllDocumentsAsync(Guid manifestId);
+
     /// <summary>Quita del borrador todas las transferencias que entraron con la agrupación; ésta vuelve a "armada".</summary>
     Task RemoveDispatchGroupAsync(Guid manifestId, long dispatchGroupId);
 

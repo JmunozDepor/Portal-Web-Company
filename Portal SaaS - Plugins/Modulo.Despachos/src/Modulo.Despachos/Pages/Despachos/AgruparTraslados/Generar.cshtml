@@ -56,21 +56,26 @@
             <input type="hidden" name="dispatchDate" value="@Model.DispatchDate" />
             <input type="hidden" name="fromDate" value="@Model.FromDate" />
 
+            <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input" id="sel-all" data-select-all />
+                <label class="form-check-label" for="sel-all">Seleccionar todos</label>
+            </div>
+
             @foreach (var c in Model.Candidates)
             {
-                <div class="card-surface mb-3">
+                <div class="card-surface mb-3" data-select-group>
                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
                         <h3 class="h6 mb-0">@c.Branch.WarehouseCode - @c.Branch.Name</h3>
                         <span class="text-muted">@c.Transfers.Count LPN · @c.Transfers.Sum(t => t.Units).ToString("N0", es) unidades</span>
                     </div>
                     <div class="table-responsive-lg">
                         <table class="table-ps">
-                            <thead><tr><th></th><th>LPN</th><th>Transferencia</th><th>Fecha</th><th class="text-end">Unidades</th></tr></thead>
+                            <thead><tr><th><input type="checkbox" class="form-check-input" data-select-branch aria-label="Seleccionar todos de @c.Branch.WarehouseCode" /></th><th>LPN</th><th>Transferencia</th><th>Fecha</th><th class="text-end">Unidades</th></tr></thead>
                             <tbody>
                                 @foreach (var t in c.Transfers)
                                 {
                                     <tr>
-                                        <td><input type="checkbox" class="form-check-input" name="docEntries" value="@t.DocEntry" checked aria-label="Incluir @(t.Lpn ?? t.DocNum.ToString())" /></td>
+                                        <td><input type="checkbox" class="form-check-input" name="docEntries" value="@t.DocEntry" aria-label="Incluir @(t.Lpn ?? t.DocNum.ToString())" /></td>
                                         <td>@(t.Lpn ?? "—")</td>
                                         <td>@t.DocNum</td>
                                         <td class="text-nowrap">@t.DocumentDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
@@ -84,8 +89,12 @@
             }
 
             <div class="d-flex gap-2 flex-wrap">
-                <button type="submit" class="btn btn-primary">Agrupar seleccionados</button>
+                <button type="submit" class="btn btn-primary">Agrupar seleccionados (<span data-selected-count>0</span>)</button>
             </div>
         </form>
     }
 </div>
+
+@section Scripts {
+    <script src="~/js/despachos-agrupar.js" asp-append-version="true"></script>
+}

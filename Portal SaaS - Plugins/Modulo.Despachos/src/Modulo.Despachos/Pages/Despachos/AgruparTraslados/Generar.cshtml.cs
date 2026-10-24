@@ -59,7 +59,9 @@ public sealed class GenerarModel : DespachosPageModelBase
         {
             var dispatch = ParseDate(dispatchDate, "Indique la fecha de despacho.");
             var from = ParseDate(fromDate, "Indique la fecha desde la que se buscan las transferencias.");
-            var created = await _groups.GenerateAsync(dispatch, from, docEntries ?? Array.Empty<int>());
+            if (docEntries is not { Length: > 0 })
+                throw new InvalidOperationException("Seleccione al menos una transferencia para agrupar.");
+            var created = await _groups.GenerateAsync(dispatch, from, docEntries);
             SuccessMessage = created.Count == 1 ? "Se generó 1 agrupación." : $"Se generaron {created.Count} agrupaciones.";
             return RedirectToPage("Index", new { DispatchDate = dispatch.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) });
         }

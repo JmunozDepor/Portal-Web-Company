@@ -78,6 +78,37 @@ public class AgruparTrasladosPermisosTests
     }
 
     [Fact]
+    public async Task Generar_SinSeleccion_PideElegir_YNoCrea()
+    {
+        var env = await DispatchGroupServiceTests.EnvAsync();
+        env.User.Grant(Menu, PortalActions.View, PortalActions.Create);
+        var page = new AgruparTraslados.GenerarModel(env.Groups, env.Master, env.User) { TempData = Temp() };
+
+        Assert.IsType<RedirectToPageResult>(await page.OnPostGenerarAsync("2026-11-10", "2026-11-01", null));
+
+        Assert.Contains("Seleccione al menos una transferencia", page.ErrorMessage);
+        Assert.Equal(0, await env.Db.DispatchGroups.CountAsync());
+    }
+
+    [Fact]
+    public async Task Manifiesto_QuitarTodos_RequiereEditar()
+    {
+        var env = await DispatchGroupServiceTests.EnvAsync();
+        env.User.Grant("Despachos.manifiestos", PortalActions.View);
+        var pdf = new ManifestPdfService(env.Db, env.Company, env.User, env.Svc, env.Clock);
+        var page = new Manifiestos.DetalleModel(env.Svc, pdf, env.Master, env.User, new FakeContactLookup(), env.Cost, env.Guides) { TempData = Temp() };
+        var id = await env.Svc.CreateDraftAsync(env.Header());
+        await env.Svc.AddDocumentAsync(id, new DocumentCapture("CTBO501", null, null));
+
+        Assert.IsType<ForbidResult>(await page.OnPostQuitarTodosAsync(id));
+
+        env.User.Grant("Despachos.manifiestos", PortalActions.Edit);
+        Assert.IsType<RedirectToPageResult>(await page.OnPostQuitarTodosAsync(id));
+        Assert.Empty((await env.Svc.GetAsync(id))!.Documents);
+        Assert.Contains("1", page.SuccessMessage);
+    }
+
+    [Fact]
     public async Task Detalle_AgregarLpn_SinEdit_Forbid()
     {
         var env = await DispatchGroupServiceTests.EnvAsync();

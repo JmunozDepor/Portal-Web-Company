@@ -169,6 +169,31 @@ public class ManifestDispatchGroupTests
     }
 
     [Fact]
+    public async Task QuitarTodos_VaciaElBorrador_YLasAgrupacionesVuelvenAArmada()
+    {
+        var (env, g, id) = await ArrangeAsync(new[] { 501 });
+        await Scan(env, id, "AT-000001");
+        Assert.Equal("added", (await Scan(env, id, "CTBO503")).Outcome);
+
+        var removed = await env.Svc.RemoveAllDocumentsAsync(id);
+
+        Assert.Equal(2, removed);
+        Assert.Empty((await env.Svc.GetAsync(id))!.Documents);
+        Assert.Equal(DispatchGroupStatuses.Armed, await GroupStatus(env, g.Id));
+        Assert.Equal(2, env.Db.ManifestEvents.Count(e => e.ManifestId == id && e.EventType == ManifestEventTypes.DocumentRemoved));
+    }
+
+    [Fact]
+    public async Task QuitarTodos_ManifiestoDespachado_Lanza()
+    {
+        var (env, _, id) = await ArrangeAsync(new[] { 501 });
+        await Scan(env, id, "AT-000001");
+        Assert.True((await env.Svc.DispatchAsync(id)).Success);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => env.Svc.RemoveAllDocumentsAsync(id));
+    }
+
+    [Fact]
     public async Task AnularManifiesto_VuelveAArmada()
     {
         var (env, g, id) = await ArrangeAsync();

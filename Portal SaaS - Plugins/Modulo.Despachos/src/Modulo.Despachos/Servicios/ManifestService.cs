@@ -492,6 +492,23 @@ public class ManifestService : IManifestService
         if (doc.DispatchGroupId is { } groupId) await SyncDispatchGroupsAsync(new[] { groupId });
     }
 
+    public async Task<int> RemoveAllDocumentsAsync(Guid manifestId)
+    {
+        var m = await LoadAsync(manifestId);
+        RequireStatus(m, ManifestStatuses.Draft, "Solo se pueden quitar documentos de un manifiesto en borrador.");
+        var docs = m.Documents.ToList();
+        var groups = GroupIdsOf(m);
+        foreach (var doc in docs)
+        {
+            _db.ManifestDocuments.Remove(doc);
+            AddEvent(m.Id, ManifestEventTypes.DocumentRemoved, doc.Id, null, null,
+                new { kind = doc.DocumentKind, sii = doc.SiiDocumentType, folio = doc.Folio, all = true });
+        }
+        await _db.SaveChangesAsync();
+        await SyncDispatchGroupsAsync(groups);
+        return docs.Count;
+    }
+
     /// <summary>
     /// Número del otro manifiesto que ocupa el documento, o null. "Ocupa" = manifiesto no anulado y documento no
     /// marcado no_entregado. En el despacho (includeDrafts = false) los borradores ajenos no cuentan: gana quien

@@ -255,11 +255,18 @@
             </div>
         }
 
-        <div class="d-flex gap-4 mb-2 text-muted flex-wrap">
+        <div class="d-flex gap-4 mb-2 text-muted flex-wrap align-items-center">
             <span>Documentos: <strong data-doc-count>@Model.DocCount</strong></span>
             <span>Unidades: <strong data-doc-units>@Model.DocUnits.ToString("N0", es)</strong></span>
             <span>Bultos: <strong data-doc-packages>@Model.DocPackages</strong></span>
             <span>Monto total: <strong data-doc-amount>$@Model.DocAmount.ToString("N0", es)</strong></span>
+            @if (canScan && m.Documents.Count > 0)
+            {
+                <form method="post" asp-page-handler="QuitarTodos" asp-route-id="@m.Id" asp-antiforgery="true" class="d-inline-block ms-auto"
+                      data-confirm="@($"¿Quitar los {m.Documents.Count} documentos del manifiesto? Podrá volver a escanearlos.")">
+                    <button type="submit" class="btn btn-secondary"><i class="bi bi-trash"></i> Quitar todos</button>
+                </form>
+            }
         </div>
 
         <div class="table-responsive-lg">

@@ -134,6 +134,22 @@
             </div>
             <p class="text-muted mt-2 mb-0">Compare bodega, LPN y unidades con la transferencia en SAP antes de guardar.</p>
         }
+        else if (v.IsValid && Model.Probe.Partner is { } bp)
+        {
+            <div class="alert alert-success">La consulta cumple el contrato: @bp.CardCode - @bp.Name@(bp.IsActive ? "" : " (inactivo)").</div>
+            <p class="mb-2">Giro: @(bp.Activity ?? "—")</p>
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead><tr><th>Dirección de despacho</th><th>Calle</th><th>Comuna</th><th>Ciudad</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in bp.Addresses)
+                        {
+                            <tr><td>@(a.Name ?? "—")</td><td>@(a.Address ?? "—")</td><td>@(a.Commune ?? "—")</td><td>@(a.City ?? "—")</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
         else if (v.IsValid && Model.Probe.Warehouses is { } ws)
         {
             <div class="alert alert-success">La consulta cumple el contrato: @ws.Count bodega(s).</div>

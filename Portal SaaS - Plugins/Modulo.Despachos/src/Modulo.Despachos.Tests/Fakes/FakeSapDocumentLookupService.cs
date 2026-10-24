@@ -51,6 +51,12 @@ public sealed class FakeSapDocumentLookupService : ISapDocumentLookupService
             ? Task.FromResult<IReadOnlyList<SapWarehouse>>(Warehouses)
             : throw new InvalidOperationException(WarehousesError);
 
+    /// <summary>Socios de negocio por RUT normalizado.</summary>
+    public Dictionary<string, SapBusinessPartner> Partners { get; } = new();
+
+    public Task<SapBusinessPartner?> FindBusinessPartnerAsync(string taxId, CancellationToken ct = default) =>
+        Task.FromResult(Partners.TryGetValue(Modulo.Despachos.Dominio.RutChileno.Normalize(taxId), out var p) ? p : null);
+
     public Task<QueryValidationResult> ValidateQueryAsync(string sql, long sampleFolio) => throw new NotSupportedException();
     public Task<SapQueryProbeResult> ProbeAsync(string documentKind, string sql, long sampleFolio, string? sampleText = null) => throw new NotSupportedException();
     public Task<IReadOnlyList<SapDocumentQuery>> ListQueriesAsync() => throw new NotSupportedException();

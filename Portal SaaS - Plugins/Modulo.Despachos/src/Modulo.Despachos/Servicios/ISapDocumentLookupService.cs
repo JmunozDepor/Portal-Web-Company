@@ -31,10 +31,17 @@ public sealed record SapTransferInfo(
 /// <summary>Bodega de SAP (OWHS), para elegir las bodegas sucursal.</summary>
 public sealed record SapWarehouse(string Code, string Name, string? Address, string? Commune);
 
+/// <summary>Dirección de despacho de un socio de negocio (CRD1 tipo S).</summary>
+public sealed record SapPartnerAddress(string? Name, string? Address, string? Commune, string? City);
+
+/// <summary>Socio de negocio SAP encontrado por RUT (receptor de la guía manual).</summary>
+public sealed record SapBusinessPartner(string CardCode, string Name, string? Activity, bool IsActive, IReadOnlyList<SapPartnerAddress> Addresses);
+
 /// <summary>Resultado de "Probar": la validación y, si fue válida, lo que devolvió la consulta ya mapeado.</summary>
 public sealed record SapQueryProbeResult(
     QueryValidationResult Validation, SapDocumentInfo? Document, SapDocumentLines? Lines = null,
-    IReadOnlyList<SapTransferInfo>? Transfers = null, IReadOnlyList<SapWarehouse>? Warehouses = null);
+    IReadOnlyList<SapTransferInfo>? Transfers = null, IReadOnlyList<SapWarehouse>? Warehouses = null,
+    SapBusinessPartner? Partner = null);
 
 /// <summary>
 /// Búsqueda de facturas / guías de traslado por folio con las consultas SAP configuradas
@@ -78,6 +85,12 @@ public interface ISapDocumentLookupService
 
     /// <summary>Transferencias no anuladas a cualquier bodega desde la fecha (:from_date), para las agrupaciones.</summary>
     Task<IReadOnlyList<SapTransferInfo>> ListPendingTransfersAllAsync(DateOnly fromDate, CancellationToken ct = default);
+
+    /// <summary>
+    /// Socio de negocio por RUT (:tax_id, normalizado sin puntos). Null si no existe; con varios socios para el RUT
+    /// prefiere el activo. Lanza si el RUT no es válido o la consulta no está configurada.
+    /// </summary>
+    Task<SapBusinessPartner?> FindBusinessPartnerAsync(string taxId, CancellationToken ct = default);
 
     /// <summary>Bodegas de SAP (sin parámetros).</summary>
     Task<IReadOnlyList<SapWarehouse>> ListSapWarehousesAsync(CancellationToken ct = default);

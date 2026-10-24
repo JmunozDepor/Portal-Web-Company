@@ -207,7 +207,7 @@ public class SapTransferQueriesTests
 
         var queries = await svc.ListQueriesAsync();
 
-        Assert.Equal(8, queries.Count);
+        Assert.Equal(9, queries.Count);
         var all = queries.Single(q => q.DocumentKind == SapQueryKinds.TransferPendingAll).SqlText;
         Assert.Contains(":from_date", all);
         Assert.DoesNotContain(":warehouse", all);

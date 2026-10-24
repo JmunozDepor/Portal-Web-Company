@@ -84,6 +84,9 @@ public sealed class IndexModel : MaestroPageModelBase
             case SapQueryKinds.TransferPending:
                 if (sample.Length == 0) throw new InvalidOperationException("Indique el código de una bodega de prueba (con transferencias de los últimos 30 días).");
                 return (0, sample);
+            case SapQueryKinds.BusinessPartnerByTaxId:
+                if (sample.Length == 0) throw new InvalidOperationException("Indique un RUT de prueba (de un cliente que exista en SAP).");
+                return (0, sample);
         }
         if (!long.TryParse(sample, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) || n <= 0)
             throw new InvalidOperationException(Input.DocumentKind is SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines
@@ -98,6 +101,7 @@ public sealed class IndexModel : MaestroPageModelBase
         SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines => "DocEntry de prueba",
         SapQueryKinds.TransferByLpn => "LPN de prueba",
         SapQueryKinds.TransferPending => "Código de bodega de prueba",
+        SapQueryKinds.BusinessPartnerByTaxId => "RUT de prueba",
         SapQueryKinds.Warehouses => "Sin muestra (la consulta no usa parámetros)",
         SapQueryKinds.TransferPendingAll => "Sin muestra (prueba con los últimos 30 días)",
         _ => "Folio de prueba",

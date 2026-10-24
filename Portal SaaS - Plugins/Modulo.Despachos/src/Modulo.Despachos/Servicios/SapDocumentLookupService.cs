@@ -158,6 +158,45 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         return rows.Select(MapWarehouse).ToList();
     }
 
+    public async Task<SapBusinessPartner?> FindBusinessPartnerAsync(string taxId, CancellationToken ct = default)
+    {
+        if (!Dominio.RutChileno.IsValid(taxId)) throw new InvalidOperationException($"El RUT «{taxId}» no es válido.");
+        var query = await RequireActiveQueryAsync(SapQueryKinds.BusinessPartnerByTaxId, ct);
+        var rows = (await _hana.QueryDynamicAsync(Executable(query.SqlText), new { tax_id = Dominio.RutChileno.Normalize(taxId) }, ct))
+            .Select(ToCaseInsensitive).ToList();
+        RequireColumns(SapQueryKinds.BusinessPartnerByTaxId, rows, PartnerColumns);
+        return MapPartner(rows);
+    }
+
+    private static readonly string[] PartnerColumns =
+        { "card_code", "card_name", "activity", "is_active", "address_name", "address", "commune", "city" };
+
+    /// <summary>Filas = una por dirección (cabecera repetida). Varios socios: el activo; si no, el primero por código.</summary>
+    private static SapBusinessPartner? MapPartner(IReadOnlyList<Dictionary<string, object?>> rows)
+    {
+        var partners = rows.GroupBy(r => Str(r["card_code"]) ?? "").Where(g => g.Key.Length > 0).ToList();
+        if (partners.Count == 0) return null;
+        var chosen = partners.OrderByDescending(g => ToBool(g.First()["is_active"])).ThenBy(g => g.Key, StringComparer.Ordinal).First();
+        var head = chosen.First();
+        var addresses = chosen.Where(r => Str(r["address"]) is not null)
+            .Select(r => new SapPartnerAddress(Str(r["address_name"]), Str(r["address"]), Str(r["commune"]), Str(r["city"])))
+            .ToList();
+        return new SapBusinessPartner(chosen.Key, Str(head["card_name"]) ?? "", Str(head["activity"]), ToBool(head["is_active"]), addresses);
+    }
+
+    private async Task<SapQueryProbeResult> ProbePartnerAsync(string sql, string? sampleTaxId)
+    {
+        var staticError = CheckStatic(sql, PartnerParameters);
+        if (staticError is not null) return Invalid(staticError);
+        if (!Dominio.RutChileno.IsValid(sampleTaxId)) return Invalid("Indique un RUT de prueba válido (de un cliente que exista en SAP).");
+        var (rows, error) = await TryRunAsync(sql, new { tax_id = Dominio.RutChileno.Normalize(sampleTaxId!) });
+        if (error is not null) return Invalid(error);
+        if (rows!.Count == 0) return Invalid($"La consulta no devolvió socios para el RUT {sampleTaxId}; pruebe con otro.");
+        var missing = PartnerColumns.Where(c => !rows[0].ContainsKey(c)).ToList();
+        if (missing.Count > 0) return MissingResult(missing);
+        return new SapQueryProbeResult(Valid, null, Partner: MapPartner(rows));
+    }
+
     private async Task<List<SapTransferInfo>> QueryTransfersAsync(string kind, object parameters, CancellationToken ct)
     {
         var query = await RequireActiveQueryAsync(kind, ct);
@@ -217,6 +256,7 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
             SapQueryKinds.TransferPendingAll => ProbeTransfersAsync(sql, PendingAllParameters,
                 new { from_date = DateTime.Today.AddDays(-30) }, "los últimos 30 días"),
             SapQueryKinds.Warehouses => ProbeWarehousesAsync(sql),
+            SapQueryKinds.BusinessPartnerByTaxId => ProbePartnerAsync(sql, sampleText),
             _ => ProbeCoreAsync(documentKind, sql, sampleFolio),
         };
     }
@@ -357,6 +397,7 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
     private static readonly (string? Required, string[] Allowed) PendingParameters = ("warehouse", new[] { "warehouse", "from_date" });
     private static readonly (string? Required, string[] Allowed) PendingAllParameters = ("from_date", new[] { "from_date" });
     private static readonly (string? Required, string[] Allowed) NoParameters = (null, Array.Empty<string>());
+    private static readonly (string? Required, string[] Allowed) PartnerParameters = ("tax_id", new[] { "tax_id" });
 
     /// <summary>
     /// Comprobaciones previas a ejecutar: una sola sentencia SELECT/WITH, sin ';' salvo uno

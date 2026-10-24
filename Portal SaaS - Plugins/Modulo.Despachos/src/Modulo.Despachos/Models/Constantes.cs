@@ -36,10 +36,13 @@ public static class SapQueryKinds
     public const string TransferLines = "transfer_lines";
     public const string Warehouses = "warehouses";
 
+    /// <summary>Socio de negocio por RUT (:tax_id) con sus direcciones de despacho: receptor de la guía manual.</summary>
+    public const string BusinessPartnerByTaxId = "business_partner_by_tax_id";
+
     public static readonly IReadOnlyList<string> All = new[]
     {
         DocumentKinds.Invoice, DocumentKinds.TransferGuide, InvoiceLines,
-        TransferByLpn, TransferPending, TransferPendingAll, TransferLines, Warehouses,
+        TransferByLpn, TransferPending, TransferPendingAll, TransferLines, Warehouses, BusinessPartnerByTaxId,
     };
 
     public static string Label(string kind) => kind switch
@@ -50,6 +53,7 @@ public static class SapQueryKinds
         TransferPendingAll => "Transferencias pendientes (todas las sucursales)",
         TransferLines => "Líneas de transferencia",
         Warehouses => "Bodegas",
+        BusinessPartnerByTaxId => "Socio de negocio por RUT",
         _ => DocumentKinds.Label(kind),
     };
 }

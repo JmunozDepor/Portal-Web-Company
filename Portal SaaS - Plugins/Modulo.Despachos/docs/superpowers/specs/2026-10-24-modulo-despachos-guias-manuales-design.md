@@ -239,8 +239,8 @@ sola).
   detalle". Por defecto, línea de detalle.
 - **[decisión del diseñador]** El mismo campo existe en las guías del manifiesto (Fase A/B). Se edita en la
   pestaña Guías mientras el manifiesto está en borrador, por guía planificada.
-- **Instrucciones por cliente:** si el socio de negocio SAP trae un campo de instrucciones (ej. `OCRD.Free_Text`
-  o uno de usuario, configurable en la consulta del §7), se precarga en Observaciones y se puede editar.
+- **Instrucciones por cliente (usuario, 2026-10-24):** hoy se escriben de memoria en cada guía; no hay un campo
+  en SAP. Se digitan en cada guía, sin precarga.
 
 ### 6.6 Importación masiva del detalle
 

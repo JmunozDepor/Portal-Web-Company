@@ -419,4 +419,14 @@ public class GuidePlannerTests
         Assert.Equal("Venta al por menor", d.Receiver.Activity);
         Assert.Equal("76086428-5", d.Receiver.TaxId);
     }
+
+    [Fact]
+    public void Plan_GuiaManual_NoGeneraGuiaNiError()
+    {
+        var manual = Factura(0, kind: DocumentKinds.ManualGuide);
+        var p = Plan(Manifiesto(), (Factura(100), Lineas(("X", 1, 1))), (manual, new SapDocumentLines(null, null, Array.Empty<SapDocumentLine>())));
+        Assert.Empty(p.Errors);
+        var g = Assert.Single(p.Guides);
+        Assert.DoesNotContain(manual.Id, g.ManifestDocumentIds);
+    }
 }

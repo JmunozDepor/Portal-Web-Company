@@ -67,12 +67,85 @@ public sealed class TransportGuideService : ITransportGuideService
     {
         var m = await LoadReadOnlyAsync(manifestId);
         var settings = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.CompanyId == CompanyId);
-        if (settings is not { GuidesEnabled: true })
+        var manual = await ManualGuidesOfAsync(m, tracking: false);
+        var res154 = WantsRes154(m, settings);
+        if (!res154 && manual.Count == 0)
             return new GuidePreview(false, Array.Empty<PlannedGuideView>(), Array.Empty<string>(), Array.Empty<string>());
 
-        var (plan, errors) = await PlanAsync(m, settings, previewSnapshot: m.Status == ManifestStatuses.Draft);
-        var views = plan?.Guides.Select(g => View(g, m)).ToList() ?? new List<PlannedGuideView>();
-        return new GuidePreview(true, views, errors, plan?.Warnings ?? Array.Empty<string>());
+        var draft = m.Status == ManifestStatuses.Draft;
+        var views = new List<PlannedGuideView>();
+        var errors = new List<string>();
+        IReadOnlyList<string> warnings = Array.Empty<string>();
+        if (res154)
+        {
+            var (plan, planErrors) = await PlanAsync(m, settings!, previewSnapshot: draft);
+            views.AddRange(plan?.Guides.Select(g => View(g, m)) ?? Enumerable.Empty<PlannedGuideView>());
+            errors.AddRange(planErrors);
+            warnings = plan?.Warnings ?? Array.Empty<string>();
+        }
+        else
+        {
+            await AddConfigurationErrorsAsync(settings, errors);
+            if (draft) await ApplyCurrentMastersAsync(m, errors);
+        }
+        errors.AddRange(await ValidateManualAsync(m, manual, arrivalCheckedByPlanner: res154));
+        views.AddRange(manual.Select(g => new PlannedGuideView(0, g.ReceiverTaxId, g.ReceiverName, ManualGuideService.Code(g),
+            $"{g.DestinationAddress}, {g.DestinationCommune}", 1, g.LineCount, g.TotalQuantity, null)));
+        return new GuidePreview(true, views, errors, warnings);
+    }
+
+    /// <summary>Guías Res. 154 a planificar: emisión activada y facturas o transferencias en el manifiesto.</summary>
+    private static bool WantsRes154(Manifest m, DespachosSetting? settings) =>
+        settings is { GuidesEnabled: true } && m.Documents.Any(d => d.DocumentKind is DocumentKinds.Invoice or DocumentKinds.Transfer);
+
+    /// <summary>Guías manuales que viajan en el manifiesto (documentos manual_guide), por número.</summary>
+    private async Task<List<TransportGuide>> ManualGuidesOfAsync(Manifest m, bool tracking)
+    {
+        var ids = m.Documents.Where(d => d.DocumentKind == DocumentKinds.ManualGuide && d.TransportGuideId != null)
+            .Select(d => d.TransportGuideId!.Value).ToList();
+        if (ids.Count == 0) return new List<TransportGuide>();
+        var q = _db.TransportGuides.Where(g => g.CompanyId == CompanyId && ids.Contains(g.Id));
+        if (!tracking) q = q.AsNoTracking();
+        return await q.OrderBy(g => g.Number).ToListAsync();
+    }
+
+    /// <summary>
+    /// Documento a emitir de una guía manual del manifiesto: su contenido con el transporte y el origen del manifiesto
+    /// (snapshot) y la fecha de salida.
+    /// </summary>
+    private DteDocument ManualDocument(Manifest m, TransportGuide g)
+    {
+        var departure = ChileClock.ToLocal(m.DepartedAt ?? UtcNow);
+        var date = DateOnly.FromDateTime(departure);
+        var transport = new DteTransport(
+            m.Plate, m.TrailerPlate, m.CarrierTaxId,
+            m.DriverTaxId is null && m.DriverName is null ? null : new DteDriver(m.DriverTaxId ?? "", m.DriverName ?? ""),
+            null, null, null, null, date, new TimeOnly(departure.Hour, departure.Minute), m.EstimatedArrivalDate);
+        var draft = JsonSerializer.Deserialize<DteDocument>(g.DocumentJson, Json)!;
+        var doc = ManualGuideBuilder.ForEmission(draft, g.Notes, transport, date);
+        return doc with { Issuer = new DteIssuerOverride(m.OriginAddress, m.OriginCommune, null) };
+    }
+
+    /// <summary>Reglas de la Res. 154 y del formato para las guías manuales del manifiesto (sin red).</summary>
+    private async Task<List<string>> ValidateManualAsync(Manifest m, IReadOnlyList<TransportGuide> manual, bool arrivalCheckedByPlanner)
+    {
+        var errors = new List<string>();
+        if (manual.Count == 0) return errors;
+        if (m.EstimatedArrivalDate is null && !arrivalCheckedByPlanner)
+            errors.Add("Ingrese la fecha de llegada estimada (obligatoria en la guía de despacho, Res. 154).");
+        foreach (var g in manual.Where(g => g.Status != TransportGuideStatuses.Issued))
+            foreach (var e in await _dte.ValidateAsync(ManualDocument(m, g)))
+                errors.Add($"Guía manual {ManualGuideService.Code(g)}: {e.Message}");
+        return errors;
+    }
+
+    /// <summary>Configuración DTE de la compañía (cuando no hay guías Res. 154 que ya la validen).</summary>
+    private async Task AddConfigurationErrorsAsync(DespachosSetting? settings, List<string> errors)
+    {
+        var config = await _dte.GetConfigurationAsync();
+        if (!config.IsConfigured) errors.Add(config.Error ?? "La compañía no tiene configurados los documentos electrónicos.");
+        else if (!config.SupportedTypes.Contains(GuideDteType))
+            errors.Add($"El proveedor {config.ProviderCode} no está habilitado para guías de despacho (52).");
     }
 
     public async Task<byte[]> PreviewPdfAsync(Guid manifestId, int sequence)
@@ -102,10 +175,67 @@ public sealed class TransportGuideService : ITransportGuideService
             .Where(g => g.CompanyId == CompanyId && g.ManifestId == m.Id).OrderBy(g => g.Sequence).ToListAsync();
         if (guides.Any(g => g.Status == TransportGuideStatuses.Abandoned))
             return new GuideEmissionOutcome(false, 0, 0, new[] { "Las guías de este manifiesto fueron anuladas: no se pueden emitir." });
+        var manual = await ManualGuidesOfAsync(m, tracking: true);
         // Con guías ya planificadas se sigue aunque luego se desactive la emisión (si no, el manifiesto queda atascado).
-        var settings = guides.Count > 0
-            ? await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.CompanyId == CompanyId) ?? new DespachosSetting()
-            : await RequireSettingsAsync();
+        var storedSettings = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.CompanyId == CompanyId);
+        var res154 = guides.Count > 0 || WantsRes154(m, storedSettings);
+        if (!res154 && manual.Count == 0) await RequireSettingsAsync();
+        var settings = storedSettings ?? new DespachosSetting();
+        var errors = new List<string>();
+        if (res154)
+            errors.AddRange(await EmitRes154Async(m, guides, settings));
+        errors.AddRange(await EmitManualAsync(m, manual));
+
+        var all = guides.Count + manual.Count;
+        var issued = guides.Count(g => g.Status == TransportGuideStatuses.Issued) + manual.Count(g => g.Status == TransportGuideStatuses.Issued);
+        var pending = all - issued;
+        if (pending > 0)
+        {
+            AddEvent(m, ManifestEventTypes.GuideFailed, new { issued, pending, errors });
+            await _db.SaveChangesAsync();
+            await NotifyFailureAsync(m, pending, errors);
+        }
+        // "Todas emitidas" exige al menos una guía y todas emitidas: nunca se despacha con cero guías.
+        return new GuideEmissionOutcome(all > 0 && pending == 0, issued, pending, errors);
+    }
+
+    /// <summary>
+    /// Guías manuales del manifiesto: se emiten con su llave estable (la pasarela devuelve la emisión existente si ya
+    /// salió) y, emitidas, dejan su folio en el documento del manifiesto.
+    /// </summary>
+    private async Task<List<string>> EmitManualAsync(Manifest m, List<TransportGuide> manual)
+    {
+        var errors = new List<string>();
+        foreach (var g in manual.Where(g => g.Status != TransportGuideStatuses.Issued))
+        {
+            var code = ManualGuideService.Code(g);
+            try
+            {
+                var r = await _dte.EmitAsync(new DteEmissionRequest(g.EmissionKey, SourceModule, $"manifest:{m.Number}/manual:{code}",
+                    ManualDocument(m, g)));
+                ManualGuideService.Apply(g, r, UtcNow, _user.UserId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                g.Status = TransportGuideStatuses.Failed;
+                g.LastError = Truncate(ex.Message);
+            }
+            if (g.Status == TransportGuideStatuses.Issued)
+            {
+                g.IssueDate = DateOnly.FromDateTime(ChileClock.ToLocal(m.DepartedAt ?? UtcNow));
+                foreach (var d in m.Documents.Where(d => d.TransportGuideId == g.Id)) d.Folio = g.Folio ?? 0;
+                AddEvent(m, ManifestEventTypes.GuideIssued, new { manual = code, folio = g.Folio });
+            }
+            else
+                errors.Add($"Guía manual {code} ({g.ReceiverName}, {g.DestinationCommune}): {g.LastError ?? "sin respuesta del proveedor"}");
+            await _db.SaveChangesAsync();
+        }
+        return errors;
+    }
+
+    /// <summary>Guías Res. 154 planificadas desde las facturas y transferencias del manifiesto (Fase A/B).</summary>
+    private async Task<List<string>> EmitRes154Async(Manifest m, List<TransportGuide> guides, DespachosSetting settings)
+    {
 
         // Estado real en la pasarela: una guía con emisión en curso o emitida nunca se replanifica (mismo contenido).
         var locked = new HashSet<Guid>();
@@ -121,8 +251,8 @@ public sealed class TransportGuideService : ITransportGuideService
         var (plan, planErrors) = await PlanAsync(m, settings, previewSnapshot: false);
         if (guides.Count == 0)
         {
-            if (plan is null || planErrors.Count > 0) return new GuideEmissionOutcome(false, 0, 0, planErrors);
-            guides = Persist(m, settings, plan);
+            if (plan is null || planErrors.Count > 0) return planErrors.Count > 0 ? planErrors.ToList() : new List<string> { "No se pudo planificar las guías." };
+            guides.AddRange(Persist(m, settings, plan));
             AddEvent(m, ManifestEventTypes.GuidesPlanned, new { guides = guides.Count });
             await _db.SaveChangesAsync();
         }
@@ -157,17 +287,7 @@ public sealed class TransportGuideService : ITransportGuideService
         // entretanto (reconciliadas arriba). Idempotente: no reescribe las que ya quedaron escritas.
         foreach (var g in guides.Where(g => g.Status == TransportGuideStatuses.Issued))
             await WriteBackAsync(m, g, settings);
-
-        var issued = guides.Count(g => g.Status == TransportGuideStatuses.Issued);
-        var pending = guides.Count - issued;
-        if (pending > 0)
-        {
-            AddEvent(m, ManifestEventTypes.GuideFailed, new { issued, pending, errors });
-            await _db.SaveChangesAsync();
-            await NotifyFailureAsync(m, pending, errors);
-        }
-        // "Todas emitidas" exige al menos una guía y todas emitidas: nunca se despacha con cero guías.
-        return new GuideEmissionOutcome(guides.Count > 0 && pending == 0, issued, pending, errors);
+        return errors;
     }
 
     public async Task<byte[]> GetPdfAsync(Guid manifestId, int? sequence)
@@ -178,6 +298,16 @@ public sealed class TransportGuideService : ITransportGuideService
             .Where(g => g.CompanyId == CompanyId && g.ManifestId == manifestId && g.Status == TransportGuideStatuses.Issued
                         && (sequence == null || g.Sequence == sequence))
             .OrderBy(g => g.Sequence).ToListAsync();
+        if (sequence is null)
+        {
+            // Todas: también las guías manuales que viajan en el manifiesto, después de las Res. 154.
+            var manualIds = await _db.ManifestDocuments.AsNoTracking()
+                .Where(d => d.CompanyId == CompanyId && d.ManifestId == manifestId && d.TransportGuideId != null)
+                .Select(d => d.TransportGuideId!.Value).ToListAsync();
+            guides.AddRange(await _db.TransportGuides.AsNoTracking()
+                .Where(g => g.CompanyId == CompanyId && manualIds.Contains(g.Id) && g.Status == TransportGuideStatuses.Issued)
+                .OrderBy(g => g.Number).ToListAsync());
+        }
         if (guides.Count == 0) throw new InvalidOperationException("No hay guías emitidas para imprimir.");
 
         var pdfs = new List<byte[]>();
@@ -189,7 +319,11 @@ public sealed class TransportGuideService : ITransportGuideService
     {
         var guides = await _db.TransportGuides
             .Where(g => g.CompanyId == CompanyId && g.ManifestId == manifestId).ToListAsync();
-        if (guides.Any(g => g.Status == TransportGuideStatuses.Issued))
+        var manualIds = await _db.ManifestDocuments
+            .Where(d => d.CompanyId == CompanyId && d.ManifestId == manifestId && d.TransportGuideId != null)
+            .Select(d => d.TransportGuideId!.Value).ToListAsync();
+        var manual = await _db.TransportGuides.Where(g => g.CompanyId == CompanyId && manualIds.Contains(g.Id)).ToListAsync();
+        if (guides.Concat(manual).Any(g => g.Status == TransportGuideStatuses.Issued))
             throw new InvalidOperationException(
                 "Hay guías emitidas: no se puede anular el manifiesto; consulte cómo anular la guía (pendiente con FACELE).");
         foreach (var g in guides.Where(g => g.Status != TransportGuideStatuses.Abandoned))
@@ -199,6 +333,17 @@ public sealed class TransportGuideService : ITransportGuideService
                 await _dte.AbandonAsync(g.EmissionKey, reason);
             g.Status = TransportGuideStatuses.Abandoned;
             g.LastError = Truncate("Anulada: " + reason);
+        }
+        // Las guías manuales no se pierden: se abandona su emisión y quedan con llave nueva, listas para volver a
+        // borrador (ManifestService las libera al anular).
+        foreach (var g in manual)
+        {
+            if (await _dte.GetAsync(g.EmissionKey) is not null)
+                await _dte.AbandonAsync(g.EmissionKey, reason);
+            g.EmissionKey = Guid.NewGuid();
+            g.Status = TransportGuideStatuses.InManifest;
+            g.Folio = null;
+            g.LastError = null;
         }
         await _db.SaveChangesAsync();
     }

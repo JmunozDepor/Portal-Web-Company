@@ -147,12 +147,14 @@ public sealed class ManualGuideService : IManualGuideService
         if (g.Status is not (TransportGuideStatuses.Draft or TransportGuideStatuses.InManifest or TransportGuideStatuses.Failed))
             throw new InvalidOperationException($"La guía {Code(g)} está {TransportGuideStatuses.Label(g.Status).ToLowerInvariant()}: no se puede editar.");
         // En un manifiesto el transporte es el del manifiesto (se toma al despacharlo).
-        if (g.Status == TransportGuideStatuses.InManifest) input = input with { TransportMode = ManualTransportModes.Manifest };
+        var inManifest = await ManifestNumberOfAsync(g.Id) is not null;
+        if (inManifest) input = input with { TransportMode = ManualTransportModes.Manifest };
         await ApplyAsync(g, input);
         if (g.Status == TransportGuideStatuses.Failed)
         {
-            // Corregida: vuelve a borrador; se reemite con la misma llave (la pasarela acepta otro contenido si falló sin folio).
-            g.Status = TransportGuideStatuses.Draft;
+            // Corregida: se reemite con la misma llave (la pasarela acepta otro contenido si falló sin folio), sola o
+            // al reintentar las guías del manifiesto.
+            g.Status = inManifest ? TransportGuideStatuses.InManifest : TransportGuideStatuses.Draft;
             g.LastError = null;
         }
         await _db.SaveChangesAsync();
@@ -250,10 +252,9 @@ public sealed class ManualGuideService : IManualGuideService
                 return g;
             case TransportGuideStatuses.Annulled:
                 throw new InvalidOperationException($"La guía {Code(g)} está anulada.");
-            case TransportGuideStatuses.InManifest:
-                var number = await ManifestNumberOfAsync(g.Id);
-                throw new InvalidOperationException($"Esta guía viaja en el manifiesto N° {number}: se emite al despacharlo.");
         }
+        if (await ManifestNumberOfAsync(g.Id) is { } number)
+            throw new InvalidOperationException($"Esta guía viaja en el manifiesto N° {number}: se emite al despacharlo.");
 
         // Estado real en la pasarela: una emisión en curso o emitida no se reenvía con otro contenido.
         var current = await _dte.GetAsync(g.EmissionKey);

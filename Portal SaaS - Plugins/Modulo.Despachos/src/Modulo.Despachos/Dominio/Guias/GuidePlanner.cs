@@ -38,7 +38,8 @@ public sealed record GuidePlan(IReadOnlyList<PlannedGuide> Guides, IReadOnlyList
 /// - transporte desde el snapshot del manifiesto;
 /// - transferencias a sucursales (Fase B): una guía por bodega destino, IndTraslado/TipoDespacho internos,
 ///   receptor = la propia compañía con la dirección de la sucursal, sin referencias y nunca valorizada;
-/// - guías del add-on agregadas por folio: ya tienen su guía, no generan otra.
+/// - guías del add-on agregadas por folio: ya tienen su guía, no generan otra; las guías manuales tampoco (se emiten
+///   aparte con su propio contenido, ver TransportGuideService).
 /// Errores = bloquean el despacho; advertencias = se emite igual.
 /// </summary>
 public static partial class GuidePlanner
@@ -59,8 +60,8 @@ public static partial class GuidePlanner
         var ownCompanyMissing = false;
         foreach (var (doc, lines) in input.Documents)
         {
-            // Guía del add-on agregada por su folio: ya tiene su guía.
-            if (doc.DocumentKind == DocumentKinds.TransferGuide) continue;
+            // Guía del add-on agregada por su folio: ya tiene su guía. Guía manual: se emite aparte, con su propio contenido.
+            if (doc.DocumentKind is DocumentKinds.TransferGuide or DocumentKinds.ManualGuide) continue;
             var isTransfer = doc.DocumentKind == DocumentKinds.Transfer;
             var prefix = isTransfer ? $"Transferencia {doc.Folio}" : $"Folio {doc.Folio}";
             if (!isTransfer && doc.DocumentKind != DocumentKinds.Invoice)

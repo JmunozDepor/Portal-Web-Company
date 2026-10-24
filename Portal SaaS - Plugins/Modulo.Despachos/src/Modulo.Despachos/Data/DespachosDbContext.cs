@@ -50,6 +50,7 @@ public class DespachosDbContext : DbContext
     public DbSet<MonthlyClosure> MonthlyClosures => Set<MonthlyClosure>();
     public DbSet<TransportGuide> TransportGuides => Set<TransportGuide>();
     public DbSet<TransportGuideDocument> TransportGuideDocuments => Set<TransportGuideDocument>();
+    public DbSet<TransferMotive> TransferMotives => Set<TransferMotive>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -188,6 +189,16 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.AppliesTo).HasColumnName("applies_to").HasMaxLength(20).IsRequired();
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique().HasDatabaseName("uq_rejection_reasons_company_id_code");
+        });
+
+        modelBuilder.Entity<TransferMotive>(e =>
+        {
+            Base(e, "transfer_motives");
+            e.Property(x => x.Code).HasColumnName("code");
+            e.Property(x => x.Name).HasColumnName("name").HasMaxLength(80).IsRequired();
+            e.Property(x => x.VatAffected).HasColumnName("vat_affected");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique().HasDatabaseName("uq_transfer_motives_company_id_code");
         });
 
         modelBuilder.Entity<Holiday>(e =>
@@ -417,8 +428,27 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.LastError).HasColumnName("last_error").HasMaxLength(1000);
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.IssuedAt).HasColumnName("issued_at");
+            e.Property(x => x.Source).HasColumnName("source").HasMaxLength(20).IsRequired().HasDefaultValue(TransportGuideSources.Manifest);
+            e.Property(x => x.Number).HasColumnName("number");
+            e.Property(x => x.IssueDate).HasColumnName("issue_date");
+            e.Property(x => x.DispatchType).HasColumnName("dispatch_type");
+            e.Property(x => x.OriginId).HasColumnName("origin_id");
+            e.Property(x => x.ReceiverCardCode).HasColumnName("receiver_card_code").HasMaxLength(30);
+            e.Property(x => x.TransportMode).HasColumnName("transport_mode").HasMaxLength(20);
+            e.Property(x => x.NetAmount).HasColumnName("net_amount").HasPrecision(18, 2);
+            e.Property(x => x.VatAmount).HasColumnName("vat_amount").HasPrecision(18, 2);
+            e.Property(x => x.TotalAmount).HasColumnName("total_amount").HasPrecision(18, 2);
+            e.Property(x => x.Notes).HasColumnName("notes").HasMaxLength(500);
+            e.Property(x => x.AnnulReason).HasColumnName("annul_reason").HasMaxLength(250);
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+            e.Property(x => x.IssuedBy).HasColumnName("issued_by");
             e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_transport_guides_company_id");
-            e.HasIndex(x => new { x.ManifestId, x.Sequence }).IsUnique().HasDatabaseName("uq_transport_guides_manifest_id_sequence");
+            // Filtrados: SQL Server trata los NULL como iguales en un índice único (las guías manuales no tienen
+            // manifiesto ni secuencia; las del manifiesto no tienen número).
+            e.HasIndex(x => new { x.ManifestId, x.Sequence }).IsUnique().HasDatabaseName("uq_transport_guides_manifest_id_sequence")
+                .HasFilter("manifest_id IS NOT NULL");
+            e.HasIndex(x => new { x.CompanyId, x.Number }).IsUnique().HasDatabaseName("uq_transport_guides_company_id_number")
+                .HasFilter("number IS NOT NULL");
             e.HasIndex(x => x.EmissionKey).IsUnique().HasDatabaseName("uq_transport_guides_emission_key");
             e.HasOne<Manifest>().WithMany().HasForeignKey(x => x.ManifestId)
                 .OnDelete(DeleteBehavior.Cascade).HasConstraintName("fk_transport_guides_manifests");
@@ -485,6 +515,10 @@ public class DespachosDbContext : DbContext
             e.Property(x => x.SapWritebackError).HasColumnName("sap_writeback_error").HasMaxLength(500);
             e.Property(x => x.DispatchGroupId).HasColumnName("dispatch_group_id");
             e.HasIndex(x => x.DispatchGroupId).HasDatabaseName("ix_manifest_documents_dispatch_group_id");
+            e.Property(x => x.TransportGuideId).HasColumnName("transport_guide_id");
+            e.HasIndex(x => x.TransportGuideId).HasDatabaseName("ix_manifest_documents_transport_guide_id");
+            e.HasOne<TransportGuide>().WithMany().HasForeignKey(x => x.TransportGuideId)
+                .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_manifest_documents_transport_guides");
             e.HasIndex(x => new { x.CompanyId, x.DocumentKind, x.SapDocEntry })
                 .HasDatabaseName("ix_manifest_documents_company_id_document_kind_sap_doc_entry");
             e.Property(x => x.SapBaseOrderEntry).HasColumnName("sap_base_order_entry");

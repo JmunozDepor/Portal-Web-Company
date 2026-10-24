@@ -35,6 +35,9 @@ public class ManifestDocument
     /// <summary>Agrupación de la que entró la transferencia (escaneando su hoja); null si entró suelta.</summary>
     public long? DispatchGroupId { get; set; }
 
+    /// <summary>Guía manual que ES este documento (DocumentKind = manual_guide); folio 0 hasta que se emite.</summary>
+    public Guid? TransportGuideId { get; set; }
+
     public int? SapBaseOrderEntry { get; set; }
     public string? CustomerPo { get; set; }
     public decimal Units { get; set; }

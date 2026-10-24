@@ -102,6 +102,9 @@ public static class DocumentKinds
     /// </summary>
     public const string Transfer = "transfer";
 
+    /// <summary>Guía manual (GM-) agregada al manifiesto: no se busca por folio, entra por su código.</summary>
+    public const string ManualGuide = "manual_guide";
+
     public static readonly IReadOnlyList<string> All = new[] { Invoice, TransferGuide };
 
     /// <summary>Nombre plural para mensajes ("facturas", "guías de traslado").</summary>
@@ -110,6 +113,7 @@ public static class DocumentKinds
         Invoice => "facturas",
         TransferGuide => "guías de traslado",
         Transfer => "transferencias",
+        ManualGuide => "guías manuales",
         _ => kind,
     };
 
@@ -118,6 +122,7 @@ public static class DocumentKinds
         Invoice => "Factura",
         TransferGuide => "Guía de traslado",
         Transfer => "Transferencia",
+        ManualGuide => "Guía manual",
         _ => kind,
     };
 }

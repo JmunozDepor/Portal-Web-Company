@@ -74,6 +74,47 @@ public static class TransportGuideStatuses
     public const string Failed = "failed";
     /// <summary>El manifiesto se anuló antes de emitirla.</summary>
     public const string Abandoned = "abandoned";
+
+    // Solo guías manuales.
+    /// <summary>Borrador editable, sin manifiesto.</summary>
+    public const string Draft = "draft";
+    /// <summary>Agregada a un manifiesto: se emite al despacharlo.</summary>
+    public const string InManifest = "in_manifest";
+    /// <summary>Borrador anulado (una guía emitida no se anula desde el portal).</summary>
+    public const string Annulled = "annulled";
+
+    public static string Label(string status) => status switch
+    {
+        Draft => "Borrador",
+        InManifest => "En manifiesto",
+        Planned => "Planificada",
+        Pending => "Pendiente",
+        Issued => "Emitida",
+        Failed => "Rechazada",
+        Abandoned => "Abandonada",
+        Annulled => "Anulada",
+        _ => status,
+    };
+}
+
+/// <summary>Origen de una guía (transport_guides.source).</summary>
+public static class TransportGuideSources
+{
+    /// <summary>Guía Res. 154 planificada desde los documentos del manifiesto.</summary>
+    public const string Manifest = "manifest";
+    /// <summary>Guía manual (sin documento SAP).</summary>
+    public const string Manual = "manual";
+}
+
+/// <summary>De dónde salen los datos de transporte de una guía manual (transport_guides.transport_mode).</summary>
+public static class ManualTransportModes
+{
+    /// <summary>Snapshot del manifiesto en el que viaja, al despacharlo.</summary>
+    public const string Manifest = "manifest";
+    /// <summary>Vehículo, chofer y transportista de los maestros de Despachos.</summary>
+    public const string Master = "master";
+    /// <summary>Particular: datos digitados solo para esta guía.</summary>
+    public const string Manual = "manual";
 }
 
 /// <summary>Estado del cálculo de costo del manifiesto (manifests.cost_status).</summary>

@@ -24,6 +24,9 @@
     var tedTimer = null;
     var cameraReader = null;
     var lastCamera = { text: '', at: 0 };
+    var inFlight = 0;          // lecturas enviadas sin respuesta
+    var reloadWanted = false;  // alguna respuesta pidió recargar la página
+    var reloadTimer = null;
 
     // ------------------------------------------------------------ sonido
     var audio = null;
@@ -76,7 +79,15 @@
     // ------------------------------------------------------------ envío
     function submit(fields) {
         // Una captura a la vez: un lector rápido puede disparar varias lecturas seguidas.
-        queue = queue.then(function () { return send(fields); });
+        // Si había una recarga programada se pospone: recargar con una lectura en curso pierde su respuesta.
+        inFlight++;
+        if (reloadTimer) { clearTimeout(reloadTimer); reloadTimer = null; }
+        queue = queue.then(function () { return send(fields); }).then(function () {
+            inFlight--;
+            if (reloadWanted && inFlight === 0) {
+                reloadTimer = setTimeout(function () { window.location.reload(); }, 900);
+            }
+        });
         return queue;
     }
 
@@ -109,14 +120,18 @@
         if (data.reload) {
             // Hoja de agrupación: entraron varias transferencias; se recarga para mostrarlas.
             // warnings[0] es el resumen ("AT-...: N transferencias agregadas"); el resto, lo omitido y avisos.
+            // La recarga ocurre cuando no quedan lecturas en curso (ver submit).
             show(data.warnings.length > 1 ? 'warn' : 'ok', data.warnings.join(' '));
-            setTimeout(function () { window.location.reload(); }, 900);
+            reloadWanted = true;
         } else if (data.outcome === 'added') {
             addRow(data.document);
             setCounters(data);
             show(warnings ? 'warn' : 'ok', data.message + warnings);
         } else if (data.outcome === 'duplicate_in_this') {
             show('warn', data.message);
+            // La página no muestra lo que el manifiesto ya tiene (p. ej. una respuesta perdida): se recarga.
+            var shown = document.querySelector('[data-doc-count]');
+            if (shown && String(data.totalDocuments) !== shown.textContent.trim()) { reloadWanted = true; }
         } else if (data.outcome === 'ambiguous') {
             pendingAmbiguous = { DocumentKind: fields.DocumentKind, Folio: fields.Folio };
             ambiguous.hidden = false;

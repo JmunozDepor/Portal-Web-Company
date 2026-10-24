@@ -32,6 +32,8 @@ internal sealed class ManifestTestEnv
     public required FakeSapTransferWriter Writer { get; init; }
     /// <summary>Agrupaciones (agrupación de transferencias por sucursal).</summary>
     public required DispatchGroupService Groups { get; init; }
+    /// <summary>Guías manuales (borrador GM-, emisión sola).</summary>
+    public required ManualGuideService ManualGuides { get; init; }
 
     public long CarrierId, VehicleId, TrailerId, DriverId, OriginId, ShiftId, SmallTypeId;
     public long RancaguaId, CuricoId;
@@ -78,6 +80,7 @@ internal sealed class ManifestTestEnv
             Db = db, Company = company, User = user, Master = master, Tariff = tariff, Sap = sap,
             Clock = clock, Cost = cost, Svc = svc, Notifications = notifications, Closure = closure, Dte = dte, Guides = guides, Writer = writer,
             Groups = new DispatchGroupService(db, company, user, sap, master, clock, notifications),
+            ManualGuides = new ManualGuideService(db, company, user, sap, dte, clock, notifications),
         };
         env.SeedAsync(seedRates).GetAwaiter().GetResult();
         return env;

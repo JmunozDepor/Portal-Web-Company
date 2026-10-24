@@ -115,6 +115,9 @@ public class SapBusinessPartnerTests
         var seed = SapQuerySeeds.Get(SapQueryKinds.BusinessPartnerByTaxId);
         Assert.Contains(":tax_id", seed);
         Assert.Contains("CRD1", seed);
+        // Mismo giro que las líneas de factura (GiroRecep).
+        Assert.Contains("U_U_NX_giro", seed);
+        Assert.Contains("U_GSP_SubGroupName", seed);
         Assert.DoesNotContain(seed.Split('\n'), l => l.TrimStart().StartsWith("--") && l.Contains(':'));
     }
 }

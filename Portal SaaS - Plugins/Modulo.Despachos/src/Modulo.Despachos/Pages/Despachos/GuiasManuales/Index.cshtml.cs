@@ -30,6 +30,7 @@ public sealed class IndexModel : DespachosPageModelBase
     [BindProperty(SupportsGet = true)] public string? From { get; set; }
     [BindProperty(SupportsGet = true)] public string? To { get; set; }
     [BindProperty(SupportsGet = true)] public string? Receiver { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Folio { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -39,7 +40,8 @@ public sealed class IndexModel : DespachosPageModelBase
         {
             Items = await _guides.ListAsync(new GuideFilter(
                 string.IsNullOrWhiteSpace(Source) ? null : Source, string.IsNullOrWhiteSpace(Status) ? null : Status,
-                Date(From), Date(To), string.IsNullOrWhiteSpace(Receiver) ? null : Receiver.Trim()));
+                Date(From), Date(To), string.IsNullOrWhiteSpace(Receiver) ? null : Receiver.Trim(),
+                long.TryParse(Folio?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var folio) ? folio : null));
         }
         catch (Exception ex)
         {

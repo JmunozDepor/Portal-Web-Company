@@ -80,6 +80,35 @@ public class ManualGuideReviewFixesTests
     }
 
     [Fact]
+    public async Task Lista_BorradoresSinFolioArriba_LuegoPorFolioDescendente()
+    {
+        var env = ManifestTestEnv.Build();
+        var issued1 = await env.ManualGuides.CreateAsync(ManualGuideServiceTests.Input(env));
+        var issued2 = await env.ManualGuides.CreateAsync(ManualGuideServiceTests.Input(env));
+        await env.ManualGuides.EmitAsync(issued1);
+        await env.ManualGuides.EmitAsync(issued2);
+        var draft = await env.ManualGuides.CreateAsync(ManualGuideServiceTests.Input(env) with { IssueDate = ManifestTestEnv.Fecha.AddDays(-5) });
+
+        var r = await env.ManualGuides.ListAsync(new GuideFilter(null, null, null, null, null));
+
+        Assert.Equal(new[] { draft, issued2, issued1 }, r.Select(x => x.Id));
+    }
+
+    [Fact]
+    public async Task Lista_FiltroPorFolio()
+    {
+        var env = ManifestTestEnv.Build();
+        var a = await env.ManualGuides.CreateAsync(ManualGuideServiceTests.Input(env));
+        var b = await env.ManualGuides.CreateAsync(ManualGuideServiceTests.Input(env));
+        await env.ManualGuides.EmitAsync(a);
+        await env.ManualGuides.EmitAsync(b);
+
+        var r = await env.ManualGuides.ListAsync(new GuideFilter(null, null, null, null, null, Folio: 501));
+
+        Assert.Equal(b, Assert.Single(r).Id);
+    }
+
+    [Fact]
     public async Task Lista_FiltroDeFechas_NoSeCortaEnLasMasRecientes()
     {
         var env = ManifestTestEnv.Build();

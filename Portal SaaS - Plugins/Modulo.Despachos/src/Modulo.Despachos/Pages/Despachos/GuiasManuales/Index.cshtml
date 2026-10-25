@@ -57,6 +57,10 @@
             <input type="date" id="f-to" name="To" value="@Model.To" class="form-control" />
         </div>
         <div class="col-auto">
+            <label class="form-label" for="f-folio">Folio</label>
+            <input type="text" inputmode="numeric" id="f-folio" name="Folio" value="@Model.Folio" class="form-control" placeholder="N° de folio" style="max-width:130px;" />
+        </div>
+        <div class="col-auto">
             <label class="form-label" for="f-receiver">Receptor</label>
             <input type="search" id="f-receiver" name="Receiver" value="@Model.Receiver" class="form-control" placeholder="Nombre o RUT" />
         </div>
@@ -68,7 +72,7 @@
 
     <div class="table-responsive-lg">
         <table class="table-ps">
-            <thead><tr><th>Guía</th><th>Folio</th><th>Fecha</th><th>Receptor</th><th>Comuna</th><th>Motivo</th><th class="text-end">Total</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+            <thead><tr><th>Guía</th><th>Folio</th><th>Fecha</th><th>RUT receptor</th><th>Receptor</th><th>Comuna</th><th>Motivo</th><th class="text-end">Total</th><th>Estado</th><th class="col-actions"></th></tr></thead>
             <tbody>
                 @foreach (var x in Model.Items)
                 {
@@ -86,7 +90,8 @@
                         </td>
                         <td>@(x.Folio?.ToString(CultureInfo.InvariantCulture) ?? "—")</td>
                         <td class="text-nowrap">@x.Date.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
-                        <td>@x.ReceiverName<div class="text-muted">@x.ReceiverTaxId</div></td>
+                        <td class="text-nowrap">@x.ReceiverTaxId</td>
+                        <td>@x.ReceiverName</td>
                         <td>@x.DestinationCommune</td>
                         <td>@TransferIndicators.Label(x.TransferIndicator)</td>
                         <td class="text-end">@(x.TotalAmount is { } t ? "$" + t.ToString("N0", es) : "—")</td>
@@ -110,7 +115,7 @@
                 }
                 @if (Model.Items.Count == 0)
                 {
-                    <tr><td colspan="9" class="text-muted">Sin guías para el filtro indicado.</td></tr>
+                    <tr><td colspan="10" class="text-muted">Sin guías para el filtro indicado.</td></tr>
                 }
             </tbody>
         </table>

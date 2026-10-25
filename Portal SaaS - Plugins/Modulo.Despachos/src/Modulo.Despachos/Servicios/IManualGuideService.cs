@@ -3,8 +3,8 @@ using Modulo.Despachos.Models;
 
 namespace Modulo.Despachos.Servicios;
 
-/// <summary>Filtro de la lista de guías (todas: del manifiesto y manuales). Receiver busca en nombre o RUT.</summary>
-public sealed record GuideFilter(string? Source, string? Status, DateOnly? From, DateOnly? To, string? Receiver);
+/// <summary>Filtro de la lista de guías (todas: del manifiesto y manuales). Receiver busca en nombre o RUT; Folio exacto.</summary>
+public sealed record GuideFilter(string? Source, string? Status, DateOnly? From, DateOnly? To, string? Receiver, long? Folio = null);
 
 /// <summary>Fila de la lista de guías. Code = "GM-000123" (manual) o "Manifiesto N° 7 / guía 2".</summary>
 public sealed record GuideListItem(

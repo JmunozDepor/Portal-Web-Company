@@ -34,7 +34,7 @@ public class ManifestManualGuideEmissionTests
         var sent = Assert.Single(env.Dte.Calls);
         Assert.Equal(("AB1234", "12345678-5", "76543210-3"), (sent.Document.Transport!.Plate, sent.Document.Transport.Driver!.TaxId, sent.Document.Transport.CarrierTaxId));
         Assert.Equal("Avenida Circunvalación 1055", sent.Document.Transport.DestinationAddress);
-        Assert.Equal(ManualGuideBuilder.NotesLineName, sent.Document.Lines[^1].Name);
+        Assert.StartsWith("OBS: ", sent.Document.Lines[^1].Name);
         Assert.Equal(ManifestTestEnv.Fecha, sent.Document.IdDoc.IssueDate);
         var g = (await env.ManualGuides.GetAsync(gid))!;
         Assert.Equal((TransportGuideStatuses.Issued, 500L), (g.Status, g.Folio));

@@ -96,7 +96,7 @@ public class ManualGuideServiceTests
 
         Assert.Equal((TransportGuideStatuses.Issued, 500L), (g.Status, g.Folio));
         var sent = Assert.Single(env.Dte.Calls).Document;
-        Assert.Equal(ManualGuideBuilder.NotesLineName, sent.Lines[^1].Name);
+        Assert.StartsWith("OBS: ", sent.Lines[^1].Name);
         Assert.Equal("ABCD12", sent.Transport!.Plate);
         Assert.NotNull(g.IssuedAt);
         Assert.NotEmpty(await env.ManualGuides.GetPdfAsync(id));

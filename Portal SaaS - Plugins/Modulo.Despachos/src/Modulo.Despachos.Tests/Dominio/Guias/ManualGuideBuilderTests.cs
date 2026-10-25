@@ -72,7 +72,7 @@ public class ManualGuideBuilderTests
     {
         var lines = Enumerable.Range(1, 27).Select(i => new ManualGuideLineInput(null, "Caja " + i, 1, null, 1)).ToList();
         Assert.Contains(ManualGuideBuilder.Validate(Input(lines, notes: "Entregar en bodega"), 27),
-            e => e.Contains("máximo de 27 líneas (incluida la de observaciones)"));
+            e => e.Contains("máximo de 27 líneas (incluidas las de observaciones)"));
         Assert.Empty(ManualGuideBuilder.Validate(Input(lines), 27));
     }
 
@@ -123,9 +123,32 @@ public class ManualGuideBuilderTests
         var doc = ManualGuideBuilder.ForEmission(draft, "Entregar a Juan, timbre 2", null, new DateOnly(2026, 10, 24));
         var last = doc.Lines[^1];
         Assert.Equal(2, doc.Lines.Count);
-        Assert.Equal((2, ManualGuideBuilder.NotesLineName, "Entregar a Juan, timbre 2", 0m), (last.LineNumber, last.Name, last.Description, last.Amount));
+        // FACELE imprime NmbItem (no DscItem): el texto va en el nombre del ítem.
+        Assert.Equal((2, "OBS: Entregar a Juan, timbre 2", 0m, 1m), (last.LineNumber, last.Name, last.Amount, last.Quantity));
         Assert.Equal(new DateOnly(2026, 10, 24), doc.IdDoc.IssueDate);
         Assert.Equal((500000m, 95000m, 595000m), ManualGuideBuilder.Totals(doc.Lines));
+    }
+
+    [Fact]
+    public void ForEmission_ObservacionesLargas_UnaLineaPorRenglonYHasta80Caracteres()
+    {
+        var draft = ManualGuideBuilder.BuildDraft(Input(), Origin, vatAffected: true);
+        var notes = string.Join(Environment.NewLine,
+            "Se trasladan desde la sucursal X hasta la sucursal Y", "Color de las bolsas negras, " + new string('a', 70), "300 bultos");
+        var lines = ManualGuideBuilder.ForEmission(draft, notes, null, new DateOnly(2026, 10, 24)).Lines.Skip(1).ToList();
+
+        Assert.All(lines, l => Assert.True(l.Name.Length <= 80));
+        Assert.Equal("OBS: Se trasladan desde la sucursal X hasta la sucursal Y", lines[0].Name);
+        Assert.Equal("300 bultos", lines[^1].Name);
+        Assert.Equal(4, lines.Count);
+        Assert.Equal(4, ManualGuideBuilder.NoteLines(notes).Count);
+    }
+
+    [Fact]
+    public void Validate_ObservacionesCuentanSusLineas()
+    {
+        var lines = Enumerable.Range(1, 25).Select(i => new ManualGuideLineInput(null, "Caja " + i, 1, null, 1)).ToList();
+        Assert.Contains(ManualGuideBuilder.Validate(Input(lines, notes: string.Join(Environment.NewLine, "uno", "dos", "tres")), 27), e => e.Contains("máximo de 27 líneas"));
     }
 
     [Fact]

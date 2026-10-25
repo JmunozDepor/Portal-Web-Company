@@ -59,8 +59,8 @@ public static class ManualGuideBuilder
             if (l.UnitPrice < 0) errors.Add($"Línea {i + 1}: el precio no puede ser negativo.");
         }
         var notes = !Blank(input.Notes);
-        if (input.Lines.Count + (notes ? 1 : 0) > maxLines)
-            errors.Add($"La guía admite un máximo de {maxLines} líneas (incluida la de observaciones).");
+        if (input.Lines.Count + NoteLines(input.Notes).Count > maxLines)
+            errors.Add($"La guía admite un máximo de {maxLines} líneas (incluidas las de observaciones).");
         if (notes && input.Notes!.Trim().Length > MaxNotes) errors.Add($"Las observaciones admiten hasta {MaxNotes} caracteres.");
 
         for (var i = 0; i < input.References.Count; i++)
@@ -119,9 +119,9 @@ public static class ManualGuideBuilder
     public static DteDocument ForEmission(DteDocument draft, string? notes, DteTransport? transport, DateOnly issueDate)
     {
         var lines = draft.Lines.ToList();
-        if (!Blank(notes))
-            lines.Add(new DteLine(lines.Count + 1, null, NotesLineName, notes!.Trim(), 1, null, 0, 0,
-                Exempt: lines.Count > 0 && lines.All(l => l.Exempt)));
+        var exempt = lines.Count > 0 && lines.All(l => l.Exempt);
+        foreach (var text in NoteLines(notes))
+            lines.Add(new DteLine(lines.Count + 1, null, text, null, 1, null, 0, 0, Exempt: exempt));
         var dest = draft.Transport;
         var t = transport is null ? dest : transport with
         {
@@ -130,6 +130,48 @@ public static class ManualGuideBuilder
         };
         return draft with { IdDoc = draft.IdDoc with { IssueDate = issueDate }, Transport = t, Lines = lines };
     }
+
+    /// <summary>
+    /// Observaciones como líneas del detalle: FACELE imprime solo el nombre del ítem (NmbItem, 80 caracteres), no la
+    /// descripción extendida. Un renglón del texto por línea, cortado por palabras en 80; la primera lleva "OBS: ".
+    /// Cada una va con cantidad 1 y monto 0 (la plataforma exige cantidad mayor a cero).
+    /// </summary>
+    public static IReadOnlyList<string> NoteLines(string? notes)
+    {
+        var result = new List<string>();
+        if (Blank(notes)) return result;
+        var rows = notes!.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n')
+            .Select(r => string.Join(' ', r.Split(' ', StringSplitOptions.RemoveEmptyEntries))).Where(r => r.Length > 0).ToList();
+        for (var i = 0; i < rows.Count; i++)
+        {
+            var current = i == 0 ? NotesPrefix : "";
+            foreach (var word in rows[i].Split(' '))
+            {
+                var w = word;
+                while (w.Length > 0)
+                {
+                    var sep = current.Length == 0 || current.EndsWith(' ') ? "" : " ";
+                    if (current.Length + sep.Length + w.Length <= NoteLineLength) { current += sep + w; w = ""; }
+                    else if (current.Trim().Length == 0 || w.Length > NoteLineLength)
+                    {
+                        // Palabra más larga que la línea: se corta.
+                        var room = NoteLineLength - current.Length - sep.Length;
+                        if (room <= 0) { result.Add(current.TrimEnd()); current = ""; continue; }
+                        current += sep + w[..room];
+                        w = w[room..];
+                        result.Add(current.TrimEnd());
+                        current = "";
+                    }
+                    else { result.Add(current.TrimEnd()); current = ""; }
+                }
+            }
+            if (current.Trim().Length > 0) result.Add(current.TrimEnd());
+        }
+        return result;
+    }
+
+    private const string NotesPrefix = "OBS: ";
+    private const int NoteLineLength = 80;
 
     /// <summary>Formulario desde el documento guardado y las columnas de la fila (para editar el borrador).</summary>
     public static ManualGuideInput ToInput(DteDocument draft, TransportGuide row)

@@ -61,58 +61,71 @@
         <div class="alert alert-warning">Esta guía viaja en un manifiesto: se emite al despacharlo, con el transporte del manifiesto.</div>
     }
 
-    <div class="d-flex gap-4 mb-3 text-muted flex-wrap">
-        <span>Folio: <strong>@(g.Folio?.ToString(CultureInfo.InvariantCulture) ?? "—")</strong></span>
-        <span>Fecha: <strong>@i.IssueDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</strong></span>
-        <span>Motivo: <strong>@TransferIndicators.Label(i.TransferIndicator)</strong></span>
-        <span>Tipo de despacho: <strong>@DispatchTypes.Label(i.DispatchType)</strong></span>
-        <span>Neto: <strong>$@((g.NetAmount ?? 0).ToString("N0", es))</strong></span>
-        <span>IVA: <strong>$@((g.VatAmount ?? 0).ToString("N0", es))</strong></span>
-        <span>Total: <strong>$@((g.TotalAmount ?? 0).ToString("N0", es))</strong></span>
+    @* Mismo orden que el formulario: receptor, destino, fechas y condiciones, transporte, observaciones y detalle. *@
+    <div class="row g-3 align-items-center mb-1">
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Folio</span><div><strong>@(g.Folio?.ToString(CultureInfo.InvariantCulture) ?? "—")</strong></div></div>
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Total</span><div><strong>$@((g.TotalAmount ?? 0).ToString("N0", es))</strong> <span class="text-muted">(neto $@((g.NetAmount ?? 0).ToString("N0", es)) + IVA $@((g.VatAmount ?? 0).ToString("N0", es)))</span></div></div>
         @if (g.AnnulReason is not null)
         {
-            <span>Motivo de anulación: <strong>@g.AnnulReason</strong></span>
+            <div class="col-12 col-xl-6"><span class="text-muted">Motivo de anulación</span><div>@g.AnnulReason</div></div>
+        }
+        @if (g.Status is TransportGuideStatuses.Draft or TransportGuideStatuses.InManifest)
+        {
+            <div class="col-12 col-xl-6">
+                <img src="~/despachos/guias-manuales/detalle?id=@g.Id&handler=Codigo" alt="@Model.Code" style="max-width:100%;height:auto;" />
+                <div class="text-muted">Escanee o digite <strong>@Model.Code</strong> en el manifiesto para que viaje en él.</div>
+            </div>
         }
     </div>
 
-    @if (g.Status is TransportGuideStatuses.Draft or TransportGuideStatuses.InManifest)
+    <div class="doc-form-layout-section border-top pt-3 mt-3 mb-2">1. Receptor</div>
+    <div class="row g-3">
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">RUT</span><div>@i.ReceiverTaxId @(i.ReceiverCardCode is { } cc ? $"(SAP {cc})" : "")</div></div>
+        <div class="col-12 col-md-12 col-xl-6"><span class="text-muted">Razón social</span><div>@i.ReceiverName</div></div>
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Giro</span><div>@(i.ReceiverActivity ?? "—")</div></div>
+        <div class="col-12 col-md-12 col-xl-6"><span class="text-muted">Dirección</span><div>@i.ReceiverAddress</div></div>
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Comuna</span><div>@i.ReceiverCommune</div></div>
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Ciudad</span><div>@(i.ReceiverCity ?? "—")</div></div>
+    </div>
+
+    <div class="doc-form-layout-section border-top pt-3 mt-3 mb-2">2. Destino</div>
+    <div class="row g-3">
+        <div class="col-12 col-md-12 col-xl-6"><span class="text-muted">Dirección de destino</span><div>@i.DestinationAddress</div></div>
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Comuna de destino</span><div>@i.DestinationCommune</div></div>
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Ciudad de destino</span><div>@(i.DestinationCity ?? "—")</div></div>
+    </div>
+
+    <div class="doc-form-layout-section border-top pt-3 mt-3 mb-2">3. Fechas y condiciones</div>
+    <div class="row g-3">
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Fecha de emisión</span><div>@i.IssueDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</div></div>
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Motivo de traslado</span><div>@TransferIndicators.Label(i.TransferIndicator)</div></div>
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Tipo de despacho</span><div>@DispatchTypes.Label(i.DispatchType)</div></div>
+        <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Referencia</span><div>@(i.References.Count > 0 ? string.Join("; ", i.References.Select(r => $"{r.DocumentType} N° {r.Folio}")) : "—")</div></div>
+        @if (i.TransportMode != ManualTransportModes.Manifest)
+        {
+            <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Salida</span><div>@(t?.DepartureDate?.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture) ?? "—") @(t?.DepartureTime?.ToString("HH:mm", CultureInfo.InvariantCulture))</div></div>
+            <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Llegada estimada</span><div>@(t?.ArrivalDate?.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture) ?? "—")</div></div>
+        }
+    </div>
+
+    <div class="doc-form-layout-section border-top pt-3 mt-3 mb-2">4. Transporte (Res. 154)</div>
+    @if (i.TransportMode == ManualTransportModes.Manifest)
     {
-        <div class="mb-3">
-            <img src="~/despachos/guias-manuales/detalle?id=@g.Id&handler=Codigo" alt="@Model.Code" style="max-width:100%;height:auto;" />
-            <div class="text-muted">Escanee o digite <strong>@Model.Code</strong> en el manifiesto para que viaje en él.</div>
+        <p class="text-muted mb-0">Del manifiesto en el que viaja (se toma al despacharlo).</p>
+    }
+    else
+    {
+        <div class="row g-3">
+            <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Patente</span><div>@(t?.Plate ?? "—") @(t?.TrailerPlate is { } tp ? $"/ carro {tp}" : "")</div></div>
+            <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Chofer</span><div>@(t?.DriverName ?? "—") @(t?.DriverTaxId is { } d ? $"({d})" : "")</div></div>
+            <div class="col-12 col-md-6 col-xl-3"><span class="text-muted">Transportista</span><div>@(t?.CarrierName ?? "—") @(t?.CarrierTaxId is { } c ? $"({c})" : "")</div></div>
         </div>
     }
 
-    <div class="drawer-grid mb-3">
-        <div>
-            <h3 class="h6">Receptor</h3>
-            <div>@i.ReceiverName (@i.ReceiverTaxId)</div>
-            <div class="text-muted">@i.ReceiverActivity</div>
-            <div class="text-muted">@i.ReceiverAddress, @i.ReceiverCommune</div>
-            @if (i.ReceiverCardCode is not null) { <div class="text-muted">Socio SAP @i.ReceiverCardCode</div> }
-        </div>
-        <div>
-            <h3 class="h6">Destino</h3>
-            <div>@i.DestinationAddress</div>
-            <div class="text-muted">@i.DestinationCommune @i.DestinationCity</div>
-        </div>
-        <div>
-            <h3 class="h6">Transporte</h3>
-            @if (i.TransportMode == ManualTransportModes.Manifest)
-            {
-                <div class="text-muted">Del manifiesto (al despacharlo).</div>
-            }
-            else
-            {
-                <div>Patente: @(t?.Plate ?? "—")</div>
-                <div>Chofer: @(t?.DriverName ?? "—") @(t?.DriverTaxId is { } d ? $"({d})" : "")</div>
-                <div>Transportista: @(t?.CarrierName ?? "—") @(t?.CarrierTaxId is { } c ? $"({c})" : "")</div>
-                <div>Salida: @(t?.DepartureDate?.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture) ?? "—") @(t?.DepartureTime?.ToString("HH:mm", CultureInfo.InvariantCulture))</div>
-                <div>Llegada estimada: @(t?.ArrivalDate?.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture) ?? "—")</div>
-            }
-        </div>
-    </div>
+    <div class="doc-form-layout-section border-top pt-3 mt-3 mb-2">5. Observaciones</div>
+    <p class="mb-0" style="white-space:pre-line;">@(i.Notes ?? "—")</p>
 
+    <div class="doc-form-layout-section border-top pt-3 mt-3 mb-2">6. Detalle</div>
     <div class="table-responsive-lg">
         <table class="table-ps">
             <thead><tr><th>Código</th><th>Descripción</th><th class="text-end">Cantidad</th><th>Unidad</th><th class="text-end">Precio</th><th class="text-end">Monto</th></tr></thead>
@@ -131,15 +144,6 @@
             </tbody>
         </table>
     </div>
-
-    @if (i.Notes is not null)
-    {
-        <p class="mt-3 mb-0"><strong>Observaciones:</strong> @i.Notes</p>
-    }
-    @if (i.References.Count > 0)
-    {
-        <p class="mt-2 mb-0 text-muted">Referencias: @string.Join("; ", i.References.Select(r => $"{r.DocumentType} N° {r.Folio} del {r.Date.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)}"))</p>
-    }
 
     @if (Model.CanDelete && g.Status == TransportGuideStatuses.Draft)
     {

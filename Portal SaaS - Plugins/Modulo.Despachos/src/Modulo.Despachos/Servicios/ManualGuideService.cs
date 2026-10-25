@@ -373,6 +373,7 @@ public sealed class ManualGuideService : IManualGuideService
         var q = _db.TransportGuides.AsNoTracking().Where(g => g.CompanyId == CompanyId);
         if (!string.IsNullOrWhiteSpace(filter.Source)) q = q.Where(g => g.Source == filter.Source);
         if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(g => g.Status == filter.Status);
+        if (filter.Folio is { } folio) q = q.Where(g => g.Folio == folio);
         if (!string.IsNullOrWhiteSpace(filter.Receiver))
         {
             var text = filter.Receiver.Trim().ToLower();
@@ -405,7 +406,9 @@ public sealed class ManualGuideService : IManualGuideService
                     g.ReceiverTaxId, g.DestinationCommune, g.TransferIndicator, g.TotalAmount, g.Status, g.Sequence);
             })
             .Where(x => (filter.From is null || x.Date >= filter.From) && (filter.To is null || x.Date <= filter.To))
-            .OrderByDescending(x => x.Date).ThenByDescending(x => x.Code, StringComparer.Ordinal)
+            // Sin folio (borradores, en manifiesto, pendientes) arriba; luego por folio y fecha descendentes.
+            .OrderBy(x => x.Folio is null ? 0 : 1).ThenByDescending(x => x.Folio).ThenByDescending(x => x.Date)
+            .ThenByDescending(x => x.Code, StringComparer.Ordinal)
             .ToList();
     }
 

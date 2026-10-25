@@ -3,15 +3,17 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
 }
-@using System.Globalization
 @{
     ViewData["Title"] = Model.Title;
     var f = Model.Form;
     var r0 = f.References.FirstOrDefault() ?? new Modulo.Despachos.Pages.Despachos.GuiasManuales.ReferenceForm();
+    // Grilla única: 4 columnas en pantalla ancha, 2 en tablet, 1 en celular; los campos largos ocupan 2.
+    const string col = "col-12 col-md-6 col-xl-3";
+    const string wide = "col-12 col-md-12 col-xl-6";
+    const string sectionCss = "doc-form-layout-section border-top pt-3 mt-3 mb-2";
 }
-@* Guía manual (DTE 52 sin documento SAP), en grilla compacta: receptor desde SAP o digitado, condiciones, destino,
-   detalle libre o importado (IVA según el motivo), observaciones y transporte Res. 154 (maestros o particular; en un
-   manifiesto, el del manifiesto). JS: despachos-guia-manual.js. *@
+@* Guía manual (DTE 52 sin documento SAP). Orden de la cabecera: receptor, destino, fechas y condiciones, transporte
+   (Res. 154), observaciones y detalle. Misma grilla en todas las secciones. JS: despachos-guia-manual.js. *@
 
 <div class="card-surface">
     <div class="d-flex align-items-center justify-content-between gap-3 mb-2 flex-wrap">
@@ -35,112 +37,230 @@
         <input type="hidden" name="Form.Id" value="@f.Id" />
         <input type="hidden" id="g-cardcode" name="Form.ReceiverCardCode" value="@f.ReceiverCardCode" />
 
-        @* ---------------- Receptor *@
-        <fieldset class="mb-2">
-            <legend class="h6 mb-1">Receptor</legend>
-            <div class="row g-2">
-                <div class="col-12 col-md-6 col-xl-3">
-                    <label class="form-label" for="g-rut">RUT</label>
-                    <div class="input-group">
-                        <input type="text" id="g-rut" name="Form.ReceiverTaxId" value="@f.ReceiverTaxId" class="form-control" required autocomplete="off" placeholder="76.030.680-0" />
-                        <button type="button" class="btn btn-secondary" id="g-buscar" title="Buscar en SAP"><i class="bi bi-search"></i> SAP</button>
-                    </div>
-                    <div class="form-text" id="g-rut-msg"></div>
+        @* ================= 1. Receptor *@
+        <div class="doc-form-layout-section mb-2">1. Receptor</div>
+        <div class="row g-3">
+            <div class="@col">
+                <label class="form-label" for="g-rut">RUT</label>
+                <div class="input-group">
+                    <input type="text" id="g-rut" name="Form.ReceiverTaxId" value="@f.ReceiverTaxId" class="form-control" required autocomplete="off" placeholder="76.030.680-0" />
+                    <button type="button" class="btn btn-secondary" id="g-buscar" title="Buscar en SAP"><i class="bi bi-search"></i> SAP</button>
                 </div>
-                <div class="col-12 col-md-6 col-xl-5">
-                    <label class="form-label" for="g-name">Razón social</label>
-                    <input type="text" id="g-name" name="Form.ReceiverName" value="@f.ReceiverName" class="form-control" required maxlength="100" />
-                </div>
-                <div class="col-12 col-md-6 col-xl-4">
-                    <label class="form-label" for="g-giro">Giro</label>
-                    <input type="text" id="g-giro" name="Form.ReceiverActivity" value="@f.ReceiverActivity" class="form-control" required maxlength="40" />
-                </div>
-                <div class="col-12 col-md-6 col-xl-5">
-                    <label class="form-label" for="g-address">Dirección</label>
-                    <select id="g-address-list" class="form-select mb-1" hidden aria-label="Direcciones de despacho en SAP"></select>
-                    <input type="text" id="g-address" name="Form.ReceiverAddress" value="@f.ReceiverAddress" class="form-control" required maxlength="70" />
-                </div>
-                <div class="col-6 col-md-3 col-xl-2">
-                    <label class="form-label" for="g-commune">Comuna</label>
-                    <input type="text" id="g-commune" name="Form.ReceiverCommune" value="@f.ReceiverCommune" class="form-control" list="comunas-catalogo" required autocomplete="off" />
-                </div>
-                <div class="col-6 col-md-3 col-xl-2">
-                    <label class="form-label" for="g-city">Ciudad</label>
-                    <input type="text" id="g-city" name="Form.ReceiverCity" value="@f.ReceiverCity" class="form-control" maxlength="20" />
-                </div>
-                @if (Model.Branches.Count > 0 && !string.IsNullOrWhiteSpace(Model.IssuerTaxId))
-                {
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <label class="form-label" for="g-branch">Atajo: a sucursal propia</label>
-                        <select id="g-branch" class="form-select">
-                            <option value="">— Elegir sucursal —</option>
-                            @foreach (var b in Model.Branches)
-                            {
-                                <option value="@b.WarehouseCode" data-address="@b.Address" data-commune="@b.CommuneName">@b.WarehouseCode - @b.Name</option>
-                            }
-                        </select>
-                    </div>
-                }
+                <div class="form-text" id="g-rut-msg"></div>
             </div>
-        </fieldset>
+            <div class="@wide">
+                <label class="form-label" for="g-name">Razón social</label>
+                <input type="text" id="g-name" name="Form.ReceiverName" value="@f.ReceiverName" class="form-control" required maxlength="100" />
+            </div>
+            <div class="@col">
+                <label class="form-label" for="g-giro">Giro</label>
+                <input type="text" id="g-giro" name="Form.ReceiverActivity" value="@f.ReceiverActivity" class="form-control" required maxlength="40" />
+            </div>
+            <div class="@wide">
+                <label class="form-label" for="g-address">Dirección</label>
+                <select id="g-address-list" class="form-select mb-1" hidden aria-label="Direcciones de despacho en SAP"></select>
+                <input type="text" id="g-address" name="Form.ReceiverAddress" value="@f.ReceiverAddress" class="form-control" required maxlength="70" />
+            </div>
+            <div class="@col">
+                <label class="form-label" for="g-commune">Comuna</label>
+                <input type="text" id="g-commune" name="Form.ReceiverCommune" value="@f.ReceiverCommune" class="form-control" list="comunas-catalogo" required autocomplete="off" />
+            </div>
+            <div class="@col">
+                <label class="form-label" for="g-city">Ciudad</label>
+                <input type="text" id="g-city" name="Form.ReceiverCity" value="@f.ReceiverCity" class="form-control" maxlength="20" />
+            </div>
+        </div>
 
-        @* ---------------- Condiciones, origen y destino *@
-        <fieldset class="mb-2">
-            <legend class="h6 mb-1">Condiciones y destino</legend>
-            <div class="row g-2">
-                <div class="col-6 col-md-3 col-xl-2">
-                    <label class="form-label" for="g-date">Fecha de emisión</label>
-                    <input type="date" id="g-date" name="Form.IssueDate" value="@f.IssueDate" class="form-control" required />
-                </div>
-                <div class="col-6 col-md-3 col-xl-3">
-                    <label class="form-label" for="g-motive">Motivo de traslado</label>
-                    <select id="g-motive" name="Form.TransferIndicator" class="form-select" required>
-                        @foreach (var x in Model.Motives)
-                        {
-                            <option value="@x.Code" selected="@(f.TransferIndicator == x.Code)">@x.Code - @x.Name (@(x.VatAffected ? "con IVA" : "sin IVA"))</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                    <label class="form-label" for="g-dispatch">Tipo de despacho</label>
-                    <select id="g-dispatch" name="Form.DispatchType" class="form-select" required>
-                        <option value="">— Seleccione —</option>
-                        @foreach (var dt in new[] { 1, 2, 3 })
-                        {
-                            <option value="@dt" selected="@(f.DispatchType == dt)">@DispatchTypes.Label(dt)</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-12 col-md-6 col-xl-4">
-                    <label class="form-label" for="g-origin">Origen</label>
-                    <select id="g-origin" name="Form.OriginId" class="form-select" required>
-                        @foreach (var o in Model.Origins)
-                        {
-                            <option value="@o.Id" selected="@(f.OriginId == o.Id)">@o.Name - @o.Address</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-12 col-md-6 col-xl-5">
-                    <label class="form-label" for="g-dest-address">Dirección de destino</label>
-                    <div class="input-group">
-                        <input type="text" id="g-dest-address" name="Form.DestinationAddress" value="@f.DestinationAddress" class="form-control" required maxlength="70" />
-                        <button type="button" class="btn btn-secondary" id="g-copy-dest" title="Copiar la dirección del receptor"><i class="bi bi-clipboard"></i> Receptor</button>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3 col-xl-2">
-                    <label class="form-label" for="g-dest-commune">Comuna de destino</label>
-                    <input type="text" id="g-dest-commune" name="Form.DestinationCommune" value="@f.DestinationCommune" class="form-control" list="comunas-catalogo" required autocomplete="off" />
-                </div>
-                <div class="col-6 col-md-3 col-xl-2">
-                    <label class="form-label" for="g-dest-city">Ciudad de destino</label>
-                    <input type="text" id="g-dest-city" name="Form.DestinationCity" value="@f.DestinationCity" class="form-control" maxlength="20" />
+        @* ================= 2. Destino *@
+        <div class="@sectionCss">2. Destino</div>
+        <div class="row g-3">
+            <div class="@wide">
+                <label class="form-label" for="g-dest-address">Dirección de destino</label>
+                <div class="input-group">
+                    <input type="text" id="g-dest-address" name="Form.DestinationAddress" value="@f.DestinationAddress" class="form-control" required maxlength="70" />
+                    <button type="button" class="btn btn-secondary" id="g-copy-dest" title="Copiar la dirección del receptor"><i class="bi bi-clipboard"></i> Igual al receptor</button>
                 </div>
             </div>
-        </fieldset>
+            <div class="@col">
+                <label class="form-label" for="g-dest-commune">Comuna de destino</label>
+                <input type="text" id="g-dest-commune" name="Form.DestinationCommune" value="@f.DestinationCommune" class="form-control" list="comunas-catalogo" required autocomplete="off" />
+            </div>
+            <div class="@col">
+                <label class="form-label" for="g-dest-city">Ciudad de destino</label>
+                <input type="text" id="g-dest-city" name="Form.DestinationCity" value="@f.DestinationCity" class="form-control" maxlength="20" />
+            </div>
+            @if (Model.Branches.Count > 0 && !string.IsNullOrWhiteSpace(Model.IssuerTaxId))
+            {
+                <div class="@col">
+                    <label class="form-label" for="g-branch">Atajo: a sucursal propia</label>
+                    <select id="g-branch" class="form-select">
+                        <option value="">— Elegir sucursal —</option>
+                        @foreach (var b in Model.Branches)
+                        {
+                            <option value="@b.WarehouseCode" data-address="@b.Address" data-commune="@b.CommuneName">@b.WarehouseCode - @b.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+        </div>
 
-        @* ---------------- Detalle *@
-        <div class="d-flex align-items-center justify-content-between gap-2 mt-2 mb-1 flex-wrap">
-            <h3 class="h6 mb-0">Detalle</h3>
+        @* ================= 3. Fechas y condiciones *@
+        <div class="@sectionCss">3. Fechas y condiciones</div>
+        <div class="row g-3">
+            <div class="@col">
+                <label class="form-label" for="g-date">Fecha de emisión</label>
+                <input type="date" id="g-date" name="Form.IssueDate" value="@f.IssueDate" class="form-control" required />
+            </div>
+            <div class="@col">
+                <label class="form-label" for="g-motive">Motivo de traslado</label>
+                <select id="g-motive" name="Form.TransferIndicator" class="form-select" required>
+                    @foreach (var x in Model.Motives)
+                    {
+                        <option value="@x.Code" selected="@(f.TransferIndicator == x.Code)">@x.Code - @x.Name (@(x.VatAffected ? "con IVA" : "sin IVA"))</option>
+                    }
+                </select>
+            </div>
+            <div class="@col">
+                <label class="form-label" for="g-dispatch">Tipo de despacho</label>
+                <select id="g-dispatch" name="Form.DispatchType" class="form-select" required>
+                    <option value="">— Seleccione —</option>
+                    @foreach (var dt in new[] { 1, 2, 3 })
+                    {
+                        <option value="@dt" selected="@(f.DispatchType == dt)">@DispatchTypes.Label(dt)</option>
+                    }
+                </select>
+            </div>
+            <div class="@col">
+                <label class="form-label" for="g-origin">Origen</label>
+                <select id="g-origin" name="Form.OriginId" class="form-select" required>
+                    @foreach (var o in Model.Origins)
+                    {
+                        <option value="@o.Id" selected="@(f.OriginId == o.Id)">@o.Name - @o.Address</option>
+                    }
+                </select>
+            </div>
+            @if (!Model.InManifest)
+            {
+                <div class="@col">
+                    <label class="form-label" for="g-dep-date">Fecha de salida</label>
+                    <input type="date" id="g-dep-date" name="Form.DepartureDate" value="@f.DepartureDate" class="form-control" required />
+                </div>
+                <div class="@col">
+                    <label class="form-label" for="g-dep-time">Hora de salida</label>
+                    <input type="time" id="g-dep-time" name="Form.DepartureTime" value="@f.DepartureTime" class="form-control" required />
+                </div>
+                <div class="@col">
+                    <label class="form-label" for="g-arr-date">Llegada estimada</label>
+                    <input type="date" id="g-arr-date" name="Form.ArrivalDate" value="@f.ArrivalDate" class="form-control" required />
+                </div>
+            }
+            <div class="@col">
+                <label class="form-label" for="g-ref-type">Referencia (opcional)</label>
+                <div class="input-group">
+                    <input type="text" id="g-ref-type" name="Form.References[0].DocumentType" value="@r0.DocumentType" class="form-control" maxlength="3" placeholder="Tipo" aria-label="Tipo de documento referenciado" />
+                    <input type="number" id="g-ref-folio" name="Form.References[0].Folio" value="@r0.Folio" class="form-control" min="1" placeholder="Folio" aria-label="Folio referenciado" />
+                </div>
+                <input type="hidden" name="Form.References[0].Date" value="@r0.Date" />
+                <input type="hidden" name="Form.References[0].Reason" value="@r0.Reason" />
+            </div>
+        </div>
+
+        @* ================= 4. Transporte *@
+        <div class="@sectionCss">4. Transporte (Res. 154)</div>
+        @if (Model.InManifest)
+        {
+            <input type="hidden" name="Form.TransportMode" value="@ManualTransportModes.Manifest" />
+            <p class="text-muted mb-0">Esta guía viaja en un manifiesto: patente, chofer, transportista, salida y llegada se toman del manifiesto al despacharlo.</p>
+        }
+        else
+        {
+            <div class="d-flex gap-3 mb-2 flex-wrap align-items-center">
+                <label class="d-flex align-items-center gap-2"><input type="radio" name="Form.TransportMode" value="@ManualTransportModes.Master" checked="@(f.TransportMode == ManualTransportModes.Master)" data-transport-mode /> De los maestros</label>
+                <label class="d-flex align-items-center gap-2"><input type="radio" name="Form.TransportMode" value="@ManualTransportModes.Manual" checked="@(f.TransportMode == ManualTransportModes.Manual)" data-transport-mode /> Particular (digitar)</label>
+                <span class="form-text">Para que viaje en un manifiesto, guárdela y escanee su código GM- en el manifiesto.</span>
+            </div>
+            <div class="row g-3" data-transport="@ManualTransportModes.Master">
+                <div class="@col">
+                    <label class="form-label" for="g-vehicle">Vehículo</label>
+                    <select id="g-vehicle" name="Form.VehicleId" class="form-select">
+                        <option value="">—</option>
+                        @foreach (var v in Model.Vehicles.Where(x => !x.IsTrailer))
+                        {
+                            <option value="@v.Id" selected="@(f.VehicleId == v.Id)">@v.Plate</option>
+                        }
+                    </select>
+                </div>
+                <div class="@col">
+                    <label class="form-label" for="g-trailer">Carro</label>
+                    <select id="g-trailer" name="Form.TrailerId" class="form-select">
+                        <option value="">— Sin carro —</option>
+                        @foreach (var v in Model.Vehicles.Where(x => x.IsTrailer))
+                        {
+                            <option value="@v.Id" selected="@(f.TrailerId == v.Id)">@v.Plate</option>
+                        }
+                    </select>
+                </div>
+                <div class="@col">
+                    <label class="form-label" for="g-driver">Chofer</label>
+                    <select id="g-driver" name="Form.DriverId" class="form-select">
+                        <option value="">—</option>
+                        @foreach (var d in Model.Drivers)
+                        {
+                            <option value="@d.Id" selected="@(f.DriverId == d.Id)">@d.FullName (@d.TaxId)</option>
+                        }
+                    </select>
+                </div>
+                <div class="@col">
+                    <label class="form-label" for="g-carrier">Transportista</label>
+                    <select id="g-carrier" name="Form.CarrierId" class="form-select">
+                        <option value="">—</option>
+                        @foreach (var c in Model.Carriers)
+                        {
+                            <option value="@c.Id" selected="@(f.CarrierId == c.Id)">@c.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3" data-transport="@ManualTransportModes.Manual">
+                <div class="@col">
+                    <label class="form-label" for="g-plate">Patente</label>
+                    <input type="text" id="g-plate" name="Form.Plate" value="@f.Plate" class="form-control" maxlength="8" />
+                </div>
+                <div class="@col">
+                    <label class="form-label" for="g-trailer-plate">Patente carro</label>
+                    <input type="text" id="g-trailer-plate" name="Form.TrailerPlate" value="@f.TrailerPlate" class="form-control" maxlength="8" />
+                </div>
+                <div class="@col">
+                    <label class="form-label" for="g-driver-rut">RUT chofer</label>
+                    <input type="text" id="g-driver-rut" name="Form.DriverTaxId" value="@f.DriverTaxId" class="form-control" maxlength="12" />
+                </div>
+                <div class="@col">
+                    <label class="form-label" for="g-driver-name">Nombre chofer</label>
+                    <input type="text" id="g-driver-name" name="Form.DriverName" value="@f.DriverName" class="form-control" maxlength="30" />
+                </div>
+                <div class="@col">
+                    <label class="form-label" for="g-carrier-rut">RUT transportista</label>
+                    <input type="text" id="g-carrier-rut" name="Form.CarrierTaxId" value="@f.CarrierTaxId" class="form-control" maxlength="12" />
+                </div>
+                <div class="@col">
+                    <label class="form-label" for="g-carrier-name">Nombre transportista</label>
+                    <input type="text" id="g-carrier-name" name="Form.CarrierName" value="@f.CarrierName" class="form-control" maxlength="40" />
+                </div>
+            </div>
+        }
+
+        @* ================= 5. Observaciones *@
+        <div class="@sectionCss">5. Observaciones</div>
+        <div class="row g-3">
+            <div class="col-12">
+                <textarea id="g-notes" name="Form.Notes" class="form-control" rows="3" maxlength="500" aria-label="Observaciones"
+                          placeholder="Instrucciones o información adicional del cliente. Cada renglón sale como una línea al final del detalle de la guía (hasta 80 caracteres por línea).">@f.Notes</textarea>
+            </div>
+        </div>
+
+        @* ================= 6. Detalle *@
+        <div class="d-flex align-items-center justify-content-between gap-2 border-top pt-3 mt-3 mb-2 flex-wrap">
+            <div class="doc-form-layout-section mt-0">6. Detalle</div>
             <div class="d-flex gap-2 flex-wrap">
                 <button type="button" class="btn btn-secondary" data-drawer-open="drawer-importar"><i class="bi bi-upload"></i> Importar</button>
                 <button type="button" class="btn btn-secondary" id="g-add-line">+ Línea</button>
@@ -167,132 +287,15 @@
                 </tbody>
             </table>
         </div>
-        <div class="d-flex gap-4 mt-1 mb-2 text-muted flex-wrap justify-content-end">
+        <div class="d-flex gap-4 mt-2 text-muted flex-wrap justify-content-end">
             <span>Neto: <strong id="g-net">$0</strong></span>
             <span>IVA: <strong id="g-vat">$0</strong></span>
             <span>Total: <strong id="g-total">$0</strong></span>
         </div>
 
-        @* ---------------- Observaciones y referencia *@
-        <div class="row g-2 mb-2">
-            <div class="col-12 col-xl-7">
-                <label class="form-label" for="g-notes">Observaciones</label>
-                <textarea id="g-notes" name="Form.Notes" class="form-control" rows="2" maxlength="500" placeholder="Instrucciones o información adicional del cliente (sale como última línea del detalle)">@f.Notes</textarea>
-            </div>
-            <div class="col-12 col-xl-5">
-                <details @(r0.DocumentType is not null ? "open" : "")>
-                    <summary class="form-label">Referencia (opcional)</summary>
-                    <div class="row g-2">
-                        <div class="col-4"><input type="text" id="g-ref-type" name="Form.References[0].DocumentType" value="@r0.DocumentType" class="form-control" maxlength="3" placeholder="Tipo (52)" aria-label="Tipo de documento" /></div>
-                        <div class="col-4"><input type="number" id="g-ref-folio" name="Form.References[0].Folio" value="@r0.Folio" class="form-control" min="1" placeholder="Folio" aria-label="Folio" /></div>
-                        <div class="col-4"><input type="date" id="g-ref-date" name="Form.References[0].Date" value="@r0.Date" class="form-control" aria-label="Fecha" /></div>
-                        <div class="col-12"><input type="text" id="g-ref-reason" name="Form.References[0].Reason" value="@r0.Reason" class="form-control" maxlength="90" placeholder="Razón de la referencia" aria-label="Razón" /></div>
-                    </div>
-                </details>
-            </div>
+        <div class="d-flex justify-content-end border-top pt-3 mt-3">
+            <button type="submit" class="btn btn-primary">Guardar borrador</button>
         </div>
-
-        @* ---------------- Transporte *@
-        <fieldset class="mb-2">
-            <legend class="h6 mb-1">Transporte (Res. 154)</legend>
-            @if (Model.InManifest)
-            {
-                <input type="hidden" name="Form.TransportMode" value="@ManualTransportModes.Manifest" />
-                <p class="text-muted mb-0">Esta guía viaja en un manifiesto: patente, chofer, transportista y salida se toman del manifiesto al despacharlo.</p>
-            }
-            else
-            {
-                <div class="d-flex gap-3 mb-1 flex-wrap align-items-center">
-                    <label class="d-flex align-items-center gap-2"><input type="radio" name="Form.TransportMode" value="@ManualTransportModes.Master" checked="@(f.TransportMode == ManualTransportModes.Master)" data-transport-mode /> De los maestros</label>
-                    <label class="d-flex align-items-center gap-2"><input type="radio" name="Form.TransportMode" value="@ManualTransportModes.Manual" checked="@(f.TransportMode == ManualTransportModes.Manual)" data-transport-mode /> Particular (digitar)</label>
-                    <span class="form-text">Para que viaje en un manifiesto, guárdela y escanee su código GM- en el manifiesto.</span>
-                </div>
-                <div class="row g-2" data-transport="@ManualTransportModes.Master">
-                    <div class="col-6 col-md-3">
-                        <label class="form-label" for="g-vehicle">Vehículo</label>
-                        <select id="g-vehicle" name="Form.VehicleId" class="form-select">
-                            <option value="">—</option>
-                            @foreach (var v in Model.Vehicles.Where(x => !x.IsTrailer))
-                            {
-                                <option value="@v.Id" selected="@(f.VehicleId == v.Id)">@v.Plate</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label" for="g-trailer">Carro</label>
-                        <select id="g-trailer" name="Form.TrailerId" class="form-select">
-                            <option value="">— Sin carro —</option>
-                            @foreach (var v in Model.Vehicles.Where(x => x.IsTrailer))
-                            {
-                                <option value="@v.Id" selected="@(f.TrailerId == v.Id)">@v.Plate</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="form-label" for="g-driver">Chofer</label>
-                        <select id="g-driver" name="Form.DriverId" class="form-select">
-                            <option value="">—</option>
-                            @foreach (var d in Model.Drivers)
-                            {
-                                <option value="@d.Id" selected="@(f.DriverId == d.Id)">@d.FullName (@d.TaxId)</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="form-label" for="g-carrier">Transportista</label>
-                        <select id="g-carrier" name="Form.CarrierId" class="form-select">
-                            <option value="">—</option>
-                            @foreach (var c in Model.Carriers)
-                            {
-                                <option value="@c.Id" selected="@(f.CarrierId == c.Id)">@c.Name</option>
-                            }
-                        </select>
-                    </div>
-                </div>
-                <div class="row g-2" data-transport="@ManualTransportModes.Manual">
-                    <div class="col-6 col-md-2">
-                        <label class="form-label" for="g-plate">Patente</label>
-                        <input type="text" id="g-plate" name="Form.Plate" value="@f.Plate" class="form-control" maxlength="8" />
-                    </div>
-                    <div class="col-6 col-md-2">
-                        <label class="form-label" for="g-trailer-plate">Patente carro</label>
-                        <input type="text" id="g-trailer-plate" name="Form.TrailerPlate" value="@f.TrailerPlate" class="form-control" maxlength="8" />
-                    </div>
-                    <div class="col-6 col-md-2">
-                        <label class="form-label" for="g-driver-rut">RUT chofer</label>
-                        <input type="text" id="g-driver-rut" name="Form.DriverTaxId" value="@f.DriverTaxId" class="form-control" maxlength="12" />
-                    </div>
-                    <div class="col-6 col-md-2">
-                        <label class="form-label" for="g-driver-name">Nombre chofer</label>
-                        <input type="text" id="g-driver-name" name="Form.DriverName" value="@f.DriverName" class="form-control" maxlength="30" />
-                    </div>
-                    <div class="col-6 col-md-2">
-                        <label class="form-label" for="g-carrier-rut">RUT transportista</label>
-                        <input type="text" id="g-carrier-rut" name="Form.CarrierTaxId" value="@f.CarrierTaxId" class="form-control" maxlength="12" />
-                    </div>
-                    <div class="col-6 col-md-2">
-                        <label class="form-label" for="g-carrier-name">Nombre transportista</label>
-                        <input type="text" id="g-carrier-name" name="Form.CarrierName" value="@f.CarrierName" class="form-control" maxlength="40" />
-                    </div>
-                </div>
-                <div class="row g-2 mt-0">
-                    <div class="col-6 col-md-2">
-                        <label class="form-label" for="g-dep-date">Fecha de salida</label>
-                        <input type="date" id="g-dep-date" name="Form.DepartureDate" value="@f.DepartureDate" class="form-control" required />
-                    </div>
-                    <div class="col-6 col-md-2">
-                        <label class="form-label" for="g-dep-time">Hora de salida</label>
-                        <input type="time" id="g-dep-time" name="Form.DepartureTime" value="@f.DepartureTime" class="form-control" required />
-                    </div>
-                    <div class="col-6 col-md-2">
-                        <label class="form-label" for="g-arr-date">Llegada estimada</label>
-                        <input type="date" id="g-arr-date" name="Form.ArrivalDate" value="@f.ArrivalDate" class="form-control" required />
-                    </div>
-                </div>
-            }
-        </fieldset>
-
-        <button type="submit" class="btn btn-primary mt-1">Guardar borrador</button>
     </form>
 
     <datalist id="comunas-catalogo">

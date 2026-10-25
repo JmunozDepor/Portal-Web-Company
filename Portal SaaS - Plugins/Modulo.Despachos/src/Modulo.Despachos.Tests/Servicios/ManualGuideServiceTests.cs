@@ -17,7 +17,8 @@ public class ManualGuideServiceTests
             "Avenida Circunvalación 1055", "Rancagua", "Rancagua",
             new[] { new ManualGuideLineInput(null, "Mueble", 1, null, price) },
             Array.Empty<ManualGuideReferenceInput>(), notes, mode,
-            new ManualGuideTransportInput("ABCD12", null, "12345678-5", "Juan Pérez", "76543210-3", "TSM"));
+            new ManualGuideTransportInput("ABCD12", null, "12345678-5", "Juan Pérez", "76543210-3", "TSM",
+                ManifestTestEnv.Fecha, new TimeOnly(9, 0), ManifestTestEnv.Fecha));
 
     [Fact]
     public async Task Motivos_SemillaInicial()
@@ -141,15 +142,30 @@ public class ManualGuideServiceTests
     }
 
     [Fact]
-    public async Task Emitir_PorCuentaDelReceptor_SinTransporte_Emite()
+    public async Task Crear_PorCuentaDelReceptor_SinTransporte_Rechaza()
     {
         var env = ManifestTestEnv.Build();
-        var id = await env.ManualGuides.CreateAsync(Input(env, dispatchType: 1) with
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => env.ManualGuides.CreateAsync(Input(env, dispatchType: 1) with
         {
             Transport = new ManualGuideTransportInput(null, null, null, null, null, null),
-        });
-        Assert.Equal(TransportGuideStatuses.Issued, (await env.ManualGuides.EmitAsync(id)).Status);
+        }));
+        Assert.Contains("patente", ex.Message);
     }
+
+    [Fact]
+    public async Task Emitir_Sola_EnviaSalidaYLlegada()
+    {
+        var env = ManifestTestEnv.Build();
+        var id = await env.ManualGuides.CreateAsync(Input(env));
+        await env.ManualGuides.EmitAsync(id);
+        var t = Assert.Single(env.Dte.Calls).Document.Transport!;
+        Assert.Equal((ManifestTestEnv.Fecha, new TimeOnly(9, 0), ManifestTestEnv.Fecha), (t.DepartureDate, t.DepartureTime, t.ArrivalDate));
+    }
+
+    [Fact]
+    public void Motivo_EtiquetaDelSii() =>
+        Assert.Equal(("5 - Traslados internos", "6 - Otros traslados no venta", "1 - Operación constituye venta"),
+            (TransferIndicators.Label(5), TransferIndicators.Label(6), TransferIndicators.Label(1)));
 
     [Fact]
     public async Task Anular_SoloBorrador()

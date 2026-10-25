@@ -402,7 +402,7 @@ public sealed class ManualGuideService : IManualGuideService
                 var date = g.IssueDate ?? DateOnly.FromDateTime(ChileClock.ToLocal(g.IssuedAt ?? g.CreatedAt));
                 var code = g.Source == TransportGuideSources.Manual ? Code(g) : $"Manifiesto N° {manifestNumber} / guía {g.Sequence}";
                 return new GuideListItem(g.Id, g.Source, code, g.ManifestId, manifestNumber, g.Folio, date, g.ReceiverName,
-                    g.ReceiverTaxId, g.DestinationCommune, g.TransferIndicator, g.TotalAmount, g.Status);
+                    g.ReceiverTaxId, g.DestinationCommune, g.TransferIndicator, g.TotalAmount, g.Status, g.Sequence);
             })
             .Where(x => (filter.From is null || x.Date >= filter.From) && (filter.To is null || x.Date <= filter.To))
             .OrderByDescending(x => x.Date).ThenByDescending(x => x.Code, StringComparer.Ordinal)

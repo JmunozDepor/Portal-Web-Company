@@ -95,6 +95,39 @@ public static class GuideItemCodePlacements
 }
 
 /// <summary>Tipos de documento SAP que se pueden agregar a un manifiesto (document_kind).</summary>
+/// <summary>Indicador de traslado del SII (IndTraslado) con su nombre, para mostrarlo junto al código.</summary>
+public static class TransferIndicators
+{
+    public static string Name(int code) => code switch
+    {
+        1 => "Operación constituye venta",
+        2 => "Ventas por efectuar",
+        3 => "Consignaciones",
+        4 => "Entrega gratuita",
+        5 => "Traslados internos",
+        6 => "Otros traslados no venta",
+        7 => "Guía de devolución",
+        8 => "Traslado para exportación (no venta)",
+        9 => "Venta para exportación",
+        _ => "",
+    };
+
+    public static string Label(int code) => Name(code) is { Length: > 0 } n ? $"{code} - {n}" : code.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
+/// <summary>Tipo de despacho del SII (TipoDespacho) con su nombre.</summary>
+public static class DispatchTypes
+{
+    public static string Label(int? code) => code switch
+    {
+        1 => "1 - Por cuenta del receptor",
+        2 => "2 - Emisor a instalaciones del cliente",
+        3 => "3 - Emisor a otras instalaciones",
+        null => "—",
+        _ => code.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+    };
+}
+
 public static class DocumentKinds
 {
     public const string Invoice = "invoice";

@@ -18,7 +18,11 @@ public class ManualGuideBuilderTests
             "Avenida Circunvalación 1055", "Talca", "Talca",
             lines ?? new[] { new ManualGuideLineInput(null, "Mueble", 1, null, 500000) },
             Array.Empty<ManualGuideReferenceInput>(), notes, mode,
-            transport ?? new ManualGuideTransportInput("ABCD12", null, "12345678-5", "Juan Pérez", "76543210-3", "TSM"));
+            transport ?? Full);
+
+    /// <summary>Transporte completo Res. 154: vehículo, chofer, transportista y salida/llegada.</summary>
+    private static readonly ManualGuideTransportInput Full = new("ABCD12", null, "12345678-5", "Juan Pérez", "76543210-3", "TSM",
+        new DateOnly(2026, 10, 23), new TimeOnly(9, 30), new DateOnly(2026, 10, 24));
 
     [Fact]
     public void Afecto_Mueble_TotalConIva()
@@ -75,13 +79,33 @@ public class ManualGuideBuilderTests
     [Fact]
     public void Validate_Despacho2_SinPatente_Error() =>
         Assert.Contains(ManualGuideBuilder.Validate(Input(dispatchType: 2,
-                transport: new ManualGuideTransportInput(null, null, "12345678-5", "Juan Pérez", "76543210-3", null)), 60),
+                transport: Full with { Plate = null }), 60),
             e => e.Contains("patente"));
 
     [Fact]
-    public void Validate_Despacho1_SinTransporte_Ok() =>
-        Assert.Empty(ManualGuideBuilder.Validate(Input(dispatchType: 1,
-            transport: new ManualGuideTransportInput(null, null, null, null, null, null)), 60));
+    public void Validate_Despacho1_SinTransporte_Error() =>
+        Assert.Contains(ManualGuideBuilder.Validate(Input(dispatchType: 1,
+            transport: new ManualGuideTransportInput(null, null, null, null, null, null)), 60), e => e.Contains("patente"));
+
+    [Fact]
+    public void Validate_SinFechasDeSalidaYLlegada_Error()
+    {
+        var errors = ManualGuideBuilder.Validate(Input(transport: Full with { DepartureDate = null, DepartureTime = null, ArrivalDate = null }), 60);
+        Assert.Contains(errors, e => e.Contains("fecha y hora de salida"));
+        Assert.Contains(errors, e => e.Contains("fecha de llegada"));
+    }
+
+    [Fact]
+    public void Validate_LlegadaAntesDeLaSalida_Error() =>
+        Assert.Contains(ManualGuideBuilder.Validate(Input(transport: Full with { ArrivalDate = new DateOnly(2026, 10, 22) }), 60),
+            e => e.Contains("anterior a la salida"));
+
+    [Fact]
+    public void BuildDraft_LlevaSalidaYLlegada()
+    {
+        var t = ManualGuideBuilder.BuildDraft(Input(), Origin, vatAffected: true).Transport!;
+        Assert.Equal((new DateOnly(2026, 10, 23), new TimeOnly(9, 30), new DateOnly(2026, 10, 24)), (t.DepartureDate, t.DepartureTime, t.ArrivalDate));
+    }
 
     [Fact]
     public void Validate_ModoManifiesto_NoExigeTransporte() =>

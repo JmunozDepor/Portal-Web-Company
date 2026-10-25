@@ -42,6 +42,7 @@ public class GuiasManualesPermisosTests
         ReceiverTaxId = "17.183.714-6", ReceiverName = "Freddi Fuentes", ReceiverActivity = "Tienda", ReceiverAddress = "Circunvalación 1055",
         ReceiverCommune = "Rancagua", DestinationAddress = "Circunvalación 1055", DestinationCommune = "Rancagua",
         TransportMode = ManualTransportModes.Master, VehicleId = env.VehicleId, DriverId = env.DriverId, CarrierId = env.CarrierId,
+        DepartureDate = "2026-11-10", DepartureTime = "09:30", ArrivalDate = "2026-11-11",
         Lines = { new Guias.LineForm { Description = "Mueble", Quantity = "1", UnitPrice = "500000" } },
     };
 
@@ -96,6 +97,8 @@ public class GuiasManualesPermisosTests
         Assert.Equal(595000m, g.TotalAmount);
         var input = await env.ManualGuides.GetInputAsync(g.Id);
         Assert.Equal(("AB1234", "12345678-5", "76543210-3"), (input.Transport!.Plate, input.Transport.DriverTaxId, input.Transport.CarrierTaxId));
+        Assert.Equal((new DateOnly(2026, 11, 10), new TimeOnly(9, 30), new DateOnly(2026, 11, 11)),
+            (input.Transport.DepartureDate, input.Transport.DepartureTime, input.Transport.ArrivalDate));
     }
 
     [Fact]

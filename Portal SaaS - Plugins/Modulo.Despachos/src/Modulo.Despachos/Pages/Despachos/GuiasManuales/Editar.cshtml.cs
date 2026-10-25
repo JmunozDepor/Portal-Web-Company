@@ -58,6 +58,10 @@ public sealed class GuiaForm
     public string? DriverName { get; set; }
     public string? CarrierTaxId { get; set; }
     public string? CarrierName { get; set; }
+    /// <summary>Salida (yyyy-MM-dd y HH:mm) y llegada estimada (yyyy-MM-dd), obligatorias en la guía (Res. 154).</summary>
+    public string? DepartureDate { get; set; }
+    public string? DepartureTime { get; set; }
+    public string? ArrivalDate { get; set; }
     public List<LineForm> Lines { get; set; } = new();
     public List<ReferenceForm> References { get; set; } = new();
 }
@@ -107,9 +111,13 @@ public sealed class EditarModel : DespachosPageModelBase
             }
             else
             {
+                var now = ChileClock.Now;
                 Form = new GuiaForm
                 {
-                    IssueDate = ChileClock.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    IssueDate = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    DepartureDate = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    DepartureTime = now.ToString("HH:mm", CultureInfo.InvariantCulture),
+                    ArrivalDate = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                     TransferIndicator = Motives.FirstOrDefault()?.Code ?? 0,
                     OriginId = Origins.FirstOrDefault()?.Id ?? 0,
                     Lines = { new LineForm() },
@@ -236,6 +244,9 @@ public sealed class EditarModel : DespachosPageModelBase
             refs.Add(new ManualGuideReferenceInput(r.DocumentType?.Trim() ?? "", r.Folio ?? 0, rd == default ? date : rd, Clean(r.Reason)));
         }
 
+        DateOnly? departure = DateOnly.TryParseExact(f.DepartureDate?.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dd) ? dd : null;
+        TimeOnly? departureTime = TimeOnly.TryParseExact(f.DepartureTime?.Trim(), new[] { "HH:mm", "HH:mm:ss" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt) ? dt : null;
+        DateOnly? arrival = DateOnly.TryParseExact(f.ArrivalDate?.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var ad) ? ad : null;
         ManualGuideTransportInput transport;
         if (f.TransportMode == ManualTransportModes.Master)
         {
@@ -243,10 +254,10 @@ public sealed class EditarModel : DespachosPageModelBase
             var tr = Vehicles.FirstOrDefault(x => x.Id == f.TrailerId);
             var d = Drivers.FirstOrDefault(x => x.Id == f.DriverId);
             var c = Carriers.FirstOrDefault(x => x.Id == f.CarrierId);
-            transport = new ManualGuideTransportInput(v?.Plate, tr?.Plate, d?.TaxId, d?.FullName, c?.TaxId, c?.Name);
+            transport = new ManualGuideTransportInput(v?.Plate, tr?.Plate, d?.TaxId, d?.FullName, c?.TaxId, c?.Name, departure, departureTime, arrival);
         }
         else transport = new ManualGuideTransportInput(Clean(f.Plate), Clean(f.TrailerPlate), Clean(f.DriverTaxId), Clean(f.DriverName),
-            Clean(f.CarrierTaxId), Clean(f.CarrierName));
+            Clean(f.CarrierTaxId), Clean(f.CarrierName), departure, departureTime, arrival);
         if (errors.Count > 0) throw new InvalidOperationException(string.Join(" ", errors));
 
         return new ManualGuideInput(date, f.TransferIndicator, f.DispatchType, f.OriginId,
@@ -270,6 +281,9 @@ public sealed class EditarModel : DespachosPageModelBase
             TransportMode = i.TransportMode == ManualTransportModes.Manifest ? ManualTransportModes.Manifest : ManualTransportModes.Manual,
             Plate = t?.Plate, TrailerPlate = t?.TrailerPlate, DriverTaxId = t?.DriverTaxId, DriverName = t?.DriverName,
             CarrierTaxId = t?.CarrierTaxId, CarrierName = t?.CarrierName,
+            DepartureDate = t?.DepartureDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            DepartureTime = t?.DepartureTime?.ToString("HH:mm", CultureInfo.InvariantCulture),
+            ArrivalDate = t?.ArrivalDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             Lines = i.Lines.Select(l => new LineForm
             {
                 ItemCode = l.ItemCode, Description = l.Description, Unit = l.Unit,

@@ -64,8 +64,8 @@
     <div class="d-flex gap-4 mb-3 text-muted flex-wrap">
         <span>Folio: <strong>@(g.Folio?.ToString(CultureInfo.InvariantCulture) ?? "—")</strong></span>
         <span>Fecha: <strong>@i.IssueDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</strong></span>
-        <span>Motivo: <strong>@i.TransferIndicator</strong></span>
-        <span>Tipo de despacho: <strong>@i.DispatchType</strong></span>
+        <span>Motivo: <strong>@TransferIndicators.Label(i.TransferIndicator)</strong></span>
+        <span>Tipo de despacho: <strong>@DispatchTypes.Label(i.DispatchType)</strong></span>
         <span>Neto: <strong>$@((g.NetAmount ?? 0).ToString("N0", es))</strong></span>
         <span>IVA: <strong>$@((g.VatAmount ?? 0).ToString("N0", es))</strong></span>
         <span>Total: <strong>$@((g.TotalAmount ?? 0).ToString("N0", es))</strong></span>
@@ -107,6 +107,8 @@
                 <div>Patente: @(t?.Plate ?? "—")</div>
                 <div>Chofer: @(t?.DriverName ?? "—") @(t?.DriverTaxId is { } d ? $"({d})" : "")</div>
                 <div>Transportista: @(t?.CarrierName ?? "—") @(t?.CarrierTaxId is { } c ? $"({c})" : "")</div>
+                <div>Salida: @(t?.DepartureDate?.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture) ?? "—") @(t?.DepartureTime?.ToString("HH:mm", CultureInfo.InvariantCulture))</div>
+                <div>Llegada estimada: @(t?.ArrivalDate?.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture) ?? "—")</div>
             }
         </div>
     </div>

@@ -9,9 +9,10 @@ public sealed record ManualGuideLineInput(string? ItemCode, string Description, 
 /// <summary>Referencia opcional (tipo de documento como texto: "52", "33", "801"...).</summary>
 public sealed record ManualGuideReferenceInput(string DocumentType, long Folio, DateOnly Date, string? Reason);
 
-/// <summary>Transporte Res. 154 de la guía manual (de los maestros o digitado como particular).</summary>
+/// <summary>Transporte Res. 154 de la guía manual (de los maestros o digitado como particular), con salida y llegada.</summary>
 public sealed record ManualGuideTransportInput(string? Plate, string? TrailerPlate, string? DriverTaxId, string? DriverName,
-    string? CarrierTaxId, string? CarrierName);
+    string? CarrierTaxId, string? CarrierName,
+    DateOnly? DepartureDate = null, TimeOnly? DepartureTime = null, DateOnly? ArrivalDate = null);
 
 /// <summary>Formulario de la guía manual (spec §6.1).</summary>
 public sealed record ManualGuideInput(
@@ -70,15 +71,19 @@ public static class ManualGuideBuilder
 
         if (input.TransportMode is not (ManualTransportModes.Manifest or ManualTransportModes.Master or ManualTransportModes.Manual))
             errors.Add("Elija de dónde salen los datos de transporte.");
-        else if (input.TransportMode != ManualTransportModes.Manifest && input.DispatchType is 2 or 3)
+        else if (input.TransportMode != ManualTransportModes.Manifest)
         {
-            // Res. 154: con despacho por cuenta del emisor la guía identifica vehículo, chofer y transportista.
+            // Res. 154: toda guía de despacho identifica vehículo, chofer, transportista, salida y llegada estimada
+            // (también con despacho por cuenta del receptor: son los datos de quien retira).
             var t = input.Transport;
-            const string why = " (obligatorio con despacho por cuenta del emisor, Res. 154)";
+            const string why = " (obligatorio en la guía de despacho, Res. 154)";
             if (Blank(t?.Plate)) errors.Add("Ingrese la patente del vehículo" + why + ".");
             if (!RutChileno.IsValid(t?.DriverTaxId)) errors.Add("Ingrese un RUT de chofer válido" + why + ".");
             if (Blank(t?.DriverName)) errors.Add("Ingrese el nombre del chofer" + why + ".");
             if (!RutChileno.IsValid(t?.CarrierTaxId)) errors.Add("Ingrese un RUT de transportista válido" + why + ".");
+            if (t?.DepartureDate is null || t.DepartureTime is null) errors.Add("Ingrese la fecha y hora de salida" + why + ".");
+            if (t?.ArrivalDate is null) errors.Add("Ingrese la fecha de llegada estimada" + why + ".");
+            else if (t.DepartureDate is { } dep && t.ArrivalDate < dep) errors.Add("La fecha de llegada no puede ser anterior a la salida.");
         }
         return errors;
     }
@@ -98,7 +103,7 @@ public static class ManualGuideBuilder
             Blank(t?.DriverTaxId) && Blank(t?.DriverName) ? null : new DteDriver(Rut(t?.DriverTaxId) ?? "", Clean(t?.DriverName) ?? ""),
             input.DestinationAddress.Trim(), input.DestinationCommune.Trim(), Clean(input.DestinationCity),
             Blank(t?.CarrierName) ? null : new DteCustoms(null, null, t!.CarrierName!.Trim()),
-            null, null, null);
+            t?.DepartureDate, t?.DepartureTime, t?.ArrivalDate);
         return new DteDocument(
             new DteIdDoc(52, input.IssueDate, input.TransferIndicator, input.DispatchType),
             new DteIssuerOverride(origin.Address, origin.Commune, origin.City),
@@ -140,7 +145,8 @@ public static class ManualGuideBuilder
             draft.References.Select(r => new ManualGuideReferenceInput(r.DocumentType, r.Folio ?? 0, r.Date, r.Reason)).ToList(),
             row.Notes, row.TransportMode ?? ManualTransportModes.Manual,
             new ManualGuideTransportInput(t?.Plate, t?.TrailerPlate, t?.Driver?.TaxId is { Length: > 0 } d ? d : null,
-                t?.Driver?.Name is { Length: > 0 } n ? n : null, t?.CarrierTaxId, t?.Customs?.CarrierName));
+                t?.Driver?.Name is { Length: > 0 } n ? n : null, t?.CarrierTaxId, t?.Customs?.CarrierName,
+                t?.DepartureDate, t?.DepartureTime, t?.ArrivalDate));
     }
 
     /// <summary>Neto (afectas), IVA 19% del neto y total (neto + exento + IVA), como la plataforma.</summary>

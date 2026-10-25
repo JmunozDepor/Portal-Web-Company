@@ -88,14 +88,23 @@
                         <td class="text-nowrap">@x.Date.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
                         <td>@x.ReceiverName<div class="text-muted">@x.ReceiverTaxId</div></td>
                         <td>@x.DestinationCommune</td>
-                        <td>@x.TransferIndicator</td>
+                        <td>@TransferIndicators.Label(x.TransferIndicator)</td>
                         <td class="text-end">@(x.TotalAmount is { } t ? "$" + t.ToString("N0", es) : "—")</td>
                         <td><partial name="/Pages/Despachos/Shared/_EstadoGuia.cshtml" model="x.Status" /></td>
                         <td class="col-actions">
-                            @if (manual)
-                            {
-                                <a class="btn-ghost" title="Abrir" href="~/despachos/guias-manuales/detalle?id=@x.Id"><i class="bi bi-box-arrow-up-right"></i></a>
-                            }
+                            <div class="admin-row-actions">
+                                @if (x.Status == TransportGuideStatuses.Issued)
+                                {
+                                    var pdf = manual
+                                        ? Url.Content($"~/despachos/guias-manuales/detalle?id={x.Id}&handler=Pdf")
+                                        : Url.Content($"~/despachos/manifiestos/{x.ManifestId}?handler=GuiasPdf&sequence={x.Sequence}");
+                                    <a class="btn-ghost" title="PDF de la guía" target="_blank" rel="noopener" href="@pdf"><i class="bi bi-file-earmark-pdf"></i></a>
+                                }
+                                @if (manual)
+                                {
+                                    <a class="btn-ghost" title="Abrir" href="~/despachos/guias-manuales/detalle?id=@x.Id"><i class="bi bi-box-arrow-up-right"></i></a>
+                                }
+                            </div>
                         </td>
                     </tr>
                 }

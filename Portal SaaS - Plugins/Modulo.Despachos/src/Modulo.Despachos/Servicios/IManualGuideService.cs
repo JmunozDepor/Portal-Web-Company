@@ -9,7 +9,8 @@ public sealed record GuideFilter(string? Source, string? Status, DateOnly? From,
 /// <summary>Fila de la lista de guías. Code = "GM-000123" (manual) o "Manifiesto N° 7 / guía 2".</summary>
 public sealed record GuideListItem(
     Guid Id, string Source, string Code, Guid? ManifestId, int? ManifestNumber, long? Folio, DateOnly Date,
-    string ReceiverName, string ReceiverTaxId, string DestinationCommune, int TransferIndicator, decimal? TotalAmount, string Status);
+    string ReceiverName, string ReceiverTaxId, string DestinationCommune, int TransferIndicator, decimal? TotalAmount, string Status,
+    int? Sequence = null);
 
 /// <summary>
 /// Guías manuales (DTE 52 sin documento SAP): borrador GM-, motivos de traslado, emisión sola por la pasarela DTE y la

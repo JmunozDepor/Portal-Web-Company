@@ -204,4 +204,17 @@ public class DispatchGroupServiceTests
         var only = Assert.Single(list);
         Assert.Equal(("AT-000001", "TDA01", 2, 17m), (only.Code, only.WarehouseCode, only.Transfers, only.Units));
     }
+
+    [Fact]
+    public async Task Listar_RangoDeFechas_IncluyeAmbosExtremos()
+    {
+        var env = await EnvAsync();
+        await env.Groups.GenerateAsync(ManifestTestEnv.Fecha, Desde, new[] { 501 });
+        await env.Groups.GenerateAsync(ManifestTestEnv.Fecha.AddDays(2), Desde, new[] { 502 });
+        await env.Groups.GenerateAsync(ManifestTestEnv.Fecha.AddDays(3), Desde, new[] { 503 });
+
+        var list = await env.Groups.ListAsync(new DispatchGroupFilter(From: ManifestTestEnv.Fecha, To: ManifestTestEnv.Fecha.AddDays(2)));
+
+        Assert.Equal(new[] { "AT-000002", "AT-000001" }, list.Select(x => x.Code));
+    }
 }

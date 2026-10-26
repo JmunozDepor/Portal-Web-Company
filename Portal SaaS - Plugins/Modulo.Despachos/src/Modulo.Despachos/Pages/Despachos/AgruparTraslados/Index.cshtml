@@ -15,12 +15,12 @@
         <h2 class="mb-0">Agrupar traslados</h2>
         <div class="d-flex gap-2 flex-wrap">
             <a class="btn btn-secondary" target="_blank" rel="noopener"
-               href="~/despachos/agrupar-traslados?handler=Pdf&DispatchDate=@Model.DispatchDate&WarehouseCode=@Model.WarehouseCode&Status=@Model.Status">
+               href="~/despachos/agrupar-traslados?handler=Pdf&From=@Model.From&To=@Model.To&WarehouseCode=@Model.WarehouseCode&Status=@Model.Status">
                 <i class="bi bi-printer"></i> Imprimir todas
             </a>
             @if (Model.CanCreate)
             {
-                <a class="btn btn-primary" href="~/despachos/agrupar-traslados/generar?DispatchDate=@Model.DispatchDate">+ Agrupar traslados</a>
+                <a class="btn btn-primary" href="~/despachos/agrupar-traslados/generar?DispatchDate=@Model.To">+ Agrupar traslados</a>
             }
         </div>
     </div>
@@ -40,8 +40,12 @@
 
     <form method="get" class="filter-card mb-3">
         <div class="col-auto">
-            <label class="form-label" for="f-date">Fecha de despacho</label>
-            <input type="date" id="f-date" name="DispatchDate" value="@Model.DispatchDate" class="form-control" />
+            <label class="form-label" for="f-from">Despacho desde</label>
+            <input type="date" id="f-from" name="From" value="@Model.From" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-to">Hasta</label>
+            <input type="date" id="f-to" name="To" value="@Model.To" class="form-control" />
         </div>
         <div class="col-auto">
             <label class="form-label" for="f-branch">Sucursal</label>

@@ -8,7 +8,7 @@ using PortalSaas.Abstractions.Modelos;
 
 namespace Modulo.Despachos.Pages.Despachos.AgruparTraslados;
 
-/// <summary>Listado de agrupaciones por fecha de despacho, sucursal y estado. Menú "agrupar-traslados" (permisos: Despachos.agrupar-traslados).</summary>
+/// <summary>Listado de agrupaciones por rango de fechas de despacho, sucursal y estado. Menú "agrupar-traslados" (permisos: Despachos.agrupar-traslados).</summary>
 public sealed class IndexModel : DespachosPageModelBase
 {
     private readonly IDispatchGroupService _groups;
@@ -29,8 +29,11 @@ public sealed class IndexModel : DespachosPageModelBase
     public IReadOnlyList<DispatchGroupListItem> Items { get; private set; } = Array.Empty<DispatchGroupListItem>();
     public IReadOnlyList<BranchWarehouse> Branches { get; private set; } = Array.Empty<BranchWarehouse>();
 
-    /// <summary>Fecha de despacho (yyyy-MM-dd); vacía = hoy. "todas" = sin filtro de fecha.</summary>
+    /// <summary>Un día de despacho (yyyy-MM-dd): lo usan los enlaces de Generar y de la campana; equivale a Desde = Hasta.</summary>
     [BindProperty(SupportsGet = true)] public string? DispatchDate { get; set; }
+    /// <summary>Rango de fechas de despacho (yyyy-MM-dd); sin ninguna fecha = hoy.</summary>
+    [BindProperty(SupportsGet = true)] public string? From { get; set; }
+    [BindProperty(SupportsGet = true)] public string? To { get; set; }
     [BindProperty(SupportsGet = true)] public string? WarehouseCode { get; set; }
     [BindProperty(SupportsGet = true)] public string? Status { get; set; }
 
@@ -65,17 +68,25 @@ public sealed class IndexModel : DespachosPageModelBase
         catch (Exception ex)
         {
             ErrorMessage = GetErrorMessage(ex);
-            return RedirectToPage(new { DispatchDate, WarehouseCode, Status });
+            return RedirectToPage(new { From, To, WarehouseCode, Status });
         }
     }
 
     private DispatchGroupFilter Filter()
     {
-        if (string.IsNullOrWhiteSpace(DispatchDate)) DispatchDate = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        DateOnly? date = DateOnly.TryParseExact(DispatchDate.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
-            ? d : null;
-        return new DispatchGroupFilter(date,
+        if (string.IsNullOrWhiteSpace(From) && string.IsNullOrWhiteSpace(To))
+        {
+            From = To = string.IsNullOrWhiteSpace(DispatchDate)
+                ? DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                : DispatchDate.Trim();
+        }
+        DispatchDate = null;
+        return new DispatchGroupFilter(null,
             string.IsNullOrWhiteSpace(WarehouseCode) ? null : WarehouseCode.Trim(),
-            string.IsNullOrWhiteSpace(Status) ? null : Status);
+            string.IsNullOrWhiteSpace(Status) ? null : Status,
+            Date(From), Date(To));
     }
+
+    private static DateOnly? Date(string? s) =>
+        DateOnly.TryParseExact(s?.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
 }

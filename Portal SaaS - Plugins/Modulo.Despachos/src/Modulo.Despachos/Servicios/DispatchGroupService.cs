@@ -132,6 +132,8 @@ public class DispatchGroupService : IDispatchGroupService
     {
         var q = _db.DispatchGroups.Include(g => g.Transfers).Where(g => g.CompanyId == CompanyId);
         if (filter.DispatchDate is { } d) q = q.Where(g => g.DispatchDate == d);
+        if (filter.From is { } from) q = q.Where(g => g.DispatchDate >= from);
+        if (filter.To is { } to) q = q.Where(g => g.DispatchDate <= to);
         if (!string.IsNullOrWhiteSpace(filter.WarehouseCode)) q = q.Where(g => g.WarehouseCode == filter.WarehouseCode.Trim());
         if (!string.IsNullOrWhiteSpace(filter.Status)) q = q.Where(g => g.Status == filter.Status);
         var groups = await q.OrderByDescending(g => g.DispatchDate).ThenBy(g => g.WarehouseCode).ThenBy(g => g.Sequence)

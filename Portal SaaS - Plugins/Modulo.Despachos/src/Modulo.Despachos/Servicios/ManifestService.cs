@@ -162,17 +162,17 @@ public class ManifestService : IManifestService
                     return await AddManualGuideAsync(m, await _db.TransportGuides.FirstOrDefaultAsync(g =>
                         g.CompanyId == CompanyId && g.Source == TransportGuideSources.Manual && g.Number == guideNumber),
                         ManualGuideCode.Format(guideNumber), CaptureMethods.Pdf417);
-                // Hoja de agrupación (AT-000123): entran todas sus transferencias.
-                if (DispatchGroupCode.TryParse(capture.RawScan, out var groupNumber))
-                    return await AddDispatchGroupAsync(m, groupNumber);
+                // Hoja de agrupación (AT-000123 traslados, EG-000123 Entregas con guía previa): entran todos sus documentos.
+                if (DispatchGroupCode.TryParse(capture.RawScan, out var groupNumber, out var groupKind))
+                    return await AddDispatchGroupAsync(m, groupNumber, groupKind);
                 // No es un timbre: puede ser el LPN de una transferencia a sucursal (Fase B).
                 var lpn = await LpnFromScanAsync(capture.RawScan);
                 if (lpn is null)
                     return Result(AddDocumentOutcomes.InvalidScan, "No se pudo leer el timbre del documento; reintente el escaneo o digite el folio.");
                 var transfer = await _sap.FindTransferByLpnAsync(lpn);
-                if (transfer is null)
-                    return Result(AddDocumentOutcomes.NotFound, $"No se encontró el LPN {lpn} en SAP.");
-                return await AddTransferAsync(m, transfer, CaptureMethods.Pdf417);
+                if (transfer is not null) return await AddTransferAsync(m, transfer, CaptureMethods.Pdf417);
+                return await DeliveryLpnAsync(lpn)
+                       ?? Result(AddDocumentOutcomes.NotFound, $"No se encontró el LPN {lpn} en SAP.");
             }
             ted = parsed;
 
@@ -348,11 +348,11 @@ public class ManifestService : IManifestService
     /// Hoja de agrupación: revalida sus transferencias contra SAP con una sola consulta (pendientes de su sucursal) y
     /// agrega las vigentes con las reglas de siempre; las demás se informan y el resto entra igual.
     /// </summary>
-    private async Task<AddDocumentResult> AddDispatchGroupAsync(Manifest m, int number)
+    private async Task<AddDocumentResult> AddDispatchGroupAsync(Manifest m, int number, string kind)
     {
-        var code = DispatchGroupCode.Format(number);
+        var code = DispatchGroupCode.Format(number, kind);
         var g = await _db.DispatchGroups.Include(x => x.Transfers)
-            .FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Number == number);
+            .FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Number == number && x.Kind == kind);
         if (g is null) return Result(AddDocumentOutcomes.NotFound, $"No existe la agrupación {code}.");
         if (g.Status == DispatchGroupStatuses.Annulled) return Result(AddDocumentOutcomes.Canceled, $"La agrupación {code} está anulada.");
         var holder = await ManifestOfGroupAsync(g.Id);
@@ -363,6 +363,7 @@ public class ManifestService : IManifestService
                     ? $"La agrupación {code} ya fue despachada en el manifiesto N° {h.Number}."
                     : $"La agrupación {code} ya está en el manifiesto N° {h.Number}.",
             });
+        if (g.Kind == DispatchGroupKinds.Delivery) return await AddDeliveryGroupAsync(m, g, code, holder);
         if (g.Transfers.Count == 0) return Result(AddDocumentOutcomes.NotFound, $"La agrupación {code} no tiene transferencias.");
 
         var current = (await _sap.ListPendingTransfersAsync(g.WarehouseCode, g.Transfers.Min(t => t.DocumentDate)))
@@ -392,6 +393,105 @@ public class ManifestService : IManifestService
         await SyncDispatchGroupsAsync(new[] { g.Id });
         return new AddDocumentResult(AddDocumentOutcomes.GroupAdded, null, null,
             new[] { $"{code}: {added} transferencias agregadas." }.Concat(notes).ToList());
+    }
+
+    // ---------------------------------------------------------------- Entregas con guía previa
+
+    /// <summary>
+    /// Hoja EG-: revalida sus Entregas contra SAP con una consulta (abiertas del cliente) y agrega las vigentes; las
+    /// facturadas o cerradas entretanto se informan y el resto entra igual.
+    /// </summary>
+    private async Task<AddDocumentResult> AddDeliveryGroupAsync(Manifest m, DispatchGroup g, string code, (Guid Id, int Number)? holder)
+    {
+        if (g.Transfers.Count == 0) return Result(AddDocumentOutcomes.NotFound, $"La agrupación {code} no tiene Entregas.");
+        var current = (await _sap.ListPendingDeliveriesAsync(g.WarehouseCode, g.Transfers.Min(t => t.DocumentDate)))
+            .Where(d => d.IsOpen).GroupBy(d => d.DocEntry).ToDictionary(x => x.Key, x => x.First());
+        var added = 0;
+        var notes = new List<string>();
+        foreach (var line in g.Transfers.OrderBy(t => t.SapDocNum))
+        {
+            if (!current.TryGetValue(line.SapDocEntry, out var d))
+            {
+                notes.Add($"La Entrega {line.SapDocNum} ya no está abierta en SAP.");
+                continue;
+            }
+            var r = await AddDeliveryAsync(m, d, CaptureMethods.Pdf417, g.Id);
+            if (r.Outcome == AddDocumentOutcomes.Added) added++;
+            else if (r.Outcome != AddDocumentOutcomes.DuplicateInThis) notes.AddRange(r.Warnings.Take(1));
+        }
+
+        if (added == 0)
+            return holder is not null && notes.Count == 0
+                ? Result(AddDocumentOutcomes.DuplicateInThis, $"La agrupación {code} ya está en este manifiesto.")
+                : new AddDocumentResult(AddDocumentOutcomes.NotFound, null, null,
+                    new[] { $"{code}: no se agregó ninguna Entrega." }.Concat(notes).ToList());
+
+        if (g.DispatchDate != m.DispatchDate)
+            notes.Add($"La agrupación es para el {g.DispatchDate:dd-MM-yyyy} y el manifiesto sale el {m.DispatchDate:dd-MM-yyyy}.");
+        await SyncDispatchGroupsAsync(new[] { g.Id });
+        return new AddDocumentResult(AddDocumentOutcomes.GroupAdded, null, null,
+            new[] { $"{code}: {added} entregas agregadas." }.Concat(notes).ToList());
+    }
+
+    /// <summary>
+    /// Entrega de su agrupación EG- (controlada por DocEntry): ya en este manifiesto o en otro manifiesto no anulado se
+    /// rechaza con su motivo. Destino = dirección de despacho de la Entrega.
+    /// </summary>
+    private async Task<AddDocumentResult> AddDeliveryAsync(Manifest m, SapDeliveryInfo d, string captureMethod, long dispatchGroupId)
+    {
+        if (m.Documents.Any(x => x.DocumentKind == DocumentKinds.Delivery && x.SapDocEntry == d.DocEntry))
+            return Result(AddDocumentOutcomes.DuplicateInThis, $"La Entrega {d.DocNum} ya está en este manifiesto.");
+        var other = await FindActiveElsewhereAsync(DocumentKinds.Delivery, 0, d.DocNum, m.Id, includeDrafts: true, d.DocEntry);
+        if (other != null)
+            return new AddDocumentResult(AddDocumentOutcomes.InOtherManifest, null, other,
+                new[] { $"La Entrega {d.DocNum} ya está en el manifiesto N° {other}." });
+
+        var warnings = new List<string>();
+        var commune = string.IsNullOrWhiteSpace(d.DestinationCommune) ? null : await _master.FindCommuneByNameAsync(d.DestinationCommune);
+        if (commune is null)
+            warnings.Add($"La comuna de destino '{d.DestinationCommune}' no se pudo resolver; elíjala en la tabla de documentos (se recordará para las próximas). Mientras tanto el costo queda sin tarifa y no se puede emitir la guía.");
+
+        var doc = new ManifestDocument
+        {
+            Id = Guid.NewGuid(), CompanyId = CompanyId, ManifestId = m.Id,
+            DocumentKind = DocumentKinds.Delivery, SiiDocumentType = 0, Folio = d.DocNum,
+            SapDocEntry = d.DocEntry, SapDocNum = d.DocNum, DocumentDate = d.DocumentDate, TotalAmount = d.NetAmount,
+            Lpn = d.Lpn is { Length: > 30 } l ? l[..30] : d.Lpn,
+            CustomerCode = d.CustomerCode, CustomerName = d.CustomerName, CustomerTaxId = d.CustomerTaxId,
+            DestinationAddress = d.DestinationAddress, DestinationCommuneName = d.DestinationCommune, DestinationCommuneId = commune?.Id,
+            CustomerPo = d.CustomerPo, Units = d.Units, Packages = 1, DispatchGroupId = dispatchGroupId,
+            DeliveryStatus = DeliveryStatuses.Pending, CaptureMethod = captureMethod,
+            AddedAt = UtcNow, AddedBy = _user.UserId,
+        };
+        _db.ManifestDocuments.Add(doc);
+        AddEvent(m.Id, ManifestEventTypes.DocumentAdded, doc.Id, null, null,
+            new { kind = doc.DocumentKind, folio = doc.Folio, lpn = doc.Lpn, method = captureMethod });
+        await _db.SaveChangesAsync();
+        return new AddDocumentResult(AddDocumentOutcomes.Added, doc.Id, null, warnings);
+    }
+
+    /// <summary>
+    /// LPN que no es de una transferencia: si es de una Entrega, nunca entra suelta (pide la hoja EG- o se despacha con
+    /// su factura). Null si no es una Entrega o la compañía no tiene configurada la consulta de Entregas.
+    /// </summary>
+    private async Task<AddDocumentResult?> DeliveryLpnAsync(string lpn)
+    {
+        SapDeliveryInfo? d;
+        try { d = await _sap.FindDeliveryByLpnAsync(lpn); }
+        catch (InvalidOperationException) { return null; }
+        if (d is null) return null;
+        var holding = DispatchGroupStatuses.Holding.ToArray();
+        var number = await (from t in _db.DispatchGroupTransfers
+                            join g in _db.DispatchGroups on t.DispatchGroupId equals g.Id
+                            where t.CompanyId == CompanyId && g.CompanyId == CompanyId && t.SapDocEntry == d.DocEntry
+                                  && g.Kind == DispatchGroupKinds.Delivery && holding.Contains(g.Status)
+                            orderby g.Number
+                            select (int?)g.Number).FirstOrDefaultAsync();
+        return number is { } n
+            ? Result(AddDocumentOutcomes.InDispatchGroup,
+                $"El LPN {lpn} pertenece a la agrupación {DispatchGroupCode.Format(n, DispatchGroupKinds.Delivery)}; escanee la hoja.")
+            : Result(AddDocumentOutcomes.NotInDeliveryGroup,
+                $"La Entrega {d.DocNum} (LPN {lpn}) no está en una agrupación con guía previa; se despacha con su factura.");
     }
 
     // ---------------------------------------------------------------- Guías manuales
@@ -501,7 +601,7 @@ public class ManifestService : IManifestService
         return await (from t in _db.DispatchGroupTransfers
                       join g in _db.DispatchGroups on t.DispatchGroupId equals g.Id
                       where t.CompanyId == CompanyId && g.CompanyId == CompanyId && t.SapDocEntry == docEntry
-                            && holding.Contains(g.Status)
+                            && g.Kind == DispatchGroupKinds.Transfer && holding.Contains(g.Status)
                       orderby g.Number
                       select (int?)g.Number).FirstOrDefaultAsync();
     }
@@ -608,11 +708,11 @@ public class ManifestService : IManifestService
     private async Task<int?> FindActiveElsewhereAsync(SapDocumentInfo info, Guid exceptManifestId, bool includeDrafts) =>
         await FindActiveElsewhereAsync(info.DocumentKind, info.SiiDocumentType, info.Folio, exceptManifestId, includeDrafts);
 
-    /// <remarks>Las transferencias se controlan por DocEntry (el DocNum puede repetirse entre series).</remarks>
+    /// <remarks>Transferencias y Entregas se controlan por DocEntry (el DocNum puede repetirse entre series).</remarks>
     private async Task<int?> FindActiveElsewhereAsync(string kind, int sii, long folio, Guid exceptManifestId, bool includeDrafts,
         int docEntry = 0)
     {
-        var byEntry = kind == DocumentKinds.Transfer;
+        var byEntry = kind is DocumentKinds.Transfer or DocumentKinds.Delivery;
         return await (from d in _db.ManifestDocuments
                join o in _db.Manifests on d.ManifestId equals o.Id
                where d.CompanyId == CompanyId && o.CompanyId == CompanyId && o.Id != exceptManifestId

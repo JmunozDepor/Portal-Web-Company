@@ -33,6 +33,8 @@ public static class AddDocumentOutcomes
     public const string InDispatchGroup = "in_dispatch_group";
     /// <summary>Se escaneó la hoja de una agrupación: Warnings[0] resume cuántas transferencias entraron.</summary>
     public const string GroupAdded = "group_added";
+    /// <summary>LPN de una Entrega SAP que no está en una agrupación con guía previa: se despacha con su factura.</summary>
+    public const string NotInDeliveryGroup = "not_in_delivery_group";
 }
 
 public sealed record AddDocumentResult(

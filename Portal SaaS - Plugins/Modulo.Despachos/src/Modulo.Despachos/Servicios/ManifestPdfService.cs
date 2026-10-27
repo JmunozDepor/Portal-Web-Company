@@ -121,7 +121,7 @@ public class ManifestPdfService : IManifestPdfService
             .Select(g => new ManifestPdfGroup(g.Key, g
                 .OrderBy(d => d.Folio)
                 .Select(d => new ManifestPdfRow(
-                    d.DocumentKind == DocumentKinds.TransferGuide ? "Guía" : "Factura",
+                    d.DocumentKind == DocumentKinds.TransferGuide ? "Guía" : DocumentKinds.Label(d.DocumentKind),
                     d.Folio, d.CustomerName, d.CustomerPo, d.DestinationAddress, d.Units, d.Packages, d.TotalAmount))
                 .ToList()))
             .ToList();

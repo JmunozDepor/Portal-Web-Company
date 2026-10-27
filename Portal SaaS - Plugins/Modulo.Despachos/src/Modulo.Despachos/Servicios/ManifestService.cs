@@ -471,6 +471,35 @@ public class ManifestService : IManifestService
     }
 
     /// <summary>
+    /// Revalida contra SAP las Entregas del manifiesto, una consulta por agrupación: las que ya no están abiertas
+    /// (facturadas, cerradas o anuladas después de escanear la hoja) bloquean el despacho.
+    /// </summary>
+    private async Task<List<string>> ClosedDeliveriesAsync(Manifest m)
+    {
+        var errors = new List<string>();
+        foreach (var byGroup in m.Documents.Where(d => d.DocumentKind == DocumentKinds.Delivery && d.DispatchGroupId != null)
+                     .GroupBy(d => d.DispatchGroupId!.Value))
+        {
+            var g = await _db.DispatchGroups.AsNoTracking().FirstOrDefaultAsync(x => x.CompanyId == CompanyId && x.Id == byGroup.Key);
+            if (g is null) continue;
+            HashSet<int> open;
+            try
+            {
+                open = (await _sap.ListPendingDeliveriesAsync(g.WarehouseCode, byGroup.Min(d => d.DocumentDate)))
+                    .Where(d => d.IsOpen).Select(d => d.DocEntry).ToHashSet();
+            }
+            catch (InvalidOperationException ex)
+            {
+                errors.Add($"No se pudo revisar en SAP las Entregas de la agrupación {DispatchGroupCode.Format(g.Number, g.Kind)}: {ex.Message}");
+                continue;
+            }
+            foreach (var d in byGroup.Where(d => !open.Contains(d.SapDocEntry)).OrderBy(d => d.Folio))
+                errors.Add($"La Entrega {d.Folio} ya no está abierta en SAP (facturada, cerrada o anulada); quítela del manifiesto.");
+        }
+        return errors;
+    }
+
+    /// <summary>
     /// LPN que no es de una transferencia: si es de una Entrega, nunca entra suelta (pide la hoja EG- o se despacha con
     /// su factura). Null si no es una Entrega o la compañía no tiene configurada la consulta de Entregas.
     /// </summary>
@@ -777,6 +806,14 @@ public class ManifestService : IManifestService
             var other = await FindActiveElsewhereAsync(d.DocumentKind, d.SiiDocumentType, d.Folio, m.Id, includeDrafts: false, d.SapDocEntry);
             if (other != null)
                 errors.Add($"El folio {d.Folio} ya está despachado en el manifiesto N° {other}; quítelo de este manifiesto.");
+        }
+
+        // Entregas con guía previa: la guía es su único documento y deben seguir abiertas en SAP (no facturadas entretanto).
+        if (m.Documents.Any(d => d.DocumentKind == DocumentKinds.Delivery))
+        {
+            if (_guides is null)
+                errors.Add("La emisión de guías no está disponible: las Entregas con guía previa no se pueden despachar sin guía.");
+            errors.AddRange(await ClosedDeliveriesAsync(m));
         }
 
         warnings.AddRange(await CarrierWarningsAsync(m.CarrierId, vehicle, driver));

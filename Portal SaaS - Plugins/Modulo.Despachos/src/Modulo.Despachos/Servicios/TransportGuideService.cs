@@ -254,7 +254,8 @@ public sealed class TransportGuideService : ITransportGuideService
         }
 
         // Plan vigente (con el snapshot ya tomado): define las guías la primera vez y reemplaza las rechazadas.
-        var (plan, planErrors) = await PlanAsync(m, settings, previewSnapshot: false);
+        var planned = guides.SelectMany(g => g.Documents).Select(d => d.ManifestDocumentId).ToHashSet();
+        var (plan, planErrors) = await PlanAsync(m, settings, previewSnapshot: false, planned);
         if (guides.Count == 0)
         {
             if (plan is null || planErrors.Count > 0) return planErrors.Count > 0 ? planErrors.ToList() : new List<string> { "No se pudo planificar las guías." };
@@ -376,7 +377,10 @@ public sealed class TransportGuideService : ITransportGuideService
         if (_writer is null) throw new InvalidOperationException("La escritura en SAP no está disponible.");
         try
         {
-            var current = await _writer.ReadDeliveryAsync(docEntry, names);
+            // Una Entrega sin folio informa nulos: no se reenvían (SAP podría rechazar el nulo y no es lo que se escribe al emitir).
+            var current = (await _writer.ReadDeliveryAsync(docEntry, names)).Where(kv => kv.Value is not null)
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            if (current.Count == 0) current["FolioPrefixString"] = "";
             await _writer.WriteDeliveryAsync(docEntry, current);
         }
         catch (Exception ex)
@@ -444,6 +448,8 @@ public sealed class TransportGuideService : ITransportGuideService
         var fields = WritebackFields(settings, folio, m.Number, m.DispatchDate);
         var deliveryFields = DeliveryWritebackFields(settings, folio);
         // Transferencias solo si hay campos configurados; Entregas siempre (su folio es lo que permite facturarlas después).
+        // Una Entrega repartida en varias guías (más líneas que el máximo) guarda el folio de la primera: SAP tiene un solo
+        // campo de folio y las guías se recorren por secuencia; después queda "Ok" y las siguientes no la reescriben.
         var docs = m.Documents.Where(d => ids.Contains(d.Id) && d.SapWritebackStatus != SapWritebackStatuses.Ok
                                           && ((d.DocumentKind == DocumentKinds.Transfer && fields.Count > 0)
                                               || d.DocumentKind == DocumentKinds.Delivery)).ToList();
@@ -487,7 +493,10 @@ public sealed class TransportGuideService : ITransportGuideService
 
     // ---------------------------------------------------------------- Plan
 
-    private async Task<(GuidePlan? Plan, IReadOnlyList<string> Errors)> PlanAsync(Manifest m, DespachosSetting settings, bool previewSnapshot)
+    /// <param name="alsoPlan">Documentos que ya tienen guía persistida: se planifican aunque la emisión se haya apagado
+    /// después, para que el reintento refresque su contenido.</param>
+    private async Task<(GuidePlan? Plan, IReadOnlyList<string> Errors)> PlanAsync(Manifest m, DespachosSetting settings, bool previewSnapshot,
+        IReadOnlySet<Guid>? alsoPlan = null)
     {
         var errors = new List<string>();
         var config = await _dte.GetConfigurationAsync();
@@ -506,7 +515,8 @@ public sealed class TransportGuideService : ITransportGuideService
 
         var docs = new List<(ManifestDocument, SapDocumentLines)>();
         // Con la emisión Res. 154 apagada solo se planifican las Entregas con guía previa (siempre llevan guía).
-        foreach (var d in m.Documents.Where(d => settings.GuidesEnabled || d.DocumentKind == DocumentKinds.Delivery).OrderBy(d => d.AddedAt))
+        foreach (var d in m.Documents.Where(d => settings.GuidesEnabled || d.DocumentKind == DocumentKinds.Delivery
+                                                 || alsoPlan?.Contains(d.Id) == true).OrderBy(d => d.AddedAt))
         {
             var linesKind = d.DocumentKind switch
             {

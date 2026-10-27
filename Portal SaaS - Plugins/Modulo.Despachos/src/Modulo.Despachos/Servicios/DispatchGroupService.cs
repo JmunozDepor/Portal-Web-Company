@@ -58,7 +58,28 @@ public class DispatchGroupService : IDispatchGroupService
             .ToList();
     }
 
+    /// <summary>Choque de correlativo con otro usuario: se reintenta (ver DeliveryGroupService.GenerateAsync).</summary>
     public async Task<IReadOnlyList<DispatchGroup>> GenerateAsync(DateOnly dispatchDate, DateOnly fromDate, IReadOnlyCollection<int> docEntries)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await GenerateOnceAsync(dispatchDate, fromDate, docEntries);
+            }
+            catch (DbUpdateException) when (attempt < 3)
+            {
+                DeliveryGroupService.DetachAdded(_db);
+            }
+            catch (DbUpdateException)
+            {
+                DeliveryGroupService.DetachAdded(_db);
+                throw new InvalidOperationException("Otro usuario agrupó al mismo tiempo; vuelva a intentarlo.");
+            }
+        }
+    }
+
+    private async Task<IReadOnlyList<DispatchGroup>> GenerateOnceAsync(DateOnly dispatchDate, DateOnly fromDate, IReadOnlyCollection<int> docEntries)
     {
         var chosen = docEntries.ToHashSet();
         var candidates = (await ListCandidatesAsync(fromDate))

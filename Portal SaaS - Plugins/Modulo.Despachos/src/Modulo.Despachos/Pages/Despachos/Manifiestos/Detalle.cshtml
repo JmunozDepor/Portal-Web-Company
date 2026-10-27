@@ -452,11 +452,11 @@
                 {
                     @* Fase B: la guía de traslado quedó emitida pero SAP no aceptó el folio en la transferencia. *@
                     <div class="alert alert-warning">
-                        <strong>SAP pendiente:</strong> no se pudo escribir el folio de la guía en @sapPending.Count transferencia(s).
+                        <strong>SAP pendiente:</strong> no se pudo escribir el folio de la guía en @sapPending.Count documento(s) de SAP.
                         <ul class="mb-2">
                             @foreach (var d in sapPending)
                             {
-                                <li>Transferencia @d.Folio@(d.Lpn is null ? "" : $" (LPN {d.Lpn})"): @d.SapWritebackError</li>
+                                <li>@DocumentKinds.Label(d.DocumentKind) @d.Folio@(d.Lpn is null ? "" : $" (LPN {d.Lpn})"): @d.SapWritebackError</li>
                             }
                         </ul>
                         @if (Model.CanEdit)

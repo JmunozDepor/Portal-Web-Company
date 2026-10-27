@@ -55,9 +55,40 @@ public class DeliveryGroupService : IDeliveryGroupService
             blocked);
     }
 
+    /// <summary>
+    /// Dos usuarios agrupando a la vez chocan en el correlativo (índice único por compañía): se reintenta con el número
+    /// siguiente y la ocupación revisada; si persiste, mensaje amable.
+    /// </summary>
     public async Task<IReadOnlyList<DispatchGroup>> GenerateAsync(DeliveryGroupInput input)
     {
         RequireTerms(input.TransferIndicator, input.DispatchType);
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await GenerateOnceAsync(input);
+            }
+            catch (DbUpdateException) when (attempt < 3)
+            {
+                DetachAdded(_db);
+            }
+            catch (DbUpdateException)
+            {
+                DetachAdded(_db);
+                throw new InvalidOperationException("Otro usuario agrupó al mismo tiempo; vuelva a intentarlo.");
+            }
+        }
+    }
+
+    /// <summary>Descarta lo agregado en un intento fallido para reintentar desde cero.</summary>
+    internal static void DetachAdded(DespachosDbContext db)
+    {
+        foreach (var e in db.ChangeTracker.Entries().Where(e => e.State == EntityState.Added).ToList())
+            e.State = EntityState.Detached;
+    }
+
+    private async Task<IReadOnlyList<DispatchGroup>> GenerateOnceAsync(DeliveryGroupInput input)
+    {
         var chosen = input.DocEntries.ToHashSet();
         var candidates = await ListCandidatesAsync(input.Customer, input.FromDate);
         var orders = candidates.Orders
@@ -108,6 +139,7 @@ public class DeliveryGroupService : IDeliveryGroupService
         po = 0;
         if (string.IsNullOrWhiteSpace(d.CustomerPo)) return "La Entrega no tiene orden de compra (pedido sin N° de referencia).";
         if (d.PoCount > 1) return "La Entrega tiene líneas de más de una OC; sepárela en SAP.";
+        if (d.LinesWithoutPo > 0) return "La Entrega tiene líneas sin OC (sin pedido o pedido sin N° de referencia); sepárela en SAP.";
         // La referencia 801 de la guía lleva el folio numérico (FolioRef de la plataforma es long).
         if (!long.TryParse(d.CustomerPo.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out po) || po <= 0)
             return $"La OC «{d.CustomerPo.Trim()}» no es numérica.";

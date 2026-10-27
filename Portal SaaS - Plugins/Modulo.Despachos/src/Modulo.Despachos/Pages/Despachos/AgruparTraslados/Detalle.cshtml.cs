@@ -76,8 +76,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         if (!await HasActionAsync(PortalActions.View)) return Forbid();
         try
         {
-            var g = await _groups.GetAsync(id);
-            if (g is null) return NotFound();
+            if (await _groups.GetAsync(id) is not { Kind: DispatchGroupKinds.Transfer } g) return NotFound();
             return new InlinePdfResult(await _pdf.RenderAsync(new[] { id }), $"{DispatchGroupCode.Format(g.Number)}.pdf");
         }
         catch (Exception ex)

@@ -30,13 +30,13 @@ public sealed record SapTransferInfo(
 
 /// <summary>
 /// Entrega SAP (ODLN) para Entregas con guía previa. Lpn = NumAtCard de la Entrega; CustomerPo / OrderDate = N° de
-/// referencia y fecha del pedido base (la OC del cliente); PoCount = OC distintas en sus líneas; IsOpen = no facturada,
-/// cerrada ni anulada.
+/// referencia y fecha del pedido base (la OC del cliente); PoCount = OC distintas en sus líneas; LinesWithoutPo = líneas
+/// sin OC (columna opcional no_po_lines); IsOpen = no facturada, cerrada ni anulada.
 /// </summary>
 public sealed record SapDeliveryInfo(
     int DocEntry, int DocNum, DateOnly DocumentDate, string CustomerCode, string CustomerName, string? CustomerTaxId,
     string? DestinationAddress, string? DestinationCommune, string? Lpn, string? CustomerPo, DateOnly? OrderDate,
-    int PoCount, decimal Units, decimal NetAmount, bool IsOpen);
+    int PoCount, decimal Units, decimal NetAmount, bool IsOpen, int LinesWithoutPo = 0);
 
 /// <summary>Bodega de SAP (OWHS), para elegir las bodegas sucursal.</summary>
 public sealed record SapWarehouse(string Code, string Name, string? Address, string? Commune);

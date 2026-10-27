@@ -196,7 +196,8 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         PoCount: ToInt(r["po_count"]),
         Units: ToDecimal(r["units"]),
         NetAmount: ToDecimal(r["net_amount"]),
-        IsOpen: ToBool(r["is_open"]));
+        IsOpen: ToBool(r["is_open"]),
+        LinesWithoutPo: r.TryGetValue("no_po_lines", out var noPo) && !IsNull(noPo) ? ToInt(noPo) : 0);
 
     public async Task<IReadOnlyList<SapWarehouse>> ListSapWarehousesAsync(CancellationToken ct = default)
     {

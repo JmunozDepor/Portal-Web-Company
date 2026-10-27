@@ -13,12 +13,22 @@ public sealed class IndexModel : DespachosPageModelBase
 {
     private readonly IManifestService _manifests;
     private readonly IMasterDataService _data;
+    private readonly ITenantUserAdminService? _users;
 
-    public IndexModel(IManifestService manifests, IMasterDataService data, ICurrentUserContext currentUser) : base(currentUser)
+    public IndexModel(IManifestService manifests, IMasterDataService data, ICurrentUserContext currentUser,
+        ITenantUserAdminService? users = null) : base(currentUser)
     {
         _manifests = manifests;
         _data = data;
+        _users = users;
     }
+
+    /// <summary>Usuarios de la organización por Id (columna "Actualizado por").</summary>
+    private Dictionary<Guid, string> _userNames = new();
+
+    /// <summary>Nombre de usuario; "—" sin usuario y "(usuario no disponible)" si ya no existe en la organización.</summary>
+    public string UserName(Guid? id) =>
+        id is not { } u ? "—" : _userNames.TryGetValue(u, out var name) ? name : "(usuario no disponible)";
 
     protected override string MenuCode => "manifiestos";
 
@@ -43,6 +53,7 @@ public sealed class IndexModel : DespachosPageModelBase
                 ParseDate(From), ParseDate(To),
                 string.IsNullOrWhiteSpace(Status) ? null : Status, CarrierId,
                 string.IsNullOrWhiteSpace(Folio) ? null : Folio.Trim()));
+            if (_users is not null) _userNames = (await _users.ListAsync()).ToDictionary(u => u.Id, u => u.Username);
         }
         catch (Exception ex)
         {

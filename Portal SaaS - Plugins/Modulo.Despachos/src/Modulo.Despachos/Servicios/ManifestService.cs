@@ -1347,10 +1347,39 @@ public class ManifestService : IManifestService
             .ToDictionary(x => x.Key, x => x.N);
         var carriers = await _db.Carriers.Where(c => c.CompanyId == CompanyId).ToDictionaryAsync(c => c.Id, c => c.Name);
         var plates = await _db.Vehicles.Where(v => v.CompanyId == CompanyId).ToDictionaryAsync(v => v.Id, v => v.Plate);
+        var lastEvents = await LastUserEventsAsync(ids);
 
-        return rows.Select(m => new ManifestListItem(
-            m.Id, m.Number, m.Status, m.DispatchDate, m.CarrierId, carriers.GetValueOrDefault(m.CarrierId, "—"),
-            m.Plate ?? plates.GetValueOrDefault(m.VehicleId), counts.GetValueOrDefault(m.Id), m.CostFinal, m.CostStatus)).ToList();
+        return rows.Select(m =>
+        {
+            // Último usuario que tocó el manifiesto: su último evento con usuario (documentos, despacho, retorno...) o la
+            // cabecera (UpdatedBy / CreatedBy), lo más reciente.
+            var (by, at) = (m.UpdatedBy ?? m.CreatedBy, m.UpdatedAt ?? m.CreatedAt);
+            if (lastEvents.TryGetValue(m.Id, out var e) && e.At >= at) (by, at) = (e.UserId, e.At);
+            return new ManifestListItem(
+                m.Id, m.Number, m.Status, m.DispatchDate, m.CarrierId, carriers.GetValueOrDefault(m.CarrierId, "—"),
+                m.Plate ?? plates.GetValueOrDefault(m.VehicleId), counts.GetValueOrDefault(m.Id), m.CostFinal, m.CostStatus,
+                by, at);
+        }).ToList();
+    }
+
+    /// <summary>Eventos que no son una actualización del manifiesto (impresión) ni de un proceso sin usuario.</summary>
+    private static readonly string[] NotAnUpdate = { ManifestEventTypes.Printed, ManifestEventTypes.Reprinted };
+
+    /// <summary>Último evento con usuario de cada manifiesto (sin impresiones): usuario y fecha UTC.</summary>
+    private async Task<Dictionary<Guid, (Guid UserId, DateTime At)>> LastUserEventsAsync(List<Guid> ids)
+    {
+        if (ids.Count == 0) return new Dictionary<Guid, (Guid, DateTime)>();
+        var events = _db.ManifestEvents.Where(e => e.CompanyId == CompanyId && ids.Contains(e.ManifestId) && e.UserId != null
+                                                   && !NotAnUpdate.Contains(e.EventType));
+        var last = await events.GroupBy(e => e.ManifestId).Select(g => new { g.Key, At = g.Max(e => e.OccurredAt) }).ToListAsync();
+        if (last.Count == 0) return new Dictionary<Guid, (Guid, DateTime)>();
+        var since = last.Min(x => x.At);
+        var candidates = await events.Where(e => e.OccurredAt >= since)
+            .Select(e => new { e.ManifestId, e.UserId, e.OccurredAt, e.Id }).ToListAsync();
+        var max = last.ToDictionary(x => x.Key, x => x.At);
+        return candidates.Where(c => max.TryGetValue(c.ManifestId, out var at) && c.OccurredAt == at)
+            .GroupBy(c => c.ManifestId)
+            .ToDictionary(g => g.Key, g => { var c = g.OrderByDescending(x => x.Id).First(); return (c.UserId!.Value, c.OccurredAt); });
     }
 
     // ---------------------------------------------------------------- Helpers

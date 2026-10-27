@@ -72,7 +72,7 @@
 
     <div class="table-responsive-lg">
         <table class="table-ps">
-            <thead><tr><th>N°</th><th>Fecha</th><th>Estado</th><th>Transportista</th><th>Patente</th><th>Docs</th><th>Costo</th><th>Costo estado</th><th class="col-actions"></th></tr></thead>
+            <thead><tr><th>N°</th><th>Fecha</th><th>Estado</th><th>Transportista</th><th>Patente</th><th>Docs</th><th>Costo</th><th>Costo estado</th><th>Actualizado por</th><th class="col-actions"></th></tr></thead>
             <tbody>
                 @foreach (var x in Model.Items)
                 {
@@ -85,12 +85,19 @@
                         <td>@x.TotalDocuments</td>
                         <td>@(x.CostFinal is null ? "—" : x.CostFinal.Value.ToString("N0", new CultureInfo("es-CL")))</td>
                         <td>@DespachosUi.CostStatusLabel(x.CostStatus)</td>
+                        <td class="text-nowrap">
+                            @Model.UserName(x.UpdatedBy)
+                            @if (x.UpdatedAt is { } upd)
+                            {
+                                <div class="text-muted small">@Modulo.Despachos.Dominio.ChileClock.ToLocal(upd).ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture)</div>
+                            }
+                        </td>
                         <td class="col-actions"><a class="btn-ghost" title="Abrir" href="~/despachos/manifiestos/@x.Id"><i class="bi bi-box-arrow-up-right"></i></a></td>
                     </tr>
                 }
                 @if (Model.Items.Count == 0)
                 {
-                    <tr><td colspan="9" class="text-muted">Sin manifiestos para el filtro indicado.</td></tr>
+                    <tr><td colspan="10" class="text-muted">Sin manifiestos para el filtro indicado.</td></tr>
                 }
             </tbody>
         </table>

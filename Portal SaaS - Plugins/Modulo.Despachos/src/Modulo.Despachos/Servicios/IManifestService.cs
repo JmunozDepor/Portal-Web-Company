@@ -53,7 +53,8 @@ public sealed record ManifestExtraChargeRow(long RateSurchargeId, string Name, s
 
 public sealed record ManifestListItem(
     Guid Id, int Number, string Status, DateOnly DispatchDate, long CarrierId, string CarrierName, string? Plate,
-    int TotalDocuments, decimal? CostFinal, string CostStatus);
+    int TotalDocuments, decimal? CostFinal, string CostStatus,
+    Guid? UpdatedBy = null, DateTime? UpdatedAt = null);
 
 /// <summary>
 /// Armado y despacho de manifiestos. Todo se acota a la compañía activa; las violaciones de reglas lanzan

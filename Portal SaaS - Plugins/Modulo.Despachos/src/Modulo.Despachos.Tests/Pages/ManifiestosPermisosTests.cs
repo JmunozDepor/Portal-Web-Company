@@ -408,6 +408,26 @@ public class ManifiestosPermisosTests
     }
 
     [Fact]
+    public async Task Listado_MuestraNombreDelUltimoUsuario()
+    {
+        var env = ManifestTestEnv.Build();
+        env.User.Grant("Despachos.manifiestos", PortalActions.View);
+        await env.Svc.CreateDraftAsync(env.Header());
+        var proxy = DispatchProxy.Create<ITenantUserAdminService, UsersProxy>();
+        ((UsersProxy)(object)proxy).Users = new[]
+        {
+            new TenantUserDto { Id = env.User.UserId, Username = "jmunoz", Email = "j@x.cl", IsAdmin = false, IsActive = true, IsLocked = false },
+        };
+        var page = new Manifiestos.IndexModel(env.Svc, env.Master, env.User, proxy) { TempData = Temp() };
+
+        await page.OnGetAsync();
+
+        Assert.Equal("jmunoz", page.UserName(page.Items.Single().UpdatedBy));
+        Assert.Equal("—", page.UserName(null));
+        Assert.Equal("(usuario no disponible)", page.UserName(Guid.NewGuid()));
+    }
+
+    [Fact]
     public async Task Listado_SinView_Forbid()
     {
         var env = ManifestTestEnv.Build();

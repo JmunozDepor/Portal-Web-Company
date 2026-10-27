@@ -46,7 +46,7 @@
             @if (Model.IsDraft && Model.CanApprove)
             {
                 <form method="post" asp-page-handler="Despachar" asp-route-id="@m.Id" asp-antiforgery="true" class="d-inline-block"
-                      data-confirm="@($"¿Despachar el manifiesto N° {m.Number} con {Model.DocCount} documentos? Se toma la foto del vehículo y el chofer y se calcula el costo." + (Model.GuidesEnabled ? $" Se emitirán {Model.GuidePreview?.Guides.Count ?? 0} guía(s) de despacho electrónicas." : ""))">
+                      data-confirm="@($"¿Despachar el manifiesto N° {m.Number} con {Model.DocCount} documentos? Se toma la foto del vehículo y el chofer y se calcula el costo." + (Model.EmitsGuides ? $" Se emitirán {Model.GuidePreview?.Guides.Count ?? 0} guía(s) de despacho electrónicas." : ""))">
                     <button type="submit" class="btn btn-primary" disabled="@(Model.DocCount == 0)"><i class="bi bi-truck"></i> Despachar</button>
                 </form>
             }

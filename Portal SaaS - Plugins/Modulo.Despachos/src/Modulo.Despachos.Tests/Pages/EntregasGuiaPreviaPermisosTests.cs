@@ -8,6 +8,7 @@ using Modulo.Despachos.Servicios;
 using Modulo.Despachos.Tests.Servicios;
 using PortalSaas.Abstractions.Modelos;
 using Entregas = Modulo.Despachos.Pages.Despachos.EntregasGuiaPrevia;
+using Manifiestos = Modulo.Despachos.Pages.Despachos.Manifiestos;
 
 namespace Modulo.Despachos.Tests.Pages;
 
@@ -141,5 +142,29 @@ public class EntregasGuiaPreviaPermisosTests
         env.User.Grant(Menu, PortalActions.View);
 
         Assert.IsType<NotFoundResult>(await Detalle(env).OnGetAsync(t.Id));
+    }
+
+    private sealed class FakeContactLookup : PortalSaas.Abstractions.Contratos.IUserContactLookupService
+    {
+        public Task<PortalSaas.Abstractions.Modelos.UserContactDto?> GetContactAsync(Guid userId, CancellationToken ct = default) =>
+            Task.FromResult<PortalSaas.Abstractions.Modelos.UserContactDto?>(new(Guid.Empty, "u@x.cl", false));
+    }
+
+    /// <summary>Revisión final: con la emisión Res. 154 apagada, un borrador con Entregas igual muestra la pestaña Guías y su vista previa.</summary>
+    [Fact]
+    public async Task Manifiesto_ConEntregas_GuiasApagadas_MuestraGuiasYVistaPrevia()
+    {
+        var (env, _, id) = await ManifestDeliveryGroupTests.ArrangeAsync();
+        await env.Svc.AddDocumentAsync(id, new DocumentCapture("EG-000001", null, null));
+        env.User.Grant("Despachos.manifiestos", PortalActions.View);
+        var pdf = new ManifestPdfService(env.Db, env.Company, env.User, env.Svc, env.Clock);
+        var page = new Manifiestos.DetalleModel(env.Svc, pdf, env.Master, env.User, new FakeContactLookup(), env.Cost, env.Guides) { TempData = Temp() };
+
+        Assert.IsType<PageResult>(await page.OnGetAsync(id));
+
+        Assert.False(page.GuidesEnabled);
+        Assert.True(page.ShowGuides);
+        Assert.NotNull(page.GuidePreview);
+        Assert.True(page.EmitsGuides);
     }
 }

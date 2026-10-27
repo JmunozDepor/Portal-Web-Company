@@ -45,7 +45,7 @@ public sealed record GuidePlan(IReadOnlyList<PlannedGuide> Guides, IReadOnlyList
 /// - transporte desde el snapshot del manifiesto;
 /// - transferencias a sucursales (Fase B): una guía por bodega destino, IndTraslado/TipoDespacho internos,
 ///   receptor = la propia compañía con la dirección de la sucursal, sin referencias y nunca valorizada;
-/// - Entregas con guía previa: una guía por agrupación EG- (una OC), receptor = el cliente, siempre valorizada, con
+/// - Entregas con guía previa: una guía por agrupación EG- (una OC) y destino, receptor = el cliente, siempre valorizada, con
 ///   indicador y tipo de despacho de la agrupación y una referencia 801 a la OC (se repite si la OC se divide);
 /// - guías del add-on agregadas por folio: ya tienen su guía, no generan otra; las guías manuales tampoco (se emiten
 ///   aparte con su propio contenido, ver TransportGuideService).
@@ -112,7 +112,8 @@ public static partial class GuidePlanner
             var key = isTransfer
                 ? $"T|{doc.CustomerCode}|{NormalizeAddress(doc.DestinationAddress!)}|{doc.DestinationCommuneId}"
                 : isDelivery
-                    ? $"D|{doc.DispatchGroupId}"
+                    // Una OC con Entregas a direcciones distintas va en una guía por destino (cada una con la 801).
+                    ? $"D|{doc.DispatchGroupId}|{NormalizeAddress(doc.DestinationAddress!)}|{doc.DestinationCommuneId}"
                     : $"{rut}|{NormalizeAddress(doc.DestinationAddress!)}|{doc.DestinationCommuneId}";
             var group = groups.FirstOrDefault(g => g.Key == key);
             if (group is null)

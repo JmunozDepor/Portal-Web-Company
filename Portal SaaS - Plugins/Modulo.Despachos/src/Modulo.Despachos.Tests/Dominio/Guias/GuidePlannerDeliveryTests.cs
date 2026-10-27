@@ -95,4 +95,20 @@ public class GuidePlannerDeliveryTests
         Assert.Equal(new int?[] { 2, 6 }, p.Guides.Select(g => g.Document.IdDoc.TransferIndicator));
         Assert.Equal(new long?[] { 4500000001, 4500000002 }, p.Guides.Select(g => g.Document.References.Single().Folio));
     }
+
+    /// <summary>Revisión final: Entregas de una misma OC a direcciones distintas van en guías distintas, cada una con su destino y la 801.</summary>
+    [Fact]
+    public void MismaOc_DireccionesDistintas_UnaGuiaPorDestino()
+    {
+        var a = Entrega(701, 10);
+        var b = Entrega(702, 10);
+        b.DestinationAddress = "Av. Vicuña Mackenna 3000";
+
+        var p = Plan(60, (a, Lineas(("A", 1, 1000m))), (b, Lineas(("B", 1, 1000m))));
+
+        Assert.Empty(p.Errors);
+        Assert.Equal(2, p.Guides.Count);
+        Assert.Equal(new[] { "Av. Kennedy 9001", "Av. Vicuña Mackenna 3000" }, p.Guides.Select(g => g.Document.Transport!.DestinationAddress));
+        Assert.All(p.Guides, g => Assert.Equal(4500000001L, Assert.Single(g.Document.References).Folio));
+    }
 }

@@ -96,7 +96,16 @@ public sealed class DetalleModel : DespachosPageModelBase
     public bool IsPendingGuides => M.Status == ManifestStatuses.PendingGuides;
 
     /// <summary>Pestaña Guías visible: la compañía emite guías o el manifiesto ya tiene guías (aunque luego se desactivaran).</summary>
-    public bool ShowGuides => GuidesEnabled || Guides.Count > 0 || HasManualGuides;
+    public bool ShowGuides => EmitsGuides || Guides.Count > 0;
+
+    /// <summary>
+    /// Al despachar se emiten guías: la compañía emite guías Res. 154, o el manifiesto lleva guías manuales o Entregas con
+    /// guía previa (esas se emiten siempre).
+    /// </summary>
+    public bool EmitsGuides => GuidesEnabled || HasManualGuides || HasDeliveries;
+
+    /// <summary>Entregas con guía previa (hojas EG-) en el manifiesto.</summary>
+    public bool HasDeliveries => M.Documents.Any(d => d.DocumentKind == DocumentKinds.Delivery);
 
     /// <summary>Anular disponible (botón y drawer usan la misma condición).</summary>
     public bool CanAnnulNow => CanDelete && (M.Status == ManifestStatuses.Draft || M.Status == ManifestStatuses.PendingGuides
@@ -158,8 +167,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         {
             if (m.Status == ManifestStatuses.Draft)
             {
-                if (GuidesEnabled || m.Documents.Any(d => d.DocumentKind == DocumentKinds.ManualGuide))
-                    GuidePreview = await _guides.PreviewAsync(m.Id);
+                if (EmitsGuides) GuidePreview = await _guides.PreviewAsync(m.Id);
             }
             else Guides = await _guides.ListAsync(m.Id);
         }

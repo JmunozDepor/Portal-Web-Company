@@ -134,6 +134,15 @@ public static class ClosureStatuses
 }
 
 /// <summary>Estados de una agrupación (despachos_dispatch_groups.status).</summary>
+/// <summary>Tipo de agrupación (dispatch_groups.kind).</summary>
+public static class DispatchGroupKinds
+{
+    /// <summary>Transferencias de stock a una bodega sucursal (AT-).</summary>
+    public const string Transfer = "transfer";
+    /// <summary>Entregas SAP de un cliente con guía previa, una OC por agrupación (EG-).</summary>
+    public const string Delivery = "delivery";
+}
+
 public static class DispatchGroupStatuses
 {
     public const string Armed = "armed";

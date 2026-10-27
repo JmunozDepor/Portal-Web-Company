@@ -431,9 +431,34 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("created_by");
 
+                    b.Property<long?>("CustomerPo")
+                        .HasColumnType("bigint")
+                        .HasColumnName("customer_po");
+
+                    b.Property<DateOnly?>("CustomerPoDate")
+                        .HasColumnType("date")
+                        .HasColumnName("customer_po_date");
+
+                    b.Property<string>("CustomerTaxId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("customer_tax_id");
+
                     b.Property<DateOnly>("DispatchDate")
                         .HasColumnType("date")
                         .HasColumnName("dispatch_date");
+
+                    b.Property<int?>("DispatchType")
+                        .HasColumnType("int")
+                        .HasColumnName("dispatch_type");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("transfer")
+                        .HasColumnName("kind");
 
                     b.Property<int>("Number")
                         .HasColumnType("int")
@@ -449,6 +474,10 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(15)")
                         .HasColumnName("status");
 
+                    b.Property<int?>("TransferIndicator")
+                        .HasColumnType("int")
+                        .HasColumnName("transfer_indicator");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at");
@@ -459,8 +488,8 @@ namespace Modulo.Despachos.Migrations.SqlServer.Migrations
 
                     b.Property<string>("WarehouseCode")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
                         .HasColumnName("warehouse_code");
 
                     b.HasKey("Id");

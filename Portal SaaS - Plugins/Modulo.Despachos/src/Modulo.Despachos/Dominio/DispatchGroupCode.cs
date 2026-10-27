@@ -9,15 +9,25 @@ namespace Modulo.Despachos.Dominio;
 /// </summary>
 public static class DispatchGroupCode
 {
-    private static readonly Regex Shape = new(@"^AT-(\d{1,9})$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex Shape = new(@"^(AT|EG)-(\d{1,9})$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    public static string Format(int number) => "AT-" + number.ToString("D6", CultureInfo.InvariantCulture);
+    /// <summary>"AT-" para traslados, "EG-" para Entregas con guía previa (mismo correlativo por compañía).</summary>
+    public static string Format(int number, string kind = Models.DispatchGroupKinds.Transfer) =>
+        (kind == Models.DispatchGroupKinds.Delivery ? "EG-" : "AT-") + number.ToString("D6", CultureInfo.InvariantCulture);
 
-    public static bool TryParse(string? raw, out int number)
+    /// <summary>Solo hojas de traslados (AT-).</summary>
+    public static bool TryParse(string? raw, out int number) =>
+        TryParse(raw, out number, out var kind) && kind == Models.DispatchGroupKinds.Transfer;
+
+    /// <summary>Hoja AT- o EG-, con su tipo.</summary>
+    public static bool TryParse(string? raw, out int number, out string kind)
     {
         number = 0;
+        kind = Models.DispatchGroupKinds.Transfer;
         if (string.IsNullOrWhiteSpace(raw)) return false;
         var m = Shape.Match(raw.Trim());
-        return m.Success && int.TryParse(m.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out number);
+        if (!m.Success || !int.TryParse(m.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out number)) return false;
+        if (m.Groups[1].Value.Equals("EG", StringComparison.OrdinalIgnoreCase)) kind = Models.DispatchGroupKinds.Delivery;
+        return true;
     }
 }

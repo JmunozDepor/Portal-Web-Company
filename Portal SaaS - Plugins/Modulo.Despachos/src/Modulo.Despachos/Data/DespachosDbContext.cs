@@ -225,8 +225,14 @@ public class DespachosDbContext : DbContext
         {
             Base(e, "despachos_dispatch_groups");
             e.Property(x => x.Number).HasColumnName("number");
-            e.Property(x => x.WarehouseCode).HasColumnName("warehouse_code").HasMaxLength(20).IsRequired();
+            e.Property(x => x.Kind).HasColumnName("kind").HasMaxLength(10).IsRequired().HasDefaultValue(DispatchGroupKinds.Transfer);
+            e.Property(x => x.WarehouseCode).HasColumnName("warehouse_code").HasMaxLength(50).IsRequired();
             e.Property(x => x.BranchName).HasColumnName("branch_name").HasMaxLength(100).IsRequired();
+            e.Property(x => x.CustomerTaxId).HasColumnName("customer_tax_id").HasMaxLength(20);
+            e.Property(x => x.CustomerPo).HasColumnName("customer_po");
+            e.Property(x => x.CustomerPoDate).HasColumnName("customer_po_date");
+            e.Property(x => x.TransferIndicator).HasColumnName("transfer_indicator");
+            e.Property(x => x.DispatchType).HasColumnName("dispatch_type");
             e.Property(x => x.DispatchDate).HasColumnName("dispatch_date");
             e.Property(x => x.Sequence).HasColumnName("sequence");
             e.Property(x => x.Status).HasColumnName("status").HasMaxLength(15).IsRequired();

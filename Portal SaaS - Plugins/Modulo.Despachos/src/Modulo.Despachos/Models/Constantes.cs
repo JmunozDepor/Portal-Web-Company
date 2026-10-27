@@ -142,6 +142,9 @@ public static class DocumentKinds
     /// <summary>Guía manual (GM-) agregada al manifiesto: no se busca por folio, entra por su código.</summary>
     public const string ManualGuide = "manual_guide";
 
+    /// <summary>Entrega SAP (ODLN) con guía previa: entra solo por su agrupación EG- (no se busca por folio).</summary>
+    public const string Delivery = "delivery";
+
     public static readonly IReadOnlyList<string> All = new[] { Invoice, TransferGuide };
 
     /// <summary>Nombre plural para mensajes ("facturas", "guías de traslado").</summary>
@@ -151,6 +154,7 @@ public static class DocumentKinds
         TransferGuide => "guías de traslado",
         Transfer => "transferencias",
         ManualGuide => "guías manuales",
+        Delivery => "entregas",
         _ => kind,
     };
 
@@ -160,6 +164,7 @@ public static class DocumentKinds
         TransferGuide => "Guía de traslado",
         Transfer => "Transferencia",
         ManualGuide => "Guía manual",
+        Delivery => "Entrega",
         _ => kind,
     };
 }

@@ -84,6 +84,7 @@ public sealed class ModuloDespachos : IModuloPortal
         services.AddScoped<Servicios.ITransportGuideService, Servicios.TransportGuideService>();
         services.AddScoped<Servicios.IManualGuideService, Servicios.ManualGuideService>();
         services.AddScoped<Servicios.IDispatchGroupService, Servicios.DispatchGroupService>();
+        services.AddScoped<Servicios.IDeliveryGroupService, Servicios.DeliveryGroupService>();
         services.AddScoped<Servicios.IManifestService, Servicios.ManifestService>();
         services.AddScoped<Servicios.IManifestPdfService, Servicios.ManifestPdfService>();
         services.AddScoped<Servicios.IDispatchGroupPdfService, Servicios.DispatchGroupPdfService>();

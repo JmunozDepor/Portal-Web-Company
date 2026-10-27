@@ -48,14 +48,15 @@ public class DispatchGroupPdfService : IDispatchGroupPdfService
     {
         var ci = CultureInfo.GetCultureInfo("es-CL");
         var doc = new Document();
-        doc.Info.Title = groups.Count == 1 ? DispatchGroupCode.Format(groups[0].Number) : "Agrupaciones";
+        doc.Info.Title = groups.Count == 1 ? DispatchGroupCode.Format(groups[0].Number, groups[0].Kind) : "Agrupaciones";
         var normal = doc.Styles[StyleNames.Normal]!;
         normal.Font.Name = "Arial";
         normal.Font.Size = 10;
 
         foreach (var g in groups)
         {
-            var code = DispatchGroupCode.Format(g.Number);
+            var code = DispatchGroupCode.Format(g.Number, g.Kind);
+            var delivery = g.Kind == DispatchGroupKinds.Delivery;
             var s = doc.AddSection();
             s.PageSetup.PageFormat = PageFormat.Letter;
             s.PageSetup.LeftMargin = s.PageSetup.RightMargin = Unit.FromCentimeter(1.5);
@@ -66,13 +67,20 @@ public class DispatchGroupPdfService : IDispatchGroupPdfService
             top.AddColumn(Unit.FromCentimeter(9.5));
             top.AddColumn(Unit.FromCentimeter(8.5));
             var row = top.AddRow();
-            var title = row.Cells[0].AddParagraph($"AGRUPACIÓN {code}");
+            var title = row.Cells[0].AddParagraph(delivery ? $"ENTREGAS CON GUÍA PREVIA {code}" : $"AGRUPACIÓN {code}");
             title.Format.Font.Size = 16;
             title.Format.Font.Bold = true;
             var company = row.Cells[0].AddParagraph(companyName);
             company.Format.Font.Bold = true;
             company.Format.SpaceBefore = Unit.FromPoint(2);
-            row.Cells[0].AddParagraph($"Sucursal {g.WarehouseCode} – {g.BranchName}");
+            if (delivery)
+            {
+                row.Cells[0].AddParagraph($"Cliente {g.WarehouseCode} – {g.BranchName}" + (g.CustomerTaxId is { } rut ? $" ({rut})" : ""));
+                row.Cells[0].AddParagraph($"OC {g.CustomerPo?.ToString(CultureInfo.InvariantCulture)}"
+                                          + (g.CustomerPoDate is { } po ? $" del {po.ToString("dd-MM-yyyy", ci)}" : ""));
+            }
+            else
+                row.Cells[0].AddParagraph($"Sucursal {g.WarehouseCode} – {g.BranchName}");
             row.Cells[0].AddParagraph($"Despacho {g.DispatchDate.ToString("dd-MM-yyyy", ci)}   Grupo {g.Sequence}");
             var barcode = row.Cells[1].AddParagraph();
             barcode.Format.Alignment = ParagraphAlignment.Center;
@@ -92,7 +100,7 @@ public class DispatchGroupPdfService : IDispatchGroupPdfService
             head.Shading.Color = Colors.LightGray;
             head.Format.Font.Bold = true;
             head.Cells[0].AddParagraph("LPN");
-            head.Cells[1].AddParagraph("Transferencia");
+            head.Cells[1].AddParagraph(delivery ? "Entrega" : "Transferencia");
             head.Cells[2].AddParagraph("Unidades").Format.Alignment = ParagraphAlignment.Right;
             foreach (var line in g.Transfers.OrderBy(x => x.SapDocNum))
             {

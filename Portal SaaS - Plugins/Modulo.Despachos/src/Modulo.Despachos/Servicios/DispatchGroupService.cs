@@ -72,7 +72,7 @@ public class DispatchGroupService : IDispatchGroupService
         var created = new List<DispatchGroup>();
         foreach (var c in candidates)
         {
-            var sequence = await _db.DispatchGroups.CountAsync(g => g.CompanyId == CompanyId
+            var sequence = await _db.DispatchGroups.CountAsync(g => g.CompanyId == CompanyId && g.Kind == DispatchGroupKinds.Transfer
                 && g.WarehouseCode == c.Branch.WarehouseCode && g.DispatchDate == dispatchDate) + 1;
             var group = new DispatchGroup
             {
@@ -130,7 +130,7 @@ public class DispatchGroupService : IDispatchGroupService
 
     public async Task<IReadOnlyList<DispatchGroupListItem>> ListAsync(DispatchGroupFilter filter)
     {
-        var q = _db.DispatchGroups.Include(g => g.Transfers).Where(g => g.CompanyId == CompanyId);
+        var q = _db.DispatchGroups.Include(g => g.Transfers).Where(g => g.CompanyId == CompanyId && g.Kind == filter.Kind);
         if (filter.DispatchDate is { } d) q = q.Where(g => g.DispatchDate == d);
         if (filter.From is { } from) q = q.Where(g => g.DispatchDate >= from);
         if (filter.To is { } to) q = q.Where(g => g.DispatchDate <= to);
@@ -152,7 +152,7 @@ public class DispatchGroupService : IDispatchGroupService
         return groups.Select(g =>
         {
             byGroup.TryGetValue(g.Id, out var m);
-            return new DispatchGroupListItem(g.Id, g.Number, DispatchGroupCode.Format(g.Number), g.WarehouseCode, g.BranchName,
+            return new DispatchGroupListItem(g.Id, g.Number, DispatchGroupCode.Format(g.Number, g.Kind), g.WarehouseCode, g.BranchName,
                 g.DispatchDate, g.Sequence, g.Status, g.Transfers.Count, g.Transfers.Sum(t => t.Units), m?.Id, m?.Number);
         }).ToList();
     }
@@ -208,7 +208,9 @@ public class DispatchGroupService : IDispatchGroupService
 
     private async Task<DispatchGroup> RequireArmedAsync(long groupId)
     {
-        var g = await GetAsync(groupId) ?? throw new InvalidOperationException("La agrupación no existe.");
+        // Solo agrupaciones de traslados: las de Entregas se editan con IDeliveryGroupService.
+        var g = await GetAsync(groupId) is { Kind: DispatchGroupKinds.Transfer } found
+            ? found : throw new InvalidOperationException("La agrupación no existe.");
         var code = DispatchGroupCode.Format(g.Number);
         return g.Status switch
         {
@@ -234,7 +236,7 @@ public class DispatchGroupService : IDispatchGroupService
         var inGroups = await (from t in _db.DispatchGroupTransfers
                               join g in _db.DispatchGroups on t.DispatchGroupId equals g.Id
                               where t.CompanyId == CompanyId && g.CompanyId == CompanyId && entries.Contains(t.SapDocEntry)
-                                    && holding.Contains(g.Status)
+                                    && g.Kind == DispatchGroupKinds.Transfer && holding.Contains(g.Status)
                               select new { t.SapDocEntry, g.Number }).ToListAsync();
         foreach (var x in inGroups) result.TryAdd(x.SapDocEntry, $"ya está en la agrupación {DispatchGroupCode.Format(x.Number)}");
 

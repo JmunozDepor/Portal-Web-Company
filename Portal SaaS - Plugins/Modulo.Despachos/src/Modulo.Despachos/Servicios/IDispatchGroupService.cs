@@ -7,7 +7,7 @@ public sealed record BranchCandidates(BranchWarehouse Branch, IReadOnlyList<SapT
 
 /// <summary>DispatchDate = un día; From/To = rango de fechas de despacho (ambos extremos incluidos).</summary>
 public sealed record DispatchGroupFilter(DateOnly? DispatchDate = null, string? WarehouseCode = null, string? Status = null,
-    DateOnly? From = null, DateOnly? To = null);
+    DateOnly? From = null, DateOnly? To = null, string Kind = DispatchGroupKinds.Transfer);
 
 public sealed record DispatchGroupListItem(long Id, int Number, string Code, string WarehouseCode, string BranchName,
     DateOnly DispatchDate, int Sequence, string Status, int Transfers, decimal Units, Guid? ManifestId, int? ManifestNumber);

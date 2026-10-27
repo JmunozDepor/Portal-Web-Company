@@ -54,4 +54,21 @@ public class DispatchGroupPdfServiceTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => pdf.RenderAsync(Array.Empty<long>()));
         Assert.Contains("No hay agrupaciones para imprimir", ex.Message);
     }
+
+    [Fact]
+    public async Task Hoja_Entrega_MuestraOcYCodigoEG()
+    {
+        var env = DeliveryGroupServiceTests.Env();
+        var g = (await env.Deliveries.GenerateAsync(DeliveryGroupServiceTests.Input(701, 702))).Single();
+
+        var text = string.Concat(ManifestPdfServiceTests.ExtractText(
+            await new DispatchGroupPdfService(env.Groups, env.Company).RenderAsync(new[] { g.Id })).Where(c => !char.IsWhiteSpace(c)));
+
+        Assert.Contains("EG-000001", text);
+        Assert.Contains("4500000001", text);
+        Assert.Contains("Falabella", text);
+        Assert.Contains("LPN701", text);
+        Assert.DoesNotContain("AT-", text);
+        Assert.DoesNotContain("$", text);
+    }
 }

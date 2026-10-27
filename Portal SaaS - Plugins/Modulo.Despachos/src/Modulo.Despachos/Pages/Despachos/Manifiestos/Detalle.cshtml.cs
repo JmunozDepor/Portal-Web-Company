@@ -170,7 +170,7 @@ public sealed class DetalleModel : DespachosPageModelBase
         {
             var codes = new Dictionary<long, string>();
             foreach (var gid in m.Documents.Where(d => d.DispatchGroupId != null).Select(d => d.DispatchGroupId!.Value).Distinct())
-                if (await _dispatchGroups.GetAsync(gid) is { } g) codes[gid] = Dominio.DispatchGroupCode.Format(g.Number);
+                if (await _dispatchGroups.GetAsync(gid) is { } g) codes[gid] = Dominio.DispatchGroupCode.Format(g.Number, g.Kind);
             GroupCodes = codes;
         }
         if (_manualGuides is not null)

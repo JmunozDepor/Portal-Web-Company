@@ -10,7 +10,8 @@ public sealed record DispatchGroupFilter(DateOnly? DispatchDate = null, string? 
     DateOnly? From = null, DateOnly? To = null, string Kind = DispatchGroupKinds.Transfer);
 
 public sealed record DispatchGroupListItem(long Id, int Number, string Code, string WarehouseCode, string BranchName,
-    DateOnly DispatchDate, int Sequence, string Status, int Transfers, decimal Units, Guid? ManifestId, int? ManifestNumber);
+    DateOnly DispatchDate, int Sequence, string Status, int Transfers, decimal Units, Guid? ManifestId, int? ManifestNumber,
+    long? CustomerPo = null, int? TransferIndicator = null);
 
 /// <summary>
 /// Agrupaciones: bodega agrupa por sucursal y día de despacho las transferencias SAP pendientes; despacho escanea la

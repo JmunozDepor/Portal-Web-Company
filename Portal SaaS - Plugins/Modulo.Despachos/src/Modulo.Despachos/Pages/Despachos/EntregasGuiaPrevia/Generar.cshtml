@@ -1,0 +1,153 @@
+@page "/despachos/entregas-guia-previa/generar"
+@model Modulo.Despachos.Pages.Despachos.EntregasGuiaPrevia.GenerarModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
+@using System.Globalization
+@{
+    ViewData["Title"] = "Agrupar Entregas";
+    var es = new CultureInfo("es-CL");
+    var c = Model.Candidates;
+}
+@* Entregas abiertas del cliente, por OC: se marca lo que sale y "Agrupar" crea una agrupación EG- por OC con las
+   condiciones de la guía elegidas aquí. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Agrupar Entregas con guía previa</h2>
+        <a class="btn btn-secondary" href="~/despachos/entregas-guia-previa?DispatchDate=@Model.DispatchDate">Volver</a>
+    </div>
+
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label" for="f-customer">Cliente (RUT o código SAP)</label>
+            <input type="text" id="f-customer" name="Customer" value="@Model.Customer" class="form-control" maxlength="50" required />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-from">Entregas desde</label>
+            <input type="date" id="f-from" name="FromDate" value="@Model.FromDate" class="form-control" required />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-dispatch">Fecha de despacho</label>
+            <input type="date" id="f-dispatch" name="DispatchDate" value="@Model.DispatchDate" class="form-control" required />
+        </div>
+        <input type="hidden" name="TransferIndicator" value="@Model.TransferIndicator.ToString(CultureInfo.InvariantCulture)" />
+        <input type="hidden" name="DispatchType" value="@Model.DispatchType.ToString(CultureInfo.InvariantCulture)" />
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </div>
+    </form>
+
+    @if (c is null)
+    {
+        <p class="text-muted">Indique el cliente para ver sus Entregas abiertas.</p>
+    }
+    else
+    {
+        <p class="mb-2">Cliente: <strong>@c.CustomerCode - @c.CustomerName</strong> @(c.CustomerTaxId is { } rut ? $"({rut})" : "")</p>
+
+        @if (c.Orders.Count == 0)
+        {
+            <p class="text-muted">No hay Entregas libres para agrupar desde la fecha indicada.</p>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Generar" asp-antiforgery="true">
+                <input type="hidden" name="customer" value="@c.CustomerCode" />
+                <input type="hidden" name="fromDate" value="@Model.FromDate" />
+                <input type="hidden" name="dispatchDate" value="@Model.DispatchDate" />
+
+                @* Condiciones de la guía: aplican a todas las agrupaciones que se crean ahora. *@
+                <div class="filter-card mb-3">
+                    <div class="col-auto">
+                        <label class="form-label" for="g-indicator">Indicador de traslado</label>
+                        <select id="g-indicator" name="transferIndicator" class="form-select">
+                            @for (var i = 1; i <= 9; i++)
+                            {
+                                <option value="@i" selected="@(Model.TransferIndicator == i)">@TransferIndicators.Label(i)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label" for="g-dispatch-type">Tipo de despacho</label>
+                        <select id="g-dispatch-type" name="dispatchType" class="form-select">
+                            @for (var t = 1; t <= 3; t++)
+                            {
+                                <option value="@t" selected="@(Model.DispatchType == t)">@DispatchTypes.Label(t)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="sel-all" data-select-all />
+                    <label class="form-check-label" for="sel-all">Seleccionar todos</label>
+                </div>
+
+                @foreach (var o in c.Orders)
+                {
+                    <div class="card-surface mb-3" data-select-group>
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                            <h3 class="h6 mb-0">OC @o.CustomerPo.ToString(CultureInfo.InvariantCulture)@(o.OrderDate is { } od ? $" · pedido del {od.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)}" : "")</h3>
+                            <span class="text-muted">@o.Deliveries.Count Entregas · @o.Deliveries.Sum(d => d.Units).ToString("N0", es) unidades · $@o.Deliveries.Sum(d => d.NetAmount).ToString("N0", es) neto</span>
+                        </div>
+                        <div class="table-responsive-lg">
+                            <table class="table-ps">
+                                <thead><tr><th><input type="checkbox" class="form-check-input" data-select-branch aria-label="Seleccionar toda la OC @o.CustomerPo" /></th><th>LPN</th><th>Entrega</th><th>Fecha</th><th>Destino</th><th class="text-end">Unidades</th><th class="text-end">Neto</th></tr></thead>
+                                <tbody>
+                                    @foreach (var d in o.Deliveries)
+                                    {
+                                        <tr>
+                                            <td><input type="checkbox" class="form-check-input" name="docEntries" value="@d.DocEntry" aria-label="Incluir @(d.Lpn ?? d.DocNum.ToString())" /></td>
+                                            <td>@(d.Lpn ?? "—")</td>
+                                            <td>@d.DocNum</td>
+                                            <td class="text-nowrap">@d.DocumentDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
+                                            <td>@(d.DestinationAddress ?? "—")@(d.DestinationCommune is { } com ? $", {com}" : "")</td>
+                                            <td class="text-end">@d.Units.ToString("N0", es)</td>
+                                            <td class="text-end">$@d.NetAmount.ToString("N0", es)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="submit" class="btn btn-primary">Agrupar seleccionadas (<span data-selected-count>0</span>)</button>
+                </div>
+            </form>
+        }
+
+        @if (c.Blocked.Count > 0)
+        {
+            <h3 class="h6 mt-4">Entregas que no se pueden agrupar</h3>
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead><tr><th>LPN</th><th>Entrega</th><th>Fecha</th><th>OC</th><th>Motivo</th></tr></thead>
+                    <tbody>
+                        @foreach (var b in c.Blocked)
+                        {
+                            <tr>
+                                <td>@(b.Delivery.Lpn ?? "—")</td>
+                                <td>@b.Delivery.DocNum</td>
+                                <td class="text-nowrap">@b.Delivery.DocumentDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
+                                <td>@(b.Delivery.CustomerPo ?? "—")</td>
+                                <td>@b.Reason</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/despachos-agrupar.js" asp-append-version="true"></script>
+}

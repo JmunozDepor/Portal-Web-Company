@@ -1,0 +1,109 @@
+@page "/despachos/entregas-guia-previa"
+@model Modulo.Despachos.Pages.Despachos.EntregasGuiaPrevia.IndexModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
+@using System.Globalization
+@{
+    ViewData["Title"] = "Entregas con guía previa";
+    var es = new CultureInfo("es-CL");
+}
+@* Entregas de clientes que reciben solo con guía, agrupadas por OC (EG-); la hoja se escanea en el manifiesto y al
+   despachar sale una guía valorizada por OC. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Entregas con guía previa</h2>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-secondary" target="_blank" rel="noopener"
+               href="~/despachos/entregas-guia-previa?handler=Pdf&From=@Model.From&To=@Model.To&Customer=@Model.Customer&Status=@Model.Status">
+                <i class="bi bi-printer"></i> Imprimir todas
+            </a>
+            @if (Model.CanCreate)
+            {
+                <a class="btn btn-primary" href="~/despachos/entregas-guia-previa/generar?DispatchDate=@Model.To">+ Agrupar Entregas</a>
+            }
+        </div>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.WarningMessage is not null)
+    {
+        <div class="alert alert-warning">@Model.WarningMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label" for="f-from">Despacho desde</label>
+            <input type="date" id="f-from" name="From" value="@Model.From" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-to">Hasta</label>
+            <input type="date" id="f-to" name="To" value="@Model.To" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-customer">Cliente (código SAP)</label>
+            <input type="text" id="f-customer" name="Customer" value="@Model.Customer" class="form-control" maxlength="50" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-status">Estado</label>
+            <select id="f-status" name="Status" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var s in new[] { DispatchGroupStatuses.Armed, DispatchGroupStatuses.InManifest, DispatchGroupStatuses.Dispatched, DispatchGroupStatuses.Annulled })
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@DispatchGroupStatuses.Label(s)</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a class="btn btn-secondary" href="~/despachos/entregas-guia-previa">Limpiar</a>
+        </div>
+    </form>
+
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead><tr><th>Código</th><th>Cliente</th><th>OC</th><th>Despacho</th><th class="text-end">Entregas</th><th class="text-end">Unidades</th><th>Motivo</th><th>Estado</th><th>Manifiesto</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var x in Model.Items)
+                {
+                    <tr>
+                        <td><a href="~/despachos/entregas-guia-previa/@x.Id">@x.Code</a></td>
+                        <td>@x.WarehouseCode - @x.BranchName</td>
+                        <td>@(x.CustomerPo?.ToString(CultureInfo.InvariantCulture) ?? "—")</td>
+                        <td class="text-nowrap">@x.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
+                        <td class="text-end">@x.Transfers</td>
+                        <td class="text-end">@x.Units.ToString("N0", es)</td>
+                        <td>@(x.TransferIndicator is { } ind ? TransferIndicators.Label(ind) : "—")</td>
+                        <td><span class="dsp-badge @DespachosUi.DispatchGroupBadgeClass(x.Status)">@DispatchGroupStatuses.Label(x.Status)</span></td>
+                        <td>
+                            @if (x.ManifestId is { } mid)
+                            {
+                                <a href="~/despachos/manifiestos/@mid">N° @x.ManifestNumber</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td class="col-actions">
+                            <a class="btn-ghost" title="Imprimir hoja" target="_blank" rel="noopener" href="~/despachos/entregas-guia-previa/@x.Id?handler=Pdf"><i class="bi bi-printer"></i></a>
+                            <a class="btn-ghost" title="Abrir" href="~/despachos/entregas-guia-previa/@x.Id"><i class="bi bi-box-arrow-up-right"></i></a>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="10" class="text-muted">Sin agrupaciones para el filtro indicado.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -153,7 +153,8 @@ public class DispatchGroupService : IDispatchGroupService
         {
             byGroup.TryGetValue(g.Id, out var m);
             return new DispatchGroupListItem(g.Id, g.Number, DispatchGroupCode.Format(g.Number, g.Kind), g.WarehouseCode, g.BranchName,
-                g.DispatchDate, g.Sequence, g.Status, g.Transfers.Count, g.Transfers.Sum(t => t.Units), m?.Id, m?.Number);
+                g.DispatchDate, g.Sequence, g.Status, g.Transfers.Count, g.Transfers.Sum(t => t.Units), m?.Id, m?.Number,
+                g.CustomerPo, g.TransferIndicator);
         }).ToList();
     }
 

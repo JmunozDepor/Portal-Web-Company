@@ -218,7 +218,7 @@
                         @foreach (var (gid, gcode) in Model.GroupCodes)
                         {
                             <form method="post" asp-page-handler="QuitarAgrupacion" asp-route-id="@m.Id" asp-route-groupId="@gid" asp-antiforgery="true" class="d-inline-block"
-                                  data-confirm="@($"¿Quitar todas las transferencias de la agrupación {gcode}?")">
+                                  data-confirm="@($"¿Quitar todos los documentos de la agrupación {gcode}?")">
                                 <button type="submit" class="btn btn-secondary" title="Quitar agrupación">@gcode <i class="bi bi-x-lg"></i></button>
                             </form>
                         }
@@ -300,7 +300,7 @@
                                 @d.Folio@if (d.Lpn is not null) { <div class="text-muted">LPN @d.Lpn</div> }
                                 @if (d.DispatchGroupId is { } gid && Model.GroupCodes.TryGetValue(gid, out var gcode))
                                 {
-                                    <div><a class="text-muted" href="~/despachos/agrupar-traslados/@gid">@gcode</a></div>
+                                    <div><a class="text-muted" href="~/despachos/@(gcode.StartsWith("EG-", StringComparison.Ordinal) ? "entregas-guia-previa" : "agrupar-traslados")/@gid">@gcode</a></div>
                                 }
                                 @if (d.TransportGuideId is { } mgid && Model.ManualGuideCodes.TryGetValue(mgid, out var mcode))
                                 {

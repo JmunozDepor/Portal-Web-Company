@@ -31,10 +31,11 @@ public sealed class ModuloDespachos : IModuloPortal
 
         yield return Group("grupo-operacion", "raiz", "Operación", "bi-truck-flatbed", 1);
         yield return Leaf("agrupar-traslados", "grupo-operacion", "Agrupar traslados", "bi-box-seam", "/despachos/agrupar-traslados", 1);
-        yield return Leaf("manifiestos", "grupo-operacion", "Manifiestos", "bi-card-list", "/despachos/manifiestos", 2);
-        yield return Leaf("guias-manuales", "grupo-operacion", "Guías", "bi-file-earmark-text", "/despachos/guias-manuales", 3);
-        yield return Leaf("retorno", "grupo-operacion", "Retorno", "bi-arrow-return-left", "/despachos/retorno", 4);
-        yield return Leaf("reporte-documentos", "grupo-operacion", "Reporte de documentos", "bi-file-earmark-check", "/despachos/reportes/documentos", 5);
+        yield return Leaf("entregas-guia-previa", "grupo-operacion", "Entregas con guía previa", "bi-box-arrow-right", "/despachos/entregas-guia-previa", 2);
+        yield return Leaf("manifiestos", "grupo-operacion", "Manifiestos", "bi-card-list", "/despachos/manifiestos", 3);
+        yield return Leaf("guias-manuales", "grupo-operacion", "Guías", "bi-file-earmark-text", "/despachos/guias-manuales", 4);
+        yield return Leaf("retorno", "grupo-operacion", "Retorno", "bi-arrow-return-left", "/despachos/retorno", 5);
+        yield return Leaf("reporte-documentos", "grupo-operacion", "Reporte de documentos", "bi-file-earmark-check", "/despachos/reportes/documentos", 6);
 
         yield return Group("grupo-costos", "raiz", "Costos", "bi-cash-coin", 2);
         yield return Leaf("tarifario", "grupo-costos", "Tarifario", "bi-tags", "/despachos/tarifario", 1);

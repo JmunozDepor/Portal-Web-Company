@@ -1,0 +1,126 @@
+@page "/despachos/entregas-guia-previa/{id:long}"
+@model Modulo.Despachos.Pages.Despachos.EntregasGuiaPrevia.DetalleModel
+@section Styles {
+    <link rel="stylesheet" href="~/css/despachos.css" asp-append-version="true" />
+}
+@using System.Globalization
+@{
+    ViewData["Title"] = Model.Code;
+    var g = Model.G;
+    var es = new CultureInfo("es-CL");
+    var canEdit = Model.CanEdit && Model.IsArmed;
+}
+@* Agrupación EG- (una OC): mientras está armada se pueden agregar LPN de la misma OC, quitar Entregas, cambiar las
+   condiciones de la guía o anularla. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Agrupación @Model.Code <span class="dsp-badge @DespachosUi.DispatchGroupBadgeClass(g.Status)">@DispatchGroupStatuses.Label(g.Status)</span></h2>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-secondary" href="~/despachos/entregas-guia-previa?DispatchDate=@g.DispatchDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">Volver</a>
+            <a class="btn btn-primary" target="_blank" rel="noopener" href="~/despachos/entregas-guia-previa/@g.Id?handler=Pdf"><i class="bi bi-printer"></i> Imprimir hoja</a>
+        </div>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <div class="d-flex gap-4 mb-3 text-muted flex-wrap">
+        <span>Cliente: <strong>@g.WarehouseCode - @g.BranchName</strong>@(g.CustomerTaxId is { } rut ? $" ({rut})" : "")</span>
+        <span>OC: <strong>@g.CustomerPo?.ToString(CultureInfo.InvariantCulture)</strong>@(g.CustomerPoDate is { } po ? $" del {po.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)}" : "")</span>
+        <span>Despacho: <strong>@g.DispatchDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</strong></span>
+        <span>Entregas: <strong>@g.Transfers.Count</strong></span>
+        <span>Unidades: <strong>@g.Transfers.Sum(t => t.Units).ToString("N0", es)</strong></span>
+        <span>Motivo: <strong>@(g.TransferIndicator is { } ind ? TransferIndicators.Label(ind) : "—")</strong></span>
+        <span>Tipo de despacho: <strong>@DispatchTypes.Label(g.DispatchType)</strong></span>
+        @if (g.AnnulReason is not null)
+        {
+            <span>Motivo de anulación: <strong>@g.AnnulReason</strong></span>
+        }
+    </div>
+
+    @if (canEdit)
+    {
+        <form method="post" asp-page-handler="Condiciones" asp-route-id="@g.Id" asp-antiforgery="true" class="d-flex gap-2 align-items-end flex-wrap mb-3">
+            <div>
+                <label class="form-label" for="c-indicator">Indicador de traslado</label>
+                <select id="c-indicator" name="transferIndicator" class="form-select">
+                    @for (var i = 1; i <= 9; i++)
+                    {
+                        <option value="@i" selected="@(g.TransferIndicator == i)">@TransferIndicators.Label(i)</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="c-dispatch-type">Tipo de despacho</label>
+                <select id="c-dispatch-type" name="dispatchType" class="form-select">
+                    @for (var t = 1; t <= 3; t++)
+                    {
+                        <option value="@t" selected="@(g.DispatchType == t)">@DispatchTypes.Label(t)</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-secondary">Guardar condiciones</button>
+        </form>
+
+        <form method="post" asp-page-handler="AgregarLpn" asp-route-id="@g.Id" asp-antiforgery="true" class="d-flex gap-2 align-items-end flex-wrap mb-3">
+            <div>
+                <label class="form-label" for="lpn">Escanear LPN (misma OC)</label>
+                <input type="text" id="lpn" name="lpn" class="form-control" autocomplete="off" autofocus required maxlength="30" />
+            </div>
+            <button type="submit" class="btn btn-primary">Agregar</button>
+        </form>
+    }
+
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead><tr><th>LPN</th><th>Entrega</th><th>Fecha</th><th class="text-end">Unidades</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var t in g.Transfers.OrderBy(x => x.SapDocNum))
+                {
+                    <tr>
+                        <td>@(t.Lpn ?? "—")</td>
+                        <td>@t.SapDocNum</td>
+                        <td class="text-nowrap">@t.DocumentDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)</td>
+                        <td class="text-end">@t.Units.ToString("N0", es)</td>
+                        <td class="col-actions">
+                            @if (canEdit)
+                            {
+                                <form method="post" asp-page-handler="Quitar" asp-route-id="@g.Id" asp-route-lineId="@t.Id" asp-antiforgery="true" class="d-inline-block"
+                                      data-confirm="@($"¿Quitar la Entrega {t.SapDocNum}?")">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Quitar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (g.Transfers.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-muted">La agrupación no tiene Entregas.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.CanDelete && Model.IsArmed)
+    {
+        <form method="post" asp-page-handler="Anular" asp-route-id="@g.Id" asp-antiforgery="true" class="d-flex gap-2 align-items-end flex-wrap mt-3"
+              data-confirm="@($"¿Anular la agrupación {Model.Code}? Sus Entregas quedarán libres.")">
+            <div>
+                <label class="form-label" for="reason">Motivo de anulación</label>
+                <input type="text" id="reason" name="reason" class="form-control" required maxlength="200" />
+            </div>
+            <button type="submit" class="btn btn-danger">Anular agrupación</button>
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/despachos-maestros.js" asp-append-version="true"></script>
+}

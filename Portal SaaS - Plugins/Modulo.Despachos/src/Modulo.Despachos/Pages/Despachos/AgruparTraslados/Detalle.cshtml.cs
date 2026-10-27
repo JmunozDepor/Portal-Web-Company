@@ -31,8 +31,8 @@ public sealed class DetalleModel : DespachosPageModelBase
     public async Task<IActionResult> OnGetAsync(long id)
     {
         if (!await HasActionAsync(PortalActions.View)) return Forbid();
-        var g = await _groups.GetAsync(id);
-        if (g is null) return NotFound();
+        // Las agrupaciones de Entregas (EG-) se abren en Entregas con guía previa.
+        if (await _groups.GetAsync(id) is not { Kind: DispatchGroupKinds.Transfer } g) return NotFound();
         G = g;
         CanEdit = await HasActionAsync(PortalActions.Edit);
         CanDelete = await HasActionAsync(PortalActions.Delete);

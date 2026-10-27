@@ -39,10 +39,16 @@ public static class SapQueryKinds
     /// <summary>Socio de negocio por RUT (:tax_id) con sus direcciones de despacho: receptor de la guía manual.</summary>
     public const string BusinessPartnerByTaxId = "business_partner_by_tax_id";
 
+    // Entregas con guía previa: Entregas (ODLN) abiertas del cliente, por LPN y sus líneas.
+    public const string DeliveryPending = "delivery_pending";
+    public const string DeliveryByLpn = "delivery_by_lpn";
+    public const string DeliveryLines = "delivery_lines";
+
     public static readonly IReadOnlyList<string> All = new[]
     {
         DocumentKinds.Invoice, DocumentKinds.TransferGuide, InvoiceLines,
         TransferByLpn, TransferPending, TransferPendingAll, TransferLines, Warehouses, BusinessPartnerByTaxId,
+        DeliveryPending, DeliveryByLpn, DeliveryLines,
     };
 
     public static string Label(string kind) => kind switch
@@ -54,6 +60,9 @@ public static class SapQueryKinds
         TransferLines => "Líneas de transferencia",
         Warehouses => "Bodegas",
         BusinessPartnerByTaxId => "Socio de negocio por RUT",
+        DeliveryPending => "Entregas pendientes del cliente",
+        DeliveryByLpn => "Entrega por LPN",
+        DeliveryLines => "Líneas de Entrega",
         _ => DocumentKinds.Label(kind),
     };
 }

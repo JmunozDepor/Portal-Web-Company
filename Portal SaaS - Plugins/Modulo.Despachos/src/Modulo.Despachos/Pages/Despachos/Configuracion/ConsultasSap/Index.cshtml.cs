@@ -87,9 +87,15 @@ public sealed class IndexModel : MaestroPageModelBase
             case SapQueryKinds.BusinessPartnerByTaxId:
                 if (sample.Length == 0) throw new InvalidOperationException("Indique un RUT de prueba (de un cliente que exista en SAP).");
                 return (0, sample);
+            case SapQueryKinds.DeliveryPending:
+                if (sample.Length == 0) throw new InvalidOperationException("Indique el código SAP de un cliente de prueba (con Entregas de los últimos 30 días).");
+                return (0, sample);
+            case SapQueryKinds.DeliveryByLpn:
+                if (sample.Length == 0) throw new InvalidOperationException("Indique un LPN de prueba (de una Entrega que exista en SAP).");
+                return (0, sample);
         }
         if (!long.TryParse(sample, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) || n <= 0)
-            throw new InvalidOperationException(Input.DocumentKind is SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines
+            throw new InvalidOperationException(Input.DocumentKind is SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines or SapQueryKinds.DeliveryLines
                 ? "Indique un DocEntry de prueba (número interno de un documento que exista en SAP)."
                 : "Indique un folio de prueba (número de un documento que exista en SAP).");
         return (n, null);
@@ -98,8 +104,9 @@ public sealed class IndexModel : MaestroPageModelBase
     /// <summary>Etiqueta del campo de muestra según el tipo de consulta.</summary>
     public static string SampleLabel(string? kind) => kind switch
     {
-        SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines => "DocEntry de prueba",
-        SapQueryKinds.TransferByLpn => "LPN de prueba",
+        SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines or SapQueryKinds.DeliveryLines => "DocEntry de prueba",
+        SapQueryKinds.TransferByLpn or SapQueryKinds.DeliveryByLpn => "LPN de prueba",
+        SapQueryKinds.DeliveryPending => "Código de cliente de prueba (con Entregas de los últimos 30 días)",
         SapQueryKinds.TransferPending => "Código de bodega de prueba",
         SapQueryKinds.BusinessPartnerByTaxId => "RUT de prueba",
         SapQueryKinds.Warehouses => "Sin muestra (la consulta no usa parámetros)",

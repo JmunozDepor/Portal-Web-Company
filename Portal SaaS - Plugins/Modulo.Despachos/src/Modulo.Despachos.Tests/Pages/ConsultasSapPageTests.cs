@@ -43,11 +43,11 @@ public class ConsultasSapPageTests
     }
 
     [Fact]
-    public async Task OnGet_ConView_ListaLasNueveConsultas_ConSeedEnHana()
+    public async Task OnGet_ConView_ListaLasDoceConsultas_ConSeedEnHana()
     {
         var (page, _) = Build(new FakeCurrentUserContext().Grant("Despachos.consultas-sap", PortalActions.View));
         Assert.IsType<PageResult>(await page.OnGetAsync());
-        Assert.Equal(9, page.Rows.Count);
+        Assert.Equal(12, page.Rows.Count);
         Assert.Contains(page.Rows, r => r.Kind == SapQueryKinds.InvoiceLines);
         Assert.All(page.Rows, r => Assert.NotNull(r.Query));
     }
@@ -113,4 +113,11 @@ public class ConsultasSapPageTests
         Assert.Contains("folio de prueba", page.ErrorMessage);
         Assert.Empty(hana.ExecutedSql);
     }
+
+    [Theory]
+    [InlineData(SapQueryKinds.DeliveryPending, "Código de cliente de prueba (con Entregas de los últimos 30 días)")]
+    [InlineData(SapQueryKinds.DeliveryByLpn, "LPN de prueba")]
+    [InlineData(SapQueryKinds.DeliveryLines, "DocEntry de prueba")]
+    public void Muestra_ConsultasDeEntregas(string kind, string label) =>
+        Assert.Equal(label, ConsultasSap.IndexModel.SampleLabel(kind));
 }

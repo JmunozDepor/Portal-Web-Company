@@ -28,6 +28,21 @@ public sealed class FakeSapDocumentLookupService : ISapDocumentLookupService
             ? Task.FromResult(l)
             : throw new InvalidOperationException("Configure la consulta SAP de líneas de factura en Despachos > Configuración > Consultas SAP.");
 
+    /// <summary>Entregas de SAP (Entregas con guía previa).</summary>
+    public List<SapDeliveryInfo> Deliveries { get; } = new();
+
+    /// <summary>true = la consulta "Entrega por LPN" no está configurada (FindDeliveryByLpnAsync lanza).</summary>
+    public bool DeliveryByLpnMissing { get; set; }
+
+    public Task<IReadOnlyList<SapDeliveryInfo>> ListPendingDeliveriesAsync(string customerCode, DateOnly fromDate, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<SapDeliveryInfo>>(Deliveries
+            .Where(d => d.CustomerCode == customerCode && d.DocumentDate >= fromDate && d.IsOpen).ToList());
+
+    public Task<SapDeliveryInfo?> FindDeliveryByLpnAsync(string lpn, CancellationToken ct = default) =>
+        DeliveryByLpnMissing
+            ? throw new InvalidOperationException("Configure la consulta SAP «Entrega por LPN» en Despachos > Configuración > Consultas SAP.")
+            : Task.FromResult(Deliveries.FirstOrDefault(d => string.Equals(d.Lpn, lpn, StringComparison.OrdinalIgnoreCase)));
+
     /// <summary>Transferencias de SAP (Fase B): por LPN y pendientes por bodega desde una fecha.</summary>
     public List<SapTransferInfo> Transfers { get; } = new();
 

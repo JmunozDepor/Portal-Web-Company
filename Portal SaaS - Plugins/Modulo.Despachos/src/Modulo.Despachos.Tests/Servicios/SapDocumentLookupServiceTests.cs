@@ -233,12 +233,12 @@ public class SapDocumentLookupServiceTests
     }
 
     [Fact]
-    public async Task List_EnHana_SiembraLasNueveConsultas_YEnOtroMotorNo()
+    public async Task List_EnHana_SiembraLasDoceConsultas_YEnOtroMotorNo()
     {
         var (svc, db, _, _) = Build();
         var list = await svc.ListQueriesAsync();
-        Assert.Equal(9, list.Count);
-        Assert.Equal(9, db.SapDocumentQueries.Count());
+        Assert.Equal(12, list.Count);
+        Assert.Equal(12, db.SapDocumentQueries.Count());
 
         var (svc2, db2, _, _) = Build(engine: "PostgreSQL");
         Assert.Empty(await svc2.ListQueriesAsync());

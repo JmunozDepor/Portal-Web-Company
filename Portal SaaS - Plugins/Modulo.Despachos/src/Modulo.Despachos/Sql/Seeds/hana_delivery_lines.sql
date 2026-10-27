@@ -1,0 +1,40 @@
+-- Lineas de una Entrega (DLN1) para la guia de despacho Res. 154 - una fila por linea, por DocEntry.
+-- Sin esquema fijo - aplica el esquema actual de la conexion SAP de la compania.
+-- weight_kg = cantidad x peso unitario de venta (OITM.SWeight1) convertido a kg con la unidad OWGT
+--   [validar con el administrador SAP - unidad y campo de peso de cada SAP]; NULL si el articulo no tiene peso.
+-- customer_activity = giro del cliente (GiroRecep, max. 40), el primero con dato de
+--   OCRD."U_U_NX_giro" (clientes mayoristas internos), "U_GSP_SubGroupName" (clientes creados por el punto de
+--   venta, sin su codigo "10001-") y, al final, "Notes". Se repite en cada fila. Campos de Depor - ajustar por compania.
+-- item_name = descripcion corta del articulo (OITM."FrgnName"); si esta vacia, la descripcion de la linea.
+-- line_amount (opcional) = monto neto de la linea en pesos con el descuento de cabecera de la Entrega; con
+--   la guia de Entregas siempre se valoriza con precio = monto / cantidad.
+-- destination_city = ciudad de la direccion de despacho (DLN12."CityS"); se repite en cada fila.
+-- model_code (opcional) = codigo del modelo sin talla (OITM."U_GSP_REFERENCE" en Depor) - con "Lineas de la guia =
+--   por modelo" las tallas de un modelo van en una sola linea. model_name (opcional) = nombre del modelo - el mayor
+--   FrgnName de sus SKU, para que el modelo tenga un solo nombre; si no viene, el mayor item_name de la guia.
+SELECT
+  L."LineNum" AS "line_num",
+  L."ItemCode" AS "item_code",
+  COALESCE(NULLIF(TRIM(I."FrgnName"), ''), L."Dscription") AS "item_name",
+  L."Quantity" AS "quantity",
+  L."unitMsr" AS "unit",
+  CASE WHEN I."SWeight1" > 0 AND W."WightInMG" > 0
+       THEN L."Quantity" * I."SWeight1" * W."WightInMG" / 1000000
+       ELSE NULL END AS "weight_kg",
+  LEFT(COALESCE(
+    NULLIF(TRIM(C0."U_U_NX_giro"), ''),
+    NULLIF(TRIM(SUBSTR_AFTER(C0."U_GSP_SubGroupName", '-')), ''),
+    NULLIF(TRIM(C0."U_GSP_SubGroupName"), ''),
+    NULLIF(TRIM(C0."Notes"), '')), 40) AS "customer_activity",
+  T2."CityS" AS "destination_city",
+  L."LineTotal" * (1 - COALESCE(T0."DiscPrcnt", 0) / 100) AS "line_amount",
+  I."U_GSP_REFERENCE" AS "model_code",
+  (SELECT MAX(NULLIF(TRIM(X."FrgnName"), '')) FROM OITM X WHERE X."U_GSP_REFERENCE" = I."U_GSP_REFERENCE") AS "model_name"
+FROM DLN1 L
+INNER JOIN ODLN T0 ON T0."DocEntry" = L."DocEntry"
+LEFT JOIN OITM I ON I."ItemCode" = L."ItemCode"
+LEFT JOIN OWGT W ON W."UnitCode" = I."SWght1Unit"
+LEFT JOIN OCRD C0 ON C0."CardCode" = T0."CardCode"
+LEFT JOIN DLN12 T2 ON T2."DocEntry" = T0."DocEntry"
+WHERE L."DocEntry" = :doc_entry
+ORDER BY L."LineNum"

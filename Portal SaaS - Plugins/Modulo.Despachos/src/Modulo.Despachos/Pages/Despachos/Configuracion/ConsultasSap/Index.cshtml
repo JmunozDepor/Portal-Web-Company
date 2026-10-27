@@ -134,6 +134,28 @@
             </div>
             <p class="text-muted mt-2 mb-0">Compare bodega, LPN y unidades con la transferencia en SAP antes de guardar.</p>
         }
+        else if (v.IsValid && Model.Probe.Deliveries is { } ds)
+        {
+            <div class="alert alert-success">La consulta cumple el contrato: @ds.Count Entrega(s).</div>
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead><tr><th>DocEntry / DocNum</th><th>Fecha</th><th>LPN</th><th>Cliente</th><th>OC</th><th>Fecha pedido</th><th class="text-end">N° OC</th><th>Dirección</th><th>Comuna</th><th class="text-end">Unidades</th><th class="text-end">Neto</th><th>Abierta</th></tr></thead>
+                    <tbody>
+                        @foreach (var e in ds)
+                        {
+                            <tr>
+                                <td>@e.DocEntry / @e.DocNum</td><td>@e.DocumentDate.ToString("yyyy-MM-dd")</td><td>@(e.Lpn ?? "—")</td>
+                                <td>@e.CustomerCode - @e.CustomerName (@(e.CustomerTaxId ?? "sin RUT"))</td><td>@(e.CustomerPo ?? "—")</td>
+                                <td>@(e.OrderDate?.ToString("yyyy-MM-dd") ?? "—")</td><td class="text-end">@e.PoCount</td>
+                                <td>@(e.DestinationAddress ?? "—")</td><td>@(e.DestinationCommune ?? "—")</td>
+                                <td class="text-end">@e.Units.ToString("0.##")</td><td class="text-end">@e.NetAmount.ToString("N0")</td><td>@(e.IsOpen ? "Sí" : "No")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted mt-2 mb-0">Compare cliente, LPN y OC (del pedido) con la Entrega en SAP antes de guardar.</p>
+        }
         else if (v.IsValid && Model.Probe.Partner is { } bp)
         {
             <div class="alert alert-success">La consulta cumple el contrato: @bp.CardCode - @bp.Name@(bp.IsActive ? "" : " (inactivo)").</div>

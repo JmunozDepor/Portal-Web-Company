@@ -28,6 +28,16 @@ public sealed record SapTransferInfo(
     int DocEntry, int DocNum, DateOnly DocumentDate, string WarehouseCode, string WarehouseName,
     string? DestinationAddress, string? DestinationCommune, decimal Units, bool IsCanceled, string? Lpn);
 
+/// <summary>
+/// Entrega SAP (ODLN) para Entregas con guía previa. Lpn = NumAtCard de la Entrega; CustomerPo / OrderDate = N° de
+/// referencia y fecha del pedido base (la OC del cliente); PoCount = OC distintas en sus líneas; IsOpen = no facturada,
+/// cerrada ni anulada.
+/// </summary>
+public sealed record SapDeliveryInfo(
+    int DocEntry, int DocNum, DateOnly DocumentDate, string CustomerCode, string CustomerName, string? CustomerTaxId,
+    string? DestinationAddress, string? DestinationCommune, string? Lpn, string? CustomerPo, DateOnly? OrderDate,
+    int PoCount, decimal Units, decimal NetAmount, bool IsOpen);
+
 /// <summary>Bodega de SAP (OWHS), para elegir las bodegas sucursal.</summary>
 public sealed record SapWarehouse(string Code, string Name, string? Address, string? Commune);
 
@@ -41,7 +51,7 @@ public sealed record SapBusinessPartner(string CardCode, string Name, string? Ac
 public sealed record SapQueryProbeResult(
     QueryValidationResult Validation, SapDocumentInfo? Document, SapDocumentLines? Lines = null,
     IReadOnlyList<SapTransferInfo>? Transfers = null, IReadOnlyList<SapWarehouse>? Warehouses = null,
-    SapBusinessPartner? Partner = null);
+    SapBusinessPartner? Partner = null, IReadOnlyList<SapDeliveryInfo>? Deliveries = null);
 
 /// <summary>
 /// Búsqueda de facturas / guías de traslado por folio con las consultas SAP configuradas
@@ -72,7 +82,7 @@ public interface ISapDocumentLookupService
 
     /// <summary>
     /// Líneas del documento SAP <paramref name="docEntry"/> con la consulta <paramref name="queryKind"/>
-    /// (<see cref="SapQueryKinds.InvoiceLines"/> o <see cref="SapQueryKinds.TransferLines"/>, parámetro :doc_entry).
+    /// (<see cref="SapQueryKinds.InvoiceLines"/>, <see cref="SapQueryKinds.TransferLines"/> o <see cref="SapQueryKinds.DeliveryLines"/>, parámetro :doc_entry).
     /// Lanza InvalidOperationException si la consulta no está configurada o no cumple el contrato de columnas.
     /// </summary>
     Task<SapDocumentLines> GetLinesAsync(string queryKind, int docEntry, CancellationToken ct = default);
@@ -91,6 +101,15 @@ public interface ISapDocumentLookupService
     /// prefiere el activo. Lanza si el RUT no es válido o la consulta no está configurada.
     /// </summary>
     Task<SapBusinessPartner?> FindBusinessPartnerAsync(string taxId, CancellationToken ct = default);
+
+    /// <summary>Entregas abiertas del cliente (CardCode) desde la fecha (:customer, :from_date), una por DocEntry.</summary>
+    Task<IReadOnlyList<SapDeliveryInfo>> ListPendingDeliveriesAsync(string customerCode, DateOnly fromDate, CancellationToken ct = default);
+
+    /// <summary>
+    /// Entrega por LPN (:lpn). Null si no existe; con varias prefiere la única abierta, si no lanza. Lanza también si la
+    /// consulta no está configurada (la compañía no usa Entregas con guía previa).
+    /// </summary>
+    Task<SapDeliveryInfo?> FindDeliveryByLpnAsync(string lpn, CancellationToken ct = default);
 
     /// <summary>Bodegas de SAP (sin parámetros).</summary>
     Task<IReadOnlyList<SapWarehouse>> ListSapWarehousesAsync(CancellationToken ct = default);

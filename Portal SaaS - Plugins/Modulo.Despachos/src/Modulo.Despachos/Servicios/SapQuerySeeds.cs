@@ -18,6 +18,9 @@ public static class SapQuerySeeds
             SapQueryKinds.TransferLines => "hana_transfer_lines.sql",
             SapQueryKinds.Warehouses => "hana_warehouses.sql",
             SapQueryKinds.BusinessPartnerByTaxId => "hana_business_partner_by_tax_id.sql",
+            SapQueryKinds.DeliveryPending => "hana_delivery_pending.sql",
+            SapQueryKinds.DeliveryByLpn => "hana_delivery_by_lpn.sql",
+            SapQueryKinds.DeliveryLines => "hana_delivery_lines.sql",
             _ => throw new InvalidOperationException($"Tipo de documento desconocido: '{documentKind}'."),
         };
         var assembly = typeof(SapQuerySeeds).Assembly;

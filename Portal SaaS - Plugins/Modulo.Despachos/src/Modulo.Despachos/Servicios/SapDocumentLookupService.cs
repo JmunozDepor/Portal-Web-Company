@@ -37,6 +37,13 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         "destination_commune", "units", "is_canceled", "lpn",
     };
 
+    /// <summary>Contrato de las consultas de Entregas (pendientes del cliente y por LPN).</summary>
+    public static readonly IReadOnlyList<string> DeliveryColumns = new[]
+    {
+        "doc_entry", "doc_num", "document_date", "customer_code", "customer_name", "customer_tax_id", "destination_address",
+        "destination_commune", "lpn", "customer_po", "order_date", "po_count", "units", "net_amount", "is_open",
+    };
+
     /// <summary>Contrato de la consulta de bodegas.</summary>
     public static readonly IReadOnlyList<string> WarehouseColumns = new[] { "warehouse_code", "warehouse_name", "address", "commune" };
 
@@ -116,7 +123,7 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
 
     public async Task<SapDocumentLines> GetLinesAsync(string queryKind, int docEntry, CancellationToken ct = default)
     {
-        if (queryKind is not (SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines))
+        if (queryKind is not (SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines or SapQueryKinds.DeliveryLines))
             throw new InvalidOperationException($"Consulta de líneas inválida: '{queryKind}'.");
         var query = await RequireActiveQueryAsync(queryKind, ct);
 
@@ -149,6 +156,47 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         (await QueryTransfersAsync(SapQueryKinds.TransferPendingAll,
             new { from_date = fromDate.ToDateTime(TimeOnly.MinValue) }, ct))
         .GroupBy(t => t.DocEntry).Select(g => g.First()).ToList();
+
+    public async Task<IReadOnlyList<SapDeliveryInfo>> ListPendingDeliveriesAsync(string customerCode, DateOnly fromDate, CancellationToken ct = default) =>
+        (await QueryDeliveriesAsync(SapQueryKinds.DeliveryPending,
+            new { customer = customerCode, from_date = fromDate.ToDateTime(TimeOnly.MinValue) }, ct))
+        .GroupBy(d => d.DocEntry).Select(g => g.First()).ToList();
+
+    public async Task<SapDeliveryInfo?> FindDeliveryByLpnAsync(string lpn, CancellationToken ct = default)
+    {
+        var distinct = (await QueryDeliveriesAsync(SapQueryKinds.DeliveryByLpn, new { lpn }, ct))
+            .GroupBy(d => d.DocEntry).Select(g => g.First()).ToList();
+        // Entrega anulada o cerrada y otra vigente con el mismo LPN: vale la abierta.
+        if (distinct.Count > 1 && distinct.Count(d => d.IsOpen) == 1) return distinct.Single(d => d.IsOpen);
+        if (distinct.Count > 1)
+            throw new InvalidOperationException($"El LPN {lpn} está en más de una Entrega en SAP; revise el LPN.");
+        return distinct.FirstOrDefault();
+    }
+
+    private async Task<List<SapDeliveryInfo>> QueryDeliveriesAsync(string kind, object parameters, CancellationToken ct)
+    {
+        var query = await RequireActiveQueryAsync(kind, ct);
+        var rows = (await _hana.QueryDynamicAsync(Executable(query.SqlText), parameters, ct)).Select(ToCaseInsensitive).ToList();
+        RequireColumns(kind, rows, DeliveryColumns);
+        return rows.Select(MapDelivery).ToList();
+    }
+
+    private static SapDeliveryInfo MapDelivery(IReadOnlyDictionary<string, object?> r) => new(
+        DocEntry: ToInt(r["doc_entry"]),
+        DocNum: ToInt(r["doc_num"]),
+        DocumentDate: ToDate(r["document_date"]),
+        CustomerCode: Str(r["customer_code"]) ?? "",
+        CustomerName: Str(r["customer_name"]) ?? "",
+        CustomerTaxId: Str(r["customer_tax_id"]),
+        DestinationAddress: Str(r["destination_address"]),
+        DestinationCommune: Str(r["destination_commune"]),
+        Lpn: Str(r["lpn"]),
+        CustomerPo: Str(r["customer_po"]),
+        OrderDate: IsNull(r["order_date"]) ? null : ToDate(r["order_date"]),
+        PoCount: ToInt(r["po_count"]),
+        Units: ToDecimal(r["units"]),
+        NetAmount: ToDecimal(r["net_amount"]),
+        IsOpen: ToBool(r["is_open"]));
 
     public async Task<IReadOnlyList<SapWarehouse>> ListSapWarehousesAsync(CancellationToken ct = default)
     {
@@ -247,7 +295,13 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         RequireQueryKind(documentKind);
         return documentKind switch
         {
-            SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines => ProbeLinesAsync(sql, checked((int)sampleFolio)),
+            SapQueryKinds.InvoiceLines or SapQueryKinds.TransferLines or SapQueryKinds.DeliveryLines =>
+                ProbeLinesAsync(sql, checked((int)sampleFolio)),
+            SapQueryKinds.DeliveryPending => ProbeDeliveriesAsync(sql, DeliveryPendingParameters,
+                new { customer = (sampleText ?? "").Trim(), from_date = DateTime.Today.AddDays(-30) },
+                $"el cliente {sampleText} en los últimos 30 días"),
+            SapQueryKinds.DeliveryByLpn => ProbeDeliveriesAsync(sql, LpnParameters, new { lpn = (sampleText ?? "").Trim() },
+                $"el LPN {sampleText}"),
             SapQueryKinds.TransferByLpn => ProbeTransfersAsync(sql, LpnParameters, new { lpn = (sampleText ?? "").Trim() },
                 $"el LPN {sampleText}"),
             SapQueryKinds.TransferPending => ProbeTransfersAsync(sql, PendingParameters,
@@ -274,6 +328,26 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
         try
         {
             return new SapQueryProbeResult(Valid, null, Transfers: rows.Select(MapTransfer).ToList());
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
+        {
+            return Invalid($"Una columna tiene un tipo de dato inesperado: {ex.Message}");
+        }
+    }
+
+    private async Task<SapQueryProbeResult> ProbeDeliveriesAsync(
+        string sql, (string? Required, string[] Allowed) parameters, object values, string sampleLabel)
+    {
+        var staticError = CheckStatic(sql, parameters);
+        if (staticError is not null) return Invalid(staticError);
+        var (rows, error) = await TryRunAsync(sql, values);
+        if (error is not null) return Invalid(error);
+        if (rows!.Count == 0) return Invalid($"La consulta no devolvió Entregas para {sampleLabel}; pruebe con otra muestra.");
+        var missing = DeliveryColumns.Where(c => !rows[0].ContainsKey(c)).ToList();
+        if (missing.Count > 0) return MissingResult(missing);
+        try
+        {
+            return new SapQueryProbeResult(Valid, null, Deliveries: rows.Select(MapDelivery).ToList());
         }
         catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
         {
@@ -398,6 +472,8 @@ public sealed class SapDocumentLookupService : ISapDocumentLookupService
     private static readonly (string? Required, string[] Allowed) PendingAllParameters = ("from_date", new[] { "from_date" });
     private static readonly (string? Required, string[] Allowed) NoParameters = (null, Array.Empty<string>());
     private static readonly (string? Required, string[] Allowed) PartnerParameters = ("tax_id", new[] { "tax_id" });
+    /// <summary>Entregas pendientes: :customer (obligatorio) y :from_date; la de LPN usa LpnParameters.</summary>
+    private static readonly (string? Required, string[] Allowed) DeliveryPendingParameters = ("customer", new[] { "customer", "from_date" });
 
     /// <summary>
     /// Comprobaciones previas a ejecutar: una sola sentencia SELECT/WITH, sin ';' salvo uno

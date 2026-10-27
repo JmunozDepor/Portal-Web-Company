@@ -41,6 +41,19 @@ public class OrigenesEmisorPageTests
         Assert.Empty(writer.Writes);
     }
 
+    [Fact]
+    public async Task ProbarEscritura_Entrega_EscribeEnLaEntrega()
+    {
+        var (page, svc) = Build(new FakeCurrentUserContext().Grant("Despachos.origenes", PortalActions.View, PortalActions.Edit), out var writer);
+        await svc.SaveTransferSettingsAsync(null, "52", null, null, 5, 3);
+
+        await page.OnPostTestSapWriteAsync(888, "delivery");
+
+        Assert.Equal("SAP aceptó la escritura en la Entrega 888.", page.SuccessMessage);
+        Assert.Equal(888, Assert.Single(writer.DeliveryWrites).DocEntry);
+        Assert.Empty(writer.Writes);
+    }
+
     private static Origenes.IndexModel.TransferSettingsInput Traslados(string? field = "U_NX_Manifiesto", string? pattern = @"^(CTBO|ICBO)\d+$") => new()
     {
         LpnPattern = pattern, FolioPrefix = "52", ManifestField = field, DispatchDateField = "U_NX_FechaDesp",

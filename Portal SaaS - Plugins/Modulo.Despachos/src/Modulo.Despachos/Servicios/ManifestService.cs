@@ -786,8 +786,9 @@ public class ManifestService : IManifestService
         // Guías Res. 154: el plan se valida ANTES de cambiar nada (el camión no espera por datos que faltan).
         // Modo guías solo si hay algo que guiar: un manifiesto solo con guías del add-on despacha como antes.
         // Las guías manuales se emiten siempre (son guías por definición), aunque la emisión Res. 154 esté apagada.
+        // Las Entregas con guía previa también: la guía es su único documento.
         var withGuides = _guides != null
-                         && (m.Documents.Any(d => d.DocumentKind == DocumentKinds.ManualGuide)
+                         && (m.Documents.Any(d => d.DocumentKind is DocumentKinds.ManualGuide or DocumentKinds.Delivery)
                              || (await _guides.IsEnabledAsync()
                                  && m.Documents.Any(d => d.DocumentKind is DocumentKinds.Invoice or DocumentKinds.Transfer)));
         if (withGuides && errors.Count == 0)

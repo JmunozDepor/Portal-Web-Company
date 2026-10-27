@@ -11,4 +11,10 @@ public interface ISapTransferWriter
 
     /// <summary>Valor actual de los campos pedidos (null si SAP no los informa).</summary>
     Task<IReadOnlyDictionary<string, object?>> ReadAsync(int docEntry, IReadOnlyList<string> fields, CancellationToken ct = default);
+
+    /// <summary>PATCH de los campos en la Entrega <paramref name="docEntry"/> (DeliveryNotes, Entregas con guía previa).</summary>
+    Task WriteDeliveryAsync(int docEntry, IReadOnlyDictionary<string, object?> fields, CancellationToken ct = default);
+
+    /// <summary>Valor actual de los campos pedidos de la Entrega (null si SAP no los informa).</summary>
+    Task<IReadOnlyDictionary<string, object?>> ReadDeliveryAsync(int docEntry, IReadOnlyList<string> fields, CancellationToken ct = default);
 }

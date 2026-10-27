@@ -108,17 +108,20 @@ public sealed class IndexModel : MaestroPageModelBase
         "Ajustes de guías de traslado actualizados.");
 
     /// <summary>
-    /// "Probar escritura" (Fase B): reescribe con su valor actual los campos configurados de una transferencia SAP,
-    /// para validar antes de operar que SAP acepta actualizarla (aunque esté cerrada). Exige EDIT.
+    /// "Probar escritura" (Fase B): reescribe con su valor actual los campos configurados de una transferencia SAP
+    /// (o el folio de una Entrega, <paramref name="kind"/> = "delivery", Entregas con guía previa), para validar antes de
+    /// operar que SAP acepta actualizarla (aunque esté cerrada). Exige EDIT.
     /// </summary>
-    public async Task<IActionResult> OnPostTestSapWriteAsync(int docEntry)
+    public async Task<IActionResult> OnPostTestSapWriteAsync(int docEntry, string? kind = null)
     {
         if (!await HasActionAsync(PortalActions.Edit)) return Forbid();
         try
         {
-            if (docEntry <= 0) throw new InvalidOperationException("Indique el DocEntry de una transferencia de SAP.");
+            var delivery = kind == DocumentKinds.Delivery;
+            if (docEntry <= 0)
+                throw new InvalidOperationException(delivery ? "Indique el DocEntry de una Entrega de SAP." : "Indique el DocEntry de una transferencia de SAP.");
             if (_guides is null) throw new InvalidOperationException("La escritura en SAP no está disponible.");
-            SuccessMessage = await _guides.TestSapWriteAsync(docEntry);
+            SuccessMessage = delivery ? await _guides.TestSapDeliveryWriteAsync(docEntry) : await _guides.TestSapWriteAsync(docEntry);
         }
         catch (Exception ex) { ErrorMessage = GetErrorMessage(ex); }
         return RedirectToPage();

@@ -78,7 +78,7 @@ public sealed class TransportGuideService : ITransportGuideService
         IReadOnlyList<string> warnings = Array.Empty<string>();
         if (res154)
         {
-            var (plan, planErrors) = await PlanAsync(m, settings!, previewSnapshot: draft);
+            var (plan, planErrors) = await PlanAsync(m, settings ?? new DespachosSetting(), previewSnapshot: draft);
             views.AddRange(plan?.Guides.Select(g => View(g, m)) ?? Enumerable.Empty<PlannedGuideView>());
             errors.AddRange(planErrors);
             warnings = plan?.Warnings ?? Array.Empty<string>();
@@ -94,9 +94,13 @@ public sealed class TransportGuideService : ITransportGuideService
         return new GuidePreview(true, views, errors, warnings);
     }
 
-    /// <summary>Guías Res. 154 a planificar: emisión activada y facturas o transferencias en el manifiesto.</summary>
+    /// <summary>
+    /// Guías Res. 154 a planificar: emisión activada y facturas o transferencias en el manifiesto, o Entregas con guía
+    /// previa (esas se emiten siempre: la guía es su único documento).
+    /// </summary>
     private static bool WantsRes154(Manifest m, DespachosSetting? settings) =>
-        settings is { GuidesEnabled: true } && m.Documents.Any(d => d.DocumentKind is DocumentKinds.Invoice or DocumentKinds.Transfer);
+        m.Documents.Any(d => d.DocumentKind == DocumentKinds.Delivery)
+        || (settings is { GuidesEnabled: true } && m.Documents.Any(d => d.DocumentKind is DocumentKinds.Invoice or DocumentKinds.Transfer));
 
     /// <summary>Guías manuales que viajan en el manifiesto (documentos manual_guide), por número.</summary>
     private async Task<List<TransportGuide>> ManualGuidesOfAsync(Manifest m, bool tracking)
@@ -151,7 +155,9 @@ public sealed class TransportGuideService : ITransportGuideService
     public async Task<byte[]> PreviewPdfAsync(Guid manifestId, int sequence)
     {
         var m = await LoadReadOnlyAsync(manifestId);
-        var settings = await RequireSettingsAsync();
+        var settings = m.Documents.Any(d => d.DocumentKind == DocumentKinds.Delivery)
+            ? await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.CompanyId == CompanyId) ?? new DespachosSetting()
+            : await RequireSettingsAsync();
         var (plan, errors) = await PlanAsync(m, settings, previewSnapshot: m.Status == ManifestStatuses.Draft);
         if (errors.Count > 0) throw new InvalidOperationException(string.Join(" ", errors));
         var guide = plan!.Guides.FirstOrDefault(g => g.Sequence == sequence)
@@ -363,6 +369,34 @@ public sealed class TransportGuideService : ITransportGuideService
         return m.Documents.Count(d => d.SapWritebackStatus == SapWritebackStatuses.Pending);
     }
 
+    public async Task<string> TestSapDeliveryWriteAsync(int docEntry)
+    {
+        var settings = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.CompanyId == CompanyId) ?? new DespachosSetting();
+        var names = DeliveryWritebackFields(settings, 0).Keys.ToList();
+        if (_writer is null) throw new InvalidOperationException("La escritura en SAP no está disponible.");
+        try
+        {
+            var current = await _writer.ReadDeliveryAsync(docEntry, names);
+            await _writer.WriteDeliveryAsync(docEntry, current);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"SAP rechazó la escritura en la Entrega {docEntry}: {ex.Message}", ex);
+        }
+        return $"SAP aceptó la escritura en la Entrega {docEntry}.";
+    }
+
+    /// <summary>
+    /// Campos que se escriben en la Entrega (Entregas con guía previa): siempre FolioNumber y, si hay prefijo de folio,
+    /// FolioPrefixString. Los campos de usuario de transferencias no aplican a la Entrega.
+    /// </summary>
+    public static IReadOnlyDictionary<string, object?> DeliveryWritebackFields(DespachosSetting s, long folio)
+    {
+        var fields = new Dictionary<string, object?> { ["FolioNumber"] = folio };
+        if (!string.IsNullOrWhiteSpace(s.TransferFolioPrefix)) fields["FolioPrefixString"] = s.TransferFolioPrefix.Trim();
+        return fields;
+    }
+
     public async Task<string> TestSapWriteAsync(int docEntry)
     {
         var settings = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.CompanyId == CompanyId) ?? new DespachosSetting();
@@ -407,17 +441,21 @@ public sealed class TransportGuideService : ITransportGuideService
     {
         if (g.Folio is not { } folio || _writer is null) return;
         var ids = g.Documents.Select(x => x.ManifestDocumentId).ToHashSet();
-        var docs = m.Documents.Where(d => ids.Contains(d.Id) && d.DocumentKind == DocumentKinds.Transfer
-                                          && d.SapWritebackStatus != SapWritebackStatuses.Ok).ToList();
         var fields = WritebackFields(settings, folio, m.Number, m.DispatchDate);
-        if (docs.Count == 0 || fields.Count == 0) return;
+        var deliveryFields = DeliveryWritebackFields(settings, folio);
+        // Transferencias solo si hay campos configurados; Entregas siempre (su folio es lo que permite facturarlas después).
+        var docs = m.Documents.Where(d => ids.Contains(d.Id) && d.SapWritebackStatus != SapWritebackStatuses.Ok
+                                          && ((d.DocumentKind == DocumentKinds.Transfer && fields.Count > 0)
+                                              || d.DocumentKind == DocumentKinds.Delivery)).ToList();
+        if (docs.Count == 0) return;
 
         var failed = new List<ManifestDocument>();
         foreach (var d in docs)
         {
             try
             {
-                await _writer.WriteAsync(d.SapDocEntry, fields);
+                if (d.DocumentKind == DocumentKinds.Delivery) await _writer.WriteDeliveryAsync(d.SapDocEntry, deliveryFields);
+                else await _writer.WriteAsync(d.SapDocEntry, fields);
                 d.SapWritebackStatus = SapWritebackStatuses.Ok;
                 d.SapWritebackError = null;
             }
@@ -429,14 +467,16 @@ public sealed class TransportGuideService : ITransportGuideService
             }
         }
         if (failed.Count > 0)
-            AddEvent(m, ManifestEventTypes.SapWritebackFailed, new { folio, transfers = failed.Select(d => d.Folio), error = failed[0].SapWritebackError });
+            AddEvent(m, ManifestEventTypes.SapWritebackFailed, new { folio, documents = failed.Select(d => d.Folio), error = failed[0].SapWritebackError });
         await _db.SaveChangesAsync();
         if (failed.Count == 0) return;
         try
         {
             var list = string.Join(", ", failed.Select(d => d.Folio));
+            var what = failed.All(d => d.DocumentKind == DocumentKinds.Delivery) ? "la Entrega"
+                : failed.All(d => d.DocumentKind == DocumentKinds.Transfer) ? "la transferencia" : "los documentos";
             await _notifications.TryEnqueueAsync(_user.UserId, $"SAP pendiente en manifiesto N° {m.Number}",
-                $"Manifiesto N° {m.Number}: no se pudo escribir el folio {folio} en la transferencia {list} de SAP. Reintente desde la pestaña Guías.",
+                $"Manifiesto N° {m.Number}: no se pudo escribir el folio {folio} en {what} {list} de SAP. Reintente desde la pestaña Guías.",
                 NotificationSeverity.Warning, $"/despachos/manifiestos/{m.Id:D}?tab=guias");
         }
         catch (Exception ex)
@@ -465,12 +505,14 @@ public sealed class TransportGuideService : ITransportGuideService
         if (previewSnapshot) await ApplyCurrentMastersAsync(m, errors);
 
         var docs = new List<(ManifestDocument, SapDocumentLines)>();
-        foreach (var d in m.Documents.OrderBy(d => d.AddedAt))
+        // Con la emisión Res. 154 apagada solo se planifican las Entregas con guía previa (siempre llevan guía).
+        foreach (var d in m.Documents.Where(d => settings.GuidesEnabled || d.DocumentKind == DocumentKinds.Delivery).OrderBy(d => d.AddedAt))
         {
             var linesKind = d.DocumentKind switch
             {
                 DocumentKinds.Invoice => SapQueryKinds.InvoiceLines,
                 DocumentKinds.Transfer => SapQueryKinds.TransferLines,
+                DocumentKinds.Delivery => SapQueryKinds.DeliveryLines,
                 _ => null, // guía del add-on por folio: ya tiene su guía
             };
             if (linesKind is null)
@@ -484,7 +526,7 @@ public sealed class TransportGuideService : ITransportGuideService
             }
             catch (InvalidOperationException ex)
             {
-                errors.Add($"{(d.DocumentKind == DocumentKinds.Transfer ? "Transferencia" : "Folio")} {d.Folio}: {ex.Message}");
+                errors.Add($"{d.DocumentKind switch { DocumentKinds.Transfer => "Transferencia", DocumentKinds.Delivery => "Entrega", _ => "Folio" }} {d.Folio}: {ex.Message}");
             }
         }
 
@@ -502,13 +544,27 @@ public sealed class TransportGuideService : ITransportGuideService
             config.IsConfigured && !string.IsNullOrWhiteSpace(config.IssuerName)
                 ? new DteReceiver(config.IssuerTaxId ?? "", config.IssuerName, config.IssuerActivity, null, null, null)
                 : null,
-            settings.InternalTransferIndicator, settings.InternalDispatchType));
+            settings.InternalTransferIndicator, settings.InternalDispatchType,
+            await DeliveryTermsAsync(m)));
         errors.AddRange(plan.Errors);
 
         foreach (var g in plan.Guides)
             foreach (var e in await _dte.ValidateAsync(g.Document))
                 errors.Add($"Guía {g.Sequence}: {e.Message}");
         return (plan, errors);
+    }
+
+    /// <summary>Condiciones de la guía de cada agrupación EG- del manifiesto (indicador, tipo de despacho y OC), por Id.</summary>
+    private async Task<Dictionary<long, DeliveryGuideTerms>> DeliveryTermsAsync(Manifest m)
+    {
+        var ids = m.Documents.Where(d => d.DocumentKind == DocumentKinds.Delivery && d.DispatchGroupId != null)
+            .Select(d => d.DispatchGroupId!.Value).Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<long, DeliveryGuideTerms>();
+        var groups = await _db.DispatchGroups.AsNoTracking()
+            .Where(g => g.CompanyId == CompanyId && ids.Contains(g.Id) && g.Kind == DispatchGroupKinds.Delivery).ToListAsync();
+        return groups.Where(g => g.CustomerPo is not null && g.TransferIndicator is not null).ToDictionary(g => g.Id,
+            g => new DeliveryGuideTerms(DispatchGroupCode.Format(g.Number, g.Kind), g.TransferIndicator!.Value, g.DispatchType,
+                g.CustomerPo!.Value, g.CustomerPoDate ?? g.DispatchDate));
     }
 
     /// <summary>En borrador aún no hay snapshot: se toman los maestros vigentes (sin tocar el manifiesto guardado).</summary>

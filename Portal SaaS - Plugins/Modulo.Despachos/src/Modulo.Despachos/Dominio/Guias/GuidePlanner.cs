@@ -20,7 +20,14 @@ public sealed record GuidePlanInput(
     bool Valued = false,
     DteReceiver? OwnCompany = null,
     int InternalTransferIndicator = 5,
-    int? InternalDispatchType = 3);
+    int? InternalDispatchType = 3,
+    IReadOnlyDictionary<long, DeliveryGuideTerms>? DeliveryTerms = null);
+
+/// <summary>
+/// Condiciones de la guía de una agrupación de Entregas con guía previa (EG-): indicador y tipo de despacho elegidos al
+/// agrupar y la OC del cliente con la fecha del pedido (referencia 801).
+/// </summary>
+public sealed record DeliveryGuideTerms(string Code, int TransferIndicator, int? DispatchType, long PurchaseOrder, DateOnly OrderDate);
 
 public sealed record PlannedGuide(int Sequence, IReadOnlyList<Guid> ManifestDocumentIds, DteDocument Document);
 
@@ -38,6 +45,8 @@ public sealed record GuidePlan(IReadOnlyList<PlannedGuide> Guides, IReadOnlyList
 /// - transporte desde el snapshot del manifiesto;
 /// - transferencias a sucursales (Fase B): una guía por bodega destino, IndTraslado/TipoDespacho internos,
 ///   receptor = la propia compañía con la dirección de la sucursal, sin referencias y nunca valorizada;
+/// - Entregas con guía previa: una guía por agrupación EG- (una OC), receptor = el cliente, siempre valorizada, con
+///   indicador y tipo de despacho de la agrupación y una referencia 801 a la OC (se repite si la OC se divide);
 /// - guías del add-on agregadas por folio: ya tienen su guía, no generan otra; las guías manuales tampoco (se emiten
 ///   aparte con su propio contenido, ver TransportGuideService).
 /// Errores = bloquean el despacho; advertencias = se emite igual.
@@ -63,8 +72,16 @@ public static partial class GuidePlanner
             // Guía del add-on agregada por su folio: ya tiene su guía. Guía manual: se emite aparte, con su propio contenido.
             if (doc.DocumentKind is DocumentKinds.TransferGuide or DocumentKinds.ManualGuide) continue;
             var isTransfer = doc.DocumentKind == DocumentKinds.Transfer;
-            var prefix = isTransfer ? $"Transferencia {doc.Folio}" : $"Folio {doc.Folio}";
-            if (!isTransfer && doc.DocumentKind != DocumentKinds.Invoice)
+            var isDelivery = doc.DocumentKind == DocumentKinds.Delivery;
+            var prefix = isTransfer ? $"Transferencia {doc.Folio}" : isDelivery ? $"Entrega {doc.Folio}" : $"Folio {doc.Folio}";
+            DeliveryGuideTerms? terms = null;
+            if (isDelivery && (doc.DispatchGroupId is not { } groupId || input.DeliveryTerms is null
+                               || !input.DeliveryTerms.TryGetValue(groupId, out terms)))
+            {
+                errors.Add($"{prefix}: falta su agrupación con guía previa.");
+                continue;
+            }
+            if (!isTransfer && !isDelivery && doc.DocumentKind != DocumentKinds.Invoice)
             {
                 errors.Add($"{prefix}: este tipo de documento no lleva guía de despacho.");
                 continue;
@@ -83,8 +100,9 @@ public static partial class GuidePlanner
             if (string.IsNullOrWhiteSpace(doc.DestinationAddress))
                 errors.Add(isTransfer ? $"{prefix}: falta la dirección de la bodega sucursal {doc.CustomerCode}." : $"{prefix}: falta la dirección de despacho en SAP.");
             if (lines.Lines.Count == 0)
-                errors.Add($"{prefix}: la consulta SAP no devolvió líneas de la {(isTransfer ? "transferencia" : "factura")}.");
-            var noAmount = input.Valued && !isTransfer && lines.Lines.Any(l => l.Amount is null);
+                errors.Add($"{prefix}: la consulta SAP no devolvió líneas de la {(isTransfer ? "transferencia" : isDelivery ? "Entrega" : "factura")}.");
+            // La guía de Entregas se valoriza siempre: son productos que se facturan después.
+            var noAmount = (isDelivery || (input.Valued && !isTransfer)) && lines.Lines.Any(l => l.Amount is null);
             if (noAmount)
                 errors.Add($"{prefix}: la consulta SAP de líneas no trae el monto (columna line_amount); no se puede valorizar la guía.");
             if (commune is null || badRut || string.IsNullOrWhiteSpace(doc.DestinationAddress) || lines.Lines.Count == 0 || noAmount)
@@ -93,11 +111,13 @@ public static partial class GuidePlanner
             var rut = isTransfer ? input.OwnCompany!.TaxId : RutChileno.Normalize(doc.CustomerTaxId!);
             var key = isTransfer
                 ? $"T|{doc.CustomerCode}|{NormalizeAddress(doc.DestinationAddress!)}|{doc.DestinationCommuneId}"
-                : $"{rut}|{NormalizeAddress(doc.DestinationAddress!)}|{doc.DestinationCommuneId}";
+                : isDelivery
+                    ? $"D|{doc.DispatchGroupId}"
+                    : $"{rut}|{NormalizeAddress(doc.DestinationAddress!)}|{doc.DestinationCommuneId}";
             var group = groups.FirstOrDefault(g => g.Key == key);
             if (group is null)
             {
-                group = new Group(key, rut, doc, commune, lines, isTransfer);
+                group = new Group(key, rut, doc, commune, lines, isTransfer, terms);
                 groups.Add(group);
             }
             group.Docs.Add((doc, lines));
@@ -108,7 +128,7 @@ public static partial class GuidePlanner
         foreach (var g in groups)
         {
             foreach (var chunk in Split(g.Docs, input.LineGrouping == GuideLineGroupings.Model, Math.Clamp(input.MaxLines, 1, MaxLines),
-                         input.Valued && !g.IsTransfer))
+                         g.Delivery is not null || (input.Valued && !g.IsTransfer)))
             {
                 var document = BuildDocument(input, g, chunk, out var noWeight);
                 missingWeight += noWeight;
@@ -127,8 +147,11 @@ public static partial class GuidePlanner
     private sealed record ConsolidatedLine(string Key, string ItemCode, string Name, decimal Quantity, string? Unit, decimal? WeightKg,
         decimal Amount, bool Exempt);
 
-    private sealed class Group(string key, string rut, ManifestDocument first, string commune, SapDocumentLines lines, bool isTransfer)
+    private sealed class Group(string key, string rut, ManifestDocument first, string commune, SapDocumentLines lines, bool isTransfer,
+        DeliveryGuideTerms? delivery)
     {
+        /// <summary>Agrupación de Entregas con guía previa (una OC) o null.</summary>
+        public DeliveryGuideTerms? Delivery { get; } = delivery;
         /// <summary>Guía de traslado interno a una sucursal (Fase B).</summary>
         public bool IsTransfer { get; } = isTransfer;
         public string Key { get; } = key;
@@ -204,7 +227,8 @@ public static partial class GuidePlanner
     private static DteDocument BuildDocument(GuidePlanInput input, Group g, List<ChunkPart> chunk, out int missingWeight)
     {
         var m = input.Manifest;
-        var valued = input.Valued && !g.IsTransfer; // la guía de traslado interno nunca se valoriza
+        // La guía de traslado interno nunca se valoriza; la de Entregas con guía previa, siempre.
+        var valued = g.Delivery is not null || (input.Valued && !g.IsTransfer);
         // Las líneas ya vienen resumidas (por SKU o modelo): se juntan las de las facturas del trozo por su llave.
         var merged = chunk.SelectMany(c => c.Lines).GroupBy(l => l.Key).Select(grp => grp.Aggregate((x, l) => x with
         {
@@ -233,7 +257,9 @@ public static partial class GuidePlanner
                 null, l.Quantity, l.Unit, price, amount, Exempt: valued && l.Exempt);
         }).ToList();
         // Traslado interno: la transferencia SAP no es un DTE, la guía no lleva referencias [validar con el asesor].
-        var refs = g.IsTransfer
+        var refs = g.Delivery is { } terms
+            ? new List<DteReference> { new(1, "801", terms.PurchaseOrder, terms.OrderDate, null, "Orden de compra") }
+            : g.IsTransfer
             ? new List<DteReference>()
             : chunk.Select(c => c.Doc).DistinctBy(d => d.Id).Select((d, i) => new DteReference(
                 i + 1, d.SiiDocumentType.ToString(System.Globalization.CultureInfo.InvariantCulture), d.Folio, d.DocumentDate, null,
@@ -242,7 +268,9 @@ public static partial class GuidePlanner
         var address = g.First.DestinationAddress!.Trim();
         var city = g.FirstLines.DestinationCity;
         return new DteDocument(
-            g.IsTransfer
+            g.Delivery is { } d
+                ? new DteIdDoc(52, input.IssueDate, d.TransferIndicator, d.DispatchType)
+                : g.IsTransfer
                 ? new DteIdDoc(52, input.IssueDate, input.InternalTransferIndicator, input.InternalDispatchType)
                 : new DteIdDoc(52, input.IssueDate, input.TransferIndicator, input.DispatchType),
             new DteIssuerOverride(m.OriginAddress, m.OriginCommune, null),

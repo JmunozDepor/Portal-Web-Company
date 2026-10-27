@@ -33,6 +33,9 @@ public interface ITransportGuideService
     /// </summary>
     Task<string> TestSapWriteAsync(int docEntry);
 
+    /// <summary>"Probar escritura" en una Entrega: reescribe FolioNumber/FolioPrefixString con su valor actual.</summary>
+    Task<string> TestSapDeliveryWriteAsync(int docEntry);
+
     /// <summary>Guías persistidas del manifiesto (vacío si aún no se planificaron), por secuencia.</summary>
     Task<IReadOnlyList<Models.TransportGuide>> ListAsync(Guid manifestId);
 

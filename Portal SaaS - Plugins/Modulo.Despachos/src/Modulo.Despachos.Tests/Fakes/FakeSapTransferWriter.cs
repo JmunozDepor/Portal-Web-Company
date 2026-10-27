@@ -25,4 +25,24 @@ public sealed class FakeSapTransferWriter : ISapTransferWriter
         IReadOnlyDictionary<string, object?> result = fields.ToDictionary(f => f, f => current.TryGetValue(f, out var v) ? v : null);
         return Task.FromResult(result);
     }
+
+    /// <summary>Escrituras en Entregas (DeliveryNotes).</summary>
+    public List<(int DocEntry, IReadOnlyDictionary<string, object?> Fields)> DeliveryWrites { get; } = new();
+
+    /// <summary>Valores actuales por DocEntry de Entrega que devuelve ReadDeliveryAsync.</summary>
+    public Dictionary<int, Dictionary<string, object?>> DeliveryCurrent { get; } = new();
+
+    public Task WriteDeliveryAsync(int docEntry, IReadOnlyDictionary<string, object?> fields, CancellationToken ct = default)
+    {
+        if (FailWith is not null) throw new InvalidOperationException(FailWith);
+        DeliveryWrites.Add((docEntry, fields));
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyDictionary<string, object?>> ReadDeliveryAsync(int docEntry, IReadOnlyList<string> fields, CancellationToken ct = default)
+    {
+        var current = DeliveryCurrent.TryGetValue(docEntry, out var c) ? c : new Dictionary<string, object?>();
+        IReadOnlyDictionary<string, object?> result = fields.ToDictionary(f => f, f => current.TryGetValue(f, out var v) ? v : null);
+        return Task.FromResult(result);
+    }
 }

@@ -27,7 +27,29 @@ Resultado (las dos pruebas en verde):
       documento de prueba; responder uno podría llegar al registro real. Requiere un documento de prueba acordado
       con FACELE (y FACELE_ALLOW_RESPOND=1).
 
+## E2E en bases QA (2026-10-28) — HECHA sin Host
+
+Las bases QA de plataforma (`portalsaas_saas_qa`, `ps_comdepor_qa`) están vacías (solo esquema; Comercial Depor real
+vive en `ps_comdepor` = PROD), así que la E2E se hizo con un arnés fuera del repo que usa las clases reales sobre
+Postgres real: compañía de prueba `E2EFP` en `portalsaas_saas_qa` + módulo en `ps_comdepor_fp_qa`, FACELE caoba real,
+SAP simulado (todos los emisores existen, sin OC), reloj fijado en 09-05-2026 11:00 (día siguiente a la última
+recepción de caoba), "procesar desde" 20-04-2026, modo simulación. Resultado:
+- [x] "Probar recepción" OK; sincronización inicial: 273 recibidos en ~2 min (una consultarReferencia por documento
+      nuevo); segunda pasada: 0 nuevos / 0 cambios. Fechas en UTC, sin errores de largo de columnas.
+- [x] Módulo: 259 revisiones (33/34/43); 104 "No admite respuesta" (contado); vencidas solo las de plazo ya pasado;
+      sin OC → aviso y rechazo al vencer el aviso; gasto fijo (Verisure) → revisión y regla de último día. 0 respuestas
+      al operador. Segunda evaluación sin cambios.
+- [x] OC asociada a mano → reevaluación; decisión manual; segunda decisión con sello viejo rechazada.
+- [x] Consultas de las pantallas (bandeja por grupo y texto, KPIs, detalle, mis aprobaciones) traducen bien a SQL.
+      Encontró y se corrigió: la búsqueda por texto de la bandeja de plataforma distinguía mayúsculas en Postgres.
+- Datos de prueba que quedaron: organización/compañía `E2EFP` (`portalsaas_saas_qa`, con su `company_dte_settings`
+  y 273 `dte_received`) y sus revisiones en `ps_comdepor_fp_qa`. Se pueden borrar sin afectar nada.
+
 ## Puesta en marcha (Task 16) — PENDIENTE, con confirmación del usuario
+
+- [x] Migraciones `AddDteReception` y `AddDteReceivedNotRespondable` aplicadas y verificadas en `portalsaas_saas_qa` y
+      `ps_comdepor_qa` (2026-10-28). Falta PROD (`portalsaas_saas_prod`, `ps_comdepor`).
+- [x] Base del módulo `ps_comdepor_fp_qa` creada (admin_saas, UTF8, Spanish_Chile) con `Inicial` aplicada. Falta `ps_comdepor_fp`.
 
 - [ ] Merge de `feat/facturas-proveedor` a la rama de trabajo y `.\publish-dist.ps1` del módulo (detiene el Host local).
 - [ ] Migraciones de plataforma `AddDteReception` y `AddDteReceivedNotRespondable` en `portalsaas_saas_qa` y `ps_comdepor_qa`; verificar en `__EFMigrationsHistory`.

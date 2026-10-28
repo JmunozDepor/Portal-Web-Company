@@ -37,6 +37,7 @@ public interface IInvoiceReviewService
 public sealed class InvoiceReviewService : IInvoiceReviewService
 {
     private const int PageSize = 500;
+    internal const string OcReferenciadaCode = "oc-referenciada";
 
     private readonly FacturasProveedorDbContext _db;
     private readonly IDteInboxService _inbox;
@@ -268,10 +269,14 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
         await AddEventAsync(review, "not_respondable", null, reason, now, ct);
     }
 
-    /// <summary>Si "procesar desde" se fijó o adelantó, las fuera de alcance desde esa fecha y aún en plazo entran al flujo.</summary>
+    /// <summary>
+    /// Si "procesar desde" se fijó o adelantó, las fuera de alcance desde esa fecha y aún en plazo entran al flujo. Solo en
+    /// simulación: en modo activo una factura antigua reabierta llegaría con el aviso ya vencido y se rechazaría sola ante el
+    /// SII sin que nadie la viera.
+    /// </summary>
     private async Task RescopeAsync(FpSettings settings, DateOnly today, CancellationToken ct)
     {
-        if (settings.ProcessFromDate is not { } from) return;
+        if (settings.ProcessFromDate is not { } from || settings.Mode == ModuleModes.Active) return;
         var candidates = await _db.InvoiceReviews
             .Where(r => r.CompanyId == CompanyId && r.Status == ReviewStatuses.OutOfScope && r.SiiReceivedOn >= from && r.LegalDeadlineOn >= today)
             .ToListAsync(ct);
@@ -286,6 +291,7 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
     {
         var changed = review.ProposedAction != decision.Action || review.RecommendedAction != decision.RecommendedAction;
         var previousStatus = review.Status;
+        var previousGroup = review.AssignedGroupId;
         review.ProposedAction = decision.Action;
         review.RecommendedAction = decision.RecommendedAction;
         review.EvaluationCount++;
@@ -307,8 +313,11 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
                 review.WarnDeadlineOn ??= ReviewDeadlines.WarnDeadline(review.SiiReceivedOn, decision.WarnDays ?? 3, review.LegalDeadlineOn);
                 if (previousStatus != ReviewStatuses.Warning)
                 {
-                    await NotifyGroupAsync(settings.FinanceGroupId, review, "Factura sin OC",
-                        $"{Describe(review)} sin OC: se rechaza el {review.WarnDeadlineOn:dd-MM-yyyy} si no se asocia.",
+                    var noPurchaseOrder = decision.WinningRuleCode is null or OcReferenciadaCode;
+                    await NotifyGroupAsync(settings.FinanceGroupId, review, noPurchaseOrder ? "Factura sin OC" : "Factura en aviso",
+                        noPurchaseOrder
+                            ? $"{Describe(review)} sin OC: se rechaza el {review.WarnDeadlineOn:dd-MM-yyyy} si no se asocia."
+                            : $"{Describe(review)}: {decision.Message} Se rechaza el {review.WarnDeadlineOn:dd-MM-yyyy} si no se corrige.",
                         NotificationSeverity.Warning, ct);
                 }
                 break;
@@ -328,7 +337,9 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
         await ReplaceRuleResultsAsync(review, decision, ct);
         if (changed) await AddEventAsync(review, "evaluated", null, $"Reglas evaluadas: {FacturasProveedorUi.ActionLabel(decision.Action)}"
             + (decision.Message is { } m ? $" — {m}" : ""), now, ct);
-        Touch(review, now);
+        // El sello de concurrencia solo cambia si cambió algo que importa para decidir: reevaluar cada 5 minutos sin
+        // cambios no puede invalidar la pantalla que el aprobador tiene abierta.
+        if (changed || previousStatus != review.Status || previousGroup != review.AssignedGroupId) Touch(review, now);
         return changed;
     }
 

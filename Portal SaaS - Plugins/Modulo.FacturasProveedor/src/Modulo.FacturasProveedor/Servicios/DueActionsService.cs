@@ -92,7 +92,8 @@ public sealed class DueActionsService : IDueActionsService
                     expired++;
                     break;
                 case DueActionKind.RejectWarnExpired:
-                    Decide(review, RuleActions.Reject, "rule:oc-referenciada", "No se asoció una OC dentro del aviso.", simulation, now);
+                    var (warnRule, warnReason) = await WarnOriginAsync(review, ct);
+                    Decide(review, RuleActions.Reject, $"rule:{warnRule}", warnReason, simulation, now);
                     break;
                 case DueActionKind.ApplyDeadlineRule:
                     Decide(review, plan.Action!, $"rule:{PlazoPorVencerRule.RuleCode}", "Plazo por vencer sin decisión.", simulation, now);
@@ -122,6 +123,20 @@ public sealed class DueActionsService : IDueActionsService
         }
 
         return new DueRunResult(sent, failed, expired, escalated);
+    }
+
+    /// <summary>
+    /// La regla que puso la factura en aviso (objeción "avisar y rechazar" de la última evaluación) y el motivo del rechazo:
+    /// queda como fuente de la decisión y como motivo ante el operador.
+    /// </summary>
+    private async Task<(string RuleCode, string Reason)> WarnOriginAsync(FpInvoiceReview review, CancellationToken ct)
+    {
+        var warned = await _db.ReviewRuleResults.AsNoTracking()
+            .Where(r => r.ReviewId == review.Id && r.Kind == "objection" && r.Action == RuleActions.WarnThenReject)
+            .OrderBy(r => r.Id).FirstOrDefaultAsync(ct);
+        if (warned is null || warned.RuleCode == InvoiceReviewService.OcReferenciadaCode)
+            return (InvoiceReviewService.OcReferenciadaCode, "No se asoció una OC dentro del aviso.");
+        return (warned.RuleCode, $"{warned.Message ?? "Objeción de la regla."} No se corrigió dentro del aviso.");
     }
 
     private async Task<DteRespondOutcome> SendAsync(FpInvoiceReview review, FpSettings settings, DateTime nowChile, DateTimeOffset now,

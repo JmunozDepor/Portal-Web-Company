@@ -318,6 +318,40 @@ public class InvoiceReviewServiceTests
         Assert.Null((await ReviewAsync(env, failing.Id)).LastError);
     }
 
+    /// <summary>I1 (revisión final): reevaluar sin cambios no invalida el sello con que el aprobador abrió la factura.</summary>
+    [Fact]
+    public async Task Evaluate_SinCambios_NoCambiaElSelloDeConcurrencia()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        var doc = env.Invoice(purchaseOrders: Array.Empty<int>());
+        await env.EvaluateAsync();
+        var stamp = (await ReviewAsync(env, doc.Id)).ConcurrencyStamp;
+
+        env.Clock.Now = env.Clock.Now.AddMinutes(5);
+        await env.EvaluateAsync();
+
+        var review = await ReviewAsync(env, doc.Id);
+        Assert.Equal(ReviewStatuses.Warning, review.Status);
+        Assert.Equal(stamp, review.ConcurrencyStamp);
+    }
+
+    /// <summary>I4 (revisión final): en modo activo, mover "procesar desde" hacia atrás no reabre facturas fuera de alcance.</summary>
+    [Fact]
+    public async Task Evaluate_EnActivo_MoverProcesarDesdeAtras_NoReabreFueraDeAlcance()
+    {
+        var env = await new ReviewTestEnv().StartAsync(ModuleModes.Active, processFrom: new DateOnly(2026, 10, 25));
+        var doc = env.Invoice(purchaseOrders: Array.Empty<int>());
+        await env.EvaluateAsync();
+        Assert.Equal(ReviewStatuses.OutOfScope, (await ReviewAsync(env, doc.Id)).Status);
+
+        await env.Settings.SaveGeneralAsync(new GeneralSettingsInput { ProcessFromDate = new DateOnly(2026, 10, 20), Mode = ModuleModes.Active },
+            CancellationToken.None);
+        await env.EvaluateAsync();
+
+        Assert.Equal(ReviewStatuses.OutOfScope, (await ReviewAsync(env, doc.Id)).Status);
+        Assert.Empty(env.Inbox.Responses);
+    }
+
     [Fact]
     public async Task Evaluate_Cursor_NoReprocesaLoYaLeido()
     {

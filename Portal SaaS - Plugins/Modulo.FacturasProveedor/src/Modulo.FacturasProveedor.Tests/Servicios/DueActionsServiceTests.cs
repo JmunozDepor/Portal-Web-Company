@@ -75,6 +75,30 @@ public class DueActionsServiceTests
         Assert.Single(env.Inbox.Responses);
     }
 
+    /// <summary>
+    /// I6 (revisión final): si el aviso vino de otra regla (ej. antigüedad de la OC), el rechazo al vencer el aviso queda
+    /// registrado con esa regla y su motivo, y el aviso de campana no dice "sin OC".
+    /// </summary>
+    [Fact]
+    public async Task Run_AvisoDeAntiguedadVencido_RechazaConLaReglaDeAntiguedad()
+    {
+        var env = await new ReviewTestEnv().StartAsync(ModuleModes.Active);
+        await env.Settings.SaveRuleAsync(new RuleSettingsInput("oc-antiguedad", true, RuleActions.WarnThenReject, 1,
+            new Dictionary<string, decimal> { ["max_days"] = 30 }), CancellationToken.None);
+        env.Sap.AddPurchaseOrder(docDate: new DateOnly(2026, 8, 1));
+        var doc = env.Invoice();
+        await env.EvaluateAsync();
+        Assert.Equal(ReviewStatuses.Warning, (await ReviewAsync(env, doc.Id)).Status);
+        Assert.DoesNotContain(env.Notifications.Enqueued, n => n.Title.Contains("sin OC"));
+
+        await Due(env).RunAsync(CancellationToken.None);
+
+        var review = await ReviewAsync(env, doc.Id);
+        Assert.Equal("rule:oc-antiguedad", review.DecisionSource);
+        Assert.Contains("días (máx. 30)", review.Reason);
+        Assert.Equal("rule:oc-antiguedad", Assert.Single(env.Inbox.Responses).Actor);
+    }
+
     [Fact]
     public async Task Run_FallaTresVeces_AvisaFinanzasUnaVez()
     {

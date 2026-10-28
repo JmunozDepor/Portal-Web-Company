@@ -1,0 +1,227 @@
+using Microsoft.EntityFrameworkCore;
+using Modulo.FacturasProveedor.Dominio.Reglas;
+using Modulo.FacturasProveedor.Models;
+using Modulo.FacturasProveedor.Servicios;
+using PortalSaas.Abstractions.Modelos.Dte;
+
+namespace Modulo.FacturasProveedor.Tests.Servicios;
+
+public class InvoiceReviewServiceTests
+{
+    private static Task<FpInvoiceReview> ReviewAsync(ReviewTestEnv env, long receivedId) =>
+        env.Db.InvoiceReviews.SingleAsync(r => r.ReceivedId == receivedId);
+
+    [Fact]
+    public async Task Evaluate_RecibidaAntesDeProcesarDesde_FueraDeAlcance()
+    {
+        var env = await new ReviewTestEnv().StartAsync(processFrom: new DateOnly(2026, 10, 25));
+        var doc = env.Invoice(purchaseOrders: Array.Empty<int>());
+
+        await env.EvaluateAsync();
+
+        var review = await ReviewAsync(env, doc.Id);
+        Assert.Equal(ReviewStatuses.OutOfScope, review.Status);
+        Assert.Null(review.DecidedAction);
+        Assert.Empty(env.Inbox.Responses);
+    }
+
+    [Fact]
+    public async Task Evaluate_SinProcesarDesde_TodoFueraDeAlcance()
+    {
+        var env = new ReviewTestEnv();
+        var doc = env.Invoice(purchaseOrders: Array.Empty<int>());
+
+        await env.EvaluateAsync();
+
+        Assert.Equal(ReviewStatuses.OutOfScope, (await ReviewAsync(env, doc.Id)).Status);
+    }
+
+    [Fact]
+    public async Task Evaluate_ProcesarDesdeSeFijaDespues_EntranLasDesdeEsaFecha()
+    {
+        var env = new ReviewTestEnv();
+        env.Sap.AddPurchaseOrder();
+        var doc = env.Invoice();
+        await env.EvaluateAsync();
+
+        await env.StartAsync(processFrom: new DateOnly(2026, 10, 24));
+        await env.EvaluateAsync();
+
+        Assert.Equal(ReviewStatuses.Simulated, (await ReviewAsync(env, doc.Id)).Status);
+    }
+
+    [Fact]
+    public async Task Evaluate_CalzaConOc_Simulacion_QuedaSimulada_SinResponder()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Sap.AddPurchaseOrder();
+        var doc = env.Invoice(total: 2_200_000);
+
+        var result = await env.EvaluateAsync();
+
+        var review = await ReviewAsync(env, doc.Id);
+        Assert.Equal(1, result.Created);
+        Assert.Equal(ReviewStatuses.Simulated, review.Status);
+        Assert.True(review.IsSimulated);
+        Assert.Equal(RuleActions.Accept, review.DecidedAction);
+        Assert.Equal("rule:final", review.DecisionSource);
+        Assert.Equal(new DateOnly(2026, 10, 24), review.SiiReceivedOn);
+        Assert.Equal(new DateOnly(2026, 11, 1), review.LegalDeadlineOn);
+        Assert.Empty(env.Inbox.Responses);
+        Assert.NotEmpty(await env.Db.ReviewRuleResults.Where(r => r.ReviewId == review.Id).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Evaluate_CalzaConOc_Activo_QuedaPorEnviar()
+    {
+        var env = await new ReviewTestEnv().StartAsync(ModuleModes.Active);
+        env.Sap.AddPurchaseOrder();
+        var doc = env.Invoice();
+
+        await env.EvaluateAsync();
+
+        var review = await ReviewAsync(env, doc.Id);
+        Assert.Equal(ReviewStatuses.ToSend, review.Status);
+        Assert.False(review.IsSimulated);
+        Assert.Equal(1, review.DecisionNumber);
+    }
+
+    [Fact]
+    public async Task Evaluate_SinOc_QuedaEnAvisoConFecha_YAvisaFinanzas()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        var doc = env.Invoice(purchaseOrders: Array.Empty<int>());
+
+        await env.EvaluateAsync();
+        await env.EvaluateAsync();
+
+        var review = await ReviewAsync(env, doc.Id);
+        Assert.Equal(ReviewStatuses.Warning, review.Status);
+        Assert.Equal(new DateOnly(2026, 10, 27), review.WarnDeadlineOn);
+        var notice = Assert.Single(env.Notifications.Enqueued);
+        Assert.Equal(env.FinanceUser, notice.UserId);
+        Assert.Contains("sin OC", notice.Message);
+        Assert.Equal($"/facturas-proveedor/bandeja/{review.Id}", notice.Url);
+    }
+
+    [Fact]
+    public async Task Evaluate_GastoFijo_VaARevision_YAvisaAlGrupo()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        var approver = Guid.NewGuid();
+        var group = await env.Groups.SaveAsync(new ApproverGroupInput(null, "Gerencia", false, true, new[] { approver }), CancellationToken.None);
+        await env.Profiles.SaveAsync(new SupplierProfileInput(null, "77555010-K", SupplierConditions.FixedMonthly, group, null,
+            new DateOnly(2026, 10, 1), null, null, true, Array.Empty<RuleOverrideInput>()), CancellationToken.None);
+        var doc = env.Invoice(taxId: "77555010-K", purchaseOrders: Array.Empty<int>(), total: 4_100_000);
+
+        await env.EvaluateAsync();
+        await env.EvaluateAsync();
+
+        var review = await ReviewAsync(env, doc.Id);
+        Assert.Equal(ReviewStatuses.InReview, review.Status);
+        Assert.Equal(group, review.AssignedGroupId);
+        Assert.Equal(approver, Assert.Single(env.Notifications.Enqueued).UserId);
+    }
+
+    [Fact]
+    public async Task Evaluate_DosParcialesMismaOc_LaSegundaSuperaSaldo_SeRechaza()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Sap.AddPurchaseOrder(total: 3_200_000);
+        var first = env.Invoice(folio: 1, total: 2_000_000, hourUtc: 12);
+        var second = env.Invoice(folio: 2, total: 1_500_000, hourUtc: 13);
+
+        await env.EvaluateAsync();
+
+        Assert.Equal(RuleActions.Accept, (await ReviewAsync(env, first.Id)).DecidedAction);
+        var rejected = await ReviewAsync(env, second.Id);
+        Assert.Equal(RuleActions.Reject, rejected.DecidedAction);
+        Assert.Equal("rule:oc-saldo", rejected.DecisionSource);
+    }
+
+    [Fact]
+    public async Task Evaluate_AceptadaEnFaceleCuentaParaElSaldo()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Sap.AddPurchaseOrder(total: 3_200_000);
+        env.Invoice(folio: 1, total: 2_000_000, day: 21, responseStatus: DteResponseStatuses.External, responseAction: DteResponseActions.AcceptContent);
+        var doc = env.Invoice(folio: 2, total: 1_500_000);
+
+        await env.EvaluateAsync();
+
+        Assert.Equal(RuleActions.Reject, (await ReviewAsync(env, doc.Id)).DecidedAction);
+    }
+
+    [Fact]
+    public async Task Evaluate_ExternaEnInbox_QuedaExterna()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        var doc = env.Invoice(responseStatus: DteResponseStatuses.External, responseAction: DteResponseActions.AcceptContent);
+
+        await env.EvaluateAsync();
+
+        Assert.Equal(ReviewStatuses.External, (await ReviewAsync(env, doc.Id)).Status);
+    }
+
+    [Theory]
+    [InlineData(ModuleModes.Active, 1)]
+    [InlineData(ModuleModes.Simulation, 0)]
+    public async Task Evaluate_ExternaEnActivo_AvisaFinanzas_EnSimulacionNo(string mode, int expectedNotices)
+    {
+        var env = await new ReviewTestEnv().StartAsync(mode);
+        var doc = env.Invoice(purchaseOrders: Array.Empty<int>());
+        await env.EvaluateAsync();
+        env.Notifications.Enqueued.Clear();
+
+        env.Inbox.Replace(doc with
+        {
+            ResponseStatus = DteResponseStatuses.External, ResponseAction = DteResponseActions.ClaimContent, UpdatedAt = doc.UpdatedAt.AddHours(1),
+        });
+        await env.EvaluateAsync();
+
+        Assert.Equal(ReviewStatuses.External, (await ReviewAsync(env, doc.Id)).Status);
+        Assert.Equal(expectedNotices, env.Notifications.Enqueued.Count(n => n.Title.Contains("fuera del portal")));
+    }
+
+    [Fact]
+    public async Task Evaluate_OcAsociadaDespues_SaleDeAviso()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Sap.AddPurchaseOrder();
+        var doc = env.Invoice(purchaseOrders: Array.Empty<int>());
+        await env.EvaluateAsync();
+        Assert.Equal(ReviewStatuses.Warning, (await ReviewAsync(env, doc.Id)).Status);
+
+        await env.Inbox.SetPurchaseOrderRefsAsync(doc.Id, new[] { 4512 }, env.User.UserId);
+        await env.EvaluateAsync();
+
+        var review = await ReviewAsync(env, doc.Id);
+        Assert.Equal(ReviewStatuses.Simulated, review.Status);
+        Assert.Equal(RuleActions.Accept, review.DecidedAction);
+    }
+
+    [Fact]
+    public async Task Evaluate_TipoNoRespondible_NoCreaRevision()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Invoice(dteType: 61);
+
+        await env.EvaluateAsync();
+
+        Assert.Empty(await env.Db.InvoiceReviews.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Evaluate_Cursor_NoReprocesaLoYaLeido()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Sap.AddPurchaseOrder();
+        env.Invoice();
+        await env.EvaluateAsync();
+
+        var second = await env.EvaluateAsync();
+
+        Assert.Equal(0, second.Created);
+        Assert.NotNull((await env.Db.Settings.SingleAsync()).InboxCursor);
+    }
+}

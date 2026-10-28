@@ -62,6 +62,8 @@ public sealed class ModuloFacturasProveedor : IModuloPortal
         services.AddSingleton<Dominio.Reglas.ISupplierInvoiceRule, Dominio.Reglas.Catalogo.PlazoPorVencerRule>();
         services.AddSingleton<Dominio.Reglas.InvoiceRuleEngine>();
 
+        services.AddScoped<Servicios.IModuleSettingsService, Servicios.ModuleSettingsService>();
+
         // FacturasProveedorDbContext resuelto self-service vía IExternalDatabaseConnectionService -- motor dual, se
         // decide EN RUNTIME según ModuleExternalConnection.EngineType. CompanyId SIEMPRE obligatorio (sin fallback a
         // nivel Organization). En los jobs, la compañía la fija ICurrentCompanyOverride.

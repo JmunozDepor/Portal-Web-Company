@@ -57,6 +57,7 @@ public sealed class ApproverGroupService : IApproverGroupService
         if (string.IsNullOrWhiteSpace(input.Name)) throw new InvalidOperationException("Ingrese el nombre del grupo.");
         var name = input.Name.Trim();
         if (name.Length > 100) name = name[..100];
+        await EnsureFinanceStaysUsableAsync(input, ct);
 
         FpApproverGroup group;
         string? before = null;
@@ -106,6 +107,21 @@ public sealed class ApproverGroupService : IApproverGroupService
         });
         await _db.SaveChangesAsync(ct);
         return group.Id;
+    }
+
+    /// <summary>
+    /// En modo activo siempre debe haber un grupo de Finanzas activo y con integrantes: es el respaldo de toda revisión sin
+    /// aprobador y quien recibe los escalamientos. Para cambiarlo se marca otro grupo como Finanzas.
+    /// </summary>
+    private async Task EnsureFinanceStaysUsableAsync(ApproverGroupInput input, CancellationToken ct)
+    {
+        var settings = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.CompanyId == CompanyId, ct);
+        if (settings?.Mode != ModuleModes.Active) return;
+        var isCurrentFinance = input.Id is { } id && settings.FinanceGroupId == id;
+        if (isCurrentFinance && !input.IsFinance)
+            throw new InvalidOperationException("En modo Activo no se puede quitar el grupo de Finanzas: marque otro grupo como Finanzas.");
+        if ((isCurrentFinance || input.IsFinance) && (!input.IsActive || input.MemberUserIds.Count == 0))
+            throw new InvalidOperationException("En modo Activo el grupo de Finanzas debe estar activo y tener al menos un integrante.");
     }
 
     public async Task DeleteAsync(long id, CancellationToken ct)

@@ -25,16 +25,24 @@ public sealed class DetalleModel : FacturasProveedorPageModelBase
 
     public ReviewDetail? Detail { get; private set; }
 
+    /// <summary>
+    /// Ver y decidir: con la bandeja (VIEW), o con "Mis aprobaciones" (VIEW) si la factura es de uno de sus grupos (spec
+    /// §13: las jefaturas ven y deciden lo suyo sin ver toda la bandeja). Asociar OC sigue exigiendo EDIT en la bandeja.
+    /// </summary>
+    private async Task<bool> CanViewAsync(long id, CancellationToken ct) =>
+        await HasActionAsync(PortalActions.View)
+        || (await HasActionOnAsync("mis-aprobaciones", PortalActions.View) && await _decisions.CanDecideAsync(id, ct));
+
     public async Task<IActionResult> OnGetAsync(long id, CancellationToken ct = default)
     {
-        if (!await HasActionAsync(PortalActions.View)) return Forbid();
+        if (!await CanViewAsync(id, ct)) return Forbid();
         Detail = await _queries.GetDetailAsync(id, ct);
         return Detail is null ? NotFound() : Page();
     }
 
     public async Task<IActionResult> OnGetPdfAsync(long id, CancellationToken ct = default)
     {
-        if (!await HasActionAsync(PortalActions.View)) return Forbid();
+        if (!await CanViewAsync(id, ct)) return Forbid();
         var detail = await _queries.GetDetailAsync(id, ct);
         if (detail is null) return NotFound();
         var pdf = await _inbox.GetPdfAsync(detail.Row.ReceivedId, ct);
@@ -43,13 +51,13 @@ public sealed class DetalleModel : FacturasProveedorPageModelBase
 
     public async Task<IActionResult> OnPostAceptarAsync(long id, Guid stamp, CancellationToken ct = default)
     {
-        if (!await HasActionAsync(PortalActions.View)) return Forbid();
+        if (!await CanViewAsync(id, ct)) return Forbid();
         return await RunAsync(id, () => _decisions.DecideAsync(id, RuleActions.Accept, null, null, stamp, ct), "Factura aceptada.");
     }
 
     public async Task<IActionResult> OnPostRechazarAsync(long id, Guid stamp, string? motivo, string? tipoReclamo, CancellationToken ct = default)
     {
-        if (!await HasActionAsync(PortalActions.View)) return Forbid();
+        if (!await CanViewAsync(id, ct)) return Forbid();
         return await RunAsync(id, () => _decisions.DecideAsync(id, RuleActions.Reject, motivo, tipoReclamo, stamp, ct), "Factura rechazada.");
     }
 

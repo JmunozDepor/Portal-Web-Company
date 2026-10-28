@@ -119,6 +119,40 @@ public class PaginasOperativasTests
         Assert.Equal(1, Assert.Single(page.Rows).Folio);
     }
 
+    /// <summary>
+    /// I2 (revisión final): con solo "Mis aprobaciones" el aprobador abre y decide las facturas de sus grupos (spec §13),
+    /// pero no las de otros grupos ni puede asociar OC.
+    /// </summary>
+    [Fact]
+    public async Task Detalle_AprobadorSoloConMisAprobaciones_DecideLoDeSuGrupo()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        var me = Guid.NewGuid();
+        var mine = await env.Groups.SaveAsync(new ApproverGroupInput(null, "Mío", false, true, new[] { me }), CancellationToken.None);
+        var other = await env.Groups.SaveAsync(new ApproverGroupInput(null, "Otro", false, true, new[] { Guid.NewGuid() }), CancellationToken.None);
+        await env.Profiles.SaveAsync(new SupplierProfileInput(null, "77555010-K", SupplierConditions.FixedMonthly, mine, null,
+            new DateOnly(2026, 10, 1), null, null, true, Array.Empty<RuleOverrideInput>()), CancellationToken.None);
+        await env.Profiles.SaveAsync(new SupplierProfileInput(null, "76412553-1", SupplierConditions.FixedMonthly, other, null,
+            new DateOnly(2026, 10, 1), null, null, true, Array.Empty<RuleOverrideInput>()), CancellationToken.None);
+        env.Invoice(folio: 1, taxId: "77555010-K", purchaseOrders: Array.Empty<int>());
+        env.Invoice(folio: 2, taxId: "76412553-1", purchaseOrders: Array.Empty<int>());
+        await env.EvaluateAsync();
+        var myReview = await env.Db.InvoiceReviews.SingleAsync(r => r.Folio == 1);
+        var otherReview = await env.Db.InvoiceReviews.SingleAsync(r => r.Folio == 2);
+        env.User.UserId = me;
+        env.User.Grant("FacturasProveedor.mis-aprobaciones", PortalActions.View);
+
+        var page = Detalle(env);
+        Assert.IsType<PageResult>(await page.OnGetAsync(myReview.Id));
+        Assert.True(page.Detail!.CanDecide);
+        Assert.IsType<ForbidResult>(await page.OnGetAsync(otherReview.Id));
+        Assert.IsType<ForbidResult>(await page.OnPostAsociarOcAsync(myReview.Id, 4512));
+
+        Assert.IsType<RedirectToPageResult>(await page.OnPostAceptarAsync(myReview.Id, myReview.ConcurrencyStamp));
+        Assert.Equal(RuleActions.Accept, (await env.Db.InvoiceReviews.AsNoTracking().SingleAsync(r => r.Id == myReview.Id)).DecidedAction);
+        Assert.IsType<PageResult>(await page.OnGetAsync(myReview.Id)); // sigue viendo la que ya decidió
+    }
+
     [Fact]
     public async Task Kpis_CuentaVencenEn2Dias()
     {

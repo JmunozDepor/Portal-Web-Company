@@ -148,4 +148,28 @@ public class ProveedoresYAprobadoresTests
         Assert.Equal(new[] { a, c }, (await env.Groups.GetGroupIdsForUserAsync(user, CancellationToken.None)).OrderBy(x => x));
         Assert.Equal(2, (await env.Groups.GetMemberIdsAsync(c, CancellationToken.None)).Count);
     }
+
+    /// <summary>I5 (revisión final): en modo activo el grupo de Finanzas no puede quedar desmarcado, inactivo ni sin integrantes.</summary>
+    [Fact]
+    public async Task Grupos_EnActivo_FinanzasNoQuedaInactivaNiVacia()
+    {
+        var env = await new Servicios.ReviewTestEnv().StartAsync(ModuleModes.Active);
+        var finance = (await env.Db.Settings.SingleAsync()).FinanceGroupId!.Value;
+        var members = new[] { env.FinanceUser };
+
+        foreach (var input in new[]
+        {
+            new ApproverGroupInput(finance, "Finanzas", false, true, members),
+            new ApproverGroupInput(finance, "Finanzas", true, false, members),
+            new ApproverGroupInput(finance, "Finanzas", true, true, Array.Empty<Guid>()),
+            new ApproverGroupInput(null, "Finanzas 2", true, true, Array.Empty<Guid>()),
+        })
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() => env.Groups.SaveAsync(input, CancellationToken.None));
+        }
+        Assert.Equal(finance, (await env.Db.Settings.AsNoTracking().SingleAsync()).FinanceGroupId);
+
+        var moved = await env.Groups.SaveAsync(new ApproverGroupInput(null, "Tesorería", true, true, members), CancellationToken.None);
+        Assert.Equal(moved, (await env.Db.Settings.AsNoTracking().SingleAsync()).FinanceGroupId);
+    }
 }

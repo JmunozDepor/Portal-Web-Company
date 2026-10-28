@@ -308,6 +308,45 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("provider_code");
 
+                    b.Property<string>("ReceptionBaseUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("reception_base_url");
+
+                    b.Property<bool>("ReceptionEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("reception_enabled");
+
+                    b.Property<int>("ReceptionInitialDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("reception_initial_days");
+
+                    b.Property<DateTimeOffset?>("ReceptionInitialLoadDoneAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reception_initial_load_done_at");
+
+                    b.Property<int>("ReceptionIntervalMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("reception_interval_minutes");
+
+                    b.Property<string>("ReceptionLastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reception_last_error");
+
+                    b.Property<DateTimeOffset?>("ReceptionLastSyncAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reception_last_sync_at");
+
+                    b.Property<string>("ReceptionUserMail")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("reception_user_mail");
+
+                    b.Property<int>("ReceptionWindowDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("reception_window_days");
+
                     b.Property<string>("SecretKey")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -634,6 +673,206 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.ToTable("dte_emissions", null, t =>
                         {
                             t.HasCheckConstraint("ck_dte_emissions_status", "status in ('pending', 'folio_reserved', 'issued', 'failed', 'released', 'abandoned')");
+                        });
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.DteReceived", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ClaimStatus")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("claim_status");
+
+                    b.Property<string>("CommercialStatus")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("commercial_status");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<int>("DteType")
+                        .HasColumnType("integer")
+                        .HasColumnName("dte_type");
+
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("environment");
+
+                    b.Property<long>("ExemptAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("exempt_amount");
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_seen_at");
+
+                    b.Property<long>("Folio")
+                        .HasColumnType("bigint")
+                        .HasColumnName("folio");
+
+                    b.Property<bool>("IsAssigned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_assigned");
+
+                    b.Property<bool>("IsVoided")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_voided");
+
+                    b.Property<DateOnly>("IssueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("issue_date");
+
+                    b.Property<string>("IssuerName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("issuer_name");
+
+                    b.Property<string>("IssuerTaxId")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("issuer_tax_id");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<long>("NetAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("net_amount");
+
+                    b.Property<string>("OtherTaxesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("other_taxes_json");
+
+                    b.Property<DateTimeOffset?>("ProcessingAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processing_at");
+
+                    b.Property<string>("ProcessingModule")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("processing_module");
+
+                    b.Property<string>("ProcessingRef")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("processing_ref");
+
+                    b.Property<string>("ProcessingState")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("processing_state");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("ProviderUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_url");
+
+                    b.Property<string>("PurchaseOrderRefsJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("purchase_order_refs_json");
+
+                    b.Property<string>("ReferencesJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("references_json");
+
+                    b.Property<DateTimeOffset?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("responded_at");
+
+                    b.Property<string>("ResponseAction")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("response_action");
+
+                    b.Property<string>("ResponseActor")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("response_actor");
+
+                    b.Property<int>("ResponseAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_attempts");
+
+                    b.Property<string>("ResponseKey")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("response_key");
+
+                    b.Property<string>("ResponseReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("response_reason");
+
+                    b.Property<string>("ResponseStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("response_status");
+
+                    b.Property<DateTimeOffset?>("SiiReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sii_received_at");
+
+                    b.Property<string>("SiiStatus")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("sii_status");
+
+                    b.Property<long>("TotalAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total_amount");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("VatAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("vat_amount");
+
+                    b.Property<string>("Xml")
+                        .HasColumnType("text")
+                        .HasColumnName("xml");
+
+                    b.HasKey("Id")
+                        .HasName("pk_dte_received");
+
+                    b.HasIndex("CompanyId", "SiiReceivedAt")
+                        .HasDatabaseName("ix_dte_received_company_id_sii_received_at");
+
+                    b.HasIndex("CompanyId", "UpdatedAt")
+                        .HasDatabaseName("ix_dte_received_company_id_updated_at");
+
+                    b.HasIndex("CompanyId", "IssuerTaxId", "DteType", "Folio")
+                        .IsUnique()
+                        .HasDatabaseName("uq_dte_received_company_document");
+
+                    b.ToTable("dte_received", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_dte_received_response_status", "response_status in ('none', 'pending', 'sent', 'failed', 'external')");
                         });
                 });
 
@@ -2755,6 +2994,18 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_dte_emissions_companies_company_id");
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.DteReceived", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_dte_received_company_company_id");
 
                     b.Navigation("Company");
                 });

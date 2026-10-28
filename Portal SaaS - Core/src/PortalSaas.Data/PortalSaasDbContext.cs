@@ -65,6 +65,7 @@ public sealed class PortalSaasDbContext : DbContext
     public DbSet<CompanyDocumentSettings> CompanyDocumentSettings => Set<CompanyDocumentSettings>();
     public DbSet<CompanyDteSetting> CompanyDteSettings => Set<CompanyDteSetting>();
     public DbSet<DteEmission> DteEmissions => Set<DteEmission>();
+    public DbSet<DteReceived> DteReceived => Set<DteReceived>();
     public DbSet<IntegrationDefinition> IntegrationDefinitions => Set<IntegrationDefinition>();
     public DbSet<IntegrationFieldMapping> IntegrationFieldMappings => Set<IntegrationFieldMapping>();
     public DbSet<IntegrationRunLog> IntegrationRunLogs => Set<IntegrationRunLog>();
@@ -565,6 +566,9 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.IssuerAddress).HasMaxLength(70);
             entity.Property(e => e.IssuerCommune).HasMaxLength(20);
             entity.Property(e => e.IssuerCity).HasMaxLength(20);
+            entity.Property(e => e.ReceptionBaseUrl).HasMaxLength(300);
+            entity.Property(e => e.ReceptionUserMail).HasMaxLength(150);
+            entity.Property(e => e.ReceptionLastError).HasMaxLength(500);
             // Restrict -- mismo motivo que CompanyDocumentSettings.Company.
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -586,6 +590,36 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.LastError).HasMaxLength(1000);
             entity.Property(e => e.RequestHash).HasMaxLength(64);
             // Historial legal: una compañía con emisiones no se puede borrar (Companies/Index lo bloquea).
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DteReceived>(entity =>
+        {
+            entity.ToTable("dte_received", t => t.HasCheckConstraint("ck_dte_received_response_status",
+                "response_status in ('none', 'pending', 'sent', 'failed', 'external')"));
+            entity.HasIndex(e => new { e.CompanyId, e.IssuerTaxId, e.DteType, e.Folio }).IsUnique()
+                .HasDatabaseName("uq_dte_received_company_document");
+            entity.HasIndex(e => new { e.CompanyId, e.UpdatedAt });
+            entity.HasIndex(e => new { e.CompanyId, e.SiiReceivedAt });
+            entity.Property(e => e.ProviderCode).HasMaxLength(20);
+            entity.Property(e => e.Environment).HasMaxLength(20);
+            entity.Property(e => e.IssuerTaxId).HasMaxLength(12);
+            entity.Property(e => e.IssuerName).HasMaxLength(100);
+            entity.Property(e => e.SiiStatus).HasMaxLength(40);
+            entity.Property(e => e.CommercialStatus).HasMaxLength(40);
+            entity.Property(e => e.ClaimStatus).HasMaxLength(40);
+            entity.Property(e => e.ProviderUrl).HasMaxLength(500);
+            entity.Property(e => e.ResponseStatus).HasMaxLength(20);
+            entity.Property(e => e.ResponseAction).HasMaxLength(30);
+            entity.Property(e => e.ResponseReason).HasMaxLength(500);
+            entity.Property(e => e.ResponseActor).HasMaxLength(80);
+            entity.Property(e => e.ResponseKey).HasMaxLength(80);
+            entity.Property(e => e.LastError).HasMaxLength(1000);
+            entity.Property(e => e.ProcessingModule).HasMaxLength(50);
+            entity.Property(e => e.ProcessingState).HasMaxLength(30);
+            entity.Property(e => e.ProcessingRef).HasMaxLength(80);
+            // Archivo legal de lo recibido y respondido: una compañía con recibidos no se puede borrar.
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
         });

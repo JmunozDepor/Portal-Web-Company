@@ -14,7 +14,7 @@ public class DteEmissionServiceTests
         var db = DteTestSupport.Db();
         var provider = new FakeDteProvider();
         var company = new FakeCompany();
-        var settings = new DteSettingsService(db, DteTestSupport.Crypto(), new DteProviderRegistry(new IDteProvider[] { provider }));
+        var settings = new DteSettingsService(db, DteTestSupport.Crypto(), new DteProviderRegistry(new IDteProvider[] { provider }), DteReceptionTestSupport.Registry());
         if (configure) await settings.SaveAsync(company.CompanyId, DteTestSupport.ValidInput());
         return new Env(new DteEmissionService(db, company, new FakeUser(), settings, TimeProvider.System), db, provider, company);
     }

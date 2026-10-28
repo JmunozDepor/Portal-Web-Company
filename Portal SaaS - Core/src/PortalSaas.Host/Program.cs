@@ -148,6 +148,7 @@ builder.Services.AddHostedService<PortalSaas.Core.Documentos.DocumentDraftCleanu
 // proveedor (docs/superpowers/specs/2026-10-22-pasarela-documentos-electronicos-design.md).
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteProviderRegistry>();
+builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteReceptionProviderRegistry>();
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteSettingsService>();
 builder.Services.AddHttpClient<PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele.FaceleSoapClient>(c => c.Timeout = TimeSpan.FromSeconds(60));
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.IDteProvider, PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele.FaceleDteProvider>();

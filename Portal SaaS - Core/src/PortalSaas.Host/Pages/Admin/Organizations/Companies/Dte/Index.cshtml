@@ -112,6 +112,48 @@
             </div>
         </div>
 
+        <h3 class="h6 mt-4">Recepción de documentos (facturas de proveedor)</h3>
+        <p class="text-muted small mb-2">Usa el mismo usuario y contraseña del proveedor. La URL base es la del servicio de documentos recibidos (FACELE: https://caoba.docele.cl/cl-dol en certificación).</p>
+        <div class="row g-3">
+            <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check">
+                    <input asp-for="Input.ReceptionEnabled" class="form-check-input" />
+                    <label asp-for="Input.ReceptionEnabled" class="form-check-label">Habilitada para leer recibidos</label>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <label asp-for="Input.ReceptionBaseUrl" class="form-label">URL base de recepción</label>
+                <input asp-for="Input.ReceptionBaseUrl" class="form-control" placeholder="https://caoba.docele.cl/cl-dol" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Input.ReceptionUserMail" class="form-label">Correo del usuario del proveedor</label>
+                <input asp-for="Input.ReceptionUserMail" type="email" class="form-control" autocomplete="off" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Input.ReceptionIntervalMinutes" class="form-label">Leer cada (minutos)</label>
+                <input asp-for="Input.ReceptionIntervalMinutes" type="number" min="5" max="1440" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Input.ReceptionInitialDays" class="form-label">Primera carga (días hacia atrás)</label>
+                <input asp-for="Input.ReceptionInitialDays" type="number" min="30" max="365" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Input.ReceptionWindowDays" class="form-label">Ventana de lectura (días)</label>
+                <input asp-for="Input.ReceptionWindowDays" type="number" min="3" max="60" class="form-control" />
+            </div>
+            @if (Model.Current is { } cur)
+            {
+                <div class="col-md-3">
+                    <label class="form-label">Última lectura</label>
+                    <div class="form-control-plaintext">@(cur.ReceptionLastSyncAt?.ToLocalTime().ToString("dd-MM-yyyy HH:mm") ?? "—")</div>
+                </div>
+                @if (!string.IsNullOrEmpty(cur.ReceptionLastError))
+                {
+                    <div class="col-12"><div class="alert alert-warning mb-0">Último error de lectura: @cur.ReceptionLastError</div></div>
+                }
+            }
+        </div>
+
         <div class="d-flex gap-2 mt-4">
             <button type="submit" class="btn btn-primary">Guardar</button>
             <a asp-page="/Admin/Organizations/Companies/Index" asp-route-organizationId="@Model.Organization.Id" class="btn btn-secondary">Volver</a>
@@ -120,9 +162,12 @@
 
     @if (Model.Current is not null)
     {
-        <div class="d-flex gap-2 mt-3">
+        <div class="d-flex gap-2 mt-3 flex-wrap">
             <form method="post" asp-page-handler="Test" asp-route-companyId="@Model.Company.Id" class="d-inline">
                 <button type="submit" class="btn btn-secondary">Probar conexión</button>
+            </form>
+            <form method="post" asp-page-handler="TestReception" asp-route-companyId="@Model.Company.Id" class="d-inline">
+                <button type="submit" class="btn btn-secondary">Probar recepción</button>
             </form>
             <form method="post" asp-page-handler="Delete" asp-route-companyId="@Model.Company.Id" class="d-inline"
                   onsubmit="return confirm('¿Eliminar la configuración de documentos electrónicos de esta compañía?');">

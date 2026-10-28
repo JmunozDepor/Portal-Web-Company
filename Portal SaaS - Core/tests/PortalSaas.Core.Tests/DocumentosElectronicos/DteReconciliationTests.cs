@@ -16,7 +16,7 @@ public class DteReconciliationTests
     {
         var db = DteTestSupport.Db();
         var provider = new FakeDteProvider();
-        return new Env(db, provider, new DteSettingsService(db, DteTestSupport.Crypto(), new DteProviderRegistry(new IDteProvider[] { provider })));
+        return new Env(db, provider, new DteSettingsService(db, DteTestSupport.Crypto(), new DteProviderRegistry(new IDteProvider[] { provider }), DteReceptionTestSupport.Registry()));
     }
 
     private static DteEmissionService Svc(Env env, Guid companyId) =>

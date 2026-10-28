@@ -38,6 +38,21 @@ public sealed class CompanyDteSetting
     public string IssuerCity { get; set; } = null!;
     public long? IssuerSiiBranchCode { get; set; }
 
+    // Recepción de documentos (facturas de proveedor). Usa las mismas credenciales que la emisión, pero el
+    // servicio vive en otra URL base (FACELE: .../cl-dol, la emisión en .../cl-dol-auth).
+    public bool ReceptionEnabled { get; set; }
+    public string? ReceptionBaseUrl { get; set; }
+    /// <summary>Correo del usuario del proveedor con que se opera la bandeja (FACELE: userMail).</summary>
+    public string? ReceptionUserMail { get; set; }
+    public int ReceptionIntervalMinutes { get; set; } = 30;
+    /// <summary>Días hacia atrás de la primera sincronización (historial para el saldo de OC).</summary>
+    public int ReceptionInitialDays { get; set; } = 60;
+    /// <summary>Días hacia atrás de cada sincronización posterior (ventana móvil).</summary>
+    public int ReceptionWindowDays { get; set; } = 15;
+    public DateTimeOffset? ReceptionInitialLoadDoneAt { get; set; }
+    public DateTimeOffset? ReceptionLastSyncAt { get; set; }
+    public string? ReceptionLastError { get; set; }
+
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

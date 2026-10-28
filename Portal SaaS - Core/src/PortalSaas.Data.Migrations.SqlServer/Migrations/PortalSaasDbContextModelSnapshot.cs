@@ -308,6 +308,45 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("provider_code");
 
+                    b.Property<string>("ReceptionBaseUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasColumnName("reception_base_url");
+
+                    b.Property<bool>("ReceptionEnabled")
+                        .HasColumnType("bit")
+                        .HasColumnName("reception_enabled");
+
+                    b.Property<int>("ReceptionInitialDays")
+                        .HasColumnType("int")
+                        .HasColumnName("reception_initial_days");
+
+                    b.Property<DateTimeOffset?>("ReceptionInitialLoadDoneAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("reception_initial_load_done_at");
+
+                    b.Property<int>("ReceptionIntervalMinutes")
+                        .HasColumnType("int")
+                        .HasColumnName("reception_interval_minutes");
+
+                    b.Property<string>("ReceptionLastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("reception_last_error");
+
+                    b.Property<DateTimeOffset?>("ReceptionLastSyncAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("reception_last_sync_at");
+
+                    b.Property<string>("ReceptionUserMail")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("reception_user_mail");
+
+                    b.Property<int>("ReceptionWindowDays")
+                        .HasColumnType("int")
+                        .HasColumnName("reception_window_days");
+
                     b.Property<string>("SecretKey")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)")
@@ -634,6 +673,206 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.ToTable("dte_emissions", null, t =>
                         {
                             t.HasCheckConstraint("ck_dte_emissions_status", "status in ('pending', 'folio_reserved', 'issued', 'failed', 'released', 'abandoned')");
+                        });
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.DteReceived", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ClaimStatus")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("claim_status");
+
+                    b.Property<string>("CommercialStatus")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("commercial_status");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<int>("DteType")
+                        .HasColumnType("int")
+                        .HasColumnName("dte_type");
+
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("environment");
+
+                    b.Property<long>("ExemptAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("exempt_amount");
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("first_seen_at");
+
+                    b.Property<long>("Folio")
+                        .HasColumnType("bigint")
+                        .HasColumnName("folio");
+
+                    b.Property<bool>("IsAssigned")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_assigned");
+
+                    b.Property<bool>("IsVoided")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_voided");
+
+                    b.Property<DateOnly>("IssueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("issue_date");
+
+                    b.Property<string>("IssuerName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("issuer_name");
+
+                    b.Property<string>("IssuerTaxId")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)")
+                        .HasColumnName("issuer_tax_id");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<long>("NetAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("net_amount");
+
+                    b.Property<string>("OtherTaxesJson")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("other_taxes_json");
+
+                    b.Property<DateTimeOffset?>("ProcessingAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("processing_at");
+
+                    b.Property<string>("ProcessingModule")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("processing_module");
+
+                    b.Property<string>("ProcessingRef")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("processing_ref");
+
+                    b.Property<string>("ProcessingState")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("processing_state");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("provider_code");
+
+                    b.Property<string>("ProviderUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("provider_url");
+
+                    b.Property<string>("PurchaseOrderRefsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("purchase_order_refs_json");
+
+                    b.Property<string>("ReferencesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("references_json");
+
+                    b.Property<DateTimeOffset?>("RespondedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("responded_at");
+
+                    b.Property<string>("ResponseAction")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("response_action");
+
+                    b.Property<string>("ResponseActor")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("response_actor");
+
+                    b.Property<int>("ResponseAttempts")
+                        .HasColumnType("int")
+                        .HasColumnName("response_attempts");
+
+                    b.Property<string>("ResponseKey")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)")
+                        .HasColumnName("response_key");
+
+                    b.Property<string>("ResponseReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("response_reason");
+
+                    b.Property<string>("ResponseStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("response_status");
+
+                    b.Property<DateTimeOffset?>("SiiReceivedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("sii_received_at");
+
+                    b.Property<string>("SiiStatus")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("sii_status");
+
+                    b.Property<long>("TotalAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total_amount");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("VatAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("vat_amount");
+
+                    b.Property<string>("Xml")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("xml");
+
+                    b.HasKey("Id")
+                        .HasName("pk_dte_received");
+
+                    b.HasIndex("CompanyId", "SiiReceivedAt")
+                        .HasDatabaseName("ix_dte_received_company_id_sii_received_at");
+
+                    b.HasIndex("CompanyId", "UpdatedAt")
+                        .HasDatabaseName("ix_dte_received_company_id_updated_at");
+
+                    b.HasIndex("CompanyId", "IssuerTaxId", "DteType", "Folio")
+                        .IsUnique()
+                        .HasDatabaseName("uq_dte_received_company_document");
+
+                    b.ToTable("dte_received", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_dte_received_response_status", "response_status in ('none', 'pending', 'sent', 'failed', 'external')");
                         });
                 });
 
@@ -2756,6 +2995,18 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_dte_emissions_companies_company_id");
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("PortalSaas.Data.Entities.DteReceived", b =>
+                {
+                    b.HasOne("PortalSaas.Data.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_dte_received_company_company_id");
 
                     b.Navigation("Company");
                 });

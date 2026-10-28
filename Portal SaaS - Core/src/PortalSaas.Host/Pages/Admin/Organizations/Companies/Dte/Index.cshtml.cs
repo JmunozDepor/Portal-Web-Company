@@ -48,6 +48,9 @@ public class IndexModel : PageModel
                 IsEnabled = c.IsEnabled, IssuerTaxId = c.IssuerTaxId, IssuerName = c.IssuerName,
                 IssuerActivity = c.IssuerActivity, IssuerActivityCode = c.IssuerActivityCode, IssuerAddress = c.IssuerAddress,
                 IssuerCommune = c.IssuerCommune, IssuerCity = c.IssuerCity, IssuerSiiBranchCode = c.IssuerSiiBranchCode,
+                ReceptionEnabled = c.ReceptionEnabled, ReceptionBaseUrl = c.ReceptionBaseUrl, ReceptionUserMail = c.ReceptionUserMail,
+                ReceptionIntervalMinutes = c.ReceptionIntervalMinutes, ReceptionInitialDays = c.ReceptionInitialDays,
+                ReceptionWindowDays = c.ReceptionWindowDays,
             };
         }
         else
@@ -80,6 +83,21 @@ public class IndexModel : PageModel
         {
             await _svc.TestAsync(companyId);
             SuccessMessage = $"Conexión correcta con {Current?.ProviderCode}.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        return RedirectToPage(new { companyId });
+    }
+
+    public async Task<IActionResult> OnPostTestReceptionAsync(Guid companyId)
+    {
+        if (!await CargarAsync(companyId)) return NotFound();
+        try
+        {
+            await _svc.TestReceptionAsync(companyId);
+            SuccessMessage = $"Recepción de documentos: conexión correcta con {Current?.ProviderCode}.";
         }
         catch (InvalidOperationException ex)
         {

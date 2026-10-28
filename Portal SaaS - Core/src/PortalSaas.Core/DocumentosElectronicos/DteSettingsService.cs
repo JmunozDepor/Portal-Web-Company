@@ -10,7 +10,10 @@ namespace PortalSaas.Core.DocumentosElectronicos;
 public sealed record DteSettingsDto(
     string ProviderCode, string Environment, string BaseUrl, string Username, bool HasSecret, bool IsEnabled,
     string IssuerTaxId, string IssuerName, string IssuerActivity, int IssuerActivityCode, string IssuerAddress,
-    string IssuerCommune, string IssuerCity, long? IssuerSiiBranchCode, DateTimeOffset UpdatedAt);
+    string IssuerCommune, string IssuerCity, long? IssuerSiiBranchCode, DateTimeOffset UpdatedAt,
+    bool ReceptionEnabled = false, string? ReceptionBaseUrl = null, string? ReceptionUserMail = null,
+    int ReceptionIntervalMinutes = 30, int ReceptionInitialDays = 60, int ReceptionWindowDays = 15,
+    DateTimeOffset? ReceptionLastSyncAt = null, string? ReceptionLastError = null);
 
 /// <summary>Formulario de /Admin. Password vacío o null = conservar la actual.</summary>
 public sealed class DteSettingsInput
@@ -29,6 +32,14 @@ public sealed class DteSettingsInput
     public string IssuerCommune { get; set; } = "";
     public string IssuerCity { get; set; } = "";
     public long? IssuerSiiBranchCode { get; set; }
+
+    // Recepción de documentos (facturas de proveedor).
+    public bool ReceptionEnabled { get; set; }
+    public string? ReceptionBaseUrl { get; set; }
+    public string? ReceptionUserMail { get; set; }
+    public int ReceptionIntervalMinutes { get; set; } = 30;
+    public int ReceptionInitialDays { get; set; } = 60;
+    public int ReceptionWindowDays { get; set; } = 15;
 }
 
 /// <summary>
@@ -40,12 +51,15 @@ public sealed class DteSettingsService
     private readonly PortalSaasDbContext _db;
     private readonly ISecretoCifradoService _crypto;
     private readonly DteProviderRegistry _providers;
+    private readonly DteReceptionProviderRegistry _receptionProviders;
 
-    public DteSettingsService(PortalSaasDbContext db, ISecretoCifradoService crypto, DteProviderRegistry providers)
+    public DteSettingsService(PortalSaasDbContext db, ISecretoCifradoService crypto, DteProviderRegistry providers,
+        DteReceptionProviderRegistry receptionProviders)
     {
         _db = db;
         _crypto = crypto;
         _providers = providers;
+        _receptionProviders = receptionProviders;
     }
 
     public IReadOnlyList<string> ProviderCodes => _providers.Codes;
@@ -56,7 +70,9 @@ public sealed class DteSettingsService
         return s is null ? null : new DteSettingsDto(
             s.ProviderCode, s.Environment, s.BaseUrl, s.Username, !string.IsNullOrEmpty(s.SecretKey), s.IsEnabled,
             s.IssuerTaxId, s.IssuerName, s.IssuerActivity, s.IssuerActivityCode, s.IssuerAddress, s.IssuerCommune,
-            s.IssuerCity, s.IssuerSiiBranchCode, s.UpdatedAt);
+            s.IssuerCity, s.IssuerSiiBranchCode, s.UpdatedAt,
+            s.ReceptionEnabled, s.ReceptionBaseUrl, s.ReceptionUserMail, s.ReceptionIntervalMinutes, s.ReceptionInitialDays,
+            s.ReceptionWindowDays, s.ReceptionLastSyncAt, s.ReceptionLastError);
     }
 
     public async Task SaveAsync(Guid companyId, DteSettingsInput input)
@@ -79,6 +95,7 @@ public sealed class DteSettingsService
             if (string.IsNullOrWhiteSpace(value)) throw new InvalidOperationException($"Ingrese {label} del emisor.");
         }
         if (input.IssuerActivityCode <= 0) throw new InvalidOperationException("Ingrese el código de actividad (Acteco) del emisor.");
+        var receptionUrl = ValidateReception(input);
 
         var s = await _db.CompanyDteSettings.FirstOrDefaultAsync(x => x.CompanyId == companyId);
         var isNew = s is null;
@@ -110,6 +127,12 @@ public sealed class DteSettingsService
         s.IssuerCommune = input.IssuerCommune.Trim();
         s.IssuerCity = input.IssuerCity.Trim();
         s.IssuerSiiBranchCode = input.IssuerSiiBranchCode;
+        s.ReceptionEnabled = input.ReceptionEnabled;
+        s.ReceptionBaseUrl = receptionUrl;
+        s.ReceptionUserMail = string.IsNullOrWhiteSpace(input.ReceptionUserMail) ? null : input.ReceptionUserMail.Trim();
+        s.ReceptionIntervalMinutes = input.ReceptionIntervalMinutes;
+        s.ReceptionInitialDays = input.ReceptionInitialDays;
+        s.ReceptionWindowDays = input.ReceptionWindowDays;
         s.UpdatedAt = DateTimeOffset.UtcNow;
         if (isNew) _db.CompanyDteSettings.Add(s);
         await _db.SaveChangesAsync();
@@ -125,6 +148,31 @@ public sealed class DteSettingsService
                 $"Hay {pending} emisión(es) en curso con este proveedor: espere a que terminen antes de eliminar la configuración.");
         _db.CompanyDteSettings.Remove(s);
         await _db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Valida la sección de recepción. Los rangos se validan siempre; URL, correo y proveedor solo si la recepción
+    /// queda habilitada. Devuelve la URL base normalizada (o null si viene vacía).
+    /// </summary>
+    private string? ValidateReception(DteSettingsInput input)
+    {
+        if (input.ReceptionIntervalMinutes is < 5 or > 1440)
+            throw new InvalidOperationException("La frecuencia de lectura de recibidos debe estar entre 5 y 1440 minutos.");
+        if (input.ReceptionInitialDays is < 30 or > 365)
+            throw new InvalidOperationException("Los días de la primera carga de recibidos deben estar entre 30 y 365.");
+        if (input.ReceptionWindowDays is < 3 or > 60)
+            throw new InvalidOperationException("La ventana de lectura de recibidos debe estar entre 3 y 60 días.");
+
+        string? url = string.IsNullOrWhiteSpace(input.ReceptionBaseUrl) ? null : ValidateBaseUrl(input.ReceptionBaseUrl).ToString().TrimEnd('/');
+        if (!input.ReceptionEnabled) return url;
+
+        if (url is null) throw new InvalidOperationException("Ingrese la URL base del servicio de recepción de documentos.");
+        var mail = input.ReceptionUserMail?.Trim() ?? "";
+        if (mail.Length == 0 || !mail.Contains('@'))
+            throw new InvalidOperationException("Ingrese el correo del usuario del proveedor para la recepción de documentos.");
+        if (!_receptionProviders.Contains(input.ProviderCode?.Trim() ?? ""))
+            throw new InvalidOperationException($"El proveedor «{input.ProviderCode}» no tiene recepción de documentos disponible en esta instalación.");
+        return url;
     }
 
     private Task<int> CountInFlightAsync(Guid companyId) =>
@@ -144,6 +192,40 @@ public sealed class DteSettingsService
         {
             throw new InvalidOperationException($"No se pudo conectar con {resolved.Provider.Code}: {ex.Message}");
         }
+    }
+
+    /// <summary>Prueba de conexión de recepción, de solo lectura. Los errores salen sin credenciales.</summary>
+    public async Task TestReceptionAsync(Guid companyId)
+    {
+        var s = await _db.CompanyDteSettings.AsNoTracking().FirstOrDefaultAsync(x => x.CompanyId == companyId);
+        var resolved = s is null ? null : Resolve(s, requireEnabled: false);
+        if (resolved is null)
+            throw new InvalidOperationException("Guarde primero la recepción con su URL, correo y la contraseña del proveedor.");
+        try
+        {
+            await resolved.Value.Provider.TestAsync(resolved.Value.Ctx, CancellationToken.None);
+        }
+        catch (DteProviderUnavailableException ex)
+        {
+            throw new InvalidOperationException($"No se pudo conectar con la recepción de {resolved.Value.Provider.Code}: {ex.Message}");
+        }
+    }
+
+    /// <summary>Proveedor de recepción y credenciales descifradas de la compañía; null si la recepción no está habilitada.</summary>
+    internal async Task<(DteReceptionContext Ctx, IDteReceptionProvider Provider)?> ResolveReceptionAsync(Guid companyId)
+    {
+        var s = await _db.CompanyDteSettings.AsNoTracking().FirstOrDefaultAsync(x => x.CompanyId == companyId);
+        return s is null ? null : Resolve(s, requireEnabled: true);
+    }
+
+    private (DteReceptionContext Ctx, IDteReceptionProvider Provider)? Resolve(CompanyDteSetting s, bool requireEnabled)
+    {
+        if ((requireEnabled && !s.ReceptionEnabled) || string.IsNullOrEmpty(s.SecretKey) || string.IsNullOrEmpty(s.ReceptionBaseUrl)
+            || string.IsNullOrEmpty(s.ReceptionUserMail) || !_receptionProviders.Contains(s.ProviderCode))
+            return null;
+        var ctx = new DteReceptionContext(s.ReceptionBaseUrl, s.Username, _crypto.Decrypt(s.SecretKey), s.IssuerTaxId,
+            s.ReceptionUserMail, s.Environment);
+        return (ctx, _receptionProviders.Get(s.ProviderCode));
     }
 
     /// <summary>

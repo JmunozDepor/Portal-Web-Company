@@ -124,3 +124,79 @@ internal static class DteTestSupport
         IssuerCity = "Rancagua",
     };
 }
+
+/// <summary>Proveedor de recepción falso y scripteable: devuelve lo cargado en Received/References y registra cada llamada.</summary>
+internal sealed class FakeReceptionProvider : IDteReceptionProvider
+{
+    public string Code { get; init; } = "FAKE";
+    public DteReceptionCapabilities Capabilities { get; set; } = new(
+        new[] { 33, 34, 43 },
+        new[] { DteResponseActions.AcceptContent, DteResponseActions.ClaimContent, DteResponseActions.ClaimPartialGoods,
+                DteResponseActions.ClaimTotalGoods, DteResponseActions.GoodsReceipt },
+        SupportsResponseNote: false, SupportsDocumentDownload: false);
+
+    public List<DteReceivedRecord> Received { get; } = new();
+    public Dictionary<(string Issuer, int Type, long Folio), List<DteReceivedReference>> References { get; } = new();
+    public Dictionary<(string Issuer, int Type, long Folio), string> Xmls { get; } = new();
+    public List<(DateOnly From, DateOnly To)> ListCalls { get; } = new();
+    public List<(string Issuer, int Type, long Folio, string Action)> Responds { get; } = new();
+    public List<string> Notes { get; } = new();
+    public List<DteReceptionContext> Contexts { get; } = new();
+
+    /// <summary>Si no es null, la próxima respuesta devuelve esto en vez de Ok.</summary>
+    public DteRespondProviderResult? NextRespond { get; set; }
+    public int FailNextResponds { get; set; }
+    public string? ThrowOnList { get; set; }
+    public bool TestFails { get; set; }
+
+    public Task<IReadOnlyList<DteReceivedRecord>> ListReceivedAsync(DteReceptionContext ctx, DateOnly from, DateOnly to, CancellationToken ct)
+    {
+        Contexts.Add(ctx);
+        ListCalls.Add((from, to));
+        if (ThrowOnList is { } msg) throw new DteProviderUnavailableException(msg);
+        return Task.FromResult<IReadOnlyList<DteReceivedRecord>>(Received.ToList());
+    }
+
+    public Task<IReadOnlyList<DteReceivedReference>> GetReferencesAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<DteReceivedReference>>(
+            References.TryGetValue((issuerTaxId, dteType, folio), out var refs) ? refs : new List<DteReceivedReference>());
+
+    public Task<string?> GetXmlAsync(DteReceptionContext ctx, DteReceivedRecord record, CancellationToken ct) =>
+        Task.FromResult(Xmls.TryGetValue((record.IssuerTaxId, record.DteType, record.Folio), out var xml) ? xml : null);
+
+    public Task<byte[]?> GetPdfAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string? url, CancellationToken ct) =>
+        Task.FromResult<byte[]?>(null);
+
+    public Task<DteRespondProviderResult> RespondAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string action, CancellationToken ct)
+    {
+        if (FailNextResponds > 0) { FailNextResponds--; throw new DteProviderUnavailableException("FAKE: sin conexión (respuesta)."); }
+        Responds.Add((issuerTaxId, dteType, folio, action));
+        var result = NextRespond ?? new DteRespondProviderResult(true, false, null);
+        NextRespond = null;
+        return Task.FromResult(result);
+    }
+
+    public Task SetNoteAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string note, CancellationToken ct)
+    {
+        Notes.Add(note);
+        return Task.CompletedTask;
+    }
+
+    public Task TestAsync(DteReceptionContext ctx, CancellationToken ct) =>
+        TestFails ? throw new DteProviderUnavailableException("FAKE: HTTP 405 en consultarResumen.") : Task.CompletedTask;
+}
+
+internal static class DteReceptionTestSupport
+{
+    public static DteReceptionProviderRegistry Registry(params IDteReceptionProvider[] providers) =>
+        new(providers.Length == 0 ? new IDteReceptionProvider[] { new FakeReceptionProvider() } : providers);
+
+    public static DteSettingsInput WithReception(this DteSettingsInput input, bool enabled = true,
+        string baseUrl = "https://caoba.docele.cl/cl-dol", string userMail = "facturas@depor.cl")
+    {
+        input.ReceptionEnabled = enabled;
+        input.ReceptionBaseUrl = baseUrl;
+        input.ReceptionUserMail = userMail;
+        return input;
+    }
+}

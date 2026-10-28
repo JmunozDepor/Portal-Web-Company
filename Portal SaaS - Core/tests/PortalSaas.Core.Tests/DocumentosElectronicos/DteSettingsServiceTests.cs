@@ -14,7 +14,7 @@ public class DteSettingsServiceTests
     {
         var db = DteTestSupport.Db();
         var provider = new FakeDteProvider();
-        return (new DteSettingsService(db, DteTestSupport.Crypto(), new DteProviderRegistry(new IDteProvider[] { provider })), db, provider);
+        return (new DteSettingsService(db, DteTestSupport.Crypto(), new DteProviderRegistry(new IDteProvider[] { provider }), DteReceptionTestSupport.Registry()), db, provider);
     }
 
     [Fact]
@@ -161,6 +161,76 @@ public class DteSettingsServiceTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.TestAsync(CompanyId));
         Assert.DoesNotContain("clave-secreta", ex.Message);
         Assert.DoesNotContain("usuario-prueba", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("", "facturas@depor.cl")]
+    [InlineData("https://caoba.docele.cl/cl-dol", "")]
+    [InlineData("https://caoba.docele.cl/cl-dol", "sin-arroba")]
+    public async Task Save_RecepcionHabilitadaSinUrlOCorreo_Falla(string url, string mail)
+    {
+        var (svc, _, _) = Build();
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.SaveAsync(CompanyId, DteTestSupport.ValidInput().WithReception(baseUrl: url, userMail: mail)));
+    }
+
+    [Fact]
+    public async Task Save_RecepcionProveedorSinCapacidad_Falla()
+    {
+        var db = DteTestSupport.Db();
+        var svc = new DteSettingsService(db, DteTestSupport.Crypto(), new DteProviderRegistry(new IDteProvider[] { new FakeDteProvider() }),
+            DteReceptionTestSupport.Registry(new FakeReceptionProvider { Code = "OTRO" }));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.SaveAsync(CompanyId, DteTestSupport.ValidInput().WithReception()));
+        Assert.Contains("recepción", ex.Message);
+
+        // Sin recepción habilitada, el mismo proveedor se guarda sin problema.
+        await svc.SaveAsync(CompanyId, DteTestSupport.ValidInput().WithReception(enabled: false));
+    }
+
+    [Theory]
+    [InlineData(4, 60, 15)]
+    [InlineData(1441, 60, 15)]
+    [InlineData(30, 29, 15)]
+    [InlineData(30, 366, 15)]
+    [InlineData(30, 60, 2)]
+    [InlineData(30, 60, 61)]
+    public async Task Save_IntervaloFueraDeRango_Falla(int interval, int initialDays, int windowDays)
+    {
+        var (svc, _, _) = Build();
+        var input = DteTestSupport.ValidInput().WithReception();
+        input.ReceptionIntervalMinutes = interval;
+        input.ReceptionInitialDays = initialDays;
+        input.ReceptionWindowDays = windowDays;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.SaveAsync(CompanyId, input));
+    }
+
+    [Fact]
+    public async Task ResolveReception_Deshabilitada_Null()
+    {
+        var (svc, _, _) = Build();
+        await svc.SaveAsync(CompanyId, DteTestSupport.ValidInput().WithReception(enabled: false));
+        Assert.Null(await svc.ResolveReceptionAsync(CompanyId));
+    }
+
+    [Fact]
+    public async Task ResolveReception_UsaUrlYCorreoDeRecepcion()
+    {
+        var (svc, _, _) = Build();
+        await svc.SaveAsync(CompanyId, DteTestSupport.ValidInput().WithReception());
+
+        var resolved = await svc.ResolveReceptionAsync(CompanyId);
+
+        Assert.NotNull(resolved);
+        Assert.Equal("https://caoba.docele.cl/cl-dol", resolved!.Value.Ctx.BaseUrl);
+        Assert.Equal("facturas@depor.cl", resolved.Value.Ctx.UserMail);
+        Assert.Equal("76030680-0", resolved.Value.Ctx.ReceiverTaxId);
+        Assert.Equal("clave-secreta", resolved.Value.Ctx.Password);
+        Assert.Equal("FAKE", resolved.Value.Provider.Code);
+        var dto = await svc.GetAsync(CompanyId);
+        Assert.True(dto!.ReceptionEnabled);
+        Assert.Equal(30, dto.ReceptionIntervalMinutes);
     }
 
     [Fact]

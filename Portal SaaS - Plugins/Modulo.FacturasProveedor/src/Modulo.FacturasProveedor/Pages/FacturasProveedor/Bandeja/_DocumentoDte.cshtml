@@ -1,0 +1,178 @@
+@model Modulo.FacturasProveedor.Servicios.ReviewDetail
+@using System.Globalization
+@* Documento recibido con la distribución del visor de FACELE: emisor y recuadro (RUT, tipo, folio), encabezado,
+   transporte, detalle, referencias y totales. Sale del XML (Model.Dte); si el operador no lo tiene (documento sin
+   recepción electrónica), se muestra lo que informa el registro del SII. Lo usan el Detalle y la vista previa. *@
+@{
+    var r = Model.Row;
+    var doc = Model.Document;
+    var dte = Model.Dte;
+    var cl = CultureInfo.GetCultureInfo("es-CL");
+    string Text(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+    string Place(string? commune, string? city) =>
+        string.Join(" - ", new[] { commune, city }.Where(x => !string.IsNullOrWhiteSpace(x)));
+}
+
+<div class="fpr-dte">
+    <div class="fpr-dte__head">
+        <div class="fpr-dte__issuer">
+            <div class="fpr-dte__issuer-name">@(dte?.Issuer.Name ?? r.IssuerName)</div>
+            @if (dte is not null)
+            {
+                @if (!string.IsNullOrWhiteSpace(dte.Issuer.Activity)) { <div>@dte.Issuer.Activity</div> }
+                @if (!string.IsNullOrWhiteSpace(dte.Issuer.Address)) { <div>@dte.Issuer.Address</div> }
+                @if (Place(dte.Issuer.Commune, dte.Issuer.City) is { Length: > 0 } issuerPlace) { <div>@issuerPlace</div> }
+                @if (!string.IsNullOrWhiteSpace(dte.Issuer.Phone) || !string.IsNullOrWhiteSpace(dte.Issuer.Email))
+                {
+                    <div class="text-muted small">@string.Join(" · ", new[] { dte.Issuer.Phone, dte.Issuer.Email }.Where(x => !string.IsNullOrWhiteSpace(x)))</div>
+                }
+            }
+        </div>
+        <div class="fpr-dte__stamp">
+            <div>R.U.T. @FacturasProveedorUi.FormatTaxId(r.IssuerTaxId)</div>
+            <div>@FacturasProveedorUi.OfficialDocumentName(r.DteType)</div>
+            <div>N° @r.Folio</div>
+        </div>
+    </div>
+
+    @if (dte is null)
+    {
+        <div class="alert alert-info mb-0">
+            El operador no tiene el XML de este documento (sin recepción electrónica): se muestran los datos del registro del SII.
+        </div>
+    }
+
+    <section class="fpr-dte__section">
+        <h6 class="fpr-dte__title">Encabezado</h6>
+        <div class="fpr-dte__grid">
+            <dl>
+                <dt>Rut</dt><dd>@(dte is null ? "—" : FacturasProveedorUi.FormatTaxId(dte.Receiver.TaxId))</dd>
+                <dt>Nombre</dt><dd>@Text(dte?.Receiver.Name)</dd>
+                <dt>Giro</dt><dd>@Text(dte?.Receiver.Activity)</dd>
+                <dt>Contacto</dt><dd>@Text(dte?.Receiver.Contact)</dd>
+                <dt>Correo</dt><dd>@Text(dte?.Receiver.Email)</dd>
+                <dt>Dirección</dt><dd>@Text(dte is null ? null : string.Join(", ", new[] { dte.Receiver.Address, Place(dte.Receiver.Commune, dte.Receiver.City) }.Where(x => !string.IsNullOrWhiteSpace(x))))</dd>
+                <dt>Dir. postal</dt><dd>@Text(dte?.Receiver.PostalAddress)</dd>
+            </dl>
+            <dl>
+                <dt>Fecha emisión</dt><dd>@FacturasProveedorUi.Date(dte?.IssueDate ?? doc.IssueDate)</dd>
+                <dt>Fecha vencimiento</dt><dd>@FacturasProveedorUi.Date(dte?.DueDate ?? doc.DueDate)</dd>
+                <dt>Registro en el SII</dt><dd>@FacturasProveedorUi.RegisteredLabel(doc.SiiReceivedAt, r.SiiReceivedOn)</dd>
+                <dt>Forma de pago</dt>
+                <dd>@(dte?.PaymentForm is { } form ? FacturasProveedorUi.PaymentFormCodeLabel(form) : FacturasProveedorUi.PaymentFormLabel(doc.PaymentForm))</dd>
+                <dt>Término de pago</dt><dd>@Text(dte?.PaymentTerms)</dd>
+                <dt>Tipo despacho</dt><dd>@(dte?.DispatchType?.ToString(CultureInfo.InvariantCulture) ?? "—")</dd>
+                <dt>Ind. traslado</dt><dd>@(dte?.TransferIndicator?.ToString(CultureInfo.InvariantCulture) ?? "—")</dd>
+                <dt>Ind. servicio</dt><dd>@(dte?.ServiceIndicator?.ToString(CultureInfo.InvariantCulture) ?? "—")</dd>
+                <dt>Montos brutos</dt><dd>@(dte?.GrossAmounts == true ? "Sí" : "—")</dd>
+            </dl>
+        </div>
+    </section>
+
+    @if (dte?.Transport is { } transport)
+    {
+        <section class="fpr-dte__section">
+            <h6 class="fpr-dte__title">Información de transporte</h6>
+            <div class="fpr-dte__grid">
+                <dl>
+                    <dt>Dirección destino</dt><dd>@Text(transport.Address)</dd>
+                    <dt>Comuna destino</dt><dd>@Text(transport.Commune)</dd>
+                    <dt>Ciudad destino</dt><dd>@Text(transport.City)</dd>
+                </dl>
+                <dl>
+                    <dt>Patente</dt><dd>@Text(transport.Plate)</dd>
+                    <dt>RUT transportista</dt><dd>@Text(transport.CarrierTaxId)</dd>
+                    <dt>Chofer</dt><dd>@Text(string.Join(" · ", new[] { transport.DriverName, transport.DriverTaxId }.Where(x => !string.IsNullOrWhiteSpace(x))))</dd>
+                </dl>
+            </div>
+        </section>
+    }
+
+    <section class="fpr-dte__section">
+        <h6 class="fpr-dte__title">Detalle</h6>
+        @if (dte is null || dte.Lines.Count == 0)
+        {
+            <p class="text-muted small m-2">Sin detalle de ítems@(Model.SupportsPdf ? ": está en el PDF" : "").</p>
+        }
+        else
+        {
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead>
+                        <tr>
+                            <th>N°</th><th>Código</th><th>Nombre ítem</th><th>Descripción</th><th class="text-end">Cant.</th><th>Unidad</th>
+                            <th class="text-end">Precio unitario</th><th class="text-end">Descuento</th><th class="text-end">Monto ítem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in dte.Lines)
+                        {
+                            <tr>
+                                <td>@line.LineNumber</td>
+                                <td>@(line.ItemCode ?? "—")</td>
+                                <td>@line.Name</td>
+                                <td>@(line.Description ?? "—")</td>
+                                <td class="text-end">@line.Quantity.ToString("#,##0.##", cl)</td>
+                                <td>@(line.Unit ?? "—")</td>
+                                <td class="text-end">@(line.UnitPrice is { } price ? price.ToString("#,##0.##", cl) : "—")</td>
+                                <td class="text-end">@(line.DiscountAmount is { } off ? FacturasProveedorUi.Amount(off) + (line.DiscountPercent is { } pct ? $" ({pct.ToString("0.##", cl)}%)" : "") : "—")</td>
+                                <td class="text-end">@FacturasProveedorUi.Amount(line.Amount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    @{
+        var references = dte?.References ?? doc.References;
+    }
+    <section class="fpr-dte__section">
+        <h6 class="fpr-dte__title">Información de referencia</h6>
+        @if (references.Count == 0)
+        {
+            <p class="text-muted small m-2">El documento no trae referencias.</p>
+        }
+        else
+        {
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead><tr><th>Tipo de documento</th><th>Folio</th><th>Fecha</th><th>Código de referencia</th><th>Razón de referencia</th></tr></thead>
+                    <tbody>
+                        @foreach (var reference in references)
+                        {
+                            <tr>
+                                <td>@FacturasProveedorUi.ReferenceTypeName(reference.Type)</td>
+                                <td>@reference.Folio</td>
+                                <td class="text-nowrap">@FacturasProveedorUi.Date(reference.Date)</td>
+                                <td>@FacturasProveedorUi.ReferenceCodeLabel(reference.Code)</td>
+                                <td>@(reference.Reason ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    @{
+        var net = dte?.Net ?? doc.NetAmount;
+        var exempt = dte?.Exempt ?? doc.ExemptAmount;
+        var vat = dte?.Vat ?? doc.VatAmount;
+        var total = dte?.Total ?? doc.TotalAmount;
+    }
+    <section class="fpr-dte__section">
+        <h6 class="fpr-dte__title">Totales</h6>
+        <dl class="fpr-dte__totals">
+            @if (net != 0) { <dt>Monto neto</dt><dd>@FacturasProveedorUi.Amount(net)</dd> }
+            @if (exempt != 0) { <dt>Monto exento</dt><dd>@FacturasProveedorUi.Amount(exempt)</dd> }
+            @if (vat != 0) { <dt>IVA@(dte?.VatRate is { } rate ? $" ({rate.ToString("0.##", cl)}%)" : "")</dt><dd>@FacturasProveedorUi.Amount(vat)</dd> }
+            @foreach (var tax in dte?.OtherTaxes ?? Array.Empty<PortalSaas.Abstractions.Modelos.Dte.DteOtherTax>())
+            {
+                <dt>Impuesto @tax.Code@(tax.Rate is { } taxRate ? $" ({taxRate.ToString("0.##", cl)}%)" : "")</dt><dd>@FacturasProveedorUi.Amount(tax.Amount)</dd>
+            }
+            <dt class="fpr-dte__total">Monto total</dt><dd class="fpr-dte__total">@FacturasProveedorUi.Amount(total)</dd>
+        </dl>
+    </section>
+</div>

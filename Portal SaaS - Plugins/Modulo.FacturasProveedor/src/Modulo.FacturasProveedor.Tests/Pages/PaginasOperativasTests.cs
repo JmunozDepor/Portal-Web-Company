@@ -348,6 +348,38 @@ public class PaginasOperativasTests
         Assert.Equal(31, sheet.LastRowUsed()!.RowNumber());
     }
 
+    /// <summary>El detalle muestra el documento leído del XML (como el operador); con XML, el PDF se puede pedir aunque no haya enlace.</summary>
+    [Fact]
+    public async Task Detalle_ConXml_TraeElDocumentoSusLineasYPdf()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        var doc = env.Invoice();
+        await env.EvaluateAsync();
+        var review = await env.Db.InvoiceReviews.SingleAsync();
+        env.Inbox.Documents[doc.Id] = Fakes.FakeDteInboxService.SampleDocument(doc);
+
+        var detail = (await Queries(env).GetDetailAsync(review.Id, CancellationToken.None))!;
+
+        Assert.Equal("AGENCIA DE CARGA", detail.Dte!.Issuer.Activity);
+        Assert.Equal(2, detail.Lines.Count);
+        Assert.True(detail.SupportsPdf);
+    }
+
+    [Fact]
+    public async Task Detalle_SinXmlNiEnlace_SinDocumentoNiPdf()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Invoice();
+        await env.EvaluateAsync();
+        var review = await env.Db.InvoiceReviews.SingleAsync();
+
+        var detail = (await Queries(env).GetDetailAsync(review.Id, CancellationToken.None))!;
+
+        Assert.Null(detail.Dte);
+        Assert.Empty(detail.Lines);
+        Assert.False(detail.SupportsPdf);
+    }
+
     [Fact]
     public async Task Detalle_PdfQueElOperadorNoEntrega_MensajeEnVezDe404()
     {

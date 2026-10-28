@@ -3,3 +3,29 @@
 .fpr-kpi { padding: .75rem 1rem; border: 1px solid var(--card-border); border-radius: .5rem; }
 .fpr-kpi__label { font-size: .75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
 .fpr-kpi__value { font-size: 1.4rem; font-weight: 700; }
+
+/* Documento recibido con la distribución del visor de FACELE (pedido del usuario 2026-10-28): emisor y recuadro con
+   RUT/tipo/folio, secciones con título centrado, encabezado en dos columnas y totales a la derecha. Solo tokens. */
+.fpr-dte { display: flex; flex-direction: column; gap: .75rem; }
+.fpr-dte__head { display: grid; grid-template-columns: 1fr minmax(200px, 320px); gap: 1rem; align-items: center; }
+.fpr-dte__issuer { text-align: center; font-size: .85rem; }
+.fpr-dte__issuer-name { font-weight: 700; font-size: 1rem; }
+.fpr-dte__stamp { border: 2px solid var(--bs-danger); color: var(--bs-danger); border-radius: var(--radius-sm);
+    padding: .75rem; text-align: center; font-weight: 700; line-height: 1.6; }
+.fpr-dte__section { border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden; }
+.fpr-dte__title { margin: 0; padding: .4rem .75rem; background: var(--accent-soft); font-size: .75rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; text-align: center; }
+.fpr-dte__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fpr-dte__grid dl { margin: 0; display: grid; grid-template-columns: minmax(110px, 38%) 1fr; align-content: start; }
+.fpr-dte__grid dt, .fpr-dte__grid dd { margin: 0; padding: .35rem .75rem; border-bottom: 1px solid var(--card-border); font-size: .85rem; }
+.fpr-dte__grid dt { font-weight: 600; }
+.fpr-dte__grid dd { word-break: break-word; }
+.fpr-dte__grid dl + dl { border-left: 1px solid var(--card-border); }
+.fpr-dte__totals { display: grid; grid-template-columns: auto auto; justify-content: end; gap: .25rem 1.5rem; margin: 0; padding: .75rem; }
+.fpr-dte__totals dt { font-weight: 600; text-align: right; }
+.fpr-dte__totals dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.fpr-dte__total { font-weight: 700; font-size: 1.05rem; }
+@media (max-width: 768px) {
+    .fpr-dte__head, .fpr-dte__grid { grid-template-columns: 1fr; }
+    .fpr-dte__grid dl + dl { border-left: 0; }
+}

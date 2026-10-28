@@ -38,6 +38,28 @@ public class FacturasProveedorUiTests
     public void ReferenceCodeLabel(int? code, string expected) =>
         Assert.Equal(expected, FacturasProveedorUi.ReferenceCodeLabel(code));
 
+    [Theory]
+    [InlineData(33, "FACTURA ELECTRÓNICA")]
+    [InlineData(34, "FACTURA NO AFECTA O EXENTA ELECTRÓNICA")]
+    [InlineData(61, "NOTA DE CRÉDITO ELECTRÓNICA")]
+    [InlineData(99, "DTE 99")]
+    public void OfficialDocumentName(int dteType, string expected) =>
+        Assert.Equal(expected, FacturasProveedorUi.OfficialDocumentName(dteType));
+
+    [Theory]
+    [InlineData("76012093-6", "76.012.093-6")]
+    [InlineData("9876543-K", "9.876.543-K")]
+    [InlineData("sin-formato", "sin-formato")]
+    public void FormatTaxId(string taxId, string expected) => Assert.Equal(expected, FacturasProveedorUi.FormatTaxId(taxId));
+
+    [Theory]
+    [InlineData(1, "Contado")]
+    [InlineData(2, "Crédito")]
+    [InlineData(3, "Sin costo")]
+    [InlineData(null, "—")]
+    public void PaymentFormCodeLabel(int? code, string expected) =>
+        Assert.Equal(expected, FacturasProveedorUi.PaymentFormCodeLabel(code));
+
     /// <summary>Registro SII 28-10-2026 12:14:31 hora de Chile (UTC-3).</summary>
     private static readonly DateTimeOffset Registered = new(2026, 10, 28, 15, 14, 31, TimeSpan.Zero);
 

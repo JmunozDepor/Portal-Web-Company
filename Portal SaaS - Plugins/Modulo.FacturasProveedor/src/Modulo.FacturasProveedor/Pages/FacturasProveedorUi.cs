@@ -75,6 +75,37 @@ public static class FacturasProveedorUi
         _ => $"DTE {dteType}",
     };
 
+    /// <summary>Nombre oficial del SII, como va en el recuadro rojo del documento (y en el visor de FACELE).</summary>
+    public static string OfficialDocumentName(int dteType) => dteType switch
+    {
+        33 => "FACTURA ELECTRÓNICA",
+        34 => "FACTURA NO AFECTA O EXENTA ELECTRÓNICA",
+        43 => "LIQUIDACIÓN FACTURA ELECTRÓNICA",
+        46 => "FACTURA DE COMPRA ELECTRÓNICA",
+        52 => "GUÍA DE DESPACHO ELECTRÓNICA",
+        56 => "NOTA DE DÉBITO ELECTRÓNICA",
+        61 => "NOTA DE CRÉDITO ELECTRÓNICA",
+        _ => $"DTE {dteType}",
+    };
+
+    /// <summary>RUT con puntos (76012093-6 → 76.012.093-6); tal cual si no tiene la forma número-dígito.</summary>
+    public static string FormatTaxId(string taxId)
+    {
+        var dash = taxId.LastIndexOf('-');
+        if (dash <= 0 || !long.TryParse(taxId[..dash], NumberStyles.None, CultureInfo.InvariantCulture, out var number)) return taxId;
+        return $"{number.ToString("N0", Cl)}{taxId[dash..]}";
+    }
+
+    /// <summary>Forma de pago del XML (FmaPago del SII): 1 contado, 2 crédito, 3 sin costo.</summary>
+    public static string PaymentFormCodeLabel(int? code) => code switch
+    {
+        1 => "Contado",
+        2 => "Crédito",
+        3 => "Sin costo",
+        null => "—",
+        _ => code.Value.ToString(CultureInfo.InvariantCulture),
+    };
+
     /// <summary>Tipo de un documento referenciado: 801 = orden de compra; un DTE por su nombre; otro código tal cual (ej. HES).</summary>
     public static string ReferenceTypeName(string type) =>
         type == "801" ? "Orden de compra"

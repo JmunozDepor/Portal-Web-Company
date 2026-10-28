@@ -30,10 +30,12 @@ public sealed record ReviewPage(IReadOnlyList<ReviewRow> Rows, int Total);
 
 public sealed record ReviewKpis(int InReview, int Warning, int DueIn2Days, int AcceptedMonth, int RejectedMonth);
 
+/// <summary>Detalle de una revisión. Dte = el documento leído del XML (null si el operador no lo tiene).</summary>
 public sealed record ReviewDetail(
     ReviewRow Row, DteReceivedDto Document, IReadOnlyList<FpReviewRuleResult> Rules, IReadOnlyList<DteReceivedLine> Lines,
     IReadOnlyList<FpReviewEvent> Events, string? AcceptWarning, bool CanDecide, bool CanAssociate, string? AssignedGroupName,
-    string? RecommendedAction, string? Reason, string? DecisionSource, IReadOnlyList<string> ClaimActions, bool SupportsPdf);
+    string? RecommendedAction, string? Reason, string? DecisionSource, IReadOnlyList<string> ClaimActions, bool SupportsPdf,
+    DteReceivedDocument? Dte = null);
 
 public interface IReviewQueryService
 {
@@ -158,7 +160,8 @@ public sealed class ReviewQueryService : IReviewQueryService
         var rules = await _db.ReviewRuleResults.AsNoTracking().Where(r => r.ReviewId == id).OrderBy(r => r.Id).ToListAsync(ct);
         var events = await _db.ReviewEvents.AsNoTracking().Where(e => e.ReviewId == id)
             .OrderByDescending(e => e.OccurredAt).ThenByDescending(e => e.Id).ToListAsync(ct);
-        var lines = doc.HasXml ? await _inbox.GetLinesAsync(review.ReceivedId, ct) : Array.Empty<DteReceivedLine>();
+        // El XML se pide al operador la primera vez y queda archivado en la plataforma.
+        var dte = await _inbox.GetDocumentAsync(review.ReceivedId, ct);
         var pending = review.Status is ReviewStatuses.InReview or ReviewStatuses.Warning;
         var canDecide = pending && await _decisions.CanDecideAsync(id, ct);
         var warning = canDecide && review.Status == ReviewStatuses.InReview ? await _decisions.GetAcceptWarningAsync(id, ct) : null;
@@ -167,9 +170,9 @@ public sealed class ReviewQueryService : IReviewQueryService
             ? await _db.ApproverGroups.AsNoTracking().Where(x => x.Id == g).Select(x => x.Name).FirstOrDefaultAsync(ct)
             : null;
 
-        return new ReviewDetail(row, doc, rules, lines, events, warning, canDecide,
+        return new ReviewDetail(row, doc, rules, dte?.Lines ?? Array.Empty<DteReceivedLine>(), events, warning, canDecide,
             await _user.HasActionAsync(BandejaMenu, "EDIT", ct), groupName, review.RecommendedAction, review.Reason,
-            review.DecisionSource, status.SupportedActions.Where(DteResponseActions.IsClaim).ToList(), status.SupportsDocumentDownload || doc.HasPdf);
+            review.DecisionSource, status.SupportedActions.Where(DteResponseActions.IsClaim).ToList(), doc.HasPdf || dte is not null, dte);
     }
 
     public async Task<IReadOnlyList<ReviewRow>> ListMineAsync(CancellationToken ct)

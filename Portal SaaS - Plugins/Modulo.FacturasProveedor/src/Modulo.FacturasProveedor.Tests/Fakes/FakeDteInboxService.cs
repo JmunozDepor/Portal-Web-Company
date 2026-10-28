@@ -76,6 +76,25 @@ public sealed class FakeDteInboxService : IDteInboxService
     public Task<IReadOnlyList<DteReceivedLine>> GetLinesAsync(long id, CancellationToken ct = default) =>
         Task.FromResult(Lines.TryGetValue(id, out var lines) ? lines : (IReadOnlyList<DteReceivedLine>)Array.Empty<DteReceivedLine>());
 
+    /// <summary>Documento leído del XML por id de la bandeja (lo que entregaría el operador).</summary>
+    public Dictionary<long, DteReceivedDocument> Documents { get; } = new();
+
+    public Task<DteReceivedDocument?> GetDocumentAsync(long id, CancellationToken ct = default) =>
+        Task.FromResult(Documents.TryGetValue(id, out var document) ? document : null);
+
+    /// <summary>Un documento de ejemplo (factura exenta con transporte y dos líneas).</summary>
+    public static DteReceivedDocument SampleDocument(DteReceivedDto dto) => new(
+        dto.DteType, dto.Folio, dto.IssueDate, new DateOnly(2026, 12, 12), 2, "45 DIAS", null, null, null, false,
+        new DteParty(dto.IssuerTaxId, dto.IssuerName, "AGENCIA DE CARGA", "AV. PROVIDENCIA 1000", "PROVIDENCIA", "SANTIAGO"),
+        new DteParty("76030680-0", "COMERCIAL DEPOR LIMITADA", "VENTA AL POR MAYOR", "AV. PRUEBA 1500", "LO BARNECHEA", null),
+        new DteReceivedTransport(null, null, null, null, "BODEGA CENTRAL", "PUDAHUEL", "SANTIAGO"),
+        new[]
+        {
+            new DteReceivedLine(1, null, "PICK UP", 1, 82752, 82752, "PICK UP (=> USD 84 X 985.14)"),
+            new DteReceivedLine(2, "FUEL", "FUEL SURCHARGE", 2, 56040, 100872, null, "UN", 10, 11208),
+        },
+        Array.Empty<DteReceivedReference>(), 0, dto.TotalAmount, null, 0, Array.Empty<DteOtherTax>(), dto.TotalAmount);
+
     /// <summary>PDF por id de la bandeja (lo que entregaría el operador).</summary>
     public Dictionary<long, byte[]> Pdfs { get; } = new();
 

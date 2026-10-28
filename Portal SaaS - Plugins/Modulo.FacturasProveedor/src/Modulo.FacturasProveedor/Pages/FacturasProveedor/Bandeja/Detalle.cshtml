@@ -3,6 +3,9 @@
 @using System.Globalization
 @using Modulo.FacturasProveedor.Dominio
 @using Modulo.FacturasProveedor.Models
+@section Styles {
+    <link rel="stylesheet" href="~/css/facturas-proveedor.css" asp-append-version="true" />
+}
 @{
     var d = Model.Detail!;
     var r = d.Row;
@@ -73,16 +76,17 @@
     }
 
     <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;max-width:100%;">
-        <button type="button" class="doc-tab-btn active" data-tab-btn="resumen">Resumen</button>
+        <button type="button" class="doc-tab-btn active" data-tab-btn="documento">Documento</button>
+        <button type="button" class="doc-tab-btn" data-tab-btn="resumen">Resumen</button>
         <button type="button" class="doc-tab-btn" data-tab-btn="reglas">Evaluación de reglas</button>
-        @if (d.Lines.Count > 0)
-        {
-            <button type="button" class="doc-tab-btn" data-tab-btn="detalle">Detalle del documento</button>
-        }
         <button type="button" class="doc-tab-btn" data-tab-btn="historial">Historial</button>
     </div>
 
-    <div data-tab-panel="resumen">
+    <div data-tab-panel="documento">
+        <partial name="_DocumentoDte" model="d" />
+    </div>
+
+    <div data-tab-panel="resumen" style="display:none;">
         <dl class="row">
             <dt class="col-sm-3">Proveedor</dt><dd class="col-sm-9">@r.IssuerName (@r.IssuerTaxId)</dd>
             <dt class="col-sm-3">Documento</dt><dd class="col-sm-9">@FacturasProveedorUi.DocumentLabel(r.DteType) (@r.DteType) N° @r.Folio · emitida @FacturasProveedorUi.Date(doc.IssueDate)</dd>
@@ -152,31 +156,6 @@
             </table>
         </div>
     </div>
-
-    @if (d.Lines.Count > 0)
-    {
-        <div data-tab-panel="detalle" style="display:none;">
-            <div class="table-responsive-lg">
-                <table class="table-ps">
-                    <thead><tr><th>Línea</th><th>Código</th><th>Descripción</th><th class="text-end">Cantidad</th><th class="text-end">Precio</th><th class="text-end">Monto</th></tr></thead>
-                    <tbody>
-                        @foreach (var line in d.Lines)
-                        {
-                            <tr>
-                                <td>@line.LineNumber</td>
-                                <td>@(line.ItemCode ?? "—")</td>
-                                <td>@line.Name</td>
-                                <td class="text-end">@line.Quantity.ToString("0.##", CultureInfo.GetCultureInfo("es-CL"))</td>
-                                <td class="text-end">@(line.UnitPrice is { } price ? FacturasProveedorUi.Amount(price) : "—")</td>
-                                <td class="text-end">@FacturasProveedorUi.Amount(line.Amount)</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-            <p class="text-muted small mb-0">Líneas leídas del XML del documento.</p>
-        </div>
-    }
 
     <div data-tab-panel="historial" style="display:none;">
         <div class="table-responsive-lg">

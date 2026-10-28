@@ -1,0 +1,14 @@
+<DTE version="1.0"><Documento ID="DTE-34-125630">
+<Encabezado>
+<IdDoc><TipoDTE>34</TipoDTE><Folio>125630</Folio><FchEmis>2026-10-28</FchEmis><FmaPago>2</FmaPago><TermPagoGlosa>45 DIAS</TermPagoGlosa><FchVenc>2026-12-12</FchVenc></IdDoc>
+<Emisor><RUTEmisor>76111222-3</RUTEmisor><RznSoc>LOGISTICA DEL SUR LIMITADA</RznSoc><GiroEmis>AGENCIA DE CARGA Y SERVICIOS LOGISTICOS</GiroEmis><Telefono>+56 2 2345 6789</Telefono><CorreoEmisor>facturas@logisur.example</CorreoEmisor><Acteco>522910</Acteco><DirOrigen>AV. PROVIDENCIA 1000 OF 201</DirOrigen><CmnaOrigen>PROVIDENCIA</CmnaOrigen><CiudadOrigen>SANTIAGO</CiudadOrigen></Emisor>
+<Receptor><RUTRecep>76030680-0</RUTRecep><RznSocRecep>COMERCIAL DEPOR LIMITADA</RznSocRecep><GiroRecep>VENTA AL POR MAYOR DE PRODUCTOS TEXTILES</GiroRecep><Contacto>CONTACTO PRUEBA</Contacto><CorreoRecep>dte@depor.example</CorreoRecep><DirRecep>AV. PRUEBA 1500</DirRecep><CmnaRecep>LO BARNECHEA</CmnaRecep><DirPostal>CASILLA 123</DirPostal><CmnaPostal>LAS CONDES</CmnaPostal><CiudadPostal>SANTIAGO</CiudadPostal></Receptor>
+<Transporte><Patente>AB1234</Patente><RUTTrans>77888999-0</RUTTrans><Chofer><RUTChofer>11111111-1</RUTChofer><NombreChofer>JUAN PRUEBA</NombreChofer></Chofer><DirDest>BODEGA CENTRAL</DirDest><CmnaDest>PUDAHUEL</CmnaDest><CiudadDest>SANTIAGO</CiudadDest></Transporte>
+<Totales><MntExe>183624</MntExe><MntTotal>183624</MntTotal></Totales>
+</Encabezado>
+<Detalle><NroLinDet>1</NroLinDet><NmbItem>PICK UP</NmbItem><DscItem>PICK UP (=&gt; USD 84 X 985.14)</DscItem><QtyItem>1.0</QtyItem><PrcItem>82752.00</PrcItem><OtrMnda><PrcOtrMon>84</PrcOtrMon><Moneda>USD</Moneda></OtrMnda><MontoItem>82752</MontoItem></Detalle>
+<Detalle><NroLinDet>2</NroLinDet><CdgItem><TpoCodigo>INT1</TpoCodigo><VlrCodigo>FUEL</VlrCodigo></CdgItem><NmbItem>FUEL SURCHARGE</NmbItem><QtyItem>2</QtyItem><UnmdItem>UN</UnmdItem><PrcItem>56040</PrcItem><DescuentoPct>10</DescuentoPct><DescuentoMonto>11208</DescuentoMonto><MontoItem>100872</MontoItem></Detalle>
+<Referencia><NroLinRef>1</NroLinRef><TpoDocRef>801</TpoDocRef><FolioRef>4512</FolioRef><FchRef>2026-10-01</FchRef><RazonRef>ORDEN DE COMPRA</RazonRef></Referencia>
+<Referencia><NroLinRef>2</NroLinRef><TpoDocRef>33</TpoDocRef><FolioRef>4045</FolioRef><FchRef>2026-09-04</FchRef><CodRef>1</CodRef><RazonRef>ANULA DOCUMENTO</RazonRef></Referencia>
+<TED version="1.0"><DD><RE>76111222-3</RE><TD>34</TD><F>125630</F></DD></TED>
+</Documento></DTE>

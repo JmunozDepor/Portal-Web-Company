@@ -277,17 +277,96 @@ public class FaceleReceptionProviderTests
         Assert.Null(await p.GetPdfAsync(Ctx, "76412553-1", 33, 18452, "https://caoba.docele.cl/pdf/x1", CancellationToken.None));
     }
 
+    /// <summary>Sin enlace (o con texto en vez de enlace) no se baja nada por GET: se pide al servidor de documentos.</summary>
     [Theory]
     [InlineData(null)]
     [InlineData("Documento sin Recepcion Electronica")]
     [InlineData("ftp://caoba.docele.cl/pdf/x1")]
-    public async Task GetPdf_SinEnlace_NullSinLlamar(string? url)
+    public async Task GetPdf_SinEnlace_NoDescargaPorGet(string? url)
     {
-        var handler = new DownloadHandler(PdfBytes, "application/pdf");
-        var p = new FaceleReceptionProvider(new FaceleSoapClient(new HttpClient(handler)));
+        var (p, h) = Build("obtener-sin-xml.resp.xml");
 
         Assert.Null(await p.GetPdfAsync(Ctx, "76412553-1", 33, 18452, url, CancellationToken.None));
-        Assert.Empty(handler.Requests);
+        Assert.Equal(HttpMethod.Post, Assert.Single(h.Requests).Method);
+    }
+
+    private static readonly DteReceptionContext CtxWithDocuments = Ctx with { DocumentsBaseUrl = "http://172.16.122.186:8090/DoceleOL" };
+
+    private static DteReceivedRecord Received(int type = 34, long folio = 125630) =>
+        new("76111222-3", "LOGISTICA DEL SUR LIMITADA", type, folio, new DateOnly(2026, 10, 28), null, 0, 183624, 0, 183624, null, null,
+            null, null, false, false, null);
+
+    /// <summary>El XML del recibido sale de DocumentosRecibidosService.Obtener, en el servidor de documentos (el de emisión).</summary>
+    [Fact]
+    public async Task GetXml_ObtenerEnElServidorDeDocumentos()
+    {
+        var (p, h) = Build("obtener-xml-ok.resp.xml");
+
+        var xml = await p.GetXmlAsync(CtxWithDocuments, Received(), CancellationToken.None);
+
+        Assert.StartsWith("<DTE version=\"1.0\">", xml);
+        Assert.Equal("http://172.16.122.186:8090/DoceleOL/DocumentosRecibidosService", h.Requests[0].RequestUri!.ToString());
+        var op = Op(h.Bodies[0]);
+        Assert.Equal("Obtener", op.Name.LocalName);
+        Assert.Equal("http://ws.docele.cl/DocumentosRecibidos/", op.Name.NamespaceName);
+        Assert.Equal("76030680-0", Val(op, "rutContribuyente"));
+        Assert.Equal("76111222-3", Val(op, "rutEmisor"));
+        Assert.Equal("34", Val(op, "tipoDTE"));
+        Assert.Equal("125630", Val(op, "folioDTE"));
+        Assert.Equal("XML", Val(op, "formato"));
+    }
+
+    [Fact]
+    public async Task GetXml_SinServidorDeDocumentos_UsaLaUrlDeRecepcion()
+    {
+        var (p, h) = Build("obtener-xml-ok.resp.xml");
+
+        await p.GetXmlAsync(Ctx, Received(), CancellationToken.None);
+
+        Assert.Equal("https://caoba.docele.cl/cl-dol/DocumentosRecibidosService", h.Requests[0].RequestUri!.ToString());
+    }
+
+    /// <summary>Documento sin recepción electrónica: FACELE no tiene el XML ("No se ha recepcionado XML").</summary>
+    [Fact]
+    public async Task GetXml_SinRecepcionElectronica_Null()
+    {
+        var (p, _) = Build("obtener-sin-xml.resp.xml");
+
+        Assert.Null(await p.GetXmlAsync(CtxWithDocuments, Received(33, 159414), CancellationToken.None));
+    }
+
+    private sealed class FailingHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
+            throw new HttpRequestException("sin conexión");
+    }
+
+    /// <summary>El XML es opcional: un servidor de documentos caído no puede cortar la sincronización.</summary>
+    [Fact]
+    public async Task GetXml_ServidorCaido_Null()
+    {
+        var p = new FaceleReceptionProvider(new FaceleSoapClient(new HttpClient(new FailingHandler())));
+
+        Assert.Null(await p.GetXmlAsync(CtxWithDocuments, Received(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetPdf_SinEnlace_LoPideAlServidorDeDocumentos()
+    {
+        var (p, h) = Build("obtener-pdf-ok.resp.xml");
+
+        var pdf = await p.GetPdfAsync(CtxWithDocuments, "76111222-3", 34, 125630, null, CancellationToken.None);
+
+        Assert.Equal(Encoding.ASCII.GetBytes("%PDF-1.4 documento"), pdf);
+        Assert.Equal("PDF", Val(Op(h.Bodies[0]), "formato"));
+    }
+
+    [Fact]
+    public async Task GetPdf_SinEnlaceNiDocumento_Null()
+    {
+        var (p, _) = Build("obtener-sin-xml.resp.xml");
+
+        Assert.Null(await p.GetPdfAsync(CtxWithDocuments, "76111222-3", 33, 159414, null, CancellationToken.None));
     }
 
     [Fact]
@@ -297,7 +376,7 @@ public class FaceleReceptionProviderTests
         Assert.Equal("FACELE", p.Code);
         Assert.Equal(new[] { 33, 34, 43 }, p.Capabilities.RespondableTypes);
         Assert.Equal(DteResponseActions.All.Count, p.Capabilities.SupportedActions.Count);
-        Assert.False(p.Capabilities.SupportsDocumentDownload);
+        Assert.True(p.Capabilities.SupportsDocumentDownload);
     }
 
     [Fact]

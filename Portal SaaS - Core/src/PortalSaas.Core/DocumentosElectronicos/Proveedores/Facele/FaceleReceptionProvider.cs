@@ -14,7 +14,10 @@ namespace PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele;
 /// anulado; estadoLey20956 = Documento_Pagado_Al_Contado (facturas al contado) y No_Aplica no admiten respuesta.
 /// Con url=true cada registro trae el enlace al documento; caoba (copias del registro del SII) responde el texto
 /// "Documento sin Recepcion Electronica", que se descarta: solo se guarda un enlace http(s). El PDF se baja por ese
-/// enlace. XML del recibido y observaciones quedan sin capacidad (spec Facturas de Proveedor §16).
+/// enlace (alerce: .../link/visor/?key=..., PDF directo). El XML (y el PDF de los que no traen enlace) sale de
+/// DocumentosRecibidosService.Obtener en el servidor de documentos: verificado 2026-10-28 contra el DoceleOL local de Depor,
+/// que lo entrega para los documentos con recepción electrónica y responde "No se ha recepcionado XML" para los demás.
+/// Observaciones quedan sin capacidad (spec Facturas de Proveedor §16).
 /// </summary>
 public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
 {
@@ -45,7 +48,7 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
     public string Code => "FACELE";
 
     public DteReceptionCapabilities Capabilities { get; } = new(
-        new[] { 33, 34, 43 }, DteResponseActions.All, SupportsResponseNote: false, SupportsDocumentDownload: false);
+        new[] { 33, 34, 43 }, DteResponseActions.All, SupportsResponseNote: false, SupportsDocumentDownload: true);
 
     /// <summary>Registros por página de consultar (limit). Interno para poder probar la paginación.</summary>
     internal int PageSize { get; set; } = 100;
@@ -83,8 +86,12 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
             .ToList();
     }
 
-    public Task<string?> GetXmlAsync(DteReceptionContext ctx, DteReceivedRecord record, CancellationToken ct) =>
-        Task.FromResult<string?>(null);
+    /// <summary>
+    /// XML del recibido. Es opcional: si FACELE no lo tiene (sin recepción electrónica) o el servidor de documentos no
+    /// responde, null, sin cortar la sincronización.
+    /// </summary>
+    public async Task<string?> GetXmlAsync(DteReceptionContext ctx, DteReceivedRecord record, CancellationToken ct) =>
+        await ObtainAsync(ctx, record.IssuerTaxId, record.DteType, record.Folio, "XML", ct) is { } r ? Child(r, "XML") : null;
 
     /// <summary>
     /// Baja el PDF por el enlace del registro. Las credenciales solo viajan si el enlace es del mismo servidor que la URL
@@ -92,10 +99,43 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
     /// </summary>
     public async Task<byte[]?> GetPdfAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string? url, CancellationToken ct)
     {
-        if (DocumentUrl(url) is not { } link) return null;
-        var sameServer = Uri.TryCreate(ctx.BaseUrl, UriKind.Absolute, out var configured)
-                         && string.Equals(configured.Host, link.Host, StringComparison.OrdinalIgnoreCase);
-        return await _soap.DownloadPdfAsync(link, sameServer ? ctx.Username : null, sameServer ? ctx.Password : null, ct);
+        if (DocumentUrl(url) is { } link)
+        {
+            var sameServer = Uri.TryCreate(ctx.BaseUrl, UriKind.Absolute, out var configured)
+                             && string.Equals(configured.Host, link.Host, StringComparison.OrdinalIgnoreCase);
+            if (await _soap.DownloadPdfAsync(link, sameServer ? ctx.Username : null, sameServer ? ctx.Password : null, ct) is { } pdf)
+                return pdf;
+        }
+        if (await ObtainAsync(ctx, issuerTaxId, dteType, folio, "PDF", ct) is not { } r || Child(r, "PDF") is not { } base64) return null;
+        try
+        {
+            var bytes = Convert.FromBase64String(base64);
+            return bytes.Length > 4 && bytes.AsSpan(0, 5).SequenceEqual("%PDF-"u8) ? bytes : null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>DocumentosRecibidosService.Obtener (formato XML o PDF); null si FACELE no tiene el documento o no responde.</summary>
+    private async Task<XElement?> ObtainAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string format, CancellationToken ct)
+    {
+        try
+        {
+            var r = await _soap.CallAsync(ctx.DocumentsBaseUrl ?? ctx.BaseUrl, ctx.Username, ctx.Password,
+                FaceleSoapClient.ReceivedDocumentsService, "Obtener",
+                new[]
+                {
+                    E("rutContribuyente", ctx.ReceiverTaxId), E("rutEmisor", issuerTaxId), E("tipoDTE", Int(dteType)),
+                    E("folioDTE", Long(folio)), E("formato", format),
+                }, ct);
+            return r.Elements().FirstOrDefault(e => e.Name.LocalName == "respuestaOperacion") is { } resp && Child(resp, "estado") == "1" ? r : null;
+        }
+        catch (DteProviderUnavailableException)
+        {
+            return null;
+        }
     }
 
     /// <summary>El enlace al documento si es una URL http(s) absoluta; null si es texto (ej. "Documento sin Recepcion Electronica").</summary>

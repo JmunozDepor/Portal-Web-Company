@@ -16,12 +16,15 @@ public sealed class FaceleSoapClient
     public const string IssuedDocumentsService = "DocumentosEmitidosService";
     /// <summary>Servicio de documentos (consulta y aprobación de recibidos): vive bajo .../cl-dol, no .../cl-dol-auth.</summary>
     public const string ReceptionService = "DTEService";
+    /// <summary>XML/PDF de los recibidos (Obtener): vive en el servidor de emisión (en Depor, el DoceleOL local).</summary>
+    public const string ReceivedDocumentsService = "DocumentosRecibidosService";
 
     private static readonly Dictionary<string, string> Namespaces = new()
     {
         [EmissionService] = "http://www.facele.cl/DoceleOL/",
         [IssuedDocumentsService] = "http://ws.docele.cl/DocumentosEmitidos/",
         [ReceptionService] = "http://facele.cl/docele/servicios/DTE/",
+        [ReceivedDocumentsService] = "http://ws.docele.cl/DocumentosRecibidos/",
     };
 
     private readonly HttpClient _http;

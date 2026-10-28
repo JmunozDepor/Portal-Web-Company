@@ -224,7 +224,7 @@ public sealed class DteSettingsService
             || string.IsNullOrEmpty(s.ReceptionUserMail) || !_receptionProviders.Contains(s.ProviderCode))
             return null;
         var ctx = new DteReceptionContext(s.ReceptionBaseUrl, s.Username, _crypto.Decrypt(s.SecretKey), s.IssuerTaxId,
-            s.ReceptionUserMail, s.Environment);
+            s.ReceptionUserMail, s.Environment, string.IsNullOrEmpty(s.BaseUrl) ? null : s.BaseUrl);
         return (ctx, _receptionProviders.Get(s.ProviderCode));
     }
 

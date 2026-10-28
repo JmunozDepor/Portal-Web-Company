@@ -168,8 +168,14 @@ internal sealed class FakeReceptionProvider : IDteReceptionProvider
         Task.FromResult<IReadOnlyList<DteReceivedReference>>(
             References.TryGetValue((issuerTaxId, dteType, folio), out var refs) ? refs : new List<DteReceivedReference>());
 
-    public Task<string?> GetXmlAsync(DteReceptionContext ctx, DteReceivedRecord record, CancellationToken ct) =>
-        Task.FromResult(Xmls.TryGetValue((record.IssuerTaxId, record.DteType, record.Folio), out var xml) ? xml : null);
+    public int XmlCalls { get; private set; }
+
+    public Task<string?> GetXmlAsync(DteReceptionContext ctx, DteReceivedRecord record, CancellationToken ct)
+    {
+        XmlCalls++;
+        Contexts.Add(ctx);
+        return Task.FromResult(Xmls.TryGetValue((record.IssuerTaxId, record.DteType, record.Folio), out var xml) ? xml : null);
+    }
 
     public byte[]? Pdf { get; set; }
     public bool ThrowOnPdf { get; set; }

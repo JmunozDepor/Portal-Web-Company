@@ -5,8 +5,11 @@ namespace PortalSaas.Core.DocumentosElectronicos;
 /// <summary>
 /// Credenciales y receptor con que se consulta la bandeja del proveedor (ya descifradas; nunca se loguean).
 /// ReceiverTaxId = el RUT de la compañía (el "abonado"); UserMail = usuario del proveedor con que se opera.
+/// DocumentsBaseUrl = servidor de donde se bajan el XML/PDF de los recibidos (FACELE: DocumentosRecibidosService, que vive
+/// en el servidor de emisión; en Depor el DoceleOL local); null = el de recepción.
 /// </summary>
-public sealed record DteReceptionContext(string BaseUrl, string Username, string Password, string ReceiverTaxId, string UserMail, string Environment);
+public sealed record DteReceptionContext(string BaseUrl, string Username, string Password, string ReceiverTaxId, string UserMail, string Environment,
+    string? DocumentsBaseUrl = null);
 
 /// <summary>Lo que sabe hacer el proveedor en recepción; la plataforma y los módulos se comportan según esto.</summary>
 public sealed record DteReceptionCapabilities(

@@ -299,6 +299,49 @@ public class DteInboxServiceTests
         Assert.Null(await env.Inbox.GetPdfAsync(doc.Id));
     }
 
+    /// <summary>
+    /// Sin XML archivado, se pide al operador (FACELE: DocumentosRecibidosService en el servidor de emisión), se archiva y
+    /// se lee. La segunda vez sale del archivo.
+    /// </summary>
+    [Fact]
+    public async Task GetDocument_SinXmlArchivado_LoPideAlOperadorYLoArchiva()
+    {
+        var env = await BuildAsync();
+        env.Provider.Capabilities = env.Provider.Capabilities with { SupportsDocumentDownload = true };
+        var doc = await AddAsync(env);
+        env.Provider.Xmls[(doc.IssuerTaxId, doc.DteType, doc.Folio)] =
+            await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "DocumentosElectronicos", "Fixtures", "factura33-recibida.xml"));
+
+        var first = await env.Inbox.GetDocumentAsync(doc.Id);
+        var second = await env.Inbox.GetDocumentAsync(doc.Id);
+
+        Assert.Equal(2, first!.Lines.Count);
+        Assert.Equal(2380000, second!.Total);
+        Assert.Equal(1, env.Provider.XmlCalls);
+        Assert.NotNull((await env.Db.DteReceived.AsNoTracking().SingleAsync(x => x.Id == doc.Id)).Xml);
+        Assert.Equal("https://caoba.docele.cl/cl-dol-auth", env.Provider.Contexts.Last().DocumentsBaseUrl);
+    }
+
+    [Fact]
+    public async Task GetDocument_OperadorSinXml_Null()
+    {
+        var env = await BuildAsync();
+        env.Provider.Capabilities = env.Provider.Capabilities with { SupportsDocumentDownload = true };
+        var doc = await AddAsync(env);
+
+        Assert.Null(await env.Inbox.GetDocumentAsync(doc.Id));
+    }
+
+    [Fact]
+    public async Task GetDocument_OperadorSinDescarga_NoLoPide()
+    {
+        var env = await BuildAsync();
+        var doc = await AddAsync(env);
+
+        Assert.Null(await env.Inbox.GetDocumentAsync(doc.Id));
+        Assert.Equal(0, env.Provider.XmlCalls);
+    }
+
     [Fact]
     public async Task GetLines_LeeDelXmlArchivado()
     {

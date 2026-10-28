@@ -93,6 +93,35 @@ public sealed class DteInboxService : IDteInboxService
         return row is null ? null : ToDto(row);
     }
 
+    public async Task<DteReceivedDocument?> GetDocumentAsync(long id, CancellationToken ct = default)
+    {
+        var row = await Docs.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (row is null) return null;
+        if (string.IsNullOrEmpty(row.Xml))
+        {
+            var resolved = await _settings.ResolveReceptionAsync(CompanyId);
+            if (resolved is not { } r || !r.Provider.Capabilities.SupportsDocumentDownload) return null;
+            string? xml;
+            try
+            {
+                xml = await r.Provider.GetXmlAsync(r.Ctx, ToRecord(row), ct);
+            }
+            catch (DteProviderUnavailableException)
+            {
+                return null;
+            }
+            if (string.IsNullOrEmpty(xml)) return null;
+            // Se archiva sin tocar UpdatedAt: no es un cambio del operador que los módulos deban reprocesar.
+            row.Xml = xml;
+            await _db.SaveChangesAsync(ct);
+        }
+        return DteReceivedXmlReader.ReadDocument(row.Xml);
+    }
+
+    private static DteReceivedRecord ToRecord(DteReceived x) =>
+        new(x.IssuerTaxId, x.IssuerName, x.DteType, x.Folio, x.IssueDate, x.SiiReceivedAt, x.NetAmount, x.ExemptAmount, x.VatAmount,
+            x.TotalAmount, x.OtherTaxesJson, x.SiiStatus, x.CommercialStatus, x.ClaimStatus, x.IsAssigned, x.IsVoided, x.ProviderUrl);
+
     public async Task<IReadOnlyList<DteReceivedLine>> GetLinesAsync(long id, CancellationToken ct = default)
     {
         var xml = await Docs.Where(x => x.Id == id).Select(x => x.Xml).FirstOrDefaultAsync(ct);

@@ -21,6 +21,12 @@ public interface IDteInboxService
 
     Task<DteReceivedDto?> GetAsync(long id, CancellationToken ct = default);
 
+    /// <summary>
+    /// El documento completo, leído del XML. Si no está archivado y el operador lo entrega, se pide y se archiva; null si
+    /// el operador no lo tiene (ej. documento sin recepción electrónica).
+    /// </summary>
+    Task<DteReceivedDocument?> GetDocumentAsync(long id, CancellationToken ct = default);
+
     /// <summary>Líneas de detalle del XML archivado; vacía si no hay XML.</summary>
     Task<IReadOnlyList<DteReceivedLine>> GetLinesAsync(long id, CancellationToken ct = default);
 

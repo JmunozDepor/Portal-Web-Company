@@ -51,7 +51,30 @@ public static class DtePurchaseOrderRefSources
 public sealed record DtePurchaseOrderRef(int DocNum, string Source, Guid? UserId, DateTimeOffset At);
 
 /// <summary>Una línea de detalle de un documento recibido, leída del XML archivado.</summary>
-public sealed record DteReceivedLine(int LineNumber, string? ItemCode, string Name, decimal Quantity, decimal? UnitPrice, long Amount);
+public sealed record DteReceivedLine(int LineNumber, string? ItemCode, string Name, decimal Quantity, decimal? UnitPrice, long Amount,
+    string? Description = null, string? Unit = null, decimal? DiscountPercent = null, long? DiscountAmount = null);
+
+/// <summary>Emisor o receptor de un DTE, leído del XML. PostalAddress = dirección postal con comuna y ciudad.</summary>
+public sealed record DteParty(
+    string TaxId, string Name, string? Activity, string? Address, string? Commune, string? City, string? Phone = null,
+    string? Email = null, string? Contact = null, string? PostalAddress = null);
+
+/// <summary>Datos de transporte de un DTE recibido (distinto del DteTransport de emisión).</summary>
+public sealed record DteReceivedTransport(
+    string? Plate, string? CarrierTaxId, string? DriverTaxId, string? DriverName, string? Address, string? Commune, string? City);
+
+/// <summary>Otro impuesto o retención del DTE (ImptoReten).</summary>
+public sealed record DteOtherTax(int Code, decimal? Rate, long Amount);
+
+/// <summary>
+/// Documento recibido completo, leído del XML (para mostrarlo como el operador). PaymentForm es el código del SII
+/// (1 contado, 2 crédito, 3 sin costo); los indicadores van en el código del SII tal cual.
+/// </summary>
+public sealed record DteReceivedDocument(
+    int DteType, long Folio, DateOnly? IssueDate, DateOnly? DueDate, int? PaymentForm, string? PaymentTerms, int? DispatchType,
+    int? TransferIndicator, int? ServiceIndicator, bool GrossAmounts, DteParty Issuer, DteParty Receiver, DteReceivedTransport? Transport,
+    IReadOnlyList<DteReceivedLine> Lines, IReadOnlyList<DteReceivedReference> References,
+    long Net, long Exempt, decimal? VatRate, long Vat, IReadOnlyList<DteOtherTax> OtherTaxes, long Total);
 
 /// <summary>Documento recibido tal como lo ven los módulos (sin el XML).</summary>
 public sealed record DteReceivedDto

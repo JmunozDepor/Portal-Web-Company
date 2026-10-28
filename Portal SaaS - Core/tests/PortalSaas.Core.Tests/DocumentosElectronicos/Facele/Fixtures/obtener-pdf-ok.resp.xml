@@ -1,0 +1,1 @@
+<?xml version='1.0' encoding='UTF-8'?><S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Body><ns2:ObtenerResponse xmlns:ns2="http://ws.docele.cl/DocumentosRecibidos/"><respuestaOperacion><estado>1</estado><descripcion>Proceso OK</descripcion></respuestaOperacion><PDF>JVBERi0xLjQgZG9jdW1lbnRv</PDF></ns2:ObtenerResponse></S:Body></S:Envelope>

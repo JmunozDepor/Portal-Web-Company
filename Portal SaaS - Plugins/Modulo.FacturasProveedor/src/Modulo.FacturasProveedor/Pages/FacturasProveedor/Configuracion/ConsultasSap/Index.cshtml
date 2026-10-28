@@ -1,0 +1,66 @@
+@page "/facturas-proveedor/configuracion/consultas-sap"
+@model Modulo.FacturasProveedor.Pages.FacturasProveedor.Configuracion.ConsultasSap.IndexModel
+@{
+    ViewData["Title"] = "Consultas SAP";
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Consultas SAP</h2>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    <p class="text-muted mb-3">
+        Consultas de solo lectura que usa el módulo para buscar las órdenes de compra, lo ya facturado contra ellas y los proveedores.
+        Cada una debe devolver las columnas indicadas (con esos nombres exactos) y usar solo su parámetro.
+        "Probar" la ejecuta en SAP con un valor de muestra sin guardarla.
+    </p>
+
+    @foreach (var q in Model.Queries)
+    {
+        var tested = Model.TestResult is { } t && t.Kind == q.Kind ? t.Result : null;
+        <div class="border rounded p-3 mb-3">
+            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                <h3 class="h6 mb-0">@q.Label</h3>
+                <span class="text-muted small">
+                    Parámetro <code>:@q.Parameter</code> ·
+                    @(q.IsActive ? "activa" : "inactiva") ·
+                    @(q.ValidatedAt is { } at ? $"probada {Modulo.FacturasProveedor.Dominio.ChileClock.ToLocal(at.UtcDateTime):dd-MM-yyyy HH:mm}" : "sin probar")
+                </span>
+            </div>
+            <div class="text-muted small mb-2">Columnas: @string.Join(", ", q.Columns)</div>
+            @if (tested is not null)
+            {
+                <div class="alert @(tested.IsValid ? "alert-success" : "alert-danger")">
+                    @(tested.IsValid ? "La consulta funciona." : "La consulta tiene problemas.") @tested.Error
+                </div>
+            }
+            <form method="post">
+                <input type="hidden" name="kind" value="@q.Kind" />
+                <textarea name="sql" class="form-control font-monospace mb-2" rows="8" spellcheck="false" disabled="@(!Model.CanEdit)">@(Model.Drafts.TryGetValue(q.Kind, out var draft) ? draft : q.SqlText)</textarea>
+                @if (Model.CanEdit)
+                {
+                    <div class="d-flex align-items-end gap-2 flex-wrap">
+                        <div>
+                            <label class="form-label" for="s-@q.Kind">Valor de prueba</label>
+                            <input type="text" id="s-@q.Kind" name="sample" class="form-control" placeholder="@(q.Parameter == "tax_id" ? "76412553-1" : q.Parameter == "text" ? "textil" : "4512")" />
+                        </div>
+                        <button type="submit" asp-page-handler="Probar" class="btn btn-secondary"><i class="bi bi-play"></i> Probar</button>
+                        <div class="form-check ms-2">
+                            <input type="checkbox" id="a-@q.Kind" name="isActive" value="true" class="form-check-input" checked="@q.IsActive" />
+                            <label class="form-check-label" for="a-@q.Kind">Activa</label>
+                        </div>
+                        <button type="submit" asp-page-handler="Save" class="btn btn-primary">Guardar</button>
+                    </div>
+                }
+            </form>
+        </div>
+    }
+</div>

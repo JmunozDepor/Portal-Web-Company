@@ -1,0 +1,197 @@
+@page "/facturas-proveedor/configuracion/reglas"
+@model Modulo.FacturasProveedor.Pages.FacturasProveedor.Configuracion.Reglas.IndexModel
+@using System.Globalization
+@using Modulo.FacturasProveedor.Dominio.Reglas
+@using Modulo.FacturasProveedor.Servicios
+@{
+    ViewData["Title"] = "Reglas de revisión";
+    var s = Model.Settings!;
+    var sel = Model.Selected;
+    var inv = CultureInfo.InvariantCulture;
+    string Scope(RuleScope scope) => scope switch
+    {
+        RuleScope.OcSuppliers => "Proveedores con OC",
+        RuleScope.MarkedSuppliers => "Proveedores marcados",
+        RuleScope.Pending => "Facturas en revisión o aviso",
+        _ => "Todos los proveedores",
+    };
+    string Params(RuleSettingsDto r) => r.ParameterDefinitions.Count == 0 ? "—"
+        : string.Join(" · ", r.ParameterDefinitions.Select(p => $"{p.Label}: {r.Parameters[p.Key].ToString("0.##", inv)} {p.Unit}"));
+    string ActionText(RuleSettingsDto r) => r.Action == RuleActions.WarnThenReject
+        ? $"Avisar y rechazar en {r.ActionDays} días" : FacturasProveedorUi.ActionLabel(r.Action);
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Reglas de revisión</h2>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    @if (Model.CoverageWarning is { } coverage)
+    {
+        <div class="alert alert-warning">@coverage</div>
+    }
+
+    <p class="text-muted mb-3">
+        Toda factura recibida pasa por estas reglas. Si varias objetan, manda la acción más severa:
+        <strong>Rechazar</strong> &gt; <strong>Avisar y rechazar</strong> &gt; <strong>Revisión manual</strong>. Si ninguna objeta,
+        se aplica la acción final. Las excepciones por proveedor se configuran en <a href="~/facturas-proveedor/configuracion/proveedores">Proveedores con excepciones</a>.
+    </p>
+
+    <h3 class="h6 text-muted">Parámetros generales</h3>
+    <form method="post" asp-page-handler="General" class="mb-4"
+          data-confirm="@(s.General.Mode == "active" ? "" : "Si eligió modo Activo, el portal empezará a responder al SII. ¿Continuar?")">
+        <div class="row g-3">
+            <div class="col-12 col-md-6 col-xl-4">
+                <label class="form-label" for="g-plazo">Plazo legal de respuesta (días corridos desde la recepción en el SII)</label>
+                <input type="number" id="g-plazo" name="General.LegalDeadlineDays" value="@Model.General.LegalDeadlineDays.ToString(inv)" min="1" max="30" class="form-control" disabled="@(!Model.CanEdit)" />
+            </div>
+            <div class="col-12 col-md-6 col-xl-4">
+                <label class="form-label" for="g-escalar">Escalar a Finanzas cuando falten (días)</label>
+                <input type="number" id="g-escalar" name="General.EscalateDaysBefore" value="@Model.General.EscalateDaysBefore.ToString(inv)" min="0" max="29" class="form-control" disabled="@(!Model.CanEdit)" />
+            </div>
+            <div class="col-12 col-md-6 col-xl-4">
+                <label class="form-label" for="g-corte">Hora de corte de las acciones del último día (hora Chile)</label>
+                <input type="time" id="g-corte" name="General.CutoffTime" value="@Model.General.CutoffTime.ToString("HH:mm", inv)" class="form-control" disabled="@(!Model.CanEdit)" />
+            </div>
+            <div class="col-12 col-md-6 col-xl-4">
+                <label class="form-label" for="g-final">Si ninguna regla objeta</label>
+                <select id="g-final" name="General.FinalActionWhenNoObjection" class="form-select" disabled="@(!Model.CanEdit)">
+                    <option value="accept" selected="@(Model.General.FinalActionWhenNoObjection == "accept")">Aceptar automáticamente</option>
+                    <option value="manual_review" selected="@(Model.General.FinalActionWhenNoObjection == "manual_review")">Revisión manual</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-4">
+                <label class="form-label" for="g-desde">Procesar facturas recibidas desde</label>
+                <input type="date" id="g-desde" name="General.ProcessFromDate" value="@Model.General.ProcessFromDate?.ToString("yyyy-MM-dd", inv)" class="form-control" disabled="@(!Model.CanEdit)" />
+            </div>
+            <div class="col-12 col-md-6 col-xl-4">
+                <label class="form-label" for="g-modo">Modo</label>
+                <select id="g-modo" name="General.Mode" class="form-select" disabled="@(!Model.CanEdit)">
+                    <option value="simulation" selected="@(Model.General.Mode == "simulation")">Simulación — evalúa y muestra, no responde al SII</option>
+                    <option value="active" selected="@(Model.General.Mode == "active")">Activo — responde al SII</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-4">
+                <label class="form-label">Grupo de Finanzas</label>
+                <div class="form-control-plaintext">@(Model.FinanceGroupName ?? "— (se define en Aprobadores)")</div>
+            </div>
+            <div class="col-12 col-md-6 col-xl-4">
+                <label class="form-label">Lectura del operador</label>
+                <div class="form-control-plaintext">
+                    Cada @(Model.Status?.IntervalMinutes ?? 30) minutos · @(Model.Status?.InitialHistoryDays ?? 60) días cargados
+                    <div class="text-muted small">Se configura en Administración › Compañía › Documentos electrónicos.</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-xl-4 d-flex align-items-end">
+                <div class="form-check">
+                    <input type="checkbox" id="g-correo" name="General.DailyEmailDigest" value="true" class="form-check-input" checked="@Model.General.DailyEmailDigest" disabled="@(!Model.CanEdit)" />
+                    <label class="form-check-label" for="g-correo">Correo diario a los aprobadores con sus pendientes</label>
+                </div>
+            </div>
+        </div>
+        @if (Model.CanEdit)
+        {
+            <button type="submit" class="btn btn-primary mt-3">Guardar parámetros</button>
+        }
+    </form>
+
+    <h3 class="h6 text-muted">Reglas</h3>
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead><tr><th>#</th><th>Regla</th><th>Aplica a</th><th>Parámetros</th><th>Acción</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var r in s.Rules)
+                {
+                    <tr class="@(r.IsActive ? "" : "row-inactive")">
+                        <td>@r.SortOrder</td>
+                        <td>@r.Name<div class="text-muted small">@r.Description</div></td>
+                        <td>@Scope(r.Scope)</td>
+                        <td>@Params(r)</td>
+                        <td>@ActionText(r)</td>
+                        <td>
+                            @if (r.IsActive) { <span class="badge-status badge-status--success">Activa</span> }
+                            else { <span class="badge-status badge-status--neutral">Inactiva</span> }
+                        </td>
+                        <td class="col-actions">
+                            @if (Model.CanEdit)
+                            {
+                                <a class="btn-ghost" title="Editar" href="~/facturas-proveedor/configuracion/reglas?regla=@r.Code"><i class="bi bi-pencil"></i></a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="text-muted small mt-2 mb-0">Una regla nueva se programa como pieza del catálogo y aparece en esta lista para activarla y parametrizarla.</p>
+</div>
+
+@if (sel is not null && Model.CanEdit)
+{
+    <div id="drawer-regla" class="drawer-overlay is-open" data-drawer>
+        <aside class="drawer-panel is-open">
+            <div class="drawer-header">
+                <h3>Editar regla @sel.SortOrder · @sel.Name</h3>
+                <a href="~/facturas-proveedor/configuracion/reglas" class="btn-ghost" aria-label="Cerrar"><i class="bi bi-x-lg"></i></a>
+            </div>
+            <form method="post" asp-page-handler="Regla">
+                <input type="hidden" name="Rule.RuleCode" value="@sel.Code" />
+                <div class="drawer-body">
+                    <p class="text-muted">@sel.Description</p>
+                    <div class="drawer-grid">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" id="r-activa" name="Rule.IsActive" value="true" class="form-check-input" checked="@sel.IsActive" disabled="@(!sel.CanBeDisabled)" />
+                                <label class="form-check-label" for="r-activa">Activa@(sel.CanBeDisabled ? "" : " (no se puede desactivar)")</label>
+                            </div>
+                            @if (!sel.CanBeDisabled)
+                            {
+                                <input type="hidden" name="Rule.IsActive" value="true" />
+                            }
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="r-accion">Acción</label>
+                            <select id="r-accion" name="Rule.Action" class="form-select">
+                                @foreach (var a in sel.AllowedActions)
+                                {
+                                    <option value="@a" selected="@(sel.Action == a)">@FacturasProveedorUi.ActionLabel(a)</option>
+                                }
+                            </select>
+                        </div>
+                        @if (sel.AllowedActions.Contains(RuleActions.WarnThenReject))
+                        {
+                            <div class="mb-3">
+                                <label class="form-label" for="r-dias">Días de aviso (si la acción es avisar y rechazar)</label>
+                                <input type="number" id="r-dias" name="Rule.ActionDays" value="@sel.ActionDays?.ToString(inv)" min="1" class="form-control" />
+                            </div>
+                        }
+                        @foreach (var p in sel.ParameterDefinitions)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label" for="r-p-@p.Key">@p.Label (@p.Unit)</label>
+                                <input type="number" id="r-p-@p.Key" name="Rule.Parameters[@p.Key]" value="@sel.Parameters[p.Key].ToString("0.##", inv)"
+                                       min="@p.Min.ToString("0.##", inv)" max="@p.Max.ToString("0.##", inv)" step="any" class="form-control" />
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <a class="btn btn-secondary" href="~/facturas-proveedor/configuracion/reglas">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/facturas-proveedor.js" asp-append-version="true"></script>
+}

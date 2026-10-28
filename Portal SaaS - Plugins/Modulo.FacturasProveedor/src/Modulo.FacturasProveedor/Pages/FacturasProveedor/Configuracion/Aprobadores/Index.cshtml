@@ -1,0 +1,121 @@
+@page "/facturas-proveedor/configuracion/aprobadores"
+@model Modulo.FacturasProveedor.Pages.FacturasProveedor.Configuracion.Aprobadores.IndexModel
+@{
+    ViewData["Title"] = "Aprobadores";
+    var sel = Model.Selected;
+    var open = sel is not null || Model.OpenNew;
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Aprobadores</h2>
+        @if (Model.CanCreate)
+        {
+            <a class="btn btn-primary" href="~/facturas-proveedor/configuracion/aprobadores?nuevo=true">+ Nuevo grupo</a>
+        }
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    <p class="text-muted mb-3">
+        Grupos de usuarios que deciden las facturas en revisión manual: cualquier integrante del grupo puede aceptar o rechazar.
+        El grupo de <strong>Finanzas</strong> supervisa, recibe los escalamientos y puede decidir cualquier factura.
+    </p>
+
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead><tr><th>Grupo</th><th>Integrantes</th><th>Proveedores asignados</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var g in Model.Items)
+                {
+                    <tr class="@(g.IsActive ? "" : "row-inactive")">
+                        <td>@g.Name @if (g.IsFinance) { <span class="badge-status badge-status--success">Finanzas</span> }</td>
+                        <td>@(g.MemberUserIds.Count == 0 ? "—" : string.Join(", ", g.MemberUserIds.Select(Model.UserLabel)))</td>
+                        <td>@g.SupplierCount</td>
+                        <td>@if (g.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
+                        <td class="col-actions">
+                            <div class="d-flex gap-1">
+                                @if (Model.CanEdit)
+                                {
+                                    <a class="btn-ghost" title="Editar" href="~/facturas-proveedor/configuracion/aprobadores?editar=@g.Id"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (Model.CanDelete)
+                                {
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@g.Id" class="d-inline-block" data-confirm="@($"¿Eliminar el grupo {g.Name}?")">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-muted">Sin grupos todavía. Cree primero el grupo de Finanzas.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (open)
+{
+    <div id="drawer-grupo" class="drawer-overlay is-open" data-drawer>
+        <aside class="drawer-panel is-open">
+            <div class="drawer-header">
+                <h3>@(sel is null ? "Nuevo grupo de aprobadores" : $"Editar: {sel.Name}")</h3>
+                <a href="~/facturas-proveedor/configuracion/aprobadores" class="btn-ghost" aria-label="Cerrar"><i class="bi bi-x-lg"></i></a>
+            </div>
+            <form method="post" asp-page-handler="Save">
+                @if (sel is not null)
+                {
+                    <input type="hidden" name="Input.Id" value="@sel.Id" />
+                }
+                <div class="drawer-body">
+                    <div class="drawer-grid">
+                        <div class="mb-3">
+                            <label class="form-label" for="g-nombre">Nombre</label>
+                            <input type="text" id="g-nombre" name="Input.Name" value="@sel?.Name" class="form-control" maxlength="100" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="g-integrantes">Integrantes</label>
+                            <select id="g-integrantes" name="Input.Members" class="form-select" multiple size="8">
+                                @foreach (var (id, label) in Model.Users)
+                                {
+                                    <option value="@id" selected="@(sel?.MemberUserIds.Contains(id) == true)">@label</option>
+                                }
+                            </select>
+                            <div class="form-text">Ctrl + clic para elegir varios.</div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" id="g-finanzas" name="Input.IsFinance" value="true" class="form-check-input" checked="@(sel?.IsFinance == true)" />
+                                <label class="form-check-label" for="g-finanzas">Es el grupo de Finanzas (solo puede haber uno)</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" id="g-activo" name="Input.IsActive" value="true" class="form-check-input" checked="@(sel?.IsActive ?? true)" />
+                                <label class="form-check-label" for="g-activo">Activo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <a class="btn btn-secondary" href="~/facturas-proveedor/configuracion/aprobadores">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/facturas-proveedor.js" asp-append-version="true"></script>
+}

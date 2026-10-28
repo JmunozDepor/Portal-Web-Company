@@ -1,0 +1,247 @@
+@page "/facturas-proveedor/configuracion/proveedores"
+@model Modulo.FacturasProveedor.Pages.FacturasProveedor.Configuracion.Proveedores.IndexModel
+@using System.Globalization
+@using Modulo.FacturasProveedor.Dominio.Reglas
+@{
+    ViewData["Title"] = "Proveedores con excepciones";
+    var inv = CultureInfo.InvariantCulture;
+    var sel = Model.Selected;
+    var open = sel is not null || Model.OpenNew;
+    string GroupName(long? id) => id is { } g ? Model.Groups.FirstOrDefault(x => x.Id == g)?.Name ?? "—" : "—";
+    string Condition(string c) => c switch
+    {
+        SupplierConditions.FixedMonthly => "Gasto fijo mensual",
+        SupplierConditions.AlwaysManual => "Siempre revisión manual",
+        _ => "Personalizada",
+    };
+    string Adjustments(Modulo.FacturasProveedor.Servicios.SupplierProfileDto p)
+    {
+        if (p.Condition == SupplierConditions.FixedMonthly && p.Overrides.Count == 0) return "Reglas de OC no aplican";
+        if (p.Overrides.Count == 0) return p.Condition == SupplierConditions.AlwaysManual ? "Las reglas recomiendan; decide una persona" : "—";
+        return string.Join(" · ", p.Overrides.Select(o => o.Mode == RuleOverrideModes.NotApplicable ? $"{o.RuleCode}: no aplica"
+            : $"{o.RuleCode}: {(o.Action is { } a ? FacturasProveedorUi.ActionLabel(a) : "")}{(o.Parameters is { Count: > 0 } prm ? " " + string.Join(", ", prm.Select(kv => $"{kv.Key}={kv.Value.ToString("0.##", inv)}")) : "")}"));
+    }
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Proveedores con excepciones</h2>
+        @if (Model.CanCreate)
+        {
+            <a class="btn btn-primary" href="~/facturas-proveedor/configuracion/proveedores?nuevo=true">+ Agregar proveedor</a>
+        }
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    @if (Model.CoverageWarning is { } coverage)
+    {
+        <div class="alert alert-warning">@coverage</div>
+    }
+    <p class="text-muted mb-3">Solo los proveedores que se apartan de las reglas de la empresa. El resto usa las reglas generales.</p>
+
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead><tr><th>RUT</th><th>Proveedor (SAP)</th><th>Condición</th><th>Ajustes</th><th>Aprobador</th><th>Vigencia</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+                @foreach (var p in Model.Items)
+                {
+                    <tr class="@(p.IsActive ? "" : "row-inactive")">
+                        <td class="text-nowrap">@p.TaxId</td>
+                        <td>@p.SupplierName<div class="text-muted small">@p.CardCode</div></td>
+                        <td>@Condition(p.Condition)</td>
+                        <td class="small">@Adjustments(p)</td>
+                        <td>@GroupName(p.ApproverGroupId)@(p.BackupGroupId is not null ? $" · suplente {GroupName(p.BackupGroupId)}" : "")</td>
+                        <td class="text-nowrap">desde @FacturasProveedorUi.Date(p.ValidFrom)@(p.ValidTo is { } to ? $" hasta {FacturasProveedorUi.Date(to)}" : "")</td>
+                        <td>@if (p.IsActive) { <span class="badge-status badge-status--success">Activo</span> } else { <span class="badge-status badge-status--neutral">Inactivo</span> }</td>
+                        <td class="col-actions">
+                            <div class="d-flex gap-1">
+                                @if (Model.CanEdit)
+                                {
+                                    <a class="btn-ghost" title="Editar" href="~/facturas-proveedor/configuracion/proveedores?editar=@p.Id"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (Model.CanDelete)
+                                {
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@p.Id" class="d-inline-block" data-confirm="@($"¿Quitar la excepción de {p.SupplierName}?")">
+                                        <button type="submit" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-muted">Sin proveedores con excepciones todavía.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (open)
+{
+    <div id="drawer-proveedor" class="drawer-overlay is-open" data-drawer>
+        <aside class="drawer-panel drawer-panel--wide is-open">
+            <div class="drawer-header">
+                <h3>@(sel is null ? "Agregar proveedor con excepción" : $"Editar: {sel.SupplierName}")</h3>
+                <a href="~/facturas-proveedor/configuracion/proveedores" class="btn-ghost" aria-label="Cerrar"><i class="bi bi-x-lg"></i></a>
+            </div>
+            <form method="post" asp-page-handler="Save">
+                @if (sel is not null)
+                {
+                    <input type="hidden" name="Input.Id" value="@sel.Id.ToString(inv)" />
+                }
+                <div class="drawer-body">
+                    <div class="drawer-grid">
+                        <div class="mb-3">
+                            <label class="form-label" for="p-rut">RUT del proveedor en SAP</label>
+                            <input type="text" id="p-rut" name="Input.TaxId" value="@sel?.TaxId" class="form-control" list="p-sugerencias" placeholder="76.412.553-1 o nombre" autocomplete="off" required />
+                            <datalist id="p-sugerencias"></datalist>
+                            <div class="form-text">Escriba RUT, código o nombre: se busca en SAP.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Condición</label>
+                            @foreach (var (value, label, help) in new[]
+                            {
+                                (SupplierConditions.FixedMonthly, "Gasto fijo mensual", "no trabaja con OC: las reglas de OC no aplican y siempre va a revisión manual"),
+                                (SupplierConditions.AlwaysManual, "Siempre revisión manual", "aunque traiga OC y cumpla las reglas: las reglas recomiendan y decide una persona"),
+                                (SupplierConditions.Custom, "Personalizada", "ajustar regla por regla"),
+                            })
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="Input.Condition" id="c-@value" value="@value" checked="@((sel?.Condition ?? SupplierConditions.FixedMonthly) == value)" />
+                                    <label class="form-check-label" for="c-@value"><strong>@label</strong> — @help</label>
+                                </div>
+                            }
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ajuste por regla</label>
+                            <div class="table-responsive-lg">
+                                <table class="table-ps">
+                                    <thead><tr><th>Regla</th><th>Para este proveedor</th><th>Acción</th><th>Parámetros</th></tr></thead>
+                                    <tbody>
+                                        @{ var i = 0; }
+                                        @foreach (var rule in Model.AdjustableRules)
+                                        {
+                                            var ov = sel?.Overrides.FirstOrDefault(o => o.RuleCode == rule.Code);
+                                            <tr>
+                                                <td>@rule.Name<input type="hidden" name="Input.Overrides[@i].RuleCode" value="@rule.Code" /></td>
+                                                <td>
+                                                    <select name="Input.Overrides[@i].Mode" class="form-select">
+                                                        <option value="" selected="@(ov is null)">Como la empresa</option>
+                                                        @if (rule.CanBeDisabled)
+                                                        {
+                                                            <option value="not_applicable" selected="@(ov?.Mode == "not_applicable")">No aplica</option>
+                                                        }
+                                                        <option value="custom" selected="@(ov?.Mode == "custom")">Otro valor</option>
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <select name="Input.Overrides[@i].Action" class="form-select">
+                                                        <option value="">Como la empresa</option>
+                                                        @foreach (var a in rule.AllowedActions)
+                                                        {
+                                                            <option value="@a" selected="@(ov?.Action == a)">@FacturasProveedorUi.ActionLabel(a)</option>
+                                                        }
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    @foreach (var p in rule.Parameters)
+                                                    {
+                                                        <input type="number" step="any" name="Input.Overrides[@i].Parameters[@p.Key]" class="form-control mb-1"
+                                                               placeholder="@p.Label (@p.Unit)" title="@p.Label (@p.Unit)"
+                                                               value="@(ov?.Parameters is { } prm && prm.TryGetValue(p.Key, out var v) ? v.ToString("0.##", inv) : "")" />
+                                                    }
+                                                </td>
+                                            </tr>
+                                            i++;
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="p-aprobador">Aprobador</label>
+                            <select id="p-aprobador" name="Input.ApproverGroupId" class="form-select">
+                                <option value="">—</option>
+                                @foreach (var g in Model.Groups.Where(g => g.IsActive))
+                                {
+                                    <option value="@g.Id" selected="@(sel?.ApproverGroupId == g.Id)">@g.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="p-suplente">Suplente (opcional)</label>
+                            <select id="p-suplente" name="Input.BackupGroupId" class="form-select">
+                                <option value="">—</option>
+                                @foreach (var g in Model.Groups.Where(g => g.IsActive))
+                                {
+                                    <option value="@g.Id" selected="@(sel?.BackupGroupId == g.Id)">@g.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="p-desde">Vigente desde</label>
+                            <input type="date" id="p-desde" name="Input.ValidFrom" value="@((sel?.ValidFrom ?? DateOnly.FromDateTime(DateTime.Today)).ToString("yyyy-MM-dd", inv))" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="p-hasta">Hasta (opcional)</label>
+                            <input type="date" id="p-hasta" name="Input.ValidTo" value="@sel?.ValidTo?.ToString("yyyy-MM-dd", inv)" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="p-nota">Nota</label>
+                            <input type="text" id="p-nota" name="Input.Note" value="@sel?.Note" class="form-control" maxlength="300" />
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" id="p-activo" name="Input.IsActive" value="true" class="form-check-input" checked="@(sel?.IsActive ?? true)" />
+                                <label class="form-check-label" for="p-activo">Activo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <a class="btn btn-secondary" href="~/facturas-proveedor/configuracion/proveedores">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/facturas-proveedor.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            var input = document.getElementById('p-rut');
+            var list = document.getElementById('p-sugerencias');
+            if (!input || !list) return;
+            var timer;
+            input.addEventListener('input', function () {
+                clearTimeout(timer);
+                var q = input.value.trim();
+                if (q.length < 3) return;
+                timer = setTimeout(function () {
+                    fetch('?handler=BuscarProveedor&q=' + encodeURIComponent(q))
+                        .then(function (r) { return r.ok ? r.json() : []; })
+                        .then(function (items) {
+                            list.innerHTML = '';
+                            (items || []).forEach(function (s) {
+                                var opt = document.createElement('option');
+                                opt.value = s.taxId;
+                                opt.label = s.cardName + ' (' + s.cardCode + ')' + (s.isActive ? '' : ' — inactivo');
+                                list.appendChild(opt);
+                            });
+                        });
+                }, 300);
+            });
+        })();
+    </script>
+}

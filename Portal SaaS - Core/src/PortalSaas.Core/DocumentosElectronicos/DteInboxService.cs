@@ -68,9 +68,10 @@ public sealed class DteInboxService : IDteInboxService
         }
         if (!string.IsNullOrWhiteSpace(filter.Text))
         {
-            var text = filter.Text.Trim();
+            // ToLower en los dos lados: Contains distingue mayúsculas en Postgres (no en SQL Server).
+            var text = filter.Text.Trim().ToLowerInvariant();
             var folio = long.TryParse(text, out var n) ? n : -1;
-            q = q.Where(x => x.IssuerTaxId.Contains(text) || x.IssuerName.Contains(text) || x.Folio == folio);
+            q = q.Where(x => x.IssuerTaxId.ToLower().Contains(text) || x.IssuerName.ToLower().Contains(text) || x.Folio == folio);
         }
         var rows = await q.OrderByDescending(x => x.SiiReceivedAt).ThenByDescending(x => x.Id)
             .Take(Math.Clamp(filter.Limit, 1, 5000)).ToListAsync(ct);

@@ -119,6 +119,17 @@ public class DteInboxServiceTests
     }
 
     [Fact]
+    public async Task List_Texto_IgnoraMayusculas()
+    {
+        var env = await BuildAsync();
+        await AddAsync(env);
+
+        var byName = await env.Inbox.ListAsync(new DteReceivedFilter(null, null, "textil andes", 50));
+
+        Assert.Single(byName);
+    }
+
+    [Fact]
     public async Task Respond_DocumentoNoRespondible_NotRespondableConMotivo_YNoQuedaPendiente()
     {
         var env = await BuildAsync();

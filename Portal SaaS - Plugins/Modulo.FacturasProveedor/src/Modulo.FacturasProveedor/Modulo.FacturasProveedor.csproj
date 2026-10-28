@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Modulo.FacturasProveedor</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
+    <!-- PluginManager carga el .dll directo de una carpeta (AssemblyLoadContext
+         aislado) esperando que los proveedores de EF Core estén físicamente al lado. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Modulo.FacturasProveedor.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- REGLA DURA (docs/09-GUIA-DESARROLLO-PLUGINS.md §1 del portal): un plugin referencia SOLO
+         PortalSaas.Abstractions. Misma ProjectReference relativa temporal que Despachos. -->
+    <ProjectReference Include="..\..\..\..\Portal SaaS - Core\src\PortalSaas.Abstractions\PortalSaas.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Base propia del módulo, motor dual: los DOS proveedores, se elige en runtime. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+    <!-- Recurso embebido wwwroot\** (ServesOwnWwwRoot = true). -->
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\**" />
+    <EmbeddedResource Include="Sql\Seeds\*.sql" />
+  </ItemGroup>
+
+  <!-- Publica el módulo a dist/{NombreModulo}/{Version}/ (docs/09-GUIA-DESARROLLO-PLUGINS.md §7). -->
+  <PropertyGroup>
+    <ModuloVersion>1.0.0</ModuloVersion>
+  </PropertyGroup>
+  <Target Name="PublicarComoPlugin" AfterTargets="Build">
+    <ItemGroup>
+      <ArchivosDelModulo Include="$(OutputPath)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ArchivosDelModulo)"
+          DestinationFolder="..\..\dist\$(MSBuildProjectName)\$(ModuloVersion)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

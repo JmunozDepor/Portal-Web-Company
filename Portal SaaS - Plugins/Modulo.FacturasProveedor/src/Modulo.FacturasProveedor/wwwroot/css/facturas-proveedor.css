@@ -1,0 +1,5 @@
+/* Facturas de Proveedor: KPI de la bandeja (misma forma que .dsp-kpi* de Despachos, solo tokens del design system). */
+.fpr-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem; }
+.fpr-kpi { padding: .75rem 1rem; border: 1px solid var(--card-border); border-radius: .5rem; }
+.fpr-kpi__label { font-size: .75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
+.fpr-kpi__value { font-size: 1.4rem; font-weight: 700; }

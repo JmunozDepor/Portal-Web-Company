@@ -7,11 +7,12 @@ using PortalSaas.Abstractions.Modelos.Dte;
 namespace PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele;
 
 /// <summary>
-/// Recepción de documentos de FACELE (servicio DTEService, WSDL https://caoba.docele.cl/cl-dol/DTEService?wsdl):
-/// consultar (operacion=RECEPCION), consultarReferencia y aprobarDTERecibidos. Las respuestas traen
-/// &lt;respuesta&gt;&lt;estado/&gt;&lt;descripcion/&gt;&lt;/respuesta&gt;; se toma estado = 1 como OK, igual que
-/// estadoOperacion en la emisión (a confirmar en caoba). XML/PDF del recibido y observaciones quedan sin
-/// capacidad hasta verificarlos en caoba (spec Facturas de Proveedor §16).
+/// Recepción de documentos de FACELE (servicio DTEService; misma base que la emisión, ej.
+/// https://caoba.docele.cl/cl-dol-auth): consultar (operacion=RECEPCION), consultarReferencia y aprobarDTERecibidos.
+/// Las respuestas traen &lt;respuesta&gt;&lt;estado/&gt;&lt;descripcion/&gt;&lt;/respuesta&gt; con estado = 1 →
+/// "Proceso OK". Verificado en caoba (2026-10-28): offset es por registro; los registros no traen estadoSII, url ni
+/// anulado; estadoLey20956 = Documento_Pagado_Al_Contado (facturas al contado) y No_Aplica no admiten respuesta.
+/// XML/PDF del recibido y observaciones quedan sin capacidad (spec Facturas de Proveedor §16).
 /// </summary>
 public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
 {
@@ -27,6 +28,13 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
     };
 
     private static readonly Dictionary<string, string> ReverseActions = Actions.ToDictionary(kv => kv.Value, kv => kv.Key);
+
+    /// <summary>estadoLey20956 en que el SII no admite aceptar ni reclamar (verificado en caoba 2026-10-28).</summary>
+    private static readonly Dictionary<string, string> NotRespondable = new()
+    {
+        ["Documento_Pagado_Al_Contado"] = "Pagada al contado: el SII no admite aceptarla ni reclamarla.",
+        ["No_Aplica"] = "El SII no admite aceptar ni reclamar este documento.",
+    };
 
     private readonly FaceleSoapClient _soap;
 
@@ -112,6 +120,7 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
         var taxes = x.Elements().Where(e => e.Name.LocalName == "impuestoAdicional")
             .Select(t => new { code = Child(t, "codigo"), rate = Child(t, "tasa"), amount = Child(t, "monto") })
             .ToList();
+        var claim = Child(x, "estadoLey20956");
         return new DteReceivedRecord(
             IssuerTaxId: Child(x, "rutEmisor") ?? "",
             IssuerName: Child(x, "razonSocialEmisor") ?? "",
@@ -126,11 +135,12 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
             OtherTaxesJson: taxes.Count == 0 ? null : JsonSerializer.Serialize(taxes),
             SiiStatus: Child(x, "estadoSII"),
             CommercialStatus: Child(x, "estadoLey19983"),
-            ClaimStatus: Child(x, "estadoLey20956"),
+            ClaimStatus: claim,
             IsAssigned: Child(x, "cedido") == "true",
             IsVoided: Child(x, "anulado") == "true",
             Url: Child(x, "url"),
-            RespondedAction: Child(x, "estadoLey20956") is { } claim && ReverseActions.TryGetValue(claim, out var neutral) ? neutral : null);
+            RespondedAction: claim is not null && ReverseActions.TryGetValue(claim, out var neutral) ? neutral : null,
+            NotRespondableReason: claim is not null && NotRespondable.TryGetValue(claim, out var reason) ? reason : null);
     }
 
     /// <summary>

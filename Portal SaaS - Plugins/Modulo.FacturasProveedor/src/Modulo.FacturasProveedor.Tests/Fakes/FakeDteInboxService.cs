@@ -28,7 +28,7 @@ public sealed class FakeDteInboxService : IDteInboxService
         string issuerTaxId = "76412553-1", int dteType = 33, long folio = 18452, long total = 2380000,
         DateTimeOffset? siiReceivedAt = null, DateOnly? issueDate = null, IReadOnlyList<int>? purchaseOrders = null,
         string responseStatus = DteResponseStatuses.None, string? responseAction = null, string? claimStatus = null,
-        string issuerName = "Comercial Textil Andes SpA", DateTimeOffset? updatedAt = null)
+        string issuerName = "Comercial Textil Andes SpA", DateTimeOffset? updatedAt = null, string? notRespondableReason = null)
     {
         var received = siiReceivedAt ?? new DateTimeOffset(2026, 10, 24, 12, 0, 0, TimeSpan.Zero);
         var dto = new DteReceivedDto
@@ -38,7 +38,7 @@ public sealed class FakeDteInboxService : IDteInboxService
             SiiReceivedAt = received, TotalAmount = total, NetAmount = total, ClaimStatus = claimStatus,
             PurchaseOrderRefs = (purchaseOrders ?? Array.Empty<int>())
                 .Select(n => new DtePurchaseOrderRef(n, DtePurchaseOrderRefSources.Dte, null, received)).ToList(),
-            ResponseStatus = responseStatus, ResponseAction = responseAction,
+            ResponseStatus = responseStatus, ResponseAction = responseAction, NotRespondableReason = notRespondableReason,
             UpdatedAt = updatedAt ?? received.AddMinutes(_nextId),
         };
         Items.Add(dto);
@@ -75,6 +75,7 @@ public sealed class FakeDteInboxService : IDteInboxService
         var item = Items.FirstOrDefault(i => i.Id == request.ReceivedId)
             ?? throw new InvalidOperationException("No se encontró el documento recibido en la compañía activa.");
         Responses.Add(request);
+        if (item.NotRespondableReason is { } reason) return Task.FromResult(new DteRespondResult(DteRespondOutcome.NotRespondable, reason));
         var outcome = NextRespondOutcome ?? DteRespondOutcome.Sent;
         NextRespondOutcome = null;
         if (outcome == DteRespondOutcome.Sent)

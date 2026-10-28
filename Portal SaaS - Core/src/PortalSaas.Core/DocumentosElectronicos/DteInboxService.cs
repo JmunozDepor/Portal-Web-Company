@@ -115,6 +115,8 @@ public sealed class DteInboxService : IDteInboxService
         var caps = _providers.Contains(row.ProviderCode) ? _providers.Get(row.ProviderCode).Capabilities : null;
         if (caps is null || !caps.RespondableTypes.Contains(row.DteType) || !caps.SupportedActions.Contains(request.Action))
             return new DteRespondResult(DteRespondOutcome.NotRespondable, $"El documento tipo {row.DteType} no admite esa respuesta.");
+        if (row.NotRespondableReason is { } notRespondable)
+            return new DteRespondResult(DteRespondOutcome.NotRespondable, notRespondable);
 
         switch (row.ResponseStatus)
         {
@@ -239,7 +241,7 @@ public sealed class DteInboxService : IDteInboxService
         Folio = x.Folio, IssueDate = x.IssueDate, SiiReceivedAt = x.SiiReceivedAt, NetAmount = x.NetAmount,
         ExemptAmount = x.ExemptAmount, VatAmount = x.VatAmount, TotalAmount = x.TotalAmount, SiiStatus = x.SiiStatus,
         CommercialStatus = x.CommercialStatus, ClaimStatus = x.ClaimStatus, IsAssigned = x.IsAssigned, IsVoided = x.IsVoided,
-        HasXml = !string.IsNullOrEmpty(x.Xml),
+        NotRespondableReason = x.NotRespondableReason, HasXml = !string.IsNullOrEmpty(x.Xml),
         References = DteReceivedJson.References(x.ReferencesJson),
         PurchaseOrderRefs = DteReceivedJson.PurchaseOrderRefs(x.PurchaseOrderRefsJson),
         ResponseStatus = x.ResponseStatus, ResponseAction = x.ResponseAction, ResponseReason = x.ResponseReason,

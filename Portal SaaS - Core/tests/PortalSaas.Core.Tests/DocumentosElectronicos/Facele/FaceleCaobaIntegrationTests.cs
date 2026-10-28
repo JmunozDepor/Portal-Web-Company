@@ -57,10 +57,17 @@ public class FaceleCaobaIntegrationTests
         var provider = new FaceleReceptionProvider(new FaceleSoapClient(new HttpClient()));
 
         await provider.TestAsync(ctx, CancellationToken.None);
+        // Un año: caoba guarda copias de registros del SII de meses atrás (2026-10-28: 273 de abril-mayo).
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var received = await provider.ListReceivedAsync(ctx, today.AddDays(-30), today, CancellationToken.None);
+        var received = await provider.ListReceivedAsync(ctx, today.AddDays(-365), today, CancellationToken.None);
 
-        Assert.All(received, r => Assert.False(string.IsNullOrEmpty(r.IssuerTaxId)));
+        Assert.All(received, r =>
+        {
+            Assert.False(string.IsNullOrEmpty(r.IssuerTaxId));
+            Assert.True(r.DteType > 0 && r.Folio > 0);
+            Assert.NotNull(r.SiiReceivedAt);
+            Assert.Equal(r.ClaimStatus is "Documento_Pagado_Al_Contado" or "No_Aplica", r.NotRespondableReason is not null);
+        });
         if (received.FirstOrDefault() is { } first)
             await provider.GetReferencesAsync(ctx, first.IssuerTaxId, first.DteType, first.Folio, CancellationToken.None);
     }

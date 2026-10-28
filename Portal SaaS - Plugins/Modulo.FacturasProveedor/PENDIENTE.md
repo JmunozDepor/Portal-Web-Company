@@ -5,24 +5,32 @@ Código de la Etapa 1 implementado en la rama `feat/facturas-proveedor` (plan
 Facturas de Proveedor 123, Despachos 699, Rendiciones 104 (todo en verde). Lo que sigue necesita bases reales,
 credenciales o el Host, por eso queda para hacerlo con el usuario.
 
-## Verificación FACELE en caoba (Task 2, Step 4) — PENDIENTE
+## Verificación FACELE en caoba (Task 2, Step 4) — HECHA EN PARTE (2026-10-28)
 
-Sin credenciales en variables de entorno al implementar (2026-10-27). Para correrla, definir FACELE_USER, FACELE_PASS,
-FACELE_USER_MAIL y FACELE_RUT_RECEPTOR y ejecutar:
+Con FACELE_USER, FACELE_PASS, FACELE_USER_MAIL y FACELE_RUT_RECEPTOR en variables de entorno (nunca en archivos):
 
     dotnet test "Portal SaaS - Core/tests/PortalSaas.Core.Tests" --filter FullyQualifiedName~FaceleCaobaIntegrationTests
 
-Confirmar y anotar:
-- [ ] consultar (RECEPCION): estructura real de registros y que respuesta/estado = 1 significa OK.
-- [ ] consultarReferencia: que trae la referencia 801 (OC) de un recibido con OC.
-- [ ] actualizarObservacionesDTE sobre un recibido: si funciona, SupportsResponseNote = true e implementar SetNoteAsync.
-- [ ] DocumentosRecibidosService?wsdl: si existe Obtener(XML|PDF), implementar GetXmlAsync/GetPdfAsync y SupportsDocumentDownload = true.
-- [ ] aprobarDTERecibidos (solo con un documento de prueba): glosa real de "ya respondido" para ajustar AlreadyRespondedRegex.
+Resultado (las dos pruebas en verde):
+- [x] consultar (RECEPCION): estado = 1 → "Proceso OK" (confirmado). offset es por registro. 273 recibidos de
+      Comercial Depor (abril-mayo 2026, copias del registro del SII, sin XML: "Envio Electronico no realizado").
+      Los registros no traen estadoSII, url ni anulado. estadoLey20956: Por_Aceptar, Acepta_Contenido_Documento,
+      No_Aplica (notas de crédito) y Documento_Pagado_Al_Contado (38 % del total: facturas al contado, que el SII no
+      deja aceptar ni reclamar) → la plataforma las marca "no admite respuesta" (columna not_respondable_reason,
+      migración AddDteReceivedNotRespondable) y el módulo las muestra en ese estado, sin evaluarlas.
+- [x] Los dos servicios (`cl-dol` y `cl-dol-auth`) aceptan los headers; se usa la misma base que la emisión (`cl-dol-auth`).
+- [x] Pasarela de emisión: el borrador de guía 52 devuelve PDF en caoba.
+- [ ] consultarReferencia: en caoba ningún recibido trae referencias (no tienen XML). La 801 se verifica en la E2E de
+      QA con facturas reales que traigan OC.
+- [ ] actualizarObservacionesDTE / descarga de XML-PDF: sin verificar (caoba no tiene el XML de los recibidos).
+- [ ] aprobarDTERecibidos: NO se llamó. Los recibidos de caoba son copias de facturas reales del SII y no hay un
+      documento de prueba; responder uno podría llegar al registro real. Requiere un documento de prueba acordado
+      con FACELE (y FACELE_ALLOW_RESPOND=1).
 
 ## Puesta en marcha (Task 16) — PENDIENTE, con confirmación del usuario
 
 - [ ] Merge de `feat/facturas-proveedor` a la rama de trabajo y `.\publish-dist.ps1` del módulo (detiene el Host local).
-- [ ] Migración de plataforma `AddDteReception` en `portalsaas_saas_qa` y `ps_comdepor_qa`; verificar en `__EFMigrationsHistory`.
+- [ ] Migraciones de plataforma `AddDteReception` y `AddDteReceivedNotRespondable` en `portalsaas_saas_qa` y `ps_comdepor_qa`; verificar en `__EFMigrationsHistory`.
       Después, **con confirmación**, en `portalsaas_saas_prod` y `ps_comdepor` (regla de migraciones en las 4 bases).
 - [ ] Bases del módulo (nombres propuestos `ps_comdepor_fp_qa` y `ps_comdepor_fp`, en la instancia de módulos): crear y
       aplicar `Inicial` con `dotnet ef database update --project src/Modulo.FacturasProveedor.Migrations.Postgres`

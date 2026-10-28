@@ -59,6 +59,23 @@ public class DueActionsServiceTests
     }
 
     [Fact]
+    public async Task Run_OperadorDiceNoRespondible_QuedaNoAdmiteRespuesta_YNoReingresa()
+    {
+        var env = await new ReviewTestEnv().StartAsync(ModuleModes.Active);
+        env.Sap.AddPurchaseOrder();
+        var doc = env.Invoice();
+        await env.EvaluateAsync();
+        env.Inbox.NextRespondOutcome = DteRespondOutcome.NotRespondable;
+
+        await Due(env).RunAsync(CancellationToken.None);
+        await env.EvaluateAsync(); // "procesar desde" sigue fijado: una fuera de alcance reingresaría al flujo
+        await Due(env).RunAsync(CancellationToken.None);
+
+        Assert.Equal(ReviewStatuses.NotRespondable, (await ReviewAsync(env, doc.Id)).Status);
+        Assert.Single(env.Inbox.Responses);
+    }
+
+    [Fact]
     public async Task Run_FallaTresVeces_AvisaFinanzasUnaVez()
     {
         var env = await new ReviewTestEnv().StartAsync(ModuleModes.Active);

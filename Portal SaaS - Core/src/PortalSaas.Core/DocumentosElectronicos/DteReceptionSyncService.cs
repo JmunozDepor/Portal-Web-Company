@@ -118,7 +118,8 @@ public sealed class DteReceptionSyncService
                       || doc.ExemptAmount != r.Exempt || doc.VatAmount != r.Vat || doc.TotalAmount != r.Total
                       || doc.OtherTaxesJson != r.OtherTaxesJson || doc.SiiStatus != r.SiiStatus
                       || doc.CommercialStatus != r.CommercialStatus || doc.ClaimStatus != r.ClaimStatus
-                      || doc.IsAssigned != r.IsAssigned || doc.IsVoided != r.IsVoided || doc.ProviderUrl != r.Url;
+                      || doc.IsAssigned != r.IsAssigned || doc.IsVoided != r.IsVoided || doc.ProviderUrl != r.Url
+                      || doc.NotRespondableReason != r.NotRespondableReason;
         doc.IssuerName = r.IssuerName;
         doc.SiiReceivedAt = siiReceivedAt;
         doc.NetAmount = r.Net;
@@ -132,6 +133,7 @@ public sealed class DteReceptionSyncService
         doc.IsAssigned = r.IsAssigned;
         doc.IsVoided = r.IsVoided;
         doc.ProviderUrl = r.Url;
+        doc.NotRespondableReason = r.NotRespondableReason;
         return changed;
     }
 

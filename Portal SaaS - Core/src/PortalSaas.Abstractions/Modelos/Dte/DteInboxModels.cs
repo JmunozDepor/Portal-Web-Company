@@ -73,6 +73,8 @@ public sealed record DteReceivedDto
     public string? ClaimStatus { get; init; }
     public bool IsAssigned { get; init; }
     public bool IsVoided { get; init; }
+    /// <summary>Por qué el SII no admite aceptar ni reclamar el documento (ej. pagado al contado); null si se puede responder.</summary>
+    public string? NotRespondableReason { get; init; }
     public bool HasXml { get; init; }
     public IReadOnlyList<DteReceivedReference> References { get; init; } = Array.Empty<DteReceivedReference>();
     public IReadOnlyList<DtePurchaseOrderRef> PurchaseOrderRefs { get; init; } = Array.Empty<DtePurchaseOrderRef>();

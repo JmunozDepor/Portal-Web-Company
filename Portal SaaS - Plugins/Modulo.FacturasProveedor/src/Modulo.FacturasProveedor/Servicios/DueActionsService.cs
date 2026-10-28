@@ -147,7 +147,7 @@ public sealed class DueActionsService : IDueActionsService
                 AddEvent(review, "external", "El operador ya tenía una respuesta: no se envió.", now);
                 break;
             case DteRespondOutcome.NotRespondable:
-                review.Status = ReviewStatuses.OutOfScope;
+                review.Status = ReviewStatuses.NotRespondable;
                 AddEvent(review, "not_respondable", result.Error ?? "El operador no admite esta respuesta.", now);
                 break;
             default:

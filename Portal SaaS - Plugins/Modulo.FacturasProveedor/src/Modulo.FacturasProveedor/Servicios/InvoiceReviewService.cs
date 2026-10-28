@@ -165,6 +165,7 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
                     review.TotalAmount = doc.TotalAmount;
                 }
                 await ApplyInboxResponseAsync(review, doc, settings, simulation, now, ct);
+                await ApplyNotRespondableAsync(review, doc, now, ct);
             }
             if (page.Count < PageSize) return created;
         }
@@ -207,6 +208,19 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
                     NotificationSeverity.Warning, ct);
             }
         }
+    }
+
+    /// <summary>
+    /// El SII no admite aceptarla ni reclamarla (ej. pagada al contado): sale del flujo sin evaluar ni avisar. Aplica también
+    /// a las fuera de alcance, para que no reingresen si después se adelanta "procesar desde".
+    /// </summary>
+    private async Task ApplyNotRespondableAsync(FpInvoiceReview review, DteReceivedDto doc, DateTimeOffset now, CancellationToken ct)
+    {
+        if (doc.NotRespondableReason is not { } reason) return;
+        if (ReviewStatuses.IsFinal(review.Status) && review.Status != ReviewStatuses.OutOfScope) return;
+        review.Status = ReviewStatuses.NotRespondable;
+        Touch(review, now);
+        await AddEventAsync(review, "not_respondable", null, reason, now, ct);
     }
 
     /// <summary>Si "procesar desde" se fijó o adelantó, las fuera de alcance desde esa fecha y aún en plazo entran al flujo.</summary>
@@ -289,9 +303,13 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
         }
     }
 
-    /// <summary>Aceptada por el operador (por el portal o por fuera) o tácitamente: pasó el plazo legal sin reclamo.</summary>
+    /// <summary>
+    /// Aceptada por el operador (por el portal o por fuera), tácitamente (pasó el plazo legal sin reclamo) o sin
+    /// respuesta posible ante el SII (ej. pagada al contado: no se puede reclamar).
+    /// </summary>
     private static bool CountsAsAccepted(DteReceivedDto doc, int legalDays, DateOnly today)
     {
+        if (doc.NotRespondableReason is not null) return true;
         if (doc.ResponseStatus is DteResponseStatuses.Sent or DteResponseStatuses.External)
             return doc.ResponseAction is DteResponseActions.AcceptContent or DteResponseActions.GoodsReceipt;
         var received = doc.SiiReceivedAt is { } at ? ChileToday(at) : doc.IssueDate;

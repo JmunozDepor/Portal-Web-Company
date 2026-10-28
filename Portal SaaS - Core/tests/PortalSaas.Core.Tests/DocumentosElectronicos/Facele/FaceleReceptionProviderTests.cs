@@ -85,6 +85,37 @@ public class FaceleReceptionProviderTests
         Assert.Equal("usuario-fixture", h.Requests[0].Headers.GetValues("facele.user").Single());
     }
 
+    /// <summary>
+    /// Estructura real de caoba (2026-10-28): sin estadoSII, url ni anulado; las facturas al contado vienen con
+    /// estadoLey20956 = Documento_Pagado_Al_Contado y las notas de crédito con No_Aplica. El SII no admite aceptar
+    /// ni reclamar esas: quedan marcadas como no respondibles y sin respuesta registrada.
+    /// </summary>
+    [Fact]
+    public async Task ListReceived_EstructuraCaoba_ContadoYNoAplica_NoRespondibles()
+    {
+        var (p, _) = Build("consultar-recepcion-caoba.resp.xml");
+
+        var list = await p.ListReceivedAsync(Ctx, new DateOnly(2026, 5, 1), new DateOnly(2026, 5, 31), CancellationToken.None);
+
+        Assert.Equal(3, list.Count);
+        var credit = list[0];
+        Assert.Null(credit.NotRespondableReason);
+        Assert.Null(credit.RespondedAction);
+        Assert.Null(credit.SiiStatus);
+        Assert.Null(credit.Url);
+        Assert.Equal(1049819, credit.Total);
+
+        var cash = list[1];
+        Assert.Equal(34, cash.DteType);
+        Assert.Equal("Pagada al contado: el SII no admite aceptarla ni reclamarla.", cash.NotRespondableReason);
+        Assert.Null(cash.RespondedAction);
+
+        var creditNote = list[2];
+        Assert.Equal("IMPRESOS ROMÁN SPA", creditNote.IssuerName);
+        Assert.Equal("El SII no admite aceptar ni reclamar este documento.", creditNote.NotRespondableReason);
+        Assert.Null(creditNote.RespondedAction);
+    }
+
     [Fact]
     public async Task ListReceived_Pagina_HastaQueVieneMenosQueLimit()
     {

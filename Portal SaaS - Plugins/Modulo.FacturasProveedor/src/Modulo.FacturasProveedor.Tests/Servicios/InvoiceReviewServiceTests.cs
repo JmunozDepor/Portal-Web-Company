@@ -211,6 +211,56 @@ public class InvoiceReviewServiceTests
         Assert.Empty(await env.Db.InvoiceReviews.ToListAsync());
     }
 
+    private const string Contado = "Pagada al contado: el SII no admite aceptarla ni reclamarla.";
+
+    [Fact]
+    public async Task Evaluate_PagadaAlContado_NoAdmiteRespuesta_SinEvaluarNiAvisar()
+    {
+        var env = await new ReviewTestEnv().StartAsync(ModuleModes.Active);
+        var doc = env.Invoice(purchaseOrders: Array.Empty<int>(), notRespondableReason: Contado);
+
+        await env.EvaluateAsync();
+
+        var review = await ReviewAsync(env, doc.Id);
+        Assert.Equal(ReviewStatuses.NotRespondable, review.Status);
+        Assert.Null(review.DecidedAction);
+        Assert.Empty(await env.Db.ReviewRuleResults.Where(r => r.ReviewId == review.Id).ToListAsync());
+        Assert.Empty(env.Inbox.Responses);
+        Assert.Empty(env.Notifications.Enqueued);
+        var ev = Assert.Single(await env.Db.ReviewEvents.Where(e => e.ReviewId == review.Id).ToListAsync());
+        Assert.Equal("not_respondable", ev.EventType);
+        Assert.Equal(Contado, ev.Detail);
+    }
+
+    [Fact]
+    public async Task Evaluate_EnAviso_SiPasaANoRespondible_SaleDelFlujo()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        var doc = env.Invoice(purchaseOrders: Array.Empty<int>());
+        await env.EvaluateAsync();
+        Assert.Equal(ReviewStatuses.Warning, (await ReviewAsync(env, doc.Id)).Status);
+
+        env.Inbox.Replace(doc with { NotRespondableReason = Contado, UpdatedAt = doc.UpdatedAt.AddHours(1) });
+        await env.EvaluateAsync();
+
+        Assert.Equal(ReviewStatuses.NotRespondable, (await ReviewAsync(env, doc.Id)).Status);
+    }
+
+    [Fact]
+    public async Task Evaluate_PagadaAlContadoCuentaParaElSaldo()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Sap.AddPurchaseOrder(total: 3_200_000);
+        env.Invoice(folio: 1, total: 2_000_000, hourUtc: 12, notRespondableReason: Contado);
+        var doc = env.Invoice(folio: 2, total: 1_500_000, hourUtc: 13);
+
+        await env.EvaluateAsync();
+
+        var review = await ReviewAsync(env, doc.Id);
+        Assert.Equal(RuleActions.Reject, review.DecidedAction);
+        Assert.Equal("rule:oc-saldo", review.DecisionSource);
+    }
+
     [Fact]
     public async Task Evaluate_Cursor_NoReprocesaLoYaLeido()
     {

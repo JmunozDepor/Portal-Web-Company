@@ -22,6 +22,7 @@ public static class FacturasProveedorUi
         "external" => "Respondida fuera del portal",
         "expired" => "Vencida (aceptada por ley)",
         "out_of_scope" => "Fuera de alcance",
+        "not_respondable" => "No admite respuesta",
         _ => status,
     };
 

@@ -15,12 +15,14 @@ public sealed record DteReceptionCapabilities(
 /// <summary>
 /// Un documento recibido tal como lo informa el proveedor. Los estados van en el texto crudo del proveedor;
 /// RespondedAction es la respuesta ya registrada en el operador traducida a DteResponseActions (null si no hay), para
-/// que la plataforma no conozca los textos de cada proveedor.
+/// que la plataforma no conozca los textos de cada proveedor. NotRespondableReason (null si se puede responder) dice,
+/// en español, por qué el SII no admite aceptar ni reclamar el documento (ej. factura pagada al contado).
 /// </summary>
 public sealed record DteReceivedRecord(
     string IssuerTaxId, string IssuerName, int DteType, long Folio, DateOnly IssueDate, DateTimeOffset? SiiReceivedAt,
     long Net, long Exempt, long Vat, long Total, string? OtherTaxesJson, string? SiiStatus, string? CommercialStatus,
-    string? ClaimStatus, bool IsAssigned, bool IsVoided, string? Url, string? RespondedAction = null);
+    string? ClaimStatus, bool IsAssigned, bool IsVoided, string? Url, string? RespondedAction = null,
+    string? NotRespondableReason = null);
 
 /// <summary>
 /// Resultado de responder un recibido. AlreadyResponded = el proveedor dice que el documento ya tenía respuesta

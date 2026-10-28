@@ -119,6 +119,23 @@ public class DteInboxServiceTests
     }
 
     [Fact]
+    public async Task Respond_DocumentoNoRespondible_NotRespondableConMotivo_YNoQuedaPendiente()
+    {
+        var env = await BuildAsync();
+        var doc = await AddAsync(env, type: 34);
+        doc.NotRespondableReason = "Pagada al contado: el SII no admite aceptarla ni reclamarla.";
+        await env.Db.SaveChangesAsync();
+
+        var r = await env.Inbox.RespondAsync(Req(doc.Id, action: DteResponseActions.ClaimContent));
+
+        Assert.Equal(DteRespondOutcome.NotRespondable, r.Outcome);
+        Assert.Equal("Pagada al contado: el SII no admite aceptarla ni reclamarla.", r.Error);
+        Assert.Empty(env.Provider.Responds);
+        Assert.Equal(DteResponseStatuses.None, (await env.Db.DteReceived.SingleAsync()).ResponseStatus);
+        Assert.Equal("Pagada al contado: el SII no admite aceptarla ni reclamarla.", (await env.Inbox.GetAsync(doc.Id))!.NotRespondableReason);
+    }
+
+    [Fact]
     public async Task Respond_OperadorDiceYaRespondida_PendingConfirmation()
     {
         var env = await BuildAsync();

@@ -39,6 +39,8 @@ public sealed class DteReceived
     public bool IsAssigned { get; set; }
     public bool IsVoided { get; set; }
     public string? ProviderUrl { get; set; }
+    /// <summary>Por qué el SII no admite aceptar ni reclamar el documento (ej. pagado al contado); null si se puede responder.</summary>
+    public string? NotRespondableReason { get; set; }
 
     /// <summary>Lista JSON de DteReceivedReference.</summary>
     public string ReferencesJson { get; set; } = "[]";

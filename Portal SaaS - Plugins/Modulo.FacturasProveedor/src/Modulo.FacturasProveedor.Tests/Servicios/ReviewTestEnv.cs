@@ -45,9 +45,10 @@ internal sealed class ReviewTestEnv
     public static DateTimeOffset ReceivedAt(int day, int hourUtc = 12) => new(2026, 10, day, hourUtc, 0, 0, TimeSpan.Zero);
 
     public DteReceivedDto Invoice(long folio = 18452, long total = 2_200_000, int day = 24, int hourUtc = 12, int[]? purchaseOrders = null,
-        string taxId = "76412553-1", string responseStatus = DteResponseStatuses.None, string? responseAction = null, int dteType = 33) =>
+        string taxId = "76412553-1", string responseStatus = DteResponseStatuses.None, string? responseAction = null, int dteType = 33,
+        string? notRespondableReason = null) =>
         Inbox.Add(taxId, dteType, folio, total, ReceivedAt(day, hourUtc), purchaseOrders: purchaseOrders ?? new[] { 4512 },
-            responseStatus: responseStatus, responseAction: responseAction);
+            responseStatus: responseStatus, responseAction: responseAction, notRespondableReason: notRespondableReason);
 
     public Task<ReviewCycleResult> EvaluateAsync() => Reviews.EvaluatePendingAsync(CancellationToken.None);
 }

@@ -754,6 +754,11 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("net_amount");
 
+                    b.Property<string>("NotRespondableReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("not_respondable_reason");
+
                     b.Property<string>("OtherTaxesJson")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("other_taxes_json");

@@ -123,6 +123,22 @@ public class DteReceptionSyncServiceTests
     }
 
     [Fact]
+    public async Task Sync_NoRespondible_GuardaMotivo_YNoQuedaExternal()
+    {
+        var env = await BuildAsync();
+        env.Provider.Received.Add(Record(claimStatus: "Documento_Pagado_Al_Contado") with
+        {
+            NotRespondableReason = "Pagada al contado: el SII no admite aceptarla ni reclamarla.",
+        });
+
+        await env.Sync.SyncCompanyAsync(CompanyId, CancellationToken.None);
+
+        var row = await env.Db.DteReceived.SingleAsync();
+        Assert.Equal("Pagada al contado: el SII no admite aceptarla ni reclamarla.", row.NotRespondableReason);
+        Assert.Equal(DteResponseStatuses.None, row.ResponseStatus);
+    }
+
+    [Fact]
     public async Task Sync_RespondidoEnOperador_SinRespuestaPortal_QuedaExternal()
     {
         var env = await BuildAsync();

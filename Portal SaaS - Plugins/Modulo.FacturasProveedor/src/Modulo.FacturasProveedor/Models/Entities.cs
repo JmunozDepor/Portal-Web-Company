@@ -18,8 +18,10 @@ public static class ReviewStatuses
     public const string Expired = "expired";
     /// <summary>Recibida antes de "procesar desde" (o sin esa fecha): solo se muestra.</summary>
     public const string OutOfScope = "out_of_scope";
+    /// <summary>El SII no admite aceptarla ni reclamarla (ej. pagada al contado): solo se muestra.</summary>
+    public const string NotRespondable = "not_respondable";
 
-    public static bool IsFinal(string status) => status is Accepted or Rejected or External or Expired or OutOfScope;
+    public static bool IsFinal(string status) => status is Accepted or Rejected or External or Expired or OutOfScope or NotRespondable;
 
     /// <summary>Pendientes de decisión o de envío (bandeja "Pendientes").</summary>
     public static readonly IReadOnlyList<string> Pending = new[] { Warning, InReview, ToSend };

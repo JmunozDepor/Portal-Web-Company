@@ -754,6 +754,11 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("net_amount");
 
+                    b.Property<string>("NotRespondableReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("not_respondable_reason");
+
                     b.Property<string>("OtherTaxesJson")
                         .HasColumnType("text")
                         .HasColumnName("other_taxes_json");

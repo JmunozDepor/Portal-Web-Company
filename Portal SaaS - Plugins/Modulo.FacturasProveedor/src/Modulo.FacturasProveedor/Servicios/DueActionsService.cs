@@ -66,7 +66,7 @@ public sealed class DueActionsService : IDueActionsService
 
         var open = await _db.InvoiceReviews
             .Where(r => r.CompanyId == CompanyId && (r.Status == ReviewStatuses.New || r.Status == ReviewStatuses.Warning
-                || r.Status == ReviewStatuses.InReview || r.Status == ReviewStatuses.ToSend))
+                || r.Status == ReviewStatuses.InReview || r.Status == ReviewStatuses.ToSend || r.Status == ReviewStatuses.Simulated))
             .OrderBy(r => r.LegalDeadlineOn).ThenBy(r => r.Id)
             .ToListAsync(ct);
 
@@ -76,7 +76,7 @@ public sealed class DueActionsService : IDueActionsService
             var plan = DueActionPlanner.Plan(
                 new DueSnapshot(review.Status, review.LegalDeadlineOn, review.WarnDeadlineOn, review.EscalatedAt is not null),
                 new DueSettings(settings.CutoffTime, settings.EscalateDaysBefore, deadlineRule.IsActive, deadlineRule.Action,
-                    PlazoPorVencerRule.DaysBefore(deadlineRule)),
+                    PlazoPorVencerRule.DaysBefore(deadlineRule), EscalateSimulated: !simulation),
                 nowChile);
 
             switch (plan.Kind)
@@ -101,7 +101,9 @@ public sealed class DueActionsService : IDueActionsService
                     review.EscalatedAt = now;
                     Touch(review, now);
                     AddEvent(review, "escalated", "Escalada a Finanzas por plazo.", now);
-                    var message = $"{InvoiceReviewService.Describe(review)} sigue sin decisión y vence el {review.LegalDeadlineOn:dd-MM-yyyy}.";
+                    var message = review.Status == ReviewStatuses.Simulated
+                        ? $"{InvoiceReviewService.Describe(review)} se decidió en simulación y sigue sin respuesta en el operador; vence el {review.LegalDeadlineOn:dd-MM-yyyy}."
+                        : $"{InvoiceReviewService.Describe(review)} sigue sin decisión y vence el {review.LegalDeadlineOn:dd-MM-yyyy}.";
                     await NotifyAsync(settings.FinanceGroupId, review, "Factura por vencer", message, NotificationSeverity.Warning, ct);
                     if (review.AssignedGroupId != settings.FinanceGroupId)
                         await NotifyAsync(review.AssignedGroupId, review, "Factura por vencer", message, NotificationSeverity.Warning, ct);

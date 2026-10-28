@@ -74,7 +74,8 @@ public sealed class ReviewQueryService : IReviewQueryService
         if (filter.To is { } to) q = q.Where(r => r.SiiReceivedOn <= to);
         q = filter.StatusGroup switch
         {
-            "pending" => q.Where(r => r.Status == ReviewStatuses.Warning || r.Status == ReviewStatuses.InReview || r.Status == ReviewStatuses.ToSend),
+            "pending" => q.Where(r => r.Status == ReviewStatuses.New || r.Status == ReviewStatuses.Warning || r.Status == ReviewStatuses.InReview
+                || r.Status == ReviewStatuses.ToSend),
             "accepted" => q.Where(r => r.Status == ReviewStatuses.Accepted),
             "rejected" => q.Where(r => r.Status == ReviewStatuses.Rejected),
             "simulation" => q.Where(r => r.IsSimulated),

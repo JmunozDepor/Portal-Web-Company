@@ -23,8 +23,8 @@ public static class ReviewStatuses
 
     public static bool IsFinal(string status) => status is Accepted or Rejected or External or Expired or OutOfScope or NotRespondable;
 
-    /// <summary>Pendientes de decisión o de envío (bandeja "Pendientes").</summary>
-    public static readonly IReadOnlyList<string> Pending = new[] { Warning, InReview, ToSend };
+    /// <summary>Pendientes de decisión o de envío (bandeja "Pendientes"); "nueva" solo queda si no se pudo evaluar.</summary>
+    public static readonly IReadOnlyList<string> Pending = new[] { New, Warning, InReview, ToSend };
 }
 
 /// <summary>Modo del módulo.</summary>

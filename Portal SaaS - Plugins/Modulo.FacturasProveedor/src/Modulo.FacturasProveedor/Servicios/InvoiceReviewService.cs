@@ -99,8 +99,21 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
         {
             var doc = docsById.TryGetValue(review.ReceivedId, out var d) ? d : await _inbox.GetAsync(review.ReceivedId, ct);
             if (doc is null) continue;
-            var ctx = await builder.BuildAsync(doc, review.SiiReceivedOn, ct);
-            var decision = _engine.Decide(ctx, config);
+            InvoiceDecision decision;
+            try
+            {
+                var ctx = await builder.BuildAsync(doc, review.SiiReceivedOn, ct);
+                decision = _engine.Decide(ctx, config);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // SAP caído, consulta desactivada, dato raro: se registra y se sigue con las demás. Los vencimientos la
+                // escalan y le aplican la regla de plazo igual (DueActionPlanner trata "nueva" como pendiente).
+                if (review.LastError is null) await AddEventAsync(review, "evaluation_failed", null, ex.Message, now, ct);
+                review.LastError = Truncate($"No se pudo evaluar: {ex.Message}", 1000);
+                continue;
+            }
+            review.LastError = null;
             if (await ApplyAsync(review, decision, settings, simulation, now, ct)) changed++;
             if (review.DecidedAction == RuleActions.Accept) builder.MarkAccepted(doc);
         }

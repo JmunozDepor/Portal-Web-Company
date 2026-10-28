@@ -78,6 +78,27 @@ public sealed class FacturasProveedorBackgroundService : BackgroundService
         }
     }
 
+    /// <summary>
+    /// Un ciclo de una compañía: evaluación y después vencimientos/envíos. Si la evaluación falla (SAP caído, una consulta
+    /// desactivada, concurrencia), se descarta lo que dejó a medias y los vencimientos, envíos y escalamientos corren
+    /// igual: el último día no puede depender de que SAP responda.
+    /// </summary>
+    internal static async Task<(ReviewCycleResult? Cycle, DueRunResult Due)> RunCycleAsync(IInvoiceReviewService reviews,
+        IDueActionsService due, Action discardPendingChanges, ILogger logger, Guid companyId, CancellationToken ct)
+    {
+        ReviewCycleResult? cycle = null;
+        try
+        {
+            cycle = await reviews.EvaluatePendingAsync(ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            discardPendingChanges();
+            logger.LogWarning(ex, "Facturas de Proveedor (compañía {CompanyId}): falló la evaluación; se procesan igual vencimientos y envíos.", companyId);
+        }
+        return (cycle, await due.RunAsync(ct));
+    }
+
     private async Task ProcessCompanyAsync(Guid companyId, CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -87,13 +108,13 @@ public sealed class FacturasProveedorBackgroundService : BackgroundService
         // Sin recepción habilitada en la compañía no hay nada que evaluar (ni que enviar).
         if (!(await sp.GetRequiredService<IDteInboxService>().GetStatusAsync(ct)).ReceptionEnabled) return;
 
-        var cycle = await sp.GetRequiredService<IInvoiceReviewService>().EvaluatePendingAsync(ct);
-        var due = await sp.GetRequiredService<IDueActionsService>().RunAsync(ct);
-        if (cycle.Created > 0 || cycle.Changed > 0 || due.Sent > 0 || due.Failed > 0)
+        var (cycle, due) = await RunCycleAsync(sp.GetRequiredService<IInvoiceReviewService>(), sp.GetRequiredService<IDueActionsService>(),
+            () => sp.GetRequiredService<FacturasProveedorDbContext>().ChangeTracker.Clear(), _logger, companyId, ct);
+        if ((cycle?.Created ?? 0) > 0 || (cycle?.Changed ?? 0) > 0 || due.Sent > 0 || due.Failed > 0)
         {
             _logger.LogInformation(
                 "Facturas de Proveedor (compañía {CompanyId}): {Created} nueva(s), {Changed} con decisión nueva, {Sent} respondida(s), {Failed} con falla.",
-                companyId, cycle.Created, cycle.Changed, due.Sent, due.Failed);
+                companyId, cycle?.Created ?? 0, cycle?.Changed ?? 0, due.Sent, due.Failed);
         }
         await SendDailyDigestAsync(sp, companyId, ct);
     }

@@ -35,8 +35,13 @@ public sealed class FakeSapLookupService : ISapLookupService
     public Task<IReadOnlyList<InvoicedAgainstOc>> FindInvoicedAsync(int docEntry, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<InvoicedAgainstOc>>(Invoiced.TryGetValue(docEntry, out var l) ? l : new List<InvoicedAgainstOc>());
 
+    /// <summary>RUT cuya búsqueda de proveedor lanza (simula SAP caído o una consulta desactivada).</summary>
+    public HashSet<string> FailingTaxIds { get; } = new();
+
     public Task<SapSupplier?> FindSupplierByTaxIdAsync(string taxId, CancellationToken ct) =>
-        Task.FromResult(Suppliers.TryGetValue(SapLookupService.NormalizeRut(taxId) ?? "", out var s) ? s : null);
+        FailingTaxIds.Contains(taxId)
+            ? throw new InvalidOperationException("SAP no responde.")
+            : Task.FromResult(Suppliers.TryGetValue(SapLookupService.NormalizeRut(taxId) ?? "", out var s) ? s : null);
 
     public Task<IReadOnlyList<SapSupplier>> SearchSuppliersAsync(string text, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<SapSupplier>>(Suppliers.Values

@@ -152,6 +152,20 @@ public class PaginasOperativasTests
         Assert.Contains(rows, r => r.Folio == 2 && r.Summary!.Contains("no referencia"));
     }
 
+    /// <summary>C3 (revisión final): una factura que no se pudo evaluar (queda "nueva") se ve en Pendientes.</summary>
+    [Fact]
+    public async Task List_Pendientes_IncluyeNuevasQueNoSePudieronEvaluar()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Sap.FailingTaxIds.Add("76412553-1");
+        env.Invoice(folio: 5);
+        await env.EvaluateAsync();
+
+        var rows = await Queries(env).ListAsync(new ReviewListFilter(null, null, "pending", null), CancellationToken.None);
+
+        Assert.Equal(new long[] { 5 }, rows.Select(r => r.Folio));
+    }
+
     [Fact]
     public async Task List_Simulacion_MarcaCoincidencia()
     {

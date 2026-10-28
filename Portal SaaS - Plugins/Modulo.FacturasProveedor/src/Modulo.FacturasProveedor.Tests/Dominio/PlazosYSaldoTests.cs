@@ -88,7 +88,29 @@ public class DueActionPlannerTests
     {
         foreach (var status in new[] { "new", "warning", "in_review", "to_send" })
             Assert.Equal(DueActionKind.MarkExpired, Plan(status, new DateTime(2026, 10, 29, 0, 5, 0)).Kind);
-        Assert.Equal(DueActionKind.None, Plan("simulated", new DateTime(2026, 10, 29, 0, 5, 0)).Kind);
+    }
+
+    /// <summary>C3 (revisión final): una "nueva" que no se pudo evaluar (ej. SAP caído) también se escala y toma la regla de plazo.</summary>
+    [Fact]
+    public void Plan_NuevaSinEvaluar_SeEscalaYTomaLaReglaDePlazo()
+    {
+        Assert.Equal(DueActionKind.Escalate, Plan("new", new DateTime(2026, 10, 26, 12, 0, 0)).Kind);
+        Assert.Equal(DueActionKind.ApplyDeadlineRule, Plan("new", new DateTime(2026, 10, 28, 10, 30, 0), escalated: true).Kind);
+    }
+
+    /// <summary>
+    /// I3 (revisión final): una simulada sin respuesta del operador vence (la ley la da por aceptada) y, en modo activo, se
+    /// escala a Finanzas antes; nunca se le aplica la regla de plazo (no se envía).
+    /// </summary>
+    [Fact]
+    public void Plan_Simulada_Vence_YSeEscalaSoloEnActivo()
+    {
+        var active = Settings with { EscalateSimulated = true };
+        var now = new DateTime(2026, 10, 26, 12, 0, 0);
+        Assert.Equal(DueActionKind.MarkExpired, Plan("simulated", new DateTime(2026, 10, 29, 0, 5, 0)).Kind);
+        Assert.Equal(DueActionKind.None, Plan("simulated", now).Kind);
+        Assert.Equal(DueActionKind.Escalate, Plan("simulated", now, settings: active).Kind);
+        Assert.Equal(DueActionKind.None, Plan("simulated", new DateTime(2026, 10, 28, 10, 30, 0), escalated: true, settings: active).Kind);
     }
 
     [Fact]

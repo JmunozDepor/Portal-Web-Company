@@ -296,6 +296,28 @@ public class InvoiceReviewServiceTests
         Assert.Equal(RuleActions.Accept, (await ReviewAsync(env, doc.Id)).DecidedAction);
     }
 
+    /// <summary>C3 (revisión final): si SAP falla para una factura, las demás se evalúan igual y la que falló queda con el error.</summary>
+    [Fact]
+    public async Task Evaluate_SapFallaEnUnaFactura_LasDemasSeEvaluan_YQuedaElError()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Sap.AddPurchaseOrder();
+        env.Sap.FailingTaxIds.Add("77555010-K");
+        var failing = env.Invoice(folio: 1, taxId: "77555010-K", purchaseOrders: Array.Empty<int>(), hourUtc: 11);
+        var ok = env.Invoice(folio: 2, hourUtc: 12);
+
+        await env.EvaluateAsync();
+
+        Assert.Equal(ReviewStatuses.Simulated, (await ReviewAsync(env, ok.Id)).Status);
+        var stuck = await ReviewAsync(env, failing.Id);
+        Assert.Equal(ReviewStatuses.New, stuck.Status);
+        Assert.Contains("SAP no responde", stuck.LastError);
+
+        env.Sap.FailingTaxIds.Clear();
+        await env.EvaluateAsync();
+        Assert.Null((await ReviewAsync(env, failing.Id)).LastError);
+    }
+
     [Fact]
     public async Task Evaluate_Cursor_NoReprocesaLoYaLeido()
     {

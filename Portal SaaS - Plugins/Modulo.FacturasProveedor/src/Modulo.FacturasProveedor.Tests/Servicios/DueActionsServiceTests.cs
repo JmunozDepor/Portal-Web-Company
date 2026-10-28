@@ -232,6 +232,39 @@ public class DueActionsServiceTests
         Assert.Equal(ReviewStatuses.Rejected, (await ReviewAsync(env, doc.Id)).Status);
     }
 
+    private sealed class ThrowingReviews : IInvoiceReviewService
+    {
+        public Task<ReviewCycleResult> EvaluatePendingAsync(CancellationToken ct) => throw new InvalidOperationException("HANA caído");
+        public Task EvaluateOneAsync(long reviewId, CancellationToken ct) => throw new NotSupportedException();
+        public Task<InvoiceEvaluationContext?> BuildContextAsync(long reviewId, CancellationToken ct) => throw new NotSupportedException();
+    }
+
+    private sealed class CountingDue : IDueActionsService
+    {
+        public int Runs { get; private set; }
+        public Task<DueRunResult> RunAsync(CancellationToken ct)
+        {
+            Runs++;
+            return Task.FromResult(new DueRunResult(0, 0, 0, 0));
+        }
+    }
+
+    /// <summary>C3 (revisión final): una falla de la evaluación no frena los envíos, vencimientos ni escalamientos.</summary>
+    [Fact]
+    public async Task Job_EvaluacionFalla_VencimientosYEnviosCorrenIgual()
+    {
+        var due = new CountingDue();
+        var resets = 0;
+
+        var (cycle, result) = await FacturasProveedorBackgroundService.RunCycleAsync(new ThrowingReviews(), due, () => resets++,
+            NullLogger.Instance, Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Null(cycle);
+        Assert.NotNull(result);
+        Assert.Equal(1, due.Runs);
+        Assert.Equal(1, resets);
+    }
+
     [Fact]
     public async Task Job_UnaCompaniaFalla_SigueConLasDemas()
     {

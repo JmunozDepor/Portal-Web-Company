@@ -51,6 +51,17 @@ public sealed class ModuloFacturasProveedor : IModuloPortal
     {
         services.TryAddSingleton(TimeProvider.System);
 
+        // Catálogo de reglas de revisión: una regla nueva = una clase más registrada acá.
+        services.AddSingleton<Dominio.Reglas.ISupplierInvoiceRule, Dominio.Reglas.Catalogo.OcReferenciadaRule>();
+        services.AddSingleton<Dominio.Reglas.ISupplierInvoiceRule, Dominio.Reglas.Catalogo.OcMismoProveedorRule>();
+        services.AddSingleton<Dominio.Reglas.ISupplierInvoiceRule, Dominio.Reglas.Catalogo.OcAntiguedadRule>();
+        services.AddSingleton<Dominio.Reglas.ISupplierInvoiceRule, Dominio.Reglas.Catalogo.OcSaldoRule>();
+        services.AddSingleton<Dominio.Reglas.ISupplierInvoiceRule, Dominio.Reglas.Catalogo.OcAbiertaRule>();
+        services.AddSingleton<Dominio.Reglas.ISupplierInvoiceRule, Dominio.Reglas.Catalogo.ProveedorEnSapRule>();
+        services.AddSingleton<Dominio.Reglas.ISupplierInvoiceRule, Dominio.Reglas.Catalogo.RevisionManualProveedorRule>();
+        services.AddSingleton<Dominio.Reglas.ISupplierInvoiceRule, Dominio.Reglas.Catalogo.PlazoPorVencerRule>();
+        services.AddSingleton<Dominio.Reglas.InvoiceRuleEngine>();
+
         // FacturasProveedorDbContext resuelto self-service vía IExternalDatabaseConnectionService -- motor dual, se
         // decide EN RUNTIME según ModuleExternalConnection.EngineType. CompanyId SIEMPRE obligatorio (sin fallback a
         // nivel Organization). En los jobs, la compañía la fija ICurrentCompanyOverride.

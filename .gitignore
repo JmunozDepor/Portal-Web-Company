@@ -40,3 +40,6 @@ mockup-master-detail.html
 # repos hijos neutralizados -- borrar a mano con VS Code cerrado
 _git_OLD_DELETEME/
 **/_git_OLD_DELETEME/
+
+# Bocetos del compañero visual de brainstorming (locales, no se versionan)
+.superpowers/

@@ -1,0 +1,4755 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="claro" data-sidebar="expanded">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facturas de Proveedor — boceto</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+/* ==========================================================================
+   design-tokens.css -- ÚNICA FUENTE DE VERDAD de color/tipografía/radio/sombra/
+   transición de todo el portal (core + todos los módulos, internos o externos).
+
+   REGLA DURA DE GOBERNANZA (2026-08-17): ningún archivo CSS de módulo
+   (rendiciones.css, admin.css, etc.) puede declarar un color/radio/sombra/
+   transición propios -- todo se consume vía var(--token) definido acá. Ver
+   Views/Shared/_LayoutMaestro.cshtml para el resto de las reglas duras de UI.
+
+   Extraído tal cual de site.css (26/27 jul 2026, "Auditoría de paridad visual
+   completa" + "Rediseño visual con valores reales extraídos de PortalSAP_v2") --
+   esto es una REUBICACIÓN de bloque, no una reescritura de valores. site.css
+   importa este archivo como primera línea; no duplica ninguno de estos tokens. */
+
+/* "claro" (Light) -- tema por defecto. */
+:root,
+[data-theme="claro"] {
+  --bs-body-bg: #e4e7ec;
+  --bs-body-color: #1a1a1a;
+  --card-bg: #ffffff;
+  --card-border: #cbd1db;
+  --text-main: #1a1a1a;
+  --text-muted: #6b7280;
+  --bs-primary: #2c5282;
+  --bs-primary-rgb: 44, 82, 130;
+  --accent: #2c5282;
+  --accent-rgb: 44, 82, 130;
+  --accent-2: #1e3a5f;
+  --accent-soft: #e8f0fb;
+  --bs-success: #2d7d4e;
+  --bs-success-rgb: 45, 125, 78;
+  --bs-danger: #c0392b;
+  --bs-danger-rgb: 192, 57, 43;
+  --bs-warning: #d4880e;
+  --bs-warning-rgb: 212, 136, 14;
+  --input-bg: #ffffff;
+  --shadow-card: 0 24px 60px -28px rgba(30, 58, 95, 0.25);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #0f9b8e;
+  --menu-color-3: #7c3aed;
+  --menu-color-4: #d97706;
+  --menu-color-5: #db2777;
+  --menu-color-6: #16a34a;
+}
+
+/* "oscuro" (Dark). */
+[data-theme="oscuro"] {
+  --bs-body-bg: #111827;
+  --bs-body-color: #f3f4f6;
+  --card-bg: #1f2937;
+  --card-border: #4b5563;
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --bs-primary: #3b82f6;
+  --bs-primary-rgb: 59, 130, 246;
+  --accent: #3b82f6;
+  --accent-rgb: 59, 130, 246;
+  --accent-2: #2563eb;
+  --accent-soft: #93c5fd;
+  --bs-success: #34d399;
+  --bs-success-rgb: 52, 211, 153;
+  --bs-danger: #f87171;
+  --bs-danger-rgb: 248, 113, 113;
+  --bs-warning: #fbbf24;
+  --bs-warning-rgb: 251, 191, 36;
+  --input-bg: #374151;
+  --shadow-card: 0 24px 70px -24px rgba(0, 0, 0, 0.75);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #2dd4bf;
+  --menu-color-3: #a78bfa;
+  --menu-color-4: #fbbf24;
+  --menu-color-5: #f472b6;
+  --menu-color-6: #4ade80;
+}
+
+/* "teal" (Ocean). */
+[data-theme="teal"] {
+  --bs-body-bg: #ddeef8;
+  --bs-body-color: #0a2a3c;
+  --card-bg: #f4f9fd;
+  --card-border: #a8d4e8;
+  --text-main: #0a2a3c;
+  --text-muted: #5c7a8a;
+  --bs-primary: #0096c7;
+  --bs-primary-rgb: 0, 150, 199;
+  --accent: #0096c7;
+  --accent-rgb: 0, 150, 199;
+  --accent-2: #0077b6;
+  --accent-soft: #caf0f8;
+  --bs-success: #2a9d8f;
+  --bs-success-rgb: 42, 157, 143;
+  --bs-danger: #c0392b;
+  --bs-danger-rgb: 192, 57, 43;
+  --bs-warning: #e76f51;
+  --bs-warning-rgb: 231, 111, 81;
+  --input-bg: #ffffff;
+  --shadow-card: 0 24px 60px -28px rgba(10, 74, 110, 0.2);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #2a9d8f;
+  --menu-color-3: #7c3aed;
+  --menu-color-4: #e76f51;
+  --menu-color-5: #e63946;
+  --menu-color-6: #3a86ff;
+}
+
+/* "violeta" (Violet). */
+[data-theme="violeta"] {
+  --bs-body-bg: #ede9fe;
+  --bs-body-color: #1e1b4b;
+  --card-bg: #ffffff;
+  --card-border: #ddd6fe;
+  --text-main: #1e1b4b;
+  --text-muted: #7c70a0;
+  --bs-primary: #7c3aed;
+  --bs-primary-rgb: 124, 58, 237;
+  --accent: #7c3aed;
+  --accent-rgb: 124, 58, 237;
+  --accent-2: #6d28d9;
+  --accent-soft: #ede9fe;
+  --bs-success: #059669;
+  --bs-success-rgb: 5, 150, 105;
+  --bs-danger: #dc2626;
+  --bs-danger-rgb: 220, 38, 38;
+  --bs-warning: #d97706;
+  --bs-warning-rgb: 217, 119, 6;
+  --input-bg: #faf8ff;
+  --shadow-card: 0 24px 60px -28px rgba(30, 27, 75, 0.2);
+  --on-accent: #ffffff;
+  --focus-ring-color: var(--accent);
+  --menu-color-1: var(--accent);
+  --menu-color-2: #0891b2;
+  --menu-color-3: #db2777;
+  --menu-color-4: #d97706;
+  --menu-color-5: #059669;
+  --menu-color-6: #4f46e5;
+}
+
+:root {
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Code", "Consolas", monospace;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* Transiciones estandarizadas (regla dura 2026-08-17) -- hover, tooltips y
+     apertura de drawers/paneles deslizantes usan EXCLUSIVAMENTE estas dos
+     variables, nunca un valor de tiempo propio por componente. */
+  --transition-fast: 150ms;
+  --drawer-transition: 300ms;
+
+  /* ---------------------------------------------------------------------------
+     BREAKPOINTS (contrato) -- CSS no admite var() en condiciones @media, así
+     que estos valores se escriben literales en cada @media del proyecto, pero
+     esta es la definición de referencia. NO agregar cortes nuevos sin
+     actualizar acá.
+       sm : max-width: 576px   -> teléfono vertical
+       md : max-width: 900px   -> teléfono horizontal / tablet vertical.
+                                  El shell (_LayoutMaestro/sidebar.css) pasa a
+                                  drawer off-canvas en este corte.
+       lg : min-width: 901px   -> escritorio. Layout base, sin overrides.
+     --------------------------------------------------------------------------- */
+
+  /* Swatches del selector de tema (.theme-row en _LayoutMaestro.cshtml). */
+  --theme-preview-claro: #2c5282;
+  --theme-preview-oscuro: #111827;
+  --theme-preview-teal: #0096c7;
+  --theme-preview-violeta: #7c3aed;
+
+  /* Rail del sidebar principal (Nivel 1) -- 64px fijo, regla dura de layout. */
+  --rail-width: 64px;
+  --sidebar-width: 250px;
+
+  /* Drawer off-canvas del shell (<=900px, ver sidebar.css). Neutrales por
+     diseño -- misma política base-only que --rail-width et al. */
+  --scrim-bg: rgba(0, 0, 0, 0.4);
+  --shadow-drawer: 0 0 40px -8px rgba(0, 0, 0, 0.35);
+}
+
+/* ==========================================================================
+   components.css -- Set CERRADO de componentes base (regla dura 2026-08-17).
+   Todo módulo (core o plugin) consume EXCLUSIVAMENTE estas clases para botón/
+   tarjeta/tabla/badge -- prohibido declarar un componente equivalente propio
+   (.btn-erp-primary, .rnd-badge, .admin-card, etc.). Construido enteramente
+   sobre var(--token) de design-tokens.css, nunca un color/radio/sombra literal.
+
+   Alias deliberados: .card-ps/.document-list-table/.line-items-table
+   (site.css) ya eran, en los hechos, la implementación real de "tarjeta" y
+   "tabla" del proyecto (ver CLAUDE.md, entregas de rediseño 26-27 jul 2026) --
+   en vez de duplicar sus reglas bajo un nombre nuevo (que dejaría dos fuentes
+   de verdad divergiendo con el tiempo), .card-surface/.table-ps se declaran
+   como selector compuesto junto al nombre histórico. El nombre nuevo es la
+   forma oficial para markup nuevo; el nombre viejo sigue funcionando para no
+   romper las ~262 vistas existentes que ya lo usan -- no se migra markup
+   existente en este pase, ver el plan de migración por fases. */
+
+/* ---------------------------------------------------------------------
+   Botones -- .btn-primary/.btn-secondary son las DOS únicas variantes de
+   botón con relleno; site.css ya define .btn-primary (var(--bs-primary)) y
+   .btn-outline-secondary (fondo tenue + fill sólido en hover) -- .btn-secondary
+   es el nombre de gobernanza que consume esa misma implementación. */
+.btn-secondary {
+  color: var(--text-main);
+  border-color: var(--card-border);
+  background-color: var(--input-bg);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast) ease,
+    border-color var(--transition-fast) ease,
+    color var(--transition-fast) ease,
+    box-shadow var(--transition-fast) ease;
+}
+
+.btn-secondary:hover {
+  color: var(--on-accent);
+  background-color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Botón "fantasma" -- sin relleno ni borde en reposo, para una acción de
+   icono suelta dentro de una fila de tabla (editar/ver/más opciones). Fondo
+   tenue solo en hover, nunca un tercer color de relleno permanente (el set
+   cerrado de botones CON relleno sigue siendo solo .btn-primary/.btn-secondary). */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+
+.btn-ghost:hover {
+  background: color-mix(in srgb, var(--bs-primary) 8%, transparent);
+  color: var(--bs-primary);
+}
+
+.btn-ghost--danger:hover {
+  background: color-mix(in srgb, var(--bs-danger) 10%, transparent);
+  color: var(--bs-danger);
+}
+
+/* ---------------------------------------------------------------------
+   Tarjeta -- alias de .card-ps (site.css), la tarjeta blanca con sombra
+   suave sobre fondo neutro ya estándar en todo el portal. */
+.card-surface,
+.card-ps {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+}
+
+/* ---------------------------------------------------------------------
+   Tabla -- alias de .document-list-table (site.css), encabezado mayúscula
+   chico gris + fila con hover sutil, ya el único patrón real de listado. */
+.table-ps {
+  width: 100%;
+  font-size: 13px;
+}
+
+.table-ps thead th {
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid var(--card-border);
+  padding: 8px 10px;
+}
+
+.table-ps tbody tr {
+  transition: background-color var(--transition-fast) ease;
+}
+
+.table-ps tbody tr:hover {
+  background: color-mix(in srgb, var(--bs-primary) 6%, transparent);
+}
+
+.table-ps > :not(caption) > * > * {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+/* ---------------------------------------------------------------------
+   Badge de estado -- único componente de "estado" (activo/pendiente/error/
+   inactivo). Reemplaza cualquier .badge bg-* armado a mano por color -- el
+   tono se elige por MODIFICADOR semántico (.badge-status--success, etc.),
+   nunca por una clase de utilidad de color suelta. */
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.badge-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge-status--success {
+  color: var(--bs-success);
+  background: color-mix(in srgb, var(--bs-success) 14%, transparent);
+}
+
+.badge-status--warning {
+  color: var(--bs-warning);
+  background: color-mix(in srgb, var(--bs-warning) 16%, transparent);
+}
+
+.badge-status--danger {
+  color: var(--bs-danger);
+  background: color-mix(in srgb, var(--bs-danger) 14%, transparent);
+}
+
+.badge-status--neutral {
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-muted) 14%, transparent);
+}
+
+/* ---------------------------------------------------------------------
+   Utilidades chicas de .table-ps -- columna de acciones (ancho mínimo,
+   pegada a la derecha) y fila inactiva/deshabilitada (atenuada). Genéricas
+   a cualquier tabla de administración del portal, no específicas de un
+   módulo -- reemplazan equivalentes que antes vivían duplicados por módulo
+   (ej. .admin-col-accion/.admin-fila-inactiva de rendiciones.css). */
+.table-ps .col-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.table-ps .row-inactive {
+  opacity: 0.55;
+}
+
+/* ---------------------------------------------------------------------
+   Slide-over drawer -- panel deslizante estándar (Fase 3, patrón
+   Master-Detail). Cualquier módulo que necesite crear/editar sin navegar a
+   otra página usa ESTE marcado (.drawer-overlay/.drawer-panel), nunca un
+   modal de Bootstrap ni un panel propio. */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1040;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--drawer-transition) ease;
+}
+
+.drawer-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 100%;
+  max-width: 420px;
+  background: var(--card-bg);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform var(--drawer-transition) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Modificador reusable para un drawer que contiene contenido denso en datos
+   (ej. la grilla checkbox+select de "Pantallas incluidas" en
+   /organizacion/grupos-menu) -- el ancho estándar de 420px trunca cualquier
+   texto de largo variable a solo unos caracteres. Cualquier drawer nuevo con
+   el mismo problema (una tabla/grilla adentro, no un formulario simple) usa
+   esta clase en vez de fijar un max-width propio inline. */
+.drawer-panel--wide {
+  max-width: 640px;
+}
+
+.drawer-panel.is-open {
+  transform: translateX(0);
+}
+
+/* Ancho ajustable (drawer.js inyecta el borde y el botón en todo drawer): el
+   panel se amplía hacia la izquierda fijando max-width inline. Sin transición
+   mientras se arrastra, para que siga al mouse sin retraso. */
+.drawer-panel.is-resizing {
+  transition: none;
+  user-select: none;
+}
+
+.drawer-resize-handle {
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 1;
+}
+
+.drawer-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 3px;
+  width: 2px;
+  height: 100%;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.drawer-resize-handle:hover::after,
+.drawer-panel.is-resizing .drawer-resize-handle::after {
+  background: var(--accent);
+}
+
+.drawer-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* En pantallas angostas el drawer ya ocupa todo el ancho: no hay nada que ampliar. */
+@media (max-width: 576px) {
+  .drawer-resize-handle,
+  .drawer-expand-toggle {
+    display: none;
+  }
+}
+
+/* Bloquea el scroll de fondo (.content, ver sidebar.css) mientras el drawer
+   está abierto -- drawer.js agrega/quita esta clase en <body>. */
+body.drawer-locked .content {
+  overflow: hidden;
+}
+
+/* Estructura interna estándar del drawer -- header fijo, body con scroll
+   propio, footer fijo con las acciones (Cancelar/Guardar). */
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--card-border);
+  flex-shrink: 0;
+}
+
+.drawer-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--card-border);
+  flex-shrink: 0;
+}
+
+/* Grilla de 2 columnas para campos de formulario dentro del drawer -- label
+   arriba del input (ya es el default de .form-label/.form-control de
+   site.css), colapsa a 1 columna en viewport angosto (el drawer mismo mide
+   máx. 420px, así que esto solo importa si se usa fuera de un drawer). */
+.drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.drawer-grid .span-2 {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 576px) {
+  .drawer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Focus-ring azul fijo (#2563EB) en los campos del drawer -- mismo criterio
+   ya usado en el login (Fase 3): el drawer es una superficie de acción
+   puntual, con foco de marca constante en vez del acento del tema activo. */
+.drawer-body .form-control:focus,
+.drawer-body .form-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+/* ---------------------------------------------------------------------
+   Tooltip flotante -- usado por el rail del sidebar principal (Nivel 1,
+   64px, solo íconos) para mostrar el nombre del módulo al hacer hover. */
+.rail-tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background: var(--text-main);
+  color: var(--card-bg);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast) ease, transform var(--transition-fast) ease;
+  z-index: 1060;
+}
+
+.rail-item:hover .rail-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ---------------------------------------------------------------------
+   Sub-barra contextual (Nivel 2) -- pills horizontales del módulo activo,
+   justo debajo del Topbar. Ver _ModuloLayout.cshtml. */
+.subnav-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 18px;
+  height: 44px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--card-border);
+  overflow-x: auto;
+}
+
+.subnav-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+
+.subnav-pill:hover {
+  background: color-mix(in srgb, var(--bs-primary) 8%, transparent);
+  color: var(--text-main);
+}
+
+.subnav-pill.active {
+  background: color-mix(in srgb, var(--bs-primary) 12%, transparent);
+  color: var(--bs-primary);
+}
+
+/* Transición de navegación (View Transitions API nativa del navegador, sin JS ni
+   reescribir la app a SPA) -- esta app recarga la página entera en cada click a
+   propósito (ver DocumentForm/Default.cshtml, MPA no SPA), pero el navegador puede
+   suavizar ESE reload con un cross-fade nativo en vez del salto/flash blanco. Regla
+   CSS pura: si el navegador no la soporta (no-Chromium viejo), simplemente la ignora
+   y navega como siempre -- no hay fallback que mantener a mano. */
+@view-transition {
+  navigation: auto;
+}
+
+/* Tipografía -- ver DESIGN.md §1 (Hallazgo 1 de la auditoría visual, 10 ago 2026:
+   ningún selector del portal declaraba una fuente propia, todo caía al stack del
+   sistema operativo del usuario). IBM Plex Sans (texto) + IBM Plex Mono (códigos
+   SAP, ver .sap-code más abajo). DESIGN.md §1.1 recomienda self-hosted
+   (`wwwroot/fonts/`, mismo criterio que Bootstrap/jQuery/Bootstrap Icons vendored a
+   mano en este proyecto, sin libman.json) -- se usa Google Fonts vía @import acá por
+   decisión explícita del dueño del proyecto, pedida sobre esa recomendación. Pesos
+   cargados: 400/500/600/700 de Plex Sans (los 4 que site.css ya fuerza vía
+   font-weight en distintos selectores, ver DESIGN.md §1.1) y 400/500 de Plex Mono
+   (400 para .sap-code, 500 disponible si algún selector futuro lo necesita). */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+/* Identidad visual corporativa -- 4 paletas reales, portadas de
+   referencia-original/PortalSAP_v2/src/PortalSAP.Host/wwwroot/css/theme.css (líneas
+   21-122: claro/marino-oscuro/teal/violeta), no solo la de "claro". El selector de
+   tema (theme-switcher.js + los 4 botones de .theme-row en _Layout.cshtml) es lo que
+   el dueño del proyecto señaló como faltante ("la paleta de colores disponible que
+   deben ser 4") -- hasta esta entrega solo existía la paleta fija "claro", sin forma
+   de elegir ninguna otra.
+   --bs-primary mapea al --accent-2 de la referencia (el tono "acento fuerte" de cada
+   tema, más oscuro que --accent) -- botones/activo/hover/degradado lo usan, nunca
+   como fondo sólido de sidebar/topbar (esos son --card-bg, ver sidebar.css). El
+   selector [data-theme] se fija en <html> (ver _Layout.cshtml, script antes de pintar
+   + theme-switcher.js) -- cualquier módulo nuevo hereda el tema activo sin hacer nada
+   porque solo consume estas variables, nunca un color literal.
+   Bootstrap 5.1.0 vendored en este proyecto NO genera sus componentes desde variables
+   CSS en tiempo de ejecución salvo excepciones puntuales (confirmado leyendo
+   bootstrap.min.css: body/.table/.bg-* /.text-* SÍ consumen var(--bs-*), pero
+   .btn-primary/.page-link/.form-check-input tienen el color de Bootstrap Blue
+   (#0d6efd) compilado a fuego en la regla) -- por eso acá hay dos tipos de reglas:
+   redefinir las variables --bs-* (cubre body, bg-primary/text-primary, tablas) y
+   sobreescribir explícitamente los componentes que Bootstrap no parametrizó con
+   variables (.btn-primary, paginación). */
+
+/* Tokens de color/tipografía/radio/sombra/transición -- movidos a
+   design-tokens.css (2026-08-17, gobernanza UI). Este archivo (site.css)
+   los consume vía var(--token), nunca redefine un valor -- design-tokens.css
+   es la ÚNICA fuente de verdad, ver su cabecera para la regla dura completa. */
+@import url("design-tokens.css");
+
+/* ==========================================================================
+   Compactación global -- regla de diseño del proyecto (ver CLAUDE.md "Densidad
+   visual estándar"): todo formulario cabecera/detalle de cualquier módulo
+   (backoffice de plataforma en /Admin/*, self-service de organización en
+   /organizacion/*, y los 3 motores genéricos de documento) comparte la MISMA
+   densidad, tipografía, color y comportamiento -- nunca un tamaño de fuente o
+   padding propio por módulo. Bootstrap por defecto es demasiado espaciado para
+   una grilla de datos tipo SAP B1 -- se reduce acá una sola vez, para TODO el
+   proyecto (no hay override puntual por página). */
+.form-control,
+.form-select,
+.form-check-input {
+  font-size: 13px;
+}
+
+.form-control,
+.form-select {
+  padding: 4px 8px;
+  min-height: 32px;
+}
+
+.form-select-sm,
+.form-control-sm {
+  padding: 2px 6px;
+  min-height: 28px;
+  font-size: 12.5px;
+}
+
+/* El padding shorthand de arriba pisa el padding-right que Bootstrap reserva en
+   .form-select-sm para el ícono de flecha (background-image) -- con solo 6px el
+   texto largo (ej. "CODIGO — Nombre Compañía" en CompanySwitcher/Default.cshtml)
+   queda pisado debajo del botón de desplegar. Solo afecta a .form-select-sm (tiene
+   flecha); .form-control-sm no la necesita. */
+.form-select-sm {
+  padding-right: 28px;
+}
+
+.form-label {
+  font-size: 12.5px;
+  margin-bottom: 2px;
+}
+
+.btn {
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring-color) 25%, transparent);
+}
+
+.btn-sm {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+/* Botones outline -- Bootstrap 5.1 compila el color a fuego sin variable (mismo
+   motivo que .btn-primary/.btn-outline-danger más arriba), y por defecto son
+   rectangulares/planos. Rediseño (27 jul 2026, regla dura de todo el proyecto):
+   fondo tenue de color (10%) en vez de transparente puro -- se lee como botón
+   secundario real, no como un link con borde, y el hover pasa a fill sólido con
+   una leve sombra de acento (mismo lenguaje que .btn-primary). */
+.btn-outline-secondary {
+  color: var(--text-main);
+  border-color: var(--card-border);
+  background-color: var(--input-bg);
+}
+
+.btn-outline-secondary:hover {
+  color: var(--on-accent);
+  background-color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.btn-outline-primary {
+  color: var(--accent);
+  border-color: var(--accent);
+  background-color: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.btn-outline-primary:hover {
+  color: var(--on-accent);
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.card-ps {
+  padding: 16px;
+}
+
+.table {
+  font-size: 13px;
+}
+
+.table > :not(caption) > * > * {
+  padding: 6px 10px;
+}
+
+h1.h3, .h3 { font-size: 1.4rem; }
+h2.h5, .h5 { font-size: 1rem; }
+
+.btn-primary {
+  color: var(--on-accent);
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Hover con --accent-2 (tono oscuro) -- mismo criterio exacto que .btn-erp-primary
+   del original (base --accent, hover --accent-2). --bs-primary ahora vale lo mismo
+   que --accent (bug real corregido: antes --bs-primary apuntaba a --accent-2 y el
+   botón nacía oscuro, con el hover aclarando -- justo al revés que el original). */
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+.btn-primary:active,
+.btn-primary:active:focus {
+  background-color: color-mix(in srgb, var(--bs-primary) 80%, black) !important;
+  border-color: color-mix(in srgb, var(--bs-primary) 80%, black) !important;
+}
+
+/* .btn-outline-danger de Bootstrap tiene el rojo (#dc3545) compilado a fuego, sin
+   variable -- mismo motivo que .btn-primary/.pagination más arriba. Primer consumidor
+   real: botón "Desconectar" de /Admin/Sessions (clientes conectados). */
+.btn-outline-danger {
+  color: var(--bs-danger);
+  border-color: var(--bs-danger);
+  background-color: color-mix(in srgb, var(--bs-danger) 8%, transparent);
+}
+
+.btn-outline-danger:hover {
+  color: var(--on-accent);
+  background-color: var(--bs-danger);
+  border-color: var(--bs-danger);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--bs-danger) 35%, transparent);
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.pagination .page-link {
+  color: var(--bs-primary);
+}
+
+/* Navbar del backoffice de administración (_AdminLayout.cshtml) -- Bootstrap 5.1
+   compila .bg-dark a un gris/negro fijo sin variable, así que no alcanza con
+   redefinir --bs-primary acá; se sobreescribe el selector puntual que arma ese
+   navbar (navbar-dark ya deja el texto/enlaces en blanco, solo hace falta el fondo). */
+.navbar.bg-dark {
+  background-color: var(--bs-primary) !important;
+}
+
+/* DESIGN.md §2.3 -- explícito en vez de confiar solo en la herencia de
+   font-family de `body` (ver más abajo): si Bootstrap alguna vez fija su propia
+   fuente en .navbar-brand/.nav-link (no lo hace hoy en 5.1.0, confirmado
+   leyendo bootstrap.min.css), esta regla sigue ganando por especificidad. El
+   fondo se mantiene distinto al .topbar del shell de tenant a propósito (ver
+   DESIGN.md §2.3) -- es la señal real de "estás en la sesión de administrador
+   de plataforma, no en la de una organización", los dos esquemas de cookie
+   nunca deben confundirse. */
+.navbar.bg-dark .navbar-brand,
+.navbar.bg-dark .nav-link {
+  font-family: var(--font-sans);
+}
+
+/* Refinamiento "ERP ejecutivo" del navbar de administración -- mismo fondo navy de
+   siempre (.navbar.bg-dark de arriba, decisión ya tomada, no se toca), agrega:
+   wordmark de dos niveles, indicador de sección activa (el navbar nunca marcaba
+   dónde estaba parado el admin), y un cluster de usuario con avatar en vez de texto
+   suelto -- mismo lenguaje visual que .who/.avatar del topbar de tenant. */
+.admin-navbar {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+.admin-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.admin-brand-product {
+  font-weight: 700;
+  font-size: 16.5px;
+  letter-spacing: -0.01em;
+}
+
+.admin-brand-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.28);
+  align-self: center;
+}
+
+.admin-brand-area {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.admin-nav .nav-link {
+  position: relative;
+  padding: 8px 14px !important;
+  margin: 0 1px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.78) !important;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.admin-nav .nav-link:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-nav .nav-link.active {
+  color: #fff !important;
+  font-weight: 600;
+}
+
+/* Indicador de sección activa -- barra inferior, mismo patrón "tab activa" que un
+   ERP real (SAP Fiori/Bloomberg), en vez de solo cambiar el color del texto. */
+.admin-nav .nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -4px;
+  height: 2px;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.admin-user-cluster {
+  gap: 14px;
+}
+
+.admin-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  flex: none;
+}
+
+.admin-user-name {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.admin-logout-btn {
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.admin-logout-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+@media (max-width: 767.98px) {
+  .admin-user-cluster {
+    margin-top: 10px;
+  }
+}
+
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+/* Anillo de foco -- estaba hardcodeado a "white"/"#258cfb" (azul de Bootstrap fijo),
+   sin relación con el tema activo ni con --card-bg en tema oscuro (un halo blanco
+   sobre fondo oscuro se ve como un recuadro roto). var(--card-bg) simula el "espacio"
+   entre el control y el anillo (mismo truco que Bootstrap usa con --bs-body-bg, pero
+   theme-aware), var(--focus-ring-color) es el aro real (= --accent del tema). */
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem var(--card-bg), 0 0 0 0.25rem var(--focus-ring-color);
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  /* margin-bottom: 60px eliminado (2026-08-17, fix de scrollbar global) --
+     era un scaffold del template default de "dotnet new webapp" pensado
+     para un footer fijo que este proyecto nunca tuvo; con .app-shell ahora
+     fijo a 100dvh + overflow:hidden, ese margen sumaba altura extra real
+     causando scroll vertical de la página completa además del interno de
+     .content. */
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+/* DESIGN.md §1.2 -- códigos SAP (ItemCode/CardCode/WhsCode/DocEntry/AcctCode,
+   claves de activación de licencia) nunca en la fuente de texto corrido. Sin
+   consumidor todavía en el markup -- se aplica pantalla por pantalla al tocar
+   cada una (ver DESIGN.md §2.5, checklist), no en un solo pase sobre ~200
+   archivos .cshtml. */
+.sap-code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* width:100% -- valor real de .admin-table (theme.css:1185), la tabla debe llenar el
+   ancho de .document-list-table-wrapper/.card-ps, no encogerse a su contenido. Una
+   entrega anterior de esta sesión había puesto width:auto asumiendo (sin verificar
+   contra un navegador real) que eso evitaba "huecos" en tablas angostas -- el efecto
+   real, confirmado por el dueño del proyecto contra una captura real, era el
+   contrario: la grilla quedaba angosta y descentrada, sin ocupar el ancho de la
+   página, y sin adaptarse al viewport. .document-list-table-wrapper (overflow:auto)
+   sigue cubriendo el caso de contenido más ancho que el viewport -- scroll horizontal
+   ahí, nunca la tabla encogiéndose. */
+/* --bs-table-striped-bg estaba hardcodeado a #fafafa (claro fijo) -- en tema oscuro
+   eso pintaba filas alternadas casi blancas con texto claro encima (--bs-body-color
+   también claro en ese tema), perdiendo el contraste por completo (bug real
+   reportado: "las letras no se visualizan"/"líneas oscuras y blancas"). Con
+   color-mix(...,transparent) el navegador compone el tinte sobre el fondo real de la
+   fila (card-bg), aclarando/oscureciendo según el tema en vez de un valor fijo. */
+.document-list-table {
+  width: 100%;
+  --bs-table-striped-bg: color-mix(in srgb, var(--text-main) 6%, transparent);
+  --bs-table-color: var(--text-main);
+  --bs-table-striped-color: var(--text-main);
+  /* Bug real (tema oscuro, 2026-08-02, parte 2): las variables de arriba no alcanzan
+     porque bootstrap.min.css (5.1.0) fija `color:#212529` DIRECTO en `.table`, no vía
+     var(--bs-table-color) -- esta versión de Bootstrap no llegó a cablear esa
+     variable al color base (sí la declara, pero no la consume ahí). El fix de filas
+     impares (:nth-of-type(odd) más abajo) alcanzaba a esas nomás -- las pares seguían
+     heredando el negro de Bootstrap sin ningún override. `color` explícito acá cubre
+     TODAS las filas (impares Y pares), misma especificidad que `.table` pero site.css
+     carga después. */
+  color: var(--text-main);
+  border: 1px solid var(--card-border);
+}
+
+/* Solo lo estructural acá -- el color/tipografía del header lo pone
+   .line-items-table thead th (la referencia usa LA MISMA clase .admin-table para el
+   listado principal Y las líneas de detalle de un documento, ver DocumentList/
+   Default.cshtml que ya combina "document-list-table line-items-table" en el mismo
+   <table>) -- no duplicar la regla acá. */
+.document-list-table thead th {
+  background-color: var(--card-bg);
+  white-space: nowrap;
+  /* Sticky real -- mismo criterio que .doc-list-tabla thead th (theme.css:1517): el
+     encabezado no se pierde al scrollear una tabla larga dentro de .document-list-
+     table-wrapper. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.document-list-table td,
+.document-list-table th {
+  border-color: var(--card-border);
+}
+
+.document-list-table tbody tr:hover {
+  background-color: color-mix(in srgb, var(--bs-primary) 6%, transparent);
+}
+
+/* Bug real (tema oscuro, reportado 2026-08-02): las filas "impares" del listado se
+   veían sin texto -- Bootstrap 5.1.0 fija `.table { --bs-table-striped-color:#212529 }`
+   como DEFAULT (bootstrap.min.css, casi negro), y aunque .document-list-table de
+   arriba pisa esa misma variable con var(--text-main), esa regla y la de Bootstrap
+   tienen la MISMA especificidad (una sola clase cada una) -- en teoría gana la de acá
+   por venir después en el archivo, pero en la práctica (confirmado en el navegador)
+   no alcanza. Selector explícito con más especificidad real (2 clases + la cadena de
+   elementos exacta de Bootstrap), fijando `color` directo en vez de pelear con la
+   variable intermedia -- así no depende de qué tan bien se propague el custom
+   property. */
+.document-list-table.table-striped > tbody > tr:nth-of-type(odd) > * {
+  color: var(--text-main);
+}
+
+/* Caja con borde/radio alrededor de la tabla, encabezado sticky adentro -- portado de
+   .doc-list-tabla-wrapper (theme.css:1510, max-height real: 60vh). El filtro/buscador
+   queda siempre AFUERA de esta caja (igual que la referencia), nunca se va con el
+   scroll. */
+.document-list-table-wrapper {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  overflow: auto;
+  /* REVISADO (2026-08-19, pedido explícito -- "que los submódulos utilicen el
+     largo completo de la pantalla"): el tope fijo de 60vh dejaba una franja
+     gris grande sin usar debajo de la paginación en viewports altos. Ahora
+     .doc-list (el card-ps que envuelve TODO el listado) es un flex column
+     con su alto atado al de .content (ver esa regla más abajo) -- este
+     wrapper crece con flex:1 hasta ocupar lo que sobra, min-height:0 es
+     necesario para que un hijo flex con overflow:auto pueda encogerse por
+     debajo de su contenido intrínseco (si no, el flex item nunca reduce su
+     alto y el scroll interno no aparece). */
+  flex: 1;
+  min-height: 0;
+}
+
+.document-list-table-wrapper .document-list-table {
+  border: none;
+  margin-bottom: 0;
+}
+
+/* Card de filtros -- portado de .doc-list-filtros (theme.css:1438), mismo valor real
+   de padding/borde/radio. Filas cortas y compactas (align-items:flex-end) como en la
+   referencia, para que el botón "Filtrar" quede a la altura de los inputs. */
+.filter-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+}
+
+.filter-card .col-auto {
+  min-width: 160px;
+}
+
+.filter-card .form-control,
+.filter-card .form-select {
+  background: var(--card-bg);
+}
+
+/* Filtro colapsable -- en un viewport angosto (ej. iPhone SE, 375px) los ~8 campos
+   del filtro apilados verticalmente empujaban la tabla de resultados fuera de la
+   pantalla (reportado en los 3 motores genéricos, comparten este componente). El
+   <form> se envuelve en <details class="doc-list-filtros"> SIN `open`: en móvil
+   arranca colapsado (solo el resumen "Filtros"), el resultado se ve de una; el
+   media query de escritorio lo fuerza siempre visible y oculta el resumen, dejándolo
+   idéntico a como estaba en pantallas grandes. */
+.doc-list-filtros {
+  margin-bottom: 10px;
+}
+
+.doc-list-filtros > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bs-primary);
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+}
+
+.doc-list-filtros > summary::-webkit-details-marker {
+  display: none;
+}
+
+.doc-list-filtros[open] > summary {
+  margin-bottom: 8px;
+}
+
+.doc-list-filtros > .filter-card {
+  margin-bottom: 0;
+}
+
+@media (min-width: 768px) {
+  .doc-list-filtros > summary {
+    display: none;
+  }
+
+  /* Escritorio: siempre visible, sin depender del estado open/closed del <details>.
+     display:flex gana contra el viejo UA rule (display:none en el hijo); el
+     ::details-content + content-visibility:visible cubre los motores nuevos
+     (Chrome/Edge 131+) donde el colapso ya no es display:none -- pseudo-elemento
+     desconocido en navegadores viejos, la regla se ignora sin efecto. */
+  .doc-list-filtros > .filter-card {
+    display: flex !important;
+  }
+
+  .doc-list-filtros::details-content {
+    content-visibility: visible !important;
+  }
+}
+
+/* Panel de KPI (resumen numérico arriba de un listado, ej. /Admin/Organizations) --
+   grid de tarjetas con una franja de color a la izquierda (--kpi-accent, fijada
+   inline por tarjeta) que se lee de un vistazo, mismo criterio de "estado en forma,
+   no solo en texto" que ya rige los badges. Reusa card-bg/card-border/radius-sm --
+   ninguna variable nueva. */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.kpi-tile {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 18px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+}
+
+/* Eyebrow + subtítulo del header de una pantalla de listado -- mismo criterio que
+   .doc-resumen-total-titulo (letra chica, mayúscula, tracking amplio), acá con un
+   filo de --accent2 abajo a modo de firma discreta. Opcional: solo se usa cuando la
+   pantalla necesita ubicar al usuario en la jerarquía (backoffice > área). */
+.page-eyebrow {
+  display: inline-block;
+  margin: 0 0 6px;
+  padding-bottom: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-2);
+  border-bottom: 2px solid var(--accent-2);
+}
+
+.page-subtitle {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  max-width: 640px;
+}
+
+/* Avatar de iniciales de una fila de listado -- relleno SÓLIDO con texto en
+   --on-accent (blanco en los 4 temas), a diferencia de .mode-pill (fondo tenue) --
+   acá necesita más peso visual porque es lo primero que el ojo agarra al escanear la
+   tabla. Mismos dos colores categóricos que .mode-pill/la franja de fila, nunca un
+   tercer color nuevo. */
+.row-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--on-accent);
+  flex: none;
+}
+
+.row-avatar--onprem { background: var(--accent-2); }
+.row-avatar--saas { background: var(--menu-color-2); }
+
+/* Chip de filtro rápido (píldora) -- reemplaza un <button> cuadrado de Bootstrap
+   cuando el conjunto de opciones es chico y mutuamente excluyente (Todas/On-premise/
+   SaaS/Activas). Mismo tratamiento tenue-en-reposo/sólido-activo que ya usan los
+   badges de este archivo. */
+.chip-filter {
+  appearance: none;
+  cursor: pointer;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.chip-filter:hover {
+  border-color: var(--accent-2);
+  color: var(--text-main);
+}
+
+.chip-filter.active {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: var(--on-accent);
+}
+
+.kpi-tile::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--kpi-accent, var(--card-border));
+}
+
+.kpi-tile-label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.kpi-tile-value {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-main);
+}
+
+.kpi-tile-sub {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Pill de Modo (SaaS/On-premise) -- color CATEGÓRICO (identidad), nunca reusado para
+   Estado (ver .status-pill más abajo, que usa los colores de estado reservados
+   --bs-success/--bs-warning/--bs-danger). accent-2 (on-premise) y menu-color-2
+   (SaaS) ya existen en los 4 temas -- ninguna variable nueva, y la franja de fila
+   (tr[data-org-mode]) usa exactamente los mismos dos colores para que el pill y la
+   franja siempre coincidan sin importar el tema activo. */
+.mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.mode-pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.mode-pill--onprem {
+  color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+}
+
+.mode-pill--saas {
+  color: var(--menu-color-2);
+  background: color-mix(in srgb, var(--menu-color-2) 14%, transparent);
+}
+
+/* Pill de Estado -- separado del pill de Modo a propósito (dataviz: color de estado
+   reservado, nunca comparte rol con un color categórico). */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-pill::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-pill--active { color: var(--bs-success); }
+.status-pill--trial { color: var(--bs-warning); }
+.status-pill--suspended,
+.status-pill--cancelled { color: var(--bs-danger); }
+
+/* Franja de 3px a la izquierda de cada fila = mismo color del .mode-pill de esa fila
+   -- permite escanear una lista larga de organizaciones sin leer texto. */
+.document-list-table tbody tr[data-org-mode="on_premise"] {
+  box-shadow: inset 3px 0 0 var(--accent-2);
+}
+
+.document-list-table tbody tr[data-org-mode="saas"] {
+  box-shadow: inset 3px 0 0 var(--menu-color-2);
+}
+
+/* Menú de acciones por fila (Bootstrap dropdown nativo, ya vendored) -- reemplaza la
+   fila de N links separados por "·" que competían por atención; agrupa por Recursos/
+   Comercial con <h6 class="dropdown-header">. */
+.row-actions-menu .btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.row-actions-menu .btn:hover {
+  border-color: var(--card-border);
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--text-main) 8%, transparent);
+}
+
+.row-actions-menu .dropdown-menu {
+  background: var(--card-bg);
+  border-color: var(--card-border);
+  min-width: 220px;
+}
+
+.row-actions-menu .dropdown-item {
+  color: var(--text-main);
+}
+
+.row-actions-menu .dropdown-item:hover,
+.row-actions-menu .dropdown-item:focus {
+  background: color-mix(in srgb, var(--bs-primary) 8%, transparent);
+}
+
+/* Bootstrap 5.1 fija color:#212529 (oscuro) a fuego en .form-control/.form-select --
+   sin variable propia, a diferencia de .table/.bg-* /.text-* (ver el comentario grande
+   al principio de este archivo). En tema oscuro el fondo de estos campos ya se pinta
+   oscuro (var(--card-bg)/var(--input-bg)) pero el TEXTO se quedaba en ese mismo gris
+   oscuro fijo -- texto invisible sobre fondo oscuro (bug real reportado: "las letras
+   no se visualizan" en los filtros de Órdenes de Venta con tema oscuro). Global, no
+   acotado a .filter-card -- el mismo problema existe en cualquier input del portal
+   (login, formularios de documento, backoffice), no solo en los filtros de listado. */
+.form-control,
+.form-select {
+  color: var(--text-main);
+  background-color: var(--input-bg);
+  border-color: var(--card-border);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--input-bg);
+  color: var(--text-main);
+}
+
+.form-control:disabled,
+.form-control:read-only,
+.form-select:disabled {
+  color: var(--text-muted);
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Tabla de líneas de detalle (tab Contenido de Orden de Venta/Oferta/Pedido/
+   Traslado, etc.) Y tabla del listado principal (DocumentList/Default.cshtml,
+   combinada con .document-list-table en el mismo <table>) -- portada de
+   .admin-table (theme.css:1184). Encabezado mayúscula chico gris, sin relleno de
+   color -- la referencia usa la MISMA clase para las dos, no dos tratamientos
+   visuales distintos (corrección 26 jul 2026: la entrega anterior le había puesto un
+   relleno azul solo al listado principal, que no existe en el archivo real). */
+.line-items-table {
+  font-size: 13px;
+}
+
+.line-items-table thead th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--card-border);
+  font-weight: 600;
+  background: transparent;
+}
+
+.line-items-table td {
+  border-bottom: 1px solid var(--card-border);
+  vertical-align: middle;
+}
+
+.line-items-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Consulta (solo-lectura) de un documento -- portado del look real de la referencia
+   (bug reportado: "se ven cuadros con la información" al consultar Venta/Compra/
+   Inventario, comparado con el sistema original). Los <input disabled> de las líneas
+   siguen siendo inputs reales (JS de totales/edición los sigue leyendo igual), pero
+   sin el borde/fondo gris que les pone Bootstrap por default -- mismo tratamiento que
+   ya tenían los campos de la sección General (.doc-tab-seccion .form-group .form-
+   control:disabled, más abajo), que a esta tabla nunca le llegó. */
+.line-items-table input:disabled,
+.line-items-table select:disabled {
+  background: transparent;
+  border: none;
+  padding-left: 2px;
+  color: var(--text-main);
+  opacity: 1;
+}
+
+.line-items-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* --- Grilla de líneas de documento (Venta/Compra/Inventario) -------------------
+   Una sola altura de fila: nada se apila debajo de un input (el nombre del artículo
+   va a la columna Descripción, la moneda al lado del precio). Anchos por columna vía
+   clases col-* en <th>/<td>; numéricos alineados a la derecha. */
+.line-items-table {
+  table-layout: auto;
+}
+
+.line-items-table th,
+.line-items-table td {
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+
+.line-items-table .col-item { min-width: 170px; }
+.line-items-table .col-desc { min-width: 220px; max-width: 340px; white-space: normal; }
+.line-items-table .col-qty { width: 90px; }
+.line-items-table .col-price { width: 140px; }
+.line-items-table .col-disc { width: 80px; }
+.line-items-table .col-wh { min-width: 110px; }
+.line-items-table .col-acct,
+.line-items-table .col-cc { min-width: 140px; }
+.line-items-table .col-actions { width: 1%; text-align: right; }
+
+.line-items-table .col-qty input,
+.line-items-table .col-price input,
+.line-items-table .col-disc input {
+  text-align: right;
+}
+
+.line-items-table th.col-qty,
+.line-items-table th.col-price,
+.line-items-table th.col-disc {
+  text-align: right;
+}
+
+/* Nombre del artículo (solo lectura) -- una línea, con elipsis; title muestra el completo. */
+.line-items-table .line-item-description:not(input) {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Precio + moneda en la misma línea. */
+.line-price-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.line-price-cell .line-currency-label {
+  flex: 0 0 auto;
+  min-width: 28px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.line-price-cell .line-currency-label:empty {
+  display: none;
+}
+
+/* Columnas que no aplican al tipo de línea del documento: ocultas (no solo
+   deshabilitadas) -- ver aplicarTipoLinea en document-lines-editor.js. */
+.line-items-table.line-type-item .line-service-only,
+.line-items-table.line-type-service .line-item-only {
+  display: none;
+}
+
+.line-remove-btn {
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  /* Al scrollear horizontal en teléfono, la 1ª celda (código de artículo) queda
+     fija como referencia de fila. */
+  .line-items-wrapper .line-items-table th:first-child,
+  .line-items-wrapper .line-items-table td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--card-bg);
+    z-index: 1;
+  }
+
+  /* Que los inputs de cada línea no se aplasten -- ancho mínimo por columna. */
+  .line-items-wrapper .line-items-table th,
+  .line-items-wrapper .line-items-table td {
+    min-width: 120px;
+  }
+  .line-items-wrapper .line-items-table th:first-child,
+  .line-items-wrapper .line-items-table td:first-child {
+    min-width: 140px;
+  }
+}
+
+/* ==========================================================================
+   Listado de documentos como UNA sola tarjeta -- portado de referencia-original/
+   PortalSAP_v2 (<div class="card-ps doc-list">, theme.css:143/1419-1638). La entrega
+   anterior tenía el filtro y la tabla como piezas separadas flotando sobre el fondo
+   de página -- acá van dentro del mismo contenedor con borde/radio.
+   ========================================================================== */
+
+.card-ps {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+}
+
+/* flex column con height:100% (2026-08-19, ver el comentario en
+   .document-list-table-wrapper) -- .content (_LayoutMaestro/sidebar.css) ya
+   es flex:1 dentro de .shell-main con altura real de viewport (100dvh menos
+   topbar), así que .doc-list heredándola al 100% + repartiendo con flex:1 al
+   wrapper de la tabla es lo que hace que el listado "use el largo completo
+   de la pantalla" en vez de un tope arbitrario en vh. */
+.doc-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* Sin esto, un hijo flex (la tabla, o el <form> que la envuelve en algún plugin
+     como Modulo.Wms) con contenido no-quebrable muy ancho -- ej. un mensaje de error
+     XML largo en una celda -- fuerza su ancho mínimo de contenido y la tarjeta
+     entera "se sale del recuadro" hacia la derecha. min-width:0 deja que el hijo se
+     encoja por debajo de su contenido; el scroll horizontal de una tabla ancha
+     queda contenido en .document-list-table-wrapper (overflow:auto), no en la
+     página. */
+  min-width: 0;
+}
+
+.doc-list > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Formulario de documento -- portado de .doc-form/.doc-form-volver/.doc-form-header
+   (theme.css:1524-1554), faltaban por completo: la entrega anterior armaba este
+   encabezado con utilitarios sueltos de Bootstrap (d-flex/h3) en vez de las clases
+   reales, así que quedaba sin el padding/tipografía de .card-ps doc-form. */
+.doc-form {
+  /* Compactado (bug real reportado: "usa demasiado espacio de pantalla" en los 3
+     motores genéricos -- Venta/Compra/Inventario comparten este mismo componente,
+     así que el ajuste alcanza a los 3 sin tocar nada más) -- era 16px. */
+  padding: 10px 12px;
+  position: relative;
+}
+
+/* Costura de marca -- elemento de firma (DESIGN.md, hallazgo "sin ningún
+   elemento de firma"), mismo degradado que .login-brand-panel y
+   .sidebar::before (sidebar.css). Colgada de .doc-form (la tarjeta completa,
+   <div class="card-ps doc-form">). position:absolute no agrega alto/ancho a
+   .doc-form -- la densidad ya calibrada (padding 10px 12px) no cambia.
+   border-radius replica el redondeo superior de .card-ps (var(--radius-md))
+   para no romper la esquina con un rectángulo cuadrado asomando.
+   .doc-form-volver ELIMINADA (2026-08-19, ver DocumentForm/Default.cshtml) --
+   el "← Volver" propio de un documento ahora es parte de .modulo-breadcrumb,
+   más abajo. */
+.doc-form::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+/* Breadcrumb genérico de módulo (REVISADO 2026-08-19, ver _ModuloBackLink.cshtml
+   -- "el volver se repite, debería quedar una sola ruta tipo Venta > Órdenes de
+   Venta > Detalle"). Una sola línea compacta, mínimo alto vertical -- reemplaza
+   los 2 links apilados de la versión anterior (.modulo-back-link + .doc-form-
+   volver, este último ya eliminado de DocumentForm/Default.cshtml). */
+.modulo-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.modulo-breadcrumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.modulo-breadcrumb a:hover {
+  color: var(--accent);
+}
+
+.modulo-breadcrumb-sep {
+  font-size: 9px;
+  color: var(--card-border);
+}
+
+.modulo-breadcrumb-current {
+  color: var(--text-main);
+}
+
+/* Envuelve .doc-form-header + .doc-tabs en UN solo sticky (ver comentario real en
+   DocumentForm/Default.cshtml, bug 2026-08-20: título y tabs stickeaban cada uno por
+   su cuenta -- el título no era sticky, así que se iba de pantalla y dejaba un hueco
+   donde las filas de la tabla de abajo se veían pasar por encima del borde de
+   .doc-tabs). Fondo sólido + el mismo margen negativo que .doc-form::before usa para
+   la costura de arriba, para que el bloque llegue EXACTO al borde de la tarjeta
+   ("el título debe quedar justo en el borde superior"), no a 10px/12px de padding
+   adentro. z-index por encima de .doc-form::before (que no tiene z propio, stacking
+   por orden de documento) y de cualquier tabla de líneas debajo. */
+.doc-form-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: var(--card-bg);
+  margin: -10px -12px 0;
+  padding: 13px 12px 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.doc-form-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.doc-form-header h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.doc-list-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.doc-list-contador {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* Columna final de "ir al detalle" (chevron) -- portada de .doc-list-col-detalle
+   (theme.css:1489), reemplaza el link en la primera celda de la entrega anterior. */
+.doc-list-col-detalle {
+  text-align: center;
+  width: 32px;
+}
+
+.doc-list-col-detalle a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.doc-list-fila {
+  cursor: pointer;
+}
+
+.doc-list-paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.doc-list-paginacion .disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Barra de acciones de una tabla de líneas de detalle -- "+ Agregar línea"/"Descargar
+   plantilla CSV"/"Importar CSV"/"Vaciar todas las líneas" (ver document-lines-editor.js).
+   Antes sin gap propio (solo separación por defecto de elementos inline-block) --
+   ahora una fila con espaciado consistente, mismo patrón en los 3 motores genéricos. */
+.admin-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Botones "« Anterior"/"Siguiente »" -- portado de .btn-module-action (theme.css:170),
+   faltaba por completo: la entrega anterior los armaba con btn-outline-secondary de
+   Bootstrap, que usa el gris fijo de Bootstrap (--bs-secondary, #6c757d) sin variables
+   de tema -- en tema oscuro el borde/texto quedaba casi del mismo tono que el fondo,
+   perdiendo el botón por completo (mismo bug reportado de contraste en tema oscuro). */
+.btn-module-action {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-module-action:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+/* ==========================================================================
+   Selector de tema (4 paletas) -- portado de theme.css:839-860. Los 4 botones viven
+   en el dropdown de usuario (_Layout.cshtml .user-menu-panel), theme-switcher.js
+   cablea el click + localStorage.
+   ========================================================================== */
+
+.theme-row {
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px 10px;
+}
+
+.theme-row button {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Color de cada swatch -- por atributo data-theme-switch (mismo atributo que ya lee
+   theme-switcher.js), no por clase aparte ni style="" inline. Fuente única: los 4
+   --theme-preview-* de :root, arriba. */
+.theme-row button[data-theme-switch="claro"] { background: var(--theme-preview-claro); }
+.theme-row button[data-theme-switch="oscuro"] { background: var(--theme-preview-oscuro); }
+.theme-row button[data-theme-switch="teal"] { background: var(--theme-preview-teal); }
+.theme-row button[data-theme-switch="violeta"] { background: var(--theme-preview-violeta); }
+
+.theme-row button[data-active="true"] {
+  border-color: var(--accent);
+}
+
+/* .lang-row (selector rápido ES/EN del dropdown de usuario, /SetLanguage) ELIMINADO
+   (2026-08-19, consolidación de preferencias) -- duplicaba /Home/Preferences sin
+   sincronizarse con esa preferencia. Idioma para sesión de tenant ahora se cambia
+   SOLO desde ahí (UserProfileCultureProvider lee IUserPreferenceService.Locale en
+   cada request, ver Program.cs) -- ver CLAUDE.md para el detalle completo. */
+
+/* ==========================================================================
+   (C) Formulario de documento -- portado de theme.css .doc-tabs/.doc-tab-btn/
+   .doc-tab-seccion/.form-row/.doc-columnas-2/.doc-badge-* /.doc-resumen-total.
+   Clases agregadas junto a las de Bootstrap ya existentes en el markup (nav-tabs/
+   nav-link/badge), nunca las reemplazan -- así no hace falta tocar el PageModel que
+   arma StatusClass/data-bs-toggle.
+   ========================================================================== */
+
+/* Tabs de navegación interna del documento -- rediseño (27 jul 2026, regla dura de
+   diseño para todo el proyecto, ver CLAUDE.md "Densidad visual estándar"): pasa de
+   subrayado plano a un grupo segmentado tipo "pill switcher" (mismo lenguaje visual
+   que un selector de vista moderno) -- contenedor con fondo tenue y borde, cada tab
+   es una pastilla; la activa se pinta con --accent sólido y texto --on-accent, en vez
+   de solo cambiar el color de un subrayado de 2px. Conviven con nav-tabs/nav-link de
+   Bootstrap (mismo <ul>/<button>, dos clases cada uno) -- se anulan explícitamente
+   los estilos propios de Bootstrap. */
+/* RE-CORREGIDO (2026-08-19, pedido explícito del dueño del proyecto -- "que se
+   mantenga fijo al seleccionar"): sticky vuelve, esta vez sin el bug de
+   overlap de la entrega anterior.
+   RE-CORREGIDO OTRA VEZ (2026-08-20): el sticky propio acá (top:0 independiente
+   del título de arriba) volvió a producir overlap -- .doc-form-header NO era
+   sticky, así que al scrollear el título desaparecía y dejaba un hueco donde el
+   contenido de abajo se veía pasar por encima del borde de .doc-tabs. Fix real:
+   .doc-tabs ya NO es sticky por sí solo -- vive dentro de .doc-form-sticky (ver
+   esa regla, más arriba), que envuelve título+tabs en un solo bloque sticky con
+   fondo sólido. .doc-tab-seccion ya tenía scroll-margin-top -- sigue evitando que
+   el título de una sección quede tapado al saltar con doc-tabs.js. */
+.doc-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 4px;
+  margin-bottom: 4px;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  border-bottom: 1px solid var(--card-border) !important;
+}
+
+.doc-tab-btn {
+  border: none !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 6px 16px !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent !important;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.doc-tab-btn:hover {
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--text-main) 6%, transparent) !important;
+}
+
+.doc-tab-btn.active {
+  color: var(--on-accent) !important;
+  background: var(--accent) !important;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.doc-tab-btn.active:hover {
+  background: var(--accent) !important;
+}
+
+/* Badge de estado -- portado de .doc-badge-abierto/cerrado/pendiente
+   (theme.css:1555-1577). Clase marcador (doc-status-badge) agregada en el markup
+   junto al bg-success/bg-secondary/bg-warning que ya arma el PageModel -- nunca se
+   tocó ese C#, solo se re-estiliza acá con selector compuesto. */
+.doc-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.doc-status-badge.bg-success {
+  color: var(--bs-success) !important;
+  background: color-mix(in srgb, var(--bs-success) 15%, transparent) !important;
+}
+
+.doc-status-badge.bg-secondary {
+  color: var(--text-muted) !important;
+  background: color-mix(in srgb, var(--text-muted) 15%, transparent) !important;
+}
+
+.doc-status-badge.bg-warning {
+  color: var(--bs-warning) !important;
+  background: color-mix(in srgb, var(--bs-warning) 15%, transparent) !important;
+}
+
+/* Sección de tab (General/Contenido/Logística/Finanzas) -- portada de .doc-tab-seccion
+   (theme.css:1614). Las tabs de arriba (.doc-tabs) quedan sticky -- scroll-margin-top
+   evita que el título de la sección quede tapado detrás al hacer scroll-into-view
+   (doc-tabs.js), mismo valor real de la referencia. Ahora con consumidor real: las 3
+   secciones (General/Contenido/+Logística/Finanzas si aplican) se ven TODAS a la vez,
+   apiladas -- las tabs son anclas de scroll, nunca ocultan la sección anterior (ver
+   DocumentForm/Default.cshtml). */
+.doc-tab-seccion {
+  margin-bottom: 8px;
+  scroll-margin-top: 48px;
+}
+
+.doc-tab-seccion:last-child {
+  margin-bottom: 0;
+}
+
+.doc-tab-seccion + .doc-tab-seccion {
+  border-top: 1px solid var(--card-border);
+  padding-top: 12px;
+}
+
+/* Grilla base de campos -- portada de .form-row genérico (fuera de .doc-tab-seccion,
+   theme.css usa esto para formularios que no son de documento, ej. Configuración).
+   Dentro de .doc-tab-seccion se vuelve más densa y cada campo es una celda con
+   borde -- ver la regla siguiente. */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-group-ancho-completo {
+  grid-column: 1 / -1;
+}
+
+/* Grilla densa tipo SAP B1 -- portada literal de theme.css:1631-1650. Reemplaza la
+   lista plana "label encima del valor" por una grilla con separación real: cada
+   .form-group es una celda visible (borde + fondo propio), no solo texto flotando. */
+.doc-tab-seccion .form-row {
+  /* auto-fit en vez de 1fr 1fr fijo -- compactado (bug real reportado: "General usa
+     demasiado espacio, quiero los campos más juntos"): en pantallas anchas entran 3-4
+     campos cortos (fechas, códigos) por fila en vez de forzar siempre 2, sin tocar el
+     markup de ningún motor genérico -- minmax(160px, 1fr) es lo mínimo legible antes
+     de bajar a la fila siguiente. */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 6px 10px;
+  margin-bottom: 4px;
+}
+
+.doc-tab-seccion .form-group {
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+/* Celda con checkbox (.form-group.form-check) -- el padding de la celda pisaba el
+   padding-left: 1.5em de .form-check de Bootstrap, y el input (float + margin-left
+   negativo) quedaba pegado/encima del borde izquierdo (reportado en Importación
+   Genérica > Configuración). Flex en vez del float de Bootstrap: checkbox y texto
+   alineados con separación real, y el texto largo envuelve sin meterse bajo el input. */
+.doc-tab-seccion .form-group.form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+.doc-tab-seccion .form-group.form-check .form-check-input {
+  float: none;
+  flex-shrink: 0;
+  margin: 2px 0 0 0;
+}
+
+.doc-tab-seccion .form-group.form-check .form-check-label {
+  line-height: 1.35;
+}
+
+.doc-tab-seccion .form-group .form-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 0;
+  display: block;
+}
+
+.doc-tab-seccion .form-group .form-control,
+.doc-tab-seccion .form-group .form-select {
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+}
+
+/* Texto de ayuda dentro de una celda (ej. "SAP no permite mezclar líneas..." bajo
+   Tipo de línea) -- sin este margen queda pegado al borde inferior de la celda,
+   dando sensación de apretado (reportado por el dueño del proyecto). */
+.doc-tab-seccion .form-group .form-text {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.doc-tab-seccion .form-group .form-control:disabled,
+.doc-tab-seccion .form-group .form-select:disabled {
+  background: transparent;
+  color: var(--text-main);
+}
+
+.doc-tab-seccion .form-group .form-control:focus,
+.doc-tab-seccion .form-group .form-select:focus {
+  box-shadow: none;
+}
+
+/* Layout de 2 columnas independientes (no confundir con .form-row, que empareja de
+   a 2 campos por fila fija) -- portado de .doc-columnas-2, cada .doc-columna es su
+   propia lista vertical de campos. Sin consumidor real todavía (ningún tab de este
+   proyecto necesita 2 columnas independientes hoy), queda lista para Logística/
+   Finanzas. */
+.doc-columnas-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+}
+
+.doc-columna {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Panel scrolleable de checkboxes (/organizacion/grupos-menu, "Pantallas incluidas")
+   -- reemplaza el "border rounded p-2" de Bootstrap + estilo inline que traía antes:
+   un borde propio ahí quedaba anidado dentro del borde de .card-ps que ya lo
+   contiene, dos bordes concéntricos sin necesidad (limpieza pedida en la auditoría
+   visual). Basta con diferenciar el fondo (var(--input-bg), mismo tono que un
+   .form-control) -- separa el panel del resto del formulario sin sumar una línea
+   más. max-height/overflow-y portados tal cual del estilo inline que reemplaza. */
+.menu-perfil-panel {
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+
+/* Grilla checkbox + perfil por defecto de /organizacion/grupos-menu -- cada fila es
+   [checkbox+label de ancho flexible] [select de ancho fijo], para que todos los
+   selects de la lista queden alineados en la misma columna sin importar el largo
+   del nombre de la pantalla. */
+.menu-perfil-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menu-perfil-fila {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 2px;
+}
+
+/* color-mix en vez de var(--input-bg) -- el panel que contiene esta grilla
+   (.menu-perfil-panel) ya tiene ese mismo tono de fondo, un hover con el
+   mismo color quedaría invisible. */
+.menu-perfil-fila:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 6px;
+}
+
+/* Antes: overflow hidden + nowrap + ellipsis -- con el drawer al ancho
+   estándar de 420px (ver .drawer-panel--wide en components.css) eso cortaba
+   el nombre de la pantalla a apenas unos caracteres, ilegible sin pasar el
+   mouse (el title="..." del label es solo un respaldo, no un reemplazo de
+   verlo escrito). Con el drawer más ancho + este min-width:0, alcanza con
+   dejar que el texto haga wrap a una segunda línea si hace falta. */
+.menu-perfil-fila .form-check {
+  min-width: 0;
+}
+
+.menu-perfil-fila .form-check-label {
+  white-space: normal;
+  line-height: 1.25;
+}
+
+/* Resumen de totales -- portado de .doc-resumen-total (theme.css, sección Contenido).
+   Primer consumidor real: Modulo.Ventas (26 jul 2026), ver
+   DetailGenericSalesDocumentModelBase (TotalBeforeDiscount/Discount/Tax/DocumentTotal). */
+.doc-resumen-total {
+  max-width: 480px;
+  margin-left: auto;
+  border-top: 1px solid var(--card-border);
+  padding-top: 12px;
+}
+
+/* Título "Resumen total" -- portado de .admin-subtitulo (theme.css:1174), con nombre
+   propio en vez del genérico original (acá no existe una clase "admin-subtitulo"
+   reusada en otros lados, así que se nombra específica a este bloque). */
+.doc-resumen-total-titulo {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin: 0 0 4px;
+}
+
+.doc-resumen-total-fila {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  color: var(--text-muted);
+}
+
+.doc-resumen-total-final {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  border-top: 1px solid var(--card-border);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+/* Responsive: .form-row/.doc-columnas-2 son grids de 2 columnas fijas -- en un
+   viewport angosto (tablet/celular) eso deja cada celda demasiado angosta en vez de
+   apilarse. Colapsan a 1 columna bajo el mismo breakpoint que ya usa Bootstrap para
+   md (768px, ver el font-size responsive de más arriba). .form-group-ancho-completo
+   ya ocupa las 2 columnas siempre, no necesita regla propia acá. */
+/* ============================= Inicio (post-login) -- accesos directos ============================= */
+/* Portado de referencia-original/PortalSAP_v2 theme.css (.inicio-*) -- grilla de tarjetas
+   personalizable en la pantalla de Inicio, mismo --menu-color-N que el chip de icono del
+   sidebar (SidebarMenu/Default.cshtml) para que se lean como el mismo lenguaje visual. */
+.inicio-panel {
+  padding: 20px;
+}
+
+.inicio-encabezado h2 {
+  margin: 0 0 6px;
+}
+
+.inicio-encabezado p {
+  margin: 0;
+  color: var(--bs-secondary-color);
+}
+
+.inicio-accesos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.inicio-acceso-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-main);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.inicio-acceso-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card);
+  border-color: var(--icon-color, var(--accent));
+}
+
+.inicio-acceso-icono {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--icon-color, var(--accent)) 15%, transparent);
+  color: var(--icon-color, var(--accent));
+  font-size: 19px;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.inicio-acceso-card:hover .inicio-acceso-icono {
+  transform: scale(1.12) rotate(-6deg);
+  background: color-mix(in srgb, var(--icon-color, var(--accent)) 26%, transparent);
+}
+
+/* Bug real: sin min-height acá, un nombre de una sola palabra ("Ventas") ocupa una
+   línea y un nombre de dos/tres palabras ("Distribución de Gastos", "Integración
+   WMS", "Importación Genérica") se envuelve a 2 líneas -- esa tarjeta queda más alta
+   que sus vecinas (mismo ancho de columna, .inicio-acceso-card sin altura fija) y el
+   ícono de 46x46px, idéntico en las 9, se ve "más chico" adentro de una tarjeta más
+   grande. line-height*2 reserva SIEMPRE el alto de 2 líneas -- todas las tarjetas
+   miden lo mismo sea cual sea el nombre, sin necesidad de fijar una altura mágica en
+   .inicio-acceso-card (que rompería si un nombre futuro necesita 3 líneas). */
+.inicio-acceso-nombre {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(1.3em * 2);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* Envoltorio solo para el modo personalizado (botón "x" superpuesto en la esquina de la
+   tarjeta) -- position:relative en el wrap, absolute en el botón, para no alterar el
+   tamaño/centrado de .inicio-acceso-card. */
+.inicio-acceso-wrap {
+  position: relative;
+}
+
+.inicio-acceso-quitar {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+}
+
+.inicio-acceso-quitar button {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.inicio-acceso-quitar button:hover {
+  background: var(--bs-danger);
+  color: #fff;
+  border-color: var(--bs-danger);
+}
+
+/* Tile "+" -- mismo tamaño/forma que .inicio-acceso-card pero con borde punteado, para
+   que se lea como una acción ("agregar") y no como otro módulo más de la grilla. */
+.inicio-acceso-agregar {
+  border-style: dashed;
+  cursor: pointer;
+  font: inherit;
+}
+
+.inicio-acceso-agregar .inicio-acceso-icono {
+  --icon-color: var(--text-muted);
+}
+
+.inicio-acceso-agregar:hover {
+  border-color: var(--accent);
+}
+
+.inicio-acceso-agregar:hover .inicio-acceso-icono {
+  --icon-color: var(--accent);
+}
+
+.inicio-picker {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+}
+
+.inicio-picker-lista {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inicio-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.inicio-picker-item:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.inicio-picker-item span {
+  font-size: 13px;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  /* NOTA: hay un SEGUNDO bloque @media (max-width: 900px) al final del archivo
+     (sección "Login responsive"), obligatorio por orden de cascada -- ver el
+     comentario ahí. No fusionar: debe venir después de la regla base
+     .login-brand-panel. */
+  .form-row,
+  .doc-columnas-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-perfil-fila {
+    grid-template-columns: 1fr;
+    row-gap: 4px;
+  }
+
+  .inicio-panel {
+    padding: 16px;
+  }
+
+  .doc-tabs,
+  .doc-list-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .doc-list-tab {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .inicio-accesos {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .filter-card .col-auto {
+    min-width: 100%;
+  }
+
+  .doc-form {
+    padding: 8px 10px;
+  }
+
+  .doc-form-sticky {
+    margin: -8px -10px 0;
+    padding: 11px 10px 0;
+  }
+}
+
+/* ==========================================================================
+   Login (Account/Login.cshtml) -- rediseño Fase 3 (2026-08-17, plan de
+   gobernanza UI). Split-screen fijo al 100% del viewport (min-height: 100dvh
+   + overflow: hidden en .login-bg -- CERO scrollbar horizontal/vertical, sin
+   importar la altura de la ventana): panel izquierdo slate oscuro fijo
+   (#0F172A, no el degradado --accent/--accent-2 de temas -- el branding de
+   login es deliberadamente constante entre los 4 temas, el selector de tema
+   solo afecta la tarjeta de la derecha) con patrón de malla sutil; panel
+   derecho tarjeta blanca (var(--card-bg)) con inputs de focus-ring azul
+   (#2563EB) y botón primario con elevación al hover. A diferencia del
+   original (single-tenant, selecciona "Empresa" en el mismo formulario), acá
+   el login no conoce la organización todavía (se resuelve por
+   Input.OrganizationSlug recién al enviar el form) -- no hay selector de
+   compañía acá (ese paso vive aparte, ver Account/SelectCompany.cshtml.cs).
+   ========================================================================== */
+
+.login-bg {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  font-family: var(--font-sans, inherit);
+  color: var(--text-main);
+}
+
+/* Azul marino (no slate casi-negro) -- no consume --accent/--accent-2 del
+   tema activo a propósito: el panel de marca es la identidad constante de
+   la plataforma, el selector de 4 temas (claro/oscuro/teal/violeta) solo
+   debe afectar el panel de formulario a la derecha.
+
+   REDISEÑO (2026-08-20, pedido explícito -- "se ve sólido, sin vida" contra
+   el login de referencia de PortalSAP_v2): un solo gradiente plano de 3 stops
+   más un glow radial no alcanzaba la sensación de profundidad/textura de la
+   referencia. Ahora son 5 capas apiladas, cada una en su propio elemento para
+   poder ajustar una sin pisar las otras (todas aria-hidden, puramente
+   decorativas, el contenido real -- logo/pitch/footer -- vive en hermanos con
+   position:relative vía ".login-brand-panel > *"):
+     1. .login-brand-panel (fondo base) -- gradiente diagonal de 4 stops, más
+        rango tonal que el anterior de 3 (agrega un stop medio más cálido/
+        saturado a los 2/3 del recorrido en vez de una interpolación lineal
+        directa oscuro->claro->oscuro, que es lo que leía "plano").
+     2. .login-brand-mesh -- grilla fina + halo arriba-izquierda (sin cambios).
+     3. .login-brand-glow -- dos orbes radiales grandes y difusos (arriba-
+        derecha frío, abajo-izquierda cálido) -- la fuente real de "vida": dos
+        fuentes de luz asimétricas en vez de una sola, como un fondo de
+        producto real en vez de un degradado de plantilla.
+     4. .login-brand-shine -- el brillo diagonal en sí (banda de luz angosta a
+        ~35°, como la referencia), con una animación ambiental MUY lenta
+        (18s, respeta prefers-reduced-motion) que la hace desplazarse apenas --
+        movimiento perceptible solo si uno se queda mirando, nunca llamativo.
+     5. .login-brand-grain -- textura de grano (SVG feTurbulence en data-URI,
+        blend-mode:overlay, opacidad bajísima) -- el detalle táctil que le
+        faltaba a la superficie lisa original, mismo truco que un fondo de
+        producto con textura de papel/tela en vez de un flat color. */
+.login-brand-panel {
+  position: relative;
+  background: linear-gradient(145deg, #1f4571 0%, #17335c 32%, #12274a 62%, #0a1930 100%);
+  color: #ffffff;
+  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* REDISTRIBUCIÓN (2026-08-20, pedido explícito -- "las letras se ven más abajo,
+   distribuye mejor el diseño"): con justify-content:space-between puro, 3 hijos
+   parejos (brand/pitch/footer) dejaban un tercio de aire arriba del logo y todo
+   el contenido "hundido" hacia la mitad/abajo en viewports altos -- se veía
+   descentrado, no como una portada de producto real. Ahora: .login-brand queda
+   pegado arriba (padding reducido de 56px a 40px, más cerca del borde, look
+   moderno de app -- no centrado en el medio de un slab vacío); .login-pitch-wrap
+   es el ÚNICO flex:1 -- centra el pitch verticalmente en TODO el espacio que
+   sobra entre el logo y el footer, que ahora sí queda pegado abajo por ser el
+   último hijo sin flex-grow. */
+.login-pitch-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 0;
+}
+
+.login-brand-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 60% 50% at 92% -6%, rgba(96, 165, 250, 0.4), transparent 65%),
+    radial-gradient(ellipse 65% 55% at -8% 96%, rgba(249, 168, 133, 0.16), transparent 62%);
+}
+
+.login-brand-shine {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background-image: linear-gradient(35deg,
+    transparent 42%,
+    rgba(255, 255, 255, 0.05) 48%,
+    rgba(255, 255, 255, 0.14) 51%,
+    rgba(255, 255, 255, 0.05) 54%,
+    transparent 60%);
+  animation: login-shine-drift 18s ease-in-out infinite;
+}
+
+@keyframes login-shine-drift {
+  0%, 100% { transform: translate(-3%, -2%); }
+  50% { transform: translate(3%, 2%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-brand-shine {
+    animation: none;
+  }
+}
+
+.login-brand-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+.login-brand-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(ellipse 90% 70% at 88% 108%, rgba(147, 197, 253, 0.22), transparent 60%);
+}
+
+/* Patrón de malla/cuadrícula sutil -- dos gradientes lineales finos formando
+   una grilla, casi imperceptible, más un halo radial de profundidad arriba a
+   la izquierda. Puramente decorativo (aria-hidden en el markup), var(--transition-fast)
+   no aplica acá porque no hay interacción, es estática a propósito. */
+.login-brand-mesh {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    radial-gradient(circle at 12% 8%, rgba(37, 99, 235, 0.25), transparent 42%);
+  background-size: 42px 42px, 42px 42px, 100% 100%;
+  mask-image: linear-gradient(180deg, black 0%, black 55%, transparent 100%);
+}
+
+.login-brand-panel > * {
+  position: relative;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.login-brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.login-brand-text h1 {
+  font-size: 19px;
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.login-brand-text p {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.2px;
+}
+
+/* Eyebrow + regla -- ancla el pitch como una sección deliberada (no texto
+   flotando en el fondo) y le da al bloque un punto de partida tipográfico
+   antes del headline, mismo lenguaje "kicker" que un producto SaaS real. */
+.login-pitch-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+  color: rgba(147, 197, 253, 0.85);
+  margin-bottom: 14px;
+}
+
+.login-pitch-rule {
+  display: block;
+  width: 36px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #93c5fd, #60a5fa);
+  margin-bottom: 22px;
+}
+
+.login-pitch h2 {
+  font-size: 34px;
+  line-height: 1.22;
+  margin: 0 0 16px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  max-width: 20ch;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
+}
+
+.login-pitch p {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.72);
+  max-width: 38ch;
+  margin: 0;
+}
+
+/* Tags de módulo -- reemplazan el párrafo suelto por un resumen escaneable de
+   un vistazo, mismo lenguaje visual que un selector de módulos real del
+   propio portal (pill switcher), no una lista de viñetas genérica. */
+.login-pitch-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.login-pitch-tags span {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.login-brand-panel .login-footer {
+  color: rgba(255, 255, 255, 0.5);
+  text-align: left;
+  margin: 0;
+}
+
+.login-form-panel {
+  background: var(--bs-body-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  min-height: 100dvh;
+  overflow-y: auto;
+}
+
+.login-shell {
+  width: 100%;
+  max-width: 380px;
+}
+
+.login-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 40px 36px;
+}
+
+.login-card h2 {
+  font-size: 20px;
+  margin: 0 0 6px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+}
+
+.login-card .login-subtitle {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin: 0 0 28px;
+}
+
+/* Focus-ring azul fijo (#2563EB) en los inputs del formulario de login --
+   deliberadamente distinto de --focus-ring-color (que sigue al tema activo
+   en el resto del portal): el login es la única pantalla donde el foco de
+   input usa un azul de marca constante, no el acento del tema elegido. */
+.login-card .form-control:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.login-error-banner {
+  display: block;
+  color: var(--bs-danger);
+  font-size: 12.5px;
+  background: color-mix(in srgb, var(--bs-danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bs-danger) 35%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  margin: -6px 0 16px;
+}
+
+/* Aviso neutro (no error) sobre el formulario de login -- ej. "tu sesión se cerró"
+   tras un cierre forzado desde el backoffice. Mismo formato que .login-error-banner
+   pero con el color de acento del tema en vez del rojo de error. */
+.login-info-banner {
+  display: block;
+  color: var(--bs-primary);
+  font-size: 12.5px;
+  background: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bs-primary) 30%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  margin: -6px 0 16px;
+}
+
+/* Botón primario con ligera elevación al hover (translateY + sombra), sobre
+   el degradado --accent/--accent-2 del tema activo -- distinto del
+   .btn-primary plano del resto del portal a propósito: es la única acción de
+   toda la pantalla. Transición SOLO con --transition-fast (regla dura). */
+.login-submit {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  margin-top: 8px;
+  color: var(--on-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 10px 20px -14px color-mix(in srgb, var(--accent-2) 70%, transparent);
+  transition: filter var(--transition-fast) ease, transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+
+.login-submit:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px -14px color-mix(in srgb, var(--accent-2) 78%, transparent);
+}
+
+.login-footer {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 22px;
+}
+
+/* ==========================================================================
+   Login responsive -- AL FINAL del bloque .login-* a propósito: una @media
+   que matchea no suma especificidad, así que para pisar `.login-brand-panel
+   { display: flex }` (regla base más abajo en el archivo) este bloque tiene
+   que venir DESPUÉS de ella. Ver spec 2026-08-28.
+   ========================================================================== */
+@media (max-width: 900px) {
+  .login-bg {
+    grid-template-columns: 1fr;
+  }
+
+  /* Fallback en flujo -- si por lo que sea el panel se llega a mostrar en un
+     viewport corto, su contenido no debe encimarse (las capas decorativas son
+     position:absolute; los hijos reales quedan en flujo normal). */
+  .login-brand-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .login-card {
+    padding: 24px 20px;
+  }
+
+  .login-card .form-control {
+    min-height: 44px;
+  }
+
+  .login-submit {
+    padding: 14px 16px;
+  }
+}
+
+/* Vista previa de Importación Genérica (Pages/Importar) -- un <details> por documento
+   con cabecera (socio/sucursal/orden/campos de usuario, grilla .doc-tab-seccion) y
+   detalle de líneas. Las advertencias usan el ámbar del tema en vez de .text-warning
+   de Bootstrap (ilegible sobre fondo claro). */
+.import-preview-doc > summary {
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.import-preview-table td {
+  vertical-align: top;
+}
+
+.import-preview-warning {
+  color: color-mix(in srgb, var(--bs-warning) 75%, black);
+}
+
+/* Vista previa de Importación Genérica en pestañas (2026-10-14): grillas planas
+   copiables (Resumen por OC, Detalle, paneles de Análisis). El pie de totales queda
+   fijo abajo dentro del recuadro con scroll, igual que el encabezado arriba. */
+.import-kpis .form-group > div {
+  font-weight: 600;
+}
+
+.import-grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.import-grid-wrapper {
+  max-height: 55vh;
+}
+
+.import-grid td {
+  vertical-align: top;
+}
+
+.import-grid tfoot td {
+  position: sticky;
+  bottom: 0;
+  background: var(--bs-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.import-cell-error {
+  background: color-mix(in srgb, var(--bs-danger) 18%, transparent) !important;
+}
+
+.import-cell-warning {
+  background: color-mix(in srgb, var(--bs-warning) 22%, transparent) !important;
+}
+
+.import-issue {
+  display: block;
+  white-space: normal;
+}
+
+.import-analysis-panels {
+  /* Una columna: cada panel usa el ancho completo (Artículos debajo de Sucursales) --
+     en dos columnas las tablas quedaban angostas y las celdas se partían en varias
+     líneas (pedido del dueño del proyecto, 2026-10-14). */
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+/* La observación es la única columna que puede crecer y hacer salto de línea. */
+.import-grid .import-col-obs {
+  width: 50%;
+}
+
+.import-analysis-panel-ancho {
+  grid-column: 1 / -1;
+}
+
+.import-analysis-panel .import-grid-wrapper {
+  max-height: 40vh;
+}
+
+/* Reglas de validación de un formato (Importación Genérica > Configuración): todas las
+   celdas centradas verticalmente y parámetros en línea ("Tolerancia [ 1 ] %") para que
+   las filas con y sin parámetros tengan la misma altura. */
+.tabla-reglas-validacion td {
+  vertical-align: middle;
+}
+
+.tabla-reglas-validacion td:nth-child(2) {
+  width: 70px;
+}
+
+.tabla-reglas-validacion td:nth-child(3) {
+  width: 160px;
+}
+
+.tabla-reglas-validacion td:nth-child(4) {
+  width: 300px;
+}
+
+.regla-parametros {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.regla-parametro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.regla-parametro .form-control {
+  width: 80px;
+  text-align: right;
+}
+
+.regla-parametro-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* --- Formulario personalizado (panel "Personalizar" de DocumentForm) ------------
+   Ver form-layout.js / IFormLayoutService. */
+.doc-form-layout-panel {
+  min-width: 260px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  font-size: 12.5px;
+}
+
+.doc-form-layout-title {
+  font-weight: 600;
+}
+
+.doc-form-layout-hint {
+  margin: 2px 0 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.doc-form-layout-section {
+  margin-top: 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.doc-form-layout-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+
+.doc-form-layout-option .form-check-input {
+  margin: 0;
+}
+
+.doc-form-layout-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--card-border);
+}
+
+.doc-form-layout-footer .btn-link {
+  padding: 0;
+  font-size: 11.5px;
+}
+
+.doc-form-layout-status {
+  font-size: 11px;
+}
+
+/* "Descripción (Artículo)" oculta por el formulario personalizado: en un documento de
+   Servicio la descripción es OBLIGATORIA (identifica la línea), así que ahí se fuerza
+   visible -- le gana al display:none !important del <style> generado por especificidad. */
+.doc-form .line-items-table.line-type-service [data-form-field="linea-descripcion"] {
+  display: table-cell !important;
+}
+
+/* Pantalla de admin "Formularios" (Modulo.Administracion) -- una tarjeta por formulario. */
+.form-layout-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.form-layout-admin-card {
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  background: var(--card-bg);
+}
+
+.form-layout-admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* --- table-tools.js: ordenar / exportar / copiar ---------------------------------- */
+.table-tools-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+th.table-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+th.table-sortable::after {
+  content: "\2195"; /* ↕ */
+  margin-left: 4px;
+  font-size: 0.85em;
+  opacity: 0.35;
+}
+
+th.table-sortable[aria-sort="ascending"]::after {
+  content: "\2191"; /* ↑ */
+  opacity: 1;
+}
+
+th.table-sortable[aria-sort="descending"]::after {
+  content: "\2193"; /* ↓ */
+  opacity: 1;
+}
+
+th.table-sortable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* --- Cambio masivo de bodega (document-lines-editor.js, bulkWarehouses) ----------- */
+.line-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border: 1px dashed var(--card-border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.line-bulk-bar[hidden],
+.line-bulk-group[hidden] {
+  display: none;
+}
+
+.line-bulk-title {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.line-bulk-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.line-bulk-group label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.line-bulk-group .form-control {
+  width: 160px;
+}
+
+.line-bulk-status {
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+/* --- Borradores de documentos (pestañas del listado + panel del formulario) ------- */
+.doc-list-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 4px 0 8px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.doc-list-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.doc-list-tab:hover {
+  color: var(--bs-primary);
+}
+
+.doc-list-tab.active {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  color: var(--bs-primary);
+  margin-bottom: -1px;
+}
+
+.doc-draft-panel {
+  border: 1px dashed var(--card-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.doc-draft-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Shell del tenant: sidebar izquierdo + topbar + contenido -- estructura adaptada de
+   PortalSAP_v2 (theme.css .app-shell/.sidebar/.topbar/.user-menu*), pero sobre
+   variables de Bootstrap 5 (--bs-*) en vez de un sistema de temas propio -- ver
+   CLAUDE.md, decisión de alcance de esta entrega. El árbol colapsable usa el
+   componente `collapse` nativo de Bootstrap (clases .collapse/.show que
+   bootstrap.bundle.min.js ya trae) -- este archivo solo aporta layout/color, sidebar.js
+   solo aporta persistencia en localStorage.
+
+   Sidebar/topbar BLANCOS (26 jul 2026, revierte el sólido navy de la entrega
+   anterior) -- decisión validada línea por línea contra theme.css real:
+   .sidebar/.topbar usan var(--card-bg) ahí, el navy (--bs-primary) es acento
+   (activo/hover/botones), nunca fondo sólido de estos dos. Ver site.css para el
+   detalle completo de por qué la entrega anterior tomó el camino equivocado
+   (capturas de una build vieja de Comercial Depor, ya reemplazada en el código
+   fuente real). Todos los estados de acá para abajo vuelven a ser oscuro-sobre-claro
+   (texto var(--text-main)/var(--text-muted), acento color-mix con --bs-primary). */
+
+/* Rail de 64px es el default de gobernanza (Fase 2, 2026-08-17) -- el estado
+   "collapsed" (histórico) y el default ahora son el MISMO ancho; el toggle
+   sigue funcionando para volver al modo expandido de 250px si el usuario lo
+   pide explícitamente (ver el script inline de _LayoutMaestro.cshtml).
+
+   Cero scrollbar global (2026-08-17): .app-shell pasa de CSS Grid a flex --
+   height: 100dvh fijo + overflow: hidden en el shell entero, el ÚNICO
+   elemento que scrollea es .content (overflow-y: auto). .sidebar es
+   flex-shrink: 0 con su ancho fijo (rail 64px o expandido 250px); .shell-main
+   (wrapper nuevo alrededor de .topbar + .content, ver _LayoutMaestro.cshtml)
+   es una columna flex donde .content toma flex: 1 para ocupar el resto de
+   la altura sin desbordar. */
+.app-shell {
+    display: flex;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--bs-body-bg);
+}
+
+.shell-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+}
+
+.rail-item {
+    position: relative;
+}
+
+.sidebar {
+    width: var(--rail-width);
+    flex-shrink: 0;
+    position: relative;
+    background: var(--card-bg);
+    border-right: 1px solid var(--card-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    /* BUG REAL CORREGIDO (2026-08-19, "se sigue agregando la opción de scroll
+       vertical"): sin overflow-x explícito, el spec de CSS obliga a que un eje
+       "visible" se compute como "auto" en cuanto el otro eje NO es "visible"
+       (acá overflow-y:auto) -- cualquier contenido que se pasara por poco del
+       ancho del sidebar (ej. .rail-tooltip, ancho fijo, sobresaliendo del
+       contenedor en modo rail) disparaba una barra de scroll HORIZONTAL
+       fantasma pegada abajo, que a simple vista se veía como "otro scroll" en
+       el menú. overflow-x:hidden la elimina de raíz -- nada dentro del
+       sidebar necesita desbordar horizontalmente a propósito. */
+    overflow-x: hidden;
+}
+
+/* Scrollbar invisible por defecto (2026-08-19, pedido explícito -- "eliminar
+   el scroll vertical de la parte inferior del menú"): el árbol SIGUE siendo
+   scrolleable de verdad cuando hay más módulos que alto de viewport (ocultar
+   el overflow entero cortaría módulos inalcanzables) -- lo que se elimina es
+   la barra de scroll SIEMPRE visible ocupando espacio/ensuciando el borde
+   inferior; con esto solo aparece (angosta, discreta) mientras el cursor está
+   sobre el sidebar. */
+.sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+.sidebar:hover {
+    scrollbar-color: var(--card-border) transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb {
+    background: var(--card-border);
+}
+
+/* Costura de marca -- elemento de firma (DESIGN.md, hallazgo "sin ningún
+   elemento de firma"): reusa el mismo degradado --accent->--accent-2 del panel
+   de login (.login-brand-panel) en el único borde del sidebar que hoy no tiene
+   ningún tratamiento (arriba -- el derecho ya es --card-border, ver arriba).
+   Pseudo-elemento posicionado, no border-image: .sidebar ya declara
+   border-right propio, y border-image pinta los 4 lados del borde a la vez --
+   se habría pisado el color plano del borde derecho. position:absolute no
+   suma altura/ancho al grid del shell (.app-shell), la densidad no cambia. */
+.sidebar::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--card-border);
+    height: 56px;
+}
+
+/* Degradado navy -- portado tal cual de .sidebar-brand-mark (theme.css:524,
+   linear-gradient(135deg, var(--accent), var(--accent-2))). */
+.sidebar-brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--bs-border-radius-sm);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--on-accent);
+    font-weight: 700;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.sidebar-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    overflow: hidden;
+    color: var(--text-main);
+}
+
+.sidebar-brand-text strong {
+    font-size: 13px;
+}
+
+.sidebar-brand-text span {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Selector de compañía dentro del sidebar (2026-08-19, layout tipo
+   "rindegastos" -- ver captura de referencia adjuntada) -- reemplaza la
+   ubicación anterior en topbar-right. El <select> real (CompanySwitcher/
+   Default.cshtml, sin cambios de markup) queda estilizado como texto plano
+   con flecha nativa del navegador, dentro de esta "pill" con ícono de
+   edificio a la izquierda. En modo rail (64px) el texto/label se ocultan
+   igual que .nav-texto -- solo queda el ícono, con tooltip nativo del
+   <select> (title del navegador) para saber qué compañía es sin expandir. */
+.sidebar-company {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--card-border);
+    color: var(--bs-primary);
+    font-size: 12.5px;
+}
+
+.sidebar-company > i {
+    flex-shrink: 0;
+    font-size: 14px;
+}
+
+.sidebar-company .company-switcher {
+    flex: 1;
+    min-width: 0;
+}
+
+.sidebar-company .company-switcher-label {
+    display: none;
+}
+
+.sidebar-company .company-switcher select {
+    max-width: 100%;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--bs-primary);
+    font-weight: 700;
+    padding: 0;
+}
+
+/* Compañía única (sin <select> que cambiar) -- mismo tratamiento visual que la opción
+   activa del switcher: texto en negrita, color primary, truncado si no entra. */
+.sidebar-company .company-switcher-single {
+    flex: 1;
+    min-width: 0;
+    color: var(--bs-primary);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+html[data-sidebar="collapsed"] .sidebar-company .company-switcher,
+html[data-sidebar="collapsed"] .sidebar-company .company-switcher-single {
+    display: none;
+}
+
+html[data-sidebar="collapsed"] .sidebar-company {
+    justify-content: center;
+    padding: 10px 6px;
+}
+
+.sidebar-nav {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+/* .sidebar-nav-sub es un <ul class="sidebar-nav sidebar-nav-sub"> anidado (ver
+   _MenuNode.cshtml) -- hereda el padding:6px de .sidebar-nav de ARRIBA, así que sin
+   esta regla cada nivel de submenú suma otros 6px propios (bug real: "genera mucho
+   espacio entre menú y submenú", eran paddings de .sidebar-nav acumulados en cada
+   nivel de anidamiento, no un solo valor). Un submenú no necesita padding vertical
+   propio -- ya lo separa el .collapse que lo contiene. */
+.sidebar-nav-sub {
+    padding: 0 0 0 12px;
+    gap: 0;
+}
+
+.sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: var(--bs-border-radius-sm);
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 12.5px;
+    font-weight: 500;
+    box-shadow: inset 3px 0 0 transparent;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Valores exactos validados: activo = color-mix al 16% + texto/inset en
+   --bs-primary; hover = mismo color-mix al 10%, sin el inset (theme.css
+   .sidebar-nav a.active/:hover, adaptado de --accent a --bs-primary). */
+.sidebar-nav a:hover {
+    background: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+    color: var(--text-main);
+}
+
+.sidebar-nav a.active {
+    background: color-mix(in srgb, var(--bs-primary) 16%, transparent);
+    color: var(--bs-primary);
+    font-weight: 700;
+    box-shadow: inset 3px 0 0 var(--bs-primary);
+}
+
+.sidebar-nav .nav-icon {
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 18px;
+}
+
+.sidebar-nav-grupo {
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Chip de color sólido SOLO para categorías raíz (nivel 0) -- portado de theme.css
+   :634-660. --icon-color se fija inline por nodo (ver _MenuNode.cshtml/
+   SidebarMenu/Default.cshtml, cicla --menu-color-1..6). Un subgrupo anidado no lleva
+   esta clase -- queda chico y gris, visualmente subordinado a su carpeta raíz. */
+.sidebar-nav-grupo-raiz .nav-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--bs-border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--icon-color, var(--text-muted));
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.sidebar-nav-grupo-raiz .nav-icon i {
+    color: var(--on-accent);
+    font-size: 15px;
+}
+
+.sidebar-nav-grupo-raiz:hover .nav-icon {
+    transform: scale(1.08);
+}
+
+.sidebar-nav-grupo .nav-texto {
+    flex: 1;
+}
+
+.sidebar-grupo-chevron {
+    font-size: 11px;
+    transition: transform 0.15s ease;
+}
+
+/* Bootstrap gestiona aria-expanded solo en el toggle -- el chevron rota según ese
+   atributo, sin ninguna clase propia que sidebar.js tenga que mantener sincronizada. */
+.sidebar-nav-grupo[aria-expanded="true"] .sidebar-grupo-chevron {
+    transform: rotate(0deg);
+}
+
+.sidebar-nav-grupo:not([aria-expanded="true"]) .sidebar-grupo-chevron {
+    transform: rotate(-90deg);
+}
+
+/* ---- Sidebar contraído: solo iconos (default) ---- */
+html[data-sidebar="collapsed"] .sidebar-brand-text,
+html[data-sidebar="collapsed"] .nav-texto,
+html[data-sidebar="collapsed"] .sidebar-grupo-chevron {
+    display: none;
+}
+
+html[data-sidebar="collapsed"] .sidebar-nav a,
+html[data-sidebar="collapsed"] .sidebar-nav-grupo {
+    justify-content: center;
+    padding-left: 10px;
+}
+
+html[data-sidebar="collapsed"] .sidebar-nav-sub {
+    padding-left: 0;
+}
+
+html[data-sidebar="collapsed"] .sidebar-brand {
+    justify-content: center;
+    padding: 12px 6px;
+}
+
+html[data-sidebar="collapsed"] .sidebar-brand-mark {
+    display: none;
+}
+
+/* ---- Sidebar expandido (toggle manual, 2026-08-19 restaurado a pedido del
+   dueño del proyecto): ancho 250px + nombre de cada nodo de nivel 1 visible.
+   IMPORTANTE -- esto NO reabre el árbol de sub-menús (regla dura vigente,
+   "PROHIBIDO desplegar el árbol de sub-menús en el sidebar"): SidebarMenu/
+   Default.cshtml sigue sin recursar a hijos, solo pinta el ícono + nombre de
+   cada módulo raíz con href resuelto al primer descendiente navegable -- el
+   ancho extra únicamente da lugar al texto, nunca a un nivel 2 anidado. */
+html[data-sidebar="expanded"] .sidebar {
+    width: var(--sidebar-width);
+}
+
+html[data-sidebar="expanded"] .sidebar-nav a,
+html[data-sidebar="expanded"] .sidebar-nav-grupo {
+    justify-content: flex-start;
+    padding-left: 8px;
+}
+
+/* Resize manual del sidebar (2026-08-19, pedido explícito -- "deja configurado
+   para que se pueda mover el Menú izquierdo para ampliar o achicar
+   manualmente"): franja invisible de 6px pegada al borde derecho del
+   sidebar, solo activa en modo expandido (en modo rail 64px no tiene sentido
+   angostar/ensanchar a mano, para eso está el toggle). sidebar-resize.js
+   hace el drag real y persiste el ancho elegido en localStorage, por encima
+   del valor fijo de --sidebar-width. */
+.sidebar-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 20;
+    background: transparent;
+}
+
+.sidebar-resize-handle:hover,
+body.sidebar-resizing .sidebar-resize-handle {
+    background: color-mix(in srgb, var(--bs-primary) 35%, transparent);
+}
+
+html[data-sidebar="collapsed"] .sidebar-resize-handle {
+    display: none;
+}
+
+body.sidebar-resizing {
+    cursor: col-resize;
+    user-select: none;
+}
+
+.sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: var(--bs-border-radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-toggle:hover {
+    background: var(--bs-secondary-bg);
+    color: var(--text-main);
+}
+
+html[data-sidebar="collapsed"] .sidebar-toggle i {
+    transform: rotate(180deg);
+}
+
+.topbar {
+    height: 56px;
+    flex-shrink: 0;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    color: var(--text-main);
+}
+
+.topbar-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Buscador central del topbar (2026-08-19, layout tipo "rindegastos") --
+   placeholder visual, disabled a propósito (ver el comentario en
+   _LayoutMaestro.cshtml, sin backend de búsqueda global todavía). */
+.topbar-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    max-width: 360px;
+    margin: 0 24px;
+    padding: 6px 12px;
+    background: var(--bs-secondary-bg);
+    border-radius: var(--bs-border-radius-sm);
+    color: var(--text-muted);
+}
+
+.topbar-search input {
+    border: none;
+    background: transparent;
+    font-size: 12.5px;
+    width: 100%;
+    color: var(--text-main);
+}
+
+.topbar-search input::placeholder {
+    color: var(--text-muted);
+}
+
+.topbar-search input:disabled {
+    cursor: not-allowed;
+}
+
+/* Íconos de nivel superior (mensajes/crear) -- mismos placeholders visuales
+   disabled, ver comentario en _LayoutMaestro.cshtml. Notificaciones ya no usa esta
+   clase (ver .notification-bell-toggle más abajo), queda para Mensajes/Crear. */
+.topbar-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 50%;
+    font-size: 15px;
+    cursor: not-allowed;
+}
+
+/* Campana de notificaciones del topbar (2026-10-14) -- mismo patrón <details> que
+   .user-menu (dropdown nativo sin JS de posicionamiento), ver NotificationBell
+   ViewComponent. theme-switcher.js generaliza el cierre por click-afuera/Escape a
+   cualquier <details> con esta clase, no solo .user-menu. */
+.notification-bell {
+    position: relative;
+}
+
+.notification-bell-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 50%;
+    font-size: 15px;
+    cursor: pointer;
+    position: relative;
+    list-style: none;
+}
+
+.notification-bell-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.notification-bell-toggle:hover {
+    background: var(--bs-secondary-bg);
+    color: var(--text-main);
+}
+
+.notification-badge {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: var(--bs-danger);
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 15px;
+    text-align: center;
+}
+
+/* right:0 -- la campana vive en el grupo derecho del topbar: el panel se abre hacia
+   la izquierda (igual que .user-menu-panel). Con left:0 se abría hacia la derecha y
+   en celular quedaba cortado contra el borde (bug real 2026-10-23, iPhone SE). */
+.notification-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 340px;
+    max-width: calc(100vw - 16px);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card);
+    padding: 10px;
+    z-index: 1000;
+}
+
+.notification-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px 8px;
+    border-bottom: 1px solid var(--card-border);
+    margin-bottom: 6px;
+}
+
+.notification-panel-header span {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.notification-panel-header form {
+    margin: 0;
+}
+
+.notification-mark-all {
+    background: transparent;
+    border: none;
+    color: var(--bs-primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+}
+
+.notification-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.notification-item form {
+    margin: 0;
+}
+
+.notification-item button {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.notification-item button:hover {
+    background: var(--bs-secondary-bg);
+}
+
+.notification-item--unread button {
+    background: color-mix(in srgb, var(--bs-primary) 6%, transparent);
+}
+
+.notification-item-dot {
+    margin-top: 4px;
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.notification-item-body {
+    display: block;
+    min-width: 0;
+}
+
+.notification-item-title {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.notification-item-message {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.notification-item-date {
+    display: block;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.notification-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 16px 4px;
+    text-align: center;
+    margin: 0;
+}
+
+.notification-view-all {
+    display: block;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--bs-primary);
+    padding: 8px 4px 2px;
+    border-top: 1px solid var(--card-border);
+    margin-top: 6px;
+}
+
+/* Paleta de colores del topbar (2026-09-07) -- 4 swatches a la izquierda del
+   menú de usuario. Cada swatch es un <button> de submit dentro de su propio
+   <form> que postea a /Account/SetTheme (persiste en la cuenta, misma fuente de
+   verdad que /Home/Preferences -- nunca localStorage). Contenedor tipo "pill"
+   con borde fino para que quede prolijo junto al avatar. */
+.topbar-theme {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px;
+    border: 1px solid var(--card-border);
+    border-radius: 999px;
+    background: var(--bs-secondary-bg);
+}
+
+.topbar-theme form {
+    display: flex;
+    margin: 0;
+}
+
+.topbar-theme-swatch {
+    width: 15px;
+    height: 15px;
+    padding: 0;
+    appearance: none;
+    border: 2px solid var(--card-bg);
+    border-radius: 50%;
+    background-clip: padding-box;
+    box-shadow: 0 0 0 1px var(--card-border);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.topbar-theme-swatch:hover {
+    transform: scale(1.18);
+}
+
+.topbar-theme-swatch:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+/* Estado activo: aria-pressed lo fija el server (tenant, desde la preferencia de
+   la cuenta); data-active lo fija theme-switcher.js (admin, desde localStorage). */
+.topbar-theme-swatch[aria-pressed="true"],
+.topbar-theme-swatch[data-active="true"] {
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+.topbar-theme-swatch[data-theme-swatch="claro"],
+.topbar-theme-swatch[data-theme-switch="claro"] { background-color: var(--theme-preview-claro); }
+.topbar-theme-swatch[data-theme-swatch="oscuro"],
+.topbar-theme-swatch[data-theme-switch="oscuro"] { background-color: var(--theme-preview-oscuro); }
+.topbar-theme-swatch[data-theme-swatch="teal"],
+.topbar-theme-swatch[data-theme-switch="teal"] { background-color: var(--theme-preview-teal); }
+.topbar-theme-swatch[data-theme-swatch="violeta"],
+.topbar-theme-swatch[data-theme-switch="violeta"] { background-color: var(--theme-preview-violeta); }
+
+/* En viewport angosto el topbar se aprieta -- la paleta se oculta, el tema
+   sigue disponible en /Home/Preferences. */
+@media (max-width: 576px) {
+    .topbar-theme {
+        display: none;
+    }
+}
+
+/* Selector de compañía del topbar -- ver CompanySwitcherViewComponent. Mismo
+   font-size/altura que .user-name para que quede a la par visualmente. */
+.company-switcher {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.company-switcher-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.company-switcher select {
+    font-size: 12.5px;
+    max-width: 220px;
+}
+
+.user-menu {
+    position: relative;
+}
+
+.user-menu summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--bs-border-radius-sm);
+}
+
+.user-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.user-menu summary:hover {
+    background: var(--bs-secondary-bg);
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bs-primary);
+    color: var(--on-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.user-menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card);
+    width: 200px;
+    padding: 10px;
+    z-index: 1030;
+}
+
+/* Cabecera de identidad del panel de usuario (2026-08-19, layout tipo
+   "rindegastos" -- avatar grande + nombre + correo, arriba del selector de
+   idioma/tema). */
+.user-menu-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px 12px;
+    border-bottom: 1px solid var(--card-border);
+    margin-bottom: 8px;
+}
+
+.user-avatar-lg {
+    width: 40px;
+    height: 40px;
+    font-size: 15px;
+}
+
+.user-menu-fullname {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.user-menu-email {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.user-menu-panel .user-menu-org {
+    font-size: 11.5px;
+    color: var(--bs-secondary-color);
+    padding: 4px 8px 10px;
+    border-bottom: 1px solid var(--bs-border-color);
+    margin-bottom: 8px;
+}
+
+.user-menu-panel form {
+    margin: 0;
+}
+
+.user-menu-panel .user-menu-link {
+    display: block;
+    text-align: left;
+    color: var(--bs-body-color);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 8px;
+    border-radius: var(--bs-border-radius-sm);
+    text-decoration: none;
+}
+
+.user-menu-panel .user-menu-link:hover {
+    background: var(--bs-secondary-bg);
+}
+
+.user-menu-panel .btn-logout {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: var(--bs-danger);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 8px;
+    border-radius: var(--bs-border-radius-sm);
+    cursor: pointer;
+}
+
+.user-menu-panel .btn-logout:hover {
+    background: var(--bs-danger-bg-subtle, var(--bs-secondary-bg));
+}
+
+.content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+/* .subnav-bar (Nivel 2, ver _ModuloLayout.cshtml/_ModuloSubnav.cshtml) vive
+   DENTRO de .content (primer hijo) -- no es un elemento propio del shell
+   (.shell-main), para no acoplar _LayoutMaestro (shell puro) al concepto de
+   "módulo activo", que es responsabilidad de _ModuloLayout. */
+.content > .subnav-bar {
+    margin: -24px -24px 16px -24px;
+}
+
+/* ===========================================================================
+   Shell responsive -- drawer off-canvas en <=900px (corte `md`, ver
+   design-tokens.css). En >900px NO hay ningún override: el shell es idéntico
+   al actual (sidebar en flujo, rail 64/250px, resize handle, topbar completa).
+   Estado abierto = html[data-shell-nav="open"] (lo pone sidebar.js).
+   =========================================================================== */
+
+/* Botón hamburguesa: oculto en escritorio, visible en <=900px. */
+.topbar-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  border-radius: var(--bs-border-radius-sm);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.topbar-nav-toggle:hover {
+  background: var(--bs-secondary-bg);
+}
+
+.shell-scrim {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .topbar-nav-toggle {
+    display: flex;
+  }
+
+  .app-shell .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: var(--sidebar-width);
+    z-index: 1040;
+    transform: translateX(-100%);
+    transition: transform var(--drawer-transition) ease, visibility var(--drawer-transition);
+    box-shadow: none;
+    visibility: hidden;
+  }
+
+  html[data-shell-nav="open"] .app-shell .sidebar {
+    transform: translateX(0);
+    box-shadow: var(--shadow-drawer);
+    visibility: visible;
+  }
+
+  /* En el drawer el sidebar SIEMPRE muestra labels (no modo rail 64px) -- se
+     fuerza el ancho expandido sin importar data-sidebar. */
+  html[data-sidebar="collapsed"] .app-shell .sidebar,
+  html[data-sidebar="expanded"] .app-shell .sidebar {
+    width: var(--sidebar-width);
+  }
+  html[data-sidebar="collapsed"] .app-shell .sidebar .nav-texto,
+  html[data-sidebar="collapsed"] .app-shell .sidebar .sidebar-brand-text {
+    display: inline;
+  }
+  html[data-sidebar="collapsed"] .app-shell .sidebar .sidebar-nav a,
+  html[data-sidebar="collapsed"] .app-shell .sidebar .sidebar-nav-grupo {
+    justify-content: flex-start;
+    padding-left: 8px;
+  }
+
+  /* El toggle interno rail<->250 y el handle de resize no aplican en drawer. */
+  .app-shell .sidebar-toggle,
+  .app-shell .sidebar-resize-handle {
+    display: none;
+  }
+
+  /* El contenido toma el ancho completo -- el sidebar fixed ya no ocupa flujo. */
+  .shell-main {
+    width: 100%;
+  }
+
+  .shell-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1035;
+    background: var(--scrim-bg);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast) ease;
+  }
+
+  html[data-shell-nav="open"] .shell-scrim:not([hidden]) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .topbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .topbar-title {
+    font-size: 13px;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Placeholders `disabled` (Buscador/Mensajes/Crear) -- en escritorio dicen
+     "próximamente", en móvil solo estorban. La campana de notificaciones
+     (.notification-bell-toggle) es real y queda visible en móvil también. */
+  .topbar-search,
+  .topbar-icon-btn {
+    display: none;
+  }
+
+  .user-menu .user-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .content {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 576px) {
+  .content {
+    padding: 12px;
+  }
+
+  .user-menu .user-name {
+    display: none;
+  }
+
+  .user-menu-panel {
+    right: 8px;
+    width: auto;
+    min-width: 200px;
+    max-width: calc(100vw - 16px);
+  }
+
+  /* Celular: el panel ocupa el ancho de la pantalla bajo el topbar (56px), sin
+     depender de dónde quede la campana -- anclado a ella nunca entra completo. */
+  .notification-panel {
+    position: fixed;
+    top: 64px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+  }
+
+  .notification-list {
+    max-height: calc(100dvh - 170px);
+  }
+}
+
+
+.fpr-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem; }
+.fpr-kpi { padding: .75rem 1rem; border: 1px solid var(--card-border); border-radius: .5rem; }
+.fpr-kpi__label { font-size: .75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
+.fpr-kpi__value { font-size: 1.4rem; font-weight: 700; }
+/* Solo del boceto */
+.mock-note { margin-bottom: 12px; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); font-size: 12.5px; }
+.tag-guess { display:inline-block; font-size: 10.5px; font-weight: 700; padding: 0 6px; border-radius: 6px; vertical-align: middle;
+  background: color-mix(in srgb, var(--bs-primary) 14%, transparent); color: var(--bs-primary); }
+
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar rail-sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-mark">PS</div>
+      <button type="button" class="sidebar-toggle" title="Expandir/colapsar menú"><i class="bi bi-chevron-left"></i></button>
+    </div>
+    <div class="sidebar-company">
+      <i class="bi bi-building"></i>
+      <span class="company-switcher-single" title="Compañía activa">Comercial Depor</span>
+    </div>
+    <ul class="sidebar-nav" id="sidebar-nav-root">
+      <li class="rail-item">
+        <a href="#"><span class="nav-icon"><i class="bi bi-house"></i></span><span class="nav-texto">Inicio</span></a>
+        <span class="rail-tooltip">Inicio</span>
+      </li>
+      <li class="sidebar-nav-item">
+        <a class="sidebar-nav-grupo sidebar-nav-grupo-raiz" href="#" style="--icon-color: var(--menu-color-1)">
+          <span class="nav-icon"><i class="bi bi-cart"></i></span><span class="nav-texto">Compras</span><i class="bi bi-chevron-down sidebar-grupo-chevron"></i>
+        </a>
+      </li>
+      <li class="sidebar-nav-item">
+        <a class="sidebar-nav-grupo sidebar-nav-grupo-raiz" href="#" style="--icon-color: var(--menu-color-2)">
+          <span class="nav-icon"><i class="bi bi-truck"></i></span><span class="nav-texto">Despachos</span><i class="bi bi-chevron-down sidebar-grupo-chevron"></i>
+        </a>
+      </li>
+      <li class="sidebar-nav-item">
+        <a class="sidebar-nav-grupo sidebar-nav-grupo-raiz" href="#" aria-expanded="true" style="--icon-color: var(--menu-color-3)">
+          <span class="nav-icon"><i class="bi bi-receipt-cutoff"></i></span><span class="nav-texto">Facturas de Proveedor</span><i class="bi bi-chevron-down sidebar-grupo-chevron"></i>
+        </a>
+        <div class="collapse show">
+          <ul class="sidebar-nav sidebar-nav-sub">
+            <li><a href="#" class="active" data-goto="bandeja" data-title="Bandeja de facturas recibidas"><span class="nav-icon"><i class="bi bi-inbox"></i></span><span class="nav-texto">Bandeja</span></a></li>
+            <li><a href="#" data-goto="aprobaciones" data-title="Mis aprobaciones"><span class="nav-icon"><i class="bi bi-check2-square"></i></span><span class="nav-texto">Mis aprobaciones</span></a></li>
+            <li class="sidebar-nav-item">
+              <a class="sidebar-nav-grupo" href="#" aria-expanded="true">
+                <span class="nav-icon"><i class="bi bi-gear"></i></span><span class="nav-texto">Configuración</span><i class="bi bi-chevron-down sidebar-grupo-chevron"></i>
+              </a>
+              <div class="collapse show">
+                <ul class="sidebar-nav sidebar-nav-sub">
+                  <li><a href="#" data-goto="reglas" data-title="Reglas de revisión"><span class="nav-icon"><i class="bi bi-sliders"></i></span><span class="nav-texto">Reglas de revisión</span></a></li>
+                  <li><a href="#" data-goto="proveedores" data-title="Proveedores con excepciones"><span class="nav-icon"><i class="bi bi-person-exclamation"></i></span><span class="nav-texto">Proveedores con excepciones</span></a></li>
+                  <li><a href="#" data-goto="aprobadores" data-title="Aprobadores"><span class="nav-icon"><i class="bi bi-people"></i></span><span class="nav-texto">Aprobadores</span></a></li>
+                </ul>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="sidebar-nav-item">
+        <a class="sidebar-nav-grupo sidebar-nav-grupo-raiz" href="#" style="--icon-color: var(--menu-color-4)">
+          <span class="nav-icon"><i class="bi bi-wallet2"></i></span><span class="nav-texto">Rendiciones</span><i class="bi bi-chevron-down sidebar-grupo-chevron"></i>
+        </a>
+      </li>
+    </ul>
+  </aside>
+
+  <div class="shell-main">
+    <header class="topbar">
+      <button type="button" class="topbar-nav-toggle" aria-label="Abrir menú"><i class="bi bi-list"></i></button>
+      <span class="topbar-title" id="mock-title">Bandeja de facturas recibidas</span>
+      <div class="topbar-search"><i class="bi bi-search"></i><input type="search" placeholder="Buscar" disabled></div>
+      <div class="topbar-right">
+        <details class="notification-bell">
+          <summary class="notification-bell-toggle" title="Notificaciones"><i class="bi bi-bell"></i><span class="notification-badge">3</span></summary>
+        </details>
+        <button type="button" class="topbar-icon-btn" disabled><i class="bi bi-chat-dots"></i></button>
+        <button type="button" class="topbar-icon-btn" disabled><i class="bi bi-plus-lg"></i></button>
+        <details class="user-menu"><summary><span class="user-avatar">JM</span><span class="user-name">jmunoz</span></summary></details>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="mock-note">Boceto — datos de ejemplo. <span class="tag-guess">supuesto</span> = propuesta mía, no decidido por ti. Navega con el menú de la izquierda y con los botones <i class="bi bi-box-arrow-up-right"></i> de la bandeja.</div>
+
+      <!-- =================================================== BANDEJA -->
+      <div class="mock-page" data-page="bandeja">
+      <div class="card-surface">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+          <h2 class="mb-0">Bandeja de facturas recibidas</h2>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="text-muted small"><i class="bi bi-arrow-repeat"></i> Última lectura de FACELE: 27-10-2026 10:42</span>
+            <button type="button" class="btn btn-secondary"><i class="bi bi-cloud-download"></i> Leer ahora</button>
+          </div>
+        </div>
+
+        <div class="alert alert-warning">
+          <i class="bi bi-hourglass-split"></i> 1 factura vence mañana sin decisión. La regla <strong>"Plazo por vencer"</strong> la rechazará el 28-10-2026 si nadie la resuelve antes.
+        </div>
+
+        <div class="fpr-kpis mb-3">
+          <div class="fpr-kpi"><div class="fpr-kpi__label">Por decidir</div><div class="fpr-kpi__value">2</div></div>
+          <div class="fpr-kpi"><div class="fpr-kpi__label">Avisos sin OC</div><div class="fpr-kpi__value">1</div></div>
+          <div class="fpr-kpi"><div class="fpr-kpi__label">Vencen en ≤ 2 días</div><div class="fpr-kpi__value text-danger">1</div></div>
+          <div class="fpr-kpi"><div class="fpr-kpi__label">Aceptadas (mes)</div><div class="fpr-kpi__value">142</div></div>
+          <div class="fpr-kpi"><div class="fpr-kpi__label">Rechazadas (mes)</div><div class="fpr-kpi__value">9</div></div>
+        </div>
+
+        <form class="filter-card mb-3" onsubmit="return false">
+          <div class="col-auto"><label class="form-label">Recibida desde</label><input type="date" class="form-control" value="2026-10-13"></div>
+          <div class="col-auto"><label class="form-label">Hasta</label><input type="date" class="form-control" value="2026-10-27"></div>
+          <div class="col-auto"><label class="form-label">Estado</label>
+            <select class="form-select"><option>Pendientes (por decidir + avisos)</option><option>Todos</option><option>Aceptadas</option><option>Rechazadas</option><option>En simulación</option></select></div>
+          <div class="col-auto"><label class="form-label">Proveedor, RUT, folio u OC</label><input type="search" class="form-control"></div>
+          <div class="col-auto align-self-end"><button class="btn btn-primary">Filtrar</button> <a class="btn btn-secondary" href="#">Limpiar</a></div>
+        </form>
+
+        <div class="table-responsive-lg">
+          <table class="table-ps">
+            <thead><tr><th>Recibida SII</th><th>Proveedor</th><th>Documento</th><th class="text-end">Total</th><th>OC</th><th>Resultado de reglas</th><th>Estado</th><th>Plazo</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="text-nowrap">20-10-2026</td>
+                <td>Inmobiliaria Los Robles SpA<div class="text-muted small">77.555.010-K</div></td>
+                <td class="text-nowrap">Factura exenta 812</td>
+                <td class="text-end">4.100.000</td>
+                <td>—</td>
+                <td>Revisión manual · Gerencia Finanzas</td>
+                <td class="text-nowrap"><span class="badge-status badge-status--warning">Por decidir</span></td>
+                <td class="text-nowrap"><span class="badge-status badge-status--danger">vence 28-10</span></td>
+                <td class="col-actions"><a class="btn-ghost" title="Abrir" href="#" data-goto="detalle-manual" data-title="Factura exenta N° 812"><i class="bi bi-box-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td class="text-nowrap">22-10-2026</td>
+                <td>Distribuidora Eléctrica Central S.A.<div class="text-muted small">76.100.200-3</div></td>
+                <td class="text-nowrap">Factura 5521873</td>
+                <td class="text-end">1.245.300</td>
+                <td>—</td>
+                <td>Revisión manual · Jefatura Administración</td>
+                <td class="text-nowrap"><span class="badge-status badge-status--warning">Por decidir</span></td>
+                <td class="text-nowrap"><span class="badge-status badge-status--warning">vence 30-10</span></td>
+                <td class="col-actions"><a class="btn-ghost" title="Abrir" href="#" data-goto="detalle-manual" data-title="Factura exenta N° 812"><i class="bi bi-box-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td class="text-nowrap">26-10-2026</td>
+                <td>Servicios Gráficos Prisma Ltda.<div class="text-muted small">76.330.118-2</div></td>
+                <td class="text-nowrap">Factura 3310</td>
+                <td class="text-end">480.000</td>
+                <td class="text-danger">sin ref. 801</td>
+                <td>Sin OC · se rechaza el 29-10 si no se asocia</td>
+                <td class="text-nowrap"><span class="badge-status badge-status--warning">Aviso</span></td>
+                <td class="text-nowrap"><span class="badge-status badge-status--neutral">vence 03-11</span></td>
+                <td class="col-actions"><button type="button" class="btn-ghost" title="Asociar OC"><i class="bi bi-link-45deg"></i></button></td>
+              </tr>
+              <tr>
+                <td class="text-nowrap">24-10-2026</td>
+                <td>Comercial Textil Andes SpA<div class="text-muted small">76.412.553-1</div></td>
+                <td class="text-nowrap">Factura 18452</td>
+                <td class="text-end">2.380.000</td>
+                <td>4512</td>
+                <td>Supera el saldo de la OC</td>
+                <td class="text-nowrap"><span class="badge-status badge-status--danger">Rechazada</span></td>
+                <td class="text-muted small">respondida</td>
+                <td class="col-actions"><a class="btn-ghost" title="Abrir" href="#" data-goto="detalle-rechazo" data-title="Factura N° 18452"><i class="bi bi-box-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td class="text-nowrap">23-10-2026</td>
+                <td>Importadora Deportiva Norte SpA<div class="text-muted small">76.900.321-5</div></td>
+                <td class="text-nowrap">Factura 77120</td>
+                <td class="text-end">12.600.000</td>
+                <td>4398</td>
+                <td>OC con 51 días (máx. 30)</td>
+                <td class="text-nowrap"><span class="badge-status badge-status--danger">Rechazada</span></td>
+                <td class="text-muted small">respondida</td>
+                <td class="col-actions"><a class="btn-ghost" title="Abrir" href="#"><i class="bi bi-box-arrow-up-right"></i></a></td>
+              </tr>
+              <tr>
+                <td class="text-nowrap">25-10-2026</td>
+                <td>Distribuidora Calzado Sur Ltda.<div class="text-muted small">76.220.774-9</div></td>
+                <td class="text-nowrap">Factura 9921</td>
+                <td class="text-end">5.950.000</td>
+                <td>4530</td>
+                <td>Cumple todas las reglas</td>
+                <td class="text-nowrap"><span class="badge-status badge-status--success">Aceptada</span></td>
+                <td class="text-muted small">respondida</td>
+                <td class="col-actions"><a class="btn-ghost" title="Abrir" href="#"><i class="bi bi-box-arrow-up-right"></i></a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      </div>
+
+      <!-- =================================================== MIS APROBACIONES -->
+      <div class="mock-page d-none" data-page="aprobaciones">
+      <div class="card-surface">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+          <h2 class="mb-0">Mis aprobaciones</h2>
+        </div>
+        <p class="text-muted mb-3">Facturas que esperan tu decisión porque eres el aprobador (o suplente) del proveedor. <span class="tag-guess">supuesto</span></p>
+        <div class="table-responsive-lg">
+          <table class="table-ps">
+            <thead><tr><th>Recibida SII</th><th>Proveedor</th><th>Documento</th><th class="text-end">Total</th><th>Motivo de revisión</th><th>Plazo</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>20-10-2026</td><td>Inmobiliaria Los Robles SpA</td><td>Factura exenta 812</td><td class="text-end">4.100.000</td><td>Gasto fijo mensual</td>
+                <td class="text-nowrap"><span class="badge-status badge-status--danger">vence 28-10</span></td>
+                <td class="col-actions"><a class="btn-ghost" title="Abrir" href="#" data-goto="detalle-manual" data-title="Factura exenta N° 812"><i class="bi bi-box-arrow-up-right"></i></a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      </div>
+
+      <!-- =================================================== DETALLE: REVISIÓN MANUAL -->
+      <div class="mock-page d-none" data-page="detalle-manual">
+      <div class="card-surface">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <h2 class="mb-0">Factura exenta N° 812</h2>
+            <span class="badge-status badge-status--warning">Por decidir</span>
+            <span class="text-muted">Inmobiliaria Los Robles SpA</span>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a class="btn btn-secondary" href="#" data-goto="bandeja" data-title="Bandeja de facturas recibidas">Volver al listado</a>
+            <a class="btn btn-secondary" href="#"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+            <button type="button" class="btn btn-secondary" data-drawer-open="drawer-rechazar"><i class="bi bi-x-circle"></i> Rechazar</button>
+            <button type="button" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Aceptar</button>
+          </div>
+        </div>
+
+        <div class="alert alert-warning"><i class="bi bi-hourglass-split"></i> Vence el <strong>28-10-2026</strong> (8 días desde la recepción en el SII). Si nadie decide, la regla "Plazo por vencer" la <strong>rechazará</strong>.</div>
+
+        <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;max-width:100%;">
+          <button type="button" class="doc-tab-btn active" data-tab-btn="m-resumen">Resumen</button>
+          <button type="button" class="doc-tab-btn" data-tab-btn="m-reglas">Evaluación de reglas</button>
+          <button type="button" class="doc-tab-btn" data-tab-btn="m-detalle">Detalle del documento</button>
+          <button type="button" class="doc-tab-btn" data-tab-btn="m-historial">Historial</button>
+        </div>
+
+        <div data-tab-panel="m-resumen">
+          <dl class="row">
+            <dt class="col-sm-3">Proveedor</dt><dd class="col-sm-9">Inmobiliaria Los Robles SpA (77.555.010-K) · SAP P77555010</dd>
+            <dt class="col-sm-3">Documento</dt><dd class="col-sm-9">Factura exenta (34) N° 812 · emitida 19-10-2026</dd>
+            <dt class="col-sm-3">Recibida en el SII</dt><dd class="col-sm-9">20-10-2026 · plazo hasta 28-10-2026</dd>
+            <dt class="col-sm-3">Montos</dt><dd class="col-sm-9">Exento 4.100.000 · Total 4.100.000</dd>
+            <dt class="col-sm-3">Orden de compra</dt><dd class="col-sm-9">— (no referencia OC)</dd>
+            <dt class="col-sm-3">Condición del proveedor</dt><dd class="col-sm-9">Gasto fijo mensual (arriendo)</dd>
+            <dt class="col-sm-3">Aprobador</dt><dd class="col-sm-9">Gerencia Finanzas · suplente: Jefatura Administración</dd>
+            <dt class="col-sm-3">Glosa</dt><dd class="col-sm-9">Arriendo local Plaza Oeste — octubre 2026</dd>
+            <dt class="col-sm-3">Operador</dt><dd class="col-sm-9">FACELE · producción</dd>
+          </dl>
+        </div>
+        <div data-tab-panel="m-reglas" style="display:none;">
+          <div class="table-responsive-lg">
+            <table class="table-ps">
+              <thead><tr><th>#</th><th>Regla</th><th>Resultado</th><th>Detalle</th></tr></thead>
+              <tbody>
+                <tr><td>1–5</td><td>Reglas de orden de compra</td><td class="text-nowrap"><span class="badge-status badge-status--neutral">No aplica</span></td><td class="text-muted">Proveedor de gasto fijo mensual</td></tr>
+                <tr><td>6</td><td>Revisión manual por proveedor</td><td class="text-nowrap"><span class="badge-status badge-status--warning">Revisión manual</span></td><td>Aprobador: Gerencia Finanzas</td></tr>
+                <tr><td>7</td><td>Plazo por vencer sin decisión</td><td class="text-nowrap"><span class="badge-status badge-status--neutral">Pendiente</span></td><td>Si no hay decisión al 28-10-2026 → Rechazar</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="mb-0"><strong>Decisión resultante:</strong> revisión manual.</p>
+        </div>
+        <div data-tab-panel="m-detalle" style="display:none;">
+          <div class="table-responsive-lg">
+            <table class="table-ps">
+              <thead><tr><th>Línea</th><th>Descripción</th><th class="text-end">Cantidad</th><th class="text-end">Precio</th><th class="text-end">Monto</th></tr></thead>
+              <tbody><tr><td>1</td><td>Arriendo local Plaza Oeste — octubre 2026</td><td class="text-end">1</td><td class="text-end">4.100.000</td><td class="text-end">4.100.000</td></tr></tbody>
+            </table>
+          </div>
+          <p class="text-muted small mb-0">Líneas leídas del XML del documento.</p>
+        </div>
+        <div data-tab-panel="m-historial" style="display:none;">
+          <div class="table-responsive-lg">
+            <table class="table-ps">
+              <thead><tr><th>Fecha (Chile)</th><th>Evento</th><th>Usuario</th><th>Detalle</th></tr></thead>
+              <tbody>
+                <tr><td>27-10-2026 08:00</td><td>Escalada a Finanzas</td><td>sistema</td><td class="text-muted">Faltan 2 días</td></tr>
+                <tr><td>20-10-2026 09:31</td><td>Aviso al aprobador</td><td>sistema</td><td class="text-muted">Campana a Gerencia Finanzas</td></tr>
+                <tr><td>20-10-2026 09:30</td><td>Reglas evaluadas</td><td>sistema</td><td class="text-muted">Revisión manual</td></tr>
+                <tr><td>20-10-2026 09:30</td><td>Leída desde el operador</td><td>sistema</td><td class="text-muted">FACELE</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- =================================================== DETALLE: RECHAZO AUTOMÁTICO -->
+      <div class="mock-page d-none" data-page="detalle-rechazo">
+      <div class="card-surface">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <h2 class="mb-0">Factura N° 18452</h2>
+            <span class="badge-status badge-status--danger">Rechazada</span>
+            <span class="text-muted">Comercial Textil Andes SpA</span>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a class="btn btn-secondary" href="#" data-goto="bandeja" data-title="Bandeja de facturas recibidas">Volver al listado</a>
+            <a class="btn btn-secondary" href="#"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+          </div>
+        </div>
+        <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;max-width:100%;">
+          <button type="button" class="doc-tab-btn" data-tab-btn="r-resumen">Resumen</button>
+          <button type="button" class="doc-tab-btn active" data-tab-btn="r-reglas">Evaluación de reglas</button>
+          <button type="button" class="doc-tab-btn" data-tab-btn="r-historial">Historial</button>
+        </div>
+        <div data-tab-panel="r-resumen" style="display:none;">
+          <dl class="row">
+            <dt class="col-sm-3">Proveedor</dt><dd class="col-sm-9">Comercial Textil Andes SpA (76.412.553-1) · SAP P76412553</dd>
+            <dt class="col-sm-3">Documento</dt><dd class="col-sm-9">Factura (33) N° 18452 · emitida 23-10-2026</dd>
+            <dt class="col-sm-3">Montos</dt><dd class="col-sm-9">Neto 2.000.000 · IVA 380.000 · Total 2.380.000</dd>
+            <dt class="col-sm-3">Orden de compra</dt><dd class="col-sm-9">DocNum 4512 (referencia 801)</dd>
+            <dt class="col-sm-3">Respuesta al SII</dt><dd class="col-sm-9">Reclamo al contenido · 24-10-2026 09:13 · motivo: "Monto supera saldo disponible de OC 4512"</dd>
+          </dl>
+        </div>
+        <div data-tab-panel="r-reglas">
+          <div class="table-responsive-lg">
+            <table class="table-ps">
+              <thead><tr><th>#</th><th>Regla</th><th>Resultado</th><th>Detalle</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>OC referenciada existe en SAP</td><td class="text-nowrap"><span class="badge-status badge-status--success">Cumple</span></td><td>DocNum 4512 · 12-10-2026 · total 3.200.000</td></tr>
+                <tr><td>2</td><td>OC del mismo proveedor</td><td class="text-nowrap"><span class="badge-status badge-status--success">Cumple</span></td><td>P76412553</td></tr>
+                <tr><td>3</td><td>Antigüedad máxima de la OC</td><td class="text-nowrap"><span class="badge-status badge-status--success">Cumple</span></td><td>11 días (máx. 30)</td></tr>
+                <tr><td>4</td><td>Monto dentro del saldo de la OC</td><td class="text-nowrap"><span class="badge-status badge-status--danger">Rechazar</span></td>
+                  <td>Saldo (total): 3.200.000 − ya facturado 1.000.000 (factura 18101, aceptada) = <strong>2.200.000</strong> · esta factura: <strong>2.380.000</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="mb-0"><strong>Decisión resultante:</strong> rechazar (regla 4).</p>
+        </div>
+        <div data-tab-panel="r-historial" style="display:none;">
+          <div class="table-responsive-lg">
+            <table class="table-ps">
+              <thead><tr><th>Fecha (Chile)</th><th>Evento</th><th>Usuario</th><th>Detalle</th></tr></thead>
+              <tbody>
+                <tr><td>24-10-2026 09:13</td><td>Respuesta enviada al operador</td><td>sistema</td><td class="text-muted">Reclamo al contenido · OK</td></tr>
+                <tr><td>24-10-2026 09:12</td><td>Reglas evaluadas</td><td>sistema</td><td class="text-muted">Rechazar (regla 4)</td></tr>
+                <tr><td>24-10-2026 09:12</td><td>Leída desde el operador</td><td>sistema</td><td class="text-muted">FACELE</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- =================================================== REGLAS -->
+      <div class="mock-page d-none" data-page="reglas">
+      <div class="card-surface">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+          <h2 class="mb-0">Reglas de revisión</h2>
+        </div>
+        <p class="text-muted mb-3">Toda factura recibida pasa por estas reglas. Si varias objetan, manda la acción más severa: <strong>Rechazar</strong> &gt; <strong>Avisar y rechazar</strong> &gt; <strong>Revisión manual</strong>. Si ninguna objeta, se aplica la acción final. Las excepciones por proveedor se configuran en <em>Proveedores con excepciones</em>.</p>
+
+        <h3 class="h6 text-muted">Parámetros generales</h3>
+        <form class="mb-4" onsubmit="return false">
+          <div class="row g-3">
+            <div class="col-12 col-md-6 col-xl-4"><label class="form-label">Plazo legal de respuesta (días corridos desde la recepción en el SII)</label><input class="form-control" value="8"></div>
+            <div class="col-12 col-md-6 col-xl-4"><label class="form-label">Escalar a Finanzas cuando falten (días)</label><input class="form-control" value="2"></div>
+            <div class="col-12 col-md-6 col-xl-4"><label class="form-label">Leer el operador cada (minutos)</label><input class="form-control" value="30"></div>
+            <div class="col-12 col-md-6 col-xl-4"><label class="form-label">Si ninguna regla objeta</label><select class="form-select"><option>Aceptar automáticamente</option><option>Revisión manual</option></select></div>
+            <div class="col-12 col-md-6 col-xl-4"><label class="form-label">Procesar facturas recibidas desde <span class="tag-guess">supuesto</span></label><input type="date" class="form-control" value="2026-11-01"></div>
+            <div class="col-12 col-md-6 col-xl-4"><label class="form-label">Modo <span class="tag-guess">supuesto</span></label><select class="form-select"><option>Simulación — evalúa y muestra, no responde al SII</option><option>Activo — responde al SII</option></select></div>
+          </div>
+          <button type="submit" class="btn btn-primary mt-3">Guardar parámetros</button>
+        </form>
+
+        <h3 class="h6 text-muted">Reglas</h3>
+        <div class="table-responsive-lg">
+          <table class="table-ps">
+            <thead><tr><th>#</th><th>Regla</th><th>Aplica a</th><th>Parámetros</th><th>Acción</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>OC referenciada existe en SAP<div class="text-muted small">Referencia 801 = DocNum</div></td><td>Proveedores con OC</td><td>—</td><td>Avisar y rechazar en 3 días</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activa</span></td><td class="col-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-regla"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td>2</td><td>OC del mismo proveedor <span class="tag-guess">supuesto</span></td><td>Proveedores con OC</td><td>—</td><td>Rechazar</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activa</span></td><td class="col-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-regla"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td>3</td><td>Antigüedad máxima de la OC<div class="text-muted small">Fecha OC → emisión factura</div></td><td>Proveedores con OC</td><td>30 días</td><td>Rechazar</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activa</span></td><td class="col-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-regla"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td>4</td><td>Monto dentro del saldo de la OC<div class="text-muted small">Total OC (con IVA o exento) − facturas aceptadas que la referencian</div></td><td>Proveedores con OC</td><td>Tolerancia 0 %</td><td>Rechazar</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activa</span></td><td class="col-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-regla"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr class="row-inactive"><td>5</td><td>OC abierta en SAP <span class="tag-guess">sugerida</span><div class="text-muted small">No cerrada ni cancelada</div></td><td>Proveedores con OC</td><td>—</td><td>Revisión manual</td><td class="text-nowrap"><span class="badge-status badge-status--neutral">Inactiva</span></td><td class="col-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-regla"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td>6</td><td>Revisión manual por proveedor<div class="text-muted small">Gasto fijo o "siempre revisión manual"</div></td><td>Proveedores marcados</td><td>—</td><td>Revisión manual</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activa</span></td><td class="col-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-regla"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td>7</td><td>Plazo por vencer sin decisión</td><td>Facturas en revisión o aviso</td><td>Último día del plazo</td><td>Rechazar</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activa</span></td><td class="col-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-regla"><i class="bi bi-pencil"></i></button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-muted small mt-2 mb-0">Una regla nueva se programa como pieza del catálogo y aparece en esta lista para activarla y parametrizarla (mismo criterio que las reglas de Importación Genérica). <span class="tag-guess">supuesto</span></p>
+      </div>
+      </div>
+
+      <!-- =================================================== PROVEEDORES -->
+      <div class="mock-page d-none" data-page="proveedores">
+      <div class="card-surface">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+          <h2 class="mb-0">Proveedores con excepciones</h2>
+          <button type="button" class="btn btn-primary" data-drawer-open="drawer-proveedor">+ Agregar proveedor</button>
+        </div>
+        <p class="text-muted mb-3">Solo los proveedores que se apartan de las reglas de la empresa. El resto usa las reglas generales.</p>
+        <div class="filter-card mb-3">
+          <div class="col-auto flex-grow-1" style="max-width:360px;"><label class="form-label">Buscar</label><input type="search" class="form-control" placeholder="Escriba para filtrar..."></div>
+        </div>
+        <div class="table-responsive-lg">
+          <table class="table-ps">
+            <thead><tr><th>RUT</th><th>Proveedor (SAP)</th><th>Condición</th><th>Ajustes</th><th>Aprobador</th><th>Vigencia</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+              <tr><td>76.100.200-3</td><td>Distribuidora Eléctrica Central S.A.<div class="text-muted small">P76100200</div></td><td>Gasto fijo mensual</td><td>Reglas de OC no aplican</td><td>Jefatura Administración</td><td>desde 01-11-2026</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activo</span></td>
+                <td class="col-actions"><div class="admin-row-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-proveedor"><i class="bi bi-pencil"></i></button><button type="button" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button></div></td></tr>
+              <tr><td>77.555.010-K</td><td>Inmobiliaria Los Robles SpA<div class="text-muted small">P77555010</div></td><td>Gasto fijo mensual</td><td>Reglas de OC no aplican</td><td>Gerencia Finanzas</td><td>desde 01-11-2026</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activo</span></td>
+                <td class="col-actions"><div class="admin-row-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-proveedor"><i class="bi bi-pencil"></i></button><button type="button" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button></div></td></tr>
+              <tr><td>76.555.901-4</td><td>Agencia Aduanera Litoral Ltda.<div class="text-muted small">P76555901</div></td><td>Siempre revisión manual</td><td>Reglas de OC se evalúan igual</td><td>Jefatura Comercio Exterior</td><td>desde 01-11-2026</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activo</span></td>
+                <td class="col-actions"><div class="admin-row-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-proveedor"><i class="bi bi-pencil"></i></button><button type="button" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button></div></td></tr>
+              <tr><td>76.900.321-5</td><td>Importadora Deportiva Norte SpA<div class="text-muted small">P76900321</div></td><td>Personalizada</td><td>Antigüedad OC: 60 días</td><td>—</td><td>hasta 31-12-2026</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activo</span></td>
+                <td class="col-actions"><div class="admin-row-actions"><button type="button" class="btn-ghost" title="Editar" data-drawer-open="drawer-proveedor"><i class="bi bi-pencil"></i></button><button type="button" class="btn-ghost btn-ghost--danger" title="Eliminar"><i class="bi bi-trash"></i></button></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      </div>
+
+      <!-- =================================================== APROBADORES -->
+      <div class="mock-page d-none" data-page="aprobadores">
+      <div class="card-surface">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+          <h2 class="mb-0">Aprobadores</h2>
+          <button type="button" class="btn btn-primary">+ Nuevo grupo</button>
+        </div>
+        <p class="text-muted mb-3">Grupos de usuarios que deciden las facturas en revisión manual. Cualquier integrante del grupo puede aceptar o rechazar. <span class="tag-guess">supuesto</span></p>
+        <div class="table-responsive-lg">
+          <table class="table-ps">
+            <thead><tr><th>Grupo</th><th>Integrantes</th><th>Proveedores asignados</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+            <tbody>
+              <tr><td>Gerencia Finanzas</td><td>mgonzalez, projas</td><td>3</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activo</span></td><td class="col-actions"><button type="button" class="btn-ghost"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td>Jefatura Administración</td><td>areyes</td><td>12</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activo</span></td><td class="col-actions"><button type="button" class="btn-ghost"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td>Jefatura Comercio Exterior</td><td>lsoto</td><td>1</td><td class="text-nowrap"><span class="badge-status badge-status--success">Activo</span></td><td class="col-actions"><button type="button" class="btn-ghost"><i class="bi bi-pencil"></i></button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- =================================================== DRAWERS -->
+<div id="drawer-regla" class="drawer-overlay" data-drawer>
+  <aside class="drawer-panel">
+    <div class="drawer-header"><h3>Editar regla 7 · Plazo por vencer sin decisión</h3><button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button></div>
+    <form onsubmit="return false">
+      <div class="drawer-body">
+        <p class="text-muted">Actúa sobre las facturas que siguen en revisión manual o en aviso cuando se acerca el fin del plazo legal.</p>
+        <div class="drawer-grid">
+          <div class="mb-3"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="r-activa"><label class="form-check-label" for="r-activa">Activa</label></div></div>
+          <div class="mb-3"><label class="form-label">Actuar cuando falten (días)</label><input class="form-control" value="0"><div class="form-text">0 = el último día del plazo.</div></div>
+          <div class="mb-3"><label class="form-label">Acción</label><select class="form-select"><option>Rechazar</option><option>Aceptar</option></select></div>
+          <div class="mb-3"><label class="form-label">Motivo que se informa al operador</label><input class="form-control" value="Factura no aprobada dentro de plazo"></div>
+        </div>
+      </div>
+      <div class="drawer-footer"><button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+    </form>
+  </aside>
+</div>
+
+<div id="drawer-proveedor" class="drawer-overlay" data-drawer>
+  <aside class="drawer-panel drawer-panel--wide">
+    <div class="drawer-header"><h3>Editar proveedor con excepción</h3><button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button></div>
+    <form onsubmit="return false">
+      <div class="drawer-body">
+        <div class="drawer-grid">
+          <div class="mb-3"><label class="form-label">Proveedor (búsqueda en SAP por RUT o nombre)</label><input class="form-control" value="76.100.200-3 · Distribuidora Eléctrica Central S.A. · P76100200"></div>
+          <div class="mb-3">
+            <label class="form-label">Condición</label>
+            <div class="form-check"><input class="form-check-input" type="radio" name="cond" id="c1" checked><label class="form-check-label" for="c1"><strong>Gasto fijo mensual</strong> — no trabaja con OC: las reglas de OC no aplican y siempre va a revisión manual</label></div>
+            <div class="form-check"><input class="form-check-input" type="radio" name="cond" id="c2"><label class="form-check-label" for="c2"><strong>Siempre revisión manual</strong> — aunque traiga OC y cumpla las reglas</label></div>
+            <div class="form-check"><input class="form-check-input" type="radio" name="cond" id="c3"><label class="form-check-label" for="c3"><strong>Personalizada</strong> — ajustar regla por regla</label></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Ajuste por regla</label>
+            <div class="table-responsive-lg">
+              <table class="table-ps">
+                <thead><tr><th>Regla</th><th>Para este proveedor</th></tr></thead>
+                <tbody>
+                  <tr><td>1 · OC referenciada existe</td><td><select class="form-select"><option>No aplica</option><option>Como la empresa</option></select></td></tr>
+                  <tr><td>3 · Antigüedad de la OC</td><td><select class="form-select"><option>No aplica</option><option>Como la empresa (30 días)</option><option>Otro valor…</option></select></td></tr>
+                  <tr><td>4 · Monto vs saldo OC</td><td><select class="form-select"><option>No aplica</option><option>Como la empresa</option></select></td></tr>
+                  <tr><td>7 · Plazo por vencer</td><td><select class="form-select"><option>Como la empresa (rechazar)</option><option>Aceptar</option></select></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="mb-3"><label class="form-label">Aprobador</label><select class="form-select"><option>Jefatura Administración</option><option>Gerencia Finanzas</option></select></div>
+          <div class="mb-3"><label class="form-label">Suplente <span class="tag-guess">supuesto</span></label><select class="form-select"><option>Gerencia Finanzas</option></select></div>
+          <div class="mb-3"><label class="form-label">Vigente desde</label><input type="date" class="form-control" value="2026-11-01"></div>
+          <div class="mb-3"><label class="form-label">Hasta (opcional)</label><input type="date" class="form-control"></div>
+          <div class="mb-3"><label class="form-label">Nota</label><input class="form-control" value="Cuenta de luz casa matriz y tiendas"></div>
+          <div class="mb-3"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="p-activo"><label class="form-check-label" for="p-activo">Activo</label></div></div>
+        </div>
+      </div>
+      <div class="drawer-footer"><button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+    </form>
+  </aside>
+</div>
+
+<div id="drawer-rechazar" class="drawer-overlay" data-drawer>
+  <aside class="drawer-panel">
+    <div class="drawer-header"><h3>Rechazar factura exenta N° 812</h3><button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button></div>
+    <form onsubmit="return false">
+      <div class="drawer-body">
+        <div class="alert alert-warning">El rechazo se informa al SII a través del operador y no se puede revertir. El proveedor deberá emitir un documento nuevo.</div>
+        <div class="drawer-grid">
+          <div class="mb-3"><label class="form-label">Tipo de reclamo</label><select class="form-select"><option>Reclamo al contenido del documento</option><option>Falta parcial de mercaderías</option><option>Falta total de mercaderías</option></select></div>
+          <div class="mb-3"><label class="form-label">Motivo</label><textarea class="form-control" rows="3">Monto no corresponde al contrato vigente</textarea></div>
+        </div>
+      </div>
+      <div class="drawer-footer"><button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button><button type="submit" class="btn btn-primary">Rechazar</button></div>
+    </form>
+  </aside>
+</div>
+
+
+<script>
+(function () {
+  function go(page, title) {
+    document.querySelectorAll('.mock-page').forEach(function (p) { p.classList.toggle('d-none', p.dataset.page !== page); });
+    if (title) document.getElementById('mock-title').textContent = title;
+    document.querySelectorAll('.sidebar [data-goto]').forEach(function (a) {
+      a.classList.toggle('active', a.dataset.goto === page || (page.indexOf('detalle') === 0 && a.dataset.goto === 'bandeja'));
+    });
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll('[data-goto]').forEach(function (a) {
+    a.addEventListener('click', function (e) { e.preventDefault(); go(a.dataset.goto, a.dataset.title); });
+  });
+  document.querySelectorAll('.doc-tabs').forEach(function (tabs) {
+    var card = tabs.closest('.card-surface');
+    tabs.querySelectorAll('[data-tab-btn]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        tabs.querySelectorAll('[data-tab-btn]').forEach(function (x) { x.classList.toggle('active', x === b); });
+        card.querySelectorAll('[data-tab-panel]').forEach(function (p) { p.style.display = p.dataset.tabPanel === b.dataset.tabBtn ? '' : 'none'; });
+      });
+    });
+  });
+  function setDrawer(d, open) { d.classList.toggle('is-open', open); d.querySelector('.drawer-panel').classList.toggle('is-open', open); }
+  document.querySelectorAll('[data-drawer-open]').forEach(function (b) {
+    b.addEventListener('click', function (e) { e.preventDefault(); setDrawer(document.getElementById(b.dataset.drawerOpen), true); });
+  });
+  document.querySelectorAll('[data-drawer]').forEach(function (d) {
+    d.addEventListener('click', function (e) { if (e.target === d || e.target.closest('[data-drawer-close]')) setDrawer(d, false); });
+  });
+  document.querySelectorAll('a[href="#"]').forEach(function (a) { if (!a.dataset.goto) a.addEventListener('click', function (e) { e.preventDefault(); }); });
+})();
+</script>
+
+</body>
+</html>

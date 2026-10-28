@@ -84,7 +84,8 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
         await RescopeAsync(settings, today, ct);
         await _db.SaveChangesAsync(ct);
 
-        var (config, docsById, builder) = await PrepareAsync(settings, today, ct);
+        var (config, docsById, builder) = await PrepareAsync(settings, status, today, ct);
+        created += await ReconcileAsync(docsById.Values, settings, status, now, simulation, ct);
 
         var pending = await _db.InvoiceReviews
             .Where(r => r.CompanyId == CompanyId && r.DecidedBy == null
@@ -114,17 +115,19 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
         if (review is null) return null;
         await _settings.GetAsync(ct);
         var settings = await _db.Settings.AsNoTracking().SingleAsync(s => s.CompanyId == CompanyId, ct);
-        var (_, docsById, builder) = await PrepareAsync(settings, ChileToday(_clock.GetUtcNow()), ct);
+        var (_, docsById, builder) = await PrepareAsync(settings, await _inbox.GetStatusAsync(ct), ChileToday(_clock.GetUtcNow()), ct);
         var doc = docsById.TryGetValue(review.ReceivedId, out var d) ? d : await _inbox.GetAsync(review.ReceivedId, ct);
         return doc is null ? null : await builder.BuildAsync(doc, review.SiiReceivedOn, ct);
     }
 
     /// <summary>
     /// Configuración de reglas, documentos de la ventana (al menos 60 días, o antigüedad máxima de OC + plazo) y el
-    /// constructor de contexto con lo ya aceptado: por el operador, por plazo, o decidido aceptar en el portal.
+    /// constructor de contexto con lo ya aceptado: por el operador, por plazo, o decidido aceptar en el portal. Solo
+    /// cuentan para el saldo de una OC las facturas respondibles (33, 34, 43): notas de crédito y guías que referencian la
+    /// OC no la consumen.
     /// </summary>
     private async Task<(CompanyRuleConfiguration Config, Dictionary<long, DteReceivedDto> DocsById, ReviewContextBuilder Builder)>
-        PrepareAsync(FpSettings settings, DateOnly today, CancellationToken ct)
+        PrepareAsync(FpSettings settings, DteInboxStatus status, DateOnly today, CancellationToken ct)
     {
         var config = await _settings.GetEngineConfigurationAsync(ct);
         var maxDays = config.ByRule.TryGetValue("oc-antiguedad", out var age) ? (int)age.Param("max_days", 30) : 30;
@@ -134,7 +137,8 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
             .Where(r => r.CompanyId == CompanyId && r.DecidedAction == RuleActions.Accept
                 && (r.Status == ReviewStatuses.ToSend || r.Status == ReviewStatuses.Simulated || r.Status == ReviewStatuses.Accepted))
             .Select(r => r.ReceivedId).ToListAsync(ct)).ToHashSet();
-        var alreadyAccepted = window.Where(d => CountsAsAccepted(d, settings.LegalDeadlineDays, today) || acceptedIds.Contains(d.Id));
+        var alreadyAccepted = window.Where(d => status.RespondableTypes.Contains(d.DteType)
+            && (CountsAsAccepted(d, settings.LegalDeadlineDays, today) || acceptedIds.Contains(d.Id)));
         return (config, window.ToDictionary(d => d.Id), new ReviewContextBuilder(_sap, _profiles, alreadyAccepted));
     }
 
@@ -149,26 +153,54 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
             {
                 settings.InboxCursor = doc.UpdatedAt;
                 settings.InboxCursorId = doc.Id;
-                if (!status.RespondableTypes.Contains(doc.DteType)) continue;
-
-                var review = await _db.InvoiceReviews.FirstOrDefaultAsync(r => r.CompanyId == CompanyId && r.ReceivedId == doc.Id, ct)
-                    ?? _db.InvoiceReviews.Local.FirstOrDefault(r => r.CompanyId == CompanyId && r.ReceivedId == doc.Id);
-                if (review is null)
-                {
-                    review = NewReview(doc, settings, now);
-                    _db.InvoiceReviews.Add(review);
-                    created++;
-                }
-                else
-                {
-                    review.IssuerName = Truncate(doc.IssuerName, 100);
-                    review.TotalAmount = doc.TotalAmount;
-                }
-                await ApplyInboxResponseAsync(review, doc, settings, simulation, now, ct);
-                await ApplyNotRespondableAsync(review, doc, now, ct);
+                if (await ApplyDocumentAsync(doc, settings, status, now, simulation, ct)) created++;
             }
             if (page.Count < PageSize) return created;
         }
+    }
+
+    /// <summary>
+    /// Red de seguridad del cursor: la sincronización fija UpdatedAt al empezar y confirma al final, así que si otro
+    /// escritor movió el cursor entretanto, una fila nueva puede quedar detrás de él. Todo documento respondible de la
+    /// ventana sin revisión la recibe aquí, en cada ciclo.
+    /// </summary>
+    private async Task<int> ReconcileAsync(IEnumerable<DteReceivedDto> window, FpSettings settings, DteInboxStatus status,
+        DateTimeOffset now, bool simulation, CancellationToken ct)
+    {
+        var candidates = window.Where(d => status.RespondableTypes.Contains(d.DteType)).ToList();
+        var ids = candidates.Select(d => d.Id).ToList();
+        var known = (await _db.InvoiceReviews.Where(r => r.CompanyId == CompanyId && ids.Contains(r.ReceivedId))
+            .Select(r => r.ReceivedId).ToListAsync(ct)).ToHashSet();
+        var created = 0;
+        foreach (var doc in candidates.Where(d => !known.Contains(d.Id)))
+        {
+            if (await ApplyDocumentAsync(doc, settings, status, now, simulation, ct)) created++;
+        }
+        if (created > 0) await _db.SaveChangesAsync(ct);
+        return created;
+    }
+
+    /// <summary>Crea o actualiza la revisión de un documento de la bandeja. Devuelve true si la creó.</summary>
+    private async Task<bool> ApplyDocumentAsync(DteReceivedDto doc, FpSettings settings, DteInboxStatus status, DateTimeOffset now,
+        bool simulation, CancellationToken ct)
+    {
+        if (!status.RespondableTypes.Contains(doc.DteType)) return false;
+        var review = await _db.InvoiceReviews.FirstOrDefaultAsync(r => r.CompanyId == CompanyId && r.ReceivedId == doc.Id, ct)
+            ?? _db.InvoiceReviews.Local.FirstOrDefault(r => r.CompanyId == CompanyId && r.ReceivedId == doc.Id);
+        var created = review is null;
+        if (review is null)
+        {
+            review = NewReview(doc, settings, now);
+            _db.InvoiceReviews.Add(review);
+        }
+        else
+        {
+            review.IssuerName = Truncate(doc.IssuerName, 100);
+            review.TotalAmount = doc.TotalAmount;
+        }
+        await ApplyInboxResponseAsync(review, doc, settings, simulation, now, ct);
+        await ApplyNotRespondableAsync(review, doc, now, ct);
+        return created;
     }
 
     private FpInvoiceReview NewReview(DteReceivedDto doc, FpSettings settings, DateTimeOffset now)

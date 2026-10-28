@@ -261,6 +261,41 @@ public class InvoiceReviewServiceTests
         Assert.Equal("rule:oc-saldo", review.DecisionSource);
     }
 
+    /// <summary>
+    /// C1 (revisión final): la sincronización fija UpdatedAt al empezar y confirma al final; si entretanto otro escritor
+    /// movió el cursor, la fila llega con UpdatedAt anterior al cursor. Igual debe tener revisión.
+    /// </summary>
+    [Fact]
+    public async Task Evaluate_FilaConfirmadaConUpdatedAtAnteriorAlCursor_IgualTieneRevision()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Sap.AddPurchaseOrder();
+        var first = env.Invoice(folio: 1, total: 1_000_000);
+        await env.EvaluateAsync();
+
+        var late = env.Inbox.Add(folio: 2, total: 1_000_000, siiReceivedAt: ReviewTestEnv.ReceivedAt(24, 13), purchaseOrders: new[] { 4512 },
+            updatedAt: first.UpdatedAt.AddMinutes(-10));
+        await env.EvaluateAsync();
+
+        var review = await ReviewAsync(env, late.Id);
+        Assert.Equal(ReviewStatuses.Simulated, review.Status);
+    }
+
+    /// <summary>C2 (revisión final): notas de crédito y guías que referencian la OC no consumen su saldo.</summary>
+    [Fact]
+    public async Task Evaluate_NotaDeCreditoYGuiaConLaMismaOc_NoConsumenSaldo()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Sap.AddPurchaseOrder(total: 2_200_000);
+        env.Invoice(folio: 7, total: 2_200_000, dteType: 61, hourUtc: 10, notRespondableReason: "El SII no admite aceptar ni reclamar este documento.");
+        env.Invoice(folio: 8, total: 2_200_000, dteType: 52, day: 10);
+        var doc = env.Invoice(folio: 9, total: 2_200_000, hourUtc: 12);
+
+        await env.EvaluateAsync();
+
+        Assert.Equal(RuleActions.Accept, (await ReviewAsync(env, doc.Id)).DecidedAction);
+    }
+
     [Fact]
     public async Task Evaluate_Cursor_NoReprocesaLoYaLeido()
     {

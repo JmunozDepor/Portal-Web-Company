@@ -314,6 +314,34 @@ public sealed class ExpenseReportService : IExpenseReportService
             .OrderBy(r => r.SubmittedAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<ResolvedReportForApprover>> ListResolvedByApproverAsync(Guid companyId, Guid approverUserId, CancellationToken ct = default)
+    {
+        var myActions = await _db.ExpenseReportActions
+            .Where(a => a.UserId == approverUserId)
+            .ToListAsync(ct);
+
+        if (myActions.Count == 0)
+            return Array.Empty<ResolvedReportForApprover>();
+
+        var reportIds = myActions.Select(a => a.ExpenseReportId).Distinct().ToList();
+        var reportsById = await _db.ExpenseReports
+            .Include(r => r.Lines)
+            .Where(r => r.CompanyId == companyId && reportIds.Contains(r.Id))
+            .ToDictionaryAsync(r => r.Id, ct);
+
+        // Agrupado por informe -- si el mismo aprobador actuó en más de un nivel del
+        // mismo informe (caso raro pero posible), se muestra solo su decisión más
+        // reciente. No filtra por Status: un informe donde ya aprobaste el nivel 1
+        // sigue apareciendo acá aunque ahora esté Pending en el nivel 2 -- es
+        // justamente el caso reportado ("no veo el que ya aprobé").
+        return myActions
+            .GroupBy(a => a.ExpenseReportId)
+            .Where(g => reportsById.ContainsKey(g.Key))
+            .Select(g => new ResolvedReportForApprover(reportsById[g.Key], g.OrderByDescending(a => a.OccurredAt).First()))
+            .OrderByDescending(x => x.MyLastAction.OccurredAt)
+            .ToList();
+    }
+
     private async Task<ExpenseReport> RequirePendingAndApproverAsync(long reportId, Guid companyId, Guid approverUserId, CancellationToken ct)
     {
         var report = await _db.ExpenseReports

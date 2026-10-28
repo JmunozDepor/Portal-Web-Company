@@ -70,4 +70,10 @@ public interface IExpenseReportService
 
     /// <summary>Bandeja: informes Pending cuyo CurrentLevel corresponde al aprobador indicado.</summary>
     Task<IReadOnlyList<ExpenseReport>> ListPendingForApproverAsync(Guid companyId, Guid approverUserId, CancellationToken ct = default);
+
+    /// <summary>Historial: informes sobre los que el aprobador YA tomó una decisión alguna vez
+    /// (aprobó/rechazó algún nivel) -- incluye los que siguen Pending en un nivel siguiente, no
+    /// solo los ya cerrados. Pedido explícito: la bandeja de "Aprobaciones pendientes" solo
+    /// mostraba lo pendiente, sin forma de repasar lo ya resuelto.</summary>
+    Task<IReadOnlyList<ResolvedReportForApprover>> ListResolvedByApproverAsync(Guid companyId, Guid approverUserId, CancellationToken ct = default);
 }

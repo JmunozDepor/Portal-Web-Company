@@ -1,5 +1,6 @@
 @page "/rendiciones/aprobaciones"
 @model Modulo.Rendiciones.Pages.Aprobaciones.IndexModel
+@using Modulo.Rendiciones.Pages
 @{
     ViewData["Title"] = "Aprobaciones pendientes";
 }
@@ -22,6 +23,14 @@
     </div>
 </div>
 
+@* Buscador por nombre/usuario de quien envió el informe -- pedido explícito para
+   cuando hay varios usuarios en la organización. Filtra ambas listas por separado
+   (cada una con su propio data-nombre en la fila, ver Model.SubmitterSearchText). *@
+<div class="rnd-search mb-2" style="max-width:320px;">
+    <i class="bi bi-search"></i>
+    <input type="search" id="rndBuscarAprobacion" placeholder="Buscar por nombre o usuario…" autocomplete="off" />
+</div>
+
 @if (Model.Pending.Count == 0)
 {
     <div class="rnd-card-empty">
@@ -31,10 +40,10 @@
 }
 else
 {
-    <div class="rnd-card-list">
+    <div class="rnd-card-list" id="rndListaPendientes">
         @foreach (var r in Model.Pending)
         {
-            <a href="~/rendiciones/informes/@r.Id" class="rnd-card-row">
+            <a href="~/rendiciones/informes/@r.Id" class="rnd-card-row" data-nombre="@Model.SubmitterSearchText(r)">
                 <div class="rnd-card-icon"><i class="bi bi-folder2-open"></i></div>
                 <div class="rnd-card-main">
                     <div class="rnd-card-title">
@@ -43,7 +52,9 @@ else
                         — @(r.CostCenterName ?? r.CostCenterCode ?? "sin centro de costo")
                     </div>
                     <div class="rnd-card-sub">
-                        @(!string.IsNullOrWhiteSpace(r.Purpose) ? r.Purpose + " · " : "")Enviado @(r.SubmittedAt?.ToString("dd-MM-yyyy") ?? "—") · Nivel @r.CurrentLevel · @r.Lines.Count gasto(s)
+                        Enviado por <strong>@Model.SubmitterDisplayName(r)</strong>
+                        @(!string.IsNullOrWhiteSpace(r.Purpose) ? " · " + r.Purpose : "")
+                        · @(r.SubmittedAt?.ToString("dd-MM-yyyy") ?? "—") · Nivel @r.CurrentLevel · @r.Lines.Count gasto(s)
                     </div>
                 </div>
                 <div class="rnd-card-meta">
@@ -52,4 +63,73 @@ else
             </a>
         }
     </div>
+    <p class="rnd-table-empty-filter" id="rndSinResultadosPendientes" hidden>Ningún informe pendiente coincide con la búsqueda.</p>
+}
+
+<h3 class="h6 text-muted mt-4">Resueltas por mí</h3>
+@if (Model.Resolved.Count == 0)
+{
+    <div class="rnd-card-empty">
+        <i class="bi bi-clock-history"></i>
+        Todavía no aprobaste ni rechazaste ningún informe.
+    </div>
+}
+else
+{
+    <div class="rnd-card-list" id="rndListaResueltas">
+        @foreach (var item in Model.Resolved)
+        {
+            var r = item.Report;
+            var decisionBadge = item.MyLastAction.Decision == "Approved" ? "rnd-badge--success" : "rnd-badge--danger";
+            var decisionTexto = item.MyLastAction.Decision == "Approved" ? "Aprobaste" : "Rechazaste";
+            <a href="~/rendiciones/informes/@r.Id" class="rnd-card-row" data-nombre="@Model.SubmitterSearchText(r)">
+                <div class="rnd-card-icon"><i class="bi bi-folder2-open"></i></div>
+                <div class="rnd-card-main">
+                    <div class="rnd-card-title">
+                        Informe #@r.Id
+                        @if (!string.IsNullOrWhiteSpace(r.InternalNumber)) { <text>· N.º @r.InternalNumber</text> }
+                        — @(r.CostCenterName ?? r.CostCenterCode ?? "sin centro de costo")
+                    </div>
+                    <div class="rnd-card-sub">
+                        Enviado por <strong>@Model.SubmitterDisplayName(r)</strong>
+                        · @decisionTexto el @item.MyLastAction.OccurredAt.ToString("dd-MM-yyyy")
+                        (nivel @item.MyLastAction.Level)
+                    </div>
+                </div>
+                <div class="rnd-card-meta">
+                    <span class="rnd-badge @decisionBadge">@decisionTexto</span>
+                    <span class="rnd-badge @RendicionesUi.BadgeClass(r.Status)">@r.Status</span>
+                    <span class="rnd-card-amount"><rnd-amount value="@r.Lines.Sum(d => d.Amount)" /></span>
+                </div>
+            </a>
+        }
+    </div>
+    <p class="rnd-table-empty-filter" id="rndSinResultadosResueltas" hidden>Ningún informe resuelto coincide con la búsqueda.</p>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            var buscador = document.getElementById('rndBuscarAprobacion');
+            if (!buscador) return;
+
+            var grupos = [
+                { filas: document.querySelectorAll('#rndListaPendientes .rnd-card-row'), vacio: document.getElementById('rndSinResultadosPendientes') },
+                { filas: document.querySelectorAll('#rndListaResueltas .rnd-card-row'), vacio: document.getElementById('rndSinResultadosResueltas') },
+            ];
+
+            buscador.addEventListener('input', function () {
+                var texto = buscador.value.trim().toLowerCase();
+                grupos.forEach(function (grupo) {
+                    var visibles = 0;
+                    grupo.filas.forEach(function (fila) {
+                        var coincide = !texto || (fila.dataset.nombre || '').includes(texto);
+                        fila.hidden = !coincide;
+                        if (coincide) visibles++;
+                    });
+                    if (grupo.vacio) grupo.vacio.hidden = grupo.filas.length === 0 || visibles !== 0;
+                });
+            });
+        })();
+    </script>
 }

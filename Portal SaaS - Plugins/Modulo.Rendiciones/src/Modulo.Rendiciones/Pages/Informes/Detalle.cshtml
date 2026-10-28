@@ -88,6 +88,7 @@
         <a asp-page="./Index" class="btn-module-action">&larr; Volver</a>
         <span class="admin-muted">@Model.Report.Status @(Model.Report.Round > 1 ? $"· ronda {Model.Report.Round}" : "")</span>
     </div>
+    <p class="admin-muted" style="margin-top:-4px;"><i class="bi bi-person"></i> Enviado por <strong>@Model.UserDisplayName(Model.Report.UserId)</strong></p>
     @if (!string.IsNullOrWhiteSpace(Model.Report.Purpose))
     {
         <p class="admin-muted" style="margin-top:-4px;"><i class="bi bi-tag"></i> <strong>Comentario:</strong> @Model.Report.Purpose</p>
@@ -298,13 +299,14 @@
         <h3>Historial de aprobación</h3>
         <div class="table-responsive-lg">
             <table class="admin-table">
-                <thead><tr><th>Fecha</th><th>Nivel</th><th>Decisión</th><th>Comentario</th></tr></thead>
+                <thead><tr><th>Fecha</th><th>Nivel</th><th>Quién</th><th>Decisión</th><th>Comentario</th></tr></thead>
                 <tbody>
                     @foreach (var a in Model.History)
                     {
                         <tr>
                             <td>@a.OccurredAt.ToString("dd-MM-yyyy HH:mm")</td>
                             <td>@a.Level</td>
+                            <td>@Model.UserDisplayName(a.UserId)</td>
                             <td>@a.Decision</td>
                             <td>@a.Comment</td>
                         </tr>

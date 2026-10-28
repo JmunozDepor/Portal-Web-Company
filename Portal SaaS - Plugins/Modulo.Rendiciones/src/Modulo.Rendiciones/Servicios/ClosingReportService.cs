@@ -69,7 +69,7 @@ public sealed class ClosingReportService : IClosingReportService
         // la organización actual (ICurrentUserContext.OrganizationId), se resuelve una
         // sola vez para todo el período en vez de consultar por cada rendición.
         var users = await _users.ListAsync(ct);
-        var nameByUserId = users.DistinctBy(u => u.Id).ToDictionary(u => u.Id, u => u.Username);
+        var nameByUserId = users.DistinctBy(u => u.Id).ToDictionary(u => u.Id, u => u.FullName ?? u.Username);
 
         var lines = new List<ClosingReportLine>();
         foreach (var report in reports)

@@ -20,6 +20,12 @@ public interface IInvoiceReviewService
 
     /// <summary>Igual, pero evalúa solo una revisión (ej. después de asociar una OC).</summary>
     Task EvaluateOneAsync(long reviewId, CancellationToken ct);
+
+    /// <summary>
+    /// Contexto de reglas de una revisión con los datos de hoy (OC, saldo, proveedor), sin cambiar nada. Lo usa la
+    /// advertencia de saldo al aceptar a mano.
+    /// </summary>
+    Task<InvoiceEvaluationContext?> BuildContextAsync(long reviewId, CancellationToken ct);
 }
 
 /// <summary>
@@ -78,11 +84,7 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
         await RescopeAsync(settings, today, ct);
         await _db.SaveChangesAsync(ct);
 
-        var config = await _settings.GetEngineConfigurationAsync(ct);
-        var maxDays = config.ByRule.TryGetValue("oc-antiguedad", out var age) ? (int)age.Param("max_days", 30) : 30;
-        var windowDays = Math.Max(60, maxDays + settings.LegalDeadlineDays);
-        var window = await _inbox.ListAsync(new DteReceivedFilter(today.AddDays(-windowDays), null, null, 5000), ct);
-        var docsById = window.ToDictionary(d => d.Id);
+        var (config, docsById, builder) = await PrepareAsync(settings, today, ct);
 
         var pending = await _db.InvoiceReviews
             .Where(r => r.CompanyId == CompanyId && r.DecidedBy == null
@@ -90,13 +92,6 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
             .Where(r => onlyReviewId == null || r.Id == onlyReviewId)
             .OrderBy(r => r.SiiReceivedOn).ThenBy(r => r.ReceivedId)
             .ToListAsync(ct);
-
-        var acceptedIds = await _db.InvoiceReviews
-            .Where(r => r.CompanyId == CompanyId && r.DecidedAction == RuleActions.Accept
-                && (r.Status == ReviewStatuses.ToSend || r.Status == ReviewStatuses.Simulated || r.Status == ReviewStatuses.Accepted))
-            .Select(r => r.ReceivedId).ToListAsync(ct);
-        var alreadyAccepted = window.Where(d => CountsAsAccepted(d, settings.LegalDeadlineDays, today) || acceptedIds.Contains(d.Id));
-        var builder = new ReviewContextBuilder(_sap, _profiles, alreadyAccepted);
 
         var changed = 0;
         foreach (var review in pending)
@@ -111,6 +106,36 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
 
         await _db.SaveChangesAsync(ct);
         return new ReviewCycleResult(created, pending.Count, changed);
+    }
+
+    public async Task<InvoiceEvaluationContext?> BuildContextAsync(long reviewId, CancellationToken ct)
+    {
+        var review = await _db.InvoiceReviews.AsNoTracking().FirstOrDefaultAsync(r => r.CompanyId == CompanyId && r.Id == reviewId, ct);
+        if (review is null) return null;
+        await _settings.GetAsync(ct);
+        var settings = await _db.Settings.AsNoTracking().SingleAsync(s => s.CompanyId == CompanyId, ct);
+        var (_, docsById, builder) = await PrepareAsync(settings, ChileToday(_clock.GetUtcNow()), ct);
+        var doc = docsById.TryGetValue(review.ReceivedId, out var d) ? d : await _inbox.GetAsync(review.ReceivedId, ct);
+        return doc is null ? null : await builder.BuildAsync(doc, review.SiiReceivedOn, ct);
+    }
+
+    /// <summary>
+    /// Configuración de reglas, documentos de la ventana (al menos 60 días, o antigüedad máxima de OC + plazo) y el
+    /// constructor de contexto con lo ya aceptado: por el operador, por plazo, o decidido aceptar en el portal.
+    /// </summary>
+    private async Task<(CompanyRuleConfiguration Config, Dictionary<long, DteReceivedDto> DocsById, ReviewContextBuilder Builder)>
+        PrepareAsync(FpSettings settings, DateOnly today, CancellationToken ct)
+    {
+        var config = await _settings.GetEngineConfigurationAsync(ct);
+        var maxDays = config.ByRule.TryGetValue("oc-antiguedad", out var age) ? (int)age.Param("max_days", 30) : 30;
+        var windowDays = Math.Max(60, maxDays + settings.LegalDeadlineDays);
+        var window = await _inbox.ListAsync(new DteReceivedFilter(today.AddDays(-windowDays), null, null, 5000), ct);
+        var acceptedIds = (await _db.InvoiceReviews
+            .Where(r => r.CompanyId == CompanyId && r.DecidedAction == RuleActions.Accept
+                && (r.Status == ReviewStatuses.ToSend || r.Status == ReviewStatuses.Simulated || r.Status == ReviewStatuses.Accepted))
+            .Select(r => r.ReceivedId).ToListAsync(ct)).ToHashSet();
+        var alreadyAccepted = window.Where(d => CountsAsAccepted(d, settings.LegalDeadlineDays, today) || acceptedIds.Contains(d.Id));
+        return (config, window.ToDictionary(d => d.Id), new ReviewContextBuilder(_sap, _profiles, alreadyAccepted));
     }
 
     /// <summary>Lee la bandeja desde el cursor: crea revisiones nuevas y registra respuestas confirmadas o externas.</summary>
@@ -215,7 +240,7 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
                 review.DecidedAction = decision.Action;
                 review.DecisionSource = decision.WinningRuleCode is { } code ? $"rule:{code}" : "rule:final";
                 review.DecidedAt = now;
-                review.Reason = Truncate(decision.Message ?? (decision.Action == RuleActions.Accept ? "Cumple todas las reglas." : null), 500);
+                review.Reason = Truncate(decision.Message ?? (decision.Action == RuleActions.Accept ? "Cumple todas las reglas." : "Rechazada por reglas."), 500);
                 review.DecisionNumber++;
                 break;
             case RuleActions.WarnThenReject:

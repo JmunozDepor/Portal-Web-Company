@@ -152,6 +152,7 @@ builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteReceptionPr
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteSettingsService>();
 builder.Services.AddHttpClient<PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele.FaceleSoapClient>(c => c.Timeout = TimeSpan.FromSeconds(60));
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.IDteProvider, PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele.FaceleDteProvider>();
+builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.IDteReceptionProvider, PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele.FaceleReceptionProvider>();
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteEmissionService>();
 builder.Services.AddScoped<IDteEmissionService>(sp => sp.GetRequiredService<PortalSaas.Core.DocumentosElectronicos.DteEmissionService>());
 builder.Services.AddHostedService<PortalSaas.Core.DocumentosElectronicos.DteReconciliationHostedService>();

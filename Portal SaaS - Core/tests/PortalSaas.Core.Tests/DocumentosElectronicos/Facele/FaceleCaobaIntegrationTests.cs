@@ -34,4 +34,34 @@ public class FaceleCaobaIntegrationTests
         var pdf = await provider.PreviewAsync(ctx, provider.BuildXml(doc, issuer), 52, CancellationToken.None);
         Assert.StartsWith("%PDF", Encoding.ASCII.GetString(pdf, 0, 4));
     }
+
+    /// <summary>
+    /// Recepción (solo lectura): además de FACELE_USER / FACELE_PASS exige FACELE_USER_MAIL y FACELE_RUT_RECEPTOR.
+    /// Nunca responde documentos: aprobarDTERecibidos no se prueba aquí.
+    /// </summary>
+    private static DteReceptionContext? ReceptionCtx()
+    {
+        var user = Environment.GetEnvironmentVariable("FACELE_USER");
+        var pass = Environment.GetEnvironmentVariable("FACELE_PASS");
+        var mail = Environment.GetEnvironmentVariable("FACELE_USER_MAIL");
+        var rut = Environment.GetEnvironmentVariable("FACELE_RUT_RECEPTOR");
+        if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass) || string.IsNullOrEmpty(mail) || string.IsNullOrEmpty(rut))
+            return null;
+        return new DteReceptionContext("https://caoba.docele.cl/cl-dol", user, pass, rut, mail, "certification");
+    }
+
+    [Fact]
+    public async Task Caoba_ConsultarRecepcion_Y_Referencias()
+    {
+        if (ReceptionCtx() is not { } ctx) return;
+        var provider = new FaceleReceptionProvider(new FaceleSoapClient(new HttpClient()));
+
+        await provider.TestAsync(ctx, CancellationToken.None);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var received = await provider.ListReceivedAsync(ctx, today.AddDays(-30), today, CancellationToken.None);
+
+        Assert.All(received, r => Assert.False(string.IsNullOrEmpty(r.IssuerTaxId)));
+        if (received.FirstOrDefault() is { } first)
+            await provider.GetReferencesAsync(ctx, first.IssuerTaxId, first.DteType, first.Folio, CancellationToken.None);
+    }
 }

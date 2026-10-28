@@ -16,7 +16,6 @@ namespace PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele;
 public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
 {
     private const string Operation = "RECEPCION";
-    private static readonly TimeZoneInfo Chile = ResolveChile();
 
     private static readonly Dictionary<string, string> Actions = new()
     {
@@ -26,6 +25,8 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
         [DteResponseActions.ClaimTotalGoods] = "Reclamo_Falta_Total_Mercaderias",
         [DteResponseActions.GoodsReceipt] = "Otorga_Recibo_Mercaderias",
     };
+
+    private static readonly Dictionary<string, string> ReverseActions = Actions.ToDictionary(kv => kv.Value, kv => kv.Key);
 
     private readonly FaceleSoapClient _soap;
 
@@ -128,7 +129,8 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
             ClaimStatus: Child(x, "estadoLey20956"),
             IsAssigned: Child(x, "cedido") == "true",
             IsVoided: Child(x, "anulado") == "true",
-            Url: Child(x, "url"));
+            Url: Child(x, "url"),
+            RespondedAction: Child(x, "estadoLey20956") is { } claim && ReverseActions.TryGetValue(claim, out var neutral) ? neutral : null);
     }
 
     /// <summary>
@@ -142,18 +144,7 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
         if (hasZone)
             return DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal).ToUniversalTime();
         var local = DateTime.SpecifyKind(DateTime.Parse(value, CultureInfo.InvariantCulture), DateTimeKind.Unspecified);
-        return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local, Chile), TimeSpan.Zero);
-    }
-
-    private static TimeZoneInfo ResolveChile()
-    {
-        foreach (var id in new[] { "America/Santiago", "Pacific SA Standard Time" })
-        {
-            try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
-            catch (TimeZoneNotFoundException) { }
-            catch (InvalidTimeZoneException) { }
-        }
-        return TimeZoneInfo.Utc;
+        return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local, ChileTime.Zone), TimeSpan.Zero);
     }
 
     private static DateOnly? ParseDate(string? value) =>

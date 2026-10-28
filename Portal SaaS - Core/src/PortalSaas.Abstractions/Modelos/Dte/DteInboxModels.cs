@@ -25,3 +25,27 @@ public static class DteResponseActions
 
 /// <summary>Un documento referenciado por un DTE recibido (ej. Type "801" = orden de compra, Folio = DocNum en SAP).</summary>
 public sealed record DteReceivedReference(string Type, string Folio, DateOnly? Date, int? Code, string? Reason);
+
+/// <summary>Estado de la respuesta de un documento recibido en la bandeja de plataforma.</summary>
+public static class DteResponseStatuses
+{
+    public const string None = "none";
+    /// <summary>Enviada al proveedor sin confirmación todavía (o el proveedor dijo "ya respondida").</summary>
+    public const string Pending = "pending";
+    public const string Sent = "sent";
+    public const string Failed = "failed";
+    /// <summary>Respondida por otro canal (ej. el portal del proveedor).</summary>
+    public const string External = "external";
+}
+
+/// <summary>Origen de una OC asociada a un recibido.</summary>
+public static class DtePurchaseOrderRefSources
+{
+    /// <summary>Referencia 801 informada en el propio DTE.</summary>
+    public const string Dte = "dte";
+    /// <summary>Asociada a mano en el portal.</summary>
+    public const string Manual = "manual";
+}
+
+/// <summary>Una OC (DocNum de SAP) asociada a un documento recibido.</summary>
+public sealed record DtePurchaseOrderRef(int DocNum, string Source, Guid? UserId, DateTimeOffset At);

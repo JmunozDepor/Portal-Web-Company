@@ -66,7 +66,9 @@ public class FaceleReceptionProviderTests
         Assert.Equal("SII_Documento_OK", r.SiiStatus);
         Assert.Equal("https://caoba.docele.cl/pdf/x1", r.Url);
 
+        Assert.Null(r.RespondedAction); // Por_Aceptar: sin respuesta todavía
         var second = list[1];
+        Assert.Equal(DteResponseActions.AcceptContent, second.RespondedAction);
         Assert.True(second.IsAssigned);
         Assert.Equal(4100000, second.Exempt);
         Assert.Contains("\"27\"", second.OtherTaxesJson);

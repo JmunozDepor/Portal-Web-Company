@@ -38,6 +38,28 @@ public class DteReceptionSyncServiceTests
             "Por_Aprobar", claimStatus, false, false, null, respondedAction);
 
     [Fact]
+    public async Task Sync_GuardaFormaDePagoVencimientoYEnlace_YActualizaSiCambian()
+    {
+        var env = await BuildAsync();
+        var (sync, db, provider) = (env.Sync, env.Db, env.Provider);
+        provider.Received.Add(Record() with { PaymentForm = "CREDITO", DueDate = new DateOnly(2026, 11, 22), Url = "https://alerce.docele.cl/pdf/1" });
+
+        await sync.SyncCompanyAsync(CompanyId, CancellationToken.None);
+
+        var row = await db.DteReceived.SingleAsync();
+        Assert.Equal("CREDITO", row.PaymentForm);
+        Assert.Equal(new DateOnly(2026, 11, 22), row.DueDate);
+        Assert.Equal("https://alerce.docele.cl/pdf/1", row.ProviderUrl);
+
+        provider.Received[0] = provider.Received[0] with { PaymentForm = "CONTADO", DueDate = null };
+        var second = await sync.SyncCompanyAsync(CompanyId, CancellationToken.None);
+
+        Assert.Equal(1, second.Updated);
+        Assert.Equal("CONTADO", row.PaymentForm);
+        Assert.Null(row.DueDate);
+    }
+
+    [Fact]
     public async Task Sync_PrimeraVez_UsaDiasIniciales_YMarcaCargaInicial()
     {
         var env = await BuildAsync();

@@ -104,9 +104,20 @@ public sealed class DteInboxService : IDteInboxService
         var row = await Docs.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (row is null) return null;
         var resolved = await _settings.ResolveReceptionAsync(CompanyId);
-        if (resolved is not { } r || !r.Provider.Capabilities.SupportsDocumentDownload) return null;
-        return await r.Provider.GetPdfAsync(r.Ctx, row.IssuerTaxId, row.DteType, row.Folio, row.ProviderUrl, ct);
+        if (resolved is not { } r || (!r.Provider.Capabilities.SupportsDocumentDownload && !IsLink(row.ProviderUrl))) return null;
+        try
+        {
+            return await r.Provider.GetPdfAsync(r.Ctx, row.IssuerTaxId, row.DteType, row.Folio, row.ProviderUrl, ct);
+        }
+        catch (DteProviderUnavailableException)
+        {
+            // El módulo no conoce las excepciones de la plataforma: sin PDF, la pantalla lo informa.
+            return null;
+        }
     }
+
+    private static bool IsLink(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var u) && (u.Scheme == Uri.UriSchemeHttps || u.Scheme == Uri.UriSchemeHttp);
 
     public async Task<DteRespondResult> RespondAsync(DteRespondRequest request, CancellationToken ct = default)
     {
@@ -242,7 +253,8 @@ public sealed class DteInboxService : IDteInboxService
         Folio = x.Folio, IssueDate = x.IssueDate, SiiReceivedAt = x.SiiReceivedAt, NetAmount = x.NetAmount,
         ExemptAmount = x.ExemptAmount, VatAmount = x.VatAmount, TotalAmount = x.TotalAmount, SiiStatus = x.SiiStatus,
         CommercialStatus = x.CommercialStatus, ClaimStatus = x.ClaimStatus, IsAssigned = x.IsAssigned, IsVoided = x.IsVoided,
-        NotRespondableReason = x.NotRespondableReason, HasXml = !string.IsNullOrEmpty(x.Xml),
+        NotRespondableReason = x.NotRespondableReason, HasXml = !string.IsNullOrEmpty(x.Xml), HasPdf = IsLink(x.ProviderUrl),
+        PaymentForm = x.PaymentForm, DueDate = x.DueDate,
         References = DteReceivedJson.References(x.ReferencesJson),
         PurchaseOrderRefs = DteReceivedJson.PurchaseOrderRefs(x.PurchaseOrderRefsJson),
         ResponseStatus = x.ResponseStatus, ResponseAction = x.ResponseAction, ResponseReason = x.ResponseReason,

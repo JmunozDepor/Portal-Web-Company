@@ -10,9 +10,11 @@ namespace PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele;
 /// Recepción de documentos de FACELE (servicio DTEService; misma base que la emisión, ej.
 /// https://caoba.docele.cl/cl-dol-auth): consultar (operacion=RECEPCION), consultarReferencia y aprobarDTERecibidos.
 /// Las respuestas traen &lt;respuesta&gt;&lt;estado/&gt;&lt;descripcion/&gt;&lt;/respuesta&gt; con estado = 1 →
-/// "Proceso OK". Verificado en caoba (2026-10-28): offset es por registro; los registros no traen estadoSII, url ni
+/// "Proceso OK". Verificado en caoba (2026-10-28): offset es por registro; los registros no traen estadoSII ni
 /// anulado; estadoLey20956 = Documento_Pagado_Al_Contado (facturas al contado) y No_Aplica no admiten respuesta.
-/// XML/PDF del recibido y observaciones quedan sin capacidad (spec Facturas de Proveedor §16).
+/// Con url=true cada registro trae el enlace al documento; caoba (copias del registro del SII) responde el texto
+/// "Documento sin Recepcion Electronica", que se descarta: solo se guarda un enlace http(s). El PDF se baja por ese
+/// enlace. XML del recibido y observaciones quedan sin capacidad (spec Facturas de Proveedor §16).
 /// </summary>
 public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
 {
@@ -56,7 +58,7 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
             var r = await CallAsync(ctx, "consultar", ct,
                 E("rutAbonado", ctx.ReceiverTaxId), E("userMail", ctx.UserMail),
                 E("fechaEmision", Date(from)), E("fechaEmisionHasta", Date(to)),
-                E("operacion", Operation), E("offset", Int(offset)), E("limit", Int(PageSize)));
+                E("operacion", Operation), E("offset", Int(offset)), E("url", "true"), E("limit", Int(PageSize)));
             EnsureOk(r, "consultar los documentos recibidos");
             var page = r.Elements().Where(e => e.Name.LocalName == "registros").Select(ToRecord).ToList();
             result.AddRange(page);
@@ -84,8 +86,22 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
     public Task<string?> GetXmlAsync(DteReceptionContext ctx, DteReceivedRecord record, CancellationToken ct) =>
         Task.FromResult<string?>(null);
 
-    public Task<byte[]?> GetPdfAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string? url, CancellationToken ct) =>
-        Task.FromResult<byte[]?>(null);
+    /// <summary>
+    /// Baja el PDF por el enlace del registro. Las credenciales solo viajan si el enlace es del mismo servidor que la URL
+    /// base configurada.
+    /// </summary>
+    public async Task<byte[]?> GetPdfAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string? url, CancellationToken ct)
+    {
+        if (DocumentUrl(url) is not { } link) return null;
+        var sameServer = Uri.TryCreate(ctx.BaseUrl, UriKind.Absolute, out var configured)
+                         && string.Equals(configured.Host, link.Host, StringComparison.OrdinalIgnoreCase);
+        return await _soap.DownloadPdfAsync(link, sameServer ? ctx.Username : null, sameServer ? ctx.Password : null, ct);
+    }
+
+    /// <summary>El enlace al documento si es una URL http(s) absoluta; null si es texto (ej. "Documento sin Recepcion Electronica").</summary>
+    internal static Uri? DocumentUrl(string? value) =>
+        Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var url) && (url.Scheme == Uri.UriSchemeHttps || url.Scheme == Uri.UriSchemeHttp)
+            ? url : null;
 
     public async Task<DteRespondProviderResult> RespondAsync(
         DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string action, CancellationToken ct)
@@ -138,9 +154,11 @@ public sealed partial class FaceleReceptionProvider : IDteReceptionProvider
             ClaimStatus: claim,
             IsAssigned: Child(x, "cedido") == "true",
             IsVoided: Child(x, "anulado") == "true",
-            Url: Child(x, "url"),
+            Url: Child(x, "url") is { } url && DocumentUrl(url) is not null ? url : null,
             RespondedAction: claim is not null && ReverseActions.TryGetValue(claim, out var neutral) ? neutral : null,
-            NotRespondableReason: claim is not null && NotRespondable.TryGetValue(claim, out var reason) ? reason : null);
+            NotRespondableReason: claim is not null && NotRespondable.TryGetValue(claim, out var reason) ? reason : null,
+            PaymentForm: Child(x, "formaPago"),
+            DueDate: ParseDate(Child(x, "fechaVencimiento")));
     }
 
     /// <summary>

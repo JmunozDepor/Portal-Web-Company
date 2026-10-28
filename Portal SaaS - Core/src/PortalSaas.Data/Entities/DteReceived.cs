@@ -41,6 +41,10 @@ public sealed class DteReceived
     public string? ProviderUrl { get; set; }
     /// <summary>Por qué el SII no admite aceptar ni reclamar el documento (ej. pagado al contado); null si se puede responder.</summary>
     public string? NotRespondableReason { get; set; }
+    /// <summary>Forma de pago en el texto del proveedor (FACELE: CONTADO, CREDITO, SIN_COSTO).</summary>
+    public string? PaymentForm { get; set; }
+    /// <summary>Fecha de vencimiento informada en el documento.</summary>
+    public DateOnly? DueDate { get; set; }
 
     /// <summary>Lista JSON de DteReceivedReference.</summary>
     public string ReferencesJson { get; set; } = "[]";

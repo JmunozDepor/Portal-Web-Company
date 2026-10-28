@@ -65,6 +65,8 @@ public class FaceleReceptionProviderTests
         Assert.Equal("Por_Aceptar", r.ClaimStatus);
         Assert.Equal("SII_Documento_OK", r.SiiStatus);
         Assert.Equal("https://caoba.docele.cl/pdf/x1", r.Url);
+        Assert.Equal("CREDITO", r.PaymentForm);
+        Assert.Equal(new DateOnly(2026, 11, 22), r.DueDate);
 
         Assert.Null(r.RespondedAction); // Por_Aceptar: sin respuesta todavía
         var second = list[1];
@@ -73,6 +75,8 @@ public class FaceleReceptionProviderTests
         Assert.Equal(4100000, second.Exempt);
         Assert.Contains("\"27\"", second.OtherTaxesJson);
         Assert.NotNull(second.SiiReceivedAt); // sin zona horaria: se interpreta como hora de Chile
+        Assert.Null(second.PaymentForm);
+        Assert.Null(second.DueDate);
 
         Assert.Equal("https://caoba.docele.cl/cl-dol/DTEService", h.Requests[0].RequestUri!.ToString());
         var op = Op(h.Bodies[0]);
@@ -82,6 +86,10 @@ public class FaceleReceptionProviderTests
         Assert.Equal("facturas@depor.cl", Val(op, "userMail"));
         Assert.Equal("2026-10-01", Val(op, "fechaEmision"));
         Assert.Equal("2026-10-27", Val(op, "fechaEmisionHasta"));
+        // url=true pide el enlace al documento; el esquema es una secuencia: offset, url, limit.
+        Assert.Equal("true", Val(op, "url"));
+        var names = op.Elements().Select(e => e.Name.LocalName).ToList();
+        Assert.True(names.IndexOf("offset") < names.IndexOf("url") && names.IndexOf("url") < names.IndexOf("limit"));
         Assert.Equal("usuario-fixture", h.Requests[0].Headers.GetValues("facele.user").Single());
     }
 
@@ -102,12 +110,14 @@ public class FaceleReceptionProviderTests
         Assert.Null(credit.NotRespondableReason);
         Assert.Null(credit.RespondedAction);
         Assert.Null(credit.SiiStatus);
-        Assert.Null(credit.Url);
+        Assert.Null(credit.Url); // caoba responde "Documento sin Recepcion Electronica": no es un enlace
         Assert.Equal(1049819, credit.Total);
+        Assert.Equal("CREDITO", credit.PaymentForm);
 
         var cash = list[1];
         Assert.Equal(34, cash.DteType);
         Assert.Equal("Pagada al contado: el SII no admite aceptarla ni reclamarla.", cash.NotRespondableReason);
+        Assert.Equal("CONTADO", cash.PaymentForm);
         Assert.Null(cash.RespondedAction);
 
         var creditNote = list[2];
@@ -202,6 +212,82 @@ public class FaceleReceptionProviderTests
     {
         var (p, _) = Build("aprobar-ok.resp.xml");
         await Assert.ThrowsAsync<ArgumentException>(() => p.RespondAsync(Ctx, "76412553-1", 33, 18452, "otra", CancellationToken.None));
+    }
+
+    /// <summary>Responde siempre lo mismo a un GET y guarda los requests.</summary>
+    private sealed class DownloadHandler : HttpMessageHandler
+    {
+        private readonly byte[] _body;
+        private readonly string _mediaType;
+        public List<HttpRequestMessage> Requests { get; } = new();
+
+        public DownloadHandler(byte[] body, string mediaType)
+        {
+            _body = body;
+            _mediaType = mediaType;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Requests.Add(request);
+            var content = new ByteArrayContent(_body);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(_mediaType);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        }
+    }
+
+    private static readonly byte[] PdfBytes = Encoding.ASCII.GetBytes("%PDF-1.4 documento");
+
+    [Fact]
+    public async Task GetPdf_EnlaceDelMismoServidor_DescargaConCredenciales()
+    {
+        var handler = new DownloadHandler(PdfBytes, "application/pdf");
+        var p = new FaceleReceptionProvider(new FaceleSoapClient(new HttpClient(handler)));
+
+        var pdf = await p.GetPdfAsync(Ctx, "76412553-1", 33, 18452, "https://caoba.docele.cl/pdf/x1", CancellationToken.None);
+
+        Assert.Equal(PdfBytes, pdf);
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Equal("https://caoba.docele.cl/pdf/x1", request.RequestUri!.ToString());
+        Assert.Equal("usuario-fixture", request.Headers.GetValues("facele.user").Single());
+    }
+
+    /// <summary>Las credenciales nunca viajan a un servidor distinto del configurado.</summary>
+    [Fact]
+    public async Task GetPdf_EnlaceDeOtroServidor_NoEnviaCredenciales()
+    {
+        var handler = new DownloadHandler(PdfBytes, "application/pdf");
+        var p = new FaceleReceptionProvider(new FaceleSoapClient(new HttpClient(handler)));
+
+        var pdf = await p.GetPdfAsync(Ctx, "76412553-1", 33, 18452, "https://otro.example.com/pdf/x1", CancellationToken.None);
+
+        Assert.Equal(PdfBytes, pdf);
+        Assert.False(handler.Requests.Single().Headers.Contains("facele.user"));
+        Assert.False(handler.Requests.Single().Headers.Contains("facele.pass"));
+    }
+
+    /// <summary>Si el enlace devuelve otra cosa (ej. la página de login del portal), no hay PDF.</summary>
+    [Fact]
+    public async Task GetPdf_RespuestaQueNoEsPdf_Null()
+    {
+        var handler = new DownloadHandler(Encoding.UTF8.GetBytes("<html>login</html>"), "text/html");
+        var p = new FaceleReceptionProvider(new FaceleSoapClient(new HttpClient(handler)));
+
+        Assert.Null(await p.GetPdfAsync(Ctx, "76412553-1", 33, 18452, "https://caoba.docele.cl/pdf/x1", CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Documento sin Recepcion Electronica")]
+    [InlineData("ftp://caoba.docele.cl/pdf/x1")]
+    public async Task GetPdf_SinEnlace_NullSinLlamar(string? url)
+    {
+        var handler = new DownloadHandler(PdfBytes, "application/pdf");
+        var p = new FaceleReceptionProvider(new FaceleSoapClient(new HttpClient(handler)));
+
+        Assert.Null(await p.GetPdfAsync(Ctx, "76412553-1", 33, 18452, url, CancellationToken.None));
+        Assert.Empty(handler.Requests);
     }
 
     [Fact]

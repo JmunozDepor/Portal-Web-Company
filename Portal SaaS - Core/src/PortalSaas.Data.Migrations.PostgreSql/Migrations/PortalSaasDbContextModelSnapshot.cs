@@ -703,6 +703,10 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("dte_type");
 
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
                     b.Property<string>("Environment")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -762,6 +766,11 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                     b.Property<string>("OtherTaxesJson")
                         .HasColumnType("text")
                         .HasColumnName("other_taxes_json");
+
+                    b.Property<string>("PaymentForm")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("payment_form");
 
                     b.Property<DateTimeOffset?>("ProcessingAt")
                         .HasColumnType("timestamp with time zone")

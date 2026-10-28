@@ -138,7 +138,7 @@ public sealed class DteReceptionSyncService
                       || doc.OtherTaxesJson != r.OtherTaxesJson || doc.SiiStatus != r.SiiStatus
                       || doc.CommercialStatus != r.CommercialStatus || doc.ClaimStatus != r.ClaimStatus
                       || doc.IsAssigned != r.IsAssigned || doc.IsVoided != r.IsVoided || doc.ProviderUrl != r.Url
-                      || doc.NotRespondableReason != r.NotRespondableReason;
+                      || doc.NotRespondableReason != r.NotRespondableReason || doc.PaymentForm != r.PaymentForm || doc.DueDate != r.DueDate;
         doc.IssuerName = r.IssuerName;
         doc.SiiReceivedAt = siiReceivedAt;
         doc.NetAmount = r.Net;
@@ -153,6 +153,8 @@ public sealed class DteReceptionSyncService
         doc.IsVoided = r.IsVoided;
         doc.ProviderUrl = r.Url;
         doc.NotRespondableReason = r.NotRespondableReason;
+        doc.PaymentForm = r.PaymentForm is { Length: > 30 } form ? form[..30] : r.PaymentForm;
+        doc.DueDate = r.DueDate;
         return changed;
     }
 

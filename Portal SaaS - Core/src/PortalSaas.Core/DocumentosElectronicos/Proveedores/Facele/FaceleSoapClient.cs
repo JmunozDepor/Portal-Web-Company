@@ -90,4 +90,38 @@ public sealed class FaceleSoapClient
             }
         }
     }
+
+    /// <summary>
+    /// Descarga un PDF por GET. Las credenciales van solo si se pasan (el llamador decide según el servidor). Devuelve
+    /// null si la respuesta no es un PDF (ej. la página de login del portal) o pasa de 20 MB.
+    /// </summary>
+    public async Task<byte[]?> DownloadPdfAsync(Uri url, string? username, string? password, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        if (username is not null) request.Headers.TryAddWithoutValidation("facele.user", username);
+        if (password is not null) request.Headers.TryAddWithoutValidation("facele.pass", password);
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new DteProviderUnavailableException("FACELE no respondió a tiempo (PDF del documento).");
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new DteProviderUnavailableException($"No se pudo conectar con FACELE (PDF del documento): {ex.HttpRequestError}.");
+        }
+
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > MaxPdfBytes) return null;
+            var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+            return bytes.Length is > 4 and <= MaxPdfBytes && bytes.AsSpan(0, 5).SequenceEqual("%PDF-"u8) ? bytes : null;
+        }
+    }
+
+    private const int MaxPdfBytes = 20 * 1024 * 1024;
 }

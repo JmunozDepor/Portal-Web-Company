@@ -76,6 +76,11 @@ public sealed record DteReceivedDto
     /// <summary>Por qué el SII no admite aceptar ni reclamar el documento (ej. pagado al contado); null si se puede responder.</summary>
     public string? NotRespondableReason { get; init; }
     public bool HasXml { get; init; }
+    /// <summary>El operador informó un enlace al documento: se puede pedir el PDF (IDteInboxService.GetPdfAsync).</summary>
+    public bool HasPdf { get; init; }
+    /// <summary>Forma de pago en el texto del operador (FACELE: CONTADO, CREDITO, SIN_COSTO); null si no la informa.</summary>
+    public string? PaymentForm { get; init; }
+    public DateOnly? DueDate { get; init; }
     public IReadOnlyList<DteReceivedReference> References { get; init; } = Array.Empty<DteReceivedReference>();
     public IReadOnlyList<DtePurchaseOrderRef> PurchaseOrderRefs { get; init; } = Array.Empty<DtePurchaseOrderRef>();
     public string ResponseStatus { get; init; } = DteResponseStatuses.None;

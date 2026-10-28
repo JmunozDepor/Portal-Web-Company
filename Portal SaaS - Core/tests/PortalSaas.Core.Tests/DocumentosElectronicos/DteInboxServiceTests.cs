@@ -245,6 +245,61 @@ public class DteInboxServiceTests
     }
 
     [Fact]
+    public async Task Get_ExponeFormaDePagoVencimientoYSiHayPdf()
+    {
+        var env = await BuildAsync();
+        var withLink = await AddAsync(env);
+        withLink.PaymentForm = "CREDITO";
+        withLink.DueDate = new DateOnly(2026, 11, 22);
+        withLink.ProviderUrl = "https://alerce.docele.cl/pdf/1";
+        var withoutLink = await AddAsync(env, folio: 99);
+        await env.Db.SaveChangesAsync();
+
+        var dto = await env.Inbox.GetAsync(withLink.Id);
+        Assert.Equal("CREDITO", dto!.PaymentForm);
+        Assert.Equal(new DateOnly(2026, 11, 22), dto.DueDate);
+        Assert.True(dto.HasPdf);
+        Assert.False((await env.Inbox.GetAsync(withoutLink.Id))!.HasPdf);
+    }
+
+    /// <summary>FACELE no entrega el XML, pero sí el enlace al PDF: se pide igual.</summary>
+    [Fact]
+    public async Task GetPdf_ConEnlace_LoPideAunqueElOperadorNoEntregueXml()
+    {
+        var env = await BuildAsync();
+        env.Provider.Pdf = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+        var doc = await AddAsync(env);
+        doc.ProviderUrl = "https://alerce.docele.cl/pdf/1";
+        await env.Db.SaveChangesAsync();
+
+        Assert.Equal(env.Provider.Pdf, await env.Inbox.GetPdfAsync(doc.Id));
+        Assert.Equal("https://alerce.docele.cl/pdf/1", Assert.Single(env.Provider.PdfUrls));
+    }
+
+    [Fact]
+    public async Task GetPdf_SinEnlaceNiDescarga_NullSinLlamar()
+    {
+        var env = await BuildAsync();
+        var doc = await AddAsync(env);
+
+        Assert.Null(await env.Inbox.GetPdfAsync(doc.Id));
+        Assert.Empty(env.Provider.PdfUrls);
+    }
+
+    /// <summary>Operador caído: el módulo recibe null (no conoce las excepciones de la plataforma).</summary>
+    [Fact]
+    public async Task GetPdf_OperadorCaido_Null()
+    {
+        var env = await BuildAsync();
+        env.Provider.ThrowOnPdf = true;
+        var doc = await AddAsync(env);
+        doc.ProviderUrl = "https://alerce.docele.cl/pdf/1";
+        await env.Db.SaveChangesAsync();
+
+        Assert.Null(await env.Inbox.GetPdfAsync(doc.Id));
+    }
+
+    [Fact]
     public async Task GetLines_LeeDelXmlArchivado()
     {
         var env = await BuildAsync();

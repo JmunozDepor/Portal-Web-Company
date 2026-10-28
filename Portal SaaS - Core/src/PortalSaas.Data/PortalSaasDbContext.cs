@@ -611,6 +611,7 @@ public sealed class PortalSaasDbContext : DbContext
             entity.Property(e => e.ClaimStatus).HasMaxLength(40);
             entity.Property(e => e.ProviderUrl).HasMaxLength(500);
             entity.Property(e => e.NotRespondableReason).HasMaxLength(200);
+            entity.Property(e => e.PaymentForm).HasMaxLength(30);
             entity.Property(e => e.ResponseStatus).HasMaxLength(20);
             entity.Property(e => e.ResponseAction).HasMaxLength(30);
             entity.Property(e => e.ResponseReason).HasMaxLength(500);

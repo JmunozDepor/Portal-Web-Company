@@ -171,8 +171,16 @@ internal sealed class FakeReceptionProvider : IDteReceptionProvider
     public Task<string?> GetXmlAsync(DteReceptionContext ctx, DteReceivedRecord record, CancellationToken ct) =>
         Task.FromResult(Xmls.TryGetValue((record.IssuerTaxId, record.DteType, record.Folio), out var xml) ? xml : null);
 
-    public Task<byte[]?> GetPdfAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string? url, CancellationToken ct) =>
-        Task.FromResult<byte[]?>(null);
+    public byte[]? Pdf { get; set; }
+    public bool ThrowOnPdf { get; set; }
+    public List<string?> PdfUrls { get; } = new();
+
+    public Task<byte[]?> GetPdfAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string? url, CancellationToken ct)
+    {
+        PdfUrls.Add(url);
+        if (ThrowOnPdf) throw new DteProviderUnavailableException("FAKE: sin conexión (PDF).");
+        return Task.FromResult(Pdf);
+    }
 
     public Task<DteRespondProviderResult> RespondAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, string action, CancellationToken ct)
     {

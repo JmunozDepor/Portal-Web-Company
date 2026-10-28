@@ -703,6 +703,10 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("int")
                         .HasColumnName("dte_type");
 
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
                     b.Property<string>("Environment")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -762,6 +766,11 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                     b.Property<string>("OtherTaxesJson")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("other_taxes_json");
+
+                    b.Property<string>("PaymentForm")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("payment_form");
 
                     b.Property<DateTimeOffset?>("ProcessingAt")
                         .HasColumnType("datetimeoffset")

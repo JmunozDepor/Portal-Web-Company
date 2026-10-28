@@ -57,10 +57,16 @@ public sealed class FakeDteInboxService : IDteInboxService
         return Task.FromResult<IReadOnlyList<DteReceivedDto>>(q.ToList());
     }
 
-    public Task<IReadOnlyList<DteReceivedDto>> ListChangedSinceAsync(DateTimeOffset since, long afterId, int max, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<DteReceivedDto>>(Items
+    /// <summary>Demora de la lectura por cursor (para simular dos ciclos en paralelo).</summary>
+    public TimeSpan ListDelay { get; set; }
+
+    public async Task<IReadOnlyList<DteReceivedDto>> ListChangedSinceAsync(DateTimeOffset since, long afterId, int max, CancellationToken ct = default)
+    {
+        if (ListDelay > TimeSpan.Zero) await Task.Delay(ListDelay, ct);
+        return Items
             .Where(i => i.UpdatedAt > since || (i.UpdatedAt == since && i.Id > afterId))
-            .OrderBy(i => i.UpdatedAt).ThenBy(i => i.Id).Take(max).ToList());
+            .OrderBy(i => i.UpdatedAt).ThenBy(i => i.Id).Take(max).ToList();
+    }
 
     public Task<DteReceivedDto?> GetAsync(long id, CancellationToken ct = default) =>
         Task.FromResult(Items.FirstOrDefault(i => i.Id == id));

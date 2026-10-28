@@ -65,9 +65,9 @@ public sealed class IndexModel : FacturasProveedorPageModelBase
             var cycle = await _reviews.EvaluatePendingAsync(ct);
             SuccessMessage = cycle.Created == 0 ? "Lectura completa: no llegaron facturas nuevas." : $"Lectura completa: {cycle.Created} factura(s) nueva(s).";
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or Microsoft.EntityFrameworkCore.DbUpdateException)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = GetErrorMessage(ex);
         }
         return RedirectToPage(new { From, To, Estado, Texto });
     }

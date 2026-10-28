@@ -153,6 +153,31 @@ public class PaginasOperativasTests
         Assert.IsType<PageResult>(await page.OnGetAsync(myReview.Id)); // sigue viendo la que ya decidió
     }
 
+    private sealed class CollidingDecisions : IReviewDecisionService
+    {
+        public Task<bool> CanDecideAsync(long reviewId, CancellationToken ct) => Task.FromResult(true);
+        public Task DecideAsync(long reviewId, string action, string? reason, string? claimType, Guid concurrencyStamp, CancellationToken ct) =>
+            throw new DbUpdateException("duplicate key value violates unique constraint");
+        public Task<string?> GetAcceptWarningAsync(long reviewId, CancellationToken ct) => Task.FromResult<string?>(null);
+        public Task AssociatePurchaseOrderAsync(long reviewId, int docNum, CancellationToken ct) =>
+            throw new DbUpdateException("duplicate key value violates unique constraint");
+    }
+
+    /// <summary>I7 (revisión final): un choque de base con el job se muestra como mensaje, no como error 500.</summary>
+    [Fact]
+    public async Task Detalle_ChoqueDeBaseConElJob_MuestraMensaje()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.User.Grant(Menu, PortalActions.View, PortalActions.Edit);
+        var page = new Bandeja.DetalleModel(Queries(env), new CollidingDecisions(), env.Inbox, env.User)
+        {
+            TempData = Temp(), PageContext = new PageContext { HttpContext = new DefaultHttpContext() },
+        };
+
+        Assert.IsType<RedirectToPageResult>(await page.OnPostAsociarOcAsync(1, 4512));
+        Assert.Contains("otro proceso", page.ErrorMessage);
+    }
+
     [Fact]
     public async Task Kpis_CuentaVencenEn2Dias()
     {

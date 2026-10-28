@@ -11,7 +11,7 @@ namespace Modulo.FacturasProveedor.Tests.Servicios;
 /// <summary>Arma el orquestador real con fakes de plataforma y SAP. Reloj: 27-10-2026 12:00 de Chile.</summary>
 internal sealed class ReviewTestEnv
 {
-    public FacturasProveedorDbContext Db { get; } = TestDb.Create();
+    public FacturasProveedorDbContext Db { get; }
     public FakeDteInboxService Inbox { get; } = new();
     public FakeSapLookupService Sap { get; } = new FakeSapLookupService().AddSupplier().AddSupplier("77555010-K", "P77555010", "Inmobiliaria Los Robles SpA");
     public FakeNotificationService Notifications { get; } = new();
@@ -25,8 +25,10 @@ internal sealed class ReviewTestEnv
     public InvoiceReviewService Reviews { get; }
     public Guid FinanceUser { get; } = Guid.NewGuid();
 
-    public ReviewTestEnv()
+    /// <summary>dbName: base InMemory con nombre, para que otro contexto (otro "proceso") comparta los datos.</summary>
+    public ReviewTestEnv(string? dbName = null)
     {
+        Db = dbName is null ? TestDb.Create() : TestDb.Create(dbName);
         Settings = new ModuleSettingsService(Db, Engine, Company, User, Clock);
         Profiles = new SupplierProfileService(Db, Sap, Engine, Company, User, Clock);
         Groups = new ApproverGroupService(Db, Company, User, Clock);

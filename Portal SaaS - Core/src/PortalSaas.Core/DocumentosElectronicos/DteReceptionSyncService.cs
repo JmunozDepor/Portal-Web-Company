@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PortalSaas.Abstractions.Modelos.Dte;
@@ -13,9 +14,13 @@ public sealed record DteReceptionSyncResult(int New, int Updated, int MarkedExte
 /// vez, ReceptionInitialDays hacia atrás; después, ReceptionWindowDays) y upsert por (compañía, RUT emisor, tipo,
 /// folio). Detecta respuestas hechas fuera del portal (DteReceivedRecord.RespondedAction) y confirma las propias que
 /// quedaron pendientes. Un error del proveedor queda en company_dte_settings.reception_last_error, sin credenciales.
+/// Una sincronización a la vez por compañía en el proceso: "Leer ahora" en paralelo con el job insertaba dos veces el
+/// mismo documento (choque con el índice único → error 500).
 /// </summary>
 public sealed class DteReceptionSyncService
 {
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> Gates = new();
+
     private readonly PortalSaasDbContext _db;
     private readonly DteSettingsService _settings;
     private readonly TimeProvider _clock;
@@ -30,6 +35,20 @@ public sealed class DteReceptionSyncService
     }
 
     public async Task<DteReceptionSyncResult> SyncCompanyAsync(Guid companyId, CancellationToken ct)
+    {
+        var gate = Gates.GetOrAdd(companyId, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct);
+        try
+        {
+            return await SyncLockedAsync(companyId, ct);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private async Task<DteReceptionSyncResult> SyncLockedAsync(Guid companyId, CancellationToken ct)
     {
         var resolved = await _settings.ResolveReceptionAsync(companyId);
         var row = await _db.CompanyDteSettings.FirstOrDefaultAsync(x => x.CompanyId == companyId, ct);

@@ -44,6 +44,11 @@ public abstract class FacturasProveedorPageModelBase : PageModel
     [TempData]
     public string? WarningMessage { get; set; }
 
-    protected static string GetErrorMessage(Exception ex) =>
-        ex is InvalidOperationException ? ex.Message : $"No se pudo completar la operación: {ex.Message}";
+    protected static string GetErrorMessage(Exception ex) => ex switch
+    {
+        InvalidOperationException => ex.Message,
+        Microsoft.EntityFrameworkCore.DbUpdateException =>
+            "La factura cambió mientras se guardaba (otro proceso la estaba procesando). Recargue la página y vuelva a intentar.",
+        _ => $"No se pudo completar la operación: {ex.Message}",
+    };
 }

@@ -74,6 +74,7 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
 
     private async Task<ReviewCycleResult> RunAsync(long? onlyReviewId, CancellationToken ct)
     {
+        using var cycleLock = await CompanyCycleLock.AcquireAsync(CompanyId, ct);
         await _settings.GetAsync(ct); // crea los valores por defecto la primera vez
         var settings = await _db.Settings.SingleAsync(s => s.CompanyId == CompanyId, ct);
         var status = await _inbox.GetStatusAsync(ct);

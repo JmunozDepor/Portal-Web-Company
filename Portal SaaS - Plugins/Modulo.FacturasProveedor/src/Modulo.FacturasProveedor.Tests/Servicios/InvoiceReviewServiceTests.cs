@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Modulo.FacturasProveedor.Dominio.Reglas;
 using Modulo.FacturasProveedor.Models;
 using Modulo.FacturasProveedor.Servicios;
+using Modulo.FacturasProveedor.Tests.Fakes;
 using PortalSaas.Abstractions.Modelos.Dte;
 
 namespace Modulo.FacturasProveedor.Tests.Servicios;
@@ -350,6 +351,26 @@ public class InvoiceReviewServiceTests
 
         Assert.Equal(ReviewStatuses.OutOfScope, (await ReviewAsync(env, doc.Id)).Status);
         Assert.Empty(env.Inbox.Responses);
+    }
+
+    /// <summary>I7 (revisión final): un ciclo web (ej. "Asociar OC") en paralelo con el del job no crea dos revisiones.</summary>
+    [Fact]
+    public async Task Evaluate_DosCiclosALaVez_UnaSolaRevisionPorFactura()
+    {
+        var name = "fp-" + Guid.NewGuid();
+        var env = await new ReviewTestEnv(name).StartAsync();
+        env.Sap.AddPurchaseOrder();
+        env.Invoice();
+        env.Inbox.ListDelay = TimeSpan.FromMilliseconds(150);
+        var db2 = TestDb.Create(name);
+        var settings2 = new ModuleSettingsService(db2, env.Engine, env.Company, env.User, env.Clock);
+        var profiles2 = new SupplierProfileService(db2, env.Sap, env.Engine, env.Company, env.User, env.Clock);
+        var reviews2 = new InvoiceReviewService(db2, env.Inbox, env.Engine, settings2, env.Sap, profiles2,
+            new ApproverGroupService(db2, env.Company, env.User, env.Clock), env.Notifications, env.Company, env.Clock);
+
+        await Task.WhenAll(env.EvaluateAsync(), reviews2.EvaluatePendingAsync(CancellationToken.None));
+
+        Assert.Equal(1, await TestDb.Create(name).InvoiceReviews.CountAsync());
     }
 
     [Fact]

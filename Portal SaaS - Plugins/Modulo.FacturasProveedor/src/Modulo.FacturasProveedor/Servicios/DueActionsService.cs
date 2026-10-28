@@ -56,6 +56,7 @@ public sealed class DueActionsService : IDueActionsService
 
     public async Task<DueRunResult> RunAsync(CancellationToken ct)
     {
+        using var cycleLock = await CompanyCycleLock.AcquireAsync(CompanyId, ct);
         await _settings.GetAsync(ct);
         var settings = await _db.Settings.SingleAsync(s => s.CompanyId == CompanyId, ct);
         var config = await _settings.GetEngineConfigurationAsync(ct);

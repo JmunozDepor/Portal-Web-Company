@@ -122,6 +122,29 @@ public class DteReceptionSyncServiceTests
         Assert.Equal(env.Clock.Now, row.UpdatedAt);
     }
 
+    /// <summary>I7 (revisión final): "Leer ahora" en paralelo con el job no inserta dos veces el mismo documento.</summary>
+    [Fact]
+    public async Task Sync_DosALaVezMismaCompania_NoDuplica()
+    {
+        var name = Guid.NewGuid().ToString();
+        var provider = new FakeReceptionProvider { ListDelay = TimeSpan.FromMilliseconds(150) };
+        provider.Received.Add(Record());
+        var registry = DteReceptionTestSupport.Registry(provider);
+        var emission = new DteProviderRegistry(new IDteProvider[] { new FakeDteProvider() });
+        await new DteSettingsService(DteTestSupport.Db(name), DteTestSupport.Crypto(), emission, registry)
+            .SaveAsync(CompanyId, DteTestSupport.ValidInput().WithReception());
+        DteReceptionSyncService Sync()
+        {
+            var db = DteTestSupport.Db(name);
+            return new DteReceptionSyncService(db, new DteSettingsService(db, DteTestSupport.Crypto(), emission, registry), new FixedClock(),
+                NullLogger<DteReceptionSyncService>.Instance);
+        }
+
+        await Task.WhenAll(Sync().SyncCompanyAsync(CompanyId, CancellationToken.None), Sync().SyncCompanyAsync(CompanyId, CancellationToken.None));
+
+        Assert.Equal(1, await DteTestSupport.Db(name).DteReceived.CountAsync());
+    }
+
     [Fact]
     public async Task Sync_NoRespondible_GuardaMotivo_YNoQuedaExternal()
     {

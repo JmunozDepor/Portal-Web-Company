@@ -74,7 +74,7 @@ public sealed class DetalleModel : FacturasProveedorPageModelBase
             await action();
             SuccessMessage = success;
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or Microsoft.EntityFrameworkCore.DbUpdateException)
         {
             ErrorMessage = GetErrorMessage(ex);
         }

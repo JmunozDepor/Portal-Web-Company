@@ -149,12 +149,19 @@ internal sealed class FakeReceptionProvider : IDteReceptionProvider
     public string? ThrowOnList { get; set; }
     public bool TestFails { get; set; }
 
-    public Task<IReadOnlyList<DteReceivedRecord>> ListReceivedAsync(DteReceptionContext ctx, DateOnly from, DateOnly to, CancellationToken ct)
+    /// <summary>Demora del listado (para simular una sincronización lenta en paralelo con otra).</summary>
+    public TimeSpan ListDelay { get; set; }
+
+    public async Task<IReadOnlyList<DteReceivedRecord>> ListReceivedAsync(DteReceptionContext ctx, DateOnly from, DateOnly to, CancellationToken ct)
     {
-        Contexts.Add(ctx);
-        ListCalls.Add((from, to));
+        lock (ListCalls)
+        {
+            Contexts.Add(ctx);
+            ListCalls.Add((from, to));
+        }
+        if (ListDelay > TimeSpan.Zero) await Task.Delay(ListDelay, ct);
         if (ThrowOnList is { } msg) throw new DteProviderUnavailableException(msg);
-        return Task.FromResult<IReadOnlyList<DteReceivedRecord>>(Received.ToList());
+        return Received.ToList();
     }
 
     public Task<IReadOnlyList<DteReceivedReference>> GetReferencesAsync(DteReceptionContext ctx, string issuerTaxId, int dteType, long folio, CancellationToken ct) =>

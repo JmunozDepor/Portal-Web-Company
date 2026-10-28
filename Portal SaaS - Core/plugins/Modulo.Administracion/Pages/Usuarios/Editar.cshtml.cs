@@ -61,6 +61,9 @@ public class EditarModel : AdminPageModelBase
         [Display(Name = "Usuario")]
         public string Username { get; set; } = string.Empty;
 
+        [Display(Name = "Nombre completo")]
+        public string? FullName { get; set; }
+
         [Required(ErrorMessage = "Ingresa el correo.")]
         [EmailAddress(ErrorMessage = "Correo inválido.")]
         [Display(Name = "Correo")]
@@ -106,6 +109,7 @@ public class EditarModel : AdminPageModelBase
             Input = new InputModel
             {
                 Username = Detalle.Username,
+                FullName = Detalle.FullName,
                 Email = Detalle.Email,
                 IsAdmin = Detalle.IsAdmin,
                 IsActive = Detalle.IsActive,
@@ -154,7 +158,7 @@ public class EditarModel : AdminPageModelBase
                 }
             }
 
-            var resultado = await _usuarios.CreateAsync(Input.Username, Input.Email, Input.IsAdmin);
+            var resultado = await _usuarios.CreateAsync(Input.Username, Input.Email, Input.IsAdmin, Input.FullName);
             if (!resultado.IsSuccess)
             {
                 ModelState.AddModelError(string.Empty, resultado.Reason!);
@@ -190,7 +194,7 @@ public class EditarModel : AdminPageModelBase
             return RedirectToPage(new { id = resultado.UserId });
         }
 
-        var actualizado = await _usuarios.UpdateAsync(id!.Value, Input.Email, Input.IsAdmin, Input.IsActive, Input.IsLocked);
+        var actualizado = await _usuarios.UpdateAsync(id!.Value, Input.Email, Input.IsAdmin, Input.IsActive, Input.IsLocked, Input.FullName);
         if (!actualizado.IsSuccess)
         {
             ModelState.AddModelError(string.Empty, actualizado.Reason!);

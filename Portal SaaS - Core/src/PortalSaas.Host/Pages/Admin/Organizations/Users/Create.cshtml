@@ -14,8 +14,14 @@
 
         <div class="row g-3">
             <div class="col-md-4">
+                <label asp-for="Input.FullName" class="form-label"></label>
+                <input asp-for="Input.FullName" class="form-control" autofocus placeholder="Ej. Juan Pérez" />
+                <span asp-validation-for="Input.FullName" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-4">
                 <label asp-for="Input.Username" class="form-label"></label>
-                <input asp-for="Input.Username" class="form-control" autofocus />
+                <input asp-for="Input.Username" class="form-control" />
                 <span asp-validation-for="Input.Username" class="text-danger"></span>
             </div>
 

@@ -17,6 +17,15 @@ public sealed class User
 
     public string Username { get; set; } = null!;
 
+    /// <summary>
+    /// Nombre completo de la persona (ej. "Juan Pérez") -- distinto de Username, que es
+    /// el handle de login (ej. "jmunoz"). Nullable porque las cuentas creadas antes de
+    /// este campo no lo tienen cargado; donde se muestra, el llamador cae a Username si
+    /// es null. Agregado 2026-10-26 a pedido explícito: identificar sin ambigüedad quién
+    /// envía/aprueba un informe de Rendiciones cuando hay varios usuarios.
+    /// </summary>
+    public string? FullName { get; set; }
+
     /// <summary>Obligatorio -- toda cuenta queda siempre asociada a un correo real.</summary>
     public string Email { get; set; } = null!;
 

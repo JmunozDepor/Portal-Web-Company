@@ -9,6 +9,11 @@ public sealed class TenantUserDto
 {
     public required Guid Id { get; init; }
     public required string Username { get; init; }
+
+    /// <summary>Nombre completo de la persona (ej. "Juan Pérez") -- null en cuentas creadas
+    /// antes de este campo. El llamador cae a Username donde lo muestre.</summary>
+    public string? FullName { get; init; }
+
     public required string Email { get; init; }
     public required bool IsAdmin { get; init; }
     public required bool IsActive { get; init; }
@@ -20,6 +25,7 @@ public sealed class TenantUserDetailDto
 {
     public required Guid Id { get; init; }
     public required string Username { get; init; }
+    public string? FullName { get; init; }
     public required string Email { get; init; }
     public required bool IsAdmin { get; init; }
     public required bool IsActive { get; init; }

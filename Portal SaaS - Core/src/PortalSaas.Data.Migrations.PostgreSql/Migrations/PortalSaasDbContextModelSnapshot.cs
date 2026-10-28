@@ -2360,6 +2360,11 @@ namespace PortalSaas.Data.Migrations.PostgreSql.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("failed_login_attempts");
 
+                    b.Property<string>("FullName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
                     b.Property<bool>("HasTwoFactorEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("has_two_factor_enabled");

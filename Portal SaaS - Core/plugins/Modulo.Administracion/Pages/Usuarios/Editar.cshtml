@@ -1,8 +1,10 @@
 @page "/organizacion/usuarios/editar/{id:guid?}"
 @model Modulo.Administracion.Pages.Usuarios.EditarModel
 @{
-    ViewData["Title"] = Model.EsNuevo ? "Nuevo usuario" : $"Editar · {Model.Detalle?.Username}";
-    var iniciales = Model.EsNuevo ? "+" : (Model.Detalle?.Username.Length > 0 ? Model.Detalle.Username[0].ToString().ToUpperInvariant() : "?");
+    ViewData["Title"] = Model.EsNuevo ? "Nuevo usuario" : $"Editar · {Model.Detalle?.FullName ?? Model.Detalle?.Username}";
+    var nombreMostrado = Model.Detalle?.FullName;
+    var inicialDe = !string.IsNullOrWhiteSpace(nombreMostrado) ? nombreMostrado : Model.Detalle?.Username;
+    var iniciales = Model.EsNuevo ? "+" : (inicialDe?.Length > 0 ? inicialDe[0].ToString().ToUpperInvariant() : "?");
 }
 @* Mockup confirmado (2026-08-19, ver .design-audit/mockups/mockup-organizacion-usuarios-editar.html):
    reemplaza las 3 tarjetas apiladas (Editar usuario / Compañía por defecto / Permisos --
@@ -35,7 +37,7 @@
         </div>
         <div class="flex-grow-1">
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <h1 class="h4 mb-0">@Model.Detalle!.Username</h1>
+                <h1 class="h4 mb-0">@(Model.Detalle!.FullName ?? Model.Detalle.Username)</h1>
                 @if (Model.Detalle.IsActive)
                 {
                     <span class="badge-status badge-status--success">Activo</span>
@@ -57,7 +59,7 @@
                     <span class="badge-status badge-status--warning">Administrador</span>
                 }
             </div>
-            <p class="text-muted mb-0" style="font-size:13px;">@Model.Detalle.Email</p>
+            <p class="text-muted mb-0" style="font-size:13px;">@Model.Detalle.Username · @Model.Detalle.Email</p>
         </div>
     </div>
 }
@@ -77,6 +79,12 @@
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
         <div class="drawer-grid">
+            <div class="mb-3">
+                <label asp-for="Input.FullName" class="form-label"></label>
+                <input asp-for="Input.FullName" class="form-control" placeholder="Ej. Juan Pérez" />
+                <span asp-validation-for="Input.FullName" class="text-danger"></span>
+            </div>
+
             <div class="mb-3">
                 <label asp-for="Input.Username" class="form-label"></label>
                 <input asp-for="Input.Username" class="form-control" />

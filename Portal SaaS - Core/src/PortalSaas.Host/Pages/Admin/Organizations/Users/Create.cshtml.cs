@@ -117,6 +117,7 @@ public class CreateModel : PageModel
         {
             OrganizationId = organizationId,
             Username = username,
+            FullName = string.IsNullOrWhiteSpace(Input.FullName) ? null : Input.FullName.Trim(),
             Email = email,
             PasswordHash = hash,
             PasswordSalt = salt,
@@ -181,6 +182,9 @@ public class CreateModel : PageModel
         [Required(ErrorMessage = "Ingresa el nombre de usuario.")]
         [Display(Name = "Usuario")]
         public string Username { get; set; } = string.Empty;
+
+        [Display(Name = "Nombre completo")]
+        public string? FullName { get; set; }
 
         [Required(ErrorMessage = "Ingresa el correo.")]
         [EmailAddress(ErrorMessage = "Correo inválido.")]

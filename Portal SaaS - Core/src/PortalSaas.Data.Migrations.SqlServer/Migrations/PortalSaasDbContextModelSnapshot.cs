@@ -2361,6 +2361,11 @@ namespace PortalSaas.Data.Migrations.SqlServer.Migrations
                         .HasColumnType("int")
                         .HasColumnName("failed_login_attempts");
 
+                    b.Property<string>("FullName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("full_name");
+
                     b.Property<bool>("HasTwoFactorEnabled")
                         .HasColumnType("bit")
                         .HasColumnName("has_two_factor_enabled");

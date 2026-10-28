@@ -39,6 +39,7 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
             {
                 Id = u.Id,
                 Username = u.Username,
+                FullName = u.FullName,
                 Email = u.Email,
                 IsAdmin = u.IsAdmin,
                 IsActive = u.IsActive,
@@ -65,6 +66,7 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
         {
             Id = user.Id,
             Username = user.Username,
+            FullName = user.FullName,
             Email = user.Email,
             IsAdmin = user.IsAdmin,
             IsActive = user.IsActive,
@@ -74,7 +76,7 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
         };
     }
 
-    public async Task<TenantUserOperationResult> CreateAsync(string username, string email, bool isAdmin, CancellationToken ct = default)
+    public async Task<TenantUserOperationResult> CreateAsync(string username, string email, bool isAdmin, string? fullName = null, CancellationToken ct = default)
     {
         var organizationId = _currentUser.OrganizationId;
 
@@ -109,6 +111,7 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
         {
             OrganizationId = organizationId,
             Username = normalizedUsername,
+            FullName = string.IsNullOrWhiteSpace(fullName) ? null : fullName.Trim(),
             Email = normalizedEmail,
             PasswordHash = hash,
             PasswordSalt = salt,
@@ -121,7 +124,7 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
         return TenantUserOperationResult.Success(user.Id);
     }
 
-    public async Task<TenantUserOperationResult> UpdateAsync(Guid userId, string email, bool isAdmin, bool isActive, bool isLocked, CancellationToken ct = default)
+    public async Task<TenantUserOperationResult> UpdateAsync(Guid userId, string email, bool isAdmin, bool isActive, bool isLocked, string? fullName, CancellationToken ct = default)
     {
         var user = await FindOwnUserAsync(userId, ct);
         if (user is null)
@@ -142,6 +145,7 @@ public sealed class TenantUserAdminService : ITenantUserAdminService
         }
 
         user.Email = normalizedEmail;
+        user.FullName = string.IsNullOrWhiteSpace(fullName) ? null : fullName.Trim();
         user.IsAdmin = isAdmin;
         user.IsActive = isActive;
         user.IsLocked = isLocked;

@@ -301,6 +301,7 @@ public sealed class PortalSaasDbContext : DbContext
             // queda siempre asociada a un correo real (ver Entities/User.cs).
             entity.HasIndex(e => new { e.OrganizationId, e.Email }).IsUnique();
             entity.Property(e => e.Username).HasMaxLength(100);
+            entity.Property(e => e.FullName).HasMaxLength(200);
             entity.Property(e => e.Email).HasMaxLength(150).IsRequired();
             entity.Property(e => e.PasswordHash).HasMaxLength(300);
             entity.Property(e => e.PasswordSalt).HasMaxLength(100);

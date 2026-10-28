@@ -52,7 +52,17 @@
             @foreach (var u in Model.Usuarios)
             {
                 <tr>
-                    <td>@u.Username</td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(u.FullName))
+                        {
+                            <div>@u.FullName</div>
+                            <div class="text-muted" style="font-size:12px;">@u.Username</div>
+                        }
+                        else
+                        {
+                            @u.Username
+                        }
+                    </td>
                     <td>@u.Email</td>
                     <td>@(u.IsAdmin ? "Sí" : "No")</td>
                     <td>
@@ -108,6 +118,10 @@
         <form method="post" asp-page="/Usuarios/Editar" asp-page-handler="Guardar">
             <div class="drawer-body">
                 <div class="drawer-grid">
+                    <div class="mb-3 span-2">
+                        <label class="form-label">Nombre completo</label>
+                        <input name="Input.FullName" class="form-control" placeholder="Ej. Juan Pérez" />
+                    </div>
                     <div class="mb-3 span-2">
                         <label class="form-label">Usuario</label>
                         <input name="Input.Username" class="form-control" />

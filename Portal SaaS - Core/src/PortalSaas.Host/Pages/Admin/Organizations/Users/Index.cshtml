@@ -31,7 +31,17 @@
         @foreach (var user in Model.Users)
         {
             <tr>
-                <td>@user.Username</td>
+                <td>
+                    @if (!string.IsNullOrWhiteSpace(user.FullName))
+                    {
+                        <div>@user.FullName</div>
+                        <div class="text-muted" style="font-size:12px;">@user.Username</div>
+                    }
+                    else
+                    {
+                        @user.Username
+                    }
+                </td>
                 <td>@user.Email</td>
                 <td>@(user.IsAdmin ? "Sí" : "No")</td>
                 <td>

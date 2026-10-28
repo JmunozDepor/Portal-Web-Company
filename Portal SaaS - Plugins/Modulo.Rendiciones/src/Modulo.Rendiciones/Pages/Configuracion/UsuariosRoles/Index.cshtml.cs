@@ -140,7 +140,7 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
             return RedirectToPage();
         }
 
-        var result = await _users.UpdateAsync(userId, user.Email, user.IsAdmin, !user.IsActive, user.IsLocked, ct);
+        var result = await _users.UpdateAsync(userId, user.Email, user.IsAdmin, !user.IsActive, user.IsLocked, user.FullName, ct);
         if (result.IsSuccess)
             SuccessMessage = user.IsActive ? $"Usuario \"{user.Username}\" desactivado." : $"Usuario \"{user.Username}\" activado.";
         else

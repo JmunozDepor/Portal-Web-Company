@@ -109,7 +109,7 @@ public class TenantUserAdminServiceTests
         var creado = await servicio.CreateAsync("admin1", "admin1@test.cl", isAdmin: true);
 
         var servicioComoElMismo = CrearServicio(db, org.Id, userId: creado.UserId!.Value);
-        var resultado = await servicioComoElMismo.UpdateAsync(creado.UserId.Value, "admin1@test.cl", isAdmin: false, isActive: true, isLocked: false);
+        var resultado = await servicioComoElMismo.UpdateAsync(creado.UserId.Value, "admin1@test.cl", isAdmin: false, isActive: true, isLocked: false, fullName: null);
 
         Assert.False(resultado.IsSuccess);
     }
@@ -122,7 +122,7 @@ public class TenantUserAdminServiceTests
         var creado = await servicio.CreateAsync("admin1", "admin1@test.cl", isAdmin: true);
 
         var servicioComoElMismo = CrearServicio(db, org.Id, userId: creado.UserId!.Value);
-        var resultado = await servicioComoElMismo.UpdateAsync(creado.UserId.Value, "admin1@test.cl", isAdmin: true, isActive: false, isLocked: false);
+        var resultado = await servicioComoElMismo.UpdateAsync(creado.UserId.Value, "admin1@test.cl", isAdmin: true, isActive: false, isLocked: false, fullName: null);
 
         Assert.False(resultado.IsSuccess);
     }
@@ -134,7 +134,7 @@ public class TenantUserAdminServiceTests
         var servicio = CrearServicio(db, org.Id);
         var creado = await servicio.CreateAsync("otro", "otro@test.cl", isAdmin: true);
 
-        var resultado = await servicio.UpdateAsync(creado.UserId!.Value, "otro@test.cl", isAdmin: false, isActive: true, isLocked: false);
+        var resultado = await servicio.UpdateAsync(creado.UserId!.Value, "otro@test.cl", isAdmin: false, isActive: true, isLocked: false, fullName: null);
 
         Assert.True(resultado.IsSuccess);
     }

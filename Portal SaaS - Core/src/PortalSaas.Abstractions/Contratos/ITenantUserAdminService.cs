@@ -28,10 +28,14 @@ public interface ITenantUserAdminService
     /// exitoso (mismo token de un solo uso que IPasswordResetService, ver
     /// ForgotPassword.cshtml.cs del Host para el patrón de referencia).
     /// </summary>
-    Task<TenantUserOperationResult> CreateAsync(string username, string email, bool isAdmin, CancellationToken ct = default);
+    Task<TenantUserOperationResult> CreateAsync(string username, string email, bool isAdmin, string? fullName = null, CancellationToken ct = default);
 
-    /// <summary>Rechaza si userId es el propio usuario logueado y la operación le quitaría IsAdmin o IsActive (auto-bloqueo).</summary>
-    Task<TenantUserOperationResult> UpdateAsync(Guid userId, string email, bool isAdmin, bool isActive, bool isLocked, CancellationToken ct = default);
+    /// <summary>Rechaza si userId es el propio usuario logueado y la operación le quitaría IsAdmin o IsActive (auto-bloqueo).
+    /// fullName SIN default a propósito -- a diferencia de CreateAsync (donde no hay nada que
+    /// preservar), acá un default silencioso borraría el nombre completo ya cargado en
+    /// cualquier llamador que no supiera de este campo (ej. un toggle de "activo"). El
+    /// llamador siempre debe pasar el valor actual si no lo está cambiando.</summary>
+    Task<TenantUserOperationResult> UpdateAsync(Guid userId, string email, bool isAdmin, bool isActive, bool isLocked, string? fullName, CancellationToken ct = default);
 
     /// <summary>Rechaza si userId es el propio usuario logueado (no puede eliminarse a sí mismo).</summary>
     Task<TenantUserOperationResult> DeleteAsync(Guid userId, CancellationToken ct = default);

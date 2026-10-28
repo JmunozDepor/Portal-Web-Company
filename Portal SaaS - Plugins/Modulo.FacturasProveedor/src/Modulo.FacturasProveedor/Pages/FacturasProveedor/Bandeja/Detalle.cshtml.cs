@@ -46,7 +46,9 @@ public sealed class DetalleModel : FacturasProveedorPageModelBase
         var detail = await _queries.GetDetailAsync(id, ct);
         if (detail is null) return NotFound();
         var pdf = await _inbox.GetPdfAsync(detail.Row.ReceivedId, ct);
-        return pdf is null ? NotFound() : File(pdf, "application/pdf");
+        if (pdf is not null) return File(pdf, "application/pdf");
+        ErrorMessage = "El operador no entregó el PDF de este documento. Se puede ver en el portal del operador.";
+        return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostAceptarAsync(long id, Guid stamp, CancellationToken ct = default)

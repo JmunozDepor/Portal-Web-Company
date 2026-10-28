@@ -39,6 +39,19 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
     private const int PageSize = 500;
     internal const string OcReferenciadaCode = "oc-referenciada";
 
+    /// <summary>
+    /// Notas de débito y crédito: el SII no admite aceptarlas ni reclamarlas. Entran a la bandeja solo para verlas, en
+    /// "No admite respuesta": sin reglas, sin avisos ni plazo, y no consumen el saldo de la OC.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<int, string> InformativeTypes = new Dictionary<int, string>
+    {
+        [56] = "Nota de débito: el SII no admite aceptarla ni reclamarla.",
+        [61] = "Nota de crédito: el SII no admite aceptarla ni reclamarla.",
+    };
+
+    private static bool IsTracked(DteReceivedDto doc, DteInboxStatus status) =>
+        status.RespondableTypes.Contains(doc.DteType) || InformativeTypes.ContainsKey(doc.DteType);
+
     private readonly FacturasProveedorDbContext _db;
     private readonly IDteInboxService _inbox;
     private readonly InvoiceRuleEngine _engine;
@@ -176,13 +189,13 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
 
     /// <summary>
     /// Red de seguridad del cursor: la sincronización fija UpdatedAt al empezar y confirma al final, así que si otro
-    /// escritor movió el cursor entretanto, una fila nueva puede quedar detrás de él. Todo documento respondible de la
-    /// ventana sin revisión la recibe aquí, en cada ciclo.
+    /// escritor movió el cursor entretanto, una fila nueva puede quedar detrás de él. Todo documento de la ventana que la
+    /// bandeja muestra (respondible o nota de crédito/débito) y no tiene revisión la recibe aquí, en cada ciclo.
     /// </summary>
     private async Task<int> ReconcileAsync(IEnumerable<DteReceivedDto> window, FpSettings settings, DteInboxStatus status,
         DateTimeOffset now, bool simulation, CancellationToken ct)
     {
-        var candidates = window.Where(d => status.RespondableTypes.Contains(d.DteType)).ToList();
+        var candidates = window.Where(d => IsTracked(d, status)).ToList();
         var ids = candidates.Select(d => d.Id).ToList();
         var known = (await _db.InvoiceReviews.Where(r => r.CompanyId == CompanyId && ids.Contains(r.ReceivedId))
             .Select(r => r.ReceivedId).ToListAsync(ct)).ToHashSet();
@@ -199,7 +212,7 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
     private async Task<bool> ApplyDocumentAsync(DteReceivedDto doc, FpSettings settings, DteInboxStatus status, DateTimeOffset now,
         bool simulation, CancellationToken ct)
     {
-        if (!status.RespondableTypes.Contains(doc.DteType)) return false;
+        if (!IsTracked(doc, status)) return false;
         var review = await _db.InvoiceReviews.FirstOrDefaultAsync(r => r.CompanyId == CompanyId && r.ReceivedId == doc.Id, ct)
             ?? _db.InvoiceReviews.Local.FirstOrDefault(r => r.CompanyId == CompanyId && r.ReceivedId == doc.Id);
         var created = review is null;
@@ -213,8 +226,13 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
             review.IssuerName = Truncate(doc.IssuerName, 100);
             review.TotalAmount = doc.TotalAmount;
         }
+        if (InformativeTypes.TryGetValue(doc.DteType, out var informative))
+        {
+            await ApplyNotRespondableAsync(review, informative, now, ct);
+            return created;
+        }
         await ApplyInboxResponseAsync(review, doc, settings, simulation, now, ct);
-        await ApplyNotRespondableAsync(review, doc, now, ct);
+        if (doc.NotRespondableReason is { } reason) await ApplyNotRespondableAsync(review, reason, now, ct);
         return created;
     }
 
@@ -258,14 +276,15 @@ public sealed class InvoiceReviewService : IInvoiceReviewService
     }
 
     /// <summary>
-    /// El SII no admite aceptarla ni reclamarla (ej. pagada al contado): sale del flujo sin evaluar ni avisar. Aplica también
-    /// a las fuera de alcance, para que no reingresen si después se adelanta "procesar desde".
+    /// El SII no admite aceptarla ni reclamarla (ej. pagada al contado, nota de crédito): sale del flujo sin evaluar ni
+    /// avisar, con el motivo como resultado. Aplica también a las fuera de alcance, para que no reingresen si después se
+    /// adelanta "procesar desde".
     /// </summary>
-    private async Task ApplyNotRespondableAsync(FpInvoiceReview review, DteReceivedDto doc, DateTimeOffset now, CancellationToken ct)
+    private async Task ApplyNotRespondableAsync(FpInvoiceReview review, string reason, DateTimeOffset now, CancellationToken ct)
     {
-        if (doc.NotRespondableReason is not { } reason) return;
         if (ReviewStatuses.IsFinal(review.Status) && review.Status != ReviewStatuses.OutOfScope) return;
         review.Status = ReviewStatuses.NotRespondable;
+        review.Reason = Truncate(reason, 500);
         Touch(review, now);
         await AddEventAsync(review, "not_respondable", null, reason, now, ct);
     }

@@ -201,11 +201,12 @@ public class InvoiceReviewServiceTests
         Assert.Equal(RuleActions.Accept, review.DecidedAction);
     }
 
+    /// <summary>Las guías de despacho no entran a la bandeja (las notas de crédito y débito sí, ver más abajo).</summary>
     [Fact]
-    public async Task Evaluate_TipoNoRespondible_NoCreaRevision()
+    public async Task Evaluate_GuiaDeDespacho_NoCreaRevision()
     {
         var env = await new ReviewTestEnv().StartAsync();
-        env.Invoice(dteType: 61);
+        env.Invoice(dteType: 52);
 
         await env.EvaluateAsync();
 
@@ -371,6 +372,50 @@ public class InvoiceReviewServiceTests
         await Task.WhenAll(env.EvaluateAsync(), reviews2.EvaluatePendingAsync(CancellationToken.None));
 
         Assert.Equal(1, await TestDb.Create(name).InvoiceReviews.CountAsync());
+    }
+
+    /// <summary>
+    /// Notas de crédito y débito: el SII no admite aceptarlas ni reclamarlas. Entran a la bandeja para verlas, sin reglas,
+    /// sin avisos y sin plazo (quedan en "No admite respuesta").
+    /// </summary>
+    [Theory]
+    [InlineData(61, "Nota de crédito")]
+    [InlineData(56, "Nota de débito")]
+    public async Task Evaluate_NotaDeCreditoODebito_NoAdmiteRespuesta_SinReglasNiAvisos(int dteType, string label)
+    {
+        var env = await new ReviewTestEnv().StartAsync(ModuleModes.Active);
+        env.Inbox.Add(dteType: dteType, folio: 515, siiReceivedAt: ReviewTestEnv.ReceivedAt(24), purchaseOrders: Array.Empty<int>());
+
+        await env.EvaluateAsync();
+
+        var review = await env.Db.InvoiceReviews.SingleAsync();
+        Assert.Equal(ReviewStatuses.NotRespondable, review.Status);
+        Assert.StartsWith(label, review.Reason);
+        Assert.Empty(await env.Db.ReviewRuleResults.ToListAsync());
+        Assert.Empty(env.Notifications.Enqueued);
+    }
+
+    [Fact]
+    public async Task Evaluate_NotaDeCreditoAntesDeProcesarDesde_IgualSeMuestra()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Inbox.Add(dteType: 61, folio: 515, siiReceivedAt: ReviewTestEnv.ReceivedAt(10), purchaseOrders: Array.Empty<int>());
+
+        await env.EvaluateAsync();
+
+        Assert.Equal(ReviewStatuses.NotRespondable, (await env.Db.InvoiceReviews.SingleAsync()).Status);
+    }
+
+    /// <summary>El motivo (ej. pagada al contado) queda en la revisión: la bandeja lo muestra como resultado.</summary>
+    [Fact]
+    public async Task Evaluate_NoRespondible_GuardaElMotivoEnLaRevision()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Invoice(notRespondableReason: "Pagada al contado: el SII no admite aceptarla ni reclamarla.");
+
+        await env.EvaluateAsync();
+
+        Assert.Equal("Pagada al contado: el SII no admite aceptarla ni reclamarla.", (await env.Db.InvoiceReviews.SingleAsync()).Reason);
     }
 
     [Fact]

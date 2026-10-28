@@ -34,6 +34,8 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
     <!-- Recurso embebido wwwroot\** (ServesOwnWwwRoot = true). -->
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.8" />
+    <!-- Exportar la bandeja a Excel. Misma versión que el resto de la solución (ver Rendiciones). -->
+    <PackageReference Include="ClosedXML" Version="0.104.1" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,8 +1,10 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Modulo.FacturasProveedor.Data;
 using Modulo.FacturasProveedor.Dominio;
 using Modulo.FacturasProveedor.Dominio.Reglas;
 using Modulo.FacturasProveedor.Models;
+using Modulo.FacturasProveedor.Pages;
 using PortalSaas.Abstractions.Contratos;
 using PortalSaas.Abstractions.Modelos.Dte;
 
@@ -11,11 +13,20 @@ namespace Modulo.FacturasProveedor.Servicios;
 /// <summary>StatusGroup: pending (aviso, por decidir, por enviar), all, accepted, rejected o simulation.</summary>
 public sealed record ReviewListFilter(DateOnly? From, DateOnly? To, string StatusGroup, string? Text);
 
-/// <summary>Una fila de la bandeja. Matches: en simulación, si la decisión simulada coincide con lo respondido en el operador.</summary>
+/// <summary>
+/// Una fila de la bandeja. Matches: en simulación, si la decisión simulada coincide con lo respondido en el operador.
+/// SiiReceivedAt (hora de registro), PaymentForm, DueDate, HasPdf y ReferenceLabel (documentos tributarios referenciados,
+/// ej. la factura que anula una nota de crédito) vienen de la bandeja de plataforma.
+/// </summary>
 public sealed record ReviewRow(
     long Id, long ReceivedId, DateOnly SiiReceivedOn, string IssuerName, string IssuerTaxId, int DteType, long Folio, long TotalAmount,
     IReadOnlyList<int> PurchaseOrders, string Status, string? Summary, DateOnly LegalDeadlineOn, DateOnly? WarnDeadlineOn,
-    string? DecidedAction, bool IsSimulated, string? OperatorAction, bool? Matches, Guid ConcurrencyStamp);
+    string? DecidedAction, bool IsSimulated, string? OperatorAction, bool? Matches, Guid ConcurrencyStamp,
+    DateTimeOffset? SiiReceivedAt = null, string? PaymentForm = null, DateOnly? DueDate = null, bool HasPdf = false,
+    string? ReferenceLabel = null);
+
+/// <summary>Una página de la bandeja y el total de filas del filtro.</summary>
+public sealed record ReviewPage(IReadOnlyList<ReviewRow> Rows, int Total);
 
 public sealed record ReviewKpis(int InReview, int Warning, int DueIn2Days, int AcceptedMonth, int RejectedMonth);
 
@@ -26,7 +37,10 @@ public sealed record ReviewDetail(
 
 public interface IReviewQueryService
 {
+    /// <summary>Todo lo filtrado (hasta 10.000 filas): exportar a Excel.</summary>
     Task<IReadOnlyList<ReviewRow>> ListAsync(ReviewListFilter filter, CancellationToken ct);
+    /// <summary>Una página de lo filtrado, más recientes primero (page desde 1).</summary>
+    Task<ReviewPage> ListPageAsync(ReviewListFilter filter, int page, int pageSize, CancellationToken ct);
     Task<ReviewKpis> GetKpisAsync(CancellationToken ct);
     Task<ReviewDetail?> GetDetailAsync(long id, CancellationToken ct);
     /// <summary>Facturas por decidir de los grupos del usuario (asignado, aprobador o suplente del proveedor).</summary>
@@ -37,6 +51,10 @@ public interface IReviewQueryService
 public sealed class ReviewQueryService : IReviewQueryService
 {
     private const string BandejaMenu = "FacturasProveedor.bandeja";
+    private const int MaxRows = 10_000;
+
+    /// <summary>Tipos de documento tributario que pueden aparecer como referencia (las OC, 801, van en su columna).</summary>
+    private static readonly HashSet<int> ReferenceableTypes = new() { 30, 32, 33, 34, 35, 38, 39, 41, 43, 46, 52, 55, 56, 60, 61 };
 
     private readonly FacturasProveedorDbContext _db;
     private readonly IDteInboxService _inbox;
@@ -69,6 +87,27 @@ public sealed class ReviewQueryService : IReviewQueryService
 
     public async Task<IReadOnlyList<ReviewRow>> ListAsync(ReviewListFilter filter, CancellationToken ct)
     {
+        var q = await FilteredAsync(filter, ct);
+        return await ToRowsAsync(await Ordered(q).Take(MaxRows).ToListAsync(ct), ct);
+    }
+
+    public async Task<ReviewPage> ListPageAsync(ReviewListFilter filter, int page, int pageSize, CancellationToken ct)
+    {
+        var q = await FilteredAsync(filter, ct);
+        var total = await q.CountAsync(ct);
+        var reviews = await Ordered(q).Skip((Math.Max(1, page) - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new ReviewPage(await ToRowsAsync(reviews, ct), total);
+    }
+
+    private static IOrderedQueryable<FpInvoiceReview> Ordered(IQueryable<FpInvoiceReview> q) =>
+        q.OrderByDescending(r => r.SiiReceivedOn).ThenByDescending(r => r.Id);
+
+    /// <summary>
+    /// Filtros de la bandeja, resueltos en la base. El texto busca proveedor (sin distinguir mayúsculas), RUT, folio u OC;
+    /// las OC viven en la bandeja de plataforma, así que primero se buscan ahí los documentos que la referencian.
+    /// </summary>
+    private async Task<IQueryable<FpInvoiceReview>> FilteredAsync(ReviewListFilter filter, CancellationToken ct)
+    {
         var q = _db.InvoiceReviews.AsNoTracking().Where(r => r.CompanyId == CompanyId);
         if (filter.From is { } from) q = q.Where(r => r.SiiReceivedOn >= from);
         if (filter.To is { } to) q = q.Where(r => r.SiiReceivedOn <= to);
@@ -81,15 +120,16 @@ public sealed class ReviewQueryService : IReviewQueryService
             "simulation" => q.Where(r => r.IsSimulated),
             _ => q,
         };
-        var reviews = await q.OrderByDescending(r => r.SiiReceivedOn).ThenByDescending(r => r.Id).Take(1000).ToListAsync(ct);
-        var rows = await ToRowsAsync(reviews, ct);
-        if (string.IsNullOrWhiteSpace(filter.Text)) return rows;
+        if (string.IsNullOrWhiteSpace(filter.Text)) return q;
 
-        // Proveedor, RUT, folio u OC (las OC viven en la bandeja de plataforma, por eso se filtra sobre las filas).
         var text = filter.Text.Trim();
-        var number = long.TryParse(text, out var n) ? n : -1;
-        return rows.Where(r => r.IssuerName.Contains(text, StringComparison.OrdinalIgnoreCase) || r.IssuerTaxId.Contains(text)
-            || r.Folio == number || r.PurchaseOrders.Any(po => po == number)).ToList();
+        var lower = text.ToLower();
+        if (!long.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var number))
+            return q.Where(r => r.IssuerName.ToLower().Contains(lower) || r.IssuerTaxId.Contains(text));
+        var withPurchaseOrder = (await _inbox.ListAsync(new DteReceivedFilter(filter.From?.AddDays(-1), filter.To?.AddDays(1), null, 5000), ct))
+            .Where(d => d.PurchaseOrderRefs.Any(po => po.DocNum == number)).Select(d => d.Id).ToList();
+        return q.Where(r => r.IssuerName.ToLower().Contains(lower) || r.IssuerTaxId.Contains(text) || r.Folio == number
+            || withPurchaseOrder.Contains(r.ReceivedId));
     }
 
     public async Task<ReviewKpis> GetKpisAsync(CancellationToken ct)
@@ -129,7 +169,7 @@ public sealed class ReviewQueryService : IReviewQueryService
 
         return new ReviewDetail(row, doc, rules, lines, events, warning, canDecide,
             await _user.HasActionAsync(BandejaMenu, "EDIT", ct), groupName, review.RecommendedAction, review.Reason,
-            review.DecisionSource, status.SupportedActions.Where(DteResponseActions.IsClaim).ToList(), status.SupportsDocumentDownload);
+            review.DecisionSource, status.SupportedActions.Where(DteResponseActions.IsClaim).ToList(), status.SupportsDocumentDownload || doc.HasPdf);
     }
 
     public async Task<IReadOnlyList<ReviewRow>> ListMineAsync(CancellationToken ct)
@@ -180,10 +220,24 @@ public sealed class ReviewQueryService : IReviewQueryService
                 : null;
             var summary = r.Status is ReviewStatuses.Warning or ReviewStatuses.InReview
                 ? objections.GetValueOrDefault(r.Id)?.FirstOrDefault(o => o.Action == r.ProposedAction)?.Message ?? r.Reason
-                : r.Reason;
+                // Las "No admite respuesta" anteriores a guardar el motivo lo toman del documento.
+                : r.Reason ?? (r.Status == ReviewStatuses.NotRespondable ? doc?.NotRespondableReason : null);
             return new ReviewRow(r.Id, r.ReceivedId, r.SiiReceivedOn, r.IssuerName, r.IssuerTaxId, r.DteType, r.Folio, r.TotalAmount,
                 doc?.PurchaseOrderRefs.Select(p => p.DocNum).Distinct().ToList() ?? new List<int>(), r.Status, summary, r.LegalDeadlineOn,
-                r.WarnDeadlineOn, r.DecidedAction, r.IsSimulated, operatorAction, matches, r.ConcurrencyStamp);
+                r.WarnDeadlineOn, r.DecidedAction, r.IsSimulated, operatorAction, matches, r.ConcurrencyStamp,
+                doc?.SiiReceivedAt, doc?.PaymentForm, doc?.DueDate, doc?.HasPdf ?? false, ReferenceLabel(doc));
         }).ToList();
+    }
+
+    /// <summary>Documentos tributarios referenciados, ej. "Factura 4045" (la que anula una nota de crédito).</summary>
+    private static string? ReferenceLabel(DteReceivedDto? doc)
+    {
+        if (doc is null) return null;
+        var labels = doc.References
+            .Select(x => (Ok: int.TryParse(x.Type, NumberStyles.None, CultureInfo.InvariantCulture, out var type), Type: type, x.Folio))
+            .Where(x => x.Ok && ReferenceableTypes.Contains(x.Type))
+            .Select(x => $"{FacturasProveedorUi.DocumentLabel(x.Type)} {x.Folio}")
+            .Distinct().ToList();
+        return labels.Count == 0 ? null : string.Join(", ", labels);
     }
 }

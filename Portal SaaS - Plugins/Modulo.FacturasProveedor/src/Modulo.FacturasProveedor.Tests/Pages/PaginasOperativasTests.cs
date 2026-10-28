@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using ClosedXML.Excel;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
@@ -223,6 +225,144 @@ public class PaginasOperativasTests
         var rows = await Queries(env).ListAsync(new ReviewListFilter(null, null, "pending", null), CancellationToken.None);
 
         Assert.Equal(new long[] { 5 }, rows.Select(r => r.Folio));
+    }
+
+    private static async Task<ReviewTestEnv> ThirtyInvoicesAsync()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        for (var folio = 1; folio <= 30; folio++)
+            env.Inbox.Add(folio: folio, siiReceivedAt: ReviewTestEnv.ReceivedAt(21).AddMinutes(folio), purchaseOrders: new[] { 4512 });
+        await env.EvaluateAsync();
+        return env;
+    }
+
+    [Fact]
+    public async Task ListPage_PaginaYTotal_MasRecientesPrimero()
+    {
+        var env = await ThirtyInvoicesAsync();
+
+        var page = await Queries(env).ListPageAsync(new ReviewListFilter(null, null, "all", null), 2, 25, CancellationToken.None);
+
+        Assert.Equal(30, page.Total);
+        Assert.Equal(new long[] { 5, 4, 3, 2, 1 }, page.Rows.Select(r => r.Folio));
+    }
+
+    [Fact]
+    public async Task ListPage_TextoPorOc_YRazonSocialSinMayusculas()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Inbox.Add(folio: 1, purchaseOrders: new[] { 4512 });
+        env.Inbox.Add(folio: 2, purchaseOrders: new[] { 4530 }, issuerTaxId: "77555010-K", issuerName: "Inmobiliaria Los Robles SpA");
+        await env.EvaluateAsync();
+
+        var byPo = await Queries(env).ListPageAsync(new ReviewListFilter(null, null, "all", "4530"), 1, 25, CancellationToken.None);
+        var byName = await Queries(env).ListPageAsync(new ReviewListFilter(null, null, "all", "los robles"), 1, 25, CancellationToken.None);
+
+        Assert.Equal(1, byPo.Total);
+        Assert.Equal(2, byPo.Rows.Single().Folio);
+        Assert.Equal(2, byName.Rows.Single().Folio);
+    }
+
+    /// <summary>Columnas nuevas de la bandeja: hora de registro SII, forma de pago, vencimiento, PDF y documento referenciado.</summary>
+    [Fact]
+    public async Task List_Fila_TraeRegistroFormaDePagoPdfYReferenciaDeLaNota()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        var note = env.Inbox.Add(dteType: 61, folio: 515, siiReceivedAt: ReviewTestEnv.ReceivedAt(24), purchaseOrders: Array.Empty<int>(),
+            paymentForm: "CREDITO", dueDate: new DateOnly(2026, 11, 12), hasPdf: true,
+            references: new[] { new DteReceivedReference("33", "4045", new DateOnly(2026, 9, 4), 1, "ANULA DOCUMENTO") });
+        await env.EvaluateAsync();
+
+        var row = (await Queries(env).ListPageAsync(new ReviewListFilter(null, null, "all", null), 1, 25, CancellationToken.None)).Rows.Single();
+
+        Assert.Equal(note.SiiReceivedAt, row.SiiReceivedAt);
+        Assert.Equal("CREDITO", row.PaymentForm);
+        Assert.Equal(new DateOnly(2026, 11, 12), row.DueDate);
+        Assert.True(row.HasPdf);
+        Assert.Equal("Factura 4045", row.ReferenceLabel);
+    }
+
+    private static Bandeja.IndexModel BandejaPage(ReviewTestEnv env) =>
+        new(Queries(env), env.Inbox, env.Reviews, env.Settings, env.User)
+        {
+            TempData = Temp(),
+            PageContext = new PageContext
+            {
+                HttpContext = new DefaultHttpContext(),
+                ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
+            },
+        };
+
+    [Fact]
+    public async Task Bandeja_Paginada_ExponeTotalYPaginas_YCorrigeTamanoInvalido()
+    {
+        var env = await ThirtyInvoicesAsync();
+        env.User.Grant(Menu, PortalActions.View);
+        var page = BandejaPage(env);
+        page.Estado = "all";
+        page.PageNumber = 2;
+        page.PageSize = 7;
+
+        await page.OnGetAsync();
+
+        Assert.Equal(25, page.PageSize);
+        Assert.Equal(30, page.TotalRecords);
+        Assert.Equal(2, page.TotalPages);
+        Assert.Equal(5, page.Rows.Count);
+        Assert.Equal(8, page.LegalDeadlineDays);
+    }
+
+    [Fact]
+    public async Task Bandeja_VistaPrevia_DevuelveElDocumento_YRespetaPermisos()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        env.Invoice();
+        await env.EvaluateAsync();
+        var review = await env.Db.InvoiceReviews.SingleAsync();
+        var page = BandejaPage(env);
+
+        Assert.IsType<ForbidResult>(await page.OnGetVistaPreviaAsync(review.Id));
+        env.User.Grant(Menu, PortalActions.View);
+        var result = Assert.IsType<PartialViewResult>(await page.OnGetVistaPreviaAsync(review.Id));
+        Assert.Equal("_VistaPrevia", result.ViewName);
+        Assert.Equal(18452, Assert.IsType<ReviewDetail>(result.Model).Row.Folio);
+        Assert.IsType<NotFoundResult>(await page.OnGetVistaPreviaAsync(review.Id + 99));
+    }
+
+    [Fact]
+    public async Task Bandeja_Excel_ExportaTodoLoFiltrado_NoSoloLaPagina()
+    {
+        var env = await ThirtyInvoicesAsync();
+        env.User.Grant(Menu, PortalActions.View);
+        var page = BandejaPage(env);
+        page.Estado = "all";
+
+        var file = Assert.IsType<FileContentResult>(await page.OnGetExcelAsync());
+
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", file.ContentType);
+        Assert.EndsWith(".xlsx", file.FileDownloadName);
+        using var book = new XLWorkbook(new MemoryStream(file.FileContents));
+        var sheet = book.Worksheets.First();
+        Assert.Equal("Fecha registro SII", sheet.Cell(1, 1).GetString());
+        Assert.Equal("Razón social", sheet.Cell(1, 3).GetString());
+        Assert.Equal(31, sheet.LastRowUsed()!.RowNumber());
+    }
+
+    [Fact]
+    public async Task Detalle_PdfQueElOperadorNoEntrega_MensajeEnVezDe404()
+    {
+        var env = await new ReviewTestEnv().StartAsync();
+        var doc = env.Invoice();
+        await env.EvaluateAsync();
+        var review = await env.Db.InvoiceReviews.SingleAsync();
+        env.User.Grant(Menu, PortalActions.View);
+
+        var missing = Assert.IsType<RedirectToPageResult>(await Detalle(env).OnGetPdfAsync(review.Id));
+        Assert.Equal(review.Id, missing.RouteValues!["id"]);
+
+        env.Inbox.Pdfs[doc.Id] = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+        var file = Assert.IsType<FileContentResult>(await Detalle(env).OnGetPdfAsync(review.Id));
+        Assert.Equal("application/pdf", file.ContentType);
     }
 
     [Fact]

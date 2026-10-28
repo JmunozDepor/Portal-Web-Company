@@ -1,4 +1,5 @@
 using System.Globalization;
+using Modulo.FacturasProveedor.Dominio;
 
 namespace Modulo.FacturasProveedor.Pages;
 
@@ -55,10 +56,75 @@ public static class FacturasProveedorUi
         34 => "Factura exenta",
         43 => "Liquidación factura",
         46 => "Factura de compra",
+        52 => "Guía de despacho",
         56 => "Nota de débito",
         61 => "Nota de crédito",
         _ => $"DTE {dteType}",
     };
+
+    /// <summary>Nombre del tipo de documento como lo informa el SII (columna "Documento" de la bandeja).</summary>
+    public static string DocumentTypeName(int dteType) => dteType switch
+    {
+        33 => "Factura electrónica",
+        34 => "Factura exenta electrónica",
+        43 => "Liquidación factura electrónica",
+        46 => "Factura de compra electrónica",
+        52 => "Guía de despacho electrónica",
+        56 => "Nota de débito electrónica",
+        61 => "Nota de crédito electrónica",
+        _ => $"DTE {dteType}",
+    };
+
+    /// <summary>Tipo de un documento referenciado: 801 = orden de compra; un DTE por su nombre; otro código tal cual (ej. HES).</summary>
+    public static string ReferenceTypeName(string type) =>
+        type == "801" ? "Orden de compra"
+        : int.TryParse(type, NumberStyles.None, CultureInfo.InvariantCulture, out var dteType) ? DocumentTypeName(dteType)
+        : type;
+
+    /// <summary>Código de referencia del SII (CodRef): 1 anula, 2 corrige texto, 3 corrige montos.</summary>
+    public static string ReferenceCodeLabel(int? code) => code switch
+    {
+        1 => "Anula documento",
+        2 => "Corrige texto",
+        3 => "Corrige montos",
+        null => "—",
+        _ => code.Value.ToString(CultureInfo.InvariantCulture),
+    };
+
+    /// <summary>Forma de pago del operador (FACELE: CONTADO, CREDITO, SIN_COSTO) en español.</summary>
+    public static string PaymentFormLabel(string? form) => form switch
+    {
+        null or "" => "—",
+        "CONTADO" => "Contado",
+        "CREDITO" => "Crédito",
+        "SIN_COSTO" => "Sin costo",
+        _ => form,
+    };
+
+    /// <summary>Fecha y hora de registro en el SII (hora de Chile); solo la fecha si el operador no informó la hora.</summary>
+    public static string RegisteredLabel(DateTimeOffset? registeredAt, DateOnly receivedOn) =>
+        registeredAt is { } at ? ChileDateTime(at) : Date(receivedOn);
+
+    /// <summary>
+    /// Tooltip del estado (como el de FACELE): hora de registro en el SII y, si el documento admite respuesta, cuánto queda
+    /// del plazo legal contado desde esa hora ("7 días, 21 horas y 52 minutos") o cuándo venció.
+    /// </summary>
+    public static string DeadlineTooltip(DateTimeOffset? registeredAt, DateOnly legalDeadlineOn, int legalDays, bool respondable, DateTimeOffset now)
+    {
+        if (registeredAt is not { } at) return respondable ? $"Vence el {Date(legalDeadlineOn)}" : "Sin hora de registro en el SII";
+        var registered = $"Registro SII: {ChileDateTime(at)}";
+        if (!respondable) return registered;
+        var deadline = at.AddDays(legalDays);
+        var left = deadline - now;
+        if (left <= TimeSpan.Zero) return $"{registered} · Plazo vencido el {ChileDateTime(deadline)}";
+        return $"{registered} · Plazo para responder: {Count(left.Days, "día", "días")}, {Count(left.Hours, "hora", "horas")} y "
+               + Count(left.Minutes, "minuto", "minutos");
+    }
+
+    private static string ChileDateTime(DateTimeOffset at) =>
+        ChileClock.ToLocal(at.UtcDateTime).ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture);
+
+    private static string Count(int n, string one, string many) => $"{n} {(n == 1 ? one : many)}";
 
     /// <summary>Monto en pesos chilenos sin decimales (ej. 2.380.000).</summary>
     public static string Amount(long amount) => amount.ToString("N0", Cl);

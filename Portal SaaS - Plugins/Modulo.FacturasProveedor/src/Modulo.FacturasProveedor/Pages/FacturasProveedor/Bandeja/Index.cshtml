@@ -1,11 +1,14 @@
 @page "/facturas-proveedor/bandeja"
 @model Modulo.FacturasProveedor.Pages.FacturasProveedor.Bandeja.IndexModel
 @using System.Globalization
+@using PortalSaas.Abstractions.Componentes
 @section Styles {
     <link rel="stylesheet" href="~/css/facturas-proveedor.css" asp-append-version="true" />
 }
 @{
     ViewData["Title"] = "Bandeja de facturas recibidas";
+    string PageUrl(int pageNumber) =>
+        Url.Page(null, new { Model.From, Model.To, Model.Estado, Model.Texto, pageSize = Model.PageSize, pageNumber })!;
 }
 
 <div class="card-surface">
@@ -17,6 +20,8 @@
                 Última lectura de @(Model.Status?.ProviderCode ?? "el operador"):
                 @(Model.Status?.LastSyncAt is { } at ? Modulo.FacturasProveedor.Dominio.ChileClock.ToLocal(at.UtcDateTime).ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture) : "—")
             </span>
+            <a class="btn btn-secondary" asp-page-handler="Excel" asp-route-From="@Model.From" asp-route-To="@Model.To"
+               asp-route-Estado="@Model.Estado" asp-route-Texto="@Model.Texto"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a>
             <form method="post" asp-page-handler="LeerAhora" class="d-inline">
                 <button type="submit" class="btn btn-secondary"><i class="bi bi-cloud-download"></i> Leer ahora</button>
             </form>
@@ -78,18 +83,29 @@
             <label class="form-label" for="f-texto">Proveedor, RUT, folio u OC</label>
             <input type="search" id="f-texto" name="Texto" value="@Model.Texto" class="form-control" autocomplete="off" />
         </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-size">Mostrar</label>
+            <select id="f-size" name="pageSize" class="form-select" onchange="this.form.submit()">
+                @foreach (var size in DocumentListViewModel.AvailablePageSizes)
+                {
+                    <option value="@size" selected="@(size == Model.PageSize)">@size</option>
+                }
+            </select>
+        </div>
         <div class="col-auto align-self-end">
             <button type="submit" class="btn btn-primary">Filtrar</button>
             <a class="btn btn-secondary" href="~/facturas-proveedor/bandeja">Limpiar</a>
         </div>
     </form>
 
+    <div class="doc-list-contador">@($"{Model.TotalRecords} registro(s) -- página {Model.PageNumber} de {Model.TotalPages}")</div>
+
     <div class="table-responsive-lg">
         <table class="table-ps">
             <thead>
                 <tr>
-                    <th>Recibida SII</th><th>Proveedor</th><th>Documento</th><th class="text-end">Total</th><th>OC</th>
-                    <th>Resultado de reglas</th><th>Estado</th>
+                    <th>Fecha registro SII</th><th>RUT</th><th>Razón social</th><th>Tipo</th><th>Documento</th><th>Folio</th>
+                    <th>Forma de pago</th><th class="text-end">Total</th><th>OC</th><th>Resultado de reglas</th><th>Estado</th>
                     @if (Model.Estado == "simulation") { <th>Respondido en el operador</th><th>Coincide</th> } else { <th>Plazo</th> }
                     <th class="col-actions"></th>
                 </tr>
@@ -98,16 +114,31 @@
                 @foreach (var r in Model.Rows)
                 {
                     var pending = ReviewStatuses.Pending.Contains(r.Status) || r.Status == ReviewStatuses.New;
+                    var open = r.Status is not (ReviewStatuses.Accepted or ReviewStatuses.Rejected or ReviewStatuses.External
+                        or ReviewStatuses.Expired or ReviewStatuses.NotRespondable);
                     var dueClass = r.LegalDeadlineOn <= Model.Today.AddDays(1) ? "badge-status--danger"
                         : r.LegalDeadlineOn <= Model.Today.AddDays(3) ? "badge-status--warning" : "badge-status--neutral";
                     <tr>
-                        <td class="text-nowrap">@FacturasProveedorUi.Date(r.SiiReceivedOn)</td>
-                        <td>@r.IssuerName<div class="text-muted small">@r.IssuerTaxId</div></td>
-                        <td class="text-nowrap">@FacturasProveedorUi.DocumentLabel(r.DteType) @r.Folio</td>
+                        <td class="text-nowrap">@FacturasProveedorUi.RegisteredLabel(r.SiiReceivedAt, r.SiiReceivedOn)</td>
+                        <td class="text-nowrap">@r.IssuerTaxId</td>
+                        <td>@r.IssuerName</td>
+                        <td>@r.DteType</td>
+                        <td>@FacturasProveedorUi.DocumentTypeName(r.DteType)</td>
+                        <td class="text-nowrap">
+                            @r.Folio
+                            @if (r.ReferenceLabel is { } reference)
+                            {
+                                <div class="text-muted small">ref. @reference</div>
+                            }
+                        </td>
+                        <td>@FacturasProveedorUi.PaymentFormLabel(r.PaymentForm)</td>
                         <td class="text-end">@FacturasProveedorUi.Amount(r.TotalAmount)</td>
                         <td>@(r.PurchaseOrders.Count == 0 ? "—" : string.Join(", ", r.PurchaseOrders))</td>
                         <td>@(r.Summary ?? "—")</td>
-                        <td class="text-nowrap"><span class="badge-status @FacturasProveedorUi.StatusBadgeClass(r.Status)">@FacturasProveedorUi.StatusLabel(r.Status)</span></td>
+                        <td class="text-nowrap">
+                            <span class="badge-status @FacturasProveedorUi.StatusBadgeClass(r.Status)"
+                                  title="@FacturasProveedorUi.DeadlineTooltip(r.SiiReceivedAt, r.LegalDeadlineOn, Model.LegalDeadlineDays, open, Model.Now)">@FacturasProveedorUi.StatusLabel(r.Status)</span>
+                        </td>
                         @if (Model.Estado == "simulation")
                         {
                             <td>@FacturasProveedorUi.ActionLabel(r.OperatorAction)</td>
@@ -126,14 +157,47 @@
                                 }
                             </td>
                         }
-                        <td class="col-actions"><a class="btn-ghost" title="Abrir" href="~/facturas-proveedor/bandeja/@r.Id"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                        <td class="col-actions text-nowrap">
+                            <button type="button" class="btn-ghost" title="Vista previa" data-drawer-open="drawer-vista-previa"
+                                    data-preview-url="@Url.Page(null, "VistaPrevia", new { id = r.Id })"><i class="bi bi-eye"></i></button>
+                            @if (r.HasPdf)
+                            {
+                                <a class="btn-ghost" title="PDF" target="_blank" rel="noopener" href="~/facturas-proveedor/bandeja/@r.Id?handler=Pdf"><i class="bi bi-file-earmark-pdf"></i></a>
+                            }
+                            <a class="btn-ghost" title="Abrir" href="~/facturas-proveedor/bandeja/@r.Id"><i class="bi bi-box-arrow-up-right"></i></a>
+                        </td>
                     </tr>
                 }
                 @if (Model.Rows.Count == 0)
                 {
-                    <tr><td colspan="10" class="text-muted">Sin facturas para el filtro indicado.</td></tr>
+                    <tr><td colspan="14" class="text-muted">Sin facturas para el filtro indicado.</td></tr>
                 }
             </tbody>
         </table>
     </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="doc-list-paginacion">
+            <a class="btn-module-action @(Model.PageNumber <= 1 ? "disabled" : "")"
+               href="@(Model.PageNumber <= 1 ? "#" : PageUrl(Model.PageNumber - 1))">« Anterior</a>
+            <span>Página @Model.PageNumber de @Model.TotalPages</span>
+            <a class="btn-module-action @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")"
+               href="@(Model.PageNumber >= Model.TotalPages ? "#" : PageUrl(Model.PageNumber + 1))">Siguiente »</a>
+        </div>
+    }
 </div>
+
+<div id="drawer-vista-previa" class="drawer-overlay" data-drawer>
+    <aside class="drawer-panel drawer-panel--wide">
+        <div class="drawer-header">
+            <h3>Vista previa</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="drawer-body" data-preview-body></div>
+    </aside>
+</div>
+
+@section Scripts {
+    <script src="~/js/facturas-proveedor.js" asp-append-version="true"></script>
+}

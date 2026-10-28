@@ -1,0 +1,103 @@
+@model Modulo.FacturasProveedor.Servicios.ReviewDetail
+@using System.Globalization
+@using Modulo.FacturasProveedor.Models
+@* Contenido del drawer "Vista previa" de la bandeja (como la vista previa de FACELE): encabezado, referencias, detalle
+   (si el operador entregó el XML) y totales. Lo trae facturas-proveedor.js desde IndexModel.OnGetVistaPreviaAsync. *@
+@{
+    var r = Model.Row;
+    var doc = Model.Document;
+}
+
+<div class="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
+    <div>
+        <h4 class="mb-0">@FacturasProveedorUi.DocumentTypeName(r.DteType) N° @r.Folio</h4>
+        <div class="text-muted">@r.IssuerName · @r.IssuerTaxId</div>
+    </div>
+    <span class="badge-status @FacturasProveedorUi.StatusBadgeClass(r.Status)">@FacturasProveedorUi.StatusLabel(r.Status)</span>
+</div>
+
+<h5>Encabezado</h5>
+<dl class="row mb-3">
+    <dt class="col-sm-4">Fecha de emisión</dt><dd class="col-sm-8">@FacturasProveedorUi.Date(doc.IssueDate)</dd>
+    <dt class="col-sm-4">Fecha de vencimiento</dt><dd class="col-sm-8">@FacturasProveedorUi.Date(doc.DueDate)</dd>
+    <dt class="col-sm-4">Registro en el SII</dt><dd class="col-sm-8">@FacturasProveedorUi.RegisteredLabel(doc.SiiReceivedAt, r.SiiReceivedOn)</dd>
+    <dt class="col-sm-4">Forma de pago</dt><dd class="col-sm-8">@FacturasProveedorUi.PaymentFormLabel(doc.PaymentForm)</dd>
+    @if (r.Status != ReviewStatuses.NotRespondable)
+    {
+        <dt class="col-sm-4">Plazo para responder</dt><dd class="col-sm-8">hasta el @FacturasProveedorUi.Date(r.LegalDeadlineOn)</dd>
+    }
+    @if (r.Summary is { } summary)
+    {
+        <dt class="col-sm-4">Resultado</dt><dd class="col-sm-8">@summary</dd>
+    }
+    <dt class="col-sm-4">Orden de compra</dt><dd class="col-sm-8">@(r.PurchaseOrders.Count == 0 ? "—" : string.Join(", ", r.PurchaseOrders))</dd>
+</dl>
+
+<h5>Información de referencia</h5>
+@if (doc.References.Count == 0)
+{
+    <p class="text-muted">El documento no trae referencias.</p>
+}
+else
+{
+    <div class="table-responsive-lg mb-3">
+        <table class="table-ps">
+            <thead><tr><th>Tipo de documento</th><th>Folio</th><th>Fecha</th><th>Código</th><th>Razón</th></tr></thead>
+            <tbody>
+                @foreach (var reference in doc.References)
+                {
+                    <tr>
+                        <td>@FacturasProveedorUi.ReferenceTypeName(reference.Type)</td>
+                        <td>@reference.Folio</td>
+                        <td class="text-nowrap">@FacturasProveedorUi.Date(reference.Date)</td>
+                        <td>@FacturasProveedorUi.ReferenceCodeLabel(reference.Code)</td>
+                        <td>@(reference.Reason ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h5>Detalle</h5>
+@if (Model.Lines.Count == 0)
+{
+    <p class="text-muted">El operador no entrega el detalle de ítems de los documentos recibidos@(Model.SupportsPdf ? "; está en el PDF" : "").</p>
+}
+else
+{
+    <div class="table-responsive-lg mb-3">
+        <table class="table-ps">
+            <thead><tr><th>N°</th><th>Código</th><th>Ítem</th><th class="text-end">Cantidad</th><th class="text-end">Precio unitario</th><th class="text-end">Monto</th></tr></thead>
+            <tbody>
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td>@line.LineNumber</td>
+                        <td>@(line.ItemCode ?? "—")</td>
+                        <td>@line.Name</td>
+                        <td class="text-end">@line.Quantity.ToString("0.##", CultureInfo.InvariantCulture)</td>
+                        <td class="text-end">@(line.UnitPrice is { } price ? FacturasProveedorUi.Amount(price) : "—")</td>
+                        <td class="text-end">@FacturasProveedorUi.Amount(line.Amount)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h5>Totales</h5>
+<dl class="row mb-3">
+    <dt class="col-sm-4">Monto neto</dt><dd class="col-sm-8">@FacturasProveedorUi.Amount(doc.NetAmount)</dd>
+    <dt class="col-sm-4">Monto exento</dt><dd class="col-sm-8">@FacturasProveedorUi.Amount(doc.ExemptAmount)</dd>
+    <dt class="col-sm-4">IVA</dt><dd class="col-sm-8">@FacturasProveedorUi.Amount(doc.VatAmount)</dd>
+    <dt class="col-sm-4">Monto total</dt><dd class="col-sm-8"><strong>@FacturasProveedorUi.Amount(doc.TotalAmount)</strong></dd>
+</dl>
+
+<div class="d-flex gap-2 flex-wrap">
+    @if (Model.SupportsPdf)
+    {
+        <a class="btn btn-secondary" target="_blank" rel="noopener" href="~/facturas-proveedor/bandeja/@r.Id?handler=Pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+    }
+    <a class="btn btn-primary" href="~/facturas-proveedor/bandeja/@r.Id"><i class="bi bi-box-arrow-up-right"></i> Abrir revisión</a>
+</div>

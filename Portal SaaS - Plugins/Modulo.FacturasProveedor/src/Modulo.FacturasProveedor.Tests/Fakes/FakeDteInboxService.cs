@@ -28,7 +28,8 @@ public sealed class FakeDteInboxService : IDteInboxService
         string issuerTaxId = "76412553-1", int dteType = 33, long folio = 18452, long total = 2380000,
         DateTimeOffset? siiReceivedAt = null, DateOnly? issueDate = null, IReadOnlyList<int>? purchaseOrders = null,
         string responseStatus = DteResponseStatuses.None, string? responseAction = null, string? claimStatus = null,
-        string issuerName = "Comercial Textil Andes SpA", DateTimeOffset? updatedAt = null, string? notRespondableReason = null)
+        string issuerName = "Comercial Textil Andes SpA", DateTimeOffset? updatedAt = null, string? notRespondableReason = null,
+        string? paymentForm = null, DateOnly? dueDate = null, bool hasPdf = false, IReadOnlyList<DteReceivedReference>? references = null)
     {
         var received = siiReceivedAt ?? new DateTimeOffset(2026, 10, 24, 12, 0, 0, TimeSpan.Zero);
         var dto = new DteReceivedDto
@@ -39,6 +40,7 @@ public sealed class FakeDteInboxService : IDteInboxService
             PurchaseOrderRefs = (purchaseOrders ?? Array.Empty<int>())
                 .Select(n => new DtePurchaseOrderRef(n, DtePurchaseOrderRefSources.Dte, null, received)).ToList(),
             ResponseStatus = responseStatus, ResponseAction = responseAction, NotRespondableReason = notRespondableReason,
+            PaymentForm = paymentForm, DueDate = dueDate, HasPdf = hasPdf, References = references ?? Array.Empty<DteReceivedReference>(),
             UpdatedAt = updatedAt ?? received.AddMinutes(_nextId),
         };
         Items.Add(dto);
@@ -74,7 +76,11 @@ public sealed class FakeDteInboxService : IDteInboxService
     public Task<IReadOnlyList<DteReceivedLine>> GetLinesAsync(long id, CancellationToken ct = default) =>
         Task.FromResult(Lines.TryGetValue(id, out var lines) ? lines : (IReadOnlyList<DteReceivedLine>)Array.Empty<DteReceivedLine>());
 
-    public Task<byte[]?> GetPdfAsync(long id, CancellationToken ct = default) => Task.FromResult<byte[]?>(null);
+    /// <summary>PDF por id de la bandeja (lo que entregaría el operador).</summary>
+    public Dictionary<long, byte[]> Pdfs { get; } = new();
+
+    public Task<byte[]?> GetPdfAsync(long id, CancellationToken ct = default) =>
+        Task.FromResult(Pdfs.TryGetValue(id, out var pdf) ? pdf : null);
 
     public Task<DteRespondResult> RespondAsync(DteRespondRequest request, CancellationToken ct = default)
     {

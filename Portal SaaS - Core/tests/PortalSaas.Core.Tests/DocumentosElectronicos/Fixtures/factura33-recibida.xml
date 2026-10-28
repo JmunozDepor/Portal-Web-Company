@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<DTE version="1.0" xmlns="http://www.sii.cl/SiiDte">
+  <Documento ID="F18452T33">
+    <Encabezado>
+      <IdDoc><TipoDTE>33</TipoDTE><Folio>18452</Folio><FchEmis>2026-10-23</FchEmis></IdDoc>
+      <Emisor><RUTEmisor>76412553-1</RUTEmisor><RznSoc>Comercial Textil Andes SpA</RznSoc></Emisor>
+      <Receptor><RUTRecep>76030680-0</RUTRecep><RznSocRecep>Comercial Depor Ltda.</RznSocRecep></Receptor>
+      <Totales><MntNeto>2000000</MntNeto><TasaIVA>19</TasaIVA><IVA>380000</IVA><MntTotal>2380000</MntTotal></Totales>
+    </Encabezado>
+    <Detalle>
+      <NroLinDet>1</NroLinDet>
+      <CdgItem><TpoCodigo>INT1</TpoCodigo><VlrCodigo>POL-001</VlrCodigo></CdgItem>
+      <NmbItem>Polera algodón niño</NmbItem>
+      <QtyItem>100</QtyItem>
+      <PrcItem>12500.50</PrcItem>
+      <MontoItem>1250050</MontoItem>
+    </Detalle>
+    <Detalle>
+      <NroLinDet>2</NroLinDet>
+      <NmbItem>Flete</NmbItem>
+      <QtyItem>1</QtyItem>
+      <MontoItem>749950</MontoItem>
+    </Detalle>
+    <Referencia><NroLinRef>1</NroLinRef><TpoDocRef>801</TpoDocRef><FolioRef>4512</FolioRef><FchRef>2026-10-12</FchRef></Referencia>
+  </Documento>
+</DTE>

@@ -29,6 +29,7 @@
   <ItemGroup>
     <!-- XML y respuestas SOAP reales del ambiente de certificación de FACELE (sin credenciales). -->
     <None Update="DocumentosElectronicos\Facele\Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="DocumentosElectronicos\Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

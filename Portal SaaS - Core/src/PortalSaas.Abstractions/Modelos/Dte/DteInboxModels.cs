@@ -49,3 +49,68 @@ public static class DtePurchaseOrderRefSources
 
 /// <summary>Una OC (DocNum de SAP) asociada a un documento recibido.</summary>
 public sealed record DtePurchaseOrderRef(int DocNum, string Source, Guid? UserId, DateTimeOffset At);
+
+/// <summary>Una línea de detalle de un documento recibido, leída del XML archivado.</summary>
+public sealed record DteReceivedLine(int LineNumber, string? ItemCode, string Name, decimal Quantity, decimal? UnitPrice, long Amount);
+
+/// <summary>Documento recibido tal como lo ven los módulos (sin el XML).</summary>
+public sealed record DteReceivedDto
+{
+    public long Id { get; init; }
+    public string ProviderCode { get; init; } = "";
+    public string IssuerTaxId { get; init; } = "";
+    public string IssuerName { get; init; } = "";
+    public int DteType { get; init; }
+    public long Folio { get; init; }
+    public DateOnly IssueDate { get; init; }
+    public DateTimeOffset? SiiReceivedAt { get; init; }
+    public long NetAmount { get; init; }
+    public long ExemptAmount { get; init; }
+    public long VatAmount { get; init; }
+    public long TotalAmount { get; init; }
+    public string? SiiStatus { get; init; }
+    public string? CommercialStatus { get; init; }
+    public string? ClaimStatus { get; init; }
+    public bool IsAssigned { get; init; }
+    public bool IsVoided { get; init; }
+    public bool HasXml { get; init; }
+    public IReadOnlyList<DteReceivedReference> References { get; init; } = Array.Empty<DteReceivedReference>();
+    public IReadOnlyList<DtePurchaseOrderRef> PurchaseOrderRefs { get; init; } = Array.Empty<DtePurchaseOrderRef>();
+    public string ResponseStatus { get; init; } = DteResponseStatuses.None;
+    public string? ResponseAction { get; init; }
+    public string? ResponseReason { get; init; }
+    public string? ResponseActor { get; init; }
+    public DateTimeOffset? RespondedAt { get; init; }
+    public string? LastError { get; init; }
+    public string? ProcessingModule { get; init; }
+    public string? ProcessingState { get; init; }
+    public string? ProcessingRef { get; init; }
+    public DateTimeOffset UpdatedAt { get; init; }
+}
+
+/// <summary>Filtro de la bandeja. Las fechas son de recepción en el SII (fecha de Chile).</summary>
+public sealed record DteReceivedFilter(DateOnly? ReceivedFrom = null, DateOnly? ReceivedTo = null, string? Text = null, int Limit = 1000);
+
+/// <summary>Estado de la recepción de la compañía de la sesión y lo que su proveedor permite hacer.</summary>
+public sealed record DteInboxStatus(
+    bool ReceptionEnabled, string? ProviderCode, IReadOnlyList<int> RespondableTypes, IReadOnlyList<string> SupportedActions,
+    bool SupportsResponseNote, bool SupportsDocumentDownload, int InitialHistoryDays, int IntervalMinutes,
+    DateTimeOffset? LastSyncAt, string? LastSyncError);
+
+/// <summary>
+/// Pedido de respuesta. Actor = "user:&lt;guid&gt;" o "rule:&lt;código&gt;". ResponseKey la genera el módulo y es estable:
+/// repetir el pedido con la misma clave nunca responde dos veces.
+/// </summary>
+public sealed record DteRespondRequest(long ReceivedId, string Action, string? Reason, string Actor, string ResponseKey);
+
+public enum DteRespondOutcome
+{
+    Sent,
+    /// <summary>El operador dice que ya estaba respondida; lo confirma la próxima sincronización.</summary>
+    PendingConfirmation,
+    AlreadyResponded,
+    Failed,
+    NotRespondable,
+}
+
+public sealed record DteRespondResult(DteRespondOutcome Outcome, string? Error);

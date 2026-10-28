@@ -157,6 +157,7 @@ builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteEmissionSer
 builder.Services.AddScoped<IDteEmissionService>(sp => sp.GetRequiredService<PortalSaas.Core.DocumentosElectronicos.DteEmissionService>());
 builder.Services.AddHostedService<PortalSaas.Core.DocumentosElectronicos.DteReconciliationHostedService>();
 builder.Services.AddScoped<PortalSaas.Core.DocumentosElectronicos.DteReceptionSyncService>();
+builder.Services.AddScoped<IDteInboxService, PortalSaas.Core.DocumentosElectronicos.DteInboxService>();
 builder.Services.AddHostedService<PortalSaas.Core.DocumentosElectronicos.DteReceptionHostedService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();

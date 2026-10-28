@@ -31,7 +31,7 @@ Resultado (las dos pruebas en verde):
 
 Las bases QA de plataforma (`portalsaas_saas_qa`, `ps_comdepor_qa`) están vacías (solo esquema; Comercial Depor real
 vive en `ps_comdepor` = PROD), así que la E2E se hizo con un arnés fuera del repo que usa las clases reales sobre
-Postgres real: compañía de prueba `E2EFP` en `portalsaas_saas_qa` + módulo en `ps_comdepor_fp_qa`, FACELE caoba real,
+Postgres real: compañía de prueba `E2EFP` en `portalsaas_saas_qa` + módulo en `ps_comdepor_fpv_qa`, FACELE caoba real,
 SAP simulado (todos los emisores existen, sin OC), reloj fijado en 09-05-2026 11:00 (día siguiente a la última
 recepción de caoba), "procesar desde" 20-04-2026, modo simulación. Resultado:
 - [x] "Probar recepción" OK; sincronización inicial: 273 recibidos en ~2 min (una consultarReferencia por documento
@@ -43,20 +43,19 @@ recepción de caoba), "procesar desde" 20-04-2026, modo simulación. Resultado:
 - [x] Consultas de las pantallas (bandeja por grupo y texto, KPIs, detalle, mis aprobaciones) traducen bien a SQL.
       Encontró y se corrigió: la búsqueda por texto de la bandeja de plataforma distinguía mayúsculas en Postgres.
 - Datos de prueba que quedaron: organización/compañía `E2EFP` (`portalsaas_saas_qa`, con su `company_dte_settings`
-  y 273 `dte_received`) y sus revisiones en `ps_comdepor_fp_qa`. Se pueden borrar sin afectar nada.
+  y 273 `dte_received`) y sus revisiones en `ps_comdepor_fpv_qa`. Se pueden borrar sin afectar nada.
 
 ## Puesta en marcha (Task 16) — PENDIENTE, con confirmación del usuario
 
-- [x] Migraciones `AddDteReception` y `AddDteReceivedNotRespondable` aplicadas y verificadas en `portalsaas_saas_qa` y
-      `ps_comdepor_qa` (2026-10-28). Falta PROD (`portalsaas_saas_prod`, `ps_comdepor`).
-- [x] Base del módulo `ps_comdepor_fp_qa` creada (admin_saas, UTF8, Spanish_Chile) con `Inicial` aplicada. Falta `ps_comdepor_fp`.
+- [x] Migraciones `AddDteReception` y `AddDteReceivedNotRespondable` aplicadas y verificadas en las 4 bases:
+      `portalsaas_saas_qa` y `ps_comdepor_qa`, y con confirmación del usuario en `portalsaas_saas_prod` y `ps_comdepor`
+      (2026-10-28).
+- [x] Bases del módulo `ps_comdepor_fpv_qa` y `ps_comdepor_fpv` (admin_saas, UTF8, Spanish_Chile) con `Inicial` aplicada
+      (2026-10-28; la de QA se creó como `ps_comdepor_fp_qa` y se renombró). Comando: `dotnet ef database update --project
+      src/Modulo.FacturasProveedor.Migrations.Postgres` con la variable `FACTURAS_PROVEEDOR_CONNECTION_STRING`.
+- [x] `build-all.ps1` compila el módulo. Rama subida a origin para PR contra `feat/borradores` (2026-10-28).
 
-- [ ] Merge de `feat/facturas-proveedor` a la rama de trabajo y `.\publish-dist.ps1` del módulo (detiene el Host local).
-- [ ] Migraciones de plataforma `AddDteReception` y `AddDteReceivedNotRespondable` en `portalsaas_saas_qa` y `ps_comdepor_qa`; verificar en `__EFMigrationsHistory`.
-      Después, **con confirmación**, en `portalsaas_saas_prod` y `ps_comdepor` (regla de migraciones en las 4 bases).
-- [ ] Bases del módulo (nombres propuestos `ps_comdepor_fp_qa` y `ps_comdepor_fp`, en la instancia de módulos): crear y
-      aplicar `Inicial` con `dotnet ef database update --project src/Modulo.FacturasProveedor.Migrations.Postgres`
-      (variable `FACTURAS_PROVEEDOR_CONNECTION_STRING`).
+- [ ] Merge del PR y `.\publish-dist.ps1` del módulo (detiene el Host local).
 - [ ] Admin: alta del módulo `FacturasProveedor`, contratarlo a la organización, conexión externa por compañía y perfiles
       con las acciones de la spec §13 (bandeja VIEW/EDIT, mis-aprobaciones VIEW, configuración VIEW/CREATE/EDIT/DELETE).
 - [ ] /Admin › Compañía › Documentos electrónicos: sección "Recepción de documentos" (QA con caoba:

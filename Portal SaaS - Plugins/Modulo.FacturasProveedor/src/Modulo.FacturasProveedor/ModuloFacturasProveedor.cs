@@ -67,6 +67,8 @@ public sealed class ModuloFacturasProveedor : IModuloPortal
         services.AddScoped<Servicios.ISupplierProfileService, Servicios.SupplierProfileService>();
         services.AddScoped<Servicios.IApproverGroupService, Servicios.ApproverGroupService>();
         services.AddScoped<Servicios.IInvoiceReviewService, Servicios.InvoiceReviewService>();
+        services.AddScoped<Servicios.IDueActionsService, Servicios.DueActionsService>();
+        services.AddHostedService<Servicios.FacturasProveedorBackgroundService>();
 
         // FacturasProveedorDbContext resuelto self-service vía IExternalDatabaseConnectionService -- motor dual, se
         // decide EN RUNTIME según ModuleExternalConnection.EngineType. CompanyId SIEMPRE obligatorio (sin fallback a

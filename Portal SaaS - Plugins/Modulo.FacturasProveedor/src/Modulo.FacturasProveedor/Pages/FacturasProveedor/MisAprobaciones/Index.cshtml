@@ -1,0 +1,39 @@
+@page "/facturas-proveedor/mis-aprobaciones"
+@model Modulo.FacturasProveedor.Pages.FacturasProveedor.MisAprobaciones.IndexModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Mis aprobaciones";
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Mis aprobaciones</h2>
+    </div>
+    <p class="text-muted mb-3">Facturas que esperan tu decisión porque eres parte del grupo aprobador (o suplente) del proveedor.</p>
+
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead>
+                <tr><th>Recibida SII</th><th>Proveedor</th><th>Documento</th><th class="text-end">Total</th><th>Motivo de revisión</th><th>Plazo</th><th class="col-actions"></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    <tr>
+                        <td class="text-nowrap">@FacturasProveedorUi.Date(r.SiiReceivedOn)</td>
+                        <td>@r.IssuerName<div class="text-muted small">@r.IssuerTaxId</div></td>
+                        <td class="text-nowrap">@FacturasProveedorUi.DocumentLabel(r.DteType) @r.Folio</td>
+                        <td class="text-end">@FacturasProveedorUi.Amount(r.TotalAmount)</td>
+                        <td>@(r.Summary ?? "—")</td>
+                        <td class="text-nowrap"><span class="badge-status badge-status--warning">vence @r.LegalDeadlineOn.ToString("dd-MM", CultureInfo.InvariantCulture)</span></td>
+                        <td class="col-actions"><a class="btn-ghost" title="Abrir" href="~/facturas-proveedor/bandeja/@r.Id"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-muted">No tienes facturas por decidir.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

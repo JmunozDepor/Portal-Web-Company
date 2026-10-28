@@ -1,0 +1,139 @@
+@page "/facturas-proveedor/bandeja"
+@model Modulo.FacturasProveedor.Pages.FacturasProveedor.Bandeja.IndexModel
+@using System.Globalization
+@section Styles {
+    <link rel="stylesheet" href="~/css/facturas-proveedor.css" asp-append-version="true" />
+}
+@{
+    ViewData["Title"] = "Bandeja de facturas recibidas";
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Bandeja de facturas recibidas</h2>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="text-muted small">
+                <i class="bi bi-arrow-repeat"></i>
+                Última lectura de @(Model.Status?.ProviderCode ?? "el operador"):
+                @(Model.Status?.LastSyncAt is { } at ? Modulo.FacturasProveedor.Dominio.ChileClock.ToLocal(at.UtcDateTime).ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture) : "—")
+            </span>
+            <form method="post" asp-page-handler="LeerAhora" class="d-inline">
+                <button type="submit" class="btn btn-secondary"><i class="bi bi-cloud-download"></i> Leer ahora</button>
+            </form>
+        </div>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    @if (Model.Status is { ReceptionEnabled: false })
+    {
+        <div class="alert alert-warning">La recepción de documentos no está habilitada para esta compañía: se configura en Administración › Compañía › Documentos electrónicos.</div>
+    }
+    else if (Model.Status?.LastSyncError is { } syncError)
+    {
+        <div class="alert alert-warning">Último error al leer el operador: @syncError</div>
+    }
+    @if (Model.IsSimulation)
+    {
+        <div class="alert alert-info"><i class="bi bi-eyeglasses"></i> Modo simulación: el portal evalúa y muestra lo que haría, pero no responde al SII.</div>
+    }
+    @if (Model.Kpis.DueIn2Days > 0)
+    {
+        <div class="alert alert-warning"><i class="bi bi-hourglass-split"></i> @Model.Kpis.DueIn2Days factura(s) vencen en 2 días o menos sin respuesta.</div>
+    }
+
+    <div class="fpr-kpis mb-3">
+        <div class="fpr-kpi"><div class="fpr-kpi__label">Por decidir</div><div class="fpr-kpi__value">@Model.Kpis.InReview</div></div>
+        <div class="fpr-kpi"><div class="fpr-kpi__label">Avisos sin OC</div><div class="fpr-kpi__value">@Model.Kpis.Warning</div></div>
+        <div class="fpr-kpi"><div class="fpr-kpi__label">Vencen en ≤ 2 días</div><div class="fpr-kpi__value @(Model.Kpis.DueIn2Days > 0 ? "text-danger" : "")">@Model.Kpis.DueIn2Days</div></div>
+        <div class="fpr-kpi"><div class="fpr-kpi__label">Aceptadas (mes)</div><div class="fpr-kpi__value">@Model.Kpis.AcceptedMonth</div></div>
+        <div class="fpr-kpi"><div class="fpr-kpi__label">Rechazadas (mes)</div><div class="fpr-kpi__value">@Model.Kpis.RejectedMonth</div></div>
+    </div>
+
+    <form method="get" class="filter-card mb-3">
+        <div class="col-auto">
+            <label class="form-label" for="f-from">Recibida desde</label>
+            <input type="date" id="f-from" name="From" value="@Model.From" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-to">Hasta</label>
+            <input type="date" id="f-to" name="To" value="@Model.To" class="form-control" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-estado">Estado</label>
+            <select id="f-estado" name="Estado" class="form-select">
+                @foreach (var (value, label) in Modulo.FacturasProveedor.Pages.FacturasProveedor.Bandeja.IndexModel.Groups)
+                {
+                    <option value="@value" selected="@(Model.Estado == value)">@label</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label" for="f-texto">Proveedor, RUT, folio u OC</label>
+            <input type="search" id="f-texto" name="Texto" value="@Model.Texto" class="form-control" autocomplete="off" />
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a class="btn btn-secondary" href="~/facturas-proveedor/bandeja">Limpiar</a>
+        </div>
+    </form>
+
+    <div class="table-responsive-lg">
+        <table class="table-ps">
+            <thead>
+                <tr>
+                    <th>Recibida SII</th><th>Proveedor</th><th>Documento</th><th class="text-end">Total</th><th>OC</th>
+                    <th>Resultado de reglas</th><th>Estado</th>
+                    @if (Model.Estado == "simulation") { <th>Respondido en el operador</th><th>Coincide</th> } else { <th>Plazo</th> }
+                    <th class="col-actions"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    var pending = ReviewStatuses.Pending.Contains(r.Status) || r.Status == ReviewStatuses.New;
+                    var dueClass = r.LegalDeadlineOn <= Model.Today.AddDays(1) ? "badge-status--danger"
+                        : r.LegalDeadlineOn <= Model.Today.AddDays(3) ? "badge-status--warning" : "badge-status--neutral";
+                    <tr>
+                        <td class="text-nowrap">@FacturasProveedorUi.Date(r.SiiReceivedOn)</td>
+                        <td>@r.IssuerName<div class="text-muted small">@r.IssuerTaxId</div></td>
+                        <td class="text-nowrap">@FacturasProveedorUi.DocumentLabel(r.DteType) @r.Folio</td>
+                        <td class="text-end">@FacturasProveedorUi.Amount(r.TotalAmount)</td>
+                        <td>@(r.PurchaseOrders.Count == 0 ? "—" : string.Join(", ", r.PurchaseOrders))</td>
+                        <td>@(r.Summary ?? "—")</td>
+                        <td class="text-nowrap"><span class="badge-status @FacturasProveedorUi.StatusBadgeClass(r.Status)">@FacturasProveedorUi.StatusLabel(r.Status)</span></td>
+                        @if (Model.Estado == "simulation")
+                        {
+                            <td>@FacturasProveedorUi.ActionLabel(r.OperatorAction)</td>
+                            <td>@(r.Matches switch { true => "Sí", false => "No", _ => "—" })</td>
+                        }
+                        else
+                        {
+                            <td class="text-nowrap">
+                                @if (pending)
+                                {
+                                    <span class="badge-status @dueClass">vence @r.LegalDeadlineOn.ToString("dd-MM", CultureInfo.InvariantCulture)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">@FacturasProveedorUi.ActionLabel(r.DecidedAction)</span>
+                                }
+                            </td>
+                        }
+                        <td class="col-actions"><a class="btn-ghost" title="Abrir" href="~/facturas-proveedor/bandeja/@r.Id"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="10" class="text-muted">Sin facturas para el filtro indicado.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

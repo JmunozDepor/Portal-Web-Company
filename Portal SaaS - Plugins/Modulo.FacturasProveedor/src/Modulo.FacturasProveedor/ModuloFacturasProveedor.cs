@@ -69,6 +69,7 @@ public sealed class ModuloFacturasProveedor : IModuloPortal
         services.AddScoped<Servicios.IInvoiceReviewService, Servicios.InvoiceReviewService>();
         services.AddScoped<Servicios.IDueActionsService, Servicios.DueActionsService>();
         services.AddScoped<Servicios.IReviewDecisionService, Servicios.ReviewDecisionService>();
+        services.AddScoped<Servicios.IReviewQueryService, Servicios.ReviewQueryService>();
         services.AddHostedService<Servicios.FacturasProveedorBackgroundService>();
 
         // FacturasProveedorDbContext resuelto self-service vía IExternalDatabaseConnectionService -- motor dual, se

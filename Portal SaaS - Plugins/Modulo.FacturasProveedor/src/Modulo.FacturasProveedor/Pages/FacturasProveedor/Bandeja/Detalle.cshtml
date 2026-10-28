@@ -1,0 +1,270 @@
+@page "/facturas-proveedor/bandeja/{id:long}"
+@model Modulo.FacturasProveedor.Pages.FacturasProveedor.Bandeja.DetalleModel
+@using System.Globalization
+@using Modulo.FacturasProveedor.Dominio
+@using Modulo.FacturasProveedor.Models
+@{
+    var d = Model.Detail!;
+    var r = d.Row;
+    var doc = d.Document;
+    ViewData["Title"] = $"{FacturasProveedorUi.DocumentLabel(r.DteType)} N° {r.Folio}";
+    var pending = r.Status is ReviewStatuses.Warning or ReviewStatuses.InReview;
+    string Chile(DateTimeOffset at) => ChileClock.ToLocal(at.UtcDateTime).ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture);
+}
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <h2 class="mb-0">@FacturasProveedorUi.DocumentLabel(r.DteType) N° @r.Folio</h2>
+            <span class="badge-status @FacturasProveedorUi.StatusBadgeClass(r.Status)">@FacturasProveedorUi.StatusLabel(r.Status)</span>
+            <span class="text-muted">@r.IssuerName</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a class="btn btn-secondary" href="~/facturas-proveedor/bandeja">Volver al listado</a>
+            @if (d.SupportsPdf)
+            {
+                <a class="btn btn-secondary" target="_blank" rel="noopener" asp-page-handler="Pdf" asp-route-id="@r.Id"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+            }
+            @if (d.CanAssociate && !ReviewStatuses.IsFinal(r.Status))
+            {
+                <button type="button" class="btn btn-secondary" data-drawer-open="drawer-asociar-oc"><i class="bi bi-link-45deg"></i> Asociar OC</button>
+            }
+            @if (d.CanDecide)
+            {
+                <button type="button" class="btn btn-secondary" data-drawer-open="drawer-rechazar"><i class="bi bi-x-circle"></i> Rechazar</button>
+                <form method="post" asp-page-handler="Aceptar" asp-route-id="@r.Id" class="d-inline"
+                      data-confirm="@(d.AcceptWarning is null ? "¿Aceptar esta factura ante el SII?" : d.AcceptWarning + " ¿Aceptarla igual?")">
+                    <input type="hidden" name="stamp" value="@r.ConcurrencyStamp" />
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Aceptar</button>
+                </form>
+            }
+        </div>
+    </div>
+
+    @if (Model.SuccessMessage is not null)
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    @if (pending)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-hourglass-split"></i>
+            Vence el <strong>@FacturasProveedorUi.Date(r.LegalDeadlineOn)</strong> (plazo legal desde la recepción en el SII).
+            @if (r.Status == ReviewStatuses.Warning && r.WarnDeadlineOn is { } warn)
+            {
+                <text>Si no se asocia una OC, se <strong>rechaza el @FacturasProveedorUi.Date(warn)</strong>.</text>
+            }
+        </div>
+    }
+    @if (d.AcceptWarning is { } acceptWarning)
+    {
+        <div class="alert alert-warning">@acceptWarning</div>
+    }
+    @if (r.IsSimulated)
+    {
+        <div class="alert alert-info">
+            Decisión simulada: <strong>@FacturasProveedorUi.ActionLabel(r.DecidedAction)</strong> (no se envió al SII).
+            Respondido en el operador: <strong>@FacturasProveedorUi.ActionLabel(r.OperatorAction)</strong>.
+        </div>
+    }
+
+    <div class="doc-tabs mb-3" style="position:static;display:inline-flex;width:auto;max-width:100%;">
+        <button type="button" class="doc-tab-btn active" data-tab-btn="resumen">Resumen</button>
+        <button type="button" class="doc-tab-btn" data-tab-btn="reglas">Evaluación de reglas</button>
+        @if (d.Lines.Count > 0)
+        {
+            <button type="button" class="doc-tab-btn" data-tab-btn="detalle">Detalle del documento</button>
+        }
+        <button type="button" class="doc-tab-btn" data-tab-btn="historial">Historial</button>
+    </div>
+
+    <div data-tab-panel="resumen">
+        <dl class="row">
+            <dt class="col-sm-3">Proveedor</dt><dd class="col-sm-9">@r.IssuerName (@r.IssuerTaxId)</dd>
+            <dt class="col-sm-3">Documento</dt><dd class="col-sm-9">@FacturasProveedorUi.DocumentLabel(r.DteType) (@r.DteType) N° @r.Folio · emitida @FacturasProveedorUi.Date(doc.IssueDate)</dd>
+            <dt class="col-sm-3">Recibida en el SII</dt><dd class="col-sm-9">@FacturasProveedorUi.Date(r.SiiReceivedOn) · plazo hasta @FacturasProveedorUi.Date(r.LegalDeadlineOn)</dd>
+            <dt class="col-sm-3">Montos</dt>
+            <dd class="col-sm-9">
+                Neto @FacturasProveedorUi.Amount(doc.NetAmount) · Exento @FacturasProveedorUi.Amount(doc.ExemptAmount) ·
+                IVA @FacturasProveedorUi.Amount(doc.VatAmount) · <strong>Total @FacturasProveedorUi.Amount(doc.TotalAmount)</strong>
+            </dd>
+            <dt class="col-sm-3">Orden de compra</dt>
+            <dd class="col-sm-9">
+                @if (doc.PurchaseOrderRefs.Count == 0)
+                {
+                    <text>— (no referencia OC)</text>
+                }
+                else
+                {
+                    @string.Join(", ", doc.PurchaseOrderRefs.Select(p => $"{p.DocNum} ({(p.Source == "manual" ? "asociada a mano" : "referencia 801")})"))
+                }
+            </dd>
+            @if (d.AssignedGroupName is { } group)
+            {
+                <dt class="col-sm-3">Aprobador</dt><dd class="col-sm-9">@group</dd>
+            }
+            @if (d.RecommendedAction is { } recommended)
+            {
+                <dt class="col-sm-3">Recomendación de las reglas</dt><dd class="col-sm-9">@FacturasProveedorUi.ActionLabel(recommended)</dd>
+            }
+            @if (r.DecidedAction is not null)
+            {
+                <dt class="col-sm-3">Decisión</dt>
+                <dd class="col-sm-9">@FacturasProveedorUi.ActionLabel(r.DecidedAction) · @(d.DecisionSource == "user" ? "por una persona" : "por regla")@(d.Reason is { } reason ? $" · {reason}" : "")</dd>
+            }
+            @if (doc.ResponseStatus is "sent" or "external")
+            {
+                <dt class="col-sm-3">Respuesta en el operador</dt>
+                <dd class="col-sm-9">@FacturasProveedorUi.ActionLabel(doc.ResponseAction)@(doc.RespondedAt is { } at ? $" · {Chile(at)}" : "")@(doc.ResponseStatus == "external" ? " · fuera del portal" : "")</dd>
+            }
+            <dt class="col-sm-3">Operador</dt><dd class="col-sm-9">@doc.ProviderCode</dd>
+        </dl>
+    </div>
+
+    <div data-tab-panel="reglas" style="display:none;">
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead><tr><th>Regla</th><th>Resultado</th><th>Detalle</th></tr></thead>
+                <tbody>
+                    @foreach (var rule in d.Rules)
+                    {
+                        var (label, badge) = rule.Kind switch
+                        {
+                            "pass" => ("Cumple", "badge-status--success"),
+                            "objection" => (FacturasProveedorUi.ActionLabel(rule.Action), rule.Action == "reject" ? "badge-status--danger" : "badge-status--warning"),
+                            _ => ("No aplica", "badge-status--neutral"),
+                        };
+                        <tr>
+                            <td>@rule.RuleCode</td>
+                            <td class="text-nowrap"><span class="badge-status @badge">@label</span></td>
+                            <td>@(rule.Message ?? "—")</td>
+                        </tr>
+                    }
+                    @if (d.Rules.Count == 0)
+                    {
+                        <tr><td colspan="3" class="text-muted">Todavía no se evaluó.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (d.Lines.Count > 0)
+    {
+        <div data-tab-panel="detalle" style="display:none;">
+            <div class="table-responsive-lg">
+                <table class="table-ps">
+                    <thead><tr><th>Línea</th><th>Código</th><th>Descripción</th><th class="text-end">Cantidad</th><th class="text-end">Precio</th><th class="text-end">Monto</th></tr></thead>
+                    <tbody>
+                        @foreach (var line in d.Lines)
+                        {
+                            <tr>
+                                <td>@line.LineNumber</td>
+                                <td>@(line.ItemCode ?? "—")</td>
+                                <td>@line.Name</td>
+                                <td class="text-end">@line.Quantity.ToString("0.##", CultureInfo.GetCultureInfo("es-CL"))</td>
+                                <td class="text-end">@(line.UnitPrice is { } price ? FacturasProveedorUi.Amount(price) : "—")</td>
+                                <td class="text-end">@FacturasProveedorUi.Amount(line.Amount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted small mb-0">Líneas leídas del XML del documento.</p>
+        </div>
+    }
+
+    <div data-tab-panel="historial" style="display:none;">
+        <div class="table-responsive-lg">
+            <table class="table-ps">
+                <thead><tr><th>Fecha (Chile)</th><th>Evento</th><th>Detalle</th></tr></thead>
+                <tbody>
+                    @foreach (var e in d.Events)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@Chile(e.OccurredAt)</td>
+                            <td>@e.EventType</td>
+                            <td class="text-muted" style="max-width:420px;word-break:break-word;">@e.Detail</td>
+                        </tr>
+                    }
+                    @if (d.Events.Count == 0)
+                    {
+                        <tr><td colspan="3" class="text-muted">Sin eventos todavía.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (d.CanDecide)
+{
+    <div id="drawer-rechazar" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3>Rechazar @FacturasProveedorUi.DocumentLabel(r.DteType).ToLowerInvariant() N° @r.Folio</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="Rechazar" asp-route-id="@r.Id">
+                <input type="hidden" name="stamp" value="@r.ConcurrencyStamp" />
+                <div class="drawer-body">
+                    <div class="alert alert-warning">El rechazo se informa al SII a través del operador y no se puede revertir. El proveedor deberá emitir un documento nuevo.</div>
+                    <div class="drawer-grid">
+                        <div class="mb-3">
+                            <label class="form-label" for="f-tipo">Tipo de reclamo</label>
+                            <select id="f-tipo" name="tipoReclamo" class="form-select">
+                                @foreach (var claim in d.ClaimActions)
+                                {
+                                    <option value="@claim">@FacturasProveedorUi.ActionLabel(claim)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="f-motivo">Motivo</label>
+                            <textarea id="f-motivo" name="motivo" class="form-control" rows="3" required minlength="5" maxlength="500"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Rechazar</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@if (d.CanAssociate && !ReviewStatuses.IsFinal(r.Status))
+{
+    <div id="drawer-asociar-oc" class="drawer-overlay" data-drawer>
+        <aside class="drawer-panel">
+            <div class="drawer-header">
+                <h3>Asociar orden de compra</h3>
+                <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form method="post" asp-page-handler="AsociarOc" asp-route-id="@r.Id">
+                <div class="drawer-body">
+                    <p class="text-muted">La OC debe existir en SAP y ser del mismo proveedor. Al asociarla, la factura se vuelve a evaluar.</p>
+                    <div class="drawer-grid">
+                        <div class="mb-3">
+                            <label class="form-label" for="f-docnum">N° de OC (DocNum de SAP)</label>
+                            <input type="number" id="f-docnum" name="docNum" class="form-control" min="1" step="1" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Asociar</button>
+                </div>
+            </form>
+        </aside>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/facturas-proveedor.js" asp-append-version="true"></script>
+}

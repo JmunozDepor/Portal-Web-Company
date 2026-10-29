@@ -79,6 +79,8 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.Property(x => x.IsMileage).HasColumnName("is_mileage");
             e.Property(x => x.RatePerKm).HasColumnName("rate_per_km").HasPrecision(18, 2);
+            e.Property(x => x.RequiresQuantity).HasColumnName("requires_quantity").HasDefaultValue(false);
+            e.Property(x => x.QuantityLabel).HasColumnName("quantity_label").HasMaxLength(50);
             e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_expense_types_company_id");
         });
 

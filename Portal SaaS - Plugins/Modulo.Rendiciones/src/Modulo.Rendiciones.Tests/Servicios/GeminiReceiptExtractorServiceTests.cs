@@ -176,9 +176,9 @@ public class GeminiReceiptExtractorServiceTests
             Task.FromResult<IReadOnlyList<Models.ExpenseType>>(Array.Empty<Models.ExpenseType>());
         public Task<IReadOnlyList<Models.ExpenseType>> ListAllAsync(Guid companyId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<Models.ExpenseType>>(Array.Empty<Models.ExpenseType>());
-        public Task<long> CreateAsync(Guid companyId, string name, string? sapGlAccount, bool isMileage, decimal? ratePerKm, CancellationToken ct = default) =>
+        public Task<long> CreateAsync(Guid companyId, string name, string? sapGlAccount, bool isMileage, decimal? ratePerKm, bool requiresQuantity, string? quantityLabel, CancellationToken ct = default) =>
             Task.FromResult(1L);
-        public Task UpdateAsync(long id, Guid companyId, string name, string? sapGlAccount, bool isActive, bool isMileage, decimal? ratePerKm, CancellationToken ct = default) =>
+        public Task UpdateAsync(long id, Guid companyId, string name, string? sapGlAccount, bool isActive, bool isMileage, decimal? ratePerKm, bool requiresQuantity, string? quantityLabel, CancellationToken ct = default) =>
             Task.CompletedTask;
     }
 

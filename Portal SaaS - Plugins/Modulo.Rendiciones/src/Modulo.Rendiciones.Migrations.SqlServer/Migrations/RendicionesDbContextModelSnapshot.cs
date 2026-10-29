@@ -663,10 +663,21 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("name");
 
+                    b.Property<string>("QuantityLabel")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("quantity_label");
+
                     b.Property<decimal?>("RatePerKm")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("rate_per_km");
+
+                    b.Property<bool>("RequiresQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requires_quantity");
 
                     b.Property<string>("SapGlAccount")
                         .HasMaxLength(30)

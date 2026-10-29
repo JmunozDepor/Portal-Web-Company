@@ -663,10 +663,21 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
+                    b.Property<string>("QuantityLabel")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("quantity_label");
+
                     b.Property<decimal?>("RatePerKm")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("rate_per_km");
+
+                    b.Property<bool>("RequiresQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requires_quantity");
 
                     b.Property<string>("SapGlAccount")
                         .HasMaxLength(30)

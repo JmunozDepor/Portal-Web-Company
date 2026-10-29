@@ -139,8 +139,8 @@ public class ReceiptSuggestionServiceTests
 
         public Task<IReadOnlyList<ExpenseType>> ListActiveAsync(Guid companyId, CancellationToken ct = default) => Task.FromResult(_tipos);
         public Task<IReadOnlyList<ExpenseType>> ListAllAsync(Guid companyId, CancellationToken ct = default) => Task.FromResult(_tipos);
-        public Task<long> CreateAsync(Guid companyId, string name, string? sapGlAccount, bool isMileage, decimal? ratePerKm, CancellationToken ct = default) => Task.FromResult(1L);
-        public Task UpdateAsync(long id, Guid companyId, string name, string? sapGlAccount, bool isActive, bool isMileage, decimal? ratePerKm, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<long> CreateAsync(Guid companyId, string name, string? sapGlAccount, bool isMileage, decimal? ratePerKm, bool requiresQuantity, string? quantityLabel, CancellationToken ct = default) => Task.FromResult(1L);
+        public Task UpdateAsync(long id, Guid companyId, string name, string? sapGlAccount, bool isActive, bool isMileage, decimal? ratePerKm, bool requiresQuantity, string? quantityLabel, CancellationToken ct = default) => Task.CompletedTask;
     }
 
     private sealed class StubDocumentTypes : IDocumentTypeService

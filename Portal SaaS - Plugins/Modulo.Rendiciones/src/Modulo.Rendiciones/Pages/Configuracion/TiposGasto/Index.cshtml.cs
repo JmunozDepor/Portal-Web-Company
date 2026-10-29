@@ -68,25 +68,25 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
             return Page();
         }
 
-        await _expenseTypes.CreateAsync(_currentCompany.CompanyId, New.Name, New.SapGlAccount, New.IsMileage, New.RatePerKm, ct);
+        await _expenseTypes.CreateAsync(_currentCompany.CompanyId, New.Name, New.SapGlAccount, New.IsMileage, New.RatePerKm, New.RequiresQuantity, New.QuantityLabel, ct);
         SuccessMessage = "Tipo de gasto creado.";
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostGuardarAsync(long id, string nombre, string? cuentaContableSap, bool activo, bool esKilometraje, decimal? tarifaPorKm, CancellationToken ct) =>
-        await UpdateAsync(id, nombre, cuentaContableSap, activo, esKilometraje, tarifaPorKm, ct);
+    public async Task<IActionResult> OnPostGuardarAsync(long id, string nombre, string? cuentaContableSap, bool activo, bool esKilometraje, decimal? tarifaPorKm, bool requiereCantidad, string? rotuloCantidad, CancellationToken ct) =>
+        await UpdateAsync(id, nombre, cuentaContableSap, activo, esKilometraje, tarifaPorKm, requiereCantidad, rotuloCantidad, ct);
 
-    public async Task<IActionResult> OnPostDesactivarAsync(long id, string nombre, string? cuentaContableSap, bool esKilometraje, decimal? tarifaPorKm, CancellationToken ct) =>
-        await UpdateAsync(id, nombre, cuentaContableSap, activo: false, esKilometraje, tarifaPorKm, ct);
+    public async Task<IActionResult> OnPostDesactivarAsync(long id, string nombre, string? cuentaContableSap, bool esKilometraje, decimal? tarifaPorKm, bool requiereCantidad, string? rotuloCantidad, CancellationToken ct) =>
+        await UpdateAsync(id, nombre, cuentaContableSap, activo: false, esKilometraje, tarifaPorKm, requiereCantidad, rotuloCantidad, ct);
 
-    public async Task<IActionResult> OnPostActivarAsync(long id, string nombre, string? cuentaContableSap, bool esKilometraje, decimal? tarifaPorKm, CancellationToken ct) =>
-        await UpdateAsync(id, nombre, cuentaContableSap, activo: true, esKilometraje, tarifaPorKm, ct);
+    public async Task<IActionResult> OnPostActivarAsync(long id, string nombre, string? cuentaContableSap, bool esKilometraje, decimal? tarifaPorKm, bool requiereCantidad, string? rotuloCantidad, CancellationToken ct) =>
+        await UpdateAsync(id, nombre, cuentaContableSap, activo: true, esKilometraje, tarifaPorKm, requiereCantidad, rotuloCantidad, ct);
 
-    private async Task<IActionResult> UpdateAsync(long id, string nombre, string? cuentaContableSap, bool activo, bool esKilometraje, decimal? tarifaPorKm, CancellationToken ct)
+    private async Task<IActionResult> UpdateAsync(long id, string nombre, string? cuentaContableSap, bool activo, bool esKilometraje, decimal? tarifaPorKm, bool requiereCantidad, string? rotuloCantidad, CancellationToken ct)
     {
         try
         {
-            await _expenseTypes.UpdateAsync(id, _currentCompany.CompanyId, nombre, cuentaContableSap, activo, esKilometraje, tarifaPorKm, ct);
+            await _expenseTypes.UpdateAsync(id, _currentCompany.CompanyId, nombre, cuentaContableSap, activo, esKilometraje, tarifaPorKm, requiereCantidad, rotuloCantidad, ct);
             SuccessMessage = "Tipo de gasto actualizado.";
         }
         catch (Exception ex)
@@ -110,5 +110,10 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
 
         [Range(0, double.MaxValue)]
         public decimal? RatePerKm { get; set; }
+
+        public bool RequiresQuantity { get; set; }
+
+        [StringLength(50)]
+        public string? QuantityLabel { get; set; }
     }
 }

@@ -25,7 +25,7 @@ public sealed class ExpenseTypeService : IExpenseTypeService
             .OrderBy(t => t.Name)
             .ToListAsync(ct);
 
-    public async Task<long> CreateAsync(Guid companyId, string name, string? sapGlAccount, bool isMileage, decimal? ratePerKm, CancellationToken ct = default)
+    public async Task<long> CreateAsync(Guid companyId, string name, string? sapGlAccount, bool isMileage, decimal? ratePerKm, bool requiresQuantity, string? quantityLabel, CancellationToken ct = default)
     {
         var type = new ExpenseType
         {
@@ -35,13 +35,15 @@ public sealed class ExpenseTypeService : IExpenseTypeService
             IsActive = true,
             IsMileage = isMileage,
             RatePerKm = isMileage ? ratePerKm : null,
+            RequiresQuantity = requiresQuantity,
+            QuantityLabel = requiresQuantity ? quantityLabel : null,
         };
         _db.ExpenseTypes.Add(type);
         await _db.SaveChangesAsync(ct);
         return type.Id;
     }
 
-    public async Task UpdateAsync(long id, Guid companyId, string name, string? sapGlAccount, bool isActive, bool isMileage, decimal? ratePerKm, CancellationToken ct = default)
+    public async Task UpdateAsync(long id, Guid companyId, string name, string? sapGlAccount, bool isActive, bool isMileage, decimal? ratePerKm, bool requiresQuantity, string? quantityLabel, CancellationToken ct = default)
     {
         var type = await _db.ExpenseTypes.FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == companyId, ct)
             ?? throw new InvalidOperationException("El tipo de gasto no existe o no pertenece a esta compañía.");
@@ -51,6 +53,8 @@ public sealed class ExpenseTypeService : IExpenseTypeService
         type.IsActive = isActive;
         type.IsMileage = isMileage;
         type.RatePerKm = isMileage ? ratePerKm : null;
+        type.RequiresQuantity = requiresQuantity;
+        type.QuantityLabel = requiresQuantity ? quantityLabel : null;
         await _db.SaveChangesAsync(ct);
     }
 }

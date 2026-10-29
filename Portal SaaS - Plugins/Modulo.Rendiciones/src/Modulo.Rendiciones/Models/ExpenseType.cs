@@ -23,4 +23,12 @@ public class ExpenseType
 
     /// <summary>Requerido si IsMileage -- moneda local por km. Nullable porque un tipo normal nunca lo usa.</summary>
     public decimal? RatePerKm { get; set; }
+
+    /// <summary>Si es true, una línea de este tipo (ej. "Movilización (Bip)") pide una cantidad
+    /// (ej. "3 días") que una política de gasto futura multiplica contra un tope por unidad.
+    /// No implementa esa multiplicación -- solo habilita el campo en la línea.</summary>
+    public bool RequiresQuantity { get; set; }
+
+    /// <summary>Rótulo mostrado junto al campo de cantidad (ej. "Días"). Solo tiene sentido si RequiresQuantity.</summary>
+    public string? QuantityLabel { get; set; }
 }

@@ -1,0 +1,7 @@
+@page "/compras/facturas-reserva"
+@model Modulo.Compras.Pages.PurchaseReserveInvoices.IndexModel
+@{
+    ViewData["Title"] = "Facturas Reserva de Proveedor";
+}
+
+@await Component.InvokeAsync("DocumentList", Model.Listado)

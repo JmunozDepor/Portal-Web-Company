@@ -77,7 +77,12 @@ public abstract class IndexGenericPurchaseDocumentModelBase : PageModel
             SupplierCardCode: Filter.SupplierCardCode,
             SupplierName: Filter.SupplierName,
             SupplierReferenceNumber: Filter.SupplierReferenceNumber,
-            DocNum: Filter.DocNum);
+            DocNum: Filter.DocNum,
+            Folio: Filter.Folio);
+
+        // Facturas: columna y filtro Folio (documento tributario del proveedor) -- lo
+        // decide el catálogo, no el subtipo (ver PurchaseDocumentTypeInfo).
+        var hasTaxDocument = _documents.Describe(Type).HasTaxDocument;
 
         // Recién se consulta al SAP de la organización cuando el usuario apretó
         // "Filtrar" (o paginó/cambió el tamaño de página) -- ver el comentario completo
@@ -115,6 +120,7 @@ public abstract class IndexGenericPurchaseDocumentModelBase : PageModel
                 new DocumentListColumn("Nombre proveedor"),
                 new DocumentListColumn("Fecha"),
                 new DocumentListColumn("N° ref. proveedor"),
+                .. (hasTaxDocument ? new[] { new DocumentListColumn("Folio") } : []),
                 new DocumentListColumn("Total", AlignRight: true),
                 new DocumentListColumn("Estado"),
             ],
@@ -127,6 +133,7 @@ public abstract class IndexGenericPurchaseDocumentModelBase : PageModel
                     item.SupplierName ?? "-",
                     item.DocDate.ToString("yyyy-MM-dd"),
                     item.SupplierReferenceNumber ?? "-",
+                    .. (hasTaxDocument ? new[] { FolioLabel(item) } : []),
                     item.DocTotal.ToString("N2"),
                     item.Status,
                 ],
@@ -136,6 +143,7 @@ public abstract class IndexGenericPurchaseDocumentModelBase : PageModel
                 new DocumentListFilter(nameof(FilterInput.SupplierCardCode), "N.° Proveedor", FilterFieldType.Text, Filter.SupplierCardCode),
                 new DocumentListFilter(nameof(FilterInput.SupplierName), "Proveedor", FilterFieldType.Text, Filter.SupplierName),
                 new DocumentListFilter(nameof(FilterInput.SupplierReferenceNumber), "N.° ref. proveedor", FilterFieldType.Text, Filter.SupplierReferenceNumber),
+                .. (hasTaxDocument ? new[] { new DocumentListFilter(nameof(FilterInput.Folio), "Folio", FilterFieldType.Text, Filter.Folio) } : []),
                 new DocumentListFilter(nameof(FilterInput.DocNum), "N.° documento", FilterFieldType.Text, Filter.DocNum),
                 new DocumentListFilter(nameof(FilterInput.DateFrom), "Fecha desde", FilterFieldType.Date, Filter.DateFrom?.ToString("yyyy-MM-dd")),
                 new DocumentListFilter(nameof(FilterInput.DateTo), "Fecha hasta", FilterFieldType.Date, Filter.DateTo?.ToString("yyyy-MM-dd")),
@@ -246,8 +254,17 @@ public abstract class IndexGenericPurchaseDocumentModelBase : PageModel
         return Page();
     }
 
+    /// <summary>"43-1157501" (prefijo-número) o "-" sin folio.</summary>
+    private static string FolioLabel(PurchaseDocumentSummaryDto item) =>
+        item.FolioNumber is { } number && number > 0
+            ? (string.IsNullOrWhiteSpace(item.FolioPrefix) ? number.ToString() : $"{item.FolioPrefix}-{number}")
+            : "-";
+
     public sealed class FilterInput
     {
+        /// <summary>Número de folio del proveedor -- solo facturas.</summary>
+        public string? Folio { get; set; }
+
         public string? SupplierCardCode { get; set; }
         public string? SupplierName { get; set; }
         public string? SupplierReferenceNumber { get; set; }

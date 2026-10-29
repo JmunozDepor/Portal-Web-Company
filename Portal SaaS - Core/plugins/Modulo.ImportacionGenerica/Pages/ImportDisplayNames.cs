@@ -40,6 +40,8 @@ public static class ImportDisplayNames
         // Tipos de documento de Compra
         [nameof(PurchaseDocumentType.PurchaseQuotation)] = ("Oferta de compra", "Purchase quotation"),
         [nameof(PurchaseDocumentType.PurchaseOrder)] = ("Pedido de compra", "Purchase order"),
+        [nameof(PurchaseDocumentType.PurchaseInvoice)] = ("Factura de proveedor", "Purchase invoice"),
+        [nameof(PurchaseDocumentType.PurchaseReserveInvoice)] = ("Factura de reserva de proveedor", "Purchase reserve invoice"),
 
         // Tipos de documento de Inventario
         [nameof(InventoryDocumentType.InventoryTransferRequest)] = ("Solicitud de traslado", "Inventory transfer request"),

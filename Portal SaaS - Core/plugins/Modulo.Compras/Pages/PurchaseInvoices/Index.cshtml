@@ -1,0 +1,7 @@
+@page "/compras/facturas-proveedor"
+@model Modulo.Compras.Pages.PurchaseInvoices.IndexModel
+@{
+    ViewData["Title"] = "Facturas de Proveedor";
+}
+
+@await Component.InvokeAsync("DocumentList", Model.Listado)

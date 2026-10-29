@@ -127,6 +127,18 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
 
     public DocumentFormViewModel Document { get; private set; } = null!;
 
+    /// <summary>Particularidades del tipo, leídas del catálogo -- ver PurchaseDocumentTypeInfo (todo nace del documento padre).</summary>
+    private PurchaseDocumentTypeInfo TypeInfo => _documents.Describe(Type);
+
+    /// <summary>Documento tributario del proveedor (pestaña Finanzas) -- solo facturas.</summary>
+    public bool HasTaxDocument => TypeInfo.HasTaxDocument;
+
+    /// <summary>"Copiar de Pedido" -- solo en un documento nuevo de un tipo que copia de Pedido.</summary>
+    public bool CanCopyFromOrders => IsNew && TypeInfo.CopyFromType == PurchaseDocumentType.PurchaseOrder;
+
+    /// <summary>Indicadores de documento (OIDC) -- solo se cargan si HasTaxDocument.</summary>
+    public List<SelectListItem> Indicators { get; private set; } = [];
+
     public async Task<IActionResult> OnGetAsync(string id, [FromQuery(Name = "draft")] Guid? draft, CancellationToken ct)
     {
         IsNew = id == NewId;
@@ -149,7 +161,7 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
                 DocDate = DateOnly.FromDateTime(DateTime.Today),
                 DocDueDate = DateOnly.FromDateTime(DateTime.Today),
                 TaxDate = DateOnly.FromDateTime(DateTime.Today),
-                LineType = DocumentLineType.Item,
+                LineType = TypeInfo.DefaultLineType,
                 Series = null,
                 DocCurrency = await _currencies.GetLocalCurrencyAsync(ct),
             };
@@ -208,6 +220,10 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
                 Series = document.Series,
                 BuyerCode = document.BuyerCode,
                 DocCurrency = document.DocCurrency,
+                TaxIndicator = document.TaxIndicator,
+                FolioPrefix = document.FolioPrefix,
+                FolioNumber = document.FolioNumber,
+                FederalTaxId = document.FederalTaxId,
                 Lines = document.Lines.Select(line => new LineInput
                 {
                     ItemCode = line.ItemCode,
@@ -291,6 +307,13 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             }
         }
 
+        if (HasTaxDocument)
+        {
+            await AddTaxDocumentErrorsAsync(ct);
+        }
+
+        await AddCopiedLineErrorsAsync(ct);
+
         if (!ModelState.IsValid)
         {
             await LoadCatalogsAsync(ct);
@@ -334,10 +357,17 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
                 CostCenterCode: isService ? line.CostCenterCode : null,
                 CostCenterCode2: isService ? line.CostCenterCode2 : null,
                 CostCenterCode3: isService ? line.CostCenterCode3 : null,
+                BaseType: line.BaseEntry is null ? null : line.BaseType,
+                BaseEntry: line.BaseEntry,
+                BaseLine: line.BaseEntry is null ? null : line.BaseLine,
                 Currency: line.UnitPrice is null ? null : line.Currency)).ToList(),
             Series: Input.Series,
             BuyerCode: Input.BuyerCode,
-            DocCurrency: Input.DocCurrency);
+            DocCurrency: Input.DocCurrency,
+            TaxIndicator: HasTaxDocument ? Input.TaxIndicator : null,
+            FolioPrefix: HasTaxDocument ? Input.FolioPrefix : null,
+            FolioNumber: HasTaxDocument ? Input.FolioNumber : null,
+            FederalTaxId: HasTaxDocument ? Input.FederalTaxId : null);
 
         if (_validateOnly)
         {
@@ -536,6 +566,8 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             // SlpCode -1 = "sin comprador" en SAP -- se trata como sin asignar.
             SalesEmployeeCode = defaults.SalesEmployeeCode is > 0 ? defaults.SalesEmployeeCode : null,
             defaults.PriceListCode,
+            // RUT del proveedor -- precarga el documento tributario de las facturas.
+            defaults.FederalTaxId,
         });
     }
 
@@ -663,17 +695,60 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         return new JsonResult(issues);
     }
 
-    /// <summary>Valida las líneas ya filtradas de Input.Lines; agrega un error por problema (clave = campo de la línea).</summary>
+    /// <summary>
+    /// Valida las líneas ya filtradas de Input.Lines; agrega un error por problema (clave =
+    /// campo de la línea). Las copiadas de un Pedido no pasan por la validación de precio
+    /// (ver PurchaseDocumentRules.LinesSubjectToPriceCheck).
+    /// </summary>
     private async Task AddLineRestrictionErrorsAsync(CancellationToken ct)
     {
-        var checks = Input.Lines
-            .Select((l, i) => new DocumentLineCheck(i, l.ItemCode ?? string.Empty, l.WarehouseCode, l.Quantity ?? 0, l.UnitPrice, l.Currency))
+        var checks = PurchaseDocumentRules.LinesSubjectToPriceCheck(Input.Lines.Select(l => l.BaseEntry).ToList())
+            .Select(i => (Line: Input.Lines[i], Index: i))
+            .Select(x => new DocumentLineCheck(x.Index, x.Line.ItemCode ?? string.Empty, x.Line.WarehouseCode, x.Line.Quantity ?? 0, x.Line.UnitPrice, x.Line.Currency))
             .ToList();
         var issues = await LineValidator.ValidateAsync(
             new DocumentLineValidationRequest(checks, ValidatesStock, ValidatesPrice, Input.SupplierCardCode, Input.PriceListCode, Input.DocDate), ct);
         foreach (var issue in issues)
         {
             ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Lines)}[{issue.Key}].{issue.Field}", $"Línea {issue.Key + 1}: {issue.Message}");
+        }
+    }
+
+    /// <summary>Documento tributario: completo si se empezó, y sin repetir el folio de otra factura del mismo proveedor.</summary>
+    private async Task AddTaxDocumentErrorsAsync(CancellationToken ct)
+    {
+        var errors = PurchaseDocumentRules.ValidateTaxDocument(Input.TaxIndicator, Input.FolioPrefix, Input.FolioNumber);
+        foreach (var error in errors)
+        {
+            ModelState.AddModelError($"{nameof(Input)}.{error.Field}", error.Message);
+        }
+
+        if (errors.Count == 0 && Input.FolioNumber is { } folioNumber && !string.IsNullOrWhiteSpace(Input.FolioPrefix)
+            && !string.IsNullOrWhiteSpace(Input.SupplierCardCode)
+            && await _documents.FindTaxFolioAsync(Input.SupplierCardCode, Input.FolioPrefix, folioNumber, ct) is { } existingDocNum)
+        {
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.FolioNumber)}",
+                $"Ya existe en SAP la factura N.° {existingDocNum} de este proveedor con el folio {Input.FolioPrefix.Trim()}-{folioNumber}.");
+        }
+    }
+
+    /// <summary>Líneas copiadas de un Pedido contra lo que sigue pendiente en SAP -- ver PurchaseDocumentRules.ValidateCopiedLines.</summary>
+    private async Task AddCopiedLineErrorsAsync(CancellationToken ct)
+    {
+        var copied = Input.Lines
+            .Select((line, index) => (line, index))
+            .Where(x => x.line.BaseEntry is not null)
+            .Select(x => new PurchaseDocumentRules.CopiedLineCheck(x.index, x.line.BaseEntry!.Value, x.line.BaseLine ?? 0, x.line.ItemCode, x.line.Quantity ?? 0))
+            .ToList();
+        if (copied.Count == 0)
+        {
+            return;
+        }
+
+        var openLines = await _documents.GetOpenOrderLinesAsync(copied.Select(c => c.BaseEntry).Distinct().ToList(), ct);
+        foreach (var error in PurchaseDocumentRules.ValidateCopiedLines(Input.SupplierCardCode, Input.LineType, copied, openLines))
+        {
+            ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.Lines)}[{error.LineIndex}].{nameof(LineInput.Quantity)}", error.Message);
         }
     }
 
@@ -846,6 +921,12 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         var currencies = await _currencies.ListAsync(ct: ct);
         Currencies = currencies.Select(c => new SelectListItem($"{c.CurrencyCode} — {c.CurrencyName}", c.CurrencyCode)).ToList();
         LocalCurrency = await _currencies.GetLocalCurrencyAsync(ct);
+
+        if (HasTaxDocument)
+        {
+            var indicators = await HttpContext.RequestServices.GetRequiredService<IDocumentIndicatorCatalogService>().ListAsync(ct);
+            Indicators = indicators.Select(i => new SelectListItem($"{i.Code} — {i.Name}", i.Code)).ToList();
+        }
     }
 
     private void BuildDocumentViewModel()
@@ -860,6 +941,9 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
             Model = this,
             GeneralView = "~/Pages/Shared/_TabGeneralCompras.cshtml",
             ContentView = "~/Pages/Shared/_TabContentCompras.cshtml",
+            // Pestaña Finanzas (mismo mecanismo que Modulo.Ventas) solo en los tipos con documento tributario.
+            AccountingView = HasTaxDocument ? "~/Pages/Shared/_TabFinanzasCompras.cshtml" : null,
+            AccountingTitle = "Finanzas",
             DocEntry = DocEntry,
             CanClose = CanClose,
             CanCancel = CanCancel,
@@ -915,6 +999,20 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         [Display(Name = "Tipo de línea")]
         public DocumentLineType LineType { get; set; } = DocumentLineType.Item;
 
+        /// <summary>Documento tributario del proveedor (OIDC.Code / FolioPref / FolioNum / LicTradNum) -- solo facturas.</summary>
+        [Display(Name = "Indicador")]
+        public string? TaxIndicator { get; set; }
+
+        [Display(Name = "Prefijo de folio")]
+        [StringLength(4, ErrorMessage = "El prefijo admite hasta 4 caracteres.")]
+        public string? FolioPrefix { get; set; }
+
+        [Display(Name = "N.° de folio")]
+        public int? FolioNumber { get; set; }
+
+        [Display(Name = "RUT")]
+        public string? FederalTaxId { get; set; }
+
         public List<LineInput> Lines { get; set; } = [new()];
     }
 
@@ -933,5 +1031,11 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
 
         /// <summary>Moneda de UnitPrice -- ver LineInput.Currency en DetailGenericSalesDocumentModelBase (Modulo.Ventas).</summary>
         public string? Currency { get; set; }
+
+        /// <summary>"Copiar de Pedido": vínculo con la línea del Pedido (BaseType 22) y su N.° para mostrarlo. Se guarda en el borrador.</summary>
+        public int? BaseType { get; set; }
+        public int? BaseEntry { get; set; }
+        public int? BaseLine { get; set; }
+        public int? BaseDocNum { get; set; }
     }
 }

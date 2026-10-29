@@ -1,0 +1,36 @@
+@model Modulo.Compras.Pages.DetailGenericPurchaseDocumentModelBase
+@{
+    var readOnly = Model.Document.ReadOnly;
+}
+
+@* Documento tributario del proveedor -- solo facturas (ver PurchaseDocumentTypeInfo.HasTaxDocument). Mismo
+   esqueleto que _TabFinanzasVentas.cshtml (Modulo.Ventas). Opcional: la reserva de importación no lo trae; si
+   se empieza el folio se exige completo (ver PurchaseDocumentRules.ValidateTaxDocument). Sin data-form-field:
+   estos campos no se pueden ocultar con "Personalizar". *@
+<div class="doc-tab-seccion">
+    <div class="form-row">
+        <div class="form-group">
+            <label asp-for="Input.TaxIndicator" class="form-label"></label>
+            <select asp-for="Input.TaxIndicator" asp-items="Model.Indicators" class="form-select" disabled="@readOnly">
+                <option value="">Sin indicador</option>
+            </select>
+            <span asp-validation-for="Input.TaxIndicator" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="Input.FederalTaxId" class="form-label"></label>
+            <input asp-for="Input.FederalTaxId" class="form-control" disabled="@readOnly" />
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label asp-for="Input.FolioPrefix" class="form-label"></label>
+            <input asp-for="Input.FolioPrefix" class="form-control" maxlength="4" disabled="@readOnly" />
+            <span asp-validation-for="Input.FolioPrefix" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="Input.FolioNumber" class="form-label"></label>
+            <input asp-for="Input.FolioNumber" type="number" step="1" min="1" class="form-control" disabled="@readOnly" />
+            <span asp-validation-for="Input.FolioNumber" class="text-danger"></span>
+        </div>
+    </div>
+</div>

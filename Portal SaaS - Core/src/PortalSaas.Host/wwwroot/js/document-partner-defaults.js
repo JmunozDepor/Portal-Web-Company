@@ -21,6 +21,8 @@
             var priceList = document.getElementById(options.priceListSelectId);
             var currency = document.getElementById(options.currencySelectId);
             var currencyLabel = document.getElementById(options.documentCurrencyLabelId);
+            // RUT del socio (opcional, solo facturas de proveedor): se sobrescribe al cambiar de socio.
+            var taxId = options.taxIdInputId ? document.getElementById(options.taxIdInputId) : null;
             var docDate = document.getElementById(options.docDateId);
             var lineType = document.getElementById(options.lineTypeSelectId);
             var linesBody = document.getElementById(options.linesBodyId);
@@ -167,6 +169,9 @@
                         }
                         selectValue(employee, defaults.salesEmployeeCode);
                         selectValue(priceList, defaults.priceListCode);
+                        if (taxId && defaults.federalTaxId) {
+                            taxId.value = defaults.federalTaxId;
+                        }
                         if (defaults.currency) {
                             selectValue(currency, defaults.currency);
                             updateCurrencyLabel();

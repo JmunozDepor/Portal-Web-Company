@@ -40,6 +40,7 @@
     <!-- Test de página del visor Maestro de Producto (ProductMasterIndexModelTests),
          primer test de un PageModel de plugin en este proyecto. -->
     <ProjectReference Include="..\..\plugins\Modulo.Inventario\Modulo.Inventario.csproj" />
+    <ProjectReference Include="..\..\plugins\Modulo.Compras\Modulo.Compras.csproj" />
   </ItemGroup>
 
 </Project>

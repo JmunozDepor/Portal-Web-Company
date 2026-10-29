@@ -112,12 +112,21 @@ public class FaceleXmlBuilderTests
         Assert.Equal("12.5", t.Element("Aduana")!.Element("PesoNeto")!.Value);
     }
 
-    [Fact]
-    public void Build_SinCarro_PatenteCarroSinDato()
+    /// <summary>
+    /// Res. Ex. SII N°144 (2026): "Sin Dato" marca un dato pendiente de complementar con otra guía, no un camión sin
+    /// carro. Sin carro el campo no se envía (opcional en el XSD del SII).
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void Build_SinCarro_OmitePatenteCarro(string? trailer)
     {
-        var doc = GuiaVenta() with { Transport = Transporte with { TrailerPlate = null } };
+        var doc = GuiaVenta() with { Transport = Transporte with { TrailerPlate = trailer } };
         var t = Parse(FaceleXmlBuilder.Build(doc, Depor)).Descendants("Transporte").Single();
-        Assert.Equal("SIN DATO", t.Element("PatenteCarro")!.Value);
+        Assert.Null(t.Element("PatenteCarro"));
+        Assert.Equal("PJFX11", t.Element("Patente")!.Value);
+        Assert.Equal("RUTTrans", ((XElement)t.Element("Patente")!.NextNode!).Name.LocalName);
     }
 
     [Fact]

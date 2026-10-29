@@ -14,7 +14,6 @@ namespace PortalSaas.Core.DocumentosElectronicos.Proveedores.Facele;
 /// </summary>
 public static class FaceleXmlBuilder
 {
-    private const string NoData = "SIN DATO";
     private const decimal DefaultVatRate = 19m;
 
     public static string Build(DteDocument doc, DteIssuerData issuer)
@@ -94,7 +93,8 @@ public static class FaceleXmlBuilder
     {
         w.WriteStartElement("Transporte");
         OptElem(w, "Patente", t.Plate, 8);
-        Elem(w, "PatenteCarro", string.IsNullOrWhiteSpace(t.TrailerPlate) ? NoData : t.TrailerPlate, 8);
+        // Sin carro no se envía: en la Res. 144 "Sin Dato" es un dato pendiente de complementar, no la ausencia de carro.
+        OptElem(w, "PatenteCarro", t.TrailerPlate, 8);
         OptElem(w, "RUTTrans", t.CarrierTaxId);
         if (t.Driver is { } d)
         {

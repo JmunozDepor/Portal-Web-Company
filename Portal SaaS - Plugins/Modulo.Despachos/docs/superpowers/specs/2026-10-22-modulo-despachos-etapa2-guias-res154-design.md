@@ -155,7 +155,7 @@ Obligatoriedad en **guía de despacho (52): siempre**. En facturas 33/34/46: cua
 | Dato | XML (`Encabezado/Transporte`) | Fuente en el portal |
 |---|---|---|
 | Patente vehículo | `Patente` | Snapshot manifiesto `plate` |
-| Patente carro / remolque | `PatenteCarro` (nuevo; "SIN DATO" si no hay carro) | `trailer_plate` o "SIN DATO" |
+| Patente carro / remolque | `PatenteCarro` (nuevo; opcional en el XSD) | `trailer_plate`; sin carro no se envía (antes "SIN DATO", cambiado por la Res. 144, ver `docs/normativa/2026-10-29-res144-sii.md`) |
 | RUT transportista | `RUTTrans` | `carrier_tax_id` |
 | RUT y nombre chofer | `Chofer/RUTChofer`, `Chofer/NombreChofer` | `driver_tax_id`, `driver_name` |
 | Dirección / comuna / ciudad destino | `DirDest`, `CmnaDest`, `CiudadDest` | Documento SAP (dirección de despacho) + comuna resuelta |

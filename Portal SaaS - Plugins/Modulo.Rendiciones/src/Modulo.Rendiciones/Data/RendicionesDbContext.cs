@@ -275,6 +275,9 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.Destination).HasColumnName("destination").HasMaxLength(300);
             e.Property(x => x.DistanceKm).HasColumnName("distance_km").HasPrecision(10, 2);
             e.Property(x => x.AppliedRatePerKm).HasColumnName("applied_rate_per_km").HasPrecision(18, 2);
+            e.Property(x => x.CityId).HasColumnName("city_id");
+            e.Property(x => x.Quantity).HasColumnName("quantity").HasPrecision(10, 2);
+            e.Property(x => x.ReimbursementAmount).HasColumnName("reimbursement_amount").HasPrecision(18, 2).IsRequired();
             e.HasOne(x => x.ExpenseType)
                 .WithMany()
                 .HasForeignKey(x => x.ExpenseTypeId)
@@ -289,6 +292,11 @@ public class RendicionesDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.ExpenseReceiptId)
                 .HasConstraintName("fk_expense_report_lines_expense_receipts")
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.City)
+                .WithMany()
+                .HasForeignKey(x => x.CityId)
+                .HasConstraintName("fk_expense_report_lines_expense_cities")
                 .OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_expense_report_lines_company_id");
         });

@@ -526,6 +526,10 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("capture_source");
 
+                    b.Property<long?>("CityId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("city_id");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("company_id");
@@ -591,6 +595,16 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasColumnType("nvarchar(300)")
                         .HasColumnName("origin");
 
+                    b.Property<decimal?>("Quantity")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("ReimbursementAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("reimbursement_amount");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -621,6 +635,8 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CityId");
 
                     b.HasIndex("CompanyId")
                         .HasDatabaseName("ix_expense_report_lines_company_id");
@@ -1095,6 +1111,12 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
 
             modelBuilder.Entity("Modulo.Rendiciones.Models.ExpenseReportLine", b =>
                 {
+                    b.HasOne("Modulo.Rendiciones.Models.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_expense_report_lines_expense_cities");
+
                     b.HasOne("Modulo.Rendiciones.Models.DocumentType", "DocumentType")
                         .WithMany()
                         .HasForeignKey("DocumentTypeId")
@@ -1118,6 +1140,8 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasForeignKey("ExpenseTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_expense_report_lines_expense_types");
+
+                    b.Navigation("City");
 
                     b.Navigation("DocumentType");
 

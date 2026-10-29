@@ -63,6 +63,9 @@ public sealed class ExpenseService : IExpenseService
         expense.Status = "Loose";
         expense.ExpenseReportId = null;
         expense.Date = NormalizeDate(expense.Date);
+        // TODO(Task 7): acá se aplicará la política de gasto por ciudad/perfil -- por ahora
+        // no hay motor de topes, así que el monto reembolsable es siempre el monto total.
+        expense.ReimbursementAmount = expense.Amount;
         _db.ExpenseReportLines.Add(expense);
         await _db.SaveChangesAsync(ct);
 
@@ -101,6 +104,9 @@ public sealed class ExpenseService : IExpenseService
         expense.AppliedRatePerKm = data.AppliedRatePerKm;
         if (data.ExpenseReceiptId is not null)
             expense.ExpenseReceiptId = data.ExpenseReceiptId;
+        // TODO(Task 7): acá se aplicará la política de gasto por ciudad/perfil -- por ahora
+        // no hay motor de topes, así que el monto reembolsable es siempre el monto total.
+        expense.ReimbursementAmount = expense.Amount;
 
         await _db.SaveChangesAsync(ct);
 

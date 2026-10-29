@@ -83,4 +83,19 @@ public class ExpenseReportLine
 
     /// <summary>Tarifa vigente en ExpenseType.RatePerKm al momento de guardar, copiada acá para que un cambio de tarifa futuro no altere gastos ya guardados.</summary>
     public decimal? AppliedRatePerKm { get; set; }
+
+    /// <summary>Ciudad donde se incurrió el gasto -- acota la política por ciudad (Task 7). Opcional.</summary>
+    public long? CityId { get; set; }
+
+    public City? City { get; set; }
+
+    /// <summary>Cantidad (ej. días) cuando ExpenseType.RequiresQuantity -- multiplica el tope por día en la política (Task 7). Null si el tipo no la requiere.</summary>
+    public decimal? Quantity { get; set; }
+
+    /// <summary>
+    /// Monto efectivamente reembolsable, tras aplicar la política de gasto vigente
+    /// (tope por ciudad/perfil, Task 7). Hasta que ese motor exista, siempre es igual a
+    /// <see cref="Amount"/> -- lo fija ExpenseService al guardar.
+    /// </summary>
+    public decimal ReimbursementAmount { get; set; }
 }

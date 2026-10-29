@@ -1,0 +1,97 @@
+@page "/rendiciones/configuracion/ciudades"
+@model Modulo.Rendiciones.Pages.Configuracion.Ciudades.IndexModel
+@{
+    ViewData["Title"] = "Ciudades";
+}
+@* Mismo patrón que TiposDocumento (Design System unificado). *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+        <h2 class="mb-0">Ciudades</h2>
+        <button type="button" class="btn btn-primary" data-drawer-open="drawer-nueva-ciudad">+ Nueva ciudad</button>
+    </div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="table-responsive-lg">
+    <table class="table-ps">
+        <thead><tr><th>Nombre</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var c in Model.Cities)
+            {
+                var formId = $"ciudad-{c.Id}";
+                <tr class="@(c.IsActive ? "" : "row-inactive")">
+                    <td><input type="text" name="nombre" value="@c.Name" class="form-control" form="@formId" /></td>
+                    <td>
+                        <input type="hidden" name="activo" value="@c.IsActive" form="@formId" />
+                        @if (c.IsActive)
+                        {
+                            <span class="badge-status badge-status--success">Activo</span>
+                        }
+                        else
+                        {
+                            <span class="badge-status badge-status--neutral">Inactivo</span>
+                        }
+                    </td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            <button type="submit" class="btn-ghost" title="Guardar" form="@formId"><i class="bi bi-check-lg"></i></button>
+                            @if (c.IsActive)
+                            {
+                                <form asp-page="./Index" asp-page-handler="Desactivar" asp-route-id="@c.Id" asp-route-nombre="@c.Name" method="post" class="d-inline-block">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Desactivar"><i class="bi bi-slash-circle"></i></button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-page="./Index" asp-page-handler="Activar" asp-route-id="@c.Id" asp-route-nombre="@c.Name" method="post" class="d-inline-block">
+                                    <button type="submit" class="btn-ghost" title="Activar"><i class="bi bi-check-circle"></i></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Cities.Count == 0)
+            {
+                <tr><td colspan="3" class="text-muted">Sin ciudades todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@foreach (var c in Model.Cities)
+{
+    <form id="ciudad-@c.Id" asp-page="./Index" asp-page-handler="Guardar" asp-route-id="@c.Id"></form>
+}
+</div>
+
+@{ var ciudadDrawerAbierto = !ViewData.ModelState.IsValid; }
+<div id="drawer-nueva-ciudad" class="drawer-overlay @(ciudadDrawerAbierto ? "is-open" : "")" data-drawer>
+    <aside class="drawer-panel @(ciudadDrawerAbierto ? "is-open" : "")">
+        <div class="drawer-header">
+            <h3>Nueva ciudad</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" asp-page-handler="Crear">
+            <div class="drawer-body">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div class="mb-3">
+                    <label asp-for="New.Name" class="form-label">Nombre</label>
+                    <input asp-for="New.Name" class="form-control" placeholder="Ej. Santiago, Concepción..." />
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear</button>
+            </div>
+        </form>
+    </aside>
+</div>

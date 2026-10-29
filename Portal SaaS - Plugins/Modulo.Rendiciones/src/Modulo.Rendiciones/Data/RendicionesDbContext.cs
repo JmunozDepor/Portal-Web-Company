@@ -46,6 +46,7 @@ public class RendicionesDbContext : DbContext
     public DbSet<GlAccount> GlAccounts => Set<GlAccount>();
     public DbSet<RendicionesUserRole> RendicionesUserRoles => Set<RendicionesUserRole>();
     public DbSet<SupplierHint> SupplierHints => Set<SupplierHint>();
+    public DbSet<City> Cities => Set<City>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -93,6 +94,17 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.TaxPercentage).HasColumnName("tax_percentage").HasPrecision(5, 2);
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.HasIndex(x => x.CompanyId).HasDatabaseName("ix_document_types_company_id");
+        });
+
+        modelBuilder.Entity<City>(e =>
+        {
+            e.ToTable("expense_cities");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.HasIndex(x => new { x.CompanyId, x.Name }).IsUnique().HasDatabaseName("uq_expense_cities_company_id_name");
         });
 
         modelBuilder.Entity<UserCostCenter>(e =>

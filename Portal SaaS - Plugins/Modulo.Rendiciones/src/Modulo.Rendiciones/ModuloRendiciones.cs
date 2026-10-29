@@ -248,6 +248,16 @@ public sealed class ModuloRendiciones : IModuloPortal
             PageRoute = "/rendiciones/configuracion/formato",
             Order = 10,
         };
+
+        yield return new MenuItemDefinition
+        {
+            Code = "config-ciudades",
+            ParentCode = "grupo-administrador",
+            Name = "Ciudades",
+            Icon = "bi-geo-alt",
+            PageRoute = "/rendiciones/configuracion/ciudades",
+            Order = 11,
+        };
     }
 
     public void RegisterServices(IServiceCollection services)
@@ -297,6 +307,7 @@ public sealed class ModuloRendiciones : IModuloPortal
         services.AddScoped<IExpenseFundService, ExpenseFundService>();
         services.AddScoped<IExpenseTypeService, ExpenseTypeService>();
         services.AddScoped<IDocumentTypeService, DocumentTypeService>();
+        services.AddScoped<ICityService, CityService>();
         // Formato de montos (con/sin decimales) -- Scoped: memoiza la preferencia de la
         // compañía por request, la consume <rnd-amount> en las vistas (ver TagHelpers/).
         services.AddScoped<IAmountFormatService, AmountFormatService>();

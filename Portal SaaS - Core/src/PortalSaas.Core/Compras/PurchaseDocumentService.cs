@@ -9,8 +9,9 @@ namespace PortalSaas.Core.Compras;
 /// resueltos vía PurchaseDocumentTypeCatalog, portado de GenericoCompraService en
 /// referencia-original/PortalSAP_v2. Copia deliberada de SalesDocumentService en la
 /// forma (mismo criterio que el original: los 3 motores son implementaciones
-/// paralelas, no una superclase compartida -- ver CLAUDE.md), sin la lógica de
-/// filtros extra (ningún tipo de Compra comparte tabla/recurso acá).
+/// paralelas, no una superclase compartida -- ver CLAUDE.md). Las 2 facturas comparten
+/// "OPCH": ExtraFilters solo filtra el listado y CreateFields marca el POST (ver
+/// PurchaseDocumentTypeCatalog).
 /// </summary>
 public sealed class PurchaseDocumentService : IPurchaseDocumentService
 {
@@ -31,6 +32,12 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
     public int GetSapObjectCode(PurchaseDocumentType type) => PurchaseDocumentTypeCatalog.Resolve(type).ObjectCode;
 
     public bool SupportsCancel(PurchaseDocumentType type) => PurchaseDocumentTypeCatalog.Resolve(type).SupportsCancel;
+
+    public PurchaseDocumentTypeInfo Describe(PurchaseDocumentType type)
+    {
+        var entry = PurchaseDocumentTypeCatalog.Resolve(type);
+        return new PurchaseDocumentTypeInfo(entry.DefaultLineType, entry.HasTaxDocument, entry.CopyFrom);
+    }
 
     public Task<bool> CanCreateAsync(PurchaseDocumentType type, CancellationToken ct = default) =>
         _permissions.IsCreateAllowedAsync("Purchase", type.ToString(), PurchaseDocumentTypeCatalog.Resolve(type).DefaultCanCreate, ct);
@@ -78,6 +85,10 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
             RequriedDate = requiredDate,
             TaxDate = document.TaxDate.ToDateTime(TimeOnly.MinValue),
             NumAtCard = document.SupplierReferenceNumber,
+            FolioPrefixString = NullIfBlank(document.FolioPrefix),
+            FolioNumber = document.FolioNumber,
+            Indicator = NullIfBlank(document.TaxIndicator),
+            FederalTaxID = NullIfBlank(document.FederalTaxId),
             U_PortalUser = isDefaultUdf ? portalUsername : null,
             AdditionalFields = isDefaultUdf
                 ? document.AdditionalFields
@@ -86,10 +97,22 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
         };
 
         var hasAdditionalFields = header.AdditionalFields is not null || header.DocumentLines.Any(l => l.AdditionalFields is not null);
-        object requestBody = hasAdditionalFields ? PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten(header) : header;
+        var createFields = entry.CreateFields ?? new Dictionary<string, object>();
+        if (!hasAdditionalFields && createFields.Count == 0)
+        {
+            return (entry.Resource, header);
+        }
 
-        return (entry.Resource, requestBody);
+        var flattened = PortalSaas.Core.Sap.SapAdditionalFieldsHelper.Flatten(header);
+        foreach (var (field, value) in createFields)
+        {
+            flattened[field] = value;
+        }
+
+        return (entry.Resource, flattened);
     }
+
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     public async Task AddLinesAsync(PurchaseDocumentType type, int docEntry, IReadOnlyList<PurchaseDocumentLineDto> newLines, CancellationToken ct = default)
     {
@@ -165,7 +188,11 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
             Status: sap.DocumentStatus == "bost_Close" ? "Cerrado" : "Abierto",
             Series: sap.Series,
             BuyerCode: sap.SalesPersonCode,
-            DocCurrency: sap.DocCurrency);
+            DocCurrency: sap.DocCurrency,
+            TaxIndicator: sap.Indicator,
+            FolioPrefix: sap.FolioPrefixString,
+            FolioNumber: sap.FolioNumber,
+            FederalTaxId: sap.FederalTaxID);
     }
 
     public async Task<PurchaseDocumentListResult> ListAsync(PurchaseDocumentType type, PurchaseDocumentFilter? filter = null, int page = 1, int pageSize = 25, CancellationToken ct = default)
@@ -174,7 +201,7 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
         var clampedPageSize = pageSize switch { 50 => 50, 100 => 100, _ => 25 };
         var offset = Math.Max(0, page - 1) * clampedPageSize;
 
-        var (whereClause, parameters) = BuildWhereClause(filter);
+        var (whereClause, parameters) = BuildWhereClause(filter, entry.ExtraFilters ?? []);
 
         var countSql = $"""SELECT COUNT(*) FROM "{entry.Table}" o {whereClause}""";
         var totalRecords = (await _hana.QueryAsync<int>(countSql, parameters, ct)).FirstOrDefault();
@@ -183,6 +210,7 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
             SELECT o."DocEntry", o."DocNum", o."CardCode" AS "SupplierCardCode",
                    o."CardName" AS "SupplierName", o."DocDate", o."DocTotal",
                    o."NumAtCard" AS "SupplierReferenceNumber",
+                   o."FolioPref" AS "FolioPrefix", o."FolioNum" AS "FolioNumber",
                    CASE WHEN o."DocStatus" = 'O' THEN 'Abierto' ELSE 'Cerrado' END AS "Status"
             FROM "{entry.Table}" o
             {whereClause}
@@ -201,9 +229,11 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
     /// encuentra "51230"), DateTo es límite EXCLUSIVO del día siguiente (así incluye todo
     /// el día "hasta", no solo su medianoche 00:00:00). Sin filtro de "Vendedor"/
     /// "Sucursal entrega" acá -- el original (`FiltroGenericoCompra`) tampoco los tiene
-    /// para Compra, solo Venta/Inventario.
+    /// para Compra, solo Venta/Inventario. extraFilters del catálogo (no del usuario) se
+    /// agregan siempre, igual que en SalesDocumentService.
     /// </summary>
-    private static (string WhereClause, IReadOnlyDictionary<string, object?> Parameters) BuildWhereClause(PurchaseDocumentFilter? filter)
+    private static (string WhereClause, IReadOnlyDictionary<string, object?> Parameters) BuildWhereClause(
+        PurchaseDocumentFilter? filter, IReadOnlyList<PurchaseDocumentTypeCatalog.ExtraFilter> extraFilters)
     {
         var clauses = new List<string>();
         var parameters = new Dictionary<string, object?>();
@@ -245,6 +275,21 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
                 clauses.Add("""TO_VARCHAR(o."DocNum") LIKE :docNum""");
                 parameters["docNum"] = $"%{filter.DocNum.Trim()}%";
             }
+
+            if (!string.IsNullOrWhiteSpace(filter.Folio))
+            {
+                clauses.Add("""TO_VARCHAR(o."FolioNum") LIKE :folio""");
+                parameters["folio"] = $"%{filter.Folio.Trim()}%";
+            }
+        }
+
+        for (var i = 0; i < extraFilters.Count; i++)
+        {
+            var extraFilter = extraFilters[i];
+            var paramName = $"extraFilter{i}";
+            var op = extraFilter.IsEqual ? "=" : "<>";
+            clauses.Add($"""o."{extraFilter.Column}" {op} :{paramName}""");
+            parameters[paramName] = extraFilter.Value;
         }
 
         var whereClause = clauses.Count == 0 ? string.Empty : "WHERE " + string.Join(" AND ", clauses);

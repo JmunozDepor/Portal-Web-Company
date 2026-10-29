@@ -1,15 +1,17 @@
 namespace PortalSaas.Abstractions.Modelos;
 
 /// <summary>
-/// Los 2 tipos de documento de compra que soporta el motor genérico (ver
-/// IPurchaseDocumentService/PurchaseDocumentTypeCatalog) -- portado de
-/// TipoDocumentoGenericoCompra en referencia-original/PortalSAP_v2. El resto de la
-/// familia de Compras (Entrada de mercadería, Facturas de proveedor, Notas de débito/
-/// crédito) queda pendiente, mismo criterio que ya usó el original -- no hace falta
-/// para esta entrega.
+/// Los tipos de documento de compra que soporta el motor genérico (ver
+/// IPurchaseDocumentService/PurchaseDocumentTypeCatalog) -- Oferta/Pedido portados de
+/// TipoDocumentoGenericoCompra en referencia-original/PortalSAP_v2; las 2 facturas
+/// (OPCH) son nuevas (2026-10-29, el original nunca las tuvo): la de proveedor registra
+/// servicios, la de reserva recibe productos. Entrada de mercadería y Notas de débito/
+/// crédito de proveedor siguen pendientes.
 /// </summary>
 public enum PurchaseDocumentType
 {
     PurchaseQuotation,
     PurchaseOrder,
+    PurchaseInvoice,
+    PurchaseReserveInvoice,
 }

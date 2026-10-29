@@ -1,10 +1,10 @@
 namespace PortalSaas.Abstractions.Modelos;
 
 /// <summary>
-/// Documento de compra genérico (SAP OPQT/OPOR, ver PurchaseDocumentType) --
-/// digitación directa, sin Copy-From ni aprobación en esta entrega (a diferencia del
-/// original, donde Pedido nace de Copy-From al aprobar una Oferta -- acá los 2 tipos se
-/// crean directo, mismo criterio "digitación directa" que Venta/Inventario).
+/// Documento de compra genérico (SAP OPQT/OPOR/OPCH, ver PurchaseDocumentType) -- sin
+/// aprobación. Oferta/Pedido se digitan directo (a diferencia del original, donde Pedido
+/// nace de Copy-From al aprobar una Oferta); las facturas además pueden copiar líneas
+/// de un Pedido (BaseType/BaseEntry/BaseLine por línea).
 /// </summary>
 public sealed record PurchaseDocumentDto(
     string SupplierCardCode,
@@ -28,7 +28,13 @@ public sealed record PurchaseDocumentDto(
     // Null = SAP usa el comprador por defecto del proveedor.
     int? BuyerCode = null,
     // Moneda del documento -- ver SalesDocumentDto.DocCurrency.
-    string? DocCurrency = null);
+    string? DocCurrency = null,
+    // Documento tributario del proveedor (solo tipos con HasTaxDocument, ver
+    // PurchaseDocumentTypeInfo): OIDC.Code, FolioPref, FolioNum y LicTradNum de SAP.
+    string? TaxIndicator = null,
+    string? FolioPrefix = null,
+    int? FolioNumber = null,
+    string? FederalTaxId = null);
 
 /// <summary>
 /// Línea de Artículo o Servicio -- mismo criterio que SalesDocumentLineDto (ver ese
@@ -49,8 +55,8 @@ public sealed record PurchaseDocumentLineDto(
     // ICostCenterCatalogService.ListByDimensionAsync.
     string? CostCenterCode2 = null,
     string? CostCenterCode3 = null,
-    // Copy-From (paridad con InventoryDocumentLineDto) -- sin consumidor todavía en
-    // Compra, ver CLAUDE.md "Paridad entre los motores genéricos de documento".
+    // Copy-From (paridad con InventoryDocumentLineDto) -- "Copiar de Pedido" de las
+    // facturas (BaseType 22).
     int? BaseType = null,
     int? BaseEntry = null,
     int? BaseLine = null,
@@ -72,7 +78,9 @@ public sealed record PurchaseDocumentFilter(
     string? SupplierCardCode = null,
     string? SupplierName = null,
     string? SupplierReferenceNumber = null,
-    string? DocNum = null);
+    string? DocNum = null,
+    // Número de folio del proveedor (OPCH.FolioNum), LIKE parcial como DocNum.
+    string? Folio = null);
 
 public sealed record PurchaseDocumentListResult(IReadOnlyList<PurchaseDocumentSummaryDto> Items, int TotalRecords);
 
@@ -87,4 +95,6 @@ public sealed record PurchaseDocumentSummaryDto
     public decimal DocTotal { get; init; }
     public string? SupplierReferenceNumber { get; init; }
     public string Status { get; init; } = null!;
+    public string? FolioPrefix { get; init; }
+    public int? FolioNumber { get; init; }
 }

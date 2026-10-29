@@ -44,6 +44,13 @@ internal sealed class SapPurchaseDocumentHeader
     public DateTime? RequriedDate { get; set; }
     public DateTime? TaxDate { get; set; }
     public string? NumAtCard { get; set; }
+
+    /// <summary>Documento tributario del proveedor (OPCH.FolioPref/FolioNum/Indicator/LicTradNum) -- null omite el campo.</summary>
+    public string? FolioPrefixString { get; set; }
+    public int? FolioNumber { get; set; }
+    public string? Indicator { get; set; }
+    public string? FederalTaxID { get; set; }
+
     public decimal? DocTotal { get; set; }
 
     /// <summary>Total en moneda extranjera (0 si el documento está en moneda local) -- solo lectura.</summary>

@@ -3,9 +3,9 @@ using PortalSaas.Abstractions.Modelos;
 namespace PortalSaas.Abstractions.Contratos;
 
 /// <summary>
-/// Motor genérico de documentos de compra (SAP OPQT/OPOR, ver PurchaseDocumentType) de
-/// la compañía activa -- digitación directa, sin aprobación ni Copy-From en esta
-/// entrega (ver el doc-comment de PurchaseDocumentDto). Mismo patrón que
+/// Motor genérico de documentos de compra (SAP OPQT/OPOR/OPCH, ver PurchaseDocumentType)
+/// de la compañía activa -- sin aprobación; las facturas copian líneas de un Pedido (ver
+/// el doc-comment de PurchaseDocumentDto). Mismo patrón que
 /// ISalesDocumentService -- portado de IGenericoCompraService en
 /// referencia-original/PortalSAP_v2.
 /// </summary>
@@ -46,4 +46,7 @@ public interface IPurchaseDocumentService
 
     /// <summary>Código de objeto SAP (NNM1.ObjectCode) del tipo de documento -- ver ISalesDocumentService.GetSapObjectCode.</summary>
     int GetSapObjectCode(PurchaseDocumentType type);
+
+    /// <summary>Particularidades del tipo que lee el formulario base -- ver PurchaseDocumentTypeInfo.</summary>
+    PurchaseDocumentTypeInfo Describe(PurchaseDocumentType type);
 }

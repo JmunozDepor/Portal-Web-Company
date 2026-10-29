@@ -47,6 +47,8 @@ public class SapDocumentConnectorTests
         public bool SupportsCancel(PurchaseDocumentType type) => true;
         public int GetSapObjectCode(PurchaseDocumentType type)
             => throw new InvalidOperationException("No debería llamarse en este test.");
+        public PurchaseDocumentTypeInfo Describe(PurchaseDocumentType type)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
     }
 
     private sealed class InventoryDocumentServiceFalso : IInventoryDocumentService

@@ -112,6 +112,75 @@ public sealed class PurchaseDocumentService : IPurchaseDocumentService
         return (entry.Resource, flattened);
     }
 
+    public async Task<IReadOnlyList<PurchaseOpenOrderDto>> ListOpenOrdersAsync(string supplierCardCode, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT o."DocEntry", o."DocNum", o."DocDate", o."NumAtCard" AS "SupplierReferenceNumber",
+                   o."DocCur" AS "DocCurrency",
+                   CASE WHEN o."DocTotalFC" > 0 THEN o."DocTotalFC" ELSE o."DocTotal" END AS "DocTotal",
+                   o."DocType", COUNT(*) AS "OpenLineCount"
+            FROM "OPOR" o
+            INNER JOIN "POR1" l ON l."DocEntry" = o."DocEntry"
+            WHERE o."CardCode" = :cardCode AND o."DocStatus" = 'O' AND o."CANCELED" = 'N'
+              AND l."LineStatus" = 'O' AND l."OpenQty" > 0
+            GROUP BY o."DocEntry", o."DocNum", o."DocDate", o."NumAtCard", o."DocCur", o."DocTotalFC", o."DocTotal", o."DocType"
+            ORDER BY o."DocDate" DESC, o."DocNum" DESC
+            """;
+
+        return await _hana.QueryAsync<PurchaseOpenOrderDto>(sql, new Dictionary<string, object?> { ["cardCode"] = supplierCardCode.Trim() }, ct);
+    }
+
+    public async Task<IReadOnlyList<PurchaseOpenOrderLineDto>> GetOpenOrderLinesAsync(IReadOnlyCollection<int> docEntries, CancellationToken ct = default)
+    {
+        if (docEntries.Count == 0)
+        {
+            return [];
+        }
+
+        var parameters = new Dictionary<string, object?>();
+        var names = new List<string>();
+        foreach (var docEntry in docEntries.Distinct())
+        {
+            var name = $"docEntry{names.Count}";
+            names.Add($":{name}");
+            parameters[name] = docEntry;
+        }
+
+        var sql = $"""
+            SELECT l."DocEntry", o."DocNum", l."LineNum", o."CardCode", o."DocType", o."DocCur" AS "DocCurrency",
+                   o."SlpCode" AS "BuyerCode", l."ItemCode", l."Dscription" AS "Description",
+                   l."OpenQty" AS "OpenQuantity", l."PriceBefDi" AS "UnitPrice", l."Currency",
+                   l."DiscPrcnt" AS "DiscountPercent", l."WhsCode" AS "WarehouseCode", l."AcctCode" AS "AccountCode",
+                   l."OcrCode" AS "CostCenterCode", l."OcrCode2" AS "CostCenterCode2", l."OcrCode3" AS "CostCenterCode3"
+            FROM "POR1" l
+            INNER JOIN "OPOR" o ON o."DocEntry" = l."DocEntry"
+            WHERE l."DocEntry" IN ({string.Join(", ", names)}) AND o."DocStatus" = 'O' AND o."CANCELED" = 'N'
+              AND l."LineStatus" = 'O' AND l."OpenQty" > 0
+            ORDER BY o."DocNum", l."VisOrder"
+            """;
+
+        return await _hana.QueryAsync<PurchaseOpenOrderLineDto>(sql, parameters, ct);
+    }
+
+    public async Task<int?> FindTaxFolioAsync(string supplierCardCode, string folioPrefix, int folioNumber, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT o."DocNum" FROM "OPCH" o
+            WHERE o."CardCode" = :cardCode AND o."FolioPref" = :folioPrefix AND o."FolioNum" = :folioNumber AND o."CANCELED" = 'N'
+            """;
+
+        var rows = await _hana.QueryAsync<int>(sql, new Dictionary<string, object?>
+        {
+            ["cardCode"] = supplierCardCode.Trim(),
+            ["folioPrefix"] = folioPrefix.Trim(),
+            ["folioNumber"] = folioNumber,
+        }, ct);
+
+        // Sin filas -> 0 (ningún DocNum real es 0).
+        var docNum = rows.FirstOrDefault();
+        return docNum > 0 ? docNum : null;
+    }
+
     private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     public async Task AddLinesAsync(PurchaseDocumentType type, int docEntry, IReadOnlyList<PurchaseDocumentLineDto> newLines, CancellationToken ct = default)

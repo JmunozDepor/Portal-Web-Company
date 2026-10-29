@@ -49,4 +49,17 @@ public interface IPurchaseDocumentService
 
     /// <summary>Particularidades del tipo que lee el formulario base -- ver PurchaseDocumentTypeInfo.</summary>
     PurchaseDocumentTypeInfo Describe(PurchaseDocumentType type);
+
+    /// <summary>
+    /// "Copiar de Pedido": Pedidos abiertos del proveedor con al menos una línea pendiente.
+    /// Vive en Core (no en Modulo.Compras) para que la Etapa 2 de Facturas de Proveedor
+    /// arme la factura aprobada con el detalle de la Orden de compra sin depender del plugin.
+    /// </summary>
+    Task<IReadOnlyList<PurchaseOpenOrderDto>> ListOpenOrdersAsync(string supplierCardCode, CancellationToken ct = default);
+
+    /// <summary>Líneas pendientes de esos Pedidos (vacío sin consultar si no viene ninguno).</summary>
+    Task<IReadOnlyList<PurchaseOpenOrderLineDto>> GetOpenOrderLinesAsync(IReadOnlyCollection<int> docEntries, CancellationToken ct = default);
+
+    /// <summary>DocNum de la factura no cancelada del proveedor que ya usa ese folio, o null -- evita registrar dos veces la misma factura.</summary>
+    Task<int?> FindTaxFolioAsync(string supplierCardCode, string folioPrefix, int folioNumber, CancellationToken ct = default);
 }

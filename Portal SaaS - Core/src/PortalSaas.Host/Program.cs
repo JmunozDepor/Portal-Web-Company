@@ -325,6 +325,7 @@ builder.Services.AddScoped<ISeriesCatalogService, SeriesCatalogService>();
 builder.Services.AddScoped<ITaxCodeCatalogService, TaxCodeCatalogService>();
 builder.Services.AddScoped<IShippingMethodCatalogService, ShippingMethodCatalogService>();
 builder.Services.AddScoped<IPaymentTermsCatalogService, PaymentTermsCatalogService>();
+builder.Services.AddScoped<IDocumentIndicatorCatalogService, DocumentIndicatorCatalogService>();
 builder.Services.AddScoped<IEmployeeCatalogService, EmployeeCatalogService>();
 builder.Services.AddScoped<IItemGroupCatalogService, ItemGroupCatalogService>();
 builder.Services.AddScoped<IBusinessPartnerGroupCatalogService, BusinessPartnerGroupCatalogService>();

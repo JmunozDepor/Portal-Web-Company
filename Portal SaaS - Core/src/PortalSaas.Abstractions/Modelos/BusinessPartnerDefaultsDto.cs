@@ -25,4 +25,7 @@ public sealed record BusinessPartnerDefaultsDto
 
     /// <summary>OCRD.Currency -- moneda del socio; "##" = acepta todas las monedas (sin moneda fija).</summary>
     public string? Currency { get; init; }
+
+    /// <summary>OCRD.LicTradNum -- RUT del socio (documento tributario de las facturas de proveedor).</summary>
+    public string? FederalTaxId { get; init; }
 }

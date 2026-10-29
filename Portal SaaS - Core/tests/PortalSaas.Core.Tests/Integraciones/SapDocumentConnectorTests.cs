@@ -49,6 +49,12 @@ public class SapDocumentConnectorTests
             => throw new InvalidOperationException("No debería llamarse en este test.");
         public PurchaseDocumentTypeInfo Describe(PurchaseDocumentType type)
             => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task<IReadOnlyList<PurchaseOpenOrderDto>> ListOpenOrdersAsync(string supplierCardCode, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task<IReadOnlyList<PurchaseOpenOrderLineDto>> GetOpenOrderLinesAsync(IReadOnlyCollection<int> docEntries, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
+        public Task<int?> FindTaxFolioAsync(string supplierCardCode, string folioPrefix, int folioNumber, CancellationToken ct = default)
+            => throw new InvalidOperationException("No debería llamarse en este test.");
     }
 
     private sealed class InventoryDocumentServiceFalso : IInventoryDocumentService

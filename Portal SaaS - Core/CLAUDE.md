@@ -282,8 +282,10 @@ para cualquier empresa que use SAP Business One. Proyecto **paralelo**, no un fo
   tres se debe considerar para los otros dos** — son la misma familia de formulario,
   no implementaciones independientes que coincidieron en parecerse. Lo único que los
   diferencia es la particularidad de cada uno (Inventario no tiene cliente/vendedor,
-  Compras no tiene tabs Logística/Finanzas, Venta tiene 7 tipos contra 2 de los otros
-  dos) — "considerar" no significa "aplicar literal sin pensar", significa **nunca
+  Compras no tiene tab Logística y solo muestra Finanzas en las facturas -- documento
+  tributario del proveedor --, Venta tiene 7 tipos, Compras 4 y Inventario 2; las
+  facturas de Compras tienen "Copiar de Pedido", los otros dos motores todavía no
+  tienen "Copiar de") — "considerar" no significa "aplicar literal sin pensar", significa **nunca
   dar un cambio por terminado sin preguntar explícitamente si corresponde también a
   los otros dos**, y si la respuesta es que no aplica, decir por qué (la
   particularidad concreta que lo justifica), no asumirlo en silencio. Esto rige en

@@ -37,7 +37,9 @@ introducir una arquitectura paralela.
 ## 1. Motores genéricos de documento (Venta/Compra/Inventario)
 
 Los 3 tipos de documento ya están portados (7 de Venta, 2 de Compra, 2 de Inventario,
-ver `CLAUDE.md` § Estado actual). Esto es lo que el original tiene y este proyecto
+ver `CLAUDE.md` § Estado actual). Compra suma además 2 tipos que el original nunca tuvo
+(2026-10-29): Factura de Proveedor y Factura Reserva de Proveedor (`OPCH`), con
+documento tributario y "Copiar de Pedido". Esto es lo que el original tiene y este proyecto
 todavía no:
 
 ### 1.0 Tres importadores distintos — no confundirlos
@@ -78,6 +80,7 @@ Los tres están **0% portados** en este proyecto. El más caro de los tres es el
 | Funcionalidad del original | Estado acá |
 |---|---|
 | 2 tipos de documento | ✅ Portado |
+| Facturas de proveedor (`OPCH`: servicios y reserva) | ✅ Nuevo acá (2026-10-29, el original nunca lo tuvo): documento tributario (Indicador/folio/RUT, sin duplicar folio) y "Copiar de Pedido" (`document-copy-from.js`, líneas con `BaseType` 22 validadas contra lo pendiente en SAP al crear) |
 | Oferta permite crear, Pedido nace de Copy-From al aprobar | ⚠️ **Desviación deliberada**: acá ambos permiten creación directa por default (documentado en `CLAUDE.md`) — desde el 26 jul 2026 existe `OrganizationDocumentPermission` con UI real (`/Admin/Organizations/DocumentPermissions`) para hacer un override por organización sin tocar código ni SQL directo |
 | **Motor de aprobación** (`IAprobacionService`/`Modulo.Aprobacion`, N niveles configurables, condiciones SQL por etapa) | ❌ Completamente ausente — es la brecha más grande del proyecto en general, ver §6 más abajo (se relaciona con Rendiciones) |
 | **`Comprador`/`GrupoAprobacion`** (admin del equipo de aprobadores) | ❌ Falta (depende del motor de aprobación) |
@@ -138,6 +141,11 @@ muchas líneas a mano):
 - **`Modulo.Base`** (plantilla de referencia para módulos nuevos) — no existe un
   plugin plantilla en este proyecto; cada plugin nuevo se arma copiando el patrón de
   uno existente a mano.
+- **"Copiar de"** — existe solo en las facturas de Compra (desde Pedido). Brecha de
+  paridad en Venta (Factura de reserva/Entrega desde Orden de venta) e Inventario
+  (Traslado desde Solicitud): `document-copy-from.js` y la API `appendRow/reindex` del
+  editor de líneas ya son genéricos; falta en cada motor la lectura de líneas
+  pendientes y la validación al crear.
 
 ---
 

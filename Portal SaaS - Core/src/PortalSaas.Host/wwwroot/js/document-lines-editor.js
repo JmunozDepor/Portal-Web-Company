@@ -617,5 +617,40 @@
                     return errores;
                 });
         }
+
+        // ---- API para "Copiar de" (2026-10-29, ver document-copy-from.js). appendRow
+        // reutiliza la fila en blanco con que arranca un documento nuevo; reindex renumera
+        // Input.Lines[n] de 0 en adelante -- el model binding de ASP.NET Core corta la
+        // lista en el primer índice que falta, así que quitar filas no puede dejar huecos.
+        function filaVacia(fila) {
+            return Array.prototype.every.call(fila.querySelectorAll('input:not([type=hidden])'), function (input) {
+                return !input.value.trim();
+            });
+        }
+
+        function reindexar() {
+            var filas = cuerpo.querySelectorAll('tr');
+            Array.prototype.forEach.call(filas, function (fila, indice) {
+                fila.querySelectorAll('[name]').forEach(function (campo) {
+                    campo.name = campo.name.replace(/\[\d+\]/, '[' + indice + ']');
+                });
+            });
+            siguienteIndice = filas.length;
+        }
+
+        return {
+            appendRow: function () {
+                var vacia = Array.prototype.find.call(cuerpo.querySelectorAll('tr'), filaVacia);
+                if (vacia) {
+                    return vacia;
+                }
+                var fila = crearFilaDesdePlantilla();
+                cuerpo.appendChild(fila);
+                aplicarTipoLinea();
+                return fila;
+            },
+            reindex: reindexar,
+            recalculate: recalcularTotales,
+        };
     };
 })();

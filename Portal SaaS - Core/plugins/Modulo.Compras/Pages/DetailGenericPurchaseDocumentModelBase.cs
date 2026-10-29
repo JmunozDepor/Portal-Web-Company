@@ -714,6 +714,82 @@ public abstract class DetailGenericPurchaseDocumentModelBase : PageModel
         }
     }
 
+    // ---- "Copiar de Pedido" (2026-10-29) -- ver document-copy-from.js. Qué se puede
+    // copiar lo decide el servidor (PurchaseDocumentRules.CheckCopySelection), y al crear
+    // se vuelve a validar contra lo pendiente en SAP (AddCopiedLineErrorsAsync).
+    public async Task<IActionResult> OnGetOpenOrdersAsync(string? cardCode, CancellationToken ct)
+    {
+        IsNew = true;
+        if (!CanCopyFromOrders || !await CanCreateDocumentAsync(ct))
+        {
+            return Forbid();
+        }
+
+        if (string.IsNullOrWhiteSpace(cardCode))
+        {
+            return new JsonResult(Array.Empty<object>());
+        }
+
+        var orders = await _documents.ListOpenOrdersAsync(cardCode, ct);
+        return new JsonResult(orders.Select(o => new
+        {
+            o.DocEntry,
+            o.DocNum,
+            DocDate = o.DocDate.ToString("dd-MM-yyyy"),
+            o.SupplierReferenceNumber,
+            o.DocCurrency,
+            o.DocTotal,
+            LineType = o.LineType == DocumentLineType.Service ? "Servicio" : "Artículo",
+            o.OpenLineCount,
+        }));
+    }
+
+    public async Task<IActionResult> OnGetOpenOrderLinesAsync(string? cardCode, int[]? docEntries, CancellationToken ct)
+    {
+        IsNew = true;
+        if (!CanCopyFromOrders || !await CanCreateDocumentAsync(ct))
+        {
+            return Forbid();
+        }
+
+        var lines = await _documents.GetOpenOrderLinesAsync(docEntries ?? [], ct);
+        if (PurchaseDocumentRules.CheckCopySelection(cardCode ?? string.Empty, lines) is { } error)
+        {
+            return new JsonResult(new { error });
+        }
+
+        var first = lines[0];
+        return new JsonResult(new
+        {
+            LineType = first.LineType.ToString(),
+            first.DocCurrency,
+            // SlpCode -1 = "sin comprador" en SAP.
+            BuyerCode = first.BuyerCode is > 0 ? first.BuyerCode : null,
+            Comment = PurchaseDocumentRules.BasedOnComment(lines.Select(l => l.DocNum).Distinct().ToList()),
+            Lines = lines.Select(l => new
+            {
+                l.ItemCode,
+                l.Description,
+                Quantity = l.OpenQuantity,
+                l.UnitPrice,
+                l.Currency,
+                l.DiscountPercent,
+                l.WarehouseCode,
+                l.AccountCode,
+                l.CostCenterCode,
+                l.CostCenterCode2,
+                l.CostCenterCode3,
+                BaseType = PurchaseOrderObjectCode,
+                BaseEntry = l.DocEntry,
+                BaseLine = l.LineNum,
+                BaseDocNum = l.DocNum,
+            }),
+        });
+    }
+
+    /// <summary>BaseType de una línea copiada de un Pedido de compra (oPurchaseOrders).</summary>
+    private const int PurchaseOrderObjectCode = 22;
+
     /// <summary>Documento tributario: completo si se empezó, y sin repetir el folio de otra factura del mismo proveedor.</summary>
     private async Task AddTaxDocumentErrorsAsync(CancellationToken ct)
     {

@@ -39,7 +39,7 @@
             var line = i < Model.Input.Lines.Count ? Model.Input.Lines[i] : new Modulo.Compras.Pages.DetailGenericPurchaseDocumentModelBase.LineInput();
             <tr>
                 <td class="col-item line-item-only">
-                    <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm purchase-document-item-code" list="purchase-document-items-datalist" placeholder="Código o nombre" autocomplete="off" disabled="@readOnly" />
+                    <input name="Input.Lines[@i].ItemCode" value="@line.ItemCode" class="form-control form-control-sm purchase-document-item-code" list="purchase-document-items-datalist" placeholder="Código o nombre" autocomplete="off" disabled="@readOnly" readonly="@(line.BaseEntry is not null)" />
                 </td>
                 <td class="col-desc" data-form-field="linea-descripcion">
                     <div class="line-service-only">
@@ -49,6 +49,12 @@
                 </td>
                 <td class="col-qty">
                     <input name="Input.Lines[@i].Quantity" type="number" step="0.01" value="@(line.Quantity is null or 0 ? "" : line.Quantity.Value.ToString(CultureInfo.InvariantCulture))" class="form-control form-control-sm line-qty" disabled="@readOnly" />
+                    @* "Copiar de Pedido": vínculo con la línea del Pedido (ver document-copy-from.js). *@
+                    <input type="hidden" name="Input.Lines[@i].BaseType" value="@line.BaseType" disabled="@readOnly" />
+                    <input type="hidden" name="Input.Lines[@i].BaseEntry" value="@line.BaseEntry" disabled="@readOnly" />
+                    <input type="hidden" name="Input.Lines[@i].BaseLine" value="@line.BaseLine" disabled="@readOnly" />
+                    <input type="hidden" name="Input.Lines[@i].BaseDocNum" value="@line.BaseDocNum" disabled="@readOnly" />
+                    <span class="badge bg-secondary line-base-badge" hidden="@(line.BaseEntry is null)">@(line.BaseDocNum is null ? "" : $"Pedido N.° {line.BaseDocNum}")</span>
                 </td>
                 <td class="col-price" data-form-field="linea-precio">
                     <div class="line-price-cell">
@@ -121,6 +127,10 @@
 @if (!readOnly)
 {
     <div class="admin-row-actions mb-2 mt-2">
+        @if (Model.CanCopyFromOrders)
+        {
+            <button type="button" id="purchase-document-copy-from" class="btn btn-sm btn-outline-secondary" data-drawer-open="purchase-document-copy-drawer" disabled>+ Copiar de Pedido</button>
+        }
         <button type="button" id="purchase-document-add-line" class="btn btn-sm btn-outline-secondary">+ Agregar línea</button>
         <button type="button" id="purchase-document-download-template" class="btn btn-sm btn-outline-secondary">Descargar plantilla Excel</button>
         <button type="button" id="purchase-document-import-csv" class="btn btn-sm btn-outline-secondary">Importar Excel</button>
@@ -128,6 +138,37 @@
         <input type="file" id="purchase-document-csv-file" accept=".xlsx,.xls" style="display:none" />
     </div>
     <div id="purchase-document-csv-result"></div>
+    <div id="purchase-document-copy-status" class="text-muted small" role="status"></div>
+
+    @if (Model.CanCopyFromOrders)
+    {
+        @* Drawer estándar (.drawer-overlay/.drawer-panel, ver components.css) -- mismo marcado que
+           Modulo.Administracion/Pages/GruposMenu. Lo llena document-copy-from.js. *@
+        <div id="purchase-document-copy-drawer" class="drawer-overlay" data-drawer>
+            <aside class="drawer-panel drawer-panel--wide">
+                <div class="drawer-header">
+                    <h3>Copiar de Pedido</h3>
+                    <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="drawer-body">
+                    <p class="text-muted small">Pedidos abiertos del proveedor con líneas pendientes. Se copian con su cantidad pendiente; puedes bajarla para facturar una parte.</p>
+                    <div class="alert alert-warning" data-copy-message hidden></div>
+                    <div class="table-responsive-lg">
+                        <table class="table-ps">
+                            <thead>
+                                <tr><th></th><th>N° SAP</th><th>Fecha</th><th>N° ref.</th><th>Tipo</th><th>Moneda</th><th class="text-end">Total</th><th class="text-end">Líneas</th></tr>
+                            </thead>
+                            <tbody data-copy-orders></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="drawer-footer">
+                    <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                    <button type="button" class="btn btn-primary" data-copy-confirm>Copiar</button>
+                </div>
+            </aside>
+        </div>
+    }
 
     <template id="purchase-document-line-template">
         <tr>
@@ -136,7 +177,14 @@
                 <div class="line-service-only"><input name="Input.Lines[__INDEX__].Description" class="form-control form-control-sm" /></div>
                 <span class="line-item-only line-item-description"></span>
             </td>
-            <td class="col-qty"><input name="Input.Lines[__INDEX__].Quantity" type="number" step="0.01" class="form-control form-control-sm line-qty" /></td>
+            <td class="col-qty">
+                <input name="Input.Lines[__INDEX__].Quantity" type="number" step="0.01" class="form-control form-control-sm line-qty" />
+                <input type="hidden" name="Input.Lines[__INDEX__].BaseType" />
+                <input type="hidden" name="Input.Lines[__INDEX__].BaseEntry" />
+                <input type="hidden" name="Input.Lines[__INDEX__].BaseLine" />
+                <input type="hidden" name="Input.Lines[__INDEX__].BaseDocNum" />
+                <span class="badge bg-secondary line-base-badge" hidden></span>
+            </td>
             <td class="col-price" data-form-field="linea-precio">
                 <div class="line-price-cell">
                     <input name="Input.Lines[__INDEX__].UnitPrice" type="number" step="0.01" class="form-control form-control-sm line-price" placeholder="Lista" />
@@ -213,7 +261,7 @@
             getLabel: function (item) { return item.code + ' — ' + item.name; },
         });
 
-        wireDocumentLinesEditor({
+        var purchaseLinesEditor = wireDocumentLinesEditor({
             tableBodyId: 'purchase-document-lines-body',
             templateId: 'purchase-document-line-template',
             addButtonId: 'purchase-document-add-line',
@@ -257,4 +305,28 @@
             },
         });
     </script>
+
+    @if (Model.CanCopyFromOrders)
+    {
+        <script src="~/js/document-copy-from.js"></script>
+        <script>
+            wireDocumentCopyFrom({
+                buttonId: 'purchase-document-copy-from',
+                drawerId: 'purchase-document-copy-drawer',
+                partnerInputSelector: '.purchase-document-supplier-code',
+                linesBodyId: 'purchase-document-lines-body',
+                statusId: 'purchase-document-copy-status',
+                editor: purchaseLinesEditor,
+                ordersHandler: 'OpenOrders',
+                linesHandler: 'OpenOrderLines',
+                baseLabel: 'Pedido N.°',
+                lineTypeSelectId: 'Input_LineType',
+                itemLineTypeValue: '@PortalSaas.Abstractions.Modelos.DocumentLineType.Item',
+                serviceLineTypeValue: '@PortalSaas.Abstractions.Modelos.DocumentLineType.Service',
+                currencySelectId: 'Input_DocCurrency',
+                buyerSelectId: 'Input_BuyerCode',
+                commentsId: 'Input_Comments',
+            });
+        </script>
+    }
 }

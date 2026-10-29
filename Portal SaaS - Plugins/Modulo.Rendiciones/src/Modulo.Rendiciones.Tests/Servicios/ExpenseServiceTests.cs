@@ -87,4 +87,38 @@ public class ExpenseServiceTests
         Assert.Null(reloaded.CityId);
         Assert.Null(reloaded.Quantity);
     }
+
+    [Fact]
+    public async Task UpdateAsync_ChangedAmount_ReimbursementAmountTracksNewAmount()
+    {
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        await using var db = CreateDb(nameof(UpdateAsync_ChangedAmount_ReimbursementAmountTracksNewAmount));
+        var sut = CreateSut(db);
+
+        var gasto = new ExpenseReportLine
+        {
+            CompanyId = companyId,
+            UserId = userId,
+            Amount = 1000,
+            Currency = "CLP",
+            Date = DateTimeOffset.UtcNow,
+        };
+        await sut.CreateAsync(gasto);
+
+        var cambios = new ExpenseReportLine
+        {
+            CompanyId = companyId,
+            UserId = userId,
+            Amount = 5000,
+            Currency = "CLP",
+            Date = DateTimeOffset.UtcNow,
+        };
+        await sut.UpdateAsync(gasto.Id, companyId, cambios);
+
+        var reloaded = await db.ExpenseReportLines.FirstAsync(g => g.Id == gasto.Id);
+        Assert.Equal(5000, reloaded.Amount);
+        Assert.Equal(5000, reloaded.ReimbursementAmount);
+    }
 }

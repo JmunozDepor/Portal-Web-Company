@@ -283,6 +283,7 @@
         cuerpo.addEventListener('click', function (evento) {
             if (evento.target.matches(options.removeButtonSelector)) {
                 evento.target.closest('tr').remove();
+                reindexar();
                 recalcularTotales();
             }
         });
@@ -291,13 +292,71 @@
         if (botonVaciar) {
             botonVaciar.addEventListener('click', function () {
                 cuerpo.innerHTML = '';
+                reindexar();
                 recalcularTotales();
             });
         }
 
+        // ---- Índices de fila y API para "Copiar de" (2026-10-29, ver document-copy-from.js).
+        // El model binding de ASP.NET Core corta Input.Lines en el PRIMER índice que falta
+        // (confirmado: [0],[2] liga solo la 0; [1],[2] sin [0] no liga ninguna), así que
+        // quitar/vaciar/importar renumera siempre de 0 en adelante -- antes "Quitar línea"
+        // del medio perdía las siguientes al crear, e "Importar Excel" en un documento
+        // nuevo (quitaba la fila 0 vacía) perdía todas.
+        function reindexar() {
+            var filas = cuerpo.querySelectorAll('tr');
+            Array.prototype.forEach.call(filas, function (fila, indice) {
+                fila.querySelectorAll('[name]').forEach(function (campo) {
+                    campo.name = campo.name.replace(/\[\d+\]/, '[' + indice + ']');
+                });
+            });
+            siguienteIndice = filas.length;
+        }
+
+        // Una fila "tiene contenido" si identifica algo (artículo o descripción); la que
+        // solo trae un valor masivo (ej. almacén) sigue siendo la fila en blanco.
+        function filaConContenido(fila) {
+            var articulo = fila.querySelector('[name$=".ItemCode"]');
+            var descripcion = fila.querySelector('[name$=".Description"]');
+            return !!((articulo && articulo.value.trim()) || (descripcion && descripcion.value.trim()));
+        }
+
+        // Copiada de un documento base ("Copiar de"): trae BaseEntry.
+        function filaCopiada(fila) {
+            var base = fila.querySelector('[name$=".BaseEntry"]');
+            return !!(base && base.value);
+        }
+
+        // Regla del dueño (2026-10-29): no se importa (Excel ni "Copiar de") si ya hay
+        // líneas digitadas a mano -- no se mezclan orígenes.
+        function hayLineasManuales() {
+            return Array.prototype.some.call(cuerpo.querySelectorAll('tr'), function (fila) {
+                return filaConContenido(fila) && !filaCopiada(fila);
+            });
+        }
+
+        var api = {
+            // Reutiliza la fila en blanco con que arranca un documento nuevo.
+            appendRow: function () {
+                var vacia = Array.prototype.find.call(cuerpo.querySelectorAll('tr'), function (fila) {
+                    return !filaConContenido(fila) && !filaCopiada(fila);
+                });
+                if (vacia) {
+                    return vacia;
+                }
+                var fila = crearFilaDesdePlantilla();
+                cuerpo.appendChild(fila);
+                aplicarTipoLinea();
+                return fila;
+            },
+            hasManualLines: hayLineasManuales,
+            reindex: reindexar,
+            recalculate: recalcularTotales,
+        };
+
         // ---- Excel (SheetJS): plantilla + importación (cliente, sin validación de catálogo) ----
         if (!options.csvColumns) {
-            return;
+            return api;
         }
 
         var botonDescargar = document.getElementById(options.downloadTemplateButtonId);
@@ -315,7 +374,15 @@
         var divResultado = document.getElementById(options.csvResultId);
 
         if (botonImportar && inputArchivo) {
-            botonImportar.addEventListener('click', function () { inputArchivo.click(); });
+            botonImportar.addEventListener('click', function () {
+                if (hayLineasManuales()) {
+                    if (divResultado) {
+                        divResultado.innerHTML = '<div class="alert alert-warning mt-2">Ya hay líneas digitadas: vacíalas antes de importar el Excel.</div>';
+                    }
+                    return;
+                }
+                inputArchivo.click();
+            });
 
             inputArchivo.addEventListener('change', function () {
                 var archivo = inputArchivo.files[0];
@@ -339,11 +406,11 @@
                     // cargado.
                     if (filas.length > 0) {
                         Array.prototype.slice.call(cuerpo.querySelectorAll('tr')).forEach(function (fila) {
-                            var campoArticulo = fila.querySelector(options.itemCodeSelector);
-                            if (campoArticulo && !campoArticulo.value.trim()) {
+                            if (!filaConContenido(fila) && !filaCopiada(fila)) {
                                 fila.remove();
                             }
                         });
+                        reindexar();
                     }
 
                     var filasCreadas = [];
@@ -618,39 +685,6 @@
                 });
         }
 
-        // ---- API para "Copiar de" (2026-10-29, ver document-copy-from.js). appendRow
-        // reutiliza la fila en blanco con que arranca un documento nuevo; reindex renumera
-        // Input.Lines[n] de 0 en adelante -- el model binding de ASP.NET Core corta la
-        // lista en el primer índice que falta, así que quitar filas no puede dejar huecos.
-        function filaVacia(fila) {
-            return Array.prototype.every.call(fila.querySelectorAll('input:not([type=hidden])'), function (input) {
-                return !input.value.trim();
-            });
-        }
-
-        function reindexar() {
-            var filas = cuerpo.querySelectorAll('tr');
-            Array.prototype.forEach.call(filas, function (fila, indice) {
-                fila.querySelectorAll('[name]').forEach(function (campo) {
-                    campo.name = campo.name.replace(/\[\d+\]/, '[' + indice + ']');
-                });
-            });
-            siguienteIndice = filas.length;
-        }
-
-        return {
-            appendRow: function () {
-                var vacia = Array.prototype.find.call(cuerpo.querySelectorAll('tr'), filaVacia);
-                if (vacia) {
-                    return vacia;
-                }
-                var fila = crearFilaDesdePlantilla();
-                cuerpo.appendChild(fila);
-                aplicarTipoLinea();
-                return fila;
-            },
-            reindex: reindexar,
-            recalculate: recalcularTotales,
-        };
+        return api;
     };
 })();

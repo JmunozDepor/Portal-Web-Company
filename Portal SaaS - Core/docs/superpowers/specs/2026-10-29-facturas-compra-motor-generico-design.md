@@ -125,6 +125,8 @@ Es el mismo listado de Pedidos. En los tipos con documento tributario se agregan
 - **Tipo de línea:** el tipo de línea del documento pasa a ser el del Pedido. No se mezclan Pedidos de
   Artículo con Pedidos de Servicio, ni líneas copiadas con líneas digitadas de otro tipo. Si se intenta,
   avisa y no copia.
+- **No se mezclan orígenes (regla del usuario, 2026-10-29):** "Copiar de Pedido" e "Importar Excel" se
+  rechazan si la grilla ya tiene líneas digitadas a mano; hay que vaciarlas primero.
 - **Edición:** las líneas copiadas se pueden borrar, y se puede bajar la cantidad para facturar una parte.
   El precio se puede cambiar. No se puede **superar la cantidad pendiente**. Se pueden agregar líneas
   digitadas del mismo tipo.

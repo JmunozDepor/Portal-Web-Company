@@ -41,13 +41,9 @@
             });
         }
 
-        function hayLineasConContenido() {
-            return Array.prototype.some.call(cuerpoLineas.querySelectorAll('tr'), function (fila) {
-                var articulo = fila.querySelector('[name$=".ItemCode"]');
-                var descripcion = fila.querySelector('[name$=".Description"]');
-                return (articulo && articulo.value.trim()) || (descripcion && descripcion.value.trim());
-            });
-        }
+        // Regla del dueño (2026-10-29): no se copia si hay líneas digitadas a mano (ver
+        // hasManualLines en document-lines-editor.js).
+        var avisoManuales = 'El documento tiene líneas digitadas: vacíalas antes de copiar.';
 
         // Socio de las líneas copiadas (también las que vienen de un borrador): si cambia,
         // el vínculo con el documento base deja de ser válido y esas líneas se quitan.
@@ -112,6 +108,11 @@
 
         boton.addEventListener('click', function () {
             avisarEnPanel('');
+            if (options.editor.hasManualLines()) {
+                tablaPedidos.innerHTML = '';
+                avisarEnPanel(avisoManuales);
+                return;
+            }
             tablaPedidos.innerHTML = '<tr><td colspan="8" class="text-muted">Cargando…</td></tr>';
             fetch('?handler=' + options.ordersHandler + '&cardCode=' + encodeURIComponent(socio.value.trim()))
                 .then(function (r) {
@@ -193,10 +194,15 @@
                         return;
                     }
 
+                    if (options.editor.hasManualLines()) {
+                        avisarEnPanel(avisoManuales);
+                        return;
+                    }
+
                     var tipo = document.getElementById(options.lineTypeSelectId);
                     var tipoNuevo = respuesta.lineType === 'Service' ? options.serviceLineTypeValue : options.itemLineTypeValue;
                     if (tipo && tipo.value !== tipoNuevo) {
-                        if (hayLineasConContenido()) {
+                        if (filasCopiadas().length) {
                             avisarEnPanel('El documento ya tiene líneas de otro tipo: vacíalas antes de copiar este documento.');
                             return;
                         }

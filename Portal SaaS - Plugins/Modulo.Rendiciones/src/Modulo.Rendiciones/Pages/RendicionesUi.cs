@@ -41,13 +41,16 @@ public static class RendicionesUi
         _ => "rnd-badge--neutral", // Draft, Loose
     };
 
-    /// <summary>"Sin política" / "Tope N" / "Sin tope" -- misma lógica compartida por Pages/Gastos/Index
-    /// y Pages/Informes/Index (selección de gastos sueltos para armar un informe), antes duplicada.</summary>
-    public static string PolicyLabel(ExpenseReportLine expense, IReadOnlyDictionary<long, ExpensePolicy> policyByExpenseType)
-    {
-        if (expense.ExpenseTypeId is not { } typeId || !policyByExpenseType.TryGetValue(typeId, out var policy))
-            return "Sin política";
-
-        return policy.MaxAmount is { } max ? $"Tope {max:N0}" : "Sin tope";
-    }
+    /// <summary>
+    /// "Sin política" / "Tope N" / "Sin tope" a partir de la política YA RESUELTA para una
+    /// línea concreta (vía IExpensePolicyService.FindApplicablePolicyAsync -- la misma
+    /// resolución real que usa ExpensePolicyService.ValidateAsync). Puramente de
+    /// presentación: no decide cuál política aplica, solo formatea el resultado. Antes
+    /// (revisión final, 2026-10-29, I5) tomaba ".Last()"/".LastOrDefault()" de un diccionario
+    /// plano de "última política activa por tipo", lo que con varias filas por tipo (ciudad,
+    /// perfil, semanal) podía mostrar el tope de una política que no era la aplicable a esa
+    /// línea concreta.
+    /// </summary>
+    public static string PolicyLabel(ExpensePolicy? policy) =>
+        policy is null ? "Sin política" : (policy.MaxAmount is { } max ? $"Tope {max:N0}" : "Sin tope");
 }

@@ -26,13 +26,16 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
     private readonly ISupplierHintService _supplierHints;
     private readonly IAmountFormatService _amountFormat;
     private readonly ICityService _cities;
+    private readonly IPolicyProfileService _policyProfiles;
+    private readonly IWeeklyExpenseLimitService _weeklyLimits;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
     public DetalleModel(IExpenseService expenses, IExpenseTypeService expenseTypes, IDocumentTypeService documentTypes,
         IExpensePolicyService policies, IExpenseApprovalGroupService approvalGroups, IUserCostCenterService userCostCenters,
         IAttachmentStorageService attachments, IRoutingService routing, ISupplierHintService supplierHints,
-        IAmountFormatService amountFormat, ICityService cities, IRendicionesUserRoleService roles, ICurrentUserContext currentUser,
+        IAmountFormatService amountFormat, ICityService cities, IPolicyProfileService policyProfiles,
+        IWeeklyExpenseLimitService weeklyLimits, IRendicionesUserRoleService roles, ICurrentUserContext currentUser,
         ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
@@ -47,6 +50,8 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
         _supplierHints = supplierHints;
         _amountFormat = amountFormat;
         _cities = cities;
+        _policyProfiles = policyProfiles;
+        _weeklyLimits = weeklyLimits;
         _currentUser = currentUser;
         _currentCompany = currentCompany;
     }
@@ -58,10 +63,17 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
     public bool IsNew { get; private set; } = true;
     public ExpenseReportLine? Expense { get; private set; }
 
-    /// <summary>"Sin política" / "Tope N" / "Sin tope" -- mismo cálculo que Pages/Gastos/Index, ver
-    /// el comentario de PolicyByExpenseType ahí. Se resuelve una sola vez para el gasto actual,
-    /// no hace falta un diccionario acá (a diferencia del listado, es un solo gasto por página).</summary>
+    /// <summary>"Sin política" / "Tope N" / "Sin tope" de la política REAL aplicable a este
+    /// gasto (misma resolución que ExpensePolicyService.ValidateAsync, ver
+    /// ResolvePolicyLabelAsync) -- mismo criterio que Pages/Gastos/Index.PolicyLabelAsync y
+    /// Pages/Informes/Index.PolicyLabelAsync (I5, revisión final 2026-10-29).</summary>
     public string? PolicyLabel { get; private set; }
+
+    /// <summary>Advertencias de tope semanal (Task 8 / Decisión 6 del spec) para el rendidor
+    /// actual, sobre la semana de la fecha del gasto que se está digitando/editando -- antes
+    /// solo se mostraban en Informes/Detalle al auditor, nunca acá (I3, revisión final
+    /// 2026-10-29). Puramente informativo, no bloquea nada.</summary>
+    public IReadOnlyList<WeeklyLimitWarning> WeeklyWarnings { get; private set; } = Array.Empty<WeeklyLimitWarning>();
 
     /// <summary>
     /// "Política" en el sentido amplio (grupo de aprobación + centros de costo del
@@ -86,8 +98,7 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
     /// <summary>ExpenseTypeIds que tienen al menos una política activa acotada a una ciudad
     /// concreta (CityId != null) -- determina si el combo "Ciudad" se muestra en el
     /// formulario para el tipo elegido (Task 10). Se calcula una sola vez en
-    /// LoadCatalogsAsync, mismo criterio de "una sola consulta" que PolicyByExpenseType
-    /// en Pages/Gastos/Index.</summary>
+    /// LoadCatalogsAsync.</summary>
     public IReadOnlySet<long> ExpenseTypeIdsWithCityPolicy { get; private set; } = new HashSet<long>();
 
     [BindProperty]
@@ -99,7 +110,10 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
         await ResolvePolicySummaryAsync(ct);
 
         if (id is null)
+        {
+            await ResolveWeeklyWarningsAsync(Input.Date, ct);
             return Page();
+        }
 
         var expense = await _expenses.GetAsync(id.Value, _currentCompany.CompanyId, ct);
         if (expense is null || expense.UserId != _currentUser.UserId)
@@ -139,6 +153,7 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
             CityId = expense.CityId,
             Quantity = expense.Quantity,
         };
+        await ResolveWeeklyWarningsAsync(Input.Date, ct);
         return Page();
     }
 
@@ -146,6 +161,7 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
     {
         await LoadCatalogsAsync(ct);
         await ResolvePolicySummaryAsync(ct);
+        await ResolveWeeklyWarningsAsync(Input.Date, ct);
         IsNew = id is null;
 
         if (id is { } existingId)
@@ -279,6 +295,14 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
         return RedirectToPage("./Detalle", new { id });
     }
 
+    /// <summary>
+    /// I5 (revisión final, 2026-10-29): antes elegía ".LastOrDefault()" entre TODAS las
+    /// políticas activas del tipo, sin mirar ciudad/perfil -- con varias filas por tipo
+    /// (una por ciudad, y opcionalmente una semanal) eso podía mostrar el tope de una
+    /// política que no era la que realmente aplicaba a esta línea. Ahora resuelve la MISMA
+    /// política real que usa ExpensePolicyService.ValidateAsync (FindApplicablePolicyAsync),
+    /// según la ciudad del gasto y el perfil asignado al usuario.
+    /// </summary>
     private async Task ResolvePolicyLabelAsync(ExpenseReportLine expense, CancellationToken ct)
     {
         if (expense.ExpenseTypeId is not { } typeId)
@@ -287,9 +311,16 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
             return;
         }
 
-        var policies = await _policies.ListAsync(_currentCompany.CompanyId, ct);
-        var policy = policies.Where(p => p.IsActive && p.ExpenseTypeId == typeId).LastOrDefault();
-        PolicyLabel = policy is null ? "Sin política" : (policy.MaxAmount is { } max ? $"Tope {max:N0}" : "Sin tope");
+        var userProfileId = await _policyProfiles.GetAssignedProfileIdAsync(_currentCompany.CompanyId, expense.UserId, ct);
+        var policy = await _policies.FindApplicablePolicyAsync(_currentCompany.CompanyId, typeId, expense.CityId,
+            userProfileId, ExpensePolicyPeriod.PerDocument, ct);
+        PolicyLabel = RendicionesUi.PolicyLabel(policy);
+    }
+
+    private async Task ResolveWeeklyWarningsAsync(DateTime date, CancellationToken ct)
+    {
+        WeeklyWarnings = await _weeklyLimits.GetWarningsAsync(_currentCompany.CompanyId, _currentUser.UserId,
+            DateOnly.FromDateTime(date), ct);
     }
 
     private async Task ResolveSuggestedCategoryAsync(ExpenseReportLine expense, CancellationToken ct)
@@ -405,7 +436,11 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
 
         /// <summary>Cantidad (ej. días) cuando ExpenseType.RequiresQuantity -- multiplica el tope
         /// por unidad en la política (Task 7). La UI real (input condicionado a RequiresQuantity)
-        /// es Task 10; acá solo se agrega al binding para que el dato llegue a ExpenseService.</summary>
+        /// es Task 10; acá solo se agrega al binding para que el dato llegue a ExpenseService.
+        /// [Range] evita un 0 o negativo desde el cliente (I1b, revisión final 2026-10-29) --
+        /// ExpensePolicyService.ValidateAsync igual nunca deja pasar una cantidad no positiva a
+        /// la multiplicación del tope, esto es la primera barrera en el formulario.</summary>
+        [Range(0.01, double.MaxValue, ErrorMessage = "La cantidad debe ser mayor a 0.")]
         public decimal? Quantity { get; set; }
     }
 }

@@ -10,33 +10,26 @@ public sealed class IndexModel : RendicionesRendidorPageModelBase
 {
     private readonly IExpenseService _expenses;
     private readonly IExpensePolicyService _policies;
+    private readonly IPolicyProfileService _policyProfiles;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IExpenseService expenses, IExpensePolicyService policies, IRendicionesUserRoleService roles,
-        ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(IExpenseService expenses, IExpensePolicyService policies, IPolicyProfileService policyProfiles,
+        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
         _expenses = expenses;
         _policies = policies;
+        _policyProfiles = policyProfiles;
         _currentUser = currentUser;
         _currentCompany = currentCompany;
     }
 
     public IReadOnlyList<ExpenseReportLine> Expenses { get; private set; } = Array.Empty<ExpenseReportLine>();
 
-    /// <summary>Última política activa por tipo de gasto -- para mostrar la columna "Política" sin
-    /// disparar una consulta por fila (se carga una vez, ver OnGetAsync).</summary>
-    private Dictionary<long, ExpensePolicy> PolicyByExpenseType { get; set; } = new();
-
     public async Task OnGetAsync(CancellationToken ct)
     {
         Expenses = await _expenses.ListAllAsync(_currentCompany.CompanyId, _currentUser.UserId, ct);
-        var policies = await _policies.ListAsync(_currentCompany.CompanyId, ct);
-        PolicyByExpenseType = policies
-            .Where(p => p.IsActive)
-            .GroupBy(p => p.ExpenseTypeId)
-            .ToDictionary(g => g.Key, g => g.Last());
     }
 
     /// <summary>Duplica un gasto SUELTO como base para uno nuevo -- mismo criterio que "Nuevo gasto"
@@ -71,7 +64,21 @@ public sealed class IndexModel : RendicionesRendidorPageModelBase
         return RedirectToPage();
     }
 
-    public string PolicyLabel(ExpenseReportLine expense) => RendicionesUi.PolicyLabel(expense, PolicyByExpenseType);
+    /// <summary>I5: resuelve la política REAL aplicable a esta línea (misma resolución que
+    /// ExpensePolicyService.ValidateAsync usa al guardar), no una "última política" arbitraria
+    /// del tipo. Todas las filas de esta página son del usuario actual (dueño de "Mis
+    /// Gastos"), así que su perfil se resuelve una vez por fila -- volumen bajo, no amerita
+    /// cachearlo acá.</summary>
+    public async Task<string> PolicyLabelAsync(ExpenseReportLine expense, CancellationToken ct = default)
+    {
+        if (expense.ExpenseTypeId is not { } typeId)
+            return "Sin política";
+
+        var userProfileId = await _policyProfiles.GetAssignedProfileIdAsync(_currentCompany.CompanyId, expense.UserId, ct);
+        var policy = await _policies.FindApplicablePolicyAsync(_currentCompany.CompanyId, typeId, expense.CityId,
+            userProfileId, ExpensePolicyPeriod.PerDocument, ct);
+        return RendicionesUi.PolicyLabel(policy);
+    }
 
     public static string StatusToShow(ExpenseReportLine expense) =>
         expense.Status == "Loose" ? "Loose" : expense.ExpenseReport?.Status ?? "En informe";

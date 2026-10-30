@@ -30,6 +30,24 @@
     <div class="admin-alert admin-alert-danger">@Model.ErrorMessage</div>
 }
 
+@if (Model.WeeklyWarnings.Count > 0)
+{
+    @* Advertencia de tope semanal (Decisión 6 del spec) -- antes solo se mostraba al
+       auditor en Informes/Detalle, nunca acá al rendidor mismo (I3, revisión final
+       2026-10-29). Puramente informativo, no bloquea el guardado. *@
+    <div class="admin-alert admin-alert-warning">
+        @foreach (var w in Model.WeeklyWarnings)
+        {
+            <div>
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>@w.ExpenseTypeName</strong>: semana @w.WeekStart.ToString("dd-MM-yyyy") al @w.WeekEnd.ToString("dd-MM-yyyy")
+                — reembolsado <rnd-amount value="@w.TotalReimbursed" />, tope <rnd-amount value="@w.MaxAmount" />
+                (excede en <rnd-amount value="@w.Excess" />)
+            </div>
+        }
+    </div>
+}
+
 @if (Model.Expense is not null && Model.Expense.Status != "Loose")
 {
     var e = Model.Expense;
@@ -185,7 +203,8 @@ else
                 </div>
                 <div class="form-group" id="rnd-campo-cantidad" style="display:none;">
                     <label asp-for="Input.Quantity" id="rnd-label-cantidad">Cantidad</label>
-                    <input asp-for="Input.Quantity" type="number" step="0.01" class="form-control" />
+                    <input asp-for="Input.Quantity" type="number" step="0.01" min="0.01" class="form-control" />
+                    <span asp-validation-for="Input.Quantity" class="text-danger"></span>
                 </div>
 
                 <div class="form-group">

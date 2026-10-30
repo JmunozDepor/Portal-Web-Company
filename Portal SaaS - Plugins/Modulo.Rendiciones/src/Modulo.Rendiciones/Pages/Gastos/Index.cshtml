@@ -114,7 +114,7 @@ else
                             </a>
                         </td>
                         <td><span class="rnd-badge @RendicionesUi.BadgeClass(status)">@status</span></td>
-                        <td class="rnd-col-muted">@Model.PolicyLabel(g)</td>
+                        <td class="rnd-col-muted">@await Model.PolicyLabelAsync(g)</td>
                         <td class="rnd-col-muted">@(g.ExpenseType?.Name ?? "—")</td>
                         <td class="rnd-col-muted">@(string.IsNullOrWhiteSpace(g.Notes) ? "—" : g.Notes)</td>
                         <td class="rnd-col-muted">

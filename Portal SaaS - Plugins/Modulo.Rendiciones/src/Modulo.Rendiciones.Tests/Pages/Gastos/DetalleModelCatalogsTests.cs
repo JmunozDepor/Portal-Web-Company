@@ -120,9 +120,15 @@ public class DetalleModelCatalogsTests
         public Task<IReadOnlyList<PolicyProfile>> ListAllAsync(Guid companyId, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<long> CreateAsync(Guid companyId, string name, CancellationToken ct = default) => throw new NotImplementedException();
         public Task UpdateAsync(long id, Guid companyId, string name, bool isActive, CancellationToken ct = default) => throw new NotImplementedException();
-        public Task<long?> GetAssignedProfileIdAsync(Guid companyId, Guid userId, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<long?> GetAssignedProfileIdAsync(Guid companyId, Guid userId, CancellationToken ct = default) => Task.FromResult<long?>(null);
         public Task AssignAsync(Guid companyId, Guid userId, long? policyProfileId, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<IReadOnlyDictionary<Guid, PolicyProfile>> ListAssignmentsAsync(Guid companyId, CancellationToken ct = default) => throw new NotImplementedException();
+    }
+
+    private sealed class NoopWeeklyExpenseLimitService : IWeeklyExpenseLimitService
+    {
+        public Task<IReadOnlyList<WeeklyLimitWarning>> GetWarningsAsync(Guid companyId, Guid userId, DateOnly anyDateInWeek, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<WeeklyLimitWarning>>(Array.Empty<WeeklyLimitWarning>());
     }
 
     private sealed class NoopRoleService : IRendicionesUserRoleService
@@ -160,7 +166,8 @@ public class DetalleModelCatalogsTests
     {
         var expenseTypes = new ExpenseTypeService(db);
         var documentTypes = new NoopDocumentTypeService();
-        var policies = new ExpensePolicyService(db, new NoopPolicyProfileService());
+        var policyProfiles = new NoopPolicyProfileService();
+        var policies = new ExpensePolicyService(db, policyProfiles);
         var cities = new CityService(db);
         var currentUser = new FakeCurrentUser(userId);
         var currentCompany = new FakeCurrentCompany(companyId);
@@ -168,7 +175,7 @@ public class DetalleModelCatalogsTests
         return new DetalleModel(expenses ?? new NoopExpenseService(), expenseTypes, documentTypes, policies,
             new NoopApprovalGroupService(), new NoopUserCostCenterService(), new NoopAttachmentService(),
             new NoopRoutingService(), new NoopSupplierHintService(), new NoopAmountFormatService(), cities,
-            new NoopRoleService(), currentUser, currentCompany);
+            policyProfiles, new NoopWeeklyExpenseLimitService(), new NoopRoleService(), currentUser, currentCompany);
     }
 
     [Fact]

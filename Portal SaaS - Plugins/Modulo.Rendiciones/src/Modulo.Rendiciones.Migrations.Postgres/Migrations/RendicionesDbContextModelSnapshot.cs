@@ -301,6 +301,16 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<long?>("CityId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("city_id");
+
+                    b.Property<long>("CityKey")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bigint")
+                        .HasColumnName("city_key")
+                        .HasComputedColumnSql("COALESCE(city_id, 0)", true);
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid")
                         .HasColumnName("company_id");
@@ -313,18 +323,40 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
-                    b.Property<bool>("IsBlocking")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_blocking");
-
                     b.Property<decimal?>("MaxAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("max_amount");
 
+                    b.Property<string>("Period")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("PerDocument")
+                        .HasColumnName("period");
+
+                    b.Property<long?>("PolicyProfileId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("policy_profile_id");
+
+                    b.Property<long>("ProfileKey")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bigint")
+                        .HasColumnName("profile_key")
+                        .HasComputedColumnSql("COALESCE(policy_profile_id, 0)", true);
+
                     b.HasKey("Id");
 
+                    b.HasIndex("CityId");
+
                     b.HasIndex("ExpenseTypeId");
+
+                    b.HasIndex("PolicyProfileId");
+
+                    b.HasIndex("CompanyId", "ExpenseTypeId", "CityKey", "ProfileKey")
+                        .IsUnique()
+                        .HasDatabaseName("uq_expense_policies_company_type_city_profile");
 
                     b.ToTable("expense_policies", (string)null);
                 });
@@ -1138,6 +1170,12 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
 
             modelBuilder.Entity("Modulo.Rendiciones.Models.ExpensePolicy", b =>
                 {
+                    b.HasOne("Modulo.Rendiciones.Models.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_expense_policies_expense_cities");
+
                     b.HasOne("Modulo.Rendiciones.Models.ExpenseType", "ExpenseType")
                         .WithMany()
                         .HasForeignKey("ExpenseTypeId")
@@ -1145,7 +1183,17 @@ namespace Modulo.Rendiciones.Migrations.Postgres.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_expense_policies_expense_types");
 
+                    b.HasOne("Modulo.Rendiciones.Models.PolicyProfile", "PolicyProfile")
+                        .WithMany()
+                        .HasForeignKey("PolicyProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_expense_policies_policy_profiles");
+
+                    b.Navigation("City");
+
                     b.Navigation("ExpenseType");
+
+                    b.Navigation("PolicyProfile");
                 });
 
             modelBuilder.Entity("Modulo.Rendiciones.Models.ExpenseReport", b =>

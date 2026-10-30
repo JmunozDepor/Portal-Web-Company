@@ -34,8 +34,8 @@ public class ExpenseServiceTests
     private sealed class NoopPolicyService : IExpensePolicyService
     {
         public Task<IReadOnlyList<ExpensePolicy>> ListAsync(Guid companyId, CancellationToken ct = default) => throw new NotImplementedException();
-        public Task<long> CreateAsync(Guid companyId, long expenseTypeId, decimal? maxAmount, bool isBlocking, CancellationToken ct = default) => throw new NotImplementedException();
-        public Task UpdateAsync(long id, Guid companyId, decimal? maxAmount, bool isBlocking, bool isActive, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<long> CreateAsync(Guid companyId, long expenseTypeId, long? cityId, long? policyProfileId, string period, decimal? maxAmount, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task UpdateAsync(long id, Guid companyId, decimal? maxAmount, bool isActive, CancellationToken ct = default) => throw new NotImplementedException();
         public Task DeleteAsync(long id, Guid companyId, CancellationToken ct = default) => throw new NotImplementedException();
 
         public Task<ExpenseValidationResult> ValidateAsync(Guid companyId, Guid userId, long? expenseTypeId, decimal amount,

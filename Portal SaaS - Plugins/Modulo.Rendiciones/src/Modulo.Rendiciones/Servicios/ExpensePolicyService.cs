@@ -20,18 +20,26 @@ public sealed class ExpensePolicyService : IExpensePolicyService
             .OrderBy(p => p.ExpenseType!.Name)
             .ToListAsync(ct);
 
-    public async Task<long> CreateAsync(Guid companyId, long expenseTypeId, decimal? maxAmount, bool isBlocking, CancellationToken ct = default)
+    public async Task<long> CreateAsync(Guid companyId, long expenseTypeId, long? cityId, long? policyProfileId, string period,
+        decimal? maxAmount, CancellationToken ct = default)
     {
-        var alreadyExists = await _db.ExpensePolicies.AnyAsync(p => p.CompanyId == companyId && p.ExpenseTypeId == expenseTypeId, ct);
+        if (period == ExpensePolicyPeriod.Weekly)
+            cityId = null;
+
+        var alreadyExists = await _db.ExpensePolicies.AnyAsync(p =>
+            p.CompanyId == companyId && p.ExpenseTypeId == expenseTypeId &&
+            p.CityId == cityId && p.PolicyProfileId == policyProfileId, ct);
         if (alreadyExists)
-            throw new InvalidOperationException("Ese tipo de gasto ya tiene una política -- editá la existente en vez de crear otra.");
+            throw new InvalidOperationException("Ya existe una política para ese tipo de gasto con exactamente esa misma ciudad y perfil -- editá la existente en vez de crear otra.");
 
         var policy = new ExpensePolicy
         {
             CompanyId = companyId,
             ExpenseTypeId = expenseTypeId,
+            CityId = cityId,
+            PolicyProfileId = policyProfileId,
+            Period = period,
             MaxAmount = maxAmount,
-            IsBlocking = isBlocking,
             IsActive = true,
         };
         _db.ExpensePolicies.Add(policy);
@@ -39,13 +47,12 @@ public sealed class ExpensePolicyService : IExpensePolicyService
         return policy.Id;
     }
 
-    public async Task UpdateAsync(long id, Guid companyId, decimal? maxAmount, bool isBlocking, bool isActive, CancellationToken ct = default)
+    public async Task UpdateAsync(long id, Guid companyId, decimal? maxAmount, bool isActive, CancellationToken ct = default)
     {
         var policy = await _db.ExpensePolicies.FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId, ct)
             ?? throw new InvalidOperationException("La política no existe o no pertenece a esta compañía.");
 
         policy.MaxAmount = maxAmount;
-        policy.IsBlocking = isBlocking;
         policy.IsActive = isActive;
         await _db.SaveChangesAsync(ct);
     }
@@ -73,15 +80,11 @@ public sealed class ExpensePolicyService : IExpensePolicyService
 
             if (policy?.MaxAmount is { } cap && amount > cap)
             {
-                if (policy.IsBlocking)
-                {
-                    blocked = true;
-                    warnings.Add($"El monto ({amount:N0}) supera el tope permitido para esta categoría ({cap:N0}).");
-                }
-                else
-                {
-                    warnings.Add($"El monto ({amount:N0}) supera el tope sugerido para esta categoría ({cap:N0}) -- se guardó igual, es solo una advertencia.");
-                }
+                // Removido 2026-10-29: ExpensePolicy ya no tiene IsBlocking -- superar el tope
+                // siempre es solo una advertencia (el bloqueo por monto no existe más en este
+                // módulo). "blocked" queda siempre false; la resolución real de qué política
+                // aplica por ciudad/perfil es Task 6, no este método.
+                warnings.Add($"El monto ({amount:N0}) supera el tope sugerido para esta categoría ({cap:N0}) -- se guardó igual, es solo una advertencia.");
             }
         }
 

@@ -6,9 +6,21 @@ public interface IExpensePolicyService
 {
     Task<IReadOnlyList<ExpensePolicy>> ListAsync(Guid companyId, CancellationToken ct = default);
 
-    Task<long> CreateAsync(Guid companyId, long expenseTypeId, decimal? maxAmount, bool isBlocking, CancellationToken ct = default);
+    /// <summary>
+    /// Crea una política para (companyId, expenseTypeId, cityId, policyProfileId) -- cityId y
+    /// policyProfileId son opcionales (null = "cualquiera"). Si period es
+    /// ExpensePolicyPeriod.Weekly, cityId se fuerza a null sin importar lo que llegue (un
+    /// tope semanal no tiene sentido acotado a una ciudad puntual). Lanza
+    /// InvalidOperationException si ya existe una política con exactamente esa combinación.
+    /// </summary>
+    Task<long> CreateAsync(Guid companyId, long expenseTypeId, long? cityId, long? policyProfileId, string period,
+        decimal? maxAmount, CancellationToken ct = default);
 
-    Task UpdateAsync(long id, Guid companyId, decimal? maxAmount, bool isBlocking, bool isActive, CancellationToken ct = default);
+    /// <summary>
+    /// Solo MaxAmount/IsActive son editables -- CityId/PolicyProfileId/Period quedan fijos al
+    /// crear la política (si hace falta otra combinación, se crea una política nueva).
+    /// </summary>
+    Task UpdateAsync(long id, Guid companyId, decimal? maxAmount, bool isActive, CancellationToken ct = default);
 
     Task DeleteAsync(long id, Guid companyId, CancellationToken ct = default);
 

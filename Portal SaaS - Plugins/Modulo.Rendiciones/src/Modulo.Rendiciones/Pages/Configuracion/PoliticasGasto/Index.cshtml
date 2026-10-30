@@ -1,5 +1,6 @@
 @page "/rendiciones/configuracion/politicas-gasto"
 @model Modulo.Rendiciones.Pages.Configuracion.PoliticasGasto.IndexModel
+@using Modulo.Rendiciones.Models
 @{
     ViewData["Title"] = "Políticas de gasto";
 }
@@ -12,7 +13,15 @@
    .admin-alert -> .alert de Bootstrap (global), .admin-muted -> .text-muted
    (utilidad de Bootstrap, no CSS de módulo), .form-group -> .mb-3 +
    .form-label (Bootstrap + core site.css, .form-group solo existía en
-   rendiciones.css). *@
+   rendiciones.css).
+
+   Rehecho 2026-10-29 (Task 5): ya no hay "tipos sin política" vs. "con
+   política" -- un tipo de gasto puede tener varias filas (una "default" sin
+   ciudad/perfil y otras más específicas), así que la grilla lista TODAS las
+   políticas (ya ordenadas por tipo de gasto desde el servicio) y el
+   formulario de alta permite elegir cualquier tipo de gasto, sin filtrar.
+   Se quitó "Bloqueante": superar el tope ahora siempre es solo una
+   advertencia. *@
 
 <div class="card-surface">
     <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
@@ -29,27 +38,34 @@
 }
 
 <p class="text-muted">
-    Tope de monto por categoría. "Bloqueante" impide guardar el gasto si lo supera;
-    si no, solo se muestra una advertencia y se guarda igual. La detección de
-    posibles duplicados (mismo número de documento + proveedor repetido) corre
-    siempre, para cualquier categoría, y no se configura acá.
+    Tope de monto por categoría, opcionalmente acotado a una ciudad y/o a un perfil de
+    política -- puede haber varias políticas para el mismo tipo de gasto (una "default" que
+    aplica a cualquier ciudad/perfil, y otras más específicas). Superar el tope es siempre
+    solo una advertencia, nunca impide guardar el gasto. La detección de posibles duplicados
+    (mismo número de documento + proveedor repetido) corre siempre, para cualquier
+    categoría, y no se configura acá.
 </p>
 
 <div class="table-responsive-lg">
     <table class="table-ps">
-        <thead><tr><th>Tipo de gasto</th><th>Monto máximo</th><th>Bloqueante</th><th>Activo</th><th class="col-actions"></th></tr></thead>
+        <thead><tr><th>Tipo de gasto</th><th>Ciudad</th><th>Perfil</th><th>Período</th><th>Monto máximo</th><th>Activo</th><th class="col-actions"></th></tr></thead>
         <tbody>
+            @{ long? lastExpenseTypeId = null; }
             @foreach (var p in Model.Policies)
             {
-                <tr class="@(p.IsActive ? "" : "row-inactive")">
+                var nuevoGrupo = lastExpenseTypeId != p.ExpenseTypeId;
+                lastExpenseTypeId = p.ExpenseTypeId;
+                <tr class="@(p.IsActive ? "" : "row-inactive") @(nuevoGrupo ? "rnd-policy-group-start" : "")">
                     <td>@(p.ExpenseType?.Name ?? "—")</td>
+                    <td>@(p.City?.Name ?? "Cualquier ciudad")</td>
+                    <td>@(p.PolicyProfile?.Name ?? "Cualquier perfil")</td>
+                    <td>@(p.Period == ExpensePolicyPeriod.Weekly ? "Semanal" : "Por documento")</td>
                     @* El Host fija es-CL como cultura por defecto (coma decimal) -- un <input
                        type="number"> exige PUNTO como separador; con la interpolación directa
                        (sin asp-for, que sí formatea invariant) el navegador descartaba el valor
                        y mostraba el campo vacío aunque el tope SÍ estuviera guardado (bug real,
                        reportado: "7.000" en la base, campo vacío en pantalla). *@
                     <td><input type="number" step="0.01" name="montoMaximo" value="@(p.MaxAmount?.ToString(System.Globalization.CultureInfo.InvariantCulture))" class="form-control" placeholder="Sin tope" form="pol-@p.Id" /></td>
-                    <td><input type="checkbox" name="esBloqueante" value="true" checked="@p.IsBlocking" form="pol-@p.Id" /></td>
                     <td>
                         <input type="hidden" name="activo" value="@p.IsActive" form="pol-@p.Id" />
                         @(p.IsActive ? "Sí" : "No")
@@ -67,7 +83,7 @@
             }
             @if (Model.Policies.Count == 0)
             {
-                <tr><td colspan="5" class="text-muted">Sin políticas configuradas todavía.</td></tr>
+                <tr><td colspan="7" class="text-muted">Sin políticas configuradas todavía.</td></tr>
             }
         </tbody>
     </table>
@@ -79,32 +95,71 @@
 }
 
 <h3 class="h6 text-muted mt-4">Nueva política</h3>
-@if (Model.ExpenseTypesWithoutPolicy.Count == 0)
-{
-    <p class="text-muted">Todos los tipos de gasto activos ya tienen una política.</p>
-}
-else
-{
-    <form method="post" asp-page-handler="Crear" class="d-flex flex-column gap-2">
-        <div asp-validation-summary="All" class="text-danger"></div>
-        <div class="mb-3">
-            <label asp-for="New.ExpenseTypeId" class="form-label">Tipo de gasto</label>
-            <select asp-for="New.ExpenseTypeId" class="form-control">
-                <option value="">-- Seleccionar --</option>
-                @foreach (var t in Model.ExpenseTypesWithoutPolicy)
-                {
-                    <option value="@t.Id">@t.Name</option>
-                }
-            </select>
-        </div>
-        <div class="mb-3">
-            <label asp-for="New.MaxAmount" class="form-label">Monto máximo</label>
-            <input asp-for="New.MaxAmount" class="form-control" placeholder="Sin tope" />
-        </div>
-        <div class="mb-3 d-flex align-items-center gap-2">
-            <label class="d-flex align-items-center gap-2"><input asp-for="New.IsBlocking" type="checkbox" /> Bloqueante</label>
-        </div>
-        <button type="submit" class="btn btn-primary">Crear</button>
-    </form>
-}
+<form method="post" asp-page-handler="Crear" class="d-flex flex-column gap-2">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="mb-3">
+        <label asp-for="New.ExpenseTypeId" class="form-label">Tipo de gasto</label>
+        <select asp-for="New.ExpenseTypeId" class="form-control">
+            <option value="">-- Seleccionar --</option>
+            @foreach (var t in Model.ExpenseTypes)
+            {
+                <option value="@t.Id">@t.Name</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3" id="rnd-politica-ciudad-wrap">
+        <label asp-for="New.CityId" class="form-label">Ciudad</label>
+        <select asp-for="New.CityId" class="form-control" id="rnd-politica-ciudad">
+            <option value="">Cualquier ciudad</option>
+            @foreach (var c in Model.Cities)
+            {
+                <option value="@c.Id">@c.Name</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label asp-for="New.PolicyProfileId" class="form-label">Perfil</label>
+        <select asp-for="New.PolicyProfileId" class="form-control">
+            <option value="">Cualquier usuario</option>
+            @foreach (var pr in Model.PolicyProfiles)
+            {
+                <option value="@pr.Id">@pr.Name</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label asp-for="New.Period" class="form-label">Período</label>
+        <select asp-for="New.Period" class="form-control" id="rnd-politica-periodo">
+            <option value="@ExpensePolicyPeriod.PerDocument">Por documento</option>
+            <option value="@ExpensePolicyPeriod.Weekly">Semanal</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label asp-for="New.MaxAmount" class="form-label">Monto máximo</label>
+        <input asp-for="New.MaxAmount" class="form-control" placeholder="Sin tope" />
+    </div>
+    <button type="submit" class="btn btn-primary">Crear</button>
+</form>
+
+<script>
+    (function () {
+        // Un tope semanal no tiene sentido acotado a una ciudad puntual (un viaje de una
+        // semana cruza ciudades) -- el servicio ya fuerza CityId a null si Period es
+        // Semanal, acá solo ocultamos el campo para no confundir (mismo patrón simple de
+        // mostrar/ocultar que ya usa Gastos/ImportarExcel en este módulo).
+        var periodo = document.getElementById('rnd-politica-periodo');
+        var ciudadWrap = document.getElementById('rnd-politica-ciudad-wrap');
+        var ciudadSelect = document.getElementById('rnd-politica-ciudad');
+        if (!periodo || !ciudadWrap || !ciudadSelect) return;
+
+        function actualizar() {
+            var esSemanal = periodo.value === '@ExpensePolicyPeriod.Weekly';
+            ciudadWrap.style.display = esSemanal ? 'none' : '';
+            if (esSemanal) ciudadSelect.value = '';
+        }
+
+        periodo.addEventListener('change', actualizar);
+        actualizar();
+    })();
+</script>
 </div>

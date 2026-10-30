@@ -7,27 +7,37 @@ using PortalSaas.Abstractions.Contratos;
 namespace Modulo.Rendiciones.Pages.Configuracion.PoliticasGasto;
 
 /// <summary>
-/// Tope de monto por tipo de gasto (bloqueante o solo advertencia). La detección de
-/// duplicados por número de documento no se configura acá -- corre siempre, no es una
-/// política que se pueda activar/desactivar por tipo.
+/// Tope de monto por tipo de gasto, opcionalmente acotado a ciudad y/o perfil de política
+/// (Task 5) -- ya NO es bloqueante: superar el tope siempre es solo una advertencia. Puede
+/// haber varias políticas por tipo de gasto (una "default" sin ciudad/perfil y otras más
+/// específicas); cuál aplica a un gasto concreto lo resuelve un motor aparte (fuera de
+/// alcance acá). La detección de duplicados por número de documento no se configura acá --
+/// corre siempre, no es una política que se pueda activar/desactivar por tipo.
 /// </summary>
 public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly IExpensePolicyService _policies;
     private readonly IExpenseTypeService _expenseTypes;
+    private readonly ICityService _cities;
+    private readonly IPolicyProfileService _policyProfiles;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IExpensePolicyService policies, IExpenseTypeService expenseTypes,
-        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(IExpensePolicyService policies, IExpenseTypeService expenseTypes, ICityService cities,
+        IPolicyProfileService policyProfiles, IRendicionesUserRoleService roles, ICurrentUserContext currentUser,
+        ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
         _policies = policies;
         _expenseTypes = expenseTypes;
+        _cities = cities;
+        _policyProfiles = policyProfiles;
         _currentCompany = currentCompany;
     }
 
     public IReadOnlyList<ExpensePolicy> Policies { get; private set; } = Array.Empty<ExpensePolicy>();
-    public IReadOnlyList<ExpenseType> ExpenseTypesWithoutPolicy { get; private set; } = Array.Empty<ExpenseType>();
+    public IReadOnlyList<ExpenseType> ExpenseTypes { get; private set; } = Array.Empty<ExpenseType>();
+    public IReadOnlyList<City> Cities { get; private set; } = Array.Empty<City>();
+    public IReadOnlyList<PolicyProfile> PolicyProfiles { get; private set; } = Array.Empty<PolicyProfile>();
 
     [BindProperty]
     public NewPolicyInput New { get; set; } = new();
@@ -47,7 +57,8 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
 
         try
         {
-            await _policies.CreateAsync(_currentCompany.CompanyId, New.ExpenseTypeId, New.MaxAmount, New.IsBlocking, ct);
+            await _policies.CreateAsync(_currentCompany.CompanyId, New.ExpenseTypeId, New.CityId, New.PolicyProfileId,
+                New.Period, New.MaxAmount, ct);
             SuccessMessage = "Política creada.";
         }
         catch (Exception ex)
@@ -58,11 +69,11 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostGuardarAsync(long id, decimal? montoMaximo, bool esBloqueante, bool activo, CancellationToken ct)
+    public async Task<IActionResult> OnPostGuardarAsync(long id, decimal? montoMaximo, bool activo, CancellationToken ct)
     {
         try
         {
-            await _policies.UpdateAsync(id, _currentCompany.CompanyId, montoMaximo, esBloqueante, activo, ct);
+            await _policies.UpdateAsync(id, _currentCompany.CompanyId, montoMaximo, activo, ct);
             SuccessMessage = "Política actualizada.";
         }
         catch (Exception ex)
@@ -83,10 +94,9 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
     private async Task LoadAsync(CancellationToken ct)
     {
         Policies = await _policies.ListAsync(_currentCompany.CompanyId, ct);
-        var typesWithPolicy = Policies.Select(p => p.ExpenseTypeId).ToHashSet();
-        ExpenseTypesWithoutPolicy = (await _expenseTypes.ListActiveAsync(_currentCompany.CompanyId, ct))
-            .Where(t => !typesWithPolicy.Contains(t.Id))
-            .ToList();
+        ExpenseTypes = await _expenseTypes.ListActiveAsync(_currentCompany.CompanyId, ct);
+        Cities = await _cities.ListActiveAsync(_currentCompany.CompanyId, ct);
+        PolicyProfiles = await _policyProfiles.ListActiveAsync(_currentCompany.CompanyId, ct);
     }
 
     public sealed class NewPolicyInput
@@ -94,9 +104,16 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
         [Required(ErrorMessage = "Elegí un tipo de gasto.")]
         public long ExpenseTypeId { get; set; }
 
+        /// <summary>Null = cualquier ciudad.</summary>
+        public long? CityId { get; set; }
+
+        /// <summary>Null = cualquier perfil.</summary>
+        public long? PolicyProfileId { get; set; }
+
+        [Required]
+        public string Period { get; set; } = ExpensePolicyPeriod.PerDocument;
+
         [Range(0, double.MaxValue)]
         public decimal? MaxAmount { get; set; }
-
-        public bool IsBlocking { get; set; }
     }
 }

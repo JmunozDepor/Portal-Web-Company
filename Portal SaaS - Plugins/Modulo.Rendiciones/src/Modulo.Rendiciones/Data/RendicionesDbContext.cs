@@ -172,14 +172,40 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
             e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
             e.Property(x => x.ExpenseTypeId).HasColumnName("expense_type_id").IsRequired();
+            e.Property(x => x.CityId).HasColumnName("city_id");
+            e.Property(x => x.PolicyProfileId).HasColumnName("policy_profile_id");
+            e.Property(x => x.Period).HasColumnName("period").HasMaxLength(20).IsRequired().HasDefaultValue(ExpensePolicyPeriod.PerDocument);
             e.Property(x => x.MaxAmount).HasColumnName("max_amount").HasPrecision(18, 2);
-            e.Property(x => x.IsBlocking).HasColumnName("is_blocking");
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.HasOne(x => x.ExpenseType)
                 .WithMany()
                 .HasForeignKey(x => x.ExpenseTypeId)
                 .HasConstraintName("fk_expense_policies_expense_types")
                 .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.City)
+                .WithMany()
+                .HasForeignKey(x => x.CityId)
+                .HasConstraintName("fk_expense_policies_expense_cities")
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.PolicyProfile)
+                .WithMany()
+                .HasForeignKey(x => x.PolicyProfileId)
+                .HasConstraintName("fk_expense_policies_policy_profiles")
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Postgres/SqlServer tratan NULL como distinto de NULL en un índice único normal
+            // -- dos filas "default" (CityId=null, PolicyProfileId=null) para el mismo tipo de
+            // gasto NO chocarían contra un HasIndex directo sobre esas columnas nullable. Se
+            // resuelve con dos columnas computadas que colapsan null -> 0 (COALESCE), y el
+            // índice único va sobre esas en vez de sobre las columnas nullable originales. El
+            // guard de ExpensePolicyService.CreateAsync (AnyAsync) es la primera barrera -- este
+            // índice es el backstop a nivel de base, solo verificable contra Postgres/SqlServer
+            // real (el proveedor EF InMemory usado en los tests no lo aplica).
+            e.Property<long>("CityKey").HasColumnName("city_key").HasComputedColumnSql("COALESCE(city_id, 0)", stored: true);
+            e.Property<long>("ProfileKey").HasColumnName("profile_key").HasComputedColumnSql("COALESCE(policy_profile_id, 0)", stored: true);
+            e.HasIndex("CompanyId", "ExpenseTypeId", "CityKey", "ProfileKey")
+                .IsUnique()
+                .HasDatabaseName("uq_expense_policies_company_type_city_profile");
         });
 
         modelBuilder.Entity<ExpenseApprovalGroup>(e =>

@@ -43,6 +43,7 @@ public sealed class ExpenseReportService : IExpenseReportService
         await _db.ExpenseReports
             .Include(r => r.Lines).ThenInclude(d => d.ExpenseType)
             .Include(r => r.Lines).ThenInclude(d => d.DocumentType)
+            .Include(r => r.Lines).ThenInclude(d => d.City)
             .FirstOrDefaultAsync(r => r.Id == id && r.CompanyId == companyId, ct);
 
     public async Task<long> CreateReportAsync(Guid companyId, Guid userId, IReadOnlyList<long> expenseIds, long? expenseFundId,

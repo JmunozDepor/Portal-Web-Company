@@ -65,7 +65,7 @@
                        (sin asp-for, que sí formatea invariant) el navegador descartaba el valor
                        y mostraba el campo vacío aunque el tope SÍ estuviera guardado (bug real,
                        reportado: "7.000" en la base, campo vacío en pantalla). *@
-                    <td><input type="number" step="0.01" name="montoMaximo" value="@(p.MaxAmount?.ToString(System.Globalization.CultureInfo.InvariantCulture))" class="form-control" placeholder="Sin tope" form="pol-@p.Id" /></td>
+                    <td><input type="number" step="0.01" min="0" name="montoMaximo" value="@(p.MaxAmount?.ToString(System.Globalization.CultureInfo.InvariantCulture))" class="form-control" placeholder="Sin tope" form="pol-@p.Id" /></td>
                     <td>
                         <input type="hidden" name="activo" value="@p.IsActive" form="pol-@p.Id" />
                         @(p.IsActive ? "Sí" : "No")

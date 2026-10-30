@@ -354,9 +354,9 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
 
                     b.HasIndex("PolicyProfileId");
 
-                    b.HasIndex("CompanyId", "ExpenseTypeId", "CityKey", "ProfileKey")
+                    b.HasIndex("CompanyId", "ExpenseTypeId", "CityKey", "ProfileKey", "Period")
                         .IsUnique()
-                        .HasDatabaseName("uq_expense_policies_company_type_city_profile");
+                        .HasDatabaseName("uq_expense_policies_company_type_city_profile_period");
 
                     b.ToTable("expense_policies", (string)null);
                 });

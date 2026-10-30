@@ -69,8 +69,20 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostGuardarAsync(long id, decimal? montoMaximo, bool activo, CancellationToken ct)
+    public async Task<IActionResult> OnPostGuardarAsync(long id, [Range(0, double.MaxValue, ErrorMessage = "El monto máximo no puede ser negativo.")] decimal? montoMaximo,
+        bool activo, CancellationToken ct)
     {
+        // I1b: un MaxAmount negativo produciría un tope negativo -> ReimbursementAmount
+        // negativo en ExpensePolicyService.ValidateAsync (el clamp final ahí lo evita, pero
+        // esta es la primera barrera, en el formulario de administración). [Range] sobre un
+        // parámetro de handler SÍ participa en ModelState -- hay que chequearlo a mano, a
+        // diferencia de un BindProperty donde algunos frameworks ya lo hacen por vos.
+        if (!ModelState.IsValid)
+        {
+            ErrorMessage = "El monto máximo no puede ser negativo.";
+            return RedirectToPage();
+        }
+
         try
         {
             await _policies.UpdateAsync(id, _currentCompany.CompanyId, montoMaximo, activo, ct);

@@ -27,6 +27,14 @@
                 <fieldset disabled>
                     <div class="form-group"><label>Categoría del gasto</label><input class="form-control" value="@(d.ExpenseType?.Name ?? "")" /></div>
                     <div class="form-group"><label>Tipo de documento</label><input class="form-control" value="@(d.DocumentType?.Name ?? "")" /></div>
+                    @if (d.City is not null)
+                    {
+                        <div class="form-group"><label>Ciudad</label><input class="form-control" value="@d.City.Name" /></div>
+                    }
+                    @if (d.ExpenseType?.RequiresQuantity == true)
+                    {
+                        <div class="form-group"><label>@(string.IsNullOrWhiteSpace(d.ExpenseType.QuantityLabel) ? "Cantidad" : d.ExpenseType.QuantityLabel)</label><input class="form-control" value="@(d.Quantity?.ToString("N2") ?? "")" /></div>
+                    }
                     <div class="form-group"><label>Fecha</label><input class="form-control" value="@d.Date.ToString("dd-MM-yyyy")" /></div>
                     <div class="form-group"><label>Hora</label><input class="form-control" value="@(d.TransactionTime?.ToString("HH:mm") ?? "")" /></div>
                     @if (esKm)

@@ -28,11 +28,16 @@ public sealed class ExpensePolicyService : IExpensePolicyService
         if (period == ExpensePolicyPeriod.Weekly)
             cityId = null;
 
+        // I6 (revisión final, 2026-10-29): Period entra al guard -- un PerDocument y un
+        // Weekly para EXACTAMENTE la misma (tipo, ciudad, perfil) son dos políticas
+        // legítimamente distintas (ej. Combustible para "Supervisor en terreno" con tope por
+        // boleta Y tope semanal acumulado, spec Decisión 7). Antes de este fix, la segunda
+        // política chocaba contra este guard aunque tuviera un Period distinto.
         var alreadyExists = await _db.ExpensePolicies.AnyAsync(p =>
             p.CompanyId == companyId && p.ExpenseTypeId == expenseTypeId &&
-            p.CityId == cityId && p.PolicyProfileId == policyProfileId, ct);
+            p.CityId == cityId && p.PolicyProfileId == policyProfileId && p.Period == period, ct);
         if (alreadyExists)
-            throw new InvalidOperationException("Ya existe una política para ese tipo de gasto con exactamente esa misma ciudad y perfil -- editá la existente en vez de crear otra.");
+            throw new InvalidOperationException("Ya existe una política para ese tipo de gasto con exactamente esa misma ciudad, perfil y periodo -- editá la existente en vez de crear otra.");
 
         var policy = new ExpensePolicy
         {
@@ -79,18 +84,40 @@ public sealed class ExpensePolicyService : IExpensePolicyService
         if (expenseTypeId is { } typeId)
         {
             var userProfileId = await _profiles.GetAssignedProfileIdAsync(companyId, userId, ct);
+            var expenseType = await _db.ExpenseTypes.AsNoTracking().FirstOrDefaultAsync(t => t.Id == typeId, ct);
+
+            // I1: la cantidad solo tiene sentido para un tipo que la requiere -- el campo
+            // Cantidad del formulario solo se oculta con display:none cuando se cambia de
+            // categoría, nunca se limpia, así que un valor obsoleto (ej. "3" dejado de un
+            // tipo anterior) seguía llegando acá sin que ValidateAsync chequeara
+            // RequiresQuantity, multiplicando el tope de un tipo que no debía verse afectado.
+            // Nunca confiar en lo que mandó el llamador: se resuelve acá, el único lugar que
+            // calcula el tope. Una cantidad <= 0 (0, negativa) nunca debe multiplicar el tope
+            // -- se trata como 1 en ese caso también.
+            var effectiveQuantity = expenseType?.RequiresQuantity == true && quantity > 0 ? quantity : 1m;
+
             var policy = await FindApplicablePolicyAsync(companyId, typeId, cityId, userProfileId, ExpensePolicyPeriod.PerDocument, ct);
 
             if (policy?.MaxAmount is { } maxAmount)
             {
-                var tope = maxAmount * quantity;
+                var tope = maxAmount * effectiveQuantity;
                 if (amount > tope)
                 {
                     reimbursement = tope;
-                    warnings.Add($"El monto ({amount:N0}) supera el tope de esta política ({tope:N0}) -- se reembolsará {reimbursement:N0}.");
+                    var city = cityId is { } cid ? await _db.Cities.AsNoTracking().FirstOrDefaultAsync(c => c.Id == cid, ct) : null;
+                    var tipoNombre = expenseType?.Name ?? "este tipo de gasto";
+                    warnings.Add($"El monto ({amount:N0}) supera el tope de {tipoNombre}{(city is not null ? $" en {city.Name}" : "")} ({tope:N0}) -- se reembolsará {reimbursement:N0}.");
                 }
             }
         }
+
+        // I1b: backstop final, independiente de cómo se haya llegado hasta acá -- el monto a
+        // reembolsar nunca puede ser negativo (ej. si alguna combinación rara produjera un
+        // tope negativo) ni superar el monto de la boleta.
+        if (reimbursement < 0)
+            reimbursement = 0;
+        if (reimbursement > amount)
+            reimbursement = amount;
 
         if (!string.IsNullOrWhiteSpace(documentNumber))
         {

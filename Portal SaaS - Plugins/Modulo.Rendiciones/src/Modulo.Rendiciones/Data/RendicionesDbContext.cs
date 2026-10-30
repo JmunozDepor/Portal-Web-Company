@@ -201,11 +201,18 @@ public class RendicionesDbContext : DbContext
             // guard de ExpensePolicyService.CreateAsync (AnyAsync) es la primera barrera -- este
             // índice es el backstop a nivel de base, solo verificable contra Postgres/SqlServer
             // real (el proveedor EF InMemory usado en los tests no lo aplica).
+            //
+            // I6 (revisión final, 2026-10-29): Period se agrega como 5ta columna del índice --
+            // sin esto, un PerDocument y un Weekly para la MISMA (tipo, ciudad, perfil) no
+            // podían coexistir (ej. Combustible / "Supervisor en terreno" con tope por boleta
+            // Y tope semanal, spec Decisión 7), aunque sean dos políticas legítimamente
+            // distintas. Period no es nullable (tiene HasDefaultValue arriba), así que entra
+            // directo al índice sin necesitar una columna computada propia.
             e.Property<long>("CityKey").HasColumnName("city_key").HasComputedColumnSql("COALESCE(city_id, 0)", stored: true);
             e.Property<long>("ProfileKey").HasColumnName("profile_key").HasComputedColumnSql("COALESCE(policy_profile_id, 0)", stored: true);
-            e.HasIndex("CompanyId", "ExpenseTypeId", "CityKey", "ProfileKey")
+            e.HasIndex("CompanyId", "ExpenseTypeId", "CityKey", "ProfileKey", nameof(ExpensePolicy.Period))
                 .IsUnique()
-                .HasDatabaseName("uq_expense_policies_company_type_city_profile");
+                .HasDatabaseName("uq_expense_policies_company_type_city_profile_period");
         });
 
         modelBuilder.Entity<ExpenseApprovalGroup>(e =>

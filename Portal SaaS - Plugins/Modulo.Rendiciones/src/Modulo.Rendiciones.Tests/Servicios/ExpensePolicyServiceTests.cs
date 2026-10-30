@@ -105,6 +105,53 @@ public class ExpensePolicyServiceTests
         Assert.Equal(ExpensePolicyPeriod.Weekly, created.Period);
     }
 
+    /// <summary>
+    /// I6 (revisión final, 2026-10-29): el guard de duplicados (y el índice único de la base)
+    /// ignoraban Period -- una política PerDocument y una Weekly para la MISMA (tipo, ciudad,
+    /// perfil) no podían coexistir, aunque el spec las quiere explícitamente como dos filas
+    /// legítimamente distintas (ej. Combustible / "Supervisor en terreno" con tope por boleta
+    /// Y tope semanal acumulado, Decisión 7 del spec).
+    /// </summary>
+    [Fact]
+    public async Task CreateAsync_SameTypeCityAndProfile_DifferentPeriod_BothAllowed()
+    {
+        var companyId = Guid.NewGuid();
+        const long profileSupervisor = 300;
+        await using var db = CreateDb(nameof(CreateAsync_SameTypeCityAndProfile_DifferentPeriod_BothAllowed));
+        var expenseTypeId = await CreateExpenseTypeAsync(db, companyId, "Combustible");
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
+
+        var perDocumentId = await sut.CreateAsync(companyId, expenseTypeId, cityId: null, policyProfileId: profileSupervisor,
+            period: ExpensePolicyPeriod.PerDocument, maxAmount: 15000m);
+        var weeklyId = await sut.CreateAsync(companyId, expenseTypeId, cityId: null, policyProfileId: profileSupervisor,
+            period: ExpensePolicyPeriod.Weekly, maxAmount: 25000m);
+
+        var all = await sut.ListAsync(companyId);
+        Assert.Equal(2, all.Count);
+        Assert.Contains(all, p => p.Id == perDocumentId && p.Period == ExpensePolicyPeriod.PerDocument);
+        Assert.Contains(all, p => p.Id == weeklyId && p.Period == ExpensePolicyPeriod.Weekly);
+    }
+
+    /// <summary>La MISMA combinación (tipo, ciudad, perfil, periodo) sigue bloqueada -- I6 solo
+    /// agrega Period al guard, no lo reemplaza.</summary>
+    [Fact]
+    public async Task CreateAsync_SameTypeCityProfileAndPeriod_StillThrows()
+    {
+        var companyId = Guid.NewGuid();
+        const long profileSupervisor = 300;
+        await using var db = CreateDb(nameof(CreateAsync_SameTypeCityProfileAndPeriod_StillThrows));
+        var expenseTypeId = await CreateExpenseTypeAsync(db, companyId, "Combustible");
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
+        await sut.CreateAsync(companyId, expenseTypeId, cityId: null, policyProfileId: profileSupervisor,
+            period: ExpensePolicyPeriod.Weekly, maxAmount: 25000m);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.CreateAsync(companyId, expenseTypeId, cityId: null, policyProfileId: profileSupervisor,
+                period: ExpensePolicyPeriod.Weekly, maxAmount: 30000m));
+
+        Assert.False(string.IsNullOrWhiteSpace(ex.Message));
+    }
+
     [Fact]
     public async Task UpdateAsync_NoLongerAcceptsIsBlocking()
     {

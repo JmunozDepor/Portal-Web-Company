@@ -29,10 +29,14 @@ public interface IExpensePolicyService
     /// FindApplicablePolicyAsync, según ciudad y perfil asignado al usuario) y busca un
     /// posible duplicado (mismo número de documento + RUT/tax id proveedor, del mismo
     /// usuario, en otro gasto). No persiste nada -- IExpenseService decide qué hacer con
-    /// el resultado. cityId/quantity vienen del gasto (quantity ya resuelto a 1 por el
-    /// llamador si el tipo no la requiere). expenseIdToExclude: al editar, no comparar el
-    /// gasto contra sí mismo. Solo considera políticas PerDocument -- el acumulado Weekly
-    /// es una advertencia aparte (Task 8), nunca toca ReimbursementAmount acá.
+    /// el resultado. cityId/quantity vienen del gasto -- NO se confía en que el llamador ya
+    /// haya resuelto quantity a 1 cuando el tipo no la requiere (el formulario solo oculta el
+    /// campo, no lo limpia): este método carga el ExpenseType y fuerza quantity a 1 si
+    /// !RequiresQuantity o si quantity &lt;= 0, antes de multiplicar el tope (fix I1,
+    /// revisión final 2026-10-29). El reembolso final siempre queda acotado a [0, amount].
+    /// expenseIdToExclude: al editar, no comparar el gasto contra sí mismo. Solo considera
+    /// políticas PerDocument -- el acumulado Weekly es una advertencia aparte (Task 8), nunca
+    /// toca ReimbursementAmount acá.
     /// </summary>
     Task<ExpenseValidationResult> ValidateAsync(Guid companyId, Guid userId, long? expenseTypeId, long? cityId,
         decimal amount, decimal quantity, string? documentNumber, string? supplierTaxId, long? expenseIdToExclude,

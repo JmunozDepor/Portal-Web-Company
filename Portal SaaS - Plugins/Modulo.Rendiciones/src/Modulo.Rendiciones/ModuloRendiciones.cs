@@ -333,6 +333,9 @@ public sealed class ModuloRendiciones : IModuloPortal
         services.AddScoped<IAttachmentStorageService, AttachmentStorageService>();
         services.AddSingleton<IReceiptImageProcessor, SkiaReceiptImageProcessor>();
         services.AddScoped<IExpensePolicyService, ExpensePolicyService>();
+        // Advertencia semanal agregada (Task 8) -- de solo lectura, no toca ReimbursementAmount;
+        // la consumen las pantallas de detalle/aprobación para avisar el tope Weekly excedido.
+        services.AddScoped<IWeeklyExpenseLimitService, WeeklyExpenseLimitService>();
         services.AddScoped<IExpenseService, ExpenseService>();
         // Captura enriquecida + memoria de proveedor: arma la propuesta que precarga el
         // formulario de gasto a partir de lo que leyó el OCR, y aprende de cada guardado

@@ -47,6 +47,8 @@ public class RendicionesDbContext : DbContext
     public DbSet<RendicionesUserRole> RendicionesUserRoles => Set<RendicionesUserRole>();
     public DbSet<SupplierHint> SupplierHints => Set<SupplierHint>();
     public DbSet<City> Cities => Set<City>();
+    public DbSet<PolicyProfile> PolicyProfiles => Set<PolicyProfile>();
+    public DbSet<UserPolicyProfile> UserPolicyProfiles => Set<UserPolicyProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,6 +109,35 @@ public class RendicionesDbContext : DbContext
             e.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.HasIndex(x => new { x.CompanyId, x.Name }).IsUnique().HasDatabaseName("uq_expense_cities_company_id_name");
+        });
+
+        modelBuilder.Entity<PolicyProfile>(e =>
+        {
+            e.ToTable("policy_profiles");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.HasIndex(x => new { x.CompanyId, x.Name }).IsUnique().HasDatabaseName("uq_policy_profiles_company_id_name");
+        });
+
+        modelBuilder.Entity<UserPolicyProfile>(e =>
+        {
+            e.ToTable("user_policy_profiles");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+            e.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+            e.Property(x => x.PolicyProfileId).HasColumnName("policy_profile_id").IsRequired();
+            e.HasOne(x => x.PolicyProfile)
+                .WithMany()
+                .HasForeignKey(x => x.PolicyProfileId)
+                .HasConstraintName("fk_user_policy_profiles_policy_profiles")
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.CompanyId, x.UserId })
+                .IsUnique()
+                .HasDatabaseName("uq_user_policy_profiles_company_id_user_id");
         });
 
         modelBuilder.Entity<UserCostCenter>(e =>

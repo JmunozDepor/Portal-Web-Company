@@ -258,6 +258,19 @@ public sealed class ModuloRendiciones : IModuloPortal
             PageRoute = "/rendiciones/configuracion/ciudades",
             Order = 11,
         };
+
+        // Catálogo de Perfiles de Política (ej. "Supervisor en terreno") -- NO es un
+        // 4to rol de acceso, es un agrupador para topes de política diferenciados (ver
+        // PolicyProfile). La asignación por usuario se hace en Usuarios y Roles.
+        yield return new MenuItemDefinition
+        {
+            Code = "config-perfiles-politica",
+            ParentCode = "grupo-administrador",
+            Name = "Perfiles de Política",
+            Icon = "bi-person-badge",
+            PageRoute = "/rendiciones/configuracion/perfiles-politica",
+            Order = 12,
+        };
     }
 
     public void RegisterServices(IServiceCollection services)
@@ -308,6 +321,10 @@ public sealed class ModuloRendiciones : IModuloPortal
         services.AddScoped<IExpenseTypeService, ExpenseTypeService>();
         services.AddScoped<IDocumentTypeService, DocumentTypeService>();
         services.AddScoped<ICityService, CityService>();
+        // Catálogo de Perfiles de Política + asignación por usuario -- un solo servicio
+        // para ambas responsabilidades (ver IPolicyProfileService), consumido por la
+        // columna "Perfil de política" de Configuracion/UsuariosRoles.
+        services.AddScoped<IPolicyProfileService, PolicyProfileService>();
         // Formato de montos (con/sin decimales) -- Scoped: memoiza la preferencia de la
         // compañía por request, la consume <rnd-amount> en las vistas (ver TagHelpers/).
         services.AddScoped<IAmountFormatService, AmountFormatService>();

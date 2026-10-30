@@ -858,6 +858,38 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                     b.ToTable("rendiciones_gl_accounts", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Rendiciones.Models.PolicyProfile", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("uq_policy_profiles_company_id_name");
+
+                    b.ToTable("policy_profiles", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Rendiciones.Models.ReminderLog", b =>
                 {
                     b.Property<long>("Id")
@@ -1048,6 +1080,38 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                     b.ToTable("user_cost_centers", (string)null);
                 });
 
+            modelBuilder.Entity("Modulo.Rendiciones.Models.UserPolicyProfile", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("company_id");
+
+                    b.Property<long>("PolicyProfileId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("policy_profile_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PolicyProfileId");
+
+                    b.HasIndex("CompanyId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_user_policy_profiles_company_id_user_id");
+
+                    b.ToTable("user_policy_profiles", (string)null);
+                });
+
             modelBuilder.Entity("Modulo.Rendiciones.Models.ExpenseApprovalGroupLevel", b =>
                 {
                     b.HasOne("Modulo.Rendiciones.Models.ExpenseApprovalGroup", "ExpenseApprovalGroup")
@@ -1177,6 +1241,18 @@ namespace Modulo.Rendiciones.Migrations.SqlServer.Migrations
                         .HasForeignKey("DefaultExpenseTypeId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_supplier_hints_expense_types");
+                });
+
+            modelBuilder.Entity("Modulo.Rendiciones.Models.UserPolicyProfile", b =>
+                {
+                    b.HasOne("Modulo.Rendiciones.Models.PolicyProfile", "PolicyProfile")
+                        .WithMany()
+                        .HasForeignKey("PolicyProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_policy_profiles_policy_profiles");
+
+                    b.Navigation("PolicyProfile");
                 });
 
             modelBuilder.Entity("Modulo.Rendiciones.Models.ExpenseReport", b =>

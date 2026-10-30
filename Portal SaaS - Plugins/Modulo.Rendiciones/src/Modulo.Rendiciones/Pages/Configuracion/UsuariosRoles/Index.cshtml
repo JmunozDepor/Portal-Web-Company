@@ -27,6 +27,12 @@
         pantalla del módulo. Quitarle los 3 roles y guardar lo saca del proceso.
         Los cambios en las casillas no se guardan hasta que apretás <strong>Guardar cambios</strong>.
     </p>
+    <p class="text-muted mb-3">
+        <i class="bi bi-info-circle"></i> La columna <strong>Perfil de política</strong> es un concepto aparte de
+        los roles de arriba: asigna el perfil de política de gasto (ver <strong>Configuración → Perfiles de
+        Política</strong>) que se le aplica al usuario para calcular sus topes. No es un rol de acceso al módulo
+        y se guarda por separado, con su propio botón.
+    </p>
 
     @if (Model.SuccessMessage is not null)
     {
@@ -55,6 +61,7 @@
                         <th>Rendidor</th>
                         <th>Aprobador</th>
                         <th>Administrador</th>
+                        <th title="Perfil de política de gasto -- NO es un rol de acceso, ver Configuración → Perfiles de Política">Perfil de política</th>
                         <th class="col-actions"></th>
                     </tr>
                 </thead>
@@ -93,6 +100,20 @@
                             <td>
                                 <input type="checkbox" name="seleccion" value="@(row.Id + "|Administrador")" checked="@row.IsAdministrador" />
                             </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-1">
+                                    <select name="perfilId" form="form-perfil-@row.Id" class="form-select form-select-sm" style="max-width:180px;">
+                                        <option value="">— Sin perfil —</option>
+                                        @foreach (var perfil in Model.PerfilesDisponibles)
+                                        {
+                                            <option value="@perfil.Id" selected="@(row.PolicyProfileId == perfil.Id)">@perfil.Name</option>
+                                        }
+                                    </select>
+                                    <button type="submit" form="form-perfil-@row.Id" class="btn-ghost" title="Guardar perfil de política">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                </div>
+                            </td>
                             <td class="col-actions">
                                 <div class="admin-row-actions">
                                     @if (row.IsActive)
@@ -113,7 +134,7 @@
                     }
                     @if (Model.Rows.Count == 0)
                     {
-                        <tr><td colspan="7" class="text-muted">Todavía no hay usuarios en el proceso de Rendiciones. Agregá el primero con <strong>+ Agregar usuario</strong>.</td></tr>
+                        <tr><td colspan="8" class="text-muted">Todavía no hay usuarios en el proceso de Rendiciones. Agregá el primero con <strong>+ Agregar usuario</strong>.</td></tr>
                     }
                 </tbody>
             </table>
@@ -131,6 +152,9 @@
 {
     <form method="post" asp-page-handler="ToggleActivo" asp-route-userId="@row.Id" id="form-activo-@row.Id" class="d-none"
           onsubmit="return confirm('@(row.IsActive ? "¿Desactivar" : "¿Activar") a @row.Username?');"></form>
+    @* Formulario propio del combo "Perfil de política" -- concepto separado de los 3
+       roles de acceso, no se mezcla con el guardado por lotes de la matriz. *@
+    <form method="post" asp-page-handler="GuardarPerfil" asp-route-userId="@row.Id" id="form-perfil-@row.Id" class="d-none"></form>
 }
 
 @* Drawer -- alta de un participante nuevo. Postea a OnPostAgregarAsync. *@

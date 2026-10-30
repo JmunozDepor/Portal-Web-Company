@@ -26,14 +26,17 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
 {
     private readonly ITenantUserAdminService _users;
     private readonly IRendicionesUserRoleService _roles;
+    private readonly IPolicyProfileService _policyProfiles;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
     public IndexModel(ITenantUserAdminService users, IRendicionesUserRoleService roles,
+        IPolicyProfileService policyProfiles,
         ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
         _users = users;
         _roles = roles;
+        _policyProfiles = policyProfiles;
         _currentCompany = currentCompany;
     }
 
@@ -43,9 +46,15 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
     /// <summary>Usuarios de la empresa que todavía no están en el proceso -- para el drawer de alta.</summary>
     public IReadOnlyList<UserOption> UsuariosDisponibles { get; private set; } = Array.Empty<UserOption>();
 
+    /// <summary>Perfiles de política activos, para el combo "Perfil de política" por fila --
+    /// concepto separado de los 3 roles de acceso de arriba (ver RendicionesRoles); esta
+    /// pantalla solo asigna, el catálogo se mantiene en Configuracion/PerfilesPolitica.</summary>
+    public IReadOnlyList<PolicyProfile> PerfilesDisponibles { get; private set; } = Array.Empty<PolicyProfile>();
+
     public async Task OnGetAsync(CancellationToken ct)
     {
         (Rows, UsuariosDisponibles) = await LoadAsync(ct);
+        PerfilesDisponibles = await _policyProfiles.ListActiveAsync(_currentCompany.CompanyId, ct);
     }
 
     /// <summary>
@@ -149,10 +158,38 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
         return RedirectToPage();
     }
 
+    /// <summary>Asigna o quita (perfilId null) el Perfil de política del usuario -- concepto
+    /// separado de los 3 roles de acceso de arriba, formulario propio (no se mezcla con el
+    /// guardado por lotes de OnPostGuardarAsync).</summary>
+    public async Task<IActionResult> OnPostGuardarPerfilAsync(Guid userId, long? perfilId, CancellationToken ct)
+    {
+        var user = await _users.GetAsync(userId, ct);
+        if (user is null)
+        {
+            ErrorMessage = "Usuario no encontrado en esta organización.";
+            return RedirectToPage();
+        }
+
+        try
+        {
+            await _policyProfiles.AssignAsync(_currentCompany.CompanyId, userId, perfilId, ct);
+            SuccessMessage = perfilId is null
+                ? $"Perfil de política quitado a \"{user.Username}\"."
+                : $"Perfil de política actualizado para \"{user.Username}\".";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = GetErrorMessage(ex);
+        }
+
+        return RedirectToPage();
+    }
+
     private async Task<(IReadOnlyList<UserRoleRow> Rows, IReadOnlyList<UserOption> Disponibles)> LoadAsync(CancellationToken ct)
     {
         var users = await _users.ListAsync(ct);
         var rolesByUser = await _roles.ListAllAsync(_currentCompany.CompanyId, ct);
+        var perfilesByUser = await _policyProfiles.ListAssignmentsAsync(_currentCompany.CompanyId, ct);
 
         var rows = users
             .Where(u => rolesByUser.ContainsKey(u.Id))
@@ -160,6 +197,7 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
             .Select(u =>
             {
                 var asignados = rolesByUser[u.Id];
+                perfilesByUser.TryGetValue(u.Id, out var perfil);
                 return new UserRoleRow(
                     u.Id,
                     u.Username,
@@ -169,7 +207,9 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
                     u.IsLocked,
                     asignados.Contains(RendicionesRoles.Rendidor),
                     asignados.Contains(RendicionesRoles.Aprobador),
-                    asignados.Contains(RendicionesRoles.Administrador));
+                    asignados.Contains(RendicionesRoles.Administrador),
+                    perfil?.Id,
+                    perfil?.Name);
             })
             .ToList();
 
@@ -198,7 +238,7 @@ public sealed class IndexModel : RendicionesAdminPageModelBase
         return set;
     }
 
-    public sealed record UserRoleRow(Guid Id, string Username, string Email, bool IsPlatformAdmin, bool IsActive, bool IsLocked, bool IsRendidor, bool IsAprobador, bool IsAdministrador);
+    public sealed record UserRoleRow(Guid Id, string Username, string Email, bool IsPlatformAdmin, bool IsActive, bool IsLocked, bool IsRendidor, bool IsAprobador, bool IsAdministrador, long? PolicyProfileId, string? PolicyProfileName);
 
     public sealed record UserOption(Guid Id, string Username, string Email);
 }

@@ -1,0 +1,107 @@
+@page "/rendiciones/configuracion/perfiles-politica"
+@model Modulo.Rendiciones.Pages.Configuracion.PerfilesPolitica.IndexModel
+@{
+    ViewData["Title"] = "Perfiles de Política";
+}
+@* Mismo patrón que Ciudades (Task 1). Catálogo de PERFILES DE POLÍTICA DE GASTO
+   (ej. "Supervisor en terreno") -- NO es un rol de acceso al módulo (eso son
+   Rendidor/Aprobador/Administrador, ver Configuracion/UsuariosRoles). Acá solo se
+   mantiene el catálogo; la asignación de un perfil a cada usuario se hace desde
+   Usuarios y Roles. *@
+
+<div class="card-surface">
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-1 flex-wrap">
+        <h2 class="mb-0">Perfiles de Política</h2>
+        <button type="button" class="btn btn-primary" data-drawer-open="drawer-nuevo-perfil">+ Nuevo perfil</button>
+    </div>
+    <p class="text-muted mb-3">
+        Un <strong>Perfil de política</strong> (ej. "Supervisor en terreno") agrupa usuarios para aplicarles
+        topes de política de gasto diferenciados. <strong>No es un rol de acceso al módulo</strong> -- eso se
+        administra en <strong>Usuarios y Roles</strong> (Rendidor/Aprobador/Administrador); ahí mismo se le
+        asigna el perfil de política a cada usuario.
+    </p>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="table-responsive-lg">
+    <table class="table-ps">
+        <thead><tr><th>Nombre</th><th>Estado</th><th class="col-actions"></th></tr></thead>
+        <tbody>
+            @foreach (var p in Model.Profiles)
+            {
+                var formId = $"perfil-{p.Id}";
+                <tr class="@(p.IsActive ? "" : "row-inactive")">
+                    <td><input type="text" name="nombre" value="@p.Name" class="form-control" form="@formId" /></td>
+                    <td>
+                        <input type="hidden" name="activo" value="@p.IsActive" form="@formId" />
+                        @if (p.IsActive)
+                        {
+                            <span class="badge-status badge-status--success">Activo</span>
+                        }
+                        else
+                        {
+                            <span class="badge-status badge-status--neutral">Inactivo</span>
+                        }
+                    </td>
+                    <td class="col-actions">
+                        <div class="admin-row-actions">
+                            <button type="submit" class="btn-ghost" title="Guardar" form="@formId"><i class="bi bi-check-lg"></i></button>
+                            @if (p.IsActive)
+                            {
+                                <form asp-page="./Index" asp-page-handler="Desactivar" asp-route-id="@p.Id" asp-route-nombre="@p.Name" method="post" class="d-inline-block">
+                                    <button type="submit" class="btn-ghost btn-ghost--danger" title="Desactivar"><i class="bi bi-slash-circle"></i></button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-page="./Index" asp-page-handler="Activar" asp-route-id="@p.Id" asp-route-nombre="@p.Name" method="post" class="d-inline-block">
+                                    <button type="submit" class="btn-ghost" title="Activar"><i class="bi bi-check-circle"></i></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Profiles.Count == 0)
+            {
+                <tr><td colspan="3" class="text-muted">Sin perfiles de política todavía.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@foreach (var p in Model.Profiles)
+{
+    <form id="perfil-@p.Id" asp-page="./Index" asp-page-handler="Guardar" asp-route-id="@p.Id"></form>
+}
+</div>
+
+@{ var perfilDrawerAbierto = !ViewData.ModelState.IsValid; }
+<div id="drawer-nuevo-perfil" class="drawer-overlay @(perfilDrawerAbierto ? "is-open" : "")" data-drawer>
+    <aside class="drawer-panel @(perfilDrawerAbierto ? "is-open" : "")">
+        <div class="drawer-header">
+            <h3>Nuevo perfil de política</h3>
+            <button type="button" class="btn-ghost" data-drawer-close aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="post" asp-page-handler="Crear">
+            <div class="drawer-body">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div class="mb-3">
+                    <label asp-for="New.Name" class="form-label">Nombre</label>
+                    <input asp-for="New.Name" class="form-control" placeholder="Ej. Supervisor en terreno, Oficina..." />
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button type="button" class="btn btn-secondary" data-drawer-close>Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear</button>
+            </div>
+        </form>
+    </aside>
+</div>

@@ -42,6 +42,7 @@
                 <th>Tipo de gasto</th>
                 <th>Fecha</th>
                 <th>Monto</th>
+                <th>Monto Reembolso</th>
                 <th>Glosa</th>
             </tr>
         </thead>
@@ -55,12 +56,13 @@
                     <td>@l.ExpenseTypeName</td>
                     <td>@l.Date.ToString("dd-MM-yyyy")</td>
                     <td><rnd-amount value="@l.Amount" currency="@l.Currency" /></td>
+                    <td><rnd-amount value="@l.ReimbursementAmount" currency="@l.Currency" /></td>
                     <td>@l.Notes</td>
                 </tr>
             }
             @if (Model.Lines.Count == 0)
             {
-                <tr><td colspan="7" class="admin-muted">Sin rendiciones aprobadas en el período seleccionado.</td></tr>
+                <tr><td colspan="8" class="admin-muted">Sin rendiciones aprobadas en el período seleccionado.</td></tr>
             }
         </tbody>
         @if (Model.Lines.Count > 0)
@@ -68,7 +70,9 @@
             <tfoot>
                 <tr>
                     <td colspan="5"><strong>Total</strong></td>
-                    <td colspan="2"><strong><rnd-amount value="@Model.Lines.Sum(l => l.Amount)" /></strong></td>
+                    <td><strong><rnd-amount value="@Model.Lines.Sum(l => l.Amount)" /></strong></td>
+                    <td><strong><rnd-amount value="@Model.Lines.Sum(l => l.ReimbursementAmount)" /></strong></td>
+                    <td></td>
                 </tr>
             </tfoot>
         }

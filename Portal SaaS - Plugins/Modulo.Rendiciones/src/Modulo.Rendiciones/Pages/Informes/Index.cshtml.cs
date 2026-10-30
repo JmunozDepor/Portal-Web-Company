@@ -16,18 +16,21 @@ public sealed class IndexModel : RendicionesRendidorPageModelBase
     private readonly IExpenseReportService _reports;
     private readonly IExpenseService _expenses;
     private readonly IExpensePolicyService _policies;
+    private readonly IPolicyProfileService _policyProfiles;
     private readonly IUserCostCenterService _costCenters;
     private readonly IExpenseFundService _funds;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
-    public IndexModel(IExpenseReportService reports, IExpenseService expenses, IExpensePolicyService policies, IUserCostCenterService costCenters,
-        IExpenseFundService funds, IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+    public IndexModel(IExpenseReportService reports, IExpenseService expenses, IExpensePolicyService policies,
+        IPolicyProfileService policyProfiles, IUserCostCenterService costCenters, IExpenseFundService funds,
+        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
         _reports = reports;
         _expenses = expenses;
         _policies = policies;
+        _policyProfiles = policyProfiles;
         _costCenters = costCenters;
         _funds = funds;
         _currentUser = currentUser;
@@ -39,11 +42,19 @@ public sealed class IndexModel : RendicionesRendidorPageModelBase
     public IReadOnlyList<CostCenterDto> CostCenters { get; private set; } = Array.Empty<CostCenterDto>();
     public IReadOnlyList<ExpenseFund> OpenFunds { get; private set; } = Array.Empty<ExpenseFund>();
 
-    /// <summary>Misma idea que Pages/Gastos/IndexModel -- se carga una vez para no consultar
-    /// la política por fila al mostrar la columna "Política" en "Nuevo informe".</summary>
-    private Dictionary<long, ExpensePolicy> PolicyByExpenseType { get; set; } = new();
+    /// <summary>I5: misma resolución real de política que ExpensePolicyService.ValidateAsync
+    /// usa al guardar (no una "última política" arbitraria del tipo) -- ver
+    /// Pages/Gastos/IndexModel.PolicyLabelAsync, mismo criterio.</summary>
+    public async Task<string> PolicyLabelAsync(ExpenseReportLine expense, CancellationToken ct = default)
+    {
+        if (expense.ExpenseTypeId is not { } typeId)
+            return "Sin política";
 
-    public string PolicyLabel(ExpenseReportLine expense) => RendicionesUi.PolicyLabel(expense, PolicyByExpenseType);
+        var userProfileId = await _policyProfiles.GetAssignedProfileIdAsync(_currentCompany.CompanyId, expense.UserId, ct);
+        var policy = await _policies.FindApplicablePolicyAsync(_currentCompany.CompanyId, typeId, expense.CityId,
+            userProfileId, ExpensePolicyPeriod.PerDocument, ct);
+        return RendicionesUi.PolicyLabel(policy);
+    }
 
     [BindProperty]
     public List<long> SelectedExpenseIds { get; set; } = new();
@@ -97,11 +108,5 @@ public sealed class IndexModel : RendicionesRendidorPageModelBase
         OpenFunds = (await _funds.ListByUserAsync(_currentCompany.CompanyId, _currentUser.UserId, ct))
             .Where(f => f.Status == "Open")
             .ToList();
-
-        var policies = await _policies.ListAsync(_currentCompany.CompanyId, ct);
-        PolicyByExpenseType = policies
-            .Where(p => p.IsActive)
-            .GroupBy(p => p.ExpenseTypeId)
-            .ToDictionary(g => g.Key, g => g.Last());
     }
 }

@@ -58,7 +58,16 @@ else
                     </div>
                 </div>
                 <div class="rnd-card-meta">
-                    <span class="rnd-card-amount"><rnd-amount value="@r.Lines.Sum(d => d.ReimbursementAmount)" /></span>
+                    @{
+                        var boletaTotalPendiente = r.Lines.Sum(d => d.Amount);
+                        var reembolsoTotalPendiente = r.Lines.Sum(d => d.ReimbursementAmount);
+                    }
+                    @if (reembolsoTotalPendiente < boletaTotalPendiente)
+                    {
+                        <span class="badge-status badge-status--warning" title="Contiene líneas ajustadas por política">Ajustado</span>
+                        <span class="admin-muted">Boleta: <rnd-amount value="@boletaTotalPendiente" /></span>
+                    }
+                    <span class="rnd-card-amount"><rnd-amount value="@reembolsoTotalPendiente" /></span>
                 </div>
             </a>
         }
@@ -99,7 +108,16 @@ else
                 <div class="rnd-card-meta">
                     <span class="rnd-badge @decisionBadge">@decisionTexto</span>
                     <span class="rnd-badge @RendicionesUi.BadgeClass(r.Status)">@r.Status</span>
-                    <span class="rnd-card-amount"><rnd-amount value="@r.Lines.Sum(d => d.ReimbursementAmount)" /></span>
+                    @{
+                        var boletaTotalResuelto = r.Lines.Sum(d => d.Amount);
+                        var reembolsoTotalResuelto = r.Lines.Sum(d => d.ReimbursementAmount);
+                    }
+                    @if (reembolsoTotalResuelto < boletaTotalResuelto)
+                    {
+                        <span class="badge-status badge-status--warning" title="Contiene líneas ajustadas por política">Ajustado</span>
+                        <span class="admin-muted">Boleta: <rnd-amount value="@boletaTotalResuelto" /></span>
+                    }
+                    <span class="rnd-card-amount"><rnd-amount value="@reembolsoTotalResuelto" /></span>
                 </div>
             </a>
         }

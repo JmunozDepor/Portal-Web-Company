@@ -25,13 +25,14 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
     private readonly IRoutingService _routing;
     private readonly ISupplierHintService _supplierHints;
     private readonly IAmountFormatService _amountFormat;
+    private readonly ICityService _cities;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
     public DetalleModel(IExpenseService expenses, IExpenseTypeService expenseTypes, IDocumentTypeService documentTypes,
         IExpensePolicyService policies, IExpenseApprovalGroupService approvalGroups, IUserCostCenterService userCostCenters,
         IAttachmentStorageService attachments, IRoutingService routing, ISupplierHintService supplierHints,
-        IAmountFormatService amountFormat, IRendicionesUserRoleService roles, ICurrentUserContext currentUser,
+        IAmountFormatService amountFormat, ICityService cities, IRendicionesUserRoleService roles, ICurrentUserContext currentUser,
         ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
@@ -45,6 +46,7 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
         _routing = routing;
         _supplierHints = supplierHints;
         _amountFormat = amountFormat;
+        _cities = cities;
         _currentUser = currentUser;
         _currentCompany = currentCompany;
     }
@@ -79,6 +81,14 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
 
     public IReadOnlyList<ExpenseType> ExpenseTypes { get; private set; } = Array.Empty<ExpenseType>();
     public IReadOnlyList<DocumentType> DocumentTypes { get; private set; } = Array.Empty<DocumentType>();
+    public IReadOnlyList<City> Cities { get; private set; } = Array.Empty<City>();
+
+    /// <summary>ExpenseTypeIds que tienen al menos una política activa acotada a una ciudad
+    /// concreta (CityId != null) -- determina si el combo "Ciudad" se muestra en el
+    /// formulario para el tipo elegido (Task 10). Se calcula una sola vez en
+    /// LoadCatalogsAsync, mismo criterio de "una sola consulta" que PolicyByExpenseType
+    /// en Pages/Gastos/Index.</summary>
+    public IReadOnlySet<long> ExpenseTypeIdsWithCityPolicy { get; private set; } = new HashSet<long>();
 
     [BindProperty]
     public ExpenseInput Input { get; set; } = new();
@@ -126,6 +136,8 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
             Notes = expense.Notes,
             Origin = expense.Origin,
             Destination = expense.Destination,
+            CityId = expense.CityId,
+            Quantity = expense.Quantity,
         };
         return Page();
     }
@@ -325,6 +337,13 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
     {
         ExpenseTypes = await _expenseTypes.ListActiveAsync(_currentCompany.CompanyId, ct);
         DocumentTypes = await _documentTypes.ListActiveAsync(_currentCompany.CompanyId, ct);
+        Cities = await _cities.ListActiveAsync(_currentCompany.CompanyId, ct);
+
+        var policies = await _policies.ListAsync(_currentCompany.CompanyId, ct);
+        ExpenseTypeIdsWithCityPolicy = policies
+            .Where(p => p.IsActive && p.CityId is not null)
+            .Select(p => p.ExpenseTypeId)
+            .ToHashSet();
     }
 
     public sealed class ExpenseInput

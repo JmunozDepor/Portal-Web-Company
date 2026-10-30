@@ -37,7 +37,7 @@ public class ExpensePolicyServiceTests
         var companyId = Guid.NewGuid();
         await using var db = CreateDb(nameof(CreateAsync_DefaultCityAndProfile_Persists));
         var expenseTypeId = await CreateExpenseTypeAsync(db, companyId);
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
 
         var id = await sut.CreateAsync(companyId, expenseTypeId, cityId: null, policyProfileId: null,
             period: ExpensePolicyPeriod.PerDocument, maxAmount: 15000m);
@@ -62,7 +62,7 @@ public class ExpensePolicyServiceTests
         var cityConcepcion = new City { CompanyId = companyId, Name = "Concepción" };
         db.Cities.AddRange(citySantiago, cityConcepcion);
         await db.SaveChangesAsync();
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
 
         await sut.CreateAsync(companyId, expenseTypeId, citySantiago.Id, null, ExpensePolicyPeriod.PerDocument, 20000m);
         await sut.CreateAsync(companyId, expenseTypeId, cityConcepcion.Id, null, ExpensePolicyPeriod.PerDocument, 10000m);
@@ -77,7 +77,7 @@ public class ExpensePolicyServiceTests
         var companyId = Guid.NewGuid();
         await using var db = CreateDb(nameof(CreateAsync_DuplicateTypeAndCityAndProfile_ThrowsFriendlyMessage));
         var expenseTypeId = await CreateExpenseTypeAsync(db, companyId);
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
         await sut.CreateAsync(companyId, expenseTypeId, null, null, ExpensePolicyPeriod.PerDocument, 15000m);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -95,7 +95,7 @@ public class ExpensePolicyServiceTests
         var city = new City { CompanyId = companyId, Name = "Santiago" };
         db.Cities.Add(city);
         await db.SaveChangesAsync();
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
 
         var id = await sut.CreateAsync(companyId, expenseTypeId, city.Id, null, ExpensePolicyPeriod.Weekly, 50000m);
 
@@ -111,7 +111,7 @@ public class ExpensePolicyServiceTests
         var companyId = Guid.NewGuid();
         await using var db = CreateDb(nameof(UpdateAsync_NoLongerAcceptsIsBlocking));
         var expenseTypeId = await CreateExpenseTypeAsync(db, companyId);
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
         var id = await sut.CreateAsync(companyId, expenseTypeId, null, null, ExpensePolicyPeriod.PerDocument, 15000m);
 
         // Compila sin parámetro isBlocking -- la firma ya no lo acepta.

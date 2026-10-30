@@ -190,6 +190,8 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
                 Origin = isMileage ? Input.Origin : null,
                 Destination = isMileage ? Input.Destination : null,
                 ExpenseReceiptId = receiptId,
+                CityId = Input.CityId,
+                Quantity = Input.Quantity,
             };
 
             var warnings = id is null
@@ -376,5 +378,15 @@ public sealed class DetalleModel : RendicionesRendidorPageModelBase
 
         [StringLength(300)]
         public string? Destination { get; set; }
+
+        /// <summary>Ciudad donde se incurrió el gasto -- acota la política por ciudad (Task 7). La
+        /// UI real (select condicionado a si el tipo tiene una política por ciudad activa) es
+        /// Task 10; acá solo se agrega al binding para que el dato llegue a ExpenseService.</summary>
+        public long? CityId { get; set; }
+
+        /// <summary>Cantidad (ej. días) cuando ExpenseType.RequiresQuantity -- multiplica el tope
+        /// por unidad en la política (Task 7). La UI real (input condicionado a RequiresQuantity)
+        /// es Task 10; acá solo se agrega al binding para que el dato llegue a ExpenseService.</summary>
+        public decimal? Quantity { get; set; }
     }
 }

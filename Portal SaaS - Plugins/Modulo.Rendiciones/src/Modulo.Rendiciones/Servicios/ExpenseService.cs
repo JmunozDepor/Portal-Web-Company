@@ -54,18 +54,13 @@ public sealed class ExpenseService : IExpenseService
     {
         await ApplyMileageIfApplicableAsync(expense, ct);
 
-        var result = await _policies.ValidateAsync(expense.CompanyId, expense.UserId, expense.ExpenseTypeId, expense.Amount,
-            expense.DocumentNumber, expense.SupplierTaxId, expenseIdToExclude: null, ct);
-
-        if (result.Blocked)
-            throw new InvalidOperationException(string.Join(" ", result.Warnings));
+        var result = await _policies.ValidateAsync(expense.CompanyId, expense.UserId, expense.ExpenseTypeId, expense.CityId,
+            expense.Amount, expense.Quantity ?? 1, expense.DocumentNumber, expense.SupplierTaxId, expenseIdToExclude: null, ct);
 
         expense.Status = "Loose";
         expense.ExpenseReportId = null;
         expense.Date = NormalizeDate(expense.Date);
-        // TODO(Task 7): acá se aplicará la política de gasto por ciudad/perfil -- por ahora
-        // no hay motor de topes, así que el monto reembolsable es siempre el monto total.
-        expense.ReimbursementAmount = expense.Amount;
+        expense.ReimbursementAmount = result.ReimbursementAmount;
         _db.ExpenseReportLines.Add(expense);
         await _db.SaveChangesAsync(ct);
 
@@ -79,11 +74,8 @@ public sealed class ExpenseService : IExpenseService
 
         await ApplyMileageIfApplicableAsync(data, ct);
 
-        var result = await _policies.ValidateAsync(companyId, expense.UserId, data.ExpenseTypeId, data.Amount,
-            data.DocumentNumber, data.SupplierTaxId, expenseIdToExclude: id, ct);
-
-        if (result.Blocked)
-            throw new InvalidOperationException(string.Join(" ", result.Warnings));
+        var result = await _policies.ValidateAsync(companyId, expense.UserId, data.ExpenseTypeId, data.CityId,
+            data.Amount, data.Quantity ?? 1, data.DocumentNumber, data.SupplierTaxId, expenseIdToExclude: id, ct);
 
         expense.ExpenseTypeId = data.ExpenseTypeId;
         expense.DocumentTypeId = data.DocumentTypeId;
@@ -104,9 +96,7 @@ public sealed class ExpenseService : IExpenseService
         expense.AppliedRatePerKm = data.AppliedRatePerKm;
         if (data.ExpenseReceiptId is not null)
             expense.ExpenseReceiptId = data.ExpenseReceiptId;
-        // TODO(Task 7): acá se aplicará la política de gasto por ciudad/perfil -- por ahora
-        // no hay motor de topes, así que el monto reembolsable es siempre el monto total.
-        expense.ReimbursementAmount = expense.Amount;
+        expense.ReimbursementAmount = result.ReimbursementAmount;
 
         await _db.SaveChangesAsync(ct);
 

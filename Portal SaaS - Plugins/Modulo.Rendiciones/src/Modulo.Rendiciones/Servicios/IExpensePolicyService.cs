@@ -25,14 +25,18 @@ public interface IExpensePolicyService
     Task DeleteAsync(long id, Guid companyId, CancellationToken ct = default);
 
     /// <summary>
-    /// Evalúa un gasto contra la política de su tipo (si existe y está activa) y busca
-    /// un posible duplicado (mismo número de documento + RUT/tax id proveedor, del
-    /// mismo usuario, en otro gasto). No persiste nada -- IExpenseService decide qué
-    /// hacer con el resultado. expenseIdToExclude: al editar, no comparar el gasto
-    /// contra sí mismo.
+    /// Evalúa un gasto contra la política PerDocument aplicable (resuelta vía
+    /// FindApplicablePolicyAsync, según ciudad y perfil asignado al usuario) y busca un
+    /// posible duplicado (mismo número de documento + RUT/tax id proveedor, del mismo
+    /// usuario, en otro gasto). No persiste nada -- IExpenseService decide qué hacer con
+    /// el resultado. cityId/quantity vienen del gasto (quantity ya resuelto a 1 por el
+    /// llamador si el tipo no la requiere). expenseIdToExclude: al editar, no comparar el
+    /// gasto contra sí mismo. Solo considera políticas PerDocument -- el acumulado Weekly
+    /// es una advertencia aparte (Task 8), nunca toca ReimbursementAmount acá.
     /// </summary>
-    Task<ExpenseValidationResult> ValidateAsync(Guid companyId, Guid userId, long? expenseTypeId, decimal amount,
-        string? documentNumber, string? supplierTaxId, long? expenseIdToExclude, CancellationToken ct = default);
+    Task<ExpenseValidationResult> ValidateAsync(Guid companyId, Guid userId, long? expenseTypeId, long? cityId,
+        decimal amount, decimal quantity, string? documentNumber, string? supplierTaxId, long? expenseIdToExclude,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Resuelve cuál fila de ExpensePolicy aplica a (expenseTypeId, cityId, userProfileId,

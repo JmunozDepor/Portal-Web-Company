@@ -63,7 +63,7 @@ public class ExpensePolicyServiceResolutionTests
         await AddPolicyAsync(db, companyId, expenseTypeId, null, profileSupervisor, 4000m);
         await AddPolicyAsync(db, companyId, expenseTypeId, null, null, 3000m);
 
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
         var result = await sut.FindApplicablePolicyAsync(companyId, expenseTypeId, citySantiago, profileSupervisor,
             ExpensePolicyPeriod.PerDocument);
 
@@ -85,7 +85,7 @@ public class ExpensePolicyServiceResolutionTests
         await AddPolicyAsync(db, companyId, expenseTypeId, null, profileSupervisor, 4000m);
         await AddPolicyAsync(db, companyId, expenseTypeId, null, null, 3000m);
 
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
         var result = await sut.FindApplicablePolicyAsync(companyId, expenseTypeId, citySantiago, profileSupervisor,
             ExpensePolicyPeriod.PerDocument);
 
@@ -106,7 +106,7 @@ public class ExpensePolicyServiceResolutionTests
         var level3Id = await AddPolicyAsync(db, companyId, expenseTypeId, null, profileSupervisor, 4000m);
         await AddPolicyAsync(db, companyId, expenseTypeId, null, null, 3000m);
 
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
         var result = await sut.FindApplicablePolicyAsync(companyId, expenseTypeId, citySantiago, profileSupervisor,
             ExpensePolicyPeriod.PerDocument);
 
@@ -126,7 +126,7 @@ public class ExpensePolicyServiceResolutionTests
 
         var level4Id = await AddPolicyAsync(db, companyId, expenseTypeId, null, null, 3000m);
 
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
         var result = await sut.FindApplicablePolicyAsync(companyId, expenseTypeId, citySantiago, profileSupervisor,
             ExpensePolicyPeriod.PerDocument);
 
@@ -142,7 +142,7 @@ public class ExpensePolicyServiceResolutionTests
         await using var db = CreateDb(nameof(NoPolicyAtAll_ReturnsNull));
         var expenseTypeId = await CreateExpenseTypeAsync(db, companyId);
 
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
         var result = await sut.FindApplicablePolicyAsync(companyId, expenseTypeId, cityId: 100, userProfileId: 200,
             ExpensePolicyPeriod.PerDocument);
 
@@ -164,7 +164,7 @@ public class ExpensePolicyServiceResolutionTests
         var level2Id = await AddPolicyAsync(db, companyId, expenseTypeId, citySantiago, null, 5000m);
         var level4Id = await AddPolicyAsync(db, companyId, expenseTypeId, null, null, 3000m);
 
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
 
         var withCity = await sut.FindApplicablePolicyAsync(companyId, expenseTypeId, citySantiago,
             userProfileId: null, ExpensePolicyPeriod.PerDocument);
@@ -188,7 +188,7 @@ public class ExpensePolicyServiceResolutionTests
 
         await AddPolicyAsync(db, companyId, expenseTypeId, citySantiago, profileSupervisor, 6000m, isActive: false);
 
-        var sut = new ExpensePolicyService(db);
+        var sut = new ExpensePolicyService(db, new PolicyProfileService(db));
         var result = await sut.FindApplicablePolicyAsync(companyId, expenseTypeId, citySantiago, profileSupervisor,
             ExpensePolicyPeriod.PerDocument);
 

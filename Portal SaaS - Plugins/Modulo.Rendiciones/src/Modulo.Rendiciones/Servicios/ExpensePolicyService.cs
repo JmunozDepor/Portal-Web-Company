@@ -7,10 +7,12 @@ namespace Modulo.Rendiciones.Servicios;
 public sealed class ExpensePolicyService : IExpensePolicyService
 {
     private readonly RendicionesDbContext _db;
+    private readonly IPolicyProfileService _profiles;
 
-    public ExpensePolicyService(RendicionesDbContext db)
+    public ExpensePolicyService(RendicionesDbContext db, IPolicyProfileService profiles)
     {
         _db = db;
+        _profiles = profiles;
     }
 
     public async Task<IReadOnlyList<ExpensePolicy>> ListAsync(Guid companyId, CancellationToken ct = default) =>
@@ -67,24 +69,26 @@ public sealed class ExpensePolicyService : IExpensePolicyService
         await _db.SaveChangesAsync(ct);
     }
 
-    public async Task<ExpenseValidationResult> ValidateAsync(Guid companyId, Guid userId, long? expenseTypeId, decimal amount,
-        string? documentNumber, string? supplierTaxId, long? expenseIdToExclude, CancellationToken ct = default)
+    public async Task<ExpenseValidationResult> ValidateAsync(Guid companyId, Guid userId, long? expenseTypeId, long? cityId,
+        decimal amount, decimal quantity, string? documentNumber, string? supplierTaxId, long? expenseIdToExclude,
+        CancellationToken ct = default)
     {
         var warnings = new List<string>();
-        var blocked = false;
+        var reimbursement = amount;
 
         if (expenseTypeId is { } typeId)
         {
-            var policy = await _db.ExpensePolicies
-                .FirstOrDefaultAsync(p => p.CompanyId == companyId && p.ExpenseTypeId == typeId && p.IsActive, ct);
+            var userProfileId = await _profiles.GetAssignedProfileIdAsync(companyId, userId, ct);
+            var policy = await FindApplicablePolicyAsync(companyId, typeId, cityId, userProfileId, ExpensePolicyPeriod.PerDocument, ct);
 
-            if (policy?.MaxAmount is { } cap && amount > cap)
+            if (policy?.MaxAmount is { } maxAmount)
             {
-                // Removido 2026-10-29: ExpensePolicy ya no tiene IsBlocking -- superar el tope
-                // siempre es solo una advertencia (el bloqueo por monto no existe más en este
-                // módulo). "blocked" queda siempre false; la resolución real de qué política
-                // aplica por ciudad/perfil es Task 6, no este método.
-                warnings.Add($"El monto ({amount:N0}) supera el tope sugerido para esta categoría ({cap:N0}) -- se guardó igual, es solo una advertencia.");
+                var tope = maxAmount * quantity;
+                if (amount > tope)
+                {
+                    reimbursement = tope;
+                    warnings.Add($"El monto ({amount:N0}) supera el tope de esta política ({tope:N0}) -- se reembolsará {reimbursement:N0}.");
+                }
             }
         }
 
@@ -99,7 +103,7 @@ public sealed class ExpensePolicyService : IExpensePolicyService
                 warnings.Add($"Ya tenés otro gasto con el número de documento \"{documentNumber}\" -- revisá que no sea un duplicado (por ejemplo, de una importación por OCR repetida).");
         }
 
-        return new ExpenseValidationResult(blocked, warnings);
+        return new ExpenseValidationResult(reimbursement, warnings);
     }
 
     public async Task<ExpensePolicy?> FindApplicablePolicyAsync(Guid companyId, long expenseTypeId, long? cityId,

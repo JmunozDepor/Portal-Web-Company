@@ -38,9 +38,10 @@ public class ExpenseServiceTests
         public Task UpdateAsync(long id, Guid companyId, decimal? maxAmount, bool isActive, CancellationToken ct = default) => throw new NotImplementedException();
         public Task DeleteAsync(long id, Guid companyId, CancellationToken ct = default) => throw new NotImplementedException();
 
-        public Task<ExpenseValidationResult> ValidateAsync(Guid companyId, Guid userId, long? expenseTypeId, decimal amount,
-            string? documentNumber, string? supplierTaxId, long? expenseIdToExclude, CancellationToken ct = default) =>
-            Task.FromResult(new ExpenseValidationResult(false, Array.Empty<string>()));
+        public Task<ExpenseValidationResult> ValidateAsync(Guid companyId, Guid userId, long? expenseTypeId, long? cityId,
+            decimal amount, decimal quantity, string? documentNumber, string? supplierTaxId, long? expenseIdToExclude,
+            CancellationToken ct = default) =>
+            Task.FromResult(new ExpenseValidationResult(amount, Array.Empty<string>()));
 
         public Task<ExpensePolicy?> FindApplicablePolicyAsync(Guid companyId, long expenseTypeId, long? cityId,
             long? userProfileId, string period, CancellationToken ct = default) =>

@@ -101,4 +101,35 @@ public sealed class ExpensePolicyService : IExpensePolicyService
 
         return new ExpenseValidationResult(blocked, warnings);
     }
+
+    public async Task<ExpensePolicy?> FindApplicablePolicyAsync(Guid companyId, long expenseTypeId, long? cityId,
+        long? userProfileId, string period, CancellationToken ct = default)
+    {
+        // Trae de una sola query las políticas activas de (companyId, expenseTypeId, period)
+        // que son candidatas (CityId/PolicyProfileId nulos "comodín", o iguales a lo pedido) y
+        // elige en memoria la de mayor especificidad -- el volumen por tipo es bajo, no hace
+        // falta resolver esto con 4 queries ni con SQL puro (spec, Decisión 4).
+        var candidates = await _db.ExpensePolicies
+            .Where(p => p.CompanyId == companyId && p.ExpenseTypeId == expenseTypeId && p.Period == period && p.IsActive)
+            .Where(p => (p.CityId == null || p.CityId == cityId) &&
+                        (p.PolicyProfileId == null || p.PolicyProfileId == userProfileId))
+            .ToListAsync(ct);
+
+        return candidates
+            .OrderByDescending(Specificity)
+            .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Orden de especificidad del spec (Decisión 4): ciudad+perfil &gt; ciudad sola &gt;
+    /// perfil solo &gt; ninguno. Solo se invoca sobre candidatos ya filtrados como elegibles
+    /// por FindApplicablePolicyAsync.
+    /// </summary>
+    private static int Specificity(ExpensePolicy policy) => (policy.CityId is not null, policy.PolicyProfileId is not null) switch
+    {
+        (true, true) => 4,
+        (true, false) => 3,
+        (false, true) => 2,
+        (false, false) => 1,
+    };
 }

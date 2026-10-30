@@ -33,4 +33,18 @@ public interface IExpensePolicyService
     /// </summary>
     Task<ExpenseValidationResult> ValidateAsync(Guid companyId, Guid userId, long? expenseTypeId, decimal amount,
         string? documentNumber, string? supplierTaxId, long? expenseIdToExclude, CancellationToken ct = default);
+
+    /// <summary>
+    /// Resuelve cuál fila de ExpensePolicy aplica a (expenseTypeId, cityId, userProfileId,
+    /// period) para una compañía, según el orden de especificidad del spec (Decisión 4):
+    /// 1. CityId = cityId Y PolicyProfileId = userProfileId (si el usuario tiene perfil).
+    /// 2. CityId = cityId Y PolicyProfileId = null.
+    /// 3. CityId = null Y PolicyProfileId = userProfileId (si el usuario tiene perfil).
+    /// 4. CityId = null Y PolicyProfileId = null.
+    /// Solo considera políticas activas (IsActive). Una fila con PolicyProfileId no-null
+    /// nunca matchea un usuario sin perfil (userProfileId == null). Devuelve null si
+    /// ninguna política aplica.
+    /// </summary>
+    Task<ExpensePolicy?> FindApplicablePolicyAsync(Guid companyId, long expenseTypeId, long? cityId,
+        long? userProfileId, string period, CancellationToken ct = default);
 }

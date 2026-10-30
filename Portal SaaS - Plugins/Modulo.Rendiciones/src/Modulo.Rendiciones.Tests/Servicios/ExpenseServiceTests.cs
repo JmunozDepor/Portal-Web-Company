@@ -41,6 +41,10 @@ public class ExpenseServiceTests
         public Task<ExpenseValidationResult> ValidateAsync(Guid companyId, Guid userId, long? expenseTypeId, decimal amount,
             string? documentNumber, string? supplierTaxId, long? expenseIdToExclude, CancellationToken ct = default) =>
             Task.FromResult(new ExpenseValidationResult(false, Array.Empty<string>()));
+
+        public Task<ExpensePolicy?> FindApplicablePolicyAsync(Guid companyId, long expenseTypeId, long? cityId,
+            long? userProfileId, string period, CancellationToken ct = default) =>
+            Task.FromResult<ExpensePolicy?>(null);
     }
 
     private sealed class NoopRoutingService : IRoutingService

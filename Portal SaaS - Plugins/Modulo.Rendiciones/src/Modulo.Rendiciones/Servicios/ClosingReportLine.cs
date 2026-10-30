@@ -15,4 +15,11 @@ public sealed record ClosingReportLine(
     DateTimeOffset Date,
     decimal Amount,
     string Currency,
-    string? Notes);
+    string? Notes,
+    /// <summary>
+    /// Monto efectivamente reembolsado/contabilizado (ExpenseReportLine.ReimbursementAmount,
+    /// Task 7) -- puede ser menor que <see cref="Amount"/> cuando una política de gasto topó
+    /// el reembolso. Es lo que se exporta/contabiliza en SAP; Amount queda como referencia de
+    /// lo que decía la boleta.
+    /// </summary>
+    decimal ReimbursementAmount);

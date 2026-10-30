@@ -87,7 +87,8 @@ public sealed class ClosingReportService : IClosingReportService
                     line.Date,
                     line.Amount,
                     line.Currency,
-                    line.Notes));
+                    line.Notes,
+                    line.ReimbursementAmount));
             }
         }
 

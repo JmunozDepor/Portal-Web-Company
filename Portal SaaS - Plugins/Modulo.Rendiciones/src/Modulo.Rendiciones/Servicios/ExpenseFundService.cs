@@ -33,7 +33,7 @@ public sealed class ExpenseFundService : IExpenseFundService
 
         var totalSettled = await _db.ExpenseReportLines
             .Where(d => d.ExpenseReport!.ExpenseFundId == fundId && d.ExpenseReport.Status == "Approved")
-            .SumAsync(d => (decimal?)d.Amount, ct) ?? 0m;
+            .SumAsync(d => (decimal?)d.ReimbursementAmount, ct) ?? 0m;
 
         return fund.Amount - totalSettled;
     }

@@ -260,8 +260,25 @@ public sealed class DetalleModel : RendicionesRendidorOAprobadorPageModelBase
             .ToList();
         LooseExpensesToAdd = await _expenses.ListLooseAsync(_currentCompany.CompanyId, report.UserId, ct);
         History = history;
-        WeeklyWarnings = await _weeklyLimits.GetWarningsAsync(_currentCompany.CompanyId, report.UserId,
-            DateOnly.FromDateTime(DateTime.Today), ct);
+
+        // Las advertencias de tope semanal (Task 8) deben evaluarse sobre la(s) semana(s) en
+        // que realmente caen las líneas del informe -- NO sobre "hoy" (bug real de la revisión
+        // final, 2026-10-29): un informe revisado semanas después de incurrido el gasto nunca
+        // mostraba la advertencia, o podía mostrar una advertencia de una semana sin relación
+        // con el informe. Se llama una vez por cada lunes distinto entre las líneas
+        // (deduplicado) y se concatenan los resultados -- GetWarningsAsync ya es puramente de
+        // lectura y acota internamente por semana, así que llamarlo varias veces es seguro.
+        var weeksInReport = report.Lines
+            .Select(l => StartOfWeek(DateOnly.FromDateTime(l.Date.Date)))
+            .Distinct()
+            .ToList();
+
+        var weeklyWarnings = new List<WeeklyLimitWarning>();
+        foreach (var weekStart in weeksInReport)
+        {
+            weeklyWarnings.AddRange(await _weeklyLimits.GetWarningsAsync(_currentCompany.CompanyId, report.UserId, weekStart, ct));
+        }
+        WeeklyWarnings = weeklyWarnings;
 
         // ITenantUserAdminService.ListAsync() ya está acotado a la organización actual
         // (mismo patrón que Pages/Aprobaciones/Index y Servicios/ClosingReportService).
@@ -270,6 +287,13 @@ public sealed class DetalleModel : RendicionesRendidorOAprobadorPageModelBase
             .ToDictionary(u => u.Id, u => string.IsNullOrWhiteSpace(u.FullName) ? u.Username : $"{u.FullName} ({u.Username})");
 
         return true;
+    }
+
+    /// <summary>Lunes de la semana calendario que contiene <paramref name="date"/> -- mismo criterio que WeeklyExpenseLimitService.StartOfWeek (duplicado a propósito: es una función de una línea, no vale la pena acoplar las dos clases por esto).</summary>
+    private static DateOnly StartOfWeek(DateOnly date)
+    {
+        var diff = ((int)date.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+        return date.AddDays(-diff);
     }
 
     public sealed class HeaderInput

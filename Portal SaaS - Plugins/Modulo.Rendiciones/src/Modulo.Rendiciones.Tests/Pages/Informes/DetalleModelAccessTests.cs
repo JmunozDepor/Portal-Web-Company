@@ -109,16 +109,15 @@ public class DetalleModelAccessTests
     private sealed class StubWeeklyExpenseLimitService : IWeeklyExpenseLimitService
     {
         public IReadOnlyList<WeeklyLimitWarning> Warnings { get; set; } = Array.Empty<WeeklyLimitWarning>();
-        public Guid? LastCompanyId { get; private set; }
-        public Guid? LastUserId { get; private set; }
-        public DateOnly? LastAnyDateInWeek { get; private set; }
+
+        /// <summary>Registra TODAS las llamadas (C1: LoadAsync ahora llama una vez por semana
+        /// distinta entre las líneas del informe, no una sola vez con "hoy").</summary>
+        public List<(Guid CompanyId, Guid UserId, DateOnly AnyDateInWeek)> Calls { get; } = new();
 
         public Task<IReadOnlyList<WeeklyLimitWarning>> GetWarningsAsync(Guid companyId, Guid userId, DateOnly anyDateInWeek,
             CancellationToken ct = default)
         {
-            LastCompanyId = companyId;
-            LastUserId = userId;
-            LastAnyDateInWeek = anyDateInWeek;
+            Calls.Add((companyId, userId, anyDateInWeek));
             return Task.FromResult(Warnings);
         }
     }
@@ -204,12 +203,18 @@ public class DetalleModelAccessTests
         var report = new ExpenseReport { CompanyId = companyId, UserId = requesterId, Status = "Draft" };
         db.ExpenseReports.Add(report);
         await db.SaveChangesAsync();
+        db.ExpenseReportLines.Add(new ExpenseReportLine
+        {
+            CompanyId = companyId, UserId = requesterId, ExpenseReportId = report.Id, Status = "InReport",
+            Date = new DateTimeOffset(2026, 9, 2, 0, 0, 0, TimeSpan.Zero), Amount = 1000m, ReimbursementAmount = 1000m, Currency = "CLP",
+        });
+        await db.SaveChangesAsync();
 
         var groups = new StubApprovalGroupService();
         var reports = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(),
             new FakeEmailSenderService(), new FakeUserContactLookupService(), new FakeNotificationService(), NullLogger<ExpenseReportService>.Instance);
 
-        var expectedWarning = new WeeklyLimitWarning("Viáticos", new DateOnly(2026, 10, 26), new DateOnly(2026, 11, 1), 150000m, 100000m, 50000m);
+        var expectedWarning = new WeeklyLimitWarning("Viáticos", new DateOnly(2026, 8, 31), new DateOnly(2026, 9, 6), 150000m, 100000m, 50000m);
         var weeklyLimits = new StubWeeklyExpenseLimitService { Warnings = new[] { expectedWarning } };
 
         var currentUser = new FakeCurrentUser(requesterId);
@@ -222,8 +227,12 @@ public class DetalleModelAccessTests
         Assert.IsNotType<NotFoundResult>(result);
         Assert.Single(model.WeeklyWarnings);
         Assert.Same(expectedWarning, model.WeeklyWarnings[0]);
-        Assert.Equal(companyId, weeklyLimits.LastCompanyId);
-        Assert.Equal(requesterId, weeklyLimits.LastUserId);
-        Assert.Equal(DateOnly.FromDateTime(DateTime.Today), weeklyLimits.LastAnyDateInWeek);
+
+        // C1: debe llamarse con el lunes de la semana EN QUE CAE LA LÍNEA del informe
+        // (2026-08-31, la semana de un gasto de meses atrás) -- nunca con "hoy".
+        var call = Assert.Single(weeklyLimits.Calls);
+        Assert.Equal(companyId, call.CompanyId);
+        Assert.Equal(requesterId, call.UserId);
+        Assert.Equal(new DateOnly(2026, 8, 31), call.AnyDateInWeek);
     }
 }

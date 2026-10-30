@@ -173,10 +173,20 @@
                                 <span class="rnd-card-sub rnd-review-sum-notes">Glosa: @(string.IsNullOrWhiteSpace(d.Notes) ? "—" : d.Notes)</span>
                             </span>
                         </span>
-                        <span class="rnd-review-sum-amount"><rnd-amount value="@d.Amount" currency="@d.Currency" /></span>
+                        <span class="rnd-review-sum-amount">
+                            <rnd-amount value="@d.Amount" currency="@d.Currency" />
+                            @if (d.ReimbursementAmount < d.Amount)
+                            {
+                                <span class="badge-status badge-status--warning" title="Ajustado a tope de política">Ajustado</span>
+                            }
+                        </span>
                     </summary>
                     <div class="rnd-review-body">
                         @{ await RenderLineReview(d); }
+                        @if (d.ReimbursementAmount < d.Amount)
+                        {
+                            <p class="admin-muted">Boleta: <rnd-amount value="@d.Amount" currency="@d.Currency" /> · Reembolsable: <rnd-amount value="@d.ReimbursementAmount" currency="@d.Currency" /></p>
+                        }
                         <div class="rnd-review-actions">
                             @if (d.ExpenseReceiptId is not null)
                             {
@@ -205,8 +215,34 @@
             }
         </div>
         <div class="rnd-review-total">
-            <span>Total</span>
-            <strong><rnd-amount value="@Model.Report.Lines.Sum(d => d.Amount)" /></strong>
+            @if (Model.Report.Lines.Sum(d => d.ReimbursementAmount) < Model.Report.Lines.Sum(d => d.Amount))
+            {
+                <span>Total boletas: <rnd-amount value="@Model.Report.Lines.Sum(d => d.Amount)" /> · Total a reembolsar</span>
+                <strong><rnd-amount value="@Model.Report.Lines.Sum(d => d.ReimbursementAmount)" /></strong>
+            }
+            else
+            {
+                <span>Total</span>
+                <strong><rnd-amount value="@Model.Report.Lines.Sum(d => d.ReimbursementAmount)" /></strong>
+            }
+        </div>
+    }
+
+    @if (Model.WeeklyWarnings.Count > 0)
+    {
+        <div class="admin-subcard">
+            <h4>Advertencias de tope semanal</h4>
+            <ul>
+                @foreach (var w in Model.WeeklyWarnings)
+                {
+                    <li class="admin-muted">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>@w.ExpenseTypeName</strong>: semana @w.WeekStart.ToString("dd-MM-yyyy") al @w.WeekEnd.ToString("dd-MM-yyyy")
+                        — reembolsado <rnd-amount value="@w.TotalReimbursed" />, tope <rnd-amount value="@w.MaxAmount" />
+                        (excede en <rnd-amount value="@w.Excess" />)
+                    </li>
+                }
+            </ul>
         </div>
     }
 

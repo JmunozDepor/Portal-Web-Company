@@ -19,7 +19,7 @@
     </div>
     <div class="rnd-stat-tile">
         <span class="rnd-stat-label">Monto total</span>
-        <span class="rnd-stat-value"><rnd-amount value="@Model.Pending.Sum(r => r.Lines.Sum(d => d.Amount))" /></span>
+        <span class="rnd-stat-value"><rnd-amount value="@Model.Pending.Sum(r => r.Lines.Sum(d => d.ReimbursementAmount))" /></span>
     </div>
 </div>
 
@@ -58,7 +58,7 @@ else
                     </div>
                 </div>
                 <div class="rnd-card-meta">
-                    <span class="rnd-card-amount"><rnd-amount value="@r.Lines.Sum(d => d.Amount)" /></span>
+                    <span class="rnd-card-amount"><rnd-amount value="@r.Lines.Sum(d => d.ReimbursementAmount)" /></span>
                 </div>
             </a>
         }
@@ -99,7 +99,7 @@ else
                 <div class="rnd-card-meta">
                     <span class="rnd-badge @decisionBadge">@decisionTexto</span>
                     <span class="rnd-badge @RendicionesUi.BadgeClass(r.Status)">@r.Status</span>
-                    <span class="rnd-card-amount"><rnd-amount value="@r.Lines.Sum(d => d.Amount)" /></span>
+                    <span class="rnd-card-amount"><rnd-amount value="@r.Lines.Sum(d => d.ReimbursementAmount)" /></span>
                 </div>
             </a>
         }

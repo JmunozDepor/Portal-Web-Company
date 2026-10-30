@@ -14,12 +14,14 @@ public sealed class DetalleModel : RendicionesRendidorOAprobadorPageModelBase
     private readonly IUserCostCenterService _costCenters;
     private readonly IExpenseApprovalGroupService _groups;
     private readonly ITenantUserAdminService _users;
+    private readonly IWeeklyExpenseLimitService _weeklyLimits;
     private readonly ICurrentUserContext _currentUser;
     private readonly ICurrentCompanyAccessor _currentCompany;
 
     public DetalleModel(IExpenseReportService reports, IExpenseFundService funds, IExpenseService expenses,
         IUserCostCenterService costCenters, IExpenseApprovalGroupService groups, ITenantUserAdminService users,
-        IRendicionesUserRoleService roles, ICurrentUserContext currentUser, ICurrentCompanyAccessor currentCompany)
+        IWeeklyExpenseLimitService weeklyLimits, IRendicionesUserRoleService roles, ICurrentUserContext currentUser,
+        ICurrentCompanyAccessor currentCompany)
         : base(roles, currentUser, currentCompany)
     {
         _reports = reports;
@@ -28,6 +30,7 @@ public sealed class DetalleModel : RendicionesRendidorOAprobadorPageModelBase
         _costCenters = costCenters;
         _groups = groups;
         _users = users;
+        _weeklyLimits = weeklyLimits;
         _currentUser = currentUser;
         _currentCompany = currentCompany;
     }
@@ -38,6 +41,11 @@ public sealed class DetalleModel : RendicionesRendidorOAprobadorPageModelBase
     public IReadOnlyList<ExpenseFund> OpenFunds { get; private set; } = Array.Empty<ExpenseFund>();
     public IReadOnlyList<ExpenseReportLine> LooseExpensesToAdd { get; private set; } = Array.Empty<ExpenseReportLine>();
     public IReadOnlyList<ExpenseReportAction> History { get; private set; } = Array.Empty<ExpenseReportAction>();
+
+    /// <summary>Advertencias de tope semanal (Task 8) para el dueño del informe, calculadas
+    /// sobre la semana que contiene la fecha de hoy -- puramente informativo para quien
+    /// audita/aprueba, no bloquea nada. Vacío si no hay ninguna política semanal superada.</summary>
+    public IReadOnlyList<WeeklyLimitWarning> WeeklyWarnings { get; private set; } = Array.Empty<WeeklyLimitWarning>();
 
     private IReadOnlyDictionary<Guid, string> NameByUserId { get; set; } = new Dictionary<Guid, string>();
 
@@ -252,6 +260,8 @@ public sealed class DetalleModel : RendicionesRendidorOAprobadorPageModelBase
             .ToList();
         LooseExpensesToAdd = await _expenses.ListLooseAsync(_currentCompany.CompanyId, report.UserId, ct);
         History = history;
+        WeeklyWarnings = await _weeklyLimits.GetWarningsAsync(_currentCompany.CompanyId, report.UserId,
+            DateOnly.FromDateTime(DateTime.Today), ct);
 
         // ITenantUserAdminService.ListAsync() ya está acotado a la organización actual
         // (mismo patrón que Pages/Aprobaciones/Index y Servicios/ClosingReportService).

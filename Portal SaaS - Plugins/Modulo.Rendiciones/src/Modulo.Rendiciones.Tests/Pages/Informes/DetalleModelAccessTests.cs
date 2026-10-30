@@ -106,6 +106,23 @@ public class DetalleModelAccessTests
         public Task<TenantUserPasswordResult> GenerateAndSetPasswordAsync(Guid userId, CancellationToken ct = default) => throw new NotImplementedException();
     }
 
+    private sealed class StubWeeklyExpenseLimitService : IWeeklyExpenseLimitService
+    {
+        public IReadOnlyList<WeeklyLimitWarning> Warnings { get; set; } = Array.Empty<WeeklyLimitWarning>();
+        public Guid? LastCompanyId { get; private set; }
+        public Guid? LastUserId { get; private set; }
+        public DateOnly? LastAnyDateInWeek { get; private set; }
+
+        public Task<IReadOnlyList<WeeklyLimitWarning>> GetWarningsAsync(Guid companyId, Guid userId, DateOnly anyDateInWeek,
+            CancellationToken ct = default)
+        {
+            LastCompanyId = companyId;
+            LastUserId = userId;
+            LastAnyDateInWeek = anyDateInWeek;
+            return Task.FromResult(Warnings);
+        }
+    }
+
     private sealed class NoopRoleService : IRendicionesUserRoleService
     {
         public Task<bool> HasRoleAsync(Guid companyId, Guid userId, string role, bool isPlatformAdmin, CancellationToken ct = default) => Task.FromResult(true);
@@ -163,11 +180,50 @@ public class DetalleModelAccessTests
         var currentUser = new FakeCurrentUser(approverId);
         var currentCompany = new FakeCurrentCompany(companyId);
         var model = new DetalleModel(reports, new NoopFundService(), new NoopExpenseService(), new NoopUserCostCenterService(),
-            groups, new NoopTenantUserAdminService(), new NoopRoleService(), currentUser, currentCompany);
+            groups, new NoopTenantUserAdminService(), new StubWeeklyExpenseLimitService(), new NoopRoleService(), currentUser, currentCompany);
 
         var result = await model.OnGetAsync(report.Id, CancellationToken.None);
 
         Assert.IsNotType<NotFoundResult>(result);
         Assert.Equal("Approved", model.Report.Status);
+    }
+
+    /// <summary>
+    /// Task 11: DetalleModel.WeeklyWarnings es pura cablería sobre
+    /// IWeeklyExpenseLimitService.GetWarningsAsync -- no vuelve a probar la lógica del
+    /// Task 8, solo que LoadAsync la invoca con el dueño del informe (no con el usuario
+    /// logueado, que puede ser el aprobador) y expone lo que el servicio devuelve.
+    /// </summary>
+    [Fact]
+    public async Task OnGetAsync_pobla_WeeklyWarnings_con_lo_que_devuelve_el_servicio_semanal()
+    {
+        var companyId = Guid.NewGuid();
+        var requesterId = Guid.NewGuid();
+
+        await using var db = CreateDb(nameof(OnGetAsync_pobla_WeeklyWarnings_con_lo_que_devuelve_el_servicio_semanal));
+        var report = new ExpenseReport { CompanyId = companyId, UserId = requesterId, Status = "Draft" };
+        db.ExpenseReports.Add(report);
+        await db.SaveChangesAsync();
+
+        var groups = new StubApprovalGroupService();
+        var reports = new ExpenseReportService(db, groups, new NoopFundService(), new NoopAttachmentService(),
+            new FakeEmailSenderService(), new FakeUserContactLookupService(), new FakeNotificationService(), NullLogger<ExpenseReportService>.Instance);
+
+        var expectedWarning = new WeeklyLimitWarning("Viáticos", new DateOnly(2026, 10, 26), new DateOnly(2026, 11, 1), 150000m, 100000m, 50000m);
+        var weeklyLimits = new StubWeeklyExpenseLimitService { Warnings = new[] { expectedWarning } };
+
+        var currentUser = new FakeCurrentUser(requesterId);
+        var currentCompany = new FakeCurrentCompany(companyId);
+        var model = new DetalleModel(reports, new NoopFundService(), new NoopExpenseService(), new NoopUserCostCenterService(),
+            groups, new NoopTenantUserAdminService(), weeklyLimits, new NoopRoleService(), currentUser, currentCompany);
+
+        var result = await model.OnGetAsync(report.Id, CancellationToken.None);
+
+        Assert.IsNotType<NotFoundResult>(result);
+        Assert.Single(model.WeeklyWarnings);
+        Assert.Same(expectedWarning, model.WeeklyWarnings[0]);
+        Assert.Equal(companyId, weeklyLimits.LastCompanyId);
+        Assert.Equal(requesterId, weeklyLimits.LastUserId);
+        Assert.Equal(DateOnly.FromDateTime(DateTime.Today), weeklyLimits.LastAnyDateInWeek);
     }
 }

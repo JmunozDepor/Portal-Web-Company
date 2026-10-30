@@ -233,4 +233,27 @@ public class ExpenseServiceReimbursementTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => sut.UpdateAsync(gasto.Id, companyId, cambios));
         Assert.False(string.IsNullOrWhiteSpace(ex.Message));
     }
+
+    [Fact]
+    public async Task UpdateAsync_ChangesCityIdAndQuantity_PersistsThem()
+    {
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        await using var db = CreateDb(nameof(UpdateAsync_ChangesCityIdAndQuantity_PersistsThem));
+        var typeId = await CreateExpenseTypeAsync(db, companyId, "Movilización (Bip)", requiresQuantity: true);
+        var city = new City { CompanyId = companyId, Name = "Santiago" };
+        db.Cities.Add(city);
+        await db.SaveChangesAsync();
+        var sut = CreateSut(db);
+
+        var gasto = NewLine(companyId, userId, typeId, amount: 1000m, cityId: null, quantity: null);
+        await sut.CreateAsync(gasto);
+
+        var cambios = NewLine(companyId, userId, typeId, amount: 1000m, cityId: city.Id, quantity: 2m);
+        await sut.UpdateAsync(gasto.Id, companyId, cambios);
+
+        var reloaded = await db.ExpenseReportLines.FirstAsync(g => g.Id == gasto.Id);
+        Assert.Equal(city.Id, reloaded.CityId);
+        Assert.Equal(2m, reloaded.Quantity);
+    }
 }

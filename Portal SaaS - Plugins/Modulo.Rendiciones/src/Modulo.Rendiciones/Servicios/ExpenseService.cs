@@ -96,6 +96,8 @@ public sealed class ExpenseService : IExpenseService
         expense.AppliedRatePerKm = data.AppliedRatePerKm;
         if (data.ExpenseReceiptId is not null)
             expense.ExpenseReceiptId = data.ExpenseReceiptId;
+        expense.CityId = data.CityId;
+        expense.Quantity = data.Quantity;
         expense.ReimbursementAmount = result.ReimbursementAmount;
 
         await _db.SaveChangesAsync(ct);

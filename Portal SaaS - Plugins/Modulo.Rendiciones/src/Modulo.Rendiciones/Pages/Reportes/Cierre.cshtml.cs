@@ -57,7 +57,7 @@ public sealed class CierreModel : RendicionesPageModelBase
         }
 
         var csv = new StringBuilder();
-        csv.AppendLine("Rendicion,Ronda,Colaborador,CentroCostoCodigo,CentroCostoNombre,TipoGasto,Fecha,Monto,Moneda,Glosa");
+        csv.AppendLine("Rendicion,Ronda,Colaborador,CentroCostoCodigo,CentroCostoNombre,TipoGasto,Fecha,Monto,MontoReembolso,Moneda,Glosa");
         foreach (var l in lines)
         {
             csv.AppendLine(string.Join(",",
@@ -69,6 +69,7 @@ public sealed class CierreModel : RendicionesPageModelBase
                 CsvEscape(l.ExpenseTypeName),
                 l.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 l.Amount.ToString("F2", CultureInfo.InvariantCulture),
+                l.ReimbursementAmount.ToString("F2", CultureInfo.InvariantCulture),
                 l.Currency,
                 CsvEscape(l.Notes)));
         }
